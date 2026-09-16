@@ -15,15 +15,15 @@ import {
   InfoCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
-import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
@@ -71,10 +71,79 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   }
 };
 
+interface AxiosErrorResolution {
+  errorMessage: string | JSX.Element;
+  isRuleViolation: boolean;
+  shouldSuppress: boolean;
+}
+
+// Pulled out of showErrorToast's 'config'/'response' branch: resolves the
+// display message plus whether the toast should be a warning (rule
+// violation) or suppressed entirely (unauthorized/forbidden GET, unless the
+// message calls out a principal-domain issue).
+const resolveAxiosErrorMessage = (
+  error: AxiosError,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  const method = error.config?.method?.toUpperCase();
+  const fallback =
+    fallbackText && fallbackText.length > 0
+      ? fallbackText
+      : i18n.t('server.unexpected-error');
+  const errorMessage = getErrorText(error, fallback);
+  const isRuleViolation =
+    get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+  const isUnauthorizedOrForbiddenGet =
+    error.response?.status === ClientErrors.UNAUTHORIZED ||
+    (error.response?.status === ClientErrors.FORBIDDEN && method === 'GET');
+  const shouldSuppress = Boolean(
+    error &&
+      isUnauthorizedOrForbiddenGet &&
+      !errorMessage.includes('principal domain')
+  );
+
+  return { errorMessage, isRuleViolation, shouldSuppress };
+};
+
+// Pulled out of showErrorToast: resolves the display message plus the
+// rule-violation/suppress flags for every accepted `error` shape (JSX
+// element, plain string, or AxiosError), so the toast function itself only
+// has to act on the resolved result.
+const resolveErrorDetails = (
+  error: AxiosError | string | JSX.Element,
+  fallbackText?: string
+): AxiosErrorResolution => {
+  if (React.isValidElement(error)) {
+    return {
+      errorMessage: error,
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if (isString(error)) {
+    return {
+      errorMessage: error.toString(),
+      isRuleViolation: false,
+      shouldSuppress: false,
+    };
+  }
+
+  if ('config' in error && 'response' in error) {
+    return resolveAxiosErrorMessage(error, fallbackText);
+  }
+
+  return {
+    errorMessage: fallbackText ?? i18n.t('server.unexpected-error'),
+    isRuleViolation: false,
+    shouldSuppress: false,
+  };
+};
+
 /**
  * Display an error toast message.
  * @param error error text or AxiosError object
- * @param fallbackText Fallback error message to the displayed.
+ * @param fallbackText Fallback error message to be displayed.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
@@ -83,43 +152,25 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
-  let errorMessage;
-  let isRuleViolation = false;
-  if (React.isValidElement(error)) {
-    errorMessage = error;
-  } else if (isString(error)) {
-    errorMessage = error.toString();
-  } else if ('config' in error && 'response' in error) {
-    const method = error.config?.method?.toUpperCase();
-    const fallback =
-      fallbackText && fallbackText.length > 0
-        ? fallbackText
-        : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(error, fallback);
-    isRuleViolation =
-      get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
-    // do not show error toasts for 401
-    // since they will be intercepted and the user will be redirected to the signin page
-    // except for principal domain mismatch errors
-    if (
-      error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
-      !errorMessage.includes('principal domain')
-    ) {
-      return;
-    }
-  } else {
-    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
+  const { errorMessage, isRuleViolation, shouldSuppress } = resolveErrorDetails(
+    error,
+    fallbackText
+  );
+
+  if (shouldSuppress) {
+    return;
   }
+
   callback && callback(errorMessage);
 
-  const alertType = isRuleViolation ? 'warning' : 'error';
-
-  useAlertStore
-    .getState()
-    .addAlert({ type: alertType, message: errorMessage }, autoCloseTimer);
+  if (isRuleViolation) {
+    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
+  } else {
+    toast.error(
+      errorMessage,
+      autoCloseTimer ? { timeout: autoCloseTimer } : {}
+    );
+  }
 };
 
 /**
@@ -127,10 +178,8 @@ export const showErrorToast = (
  * @param message success message.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
-export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'success', message }, autoCloseTimer);
+export const showSuccessToast = (message: string, autoCloseTimer = 3000) => {
+  toast.success(message, { timeout: autoCloseTimer });
 };
 
 /**
@@ -139,9 +188,7 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'warning', message }, autoCloseTimer);
+  toast.warning(message, { timeout: autoCloseTimer });
 };
 
 /**
@@ -150,5 +197,5 @@ export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
+  toast.info(message, { timeout: autoCloseTimer });
 };

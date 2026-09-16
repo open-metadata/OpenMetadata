@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getServiceDetailsPath,
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -29,7 +30,7 @@ jest.mock('../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
@@ -49,7 +50,7 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TableDropdownOptions', () => ({
   ExtraTableDropdownOptions: jest.fn(),
 }));
 
@@ -226,6 +227,129 @@ describe('EntityUtilClassBase', () => {
     );
   });
 
+  it('should return service details path for driveService entity type', () => {
+    const fqn = 'test.driveService';
+    entityUtil.getEntityLink(EntityType.DRIVE_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'driveServices');
+  });
+
+  it('should return service details path for securityService entity type', () => {
+    const fqn = 'test.securityService';
+    entityUtil.getEntityLink(EntityType.SECURITY_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
+  });
+
+  it('should route ingestion pipelines to the owning service agents tab', () => {
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseServices',
+      'bigquery-beta'
+    );
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(
+      'bigquery-beta',
+      'databaseServices',
+      EntityTabs.AGENTS
+    );
+    expect(getEntityDetailsPath).not.toHaveBeenCalled();
+  });
+
+  it('should fall through to the default table path for ingestion pipelines without service context', () => {
+    // prepareFeedLink and similar callers omit the service category; they must keep the
+    // default behaviour rather than produce a service URL built from a pipeline FQN.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(EntityType.INGESTION_PIPELINE, fqn);
+
+    expect(getServiceDetailsPath).not.toHaveBeenCalled();
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
+  it('should accept the singular service entity type as the category', () => {
+    // Chat markdown links are model-authored and routinely carry the singular entity type
+    // ("databaseService") instead of the plural route segment; both name the same service page.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseService',
+      'bigquery-beta'
+    );
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(
+      'bigquery-beta',
+      'databaseServices',
+      EntityTabs.AGENTS
+    );
+  });
+
+  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])(
+    'should fall through to the default table path for the prototype key %s',
+    (serviceCategory) => {
+      // The category comes from a model-authored href, so a prototype key can reach the
+      // reverse lookup; it must not resolve to a truthy non-category value.
+      const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+      entityUtil.getEntityLink(
+        EntityType.INGESTION_PIPELINE,
+        fqn,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        serviceCategory,
+        'bigquery-beta'
+      );
+
+      expect(getServiceDetailsPath).not.toHaveBeenCalled();
+      expect(getEntityDetailsPath).toHaveBeenCalledWith(
+        EntityType.TABLE,
+        fqn,
+        undefined,
+        undefined
+      );
+    }
+  );
+
+  it('should fall through to the default table path for an unknown service category', () => {
+    // The category is supplied by the caller (chat markdown links carry one). A value that
+    // is not a real service category would build a route that matches nothing.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'Snowflake',
+      'bigquery-beta'
+    );
+
+    expect(getServiceDetailsPath).not.toHaveBeenCalled();
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
   describe('getFqnParts', () => {
     it('should return undefined columnFqn if type is NOT provided', () => {
       const fqn = 'service.database.schema.table';
@@ -293,6 +417,20 @@ describe('EntityUtilClassBase', () => {
 
       // Implementation detail: it initializes entityFqn = fqn, and only changes if length > 4
       expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
+    });
+  });
+
+  describe('getEntityTypes', () => {
+    it('should return the list of OSS entity types', () => {
+      const types = entityUtil.getEntityTypes();
+
+      expect(types).toEqual(Object.values(EntityType));
+      expect(types).toContain(EntityType.TABLE);
+      expect(types).toContain(EntityType.GLOSSARY_TERM);
+    });
+
+    it('should not contain Collate-only types absent from the enum', () => {
+      expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
     });
   });
 });

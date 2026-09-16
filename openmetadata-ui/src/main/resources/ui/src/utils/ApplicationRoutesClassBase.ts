@@ -13,10 +13,10 @@
 
 import { FC, lazy } from 'react';
 import { UnAuthenticatedAppRouter } from '../components/AppRouter/UnAuthenticatedAppRouter';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { withPageSuspenseFallback } from '../components/AppRouter/withSuspenseFallback';
 import { UNPROTECTED_ROUTES } from '../constants/router.constants';
 
-const AuthenticatedAppRouter = withSuspenseFallback(
+const AuthenticatedAppRouter = withPageSuspenseFallback(
   lazy(() => import('../components/AppRouter/AuthenticatedAppRouter'))
 );
 

@@ -37,7 +37,7 @@ import {
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from './ContainerDetailUtils';
+} from './ContainerDetailPureUtils';
 import {
   findFieldByFQN,
   normalizeTags,
@@ -46,7 +46,7 @@ import {
   updateFieldDisplayName,
   updateFieldExtension,
   updateFieldTags,
-} from './TableUtils';
+} from './TablePureUtils';
 
 // Re-export for backward compatibility
 export type { ColumnFieldUpdate } from './ColumnUpdateUtils.interface';

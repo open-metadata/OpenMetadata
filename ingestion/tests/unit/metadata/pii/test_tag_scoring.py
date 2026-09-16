@@ -24,6 +24,7 @@ from _openmetadata_testutils.factories.metadata.generated.schema.entity.classifi
 from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
     PatternFactory,
     PatternRecognizerFactory,
+    PredefinedRecognizerFactory,
     RecognizerFactory,
 )
 from metadata.generated.schema.entity.classification.classification import (
@@ -35,7 +36,10 @@ from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.generated.schema.type.piiEntity import PIIEntity
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms.presidio_utils import load_nlp_engine
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
@@ -164,7 +168,6 @@ class TestTagScorer:
         """Create a TagClassifier instance with tag analyzers"""
         return TagScorer(
             tag_analyzers=tag_analyzers,
-            column_name_contribution=0.5,
             score_cutoff=0.1,
             relative_cardinality_cutoff=0.01,
         )
@@ -177,7 +180,7 @@ class TestTagScorer:
             "bob@company.co.uk",
         ]
 
-        scores = classifier.predict_scores(sample_data, column_name="customer_email")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         assert len(scores) == 1
         scored_tag = scores[0]
@@ -196,7 +199,7 @@ class TestTagScorer:
         """Test classification with phone data using TagAnalyzer"""
         sample_data = ["555-123-4567", "555.987.6543", "5551234567"]
 
-        scores = classifier.predict_scores(sample_data, column_name="contact_phone")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         assert len(scores) == 1
         scored_tag = scores[0]
@@ -230,40 +233,42 @@ class TestTagScorer:
             "Email support@company.org or call 555.987.6543",
         ]
 
-        scores = classifier.predict_scores(sample_data, column_name="contact_info")
+        scores = classifier.predict_scores(sample_data, run_column_analysis=True)
 
         # Should detect patterns through tag analyzers
         assert len(scores) > 0
 
     def test_score_cutoff_filtering(self, tag_analyzers):
         """Test that scores below cutoff are filtered"""
-        # Create a classifier with high cutoff
         high_cutoff_classifier = TagScorer(
             tag_analyzers=tag_analyzers,
-            column_name_contribution=0.5,
-            score_cutoff=0.95,  # Very high cutoff
+            score_cutoff=0.95,
             relative_cardinality_cutoff=0.01,
         )
 
         sample_data = ["maybe an email@somewhere", "could be phone 123456"]
-        scored_tags = high_cutoff_classifier.predict_scores(sample_data, column_name="data")
+        scored_tags = high_cutoff_classifier.predict_scores(sample_data, run_column_analysis=True)
 
         # With such a high cutoff, weak matches should be filtered
         assert len(scored_tags) == 0 or all(scored_tag.score >= 0.95 for scored_tag in scored_tags)
 
-    def test_column_name_contribution(self, classifier):
-        """Test that column name contributes to score"""
-        email_data = ["user1@domain.com", "user2@domain.org"]
+    def test_column_name_only_classifies_independently(self, email_tag, nlp_engine):
+        """Column name recognizer fires on its own without any sample data."""
+        column = Column(
+            name=ColumnName(root="email_address"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.email_address",
+        )
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        scorer = TagScorer(tag_analyzers=[analyzer], score_cutoff=0.1)
 
-        # First without column name match
-        scores_without = classifier.predict_scores(email_data, column_name="random_field")
+        scores = scorer.predict_scores([], run_column_analysis=True)
 
-        # Then with column name that matches email pattern
-        scores_with = classifier.predict_scores(email_data, column_name="email_address")
-
-        # Email tag should have higher score when column name matches
-        if "PII.EmailTag" in scores_with and "PII.EmailTag" in scores_without:
-            assert scores_with["PII.EmailTag"] >= scores_without["PII.EmailTag"]
+        assert len(scores) == 1
+        assert scores[0] == IsInstance(ScoredTag) & HasAttributes(
+            tag=IsInstance(Tag) & HasAttributes(name=EntityName(root="EmailTag")),
+            score=IsNumeric(gt=0.5),
+        )
 
 
 class TestTagAnalyzer:
@@ -317,10 +322,172 @@ class TestTagAnalyzer:
         """Create a TagAnalyzer instance"""
         return TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
 
+    @pytest.fixture
+    def date_tag_analyzer(self, column: Column) -> TagAnalyzer:
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.DATE_TIME],
+            ),
+            target=Target.content,
+        )
+        date_tag = TagFactory.create(
+            tag_name="Date",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Date field",
+        )
+        return TagAnalyzer(
+            tag=date_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+    @pytest.fixture
+    def person_tag(self) -> Tag:
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.PERSON],
+                context=["name"],
+            ),
+            target=Target.content,
+        )
+        return TagFactory.create(
+            tag_name="Person",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Person name",
+        )
+
+    @pytest.fixture
+    def person_tag_analyzer(self, person_tag: Tag, column: Column) -> TagAnalyzer:
+        return TagAnalyzer(
+            tag=person_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+    def test_analyze_content_rejects_epoch_timestamp_as_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["1760000000123"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_preserves_textual_date(self, date_tag_analyzer: TagAnalyzer):
+        analysis = date_tag_analyzer.analyze(str_values=["2025-01-15"])
+
+        assert analysis.score > 0.0
+        assert [result.entity_type for result in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    @pytest.mark.parametrize(
+        "values",
+        [
+            pytest.param(
+                [
+                    "Safari",
+                    "Edge",
+                    "Safari",
+                    "Chrome",
+                    "Chrome",
+                    "Firefox",
+                    "Firefox",
+                    "Google Search App",
+                    "Chrome",
+                    "Edge",
+                ],
+                id="browser",
+            ),
+            pytest.param(
+                [
+                    "flickr",
+                    "google_search",
+                    "flickr",
+                    "flickr",
+                    "flickr",
+                    "flickr",
+                    "google_search",
+                    "commons.m.wikimedia.org",
+                    "google_search",
+                    "google_search",
+                ],
+                id="channel-subtype",
+            ),
+        ],
+    )
+    def test_analyze_content_rejects_repeated_spacy_named_entity_guess(
+        self,
+        person_tag_analyzer: TagAnalyzer,
+        values: list[str],
+    ):
+        analysis = person_tag_analyzer.analyze(str_values=values)
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_analyze_content_preserves_distinct_minority_names(self, person_tag_analyzer: TagAnalyzer):
+        names = [
+            "Geneviève",
+            "François",
+            "Mathieu",
+            "Sylvie",
+            "Nathalie",
+            "Isabelle",
+            "Céline",
+            "Jean-Marc",
+        ]
+        analysis = person_tag_analyzer.analyze(str_values=names + [str(value) for value in range(42)])
+
+        assert analysis.score >= 0.8
+
+    def test_analyze_content_preserves_single_contextual_name(self, person_tag: Tag):
+        name_column = Column(
+            name=ColumnName(root="employee_name"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="test.table.employee_name",
+        )
+        analyzer = TagAnalyzer(
+            tag=person_tag,
+            column=name_column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+        analysis = analyzer.analyze(str_values=["François"])
+
+        assert analysis.score == 1.0
+
+    def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
+        spacy_recognizer = RecognizerFactory.create(
+            name="SpacyRecognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.SpacyRecognizer,
+                supportedEntities=[PIIEntity.PERSON, PIIEntity.LOCATION],
+            ),
+            target=Target.content,
+        )
+        named_entity_tag = TagFactory.create(
+            tag_name="NamedEntity",
+            autoClassificationEnabled=True,
+            recognizers=[spacy_recognizer],
+            description="Named entity",
+        )
+        analyzer = TagAnalyzer(
+            tag=named_entity_tag,
+            column=column,
+            nlp_engine=load_nlp_engine(),
+        )
+
+        analysis = analyzer.analyze(str_values=["François", "Paris"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
     def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
         values = ["john@example.com", "jane@test.org", "bob@company.co.uk"]
-        analysis = tag_analyzer.analyze_content(values)
+        analysis = tag_analyzer.analyze(str_values=values)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=IsFloat(gt=0.8),
             tag=email_tag,
@@ -334,16 +501,30 @@ class TestTagAnalyzer:
     def test_analyze_content_no_match(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with non-matching data"""
         values = ["random text", "no patterns here", "just words"]
-        analysis = tag_analyzer.analyze_content(values)
+        analysis = tag_analyzer.analyze(str_values=values)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=0.0,
             tag=email_tag,
             explanation=None,
         )
 
+    def test_analyze_content_minority_pii_not_diluted(self, tag_analyzer, email_tag: Tag):
+        """A single PII value among many non-PII rows must not be diluted below threshold.
+
+        Regression test for #32070: the old average-based aggregation divided the recogniser
+        score by the total number of sampled values (e.g. 0.9 / 50 = 0.018), silently
+        discarding minority PII.  The max-based approach returns the highest individual
+        recogniser score regardless of batch size.
+        """
+        non_pii = ["random text"] * 49
+        values = non_pii + ["john@example.com"]  # 1 PII hit in 50 values
+        analysis = tag_analyzer.analyze(str_values=values)
+        # Old average: 0.9 / 50 = 0.018 — below minimumConfidence → column silently untagged.
+        # Max-based: 0.9 — correctly flags the column.
+        assert analysis.score >= 0.8
+
     def test_analyze_column_name(self, email_tag, nlp_engine):
-        """Test column name analysis"""
-        # Create column with email-related name
+        """Test column name analysis fires independently via the unified analyze() method."""
         column = Column(
             name=ColumnName(root="email_address"),
             displayName="Email Address",
@@ -351,7 +532,6 @@ class TestTagAnalyzer:
             fullyQualifiedName="test.table.email_address",
         )
 
-        # Add column name recognizer to tag
         column_name_pattern = PatternFactory.create(
             name="Email column pattern",
             regex=".*email.*",
@@ -374,7 +554,7 @@ class TestTagAnalyzer:
         email_tag.recognizers.append(column_name_recognizer)
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
-        analysis = analyzer.analyze_column()
+        analysis = analyzer.analyze(str_values=[], run_column_analysis=True)
         assert analysis == IsInstance(TagAnalysis) & HasAttributes(
             score=IsFloat(gt=0.5),
             tag=email_tag,

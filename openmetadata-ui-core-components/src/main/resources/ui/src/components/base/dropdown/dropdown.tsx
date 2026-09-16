@@ -1,5 +1,8 @@
-import type { FC, HTMLAttributes, RefAttributes } from 'react';
+import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+import { cx } from '@/utils/cx';
 import { DotsVertical } from '@untitledui/icons';
+import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   MenuItemProps as AriaMenuItemProps,
@@ -17,8 +20,6 @@ import {
   Popover as AriaPopover,
   Separator as AriaSeparator,
 } from 'react-aria-components';
-import { CheckboxBase } from '@/components/base/checkbox/checkbox';
-import { cx } from '@/utils/cx';
 
 interface DropdownItemProps extends AriaMenuItemProps {
   /** The label of the item to be displayed. */
@@ -31,6 +32,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   icon?: FC<{ className?: string }>;
   /** If true, shows a checkbox on the left to indicate selection state. */
   showCheckbox?: boolean;
+  /** Size of that checkbox. */
+  checkboxSize?: 'xs' | 'sm';
 }
 
 const DropdownItem = ({
@@ -40,6 +43,7 @@ const DropdownItem = ({
   icon: Icon,
   unstyled,
   showCheckbox,
+  checkboxSize = 'sm',
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
@@ -72,7 +76,7 @@ const DropdownItem = ({
               isDisabled={state.isDisabled}
               isFocusVisible={state.isFocusVisible}
               isSelected={state.isSelected}
-              size="sm"
+              size={checkboxSize}
             />
           )}
 
@@ -90,7 +94,7 @@ const DropdownItem = ({
 
           <span
             className={cx(
-              'tw:grow tw:truncate tw:text-sm tw:font-semibold',
+              'tw:grow tw:truncate tw:text-sm',
               state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
               state.isFocused && 'tw:text-secondary_hover'
             )}>
@@ -101,7 +105,7 @@ const DropdownItem = ({
           {addon && (
             <span
               className={cx(
-                'tw:ml-auto tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:ring-1 tw:ring-secondary tw:ring-inset',
+                'tw:ml-auto tw:shrink-0 tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
                 state.isDisabled ? 'tw:text-disabled' : 'tw:text-quaternary'
               )}>
               {addon}
@@ -123,7 +127,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:h-min tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
+          'tw:py-1 tw:outline-hidden tw:select-none',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
@@ -136,13 +140,15 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
+  const { placement = 'bottom right', ...rest } = props;
+
   return (
     <AriaPopover
-      placement="bottom right"
-      {...props}
+      placement={placement}
+      {...rest}
       className={(state) =>
         cx(
-          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-auto tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-raised tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -162,7 +168,7 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
     <AriaSeparator
       {...props}
       className={cx(
-        'tw:my-1 tw:h-px tw:w-full tw:bg-border-secondary',
+        'tw:my-1 tw:w-full tw:border-t tw:border-subtle',
         props.className
       )}
     />
@@ -172,10 +178,12 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
 const DropdownDotsButton = (
   props: AriaButtonProps & RefAttributes<HTMLButtonElement>
 ) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaButton
       {...props}
-      aria-label="Open menu"
+      aria-label={t('label.open-menu', 'Open menu')}
       className={(state) =>
         cx(
           'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',

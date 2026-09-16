@@ -23,6 +23,20 @@
       "items": {
         "$ref": "./eventFilterRule.json"
       }
+    },
+    "containerEntities": {
+      "description": "Ancestor entity types whose fully qualified name is a prefix of this resource's FQN (e.g. a databaseSchema is contained by databaseService and database). Lets an Entity FQN filter scope an alert to all descendants of a parent.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supportedEventTypes": {
+      "description": "Event types an alert on this resource can actually receive, so the alert builder should offer only these. Advisory, not enforced: a subscription holding an event type outside this list still saves, it just never matches an event. Derived server-side from what the event emitters produce, not declared in EventSubResourceDescriptor.json.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/changeEventType.json"
+      }
     }
   },
   "additionalProperties": false

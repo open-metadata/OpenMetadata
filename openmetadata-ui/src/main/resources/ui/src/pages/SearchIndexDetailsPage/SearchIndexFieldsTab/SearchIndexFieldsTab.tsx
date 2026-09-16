@@ -11,20 +11,38 @@
  *  limitations under the License.
  */
 
-import { useCallback, useMemo } from 'react';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { lazy, useCallback, useMemo } from 'react';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../../../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import {
   SearchIndex,
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
 import { useFqn } from '../../../hooks/useFqn';
-import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
-import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
+
+const SearchIndexFieldsTable = withSuspenseFallback(
+  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable')),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
 
 function SearchIndexFieldsTab() {
   const { fqn: entityFqn } = useFqn();
   const { data, permissions, onUpdate } = useGenericContext<SearchIndex>();
   const { fields, deleted } = useMemo(() => data, [data.fields, data.deleted]);
+
+  // Consumer via useGenericContext() (Task 8 rule 2). Ungated: `deleted` is passed
+  // separately to SearchIndexFieldsTable as `isReadOnly` (handled at the individual
+  // TableDescription/TableTags render sites), never folded into these edit flags in
+  // the old code — same isReadOnly-vs-deleted separation as the sibling SchemaTable
+  // family. All 3 raw `EditAll || EditField` OR-expressions are explicit-deny-wins
+  // fixes: getDerivedPermissionFlags prioritizes the field-specific key over EditAll.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const {
     hasDescriptionEditAccess,
@@ -32,13 +50,11 @@ function SearchIndexFieldsTab() {
     hasTagEditAccess,
   } = useMemo(
     () => ({
-      hasDescriptionEditAccess:
-        permissions.EditAll || permissions.EditDescription,
-      hasGlossaryTermEditAccess:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      hasTagEditAccess: permissions.EditAll || permissions.EditTags,
+      hasDescriptionEditAccess: flags.canEditDescription,
+      hasGlossaryTermEditAccess: flags.canEditGlossaryTerms,
+      hasTagEditAccess: flags.canEditTags,
     }),
-    [permissions]
+    [flags]
   );
 
   const fieldAllRowKeys = useMemo(() => {

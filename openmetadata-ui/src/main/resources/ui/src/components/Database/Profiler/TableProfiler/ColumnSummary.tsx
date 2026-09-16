@@ -14,7 +14,7 @@ import { Badge } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../../generated/entity/data/container';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../Tag/TagsViewer/TagsViewer';
@@ -53,13 +53,13 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
             {t('label.glossary-term-plural')}
           </div>
           <div className="tw:col-span-10">
-            <TagsViewer newLook sizeCap={3} tags={Glossary ?? []} />
+            <TagsViewer sizeCap={3} tags={Glossary ?? []} />
           </div>
           <div className="tw:col-span-2 tw:text-sm tw:text-secondary">
             {t('label.tag-plural')}
           </div>
           <div className="tw:col-span-10">
-            <TagsViewer newLook sizeCap={3} tags={Classification ?? []} />
+            <TagsViewer sizeCap={3} tags={Classification ?? []} />
           </div>
         </div>
       </div>

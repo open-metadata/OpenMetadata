@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, Range } from '@tiptap/core';
+import type { Editor, Range } from '@tiptap/core';
 import HashtagImage from '../../../../assets/img/ic-format-hashtag.png';
 import MathEquationImage from '../../../../assets/img/ic-format-math-equation.png';
 import BulletListImage from '../../../../assets/img/ic-slash-bullet-list.png';

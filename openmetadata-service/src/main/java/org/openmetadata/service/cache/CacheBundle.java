@@ -72,8 +72,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       }
 
       CacheKeys keys = new CacheKeys(cacheConfig.redis.keyspace);
-      cachedEntityDao =
-          new CachedEntityDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedEntityDao = new CachedEntityDao(cacheProvider, keys, cacheConfig);
       cachedRelationshipDao =
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
@@ -90,14 +89,40 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       // the full audit and the planned migration of those layers to the registry.
       registerInvalidatable(cachedLineage);
       registerInvalidatable(notFoundCache);
+      // Per-JVM caches behind Ask Collate's persona context. Both are keyed by data a peer's write
+      // changes, so without this a persona edit, a context regenerate, or a persona assignment is
+      // visible on the writing pod only, for up to that cache's TTL.
+      registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
+      registerInvalidatable(
+          org.openmetadata.service.security.policyevaluator.SubjectCache.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
             try {
-              org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
-                  msg.type(), msg.id(), msg.fqn());
-              if (msg.id() != null && cachedReadBundle != null) {
-                cachedReadBundle.invalidate(msg.type(), msg.id());
+              // Out-of-band signal: a session was revoked on another pod, drop any WebSocket
+              // connections this pod is holding for that user. Encoded as type=session, op=revoke,
+              // id=<userId> so it rides the existing channel without needing a second subscriber.
+              if ("session".equals(msg.type()) && "revoke".equals(msg.op()) && msg.id() != null) {
+                org.openmetadata.service.socket.WebSocketManager wsManager =
+                    org.openmetadata.service.socket.WebSocketManager.getInstance();
+                if (wsManager != null) {
+                  if (msg.fqn() != null) {
+                    wsManager.disconnectForSession(msg.id(), msg.fqn());
+                  } else {
+                    wsManager.disconnectAllForUser(msg.id());
+                  }
+                }
+                return;
+              }
+              // Non-entity signals ride this channel too (a persona context rebuild mutates no
+              // entity). Evicting entity caches for them would bump a write epoch and force a
+              // needless reload of an entity that did not change.
+              if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
+                org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
+                    msg.type(), msg.id(), msg.fqn());
+                if (msg.id() != null && cachedReadBundle != null) {
+                  cachedReadBundle.invalidate(msg.type(), msg.id());
+                }
               }
               // Fan invalidation out to every Invalidatable registered with the bundle. This is
               // the path new cache layers should plug into — implement Invalidatable, call
@@ -210,10 +235,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
    * pub-sub handler above when a remote pod publishes a write, and from the admin
    * {@code POST /system/cache/invalidate} endpoint.
    *
-   * <p>Note: not every entity mutation hook calls this — {@code postUpdate} / {@code postDelete}
-   * / {@code restoreEntity} currently rely on the write-through cache + L1 eviction rather
-   * than the {@link Invalidatable} registry. If you wire a new Invalidatable that needs to
-   * react to those events, you'll need to add the call there as well.
+   * <p>Entity creates call this directly, while update, delete, and restore paths reach it through
+   * the repository's mutation cache invalidation. New mutation paths must do the same so registered
+   * layers such as the negative cache cannot outlive a successful write.
    *
    * <p>No-op if no layers are registered (cache disabled or none registered yet).
    */

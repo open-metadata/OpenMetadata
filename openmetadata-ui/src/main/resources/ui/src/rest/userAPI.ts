@@ -19,12 +19,12 @@ import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
+import { UserPreferences } from '../generated/api/teams/userPreferences';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
-import { Bot } from '../generated/entity/bot';
 import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export interface UsersQueryParams {
@@ -95,6 +95,48 @@ export const getLoggedInUser = async (params?: ListParams) => {
   return response.data;
 };
 
+/**
+ * Per-user UI preferences list (e.g. the boot-time `appMode` preference).
+ * Backed by a lightweight side table, not the `User` entity. Each entry is a
+ * typed discriminated union `{ type, config }` — see
+ * `hooks/currentUserStore/useCurrentUserStore.ts` for the debounced write
+ * path that calls `putUserPreference` / `deleteUserPreference`.
+ */
+export const getUserPreferences = async (userId: string) => {
+  const response = await APIClient.get<UserPreferences>(
+    `/users/${userId}/preferences`
+  );
+
+  return response.data;
+};
+
+/**
+ * Creates or replaces the preference entry of the given `type`. `config` is
+ * the type-specific shape (e.g. `{ value: 'ai' }` for `appMode`) — see
+ * `api/teams/preferences/*.json`.
+ */
+export const putUserPreference = async (
+  userId: string,
+  type: string,
+  config: unknown
+) => {
+  const response = await APIClient.put<UserPreferences>(
+    `/users/${userId}/preferences/${type}`,
+    { type, config }
+  );
+
+  return response.data;
+};
+
+/** Removes the preference entry of the given `type`, if present. */
+export const deleteUserPreference = async (userId: string, type: string) => {
+  const response = await APIClient.delete<UserPreferences>(
+    `/users/${userId}/preferences/${type}`
+  );
+
+  return response.data;
+};
+
 export const createUser = async (userDetails: CreateUser) => {
   const response = await APIClient.post<CreateUser, AxiosResponse<User>>(
     `/users`,
@@ -144,24 +186,6 @@ export const generateUserToken = async (request: GenerateTokenRequest) => {
 export const getAuthMechanismForBotUser = async (botId: string) => {
   const response = await APIClient.get<AuthenticationMechanism>(
     `/users/auth-mechanism/${botId}`
-  );
-
-  return response.data;
-};
-
-export const getBotByName = async (name: string, params?: ListParams) => {
-  const response = await APIClient.get<Bot>(
-    `/bots/name/${getEncodedFqn(name)}`,
-    { params }
-  );
-
-  return response.data;
-};
-
-export const updateBotDetail = async (id: string, data: Operation[]) => {
-  const response = await APIClient.patch<Operation[], AxiosResponse<Bot>>(
-    `/bots/${id}`,
-    data
   );
 
   return response.data;

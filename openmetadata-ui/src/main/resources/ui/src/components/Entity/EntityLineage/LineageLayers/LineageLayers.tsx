@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 import {
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
   Popover,
-  styled,
-  ToggleButton,
-  ToggleButtonGroup,
-  ToggleButtonProps,
-} from '@mui/material';
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, xor } from 'lodash';
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
+import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
@@ -30,67 +33,113 @@ import { ReactComponent as ServiceView } from '../../../../assets/svg/services.s
 import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import {
+  LineageBand,
+  LineageLens,
+} from '../../../../generated/api/lineage/lineageScene';
 import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import './lineage-layers.less';
 import { LineageLayersProps } from './LineageLayers.interface';
 
-const StyledButton = styled((props: ToggleButtonProps) => (
-  <ToggleButton {...props} />
-))(({ theme }) => ({
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '4px',
-  backgroundColor: theme.palette.allShades.white,
-  fontSize: theme.typography.pxToRem(10),
-  color: theme.palette.text.primary,
-  wordBreak: 'break-word',
-  padding: '8px 16px',
+const LAYER_BUTTON_CLASSES = [
+  'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary',
+  'tw:whitespace-normal tw:break-words tw:hover:after:outline-brand tw:hover:z-10',
+  'tw:selected:bg-brand-primary tw:selected:text-primary',
+].join(' ');
 
-  svg: {
-    height: 20,
-  },
+const SCENE_LAYER_MENU_OPTION_CLASSES = [
+  'lineage-scene-layer-menu-option tw:grid! tw:w-full! tw:grid-cols-[34px_minmax(0,1fr)_16px]',
+  'tw:items-center tw:justify-start! tw:gap-2.5! tw:rounded-lg! tw:px-3! tw:py-2! tw:text-left',
+  'tw:whitespace-normal! tw:after:outline-transparent tw:selected:bg-brand-primary tw:selected:text-brand-tertiary',
+  'tw:[&[data-selected]_.lineage-scene-layer-menu-icon]:bg-brand-solid',
+  'tw:[&[data-selected]_.lineage-scene-layer-menu-icon]:text-fg-white',
+].join(' ');
 
-  '&:hover': {
-    border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
-    zIndex: 1,
-    margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+const SCENE_LAYER_MENU_ICON_CLASSES =
+  'lineage-scene-layer-menu-icon tw:size-[34px] tw:rounded-lg tw:bg-tertiary tw:p-2 tw:text-fg-secondary';
 
-    svg: {
-      color: theme.palette.primary.main,
-    },
-  },
+const SCENE_LAYER_TRIGGER_CLASSES = [
+  'lineage-scene-layer-trigger tw:flex! tw:min-h-[62px] tw:min-w-[248px] tw:items-center',
+  'tw:justify-start! tw:gap-2.5! tw:rounded-xl! tw:bg-primary tw:px-3! tw:py-2! tw:text-left tw:shadow-lg',
+  'tw:[&>[data-text]]:min-w-0 tw:[&>[data-text]]:flex-1 tw:[&>[data-text]]:p-0',
+].join(' ');
 
-  '&.Mui-selected': {
-    backgroundColor: theme.palette.allShades.brand[100],
+const getSceneLensLabelKey = (lens: LineageLens) => {
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service-level-view';
+  }
+};
 
-    '&:hover': {
-      border: '1px solid' + ' ' + theme.palette.primary.main,
-      backgroundColor: theme.palette.allShades.brand[100],
-    },
-  },
+const getSceneLensDescriptionKey = (lens: LineageLens) => {
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'message.lineage-map-domain-lens-description';
+    case LineageLens.DataProduct:
+      return 'message.lineage-map-data-product-lens-description';
+    default:
+      return 'message.lineage-map-service-lens-description';
+  }
+};
 
-  '&.highlight': {
-    border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
-    zIndex: 1,
-    margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+const getSceneBandLabelKey = (band: LineageBand) => {
+  switch (band) {
+    case LineageBand.Layer:
+      return 'label.lineage-map-layer-view';
+    case LineageBand.Field:
+      return 'label.field-level-lineage';
+    default:
+      return 'label.data-asset-plural';
+  }
+};
 
-    svg: {
-      color: theme.palette.primary.main,
-    },
-  },
-}));
+const getLegacyLayerVisibility = (
+  entityType: LineageLayersProps['entityType'],
+  entity: LineageLayersProps['entity'],
+  isPlatformLineage: boolean
+) => {
+  const isServiceType = SERVICE_TYPES.includes(entityType as AssetsUnion);
+  const hasDomainContext = Boolean(
+    entityType && entityType !== EntityType.DOMAIN
+  );
 
-const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
+  return {
+    showColumnAndObservability: Boolean(entityType && !isServiceType),
+    showService: isPlatformLineage || !isServiceType,
+    showDomain:
+      isPlatformLineage || (hasDomainContext && !isEmpty(entity?.domains)),
+    showDataProduct:
+      isPlatformLineage ||
+      (hasDomainContext && !isEmpty((entity as Table)?.dataProducts)),
+  };
+};
+
+const SceneLensIcon = ({ lens }: { lens: LineageLens }) => {
+  const icons = {
+    [LineageLens.Domain]: DomainIcon,
+    [LineageLens.DataProduct]: DataProductIcon,
+    [LineageLens.Service]: ServiceView,
+  };
+  const Icon = icons[lens];
+
+  return <Icon className={SCENE_LAYER_MENU_ICON_CLASSES} />;
+};
+
+const LineageLayers = ({
+  entityType,
+  entity,
+  sceneBand,
+  sceneLens,
+  sceneLevelLabelKey,
+  onSceneBandChange,
+  onSceneLensChange,
+}: LineageLayersProps) => {
   const {
     activeLayer,
     platformView,
@@ -99,31 +148,24 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     setActiveLayer,
   } = useLineageStore();
   const { t } = useTranslation();
-  const [layersAnchorEl, setLayersAnchorEl] =
-    React.useState<null | HTMLElement>(null);
-  const selectedValues = [...activeLayer, platformView];
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
+  const hasSceneControls = Boolean(
+    sceneBand && sceneLens && onSceneBandChange && onSceneLensChange
+  );
 
-  const handleLayerClick = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      layer: LineageLayer
-    ) => {
-      const value = layer;
-      const index = activeLayer.indexOf(value);
-      if (index === -1) {
-        setActiveLayer([...activeLayer, value]);
+  const handleLayerClick = useCallback(
+    (layer: LineageLayer) => {
+      if (activeLayer.indexOf(layer) === -1) {
+        setActiveLayer([...activeLayer, layer]);
       } else {
-        setActiveLayer(activeLayer.filter((layer) => layer !== value));
+        setActiveLayer(activeLayer.filter((value) => value !== layer));
       }
     },
     [activeLayer, setActiveLayer]
   );
 
-  const handlePlatformViewChange = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      view: string | null
-    ) => {
+  const handlePlatformViewChange = useCallback(
+    (view: string) => {
       setPlatformView(
         platformView === view
           ? LineagePlatformView.None
@@ -133,138 +175,299 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     [platformView, setPlatformView]
   );
 
-  const handleSelection = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    newSelection: (LineageLayer | LineagePlatformView)[]
-  ) => {
-    const newlyAddedValue = xor(selectedValues, newSelection);
+  const handleSceneLensSelection = useCallback(
+    (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
+      const [lens] = [...keys];
+      if (lens && onSceneLensChange) {
+        onSceneLensChange(lens as LineageLens);
+        setIsLayersOpen(false);
+      }
+    },
+    [onSceneLensChange]
+  );
 
-    if (
-      Object.values(LineagePlatformView).includes(
-        newlyAddedValue[0] as LineagePlatformView
-      )
-    ) {
-      handlePlatformViewChange(_event, newlyAddedValue[0]);
-    } else {
-      handleLayerClick(_event, newlyAddedValue[0] as LineageLayer);
-    }
-  };
+  const handleSceneBandSelection = useCallback(
+    (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
+      const [band] = [...keys];
+      if (band && onSceneBandChange) {
+        onSceneBandChange(band as LineageBand);
+        setIsLayersOpen(false);
+      }
+    },
+    [onSceneBandChange]
+  );
 
-  const isServiceType = SERVICE_TYPES.includes(entityType as AssetsUnion);
-  const showColumnAndObservability = entityType && !isServiceType;
-  const showService = isPlatformLineage || !isServiceType;
-  const showDomain =
-    isPlatformLineage ||
-    (entityType &&
-      entityType !== EntityType.DOMAIN &&
-      !isEmpty(entity?.domains));
-  const showDataProduct =
-    isPlatformLineage ||
-    (entityType &&
-      entityType !== EntityType.DOMAIN &&
-      ((entity as Table)?.dataProducts ?? []).length > 0);
-
-  const buttonContent = React.useMemo(() => {
-    const buttons = [];
-
-    if (showColumnAndObservability) {
-      buttons.push([
-        <StyledButton
-          data-testid="lineage-layer-column-btn"
-          key={LineageLayer.ColumnLevelLineage}
-          value={LineageLayer.ColumnLevelLineage}>
-          <TableIcon />
-          {t('label.column')}
-        </StyledButton>,
-        <StyledButton
-          data-testid="lineage-layer-observability-btn"
-          key={LineageLayer.DataObservability}
-          value={LineageLayer.DataObservability}>
-          <DataQualityIcon />
-          {t('label.observability')}
-        </StyledButton>,
-      ]);
-    }
-
-    if (showService) {
-      buttons.push(
-        <StyledButton
-          data-testid="lineage-layer-service-btn"
-          key={LineagePlatformView.Service}
-          value={LineagePlatformView.Service}>
-          <ServiceView />
-          {t('label.service')}
-        </StyledButton>
-      );
-    }
-
-    if (showDomain) {
-      buttons.push(
-        <StyledButton
-          data-testid="lineage-layer-domain-btn"
-          key={LineagePlatformView.Domain}
-          value={LineagePlatformView.Domain}>
-          <DomainIcon />
-          {t('label.domain')}
-        </StyledButton>
-      );
-    }
-
-    if (showDataProduct) {
-      buttons.push(
-        <StyledButton
-          data-testid="lineage-layer-data-product-btn"
-          key={LineagePlatformView.DataProduct}
-          value={LineagePlatformView.DataProduct}>
-          <DataProductIcon />
-          {t('label.data-product')}
-        </StyledButton>
-      );
-    }
-
-    return (
-      <ToggleButtonGroup value={selectedValues} onChange={handleSelection}>
-        {buttons}
-      </ToggleButtonGroup>
-    );
-  }, [
-    selectedValues,
-    activeLayer,
-    platformView,
-    handleSelection,
+  const {
     showColumnAndObservability,
     showService,
     showDomain,
     showDataProduct,
+  } = getLegacyLayerVisibility(entityType, entity, isPlatformLineage);
+
+  const { layerButtons, renderedValues } = useMemo(() => {
+    const buttons = [];
+    const values: string[] = [];
+
+    if (showColumnAndObservability) {
+      values.push(
+        LineageLayer.ColumnLevelLineage,
+        LineageLayer.DataObservability
+      );
+      buttons.push(
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-column-btn"
+          id={LineageLayer.ColumnLevelLineage}
+          key={LineageLayer.ColumnLevelLineage}>
+          <TableIcon className="tw:size-5" />
+          {t('label.column')}
+        </ButtonGroupItem>,
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-observability-btn"
+          id={LineageLayer.DataObservability}
+          key={LineageLayer.DataObservability}>
+          <DataQualityIcon className="tw:size-5" />
+          {t('label.observability')}
+        </ButtonGroupItem>
+      );
+    }
+
+    if (showService) {
+      values.push(LineagePlatformView.Service);
+      buttons.push(
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-service-btn"
+          id={LineagePlatformView.Service}
+          key={LineagePlatformView.Service}>
+          <ServiceView className="tw:size-5" />
+          {t('label.service')}
+        </ButtonGroupItem>
+      );
+    }
+
+    if (showDomain) {
+      values.push(LineagePlatformView.Domain);
+      buttons.push(
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-domain-btn"
+          id={LineagePlatformView.Domain}
+          key={LineagePlatformView.Domain}>
+          <DomainIcon className="tw:size-5" />
+          {t('label.domain')}
+        </ButtonGroupItem>
+      );
+    }
+
+    if (showDataProduct) {
+      values.push(LineagePlatformView.DataProduct);
+      buttons.push(
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-data-product-btn"
+          id={LineagePlatformView.DataProduct}
+          key={LineagePlatformView.DataProduct}>
+          <DataProductIcon className="tw:size-5" />
+          {t('label.data-product')}
+        </ButtonGroupItem>
+      );
+    }
+
+    return { layerButtons: buttons, renderedValues: values };
+  }, [t, showColumnAndObservability, showService, showDomain, showDataProduct]);
+
+  const selectedKeys = useMemo(
+    () =>
+      new Set(
+        [...activeLayer, platformView].filter((value) =>
+          renderedValues.includes(value as string)
+        )
+      ),
+    [activeLayer, platformView, renderedValues]
+  );
+
+  const handleSelectionChange = useCallback(
+    (keys: Selection) => {
+      const nextSelection =
+        keys === 'all' ? [...renderedValues] : [...keys].map(String);
+      const [changed] = xor([...selectedKeys], nextSelection);
+
+      if (changed) {
+        if (
+          Object.values(LineagePlatformView).includes(
+            changed as LineagePlatformView
+          )
+        ) {
+          handlePlatformViewChange(changed);
+        } else {
+          handleLayerClick(changed as LineageLayer);
+        }
+      }
+    },
+    [selectedKeys, renderedValues, handlePlatformViewChange, handleLayerClick]
+  );
+
+  const sceneControls = useMemo(() => {
+    if (!hasSceneControls || !sceneLens || !sceneBand) {
+      return null;
+    }
+
+    const sceneLensOptions = [
+      LineageLens.Service,
+      LineageLens.Domain,
+      LineageLens.DataProduct,
+    ];
+    const sceneBandOptions = [
+      LineageBand.Layer,
+      LineageBand.Asset,
+      LineageBand.Field,
+    ];
+
+    return (
+      <div className="lineage-scene-layer-menu tw:flex tw:min-w-[320px] tw:flex-col tw:gap-2.5 tw:px-2.5 tw:pt-3.5 tw:pb-2.5">
+        <div className="lineage-scene-layer-menu-section tw:flex tw:flex-col tw:gap-1.5">
+          <span className="lineage-scene-layer-menu-title tw:px-3.5 tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
+            {t('label.lineage-layer')}
+          </span>
+          <ButtonGroup
+            disallowEmptySelection
+            aria-label={t('label.lineage-layer')}
+            className="lineage-scene-layer-menu-options tw:m-0 tw:flex! tw:w-full! tw:flex-col! tw:gap-1.5! tw:space-x-0! tw:shadow-none!"
+            selectedKeys={new Set([sceneLens])}
+            size="sm"
+            onSelectionChange={handleSceneLensSelection}>
+            {sceneLensOptions.map((lens) => (
+              <ButtonGroupItem
+                className={SCENE_LAYER_MENU_OPTION_CLASSES}
+                data-testid={`lineage-layer-lens-${lens}`}
+                id={lens}
+                key={lens}>
+                <SceneLensIcon lens={lens} />
+                <span className="lineage-scene-layer-menu-copy tw:flex tw:min-w-0 tw:flex-col">
+                  <span className="lineage-scene-layer-menu-option-title tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
+                    {t(getSceneLensLabelKey(lens))}
+                  </span>
+                  <span className="lineage-scene-layer-menu-option-description tw:text-xs tw:font-medium tw:leading-4.5 tw:text-tertiary">
+                    {t(getSceneLensDescriptionKey(lens))}
+                  </span>
+                </span>
+                {sceneLens === lens && (
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
+                )}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
+        </div>
+
+        <div className="lineage-scene-layer-menu-section tw:flex tw:flex-col tw:gap-1.5 tw:border-t tw:border-secondary tw:pt-2.5">
+          <span className="lineage-scene-layer-menu-title tw:px-3.5 tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
+            {t('label.level')}
+          </span>
+          <ButtonGroup
+            disallowEmptySelection
+            aria-label={t('label.level')}
+            className="lineage-scene-layer-menu-options tw:m-0 tw:flex! tw:w-full! tw:flex-col! tw:gap-1.5! tw:space-x-0! tw:shadow-none!"
+            selectedKeys={new Set([sceneBand])}
+            size="sm"
+            onSelectionChange={handleSceneBandSelection}>
+            {sceneBandOptions.map((band) => (
+              <ButtonGroupItem
+                className={SCENE_LAYER_MENU_OPTION_CLASSES}
+                data-testid={`lineage-layer-band-${band}`}
+                id={band}
+                key={band}>
+                {band === LineageBand.Layer ? (
+                  <Layers className={SCENE_LAYER_MENU_ICON_CLASSES} />
+                ) : (
+                  <TableIcon className={SCENE_LAYER_MENU_ICON_CLASSES} />
+                )}
+                <span className="lineage-scene-layer-menu-copy tw:flex tw:min-w-0 tw:flex-col">
+                  <span className="lineage-scene-layer-menu-option-title tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
+                    {t(getSceneBandLabelKey(band))}
+                  </span>
+                </span>
+                {sceneBand === band && (
+                  <CheckIcon className="lineage-scene-layer-menu-check tw:size-4 tw:text-fg-brand-primary" />
+                )}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
+        </div>
+      </div>
+    );
+  }, [
+    handleSceneBandSelection,
+    handleSceneLensSelection,
+    hasSceneControls,
+    sceneBand,
+    sceneLens,
+    t,
   ]);
 
-  return (
-    <>
-      <StyledButton
-        className={classNames({
-          highlight: Boolean(layersAnchorEl),
+  const trigger =
+    hasSceneControls && sceneLens ? (
+      <Button
+        className={classNames(SCENE_LAYER_TRIGGER_CLASSES, {
+          'tw:after:outline-brand': isLayersOpen,
         })}
+        color="secondary"
         data-testid="lineage-layer-btn"
-        value=""
-        onClick={(e) => setLayersAnchorEl(e.currentTarget)}>
-        <Layers width={20} />
-
+        iconLeading={
+          <Layers className="lineage-scene-layer-trigger-icon tw:size-[42px] tw:shrink-0 tw:rounded-xl tw:bg-brand-primary tw:p-2.5 tw:text-fg-brand-primary" />
+        }
+        iconTrailing={
+          <DropdownIcon className="lineage-scene-layer-trigger-caret tw:ml-auto tw:size-3" />
+        }
+        size="sm">
+        <span className="lineage-scene-layer-trigger-label tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+          <span className="lineage-scene-layer-trigger-eyebrow tw:text-xs tw:font-bold tw:leading-4 tw:text-quaternary tw:uppercase">
+            {t('label.layer-plural')}
+          </span>
+          <span className="lineage-scene-layer-trigger-value tw:text-sm tw:font-bold tw:leading-5 tw:text-primary">
+            {t(sceneLevelLabelKey ?? getSceneLensLabelKey(sceneLens))}
+          </span>
+        </span>
+      </Button>
+    ) : (
+      <Button
+        className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-primary', {
+          'tw:after:outline-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
+            isLayersOpen,
+        })}
+        color="secondary"
+        data-testid="lineage-layer-btn"
+        iconLeading={<Layers className="tw:size-5" />}
+        size="sm">
         {t('label.layer-plural')}
-      </StyledButton>
+      </Button>
+    );
+
+  return (
+    <PopoverTrigger isOpen={isLayersOpen} onOpenChange={setIsLayersOpen}>
+      {trigger}
       <Popover
-        anchorEl={layersAnchorEl}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        className="lineage-layers-popover"
-        id="lineage-layers-popover"
-        open={Boolean(layersAnchorEl)}
-        sx={{ marginLeft: '16px' }} // Moves popover right by 80px
-        onClose={() => setLayersAnchorEl(null)}>
-        {buttonContent}
+        className="lineage-layers-popover tw:z-50"
+        placement={hasSceneControls ? 'top' : 'right'}>
+        {sceneControls ?? (
+          <ButtonGroup
+            aria-label={t('label.layer-plural')}
+            selectedKeys={selectedKeys}
+            selectionMode="multiple"
+            size="sm"
+            onSelectionChange={handleSelectionChange}>
+            {layerButtons}
+          </ButtonGroup>
+        )}
       </Popover>
-    </>
+    </PopoverTrigger>
   );
 };
 

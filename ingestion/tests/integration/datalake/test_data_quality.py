@@ -56,7 +56,7 @@ class TestDataQuality:
         )
         assert ingestion_pipeline
         assert ingestion_pipeline.pipelineStatuses
-        assert ingestion_pipeline.pipelineStatuses.pipelineState == PipelineState.success
+        assert ingestion_pipeline.pipelineStatuses[0].pipelineState == PipelineState.success
 
     @pytest.mark.parametrize(
         "test_case_name,failed_rows",

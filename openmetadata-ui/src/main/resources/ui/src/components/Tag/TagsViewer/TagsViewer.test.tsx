@@ -25,7 +25,15 @@ const tags = [
   { tagFQN: `test.tags.term_3`, source: 'Glossary' },
 ];
 
-jest.mock('../TagsV1/TagsV1.component', () => {
+jest.mock('../../common/atoms/Tag/ClassificationTag', () => {
+  return jest.fn().mockReturnValue(<p>TagsV1</p>);
+});
+
+jest.mock('../../common/atoms/Tag/GlossaryTag', () => {
+  return jest.fn().mockReturnValue(<p>TagsV1</p>);
+});
+
+jest.mock('../../common/atoms/Tag/AutoClassificationTag', () => {
   return jest.fn().mockReturnValue(<p>TagsV1</p>);
 });
 
@@ -95,6 +103,30 @@ describe('Test TagsViewer Component', () => {
     const sizeTags = screen.getAllByText('TagsV1');
 
     expect(sizeTags).toHaveLength(6);
+  });
+
+  // "+n more" renders as a real <button>, so it is natively a role="button" tab stop instead of
+  // relying on manually-applied role/tabindex/keydown attributes on a bare span.
+  it('exposes "+n more" as a real control, not a bare span', () => {
+    render(<TagsViewer tags={tags} />);
+
+    const plusButton = screen.getByTestId('plus-more-count');
+
+    expect(plusButton.tagName).toBe('BUTTON');
+    expect(plusButton).toEqual(screen.getByRole('button', { name: '+1 more' }));
+  });
+
+  it('activates "+n more" from the keyboard', () => {
+    const onClick = jest.fn();
+    render(<TagsViewer tags={tags} />);
+
+    const plusButton = screen.getByTestId('plus-more-count');
+    plusButton.addEventListener('click', onClick);
+
+    plusButton.focus();
+    fireEvent.click(plusButton);
+
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 
   it('Should render all tags on read more click', () => {

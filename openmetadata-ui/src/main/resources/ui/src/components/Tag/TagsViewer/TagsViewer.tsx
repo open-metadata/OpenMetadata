@@ -11,25 +11,30 @@
  *  limitations under the License.
  */
 
-import { Tooltip as MuiTooltip } from '@mui/material';
-import { Button, Popover, Tag, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Popover,
+  PopoverTrigger,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
-import {
-  getTagName,
-  getTagRedirectLink,
-  getTagTooltip,
-} from '../../../utils/TagsUtils';
-import TagChip from '../../common/atoms/TagChip/TagChip';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import TagsV1 from '../TagsV1/TagsV1.component';
+import { LabelType, TagSource } from '../../../generated/type/tagLabel';
+import EntityLink from '../../../utils/EntityLink';
+import tagClassBase from '../../../utils/TagClassBase';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
+import AutoClassificationTag from '../../common/atoms/Tag/AutoClassificationTag';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
+import GlossaryTag from '../../common/atoms/Tag/GlossaryTag';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
 
@@ -38,78 +43,86 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   sizeCap = LIST_SIZE,
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
-  newLook = false,
   entityFqn,
+  maxWidth,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-
-  let muiTags = false;
-  try {
-    const context = useGenericContext();
-    muiTags = context.muiTags || false;
-  } catch {
-    // Context not available, use default TagsV1
-  }
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (muiTags) {
-        const tagName = getTagName(tag, true);
-        const redirectLink = getTagRedirectLink(tag);
+      const tagName = getTagName(tag, tag.source === TagSource.Glossary);
+      const redirectLink = getTagRedirectLink(tag);
+
+      // Auto-classification (Generated) tags get a distinct brand-blue badge
+      if (tag.labelType === LabelType.Generated && entityFqn) {
+        const autoChip = (
+          <AutoClassificationTag
+            data-testid={`tag-${tag.tagFQN}`}
+            href={redirectLink}
+            label={tagName}
+            maxWidth={maxWidth}
+            size="sm"
+          />
+        );
+
+        // Column-level tags may show a Collate recognizer feedback popup
+        const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+          entityFqn,
+          false
+        );
+        if (columnName) {
+          const popup = tagClassBase.getRecognizerFeedbackPopup(
+            tag,
+            entityFqn,
+            autoChip
+          );
+          if (popup) {
+            return popup;
+          }
+        }
 
         return (
-          <MuiTooltip
-            enterDelay={500}
+          <Tooltip
+            arrow
+            delay={500}
             key={tag.tagFQN}
-            placement="bottom-start"
-            slotProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: 'common.black',
-                  color: 'common.white',
-                },
-              },
-            }}
+            placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Link
-              className={classNames(
-                'w-full',
-                { 'diff-added tw-mx-1': tag?.added },
-                { 'diff-removed': tag?.removed }
-              )}
-              data-testid="tag-redirect-link"
-              to={redirectLink}>
-              <TagChip
-                data-testid="tags"
-                label={tagName}
-                labelDataTestId={`tag-${tag.tagFQN}`}
-                size="large"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            </Link>
-          </MuiTooltip>
+            <TooltipTrigger>{autoChip}</TooltipTrigger>
+          </Tooltip>
         );
       }
 
+      // Regular tags
+      const isGlossary = tag.source === TagSource.Glossary;
+      const TagComponent = isGlossary ? GlossaryTag : ClassificationTag;
+
       return (
-        <TagsV1
-          className={classNames(
-            { 'diff-added tw-mx-1': tag?.added },
-            { 'diff-removed': tag?.removed }
-          )}
-          entityFqn={entityFqn}
-          isVersionPage={tag?.added || tag?.removed}
+        <Tooltip
+          arrow
+          delay={500}
           key={tag.tagFQN}
-          newLook={newLook}
-          showOnlyName={tag.source === TagSource.Glossary}
-          startWith={TAG_START_WITH.SOURCE_ICON}
-          tag={tag}
-        />
+          placement="top"
+          title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
+          <Focusable>
+            <span className={classNames('tw:inline-flex')}>
+              <TagComponent
+                color={tag.style?.color}
+                data-testid={`tag-${tag.tagFQN}`}
+                href={redirectLink}
+                icon={tag.style?.iconURL}
+                label={tagName}
+                maxWidth={maxWidth}
+                size="sm"
+              />
+            </span>
+          </Focusable>
+        </Tooltip>
       );
     },
-    [muiTags, newLook, entityFqn]
+    [entityFqn, maxWidth]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
@@ -129,9 +142,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         {hasMoreElement && (
           <Button
             className="show-more-tags-button"
+            color="link-color"
             data-testid="read-button"
-            size="small"
-            type="link"
+            size="xs"
             onClick={() => setIsOpen(!isOpen)}>
             {isOpen
               ? t('label.less')
@@ -142,43 +155,40 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         )}
       </div>
     ),
-    [sizeCap, isOpen, hasMoreElement, sortedTagsBySource]
+    [t, sizeCap, isOpen, hasMoreElement, sortedTagsBySource]
   );
 
   const popoverRenderElement = useMemo(
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
         <div data-testid="popover-element">
-          <Popover
-            content={
-              <div className="d-flex flex-column flex-wrap gap-2">
+          <PopoverTrigger
+            isOpen={isPopoverOpen}
+            onOpenChange={setIsPopoverOpen}>
+            <Button color="link-color" data-testid="plus-more-count" size="xs">
+              {`+${sortedTagsBySource.length - (sizeCap ?? 0)} more`}
+            </Button>
+            <Popover
+              containerClassName="tag-popover-container"
+              placement="bottom">
+              <Box className="tw:p-2" direction="col" gap={2} wrap="wrap">
                 {sortedTagsBySource
                   .slice(sizeCap)
                   .map((tag) => getTagsElement(tag))}
-              </div>
-            }
-            overlayClassName="tag-popover-container"
-            placement="bottom"
-            trigger="click">
-            <Tag
-              className={classNames('cursor-pointer plus-more-tag', {
-                'new-look': newLook,
-              })}
-              data-testid="plus-more-count">{`+${
-              sortedTagsBySource.length - (sizeCap ?? 0)
-            } more`}</Tag>
-          </Popover>
+              </Box>
+            </Popover>
+          </PopoverTrigger>
         </div>
       ),
 
-    [sizeCap, sortedTagsBySource]
+    [sizeCap, sortedTagsBySource, getTagsElement, isPopoverOpen]
   );
 
   if (isEmpty(sortedTagsBySource) && showNoDataPlaceholder) {
     return (
-      <Typography.Text className="text-grey-muted m-r-xss">
+      <Typography className="text-grey-muted m-r-xss">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

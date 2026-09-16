@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { act, render } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
-import { getDomainByName } from '../../../rest/domainAPI';
+import { getDomainByName, patchDomains } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import DomainDetails from '../DomainDetails/DomainDetails.component';
 import DomainDetailPage from './DomainDetailPage.component';
 
 // Mock i18n to prevent 'add' method error
@@ -36,7 +39,13 @@ jest.mock('react-helmet-async', () => ({
   ),
 }));
 
-jest.mock('../../../rest/domainAPI');
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainByName: jest.fn(),
+  patchDomains: jest.fn(),
+  addFollower: jest.fn(),
+  removeFollower: jest.fn(),
+  updateDomainVotes: jest.fn(),
+}));
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     currentUser: { id: '1' },
@@ -66,6 +75,12 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 const mockGetDomainByName = getDomainByName as jest.MockedFunction<
   typeof getDomainByName
 >;
+const mockPatchDomains = patchDomains as jest.MockedFunction<
+  typeof patchDomains
+>;
+const MockDomainDetails = DomainDetails as jest.MockedFunction<
+  typeof DomainDetails
+>;
 
 describe('DomainDetailPage', () => {
   beforeEach(() => {
@@ -73,22 +88,22 @@ describe('DomainDetailPage', () => {
   });
 
   it('should render domain detail page', async () => {
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <MemoryRouter>
         <DomainDetailPage />
       </MemoryRouter>
     );
 
-    // Check that the component renders without throwing
     expect(container).toBeInTheDocument();
 
-    // The component should eventually fetch and display domain data
-    expect(mockGetDomainByName).toHaveBeenCalledWith(
-      'test-domain',
-      expect.objectContaining({
-        fields: expect.arrayContaining(['children', 'owners', 'parent']),
-      })
-    );
+    await waitFor(() => {
+      expect(mockGetDomainByName).toHaveBeenCalledWith(
+        'test-domain',
+        expect.objectContaining({
+          fields: expect.arrayContaining(['children', 'owners', 'parent']),
+        })
+      );
+    });
   });
 
   it('should handle missing FQN gracefully', () => {
@@ -96,7 +111,7 @@ describe('DomainDetailPage', () => {
     const useFqnModule = jest.requireMock('../../../hooks/useFqn');
     useFqnModule.useFqn.mockReturnValueOnce({ fqn: undefined });
 
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <MemoryRouter>
         <DomainDetailPage />
       </MemoryRouter>
@@ -107,23 +122,105 @@ describe('DomainDetailPage', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter>
-          <DomainDetailPage />
-        </MemoryRouter>
-      );
+    renderWithQueryClient(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockGetDomainByName).toHaveBeenCalled();
     });
 
-    // Wait for the domain to be fetched
-    expect(mockGetDomainByName).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: DOMAINS_LIST[0].name,
+        }),
+        expect.anything()
+      );
+    });
+  });
 
-    // Verify pageTitle is passed
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: DOMAINS_LIST[0].name,
-      }),
-      expect.anything()
+  it('should invalidate the domain query after a successful PATCH to refetch full fields', async () => {
+    const domainWithTags: Domain = {
+      ...DOMAINS_LIST[0],
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+    } as Domain;
+
+    const patchResponse: Domain = {
+      ...DOMAINS_LIST[0],
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+        {
+          tagFQN: 'PersonalData.Personal',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+      version: 0.5,
+    } as Domain;
+
+    mockGetDomainByName.mockResolvedValue(domainWithTags);
+    mockPatchDomains.mockResolvedValue(patchResponse);
+
+    const { queryClient } = renderWithQueryClient(
+      <MemoryRouter>
+        <DomainDetailPage />
+      </MemoryRouter>
     );
+
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => {
+      expect(mockGetDomainByName).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(MockDomainDetails).toHaveBeenCalled();
+    });
+
+    const onUpdateProp = MockDomainDetails.mock.calls.at(-1)?.[0]?.onUpdate;
+
+    expect(onUpdateProp).toBeDefined();
+
+    const updatedDomain: Domain = {
+      ...domainWithTags,
+      tags: [
+        ...(domainWithTags.tags ?? []),
+        {
+          tagFQN: 'PersonalData.Personal',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+    } as Domain;
+
+    await act(async () => {
+      await onUpdateProp?.(updatedDomain);
+    });
+
+    expect(mockPatchDomains).toHaveBeenCalledTimes(1);
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: expect.arrayContaining(['domain', 'test-domain']),
+      })
+    );
+
+    invalidateSpy.mockRestore();
   });
 });

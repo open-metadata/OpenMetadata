@@ -207,7 +207,7 @@ def mock_bigtable_instance(mock_bigtable_table):
 
 @pytest.fixture
 def mock_google_cloud_client(mock_bigtable_instance):
-    with patch("google.cloud.bigtable.Client") as mock_client:
+    with patch("metadata.ingestion.source.database.bigtable.connection.Client") as mock_client:
         mock_client.list_instances.return_value = [[], []]
         mock_client().list_instances.return_value = [[mock_bigtable_instance], []]
         yield mock_client

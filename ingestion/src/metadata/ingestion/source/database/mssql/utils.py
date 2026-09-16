@@ -12,11 +12,11 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
-from typing import Optional  # noqa: I001
+import traceback
+from typing import NamedTuple
 
-from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
+from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import information_schema as ischema
 from sqlalchemy.dialects.mssql.base import (
     MSBinary,
@@ -34,12 +34,16 @@ from sqlalchemy.dialects.mssql.base import (
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
-from sqlalchemy.util import compat
 
+from metadata.ingestion.source.database.mssql.models import (
+    QUERY_STORE_READONLY_REASON_AG_SECONDARY,
+    QueryStoreState,
+)
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -92,9 +96,24 @@ def db_plus_owner(fn):
     return update_wrapper(wrap, fn)
 
 
+def get_identity_values(coltype, identity_start, identity_increment):
+    """Build the reflected identity dict for an MSSQL column.
+
+    seed_value / increment_value come back from MSSQL as Decimal (or None).
+    Integer and BigInteger identities are normalised to ``int``; other numeric
+    identity types keep their original value. BigInteger previously used
+    ``sqlalchemy.util.compat.long_type``, which was removed in SQLAlchemy 2.0.
+    """
+    if identity_start is None or identity_increment is None:
+        return {}
+    if isinstance(coltype, sqltypes.Integer):
+        return {"start": int(identity_start), "increment": int(identity_increment)}
+    return {"start": identity_start, "increment": identity_increment}
+
+
 @reflection.cache
 @db_plus_owner
-def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements  # noqa: C901
+def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -131,7 +150,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             Column("object_id", Integer, primary_key=True),
             Column("name", String, primary_key=True),
             Column("column_id", Integer, primary_key=True),
-            Column("generated_always_type", Integer),
             schema="sys",
         )
     )
@@ -200,7 +218,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
             sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
-            sys_columns.c.generated_always_type,
         )
         .where(whereclause)
         .select_from(join)
@@ -212,9 +229,6 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
     cols = []
     for row in cursr.mappings():
         name = row[columns.c.column_name]
-        generated_always_type = row[sys_columns.c.generated_always_type]
-        if generated_always_type in (1, 2):
-            continue
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
         charlen = row[columns.c.character_maximum_length]
@@ -282,24 +296,7 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
             }
 
         if is_identity is not None:
-            # identity_start and identity_increment are Decimal or None
-            if identity_start is None or identity_increment is None:
-                cdict["identity"] = {}
-            else:
-                if isinstance(coltype, sqltypes.BigInteger):
-                    start = compat.long_type(identity_start)
-                    increment = compat.long_type(identity_increment)
-                elif isinstance(coltype, sqltypes.Integer):
-                    start = int(identity_start)
-                    increment = int(identity_increment)
-                else:
-                    start = identity_start
-                    increment = identity_increment
-
-                cdict["identity"] = {
-                    "start": start,
-                    "increment": increment,
-                }
+            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
 
         cols.append(cdict)
     return cols
@@ -380,6 +377,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             referred_table_schema=sqltypes.Unicode(),
             referred_table_name=sqltypes.Unicode(),
             referred_column=sqltypes.Unicode(),
+            referred_database=sqltypes.Unicode(),
         )
     )
 
@@ -390,6 +388,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
         return {
             "name": None,
             "constrained_columns": [],
+            "referred_database": None,
             "referred_schema": None,
             "referred_table": None,
             "referred_columns": [],
@@ -413,10 +412,12 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             _,  # match rule
             fkuprule,
             fkdelrule,
+            rdbname,
         ) = row_
 
         rec = fkeys[rfknm]
         rec["name"] = rfknm
+        rec["referred_database"] = rdbname
 
         if fkuprule != "NO ACTION":
             rec["options"]["onupdate"] = fkuprule
@@ -478,7 +479,7 @@ def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: di
     return view_names  # noqa: RET504
 
 
-def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: UP045
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> str | None:
     """
     returns sqlaclhemdy engine date format by running config query
     """
@@ -489,3 +490,56 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
     return  # noqa: RET502
+
+
+class QueryStoreStatus(NamedTuple):
+    """Result of probing `sys.database_query_store_options`."""
+
+    enabled: bool
+    is_ag_secondary: bool
+
+
+def get_query_store_status(engine: Engine | None) -> QueryStoreStatus:
+    """Probe Query Store availability and, when unavailable, why.
+
+    `enabled=False` when:
+    - Query Store is OFF or in ERROR state.
+    - The connected database is a readable AG secondary (readonly_reason has the AG-secondary bit set).
+      On SQL Server < 2025 the replica's Query Store contains only the primary's
+      captured workload; ingesting it would silently replace the secondary's usage
+      and lineage with the primary's. This case is reported via `is_ag_secondary=True`
+      so callers (e.g. the test-connection check) can explain the fallback precisely.
+    """
+    enabled = False
+    is_ag_secondary = False
+    if engine is not None:
+        try:
+            with engine.connect() as conn:
+                row = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
+            if row is not None:
+                actual_state, readonly_reason = row.actual_state, row.readonly_reason
+                is_ag_secondary = bool((readonly_reason or 0) & QUERY_STORE_READONLY_REASON_AG_SECONDARY)
+                enabled = (
+                    actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE) and not is_ag_secondary
+                )
+                if is_ag_secondary:
+                    logger.info(
+                        "MSSQL query history: Query Store is READ-ONLY because this database "
+                        "is a readable AG secondary (readonly_reason AG-secondary bit set). The replica's Query "
+                        "Store contains the primary's workload. Falling back to plan-cache DMVs."
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Query Store availability probe failed, using plan-cache DMVs: %s",
+                exc,
+            )
+    return QueryStoreStatus(enabled=enabled, is_ag_secondary=is_ag_secondary)
+
+
+def is_query_store_enabled(engine: Engine | None) -> bool:
+    """Return True if Query Store holds this database's own workload history.
+
+    See `get_query_store_status` for the full decision logic.
+    """
+    return get_query_store_status(engine).enabled

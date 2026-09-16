@@ -14,6 +14,7 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Column bulk update API.
@@ -1922,6 +1925,61 @@ public class ColumnBulkUpdateIT {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     return OBJECT_MAPPER.readValue(response.body(), Table.class);
+  }
+
+  @Test
+  void test_columnGrid_excludesSoftDeletedTables(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String colName = ns.prefix("soft_del_col");
+    Column col =
+        new Column().withName(colName).withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("soft_del_table"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(col));
+    Table table = client.tables().create(createTable);
+
+    Awaitility.await("Column must appear in grid before soft-delete")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse before = getColumnGrid(client, service.getName());
+              assertNotNull(before.getColumns());
+              assertTrue(
+                  before.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
+                  "Column must be visible in grid before soft-delete");
+            });
+
+    client.tables().delete(table.getId().toString(), Map.of());
+
+    Awaitility.await("Soft-deleted table columns must not appear in grid")
+        .atMost(30, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ColumnGridResponse after = getColumnGrid(client, service.getName());
+              assertNotNull(after.getColumns());
+              assertFalse(
+                  after.getColumns().stream().anyMatch(c -> c.getColumnName().equals(colName)),
+                  "Column from soft-deleted table must not appear in column grid");
+            });
+  }
+
+  private ColumnGridResponse getColumnGrid(OpenMetadataClient client, String serviceName)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/grid?entityTypes=table&serviceName=" + serviceName,
+                null);
+    return OBJECT_MAPPER.readValue(response, ColumnGridResponse.class);
   }
 
   private DashboardDataModel getDashboardDataModelWithColumns(String dataModelId) throws Exception {

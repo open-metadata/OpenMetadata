@@ -16,15 +16,27 @@ import base64
 import json
 import traceback
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import requests
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
+    AzureAdSetup,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
@@ -33,6 +45,9 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_COLUMN_LINEAGE,
     DATABRICKS_GET_TABLE_LINEAGE,
+)
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
 )
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
@@ -43,7 +58,16 @@ API_TIMEOUT = 10
 PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
 API_VERSION = "/api/2.0"
-JOB_API_VERSION = "/api/2.1"
+# 2.2 is the first Jobs API version that can return a job with more than 100 tasks.
+# Earlier versions omit `settings.tasks` for such a job without signalling it.
+JOB_API_VERSION = "/api/2.2"
+# runs/list rejects any limit above 26, unlike jobs/list which allows up to 100.
+RUNS_PAGE_SIZE = 25
+# A walk longer than this is a misbehaving service rather than a large workspace:
+# it is a million jobs at PAGE_SIZE. It also bounds the seen-token set.
+MAX_PAGES = 10_000
+SCIM_SERVICE_PRINCIPALS_PATH = "/preview/scim/v2/ServicePrincipals"
+SCIM_GROUPS_PATH = "/preview/scim/v2/Groups"
 
 
 class DatabricksClientException(Exception):  # noqa: N818
@@ -59,8 +83,8 @@ class DatabricksClient:
 
     def __init__(
         self,
-        config: Union[DatabricksConnection, DatabricksPipelineConnection],  # noqa: UP007
-        engine: Optional[Engine] = None,  # noqa: UP045
+        config: DatabricksConnection | DatabricksPipelineConnection | UnityCatalogConnection,
+        engine: Engine | None = None,
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
@@ -69,15 +93,11 @@ class DatabricksClient:
         self.base_job_url = f"https://{base_url}{JOB_API_VERSION}/jobs"
         self.jobs_list_url = f"{self.base_job_url}/list"
         self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
-        self.headers = {
-            **self._get_auth_header(),
-            "Content-Type": "application/json",
-        }
         self.api_timeout = self.config.connectionTimeout or 120
         self._entity_table_lineage_executed: bool = False
         self.entity_table_lineage: dict[str, list[dict[str, str]]] = defaultdict(list)
         self._entity_column_lineage_executed: bool = False
-        self.entity_column_lineage: dict[str, dict[Tuple[str, str], list[Tuple[str, str]]]] = defaultdict(  # noqa: UP006
+        self.entity_column_lineage: dict[str, dict[tuple[str, str], list[tuple[str, str]]]] = defaultdict(
             lambda: defaultdict(list)
         )
         self.engine = engine
@@ -87,7 +107,79 @@ class DatabricksClient:
         """
         Method to get auth header
         """
-        return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
+        from metadata.ingestion.source.database.databricks import auth
+
+        auth_method = {
+            PersonalAccessToken: auth.get_personal_access_token_auth,
+            DatabricksOauth: auth.get_databricks_oauth_auth,
+            AzureAdSetup: auth.get_azure_ad_auth,
+        }.get(type(self.config.authType))
+        if not auth_method:
+            raise ValueError(f"Unsupported authentication type: {type(self.config.authType)}")
+
+        auth_args = auth_method(self.config)
+        if auth_args.get("access_token"):
+            return {"Authorization": f"Bearer {auth_args['access_token']}"}
+
+        return auth_args["credentials_provider"]()()
+
+    @property
+    def headers(self) -> dict[str, str]:
+        """
+        Return auth headers for each API request.
+        """
+        return {
+            **self._get_auth_header(),
+            "Content-Type": "application/json",
+            "User-Agent": get_databricks_user_agent(),
+        }
+
+    def _list_scim_resources(self, path: str, filter_expression: str | None = None) -> Iterable[dict]:
+        """
+        List workspace SCIM resources using Databricks' 1-based pagination.
+        """
+        start_index = 1
+        while True:
+            params: dict[str, str | int] = {"startIndex": start_index, "count": PAGE_SIZE}
+            if filter_expression:
+                params["filter"] = filter_expression
+            response = self.client.get(
+                f"{self.base_url}{path}",
+                headers=self.headers,
+                params=params,
+                timeout=self.api_timeout,
+            )
+            if response.status_code != 200:
+                raise DatabricksClientException(
+                    f"Failed to list Databricks SCIM resources from [{path}]. "
+                    f"Status code: {response.status_code}, response: {response.text}"
+                )
+
+            payload = response.json()
+            resources = payload.get("Resources") or []
+            yield from resources
+
+            # Guard against non-positive itemsPerPage so start_index always advances.
+            items_per_page = int(payload.get("itemsPerPage") or 0)
+            if items_per_page <= 0:
+                items_per_page = len(resources)
+            total_results = int(payload.get("totalResults") or 0)
+            current_start = int(payload.get("startIndex") or start_index)
+            if not resources or current_start + items_per_page > total_results:
+                break
+            start_index = current_start + items_per_page
+
+    def list_service_principals(self, filter_expression: str | None = None) -> Iterable[dict]:
+        """
+        List Databricks workspace service principals from SCIM.
+        """
+        yield from self._list_scim_resources(SCIM_SERVICE_PRINCIPALS_PATH, filter_expression)
+
+    def list_groups(self, filter_expression: str | None = None) -> Iterable[dict]:
+        """
+        List Databricks workspace groups from SCIM.
+        """
+        yield from self._list_scim_resources(SCIM_GROUPS_PATH, filter_expression)
 
     def test_query_api_access(self) -> None:
         res = self.client.get(self.base_query_url, headers=self.headers, timeout=self.api_timeout)
@@ -137,7 +229,7 @@ class DatabricksClient:
                 ).json()
                 yield from response.get("res") or []
 
-    def list_query_history(self, start_date=None, end_date=None) -> List[dict]:  # noqa: UP006
+    def list_query_history(self, start_date=None, end_date=None) -> list[dict]:
         """
         Method returns List the history of queries through SQL warehouses
         """
@@ -184,89 +276,139 @@ class DatabricksClient:
         query_text = row.get("query_text")
         return not (query_text.startswith(QUERY_WITH_DBT) or query_text.startswith(QUERY_WITH_OM_VERSION))  # noqa: PIE810
 
-    def list_jobs_test_connection(self) -> None:
-        data = {"limit": 1, "expand_tasks": True, "offset": 0}
+    def _get_json(self, url: str, params: dict) -> dict:
+        """
+        GET a Jobs API page, refusing to treat an error body as an empty page.
+
+        Databricks answers a rejected request with a 200-shaped JSON body, so calling
+        .json() without checking the status silently turns a failure into "no more
+        results" and truncates whatever was being paginated.
+        """
         response = self.client.get(
-            self.jobs_list_url,
-            data=json.dumps(data),
+            url,
+            params=params,
             headers=self.headers,
             timeout=self.api_timeout,
         )
         if response.status_code != 200:
-            raise DatabricksClientException(response.text)
+            raise DatabricksClientException(
+                f"Databricks API call to [{url}] failed with status {response.status_code}: {response.text}"
+            )
+        return response.json()
+
+    def _paginate_responses(self, url: str, params: dict) -> Iterable[dict]:
+        """
+        Yield each page of a token-paginated Jobs API response.
+
+        Token pagination rather than `offset` because Databricks caps `offset` at 1000,
+        and because API 2.2 drops the root-level `has_more` that the offset loop needed
+        to know when to stop.
+
+        Raises rather than stops if the walk cannot terminate, either because a token
+        is reissued (any cycle, not only an immediate repeat) or because the service
+        never stops handing out fresh ones. Stopping quietly would be one more way to
+        truncate a listing while reporting success.
+        """
+        page_params = dict(params)
+        seen_tokens: set[str] = set()
+        while True:
+            payload = self._get_json(url, page_params)
+            yield payload
+
+            next_page_token = payload.get("next_page_token")
+            if not next_page_token:
+                return
+            if next_page_token in seen_tokens:
+                raise DatabricksClientException(
+                    f"Databricks reissued a page token already seen while paginating [{url}]. "
+                    f"Refusing to loop over the same pages."
+                )
+            if len(seen_tokens) >= MAX_PAGES:
+                raise DatabricksClientException(
+                    f"Pagination of [{url}] passed {MAX_PAGES} pages without ending. Refusing to keep requesting."
+                )
+            seen_tokens.add(next_page_token)
+            page_params["page_token"] = next_page_token
+
+    def _paginate_items(self, url: str, params: dict, key: str) -> Iterable[dict]:
+        """
+        Walk a Jobs API list endpoint, flattening every page into its items.
+        """
+        for payload in self._paginate_responses(url, params):
+            yield from payload.get(key) or []
+
+    def _expand_job_tasks(self, job: dict) -> dict:
+        """
+        Fill in the tasks that jobs/list left out.
+
+        List responses carry at most 100 elements of any list field and set a per-job
+        `has_more` when a job has more. Pipeline lineage is built from the task list, so
+        a job left truncated here loses both its tasks and its lineage.
+
+        Unlike a failure to list jobs, a failure here degrades rather than raises: it
+        costs one job an accurate task list, where a short job list costs the catalogue
+        every job that never arrived.
+        """
+        if not job.get("has_more"):
+            return job
+
+        job_id = job.get("job_id")
+        try:
+            tasks: list[dict] = []
+            for payload in self._paginate_responses(f"{self.base_job_url}/get", {"job_id": job_id}):
+                tasks.extend((payload.get("settings") or {}).get("tasks") or [])
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Could not fetch the full task list for job %s, keeping the first page only. "
+                "Its tasks and lineage will be incomplete: %s",
+                job_id,
+                exc,
+            )
+            return job
+
+        expanded = {**job, "settings": {**(job.get("settings") or {}), "tasks": tasks}}
+        expanded.pop("has_more", None)
+        return expanded
+
+    def list_jobs_test_connection(self) -> None:
+        self._get_json(self.jobs_list_url, {"limit": 1, "expand_tasks": "true"})
 
     def list_jobs(self) -> Iterable[dict]:
         """
-        Method returns List all the created jobs in a Databricks Workspace
+        Yield every job in the workspace, each with its full task list.
+
+        Raises rather than stopping short if the workspace cannot be listed, because a
+        truncated job list is indistinguishable from a smaller workspace.
         """
+        # "true" lowercase: Databricks ignores the Python bool's "True" encoding
+        # without complaining, which would drop every task list.
+        params = {"limit": PAGE_SIZE, "expand_tasks": "true"}
+        for job in self._paginate_items(self.jobs_list_url, params, key="jobs"):
+            yield self._expand_job_tasks(job)
+
+    def get_job_runs(self, job_id) -> Iterable[dict]:
+        """
+        Yield the completed runs of one job, newest first.
+
+        Yields nothing and logs if the runs cannot be listed, since a missing run costs
+        only pipeline status.
+        """
+        params = {
+            "job_id": job_id,
+            "limit": RUNS_PAGE_SIZE,
+            "active_only": "false",
+            "completed_only": "true",
+            "run_type": "JOB_RUN",
+            "expand_tasks": "true",
+        }
         try:
-            iteration_count = 1
-            data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
-
-            response = self.client.get(
-                self.jobs_list_url,
-                data=json.dumps(data),
-                headers=self.headers,
-                timeout=self.api_timeout,
-            ).json()
-
-            yield from response.get("jobs") or []
-
-            while response and response.get("has_more"):
-                data["offset"] = PAGE_SIZE * iteration_count
-
-                response = self.client.get(
-                    self.jobs_list_url,
-                    data=json.dumps(data),
-                    headers=self.headers,
-                    timeout=self.api_timeout,
-                ).json()
-                iteration_count += 1
-                yield from response.get("jobs") or []
-
+            yield from self._paginate_items(self.jobs_run_list_url, params, key="runs")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(exc)
+            logger.warning("Could not list runs for job %s: %s", job_id, exc)
 
-    def get_job_runs(self, job_id) -> List[dict]:  # noqa: UP006
-        """
-        Method returns List of all runs for a job by the specified job_id
-        """
-        try:
-            params = {
-                "job_id": job_id,
-                "active_only": "false",
-                "completed_only": "true",
-                "run_type": "JOB_RUN",
-                "expand_tasks": "true",
-            }
-
-            response = self.client.get(
-                self.jobs_run_list_url,
-                params=params,
-                headers=self.headers,
-                timeout=self.api_timeout,
-            ).json()
-
-            yield from response.get("runs") or []
-
-            while response["has_more"]:
-                params.update({"start_time_to": response["runs"][-1]["start_time"]})
-
-                response = self.client.get(
-                    self.jobs_run_list_url,
-                    params=params,
-                    headers=self.headers,
-                    timeout=self.api_timeout,
-                ).json()
-
-                yield from response.get("runs") or []
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(exc)
-
-    def get_table_lineage(self, entity_id: str) -> List[dict[str, str]]:  # noqa: UP006
+    def get_table_lineage(self, entity_id: str) -> list[dict[str, str]]:
         """
         Method returns table lineage for a job or pipeline by the specified entity_id.
         On first call, eagerly fetches ALL lineage in bulk for optimal performance.
@@ -283,7 +425,7 @@ class DatabricksClient:
             logger.error(exc)
         return []
 
-    def get_column_lineage(self, entity_id: str, TableKey: Tuple[str, str]) -> List[Tuple[str, str]]:  # noqa: N803, UP006
+    def get_column_lineage(self, entity_id: str, TableKey: tuple[str, str]) -> list[tuple[str, str]]:  # noqa: N803
         """
         Method returns column lineage for a job or pipeline by the specified entity_id and table key
         """
@@ -299,7 +441,7 @@ class DatabricksClient:
             logger.error(exc)
         return []
 
-    def run_lineage_query(self, query: str) -> List[dict]:  # noqa: UP006
+    def run_lineage_query(self, query: str) -> list[dict]:
         """
         Method runs a lineage query and returns the result
         """
@@ -354,7 +496,7 @@ class DatabricksClient:
         self._entity_column_lineage_executed = True
         logger.debug("Table and column lineage caching completed.")
 
-    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:  # noqa: UP045
+    def get_pipeline_details(self, pipeline_id: str) -> dict | None:
         """
         Get DLT pipeline configuration including libraries and notebooks
         """
@@ -415,7 +557,7 @@ class DatabricksClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error listing DLT pipelines: {exc}")
 
-    def list_workspace_objects(self, path: str) -> List[dict]:  # noqa: UP006
+    def list_workspace_objects(self, path: str) -> list[dict]:
         """
         List objects in a Databricks workspace directory
         """
@@ -440,7 +582,7 @@ class DatabricksClient:
             logger.warning(f"Error listing workspace directory {path}: {exc}")
             return []
 
-    def export_notebook_source(self, notebook_path: str) -> Optional[str]:  # noqa: UP045
+    def export_notebook_source(self, notebook_path: str) -> str | None:
         """
         Export notebook source code from Databricks workspace
         """

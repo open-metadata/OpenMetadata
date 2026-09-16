@@ -26,10 +26,10 @@ const mockSetItem = jest.fn();
 
 jest.mock('cookie-storage', () => ({
   CookieStorage: class {
-    getItem(...args: any[]) {
+    getItem(...args: unknown[]) {
       return mockGetItem(...args);
     }
-    setItem(...args: any[]) {
+    setItem(...args: unknown[]) {
       return mockSetItem(...args);
     }
     constructor() {
@@ -70,12 +70,19 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
   hasNotificationPermission: jest.fn(),
   shouldRequestPermission: jest.fn(),
 }));
-jest.mock('../../utils/CommonUtils', () => ({
-  refreshPage: jest.fn(),
-  getEntityDetailLink: jest.fn(),
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/RouterUtils', () => ({
+  refreshPage: jest.fn(),
+  getEntityDetailLink: jest.fn(),
+  isLandingPagePath: jest
+    .fn()
+    .mockImplementation(
+      (pathname: string) => pathname === '/' || pathname === '/my-data'
+    ),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
   getEntityType: jest.fn().mockReturnValue('entityType'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
@@ -90,7 +97,7 @@ jest.mock('../../hooks/useDomainStore', () => ({
 
 jest.mock('../NotificationBox/NotificationBox.component', () => {
   return jest.fn().mockImplementation(({ onTabChange }) => (
-    <div data-testid="tab-change" onClick={onTabChange}>
+    <div data-testid="tab-change" role="presentation" onClick={onTabChange}>
       tab change
     </div>
   ));
@@ -161,7 +168,6 @@ jest.mock('../../utils/BrandData/BrandClassBase', () => ({
   default: {
     getBrandName: jest.fn().mockReturnValue('OpenMetadata'),
     getMonogram: jest.fn().mockReturnValue({ src: 'monogram.svg' }),
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
   },
 }));
 
@@ -172,7 +178,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   })),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('MockedEntityName'),
   getDomainDisplayName: jest.fn().mockReturnValue('All Domains'),
 }));
@@ -254,14 +260,28 @@ describe('Test NavBar Component', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on customize-page route', () => {
+  it('should hide global search bar and domain dropdown on the root landing route', () => {
+    mockUseCustomLocation.pathname = '/';
+    mockUseCustomLocation.search = 'search';
+
+    render(<NavBarComponent />);
+
+    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('domain-selectable-list')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide global search bar and domain dropdown on customize-page route', async () => {
     mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
     expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('domain-selectable-list')
+    ).toBeInTheDocument();
   });
 
   it('should show global search bar and domain dropdown on other routes', () => {
@@ -293,7 +313,9 @@ describe('handleDocumentVisibilityChange one hour threshold', () => {
     jest.resetModules();
     jest.clearAllMocks();
     global.Date.now = jest.fn();
-    mockUseCustomLocation.pathname = '/';
+    // A non-landing route: these tests await the global search bar as their
+    // "NavBar has rendered" signal, and it is hidden on the landing page.
+    mockUseCustomLocation.pathname = '/explore';
   });
 
   afterEach(() => {

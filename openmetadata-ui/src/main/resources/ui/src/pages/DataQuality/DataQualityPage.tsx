@@ -14,12 +14,12 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
-import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
+import TestCaseFormDrawer from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
+import BundleSuiteFormDrawer from '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -38,23 +38,24 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { testSuite: testSuitePermission } = permissions;
+  const { testSuite: testSuitePermission, testCase: testCasePermission } =
+    permissions;
 
   // Add state for modal open/close
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
   const [isBundleSuiteModalOpen, setIsBundleSuiteModalOpen] = useState(false);
 
-  const handleOpenTestCaseModal = () => {
+  const handleOpenTestCaseModal = useCallback(() => {
     setIsTestCaseModalOpen(true);
-  };
+  }, []);
 
   const handleCloseTestCaseModal = () => {
     setIsTestCaseModalOpen(false);
   };
 
-  const handleOpenBundleSuiteModal = () => {
+  const handleOpenBundleSuiteModal = useCallback(() => {
     setIsBundleSuiteModalOpen(true);
-  };
+  }, []);
 
   const handleCloseBundleSuiteModal = () => {
     setIsBundleSuiteModalOpen(false);
@@ -131,8 +132,23 @@ const DataQualityPage = () => {
     }
   };
 
+  const createActions = useMemo(
+    () => ({
+      onAddTestCase: handleOpenTestCaseModal,
+      onAddBundleSuite: handleOpenBundleSuiteModal,
+      canCreateTestCase: Boolean(testCasePermission?.Create),
+      canCreateBundleSuite: Boolean(testSuitePermission?.Create),
+    }),
+    [
+      handleOpenTestCaseModal,
+      handleOpenBundleSuiteModal,
+      testCasePermission?.Create,
+      testSuitePermission?.Create,
+    ]
+  );
+
   return (
-    <DataQualityProvider>
+    <DataQualityProvider createActions={createActions}>
       <Row
         className="data-quality-page m-b-md"
         data-testid="data-insight-container"
@@ -207,25 +223,16 @@ const DataQualityPage = () => {
           />
         </Col>
       </Row>
-      {isTestCaseModalOpen && (
-        <TestCaseFormV1
-          drawerProps={{
-            title: t('label.add-entity', {
-              entity: t('label.test-case'),
-            }),
-            open: isTestCaseModalOpen,
-          }}
-          onCancel={handleCloseTestCaseModal}
-          onFormSubmit={handleFormSubmit}
-        />
-      )}
-      {isBundleSuiteModalOpen && (
-        <BundleSuiteForm
-          drawerProps={{ open: isBundleSuiteModalOpen }}
-          onCancel={handleCloseBundleSuiteModal}
-          onSuccess={handleBundleSuiteSuccess}
-        />
-      )}
+      <TestCaseFormDrawer
+        open={isTestCaseModalOpen}
+        onClose={handleCloseTestCaseModal}
+        onFormSubmit={handleFormSubmit}
+      />
+      <BundleSuiteFormDrawer
+        open={isBundleSuiteModalOpen}
+        onClose={handleCloseBundleSuiteModal}
+        onSuccess={handleBundleSuiteSuccess}
+      />
     </DataQualityProvider>
   );
 };

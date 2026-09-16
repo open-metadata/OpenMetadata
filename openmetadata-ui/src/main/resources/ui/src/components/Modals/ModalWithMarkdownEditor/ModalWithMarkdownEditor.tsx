@@ -13,15 +13,19 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { FunctionComponent, useRef, useState } from 'react';
+import { FunctionComponent, ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { removeAttachmentsWithoutUrl } from '../../../utils/StringsUtils';
+import { removeAttachmentsWithoutUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './modal-with-markdown-editor.less';
 import { ModalWithMarkdownEditorProps } from './ModalWithMarkdownEditor.interface';
+
+const modalRender = (node: ReactNode) => (
+  <div data-react-aria-top-layer>{node}</div>
+);
 
 export const ModalWithMarkdownEditor: FunctionComponent<
   ModalWithMarkdownEditorProps
@@ -80,7 +84,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
         </KeyDownStopPropagationWrapper>
       }
       maskClosable={false}
-      modalRender={(node) => <div data-react-aria-top-layer>{node}</div>}
+      modalRender={modalRender}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="90%"

@@ -14,22 +14,37 @@
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { TagSource } from '../../../generated/type/schema';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import SourceList from './SourceList.component';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 const MlModelFeaturesList = () => {
   const { t } = useTranslation();
@@ -74,13 +89,12 @@ const MlModelFeaturesList = () => {
     setDisplayedColumns(mlFeatures || []);
   }, [mlFeatures, setDisplayedColumns]);
 
-  const hasEditPermission = useMemo(
-    () => permissions.EditTags || permissions.EditAll,
-    [permissions]
-  );
-
-  const hasEditGlossaryTermPermission = useMemo(
-    () => permissions.EditGlossaryTerms || permissions.EditAll,
+  // Ungated: isDeleted is threaded separately to each TableTags/TableDescription call as
+  // `isReadOnly` below (SearchIndexFieldsTab.tsx/TopicSchema.tsx precedent), never folded
+  // into these edit flags. Also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const { canEditTags, canEditGlossaryTerms, canEditDescription } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
     [permissions]
   );
 
@@ -216,7 +230,7 @@ const MlModelFeaturesList = () => {
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditPermission}
+                            hasTagEditAccess={canEditTags}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -239,7 +253,7 @@ const MlModelFeaturesList = () => {
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
                             handleTagSelection={handleTagsChange}
-                            hasTagEditAccess={hasEditGlossaryTermPermission}
+                            hasTagEditAccess={canEditGlossaryTerms}
                             index={index}
                             isReadOnly={isDeleted}
                             record={feature}
@@ -265,9 +279,7 @@ const MlModelFeaturesList = () => {
                             }}
                             entityFqn={entityFqn}
                             entityType={EntityType.MLMODEL}
-                            hasEditPermission={
-                              permissions.EditAll || permissions.EditDescription
-                            }
+                            hasEditPermission={canEditDescription}
                             index={index}
                             isReadOnly={isDeleted}
                             onClick={() => {

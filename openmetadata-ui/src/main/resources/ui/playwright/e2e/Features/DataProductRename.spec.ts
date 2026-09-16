@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
 } from '../../utils/common';
 import {
@@ -55,11 +56,13 @@ test.describe('Data Product Rename', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -242,11 +245,13 @@ test.describe('Data Product Rename', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -396,13 +401,7 @@ test.describe('Data Product Rename', () => {
       // Verify the response status is 400 (Bad Request)
       expect(response.status()).toBe(400);
 
-      // Verify an error alert is shown
-      await expect(page.getByTestId('alert-bar')).toBeVisible();
-
-      // Verify the error message contains information about the duplicate name
-      await expect(page.getByTestId('alert-message')).toContainText(
-        'already exists'
-      );
+      await toastNotification(page, /already exists/i);
     } finally {
       await dataProduct1.delete(apiContext);
       await dataProduct2.delete(apiContext);

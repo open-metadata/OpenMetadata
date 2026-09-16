@@ -12,25 +12,55 @@
  */
 
 jest.mock('@antv/g6', () => ({}));
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test/entity/path'),
 }));
 
 import { Graph, NodePortStyleProps } from '@antv/g6';
 import { ELK } from 'elkjs/lib/elk-api';
-import { MAX_NODE_WIDTH } from '../components/KnowledgeGraph/KnowledgeGraph.constants';
 import {
+  BAND_PADDING,
+  DAGRE_PORTS,
+  DIMMED_OPACITY,
+  EDGE_HIGHLIGHT_LINE_WIDTH,
+  EDGE_LINE_WIDTH,
+  FIT_MAX_ZOOM,
+  FIT_MIN_ZOOM,
+  MAX_NODE_WIDTH,
+  NODE_HEIGHT,
+  NODE_NEUTRAL_COLOR,
+  RADIAL_EDGE_CURVE_OFFSET,
+  RING_STRETCH_MAX,
+} from '../components/KnowledgeGraph/KnowledgeGraph.constants';
+import { getRelationStyle } from '../components/KnowledgeGraph/KnowledgeGraph.relations';
+import { buildGraphPresentation } from './knowledge-graph/knowledgeGraphPresentation.utils';
+import {
+  applyGraphLayout,
   applyInitialFocus,
   assignRadialPorts,
+  buildEdgeBaseStyle,
+  buildEdgeDimStyle,
   buildEdgeHighlightStyle,
   buildNodeUpdateData,
-  COLOR_SETS,
   computeELKPositions,
   computeELKRadialPositions,
+  computeLabelPlacements,
   computeNodeWidth,
+  countRelationCategories,
   findHighlightPath,
+  fitGraphViewport,
   getColorSetForType,
+  getFullscreenClassNames,
+  getLaneLevelBands,
+  graphLevelToDepth,
+  graphLevelToExportDepth,
+  hasActiveGraphFilters,
+  isGraphEmpty,
+  normalizeGraphLevel,
+  projectGraphToPositions,
+  resolveFocusNodeId,
   setupGraphEventHandlers,
+  stretchRingToViewport,
   transformToG6Format,
 } from './KnowledgeGraph.utils';
 import ELKLayout from './Lineage/Layout/ELKUtil/ELKUtil';
@@ -63,6 +93,239 @@ const makeAdjMaps = (nodes: TestNode[], edges: TestEdge[]) => {
 const makeNodeMap = (nodes: TestNode[]) => new Map(nodes.map((n) => [n.id, n]));
 
 describe('KnowledgeGraph.utils', () => {
+  it('attaches bottom bundles to the top of their cards and retains opposite arrows', async () => {
+    const data = {
+      nodes: [
+        { id: 'root', label: 'Customers', type: 'table' },
+        ...Array.from({ length: 3 }, (_, i) => ({
+          id: `c${i}`,
+          label: `Column ${i}`,
+          type: 'column',
+        })),
+      ],
+      edges: [
+        ...Array.from({ length: 3 }, (_, i) => ({
+          from: 'root',
+          to: `c${i}`,
+          label: 'Has column',
+          relationType: 'hasColumn',
+        })),
+        {
+          from: 'c0',
+          to: 'root',
+          label: 'Belongs to',
+          relationType: 'belongsTo',
+        },
+      ],
+    };
+    const scene = buildGraphPresentation(
+      data,
+      data,
+      'root',
+      'balanced',
+      []
+    ).data;
+    const rendered = await applyGraphLayout(transformToG6Format(scene), {
+      layout: 'lanes',
+      focusNodeId: 'root',
+      width: 1200,
+      height: 800,
+      hasEntity: true,
+    });
+    const forward = rendered.edges?.find((edge) => edge.source === 'root');
+    const reverse = rendered.edges?.find((edge) => edge.target === 'root');
+
+    expect(forward?.style).toMatchObject({
+      sourcePort: expect.stringMatching(/^bottom:/),
+      targetPort: expect.stringMatching(/^top:/),
+    });
+    expect(reverse?.style).toMatchObject({
+      sourcePort: expect.stringMatching(/^top:/),
+      targetPort: expect.stringMatching(/^bottom:/),
+    });
+    expect(
+      rendered.nodes?.find((node) => node.id !== 'root')?.style?.ports
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'top' })])
+    );
+    expect(rendered.edges).toHaveLength(2);
+  });
+
+  it.each([
+    [1, 1],
+    [2, 1],
+    [3, 2],
+    [8, 2],
+    [-1, 1],
+  ])('fetches level %s as depth %s', (level, depth) => {
+    expect(graphLevelToDepth(level)).toBe(depth);
+  });
+
+  it.each([
+    [1, 0],
+    [2, 1],
+    [3, 2],
+  ])('exports level %s as depth %s', (level, depth) => {
+    expect(graphLevelToExportDepth(level)).toBe(depth);
+  });
+
+  it('uses the default level for invalid numeric input', () => {
+    expect(normalizeGraphLevel(Number.NaN)).toBe(2);
+  });
+
+  it('preserves distinct relationships between the same directed pair', () => {
+    const graph = transformToG6Format({
+      nodes: [
+        { id: 'a', label: 'Orders', type: 'table' },
+        { id: 'b', label: 'Customer', type: 'glossaryTerm' },
+      ],
+      edges: [
+        { from: 'a', to: 'b', label: 'Has Tag' },
+        { from: 'a', to: 'b', label: 'Has Glossary Term' },
+        { from: 'b', to: 'a', label: 'Related To' },
+      ],
+    });
+
+    expect(graph.edges).toHaveLength(3);
+    expect(new Set(graph.edges?.map((edge) => edge.id)).size).toBe(3);
+    expect(graph.edges?.map((edge) => edge.data?.category)).toEqual(
+      expect.arrayContaining(['governance', 'ontology'])
+    );
+  });
+
+  it('keeps direct neighbors in place when the outer ring is added', async () => {
+    const innerNodes = [makeNode('root'), makeNode('a'), makeNode('b')];
+    const innerEdges = [
+      makeEdge('ra', 'root', 'a'),
+      makeEdge('br', 'b', 'root'),
+    ];
+    const inner = await computeELKRadialPositions(
+      innerNodes,
+      innerEdges,
+      'root',
+      0,
+      0
+    );
+    const extended = await computeELKRadialPositions(
+      [...innerNodes, makeNode('c'), makeNode('d')],
+      [...innerEdges, makeEdge('ac', 'a', 'c'), makeEdge('bd', 'b', 'd')],
+      'root',
+      0,
+      0
+    );
+
+    expect(extended.get('a')).toEqual(inner.get('a'));
+    expect(extended.get('b')).toEqual(inner.get('b'));
+  });
+
+  it('keeps the original level and coordinates when a filter removes a connecting node', async () => {
+    const data = {
+      nodes: [
+        { id: 'root', label: 'Root', type: 'table' },
+        { id: 'bridge', label: 'Schema', type: 'databaseSchema' },
+        { id: 'outer', label: 'Other table', type: 'table' },
+      ],
+      edges: [
+        { from: 'bridge', to: 'root', label: 'Contains' },
+        { from: 'bridge', to: 'outer', label: 'Contains' },
+      ],
+    };
+    const positioned = await applyGraphLayout(transformToG6Format(data), {
+      layout: 'radial',
+      focusNodeId: 'root',
+      width: 1000,
+      height: 600,
+      hasEntity: true,
+    });
+    const filtered = projectGraphToPositions(
+      {
+        ...data,
+        nodes: data.nodes.filter((node) => node.id !== 'bridge'),
+        edges: [],
+      },
+      positioned
+    );
+    const outer = filtered.nodes.find((node) => node.id === 'outer');
+
+    expect(outer?.data?.level).toBe(3);
+    expect(outer?.style).toEqual(
+      positioned.nodes?.find((node) => node.id === 'outer')?.style
+    );
+    expect(filtered.nodes).toHaveLength(2);
+  });
+
+  it('places nodes by shortest undirected distance with cycles and cross-links', async () => {
+    const data = {
+      nodes: ['root', 'a', 'b', 'c'].map((id) => ({
+        id,
+        label: id,
+        type: 'table',
+      })),
+      edges: [
+        { from: 'a', to: 'root', label: 'Contains' },
+        { from: 'a', to: 'b', label: 'Contains' },
+        { from: 'b', to: 'root', label: 'Downstream' },
+        { from: 'c', to: 'b', label: 'Contains' },
+        { from: 'a', to: 'a', label: 'Self' },
+      ],
+    };
+    const positioned = await applyGraphLayout(transformToG6Format(data), {
+      layout: 'radial',
+      focusNodeId: 'root',
+      width: 0,
+      height: 0,
+      hasEntity: true,
+    });
+
+    expect(
+      Object.fromEntries(
+        positioned.nodes?.map((node) => [node.id, node.data?.level]) ?? []
+      )
+    ).toEqual({ root: 1, a: 2, b: 2, c: 3 });
+  });
+
+  it('packs a dense ring without overlapping node cards and ignores response ordering', async () => {
+    const nodes = Array.from({ length: 200 }, (_, index) => ({
+      id: String(index),
+      style: {
+        size: [120 + (index % 4) * 40, NODE_HEIGHT] as [number, number],
+      },
+    }));
+    const edges = nodes
+      .slice(1)
+      .map((node) => ({ id: 'e' + node.id, source: '0', target: node.id }));
+    const positions = await computeELKRadialPositions(nodes, edges, '0', 0, 0);
+    const reversed = await computeELKRadialPositions(
+      [...nodes].reverse(),
+      [...edges].reverse(),
+      '0',
+      0,
+      0
+    );
+
+    expect(positions).toEqual(reversed);
+
+    const overlaps: string[] = [];
+    nodes.forEach((left, i) => {
+      const a = positions.get(left.id);
+      nodes.slice(i + 1).forEach((right) => {
+        const b = positions.get(right.id);
+        if (
+          a &&
+          b &&
+          Math.abs(a.x - b.x) <
+            (left.style.size[0] + right.style.size[0]) / 2 &&
+          Math.abs(a.y - b.y) < NODE_HEIGHT
+        ) {
+          overlaps.push(left.id + ':' + right.id);
+        }
+      });
+    });
+
+    expect(positions.size).toBe(200);
+    expect(overlaps).toEqual([]);
+  });
+
   describe('computeNodeWidth', () => {
     it('returns minimum width for a very short label and type', () => {
       expect(computeNodeWidth('a', 'x')).toBe(120);
@@ -102,10 +365,28 @@ describe('KnowledgeGraph.utils', () => {
       );
     });
 
-    it('returns a value from the COLOR_SETS array', () => {
-      const result = getColorSetForType('dashboard');
+    it('gives different entity types different colors', () => {
+      expect(getColorSetForType('table').main).not.toBe(
+        getColorSetForType('dashboard').main
+      );
+    });
 
-      expect(COLOR_SETS).toContainEqual(result);
+    it('ignores case and separators when matching a type', () => {
+      expect(getColorSetForType('databaseSchema')).toEqual(
+        getColorSetForType('database_schema')
+      );
+    });
+
+    it('collapses every service type onto the shared service color', () => {
+      expect(getColorSetForType('databaseService')).toEqual(
+        getColorSetForType('messagingService')
+      );
+    });
+
+    it('falls back to the neutral color for an unknown type', () => {
+      const unknown = getColorSetForType('somethingNobodyHasHeardOf');
+
+      expect(unknown.main).toBe(NODE_NEUTRAL_COLOR.fallback);
     });
   });
 
@@ -166,15 +447,138 @@ describe('KnowledgeGraph.utils', () => {
   });
 
   describe('buildEdgeHighlightStyle', () => {
-    it('returns correct highlight style with the provided primary color', () => {
-      expect(buildEdgeHighlightStyle('#1677ff')).toEqual({
-        stroke: '#1677ff',
-        lineWidth: 2,
-        opacity: 1,
-        zIndex: 100,
-        labelFontWeight: 500,
-        labelBackgroundLineWidth: 2,
+    it('keeps the relation family color and dash while thickening the line', () => {
+      const result = buildEdgeHighlightStyle('ontology', 'Mapped to');
+      const style = getRelationStyle('ontology');
+
+      expect(result.stroke).toBe(style.color);
+      expect(result.lineDash).toEqual(style.lineDash);
+      expect(result.lineWidth).toBe(EDGE_HIGHLIGHT_LINE_WIDTH);
+      expect(result.opacity).toBe(1);
+      expect(result.zIndex).toBe(100);
+    });
+
+    it('colors the arrowhead to match the line so direction stays readable', () => {
+      const result = buildEdgeHighlightStyle('ontology', 'Mapped to');
+      const { color } = getRelationStyle('ontology');
+
+      expect(result.endArrowFill).toBe(color);
+      expect(result.endArrowStroke).toBe(color);
+    });
+
+    it('gives different relation families different colors', () => {
+      expect(buildEdgeHighlightStyle('lineage', 'Downstream').stroke).not.toBe(
+        buildEdgeHighlightStyle('ownership', 'Owned by').stroke
+      );
+    });
+
+    it('restores the label a dim pass cleared, so the focused edge is readable', () => {
+      // The regression this guards: G6 merges style updates, so promoting a
+      // dimmed edge with a partial style left it as the only unlabelled edge.
+      const dimmed = buildEdgeDimStyle('lineage');
+      const focused = buildEdgeHighlightStyle('lineage', 'Downstream');
+
+      expect(dimmed.labelText).toBe('');
+      expect({ ...dimmed, ...focused }.labelText).toBe('Downstream');
+      expect({ ...dimmed, ...focused }.labelBackground).toBe(true);
+      expect({ ...dimmed, ...focused }.opacity).toBe(1);
+    });
+
+    it('leaves the label off when the labels toggle is off', () => {
+      expect(
+        buildEdgeHighlightStyle('lineage', 'Downstream', false).labelText
+      ).toBe('');
+    });
+  });
+
+  describe('buildEdgeBaseStyle', () => {
+    it('draws the label as a pill outlined in the family colour', () => {
+      const style = buildEdgeBaseStyle('governance', 'Has tag');
+
+      expect(style.labelFontSize).toBe(11.5);
+      expect(style.labelBackgroundStroke).toBe(style.stroke);
+      expect(style.labelBackgroundLineWidth).toBe(1);
+    });
+
+    it('dashes non-lineage families so they stay separable without color', () => {
+      expect(buildEdgeBaseStyle('lineage', 'Downstream').lineDash).toEqual([]);
+      expect(
+        buildEdgeBaseStyle('ontology', 'Mapped to').lineDash.length
+      ).toBeGreaterThan(0);
+    });
+
+    it('drops the label text and pill when labels are turned off', () => {
+      const withLabels = buildEdgeBaseStyle('structure', 'Has column', true);
+      const withoutLabels = buildEdgeBaseStyle(
+        'structure',
+        'Has column',
+        false
+      );
+
+      expect(withLabels.labelText).toBe('Has column');
+      expect(withLabels.labelBackground).toBe(true);
+      expect(withoutLabels.labelText).toBe('');
+      expect(withoutLabels.labelBackground).toBe(false);
+    });
+
+    it('keeps the stroke identical whether or not labels are shown', () => {
+      expect(buildEdgeBaseStyle('quality', 'Validates', false).stroke).toBe(
+        buildEdgeBaseStyle('quality', 'Validates', true).stroke
+      );
+    });
+  });
+
+  describe('buildEdgeDimStyle', () => {
+    it('fades the edge and hides its label but keeps the family color', () => {
+      const result = buildEdgeDimStyle('governance');
+
+      expect(result.opacity).toBe(DIMMED_OPACITY);
+      expect(result.labelText).toBe('');
+      expect(result.stroke).toBe(getRelationStyle('governance').color);
+    });
+  });
+
+  describe('countRelationCategories', () => {
+    it('returns all-zero counts for null input', () => {
+      const counts = countRelationCategories(null);
+
+      expect(Object.values(counts).every((count) => count === 0)).toBe(true);
+    });
+
+    it('buckets each edge into its relation family', () => {
+      const counts = countRelationCategories({
+        nodes: [
+          { id: 'a', label: 'A', type: 'table' },
+          { id: 'b', label: 'B', type: 'table' },
+          { id: 'c', label: 'C', type: 'user' },
+          { id: 'd', label: 'D', type: 'glossaryTerm' },
+        ],
+        edges: [
+          { from: 'a', to: 'b', label: 'downstream' },
+          { from: 'a', to: 'c', label: 'ownedBy' },
+          { from: 'a', to: 'd', label: 'mappedTo' },
+        ],
       });
+
+      expect(counts.lineage).toBe(1);
+      expect(counts.ownership).toBe(1);
+      expect(counts.ontology).toBe(1);
+      expect(counts.structure).toBe(0);
+    });
+
+    it('counts every raw edge, not the merged ones the canvas draws', () => {
+      const counts = countRelationCategories({
+        nodes: [
+          { id: 'a', label: 'A', type: 'table' },
+          { id: 'b', label: 'B', type: 'table' },
+        ],
+        edges: [
+          { from: 'a', to: 'b', label: 'downstream' },
+          { from: 'a', to: 'b', label: 'derivedFrom' },
+        ],
+      });
+
+      expect(counts.lineage).toBe(2);
     });
   });
 
@@ -200,7 +604,69 @@ describe('KnowledgeGraph.utils', () => {
       const result = buildNodeUpdateData('Z', new Map(), true);
 
       expect(result.id).toBe('Z');
-      expect(result.data).toEqual({ highlighted: true });
+      expect(result.data).toEqual({ highlighted: true, dimmed: false });
+    });
+
+    it('marks the node dimmed so CustomNode can fade it', () => {
+      const nodes = [makeNode('A')];
+      const result = buildNodeUpdateData('A', makeNodeMap(nodes), false, true);
+
+      expect(result.data).toMatchObject({ highlighted: false, dimmed: true });
+    });
+  });
+
+  describe('computeLabelPlacements', () => {
+    it('keeps a lone edge just off the crowded midpoint', () => {
+      expect(computeLabelPlacements([{ from: 'a', to: 'b' }])).toEqual([0.4]);
+    });
+
+    it('spreads the anchors of edges that fan into the same node', () => {
+      const placements = computeLabelPlacements([
+        { from: 'a', to: 'hub' },
+        { from: 'b', to: 'hub' },
+        { from: 'c', to: 'hub' },
+      ]);
+
+      expect(new Set(placements).size).toBe(3);
+      expect(Math.min(...placements)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...placements)).toBeLessThanOrEqual(1);
+    });
+
+    it('spreads the anchors of edges that fan out of the same node', () => {
+      const placements = computeLabelPlacements([
+        { from: 'hub', to: 'a' },
+        { from: 'hub', to: 'b' },
+      ]);
+
+      expect(placements[0]).not.toBe(placements[1]);
+    });
+
+    it('returns one placement per edge', () => {
+      const edges = [
+        { from: 'a', to: 'hub' },
+        { from: 'b', to: 'hub' },
+        { from: 'c', to: 'd' },
+      ];
+
+      expect(computeLabelPlacements(edges)).toHaveLength(edges.length);
+    });
+
+    it('returns an empty list for an empty graph', () => {
+      expect(computeLabelPlacements([])).toEqual([]);
+    });
+
+    it('groups on the busier endpoint when the two sides differ', () => {
+      // `hub` is the target of three edges; `a` is the source of two. Grouping
+      // must follow the hub, so all three edges share one spread.
+      const placements = computeLabelPlacements([
+        { from: 'a', to: 'hub' },
+        { from: 'a', to: 'hub2' },
+        { from: 'b', to: 'hub' },
+        { from: 'c', to: 'hub' },
+      ]);
+      const hubPlacements = [placements[0], placements[2], placements[3]];
+
+      expect(new Set(hubPlacements).size).toBe(3);
     });
   });
 
@@ -226,26 +692,74 @@ describe('KnowledgeGraph.utils', () => {
       expect(result.nodes?.[0].data).toHaveProperty('colorLight');
     });
 
-    it('sets default stroke and lineWidth on unidirectional edges without curveOffset', () => {
+    it('styles a unidirectional edge by relation family, without curveOffset', () => {
       const data = {
         nodes: [
           { id: 'n1', label: 'A', type: 'table' },
           { id: 'n2', label: 'B', type: 'user' },
         ],
-        edges: [{ from: 'n1', to: 'n2', label: 'owns' }],
+        edges: [{ from: 'n1', to: 'n2', label: 'ownedBy' }],
       };
       const result = transformToG6Format(data);
 
       expect(result.edges).toHaveLength(1);
       expect(result.edges?.[0].style).toMatchObject({
-        stroke: '#d9d9d9',
-        lineWidth: 1.5,
+        stroke: getRelationStyle('ownership').color,
+        lineWidth: EDGE_LINE_WIDTH,
         labelPlacement: 0.4,
       });
       expect(result.edges?.[0].style).not.toHaveProperty('curveOffset');
     });
 
-    it('sets curveOffset 60 and labelPlacement 0.35 for bidirectional edges', () => {
+    it('records the relation family on the edge so hover can restyle it', () => {
+      const data = {
+        nodes: [
+          { id: 'n1', label: 'A', type: 'table' },
+          { id: 'n2', label: 'B', type: 'table' },
+        ],
+        edges: [{ from: 'n1', to: 'n2', label: 'downstream' }],
+      };
+      const result = transformToG6Format(data);
+
+      expect(result.edges?.[0].data).toMatchObject({ category: 'lineage' });
+    });
+
+    it('gives edges of different families different strokes', () => {
+      const data = {
+        nodes: [
+          { id: 'n1', label: 'A', type: 'table' },
+          { id: 'n2', label: 'B', type: 'table' },
+          { id: 'n3', label: 'C', type: 'user' },
+        ],
+        edges: [
+          { from: 'n1', to: 'n2', label: 'downstream' },
+          { from: 'n1', to: 'n3', label: 'ownedBy' },
+        ],
+      };
+      const result = transformToG6Format(data);
+
+      expect(result.edges?.[0].style?.stroke).not.toBe(
+        result.edges?.[1].style?.stroke
+      );
+    });
+
+    it('omits edge label text when labels are turned off', () => {
+      const data = {
+        nodes: [
+          { id: 'n1', label: 'A', type: 'table' },
+          { id: 'n2', label: 'B', type: 'table' },
+        ],
+        edges: [{ from: 'n1', to: 'n2', label: 'downstream' }],
+      };
+      const result = transformToG6Format(data, { showEdgeLabels: false });
+
+      expect(result.edges?.[0].style?.labelText).toBe('');
+      expect(result.edges?.[0].style?.stroke).toBe(
+        getRelationStyle('lineage').color
+      );
+    });
+
+    it('preserves both directions for the parallel-edge transform', () => {
       const data = {
         nodes: [
           { id: 'n1', label: 'A', type: 'table' },
@@ -260,13 +774,16 @@ describe('KnowledgeGraph.utils', () => {
 
       expect(result.edges).toHaveLength(2);
 
-      result.edges?.forEach((edge) => {
-        expect(edge.style?.curveOffset).toBe(60);
-        expect(edge.style?.labelPlacement).toBe(0.35);
-      });
+      expect(
+        result.edges?.map(({ source, target }) => [source, target])
+      ).toEqual([
+        ['n1', 'n2'],
+        ['n2', 'n1'],
+      ]);
+      expect(new Set(result.edges?.map(({ id }) => id)).size).toBe(2);
     });
 
-    it('merges parallel same-direction edges into one with a combined label', () => {
+    it('retains exact labels on separate same-direction relationships', () => {
       const data = {
         nodes: [
           { id: 'n1', label: 'A', type: 'table' },
@@ -279,8 +796,249 @@ describe('KnowledgeGraph.utils', () => {
       };
       const result = transformToG6Format(data);
 
-      expect(result.edges).toHaveLength(1);
-      expect(result.edges?.[0].style?.labelText).toBe('rel1 · rel2');
+      expect(result.edges).toHaveLength(2);
+      expect(result.edges?.map((edge) => edge.style?.labelText)).toEqual([
+        'rel1',
+        'rel2',
+      ]);
+    });
+  });
+
+  describe('stretchRingToViewport', () => {
+    const cx = 660;
+    const cy = 245;
+
+    it('widens the ring and flattens it for a wide pane', () => {
+      const stretched = stretchRingToViewport(
+        new Map([
+          ['right', { x: cx + 100, y: cy }],
+          ['below', { x: cx, y: cy + 100 }],
+        ]),
+        cx,
+        cy
+      );
+
+      expect(stretched.get('right')?.x).toBeGreaterThan(cx + 100);
+      expect(stretched.get('below')?.y).toBeLessThan(cy + 100);
+    });
+
+    it('leaves the centre where it is', () => {
+      const stretched = stretchRingToViewport(
+        new Map([['focus', { x: cx, y: cy }]]),
+        cx,
+        cy
+      );
+
+      expect(stretched.get('focus')).toEqual({ x: cx, y: cy });
+    });
+
+    it('does not stretch a pane that is taller than it is wide', () => {
+      const positions = new Map([['a', { x: 400, y: 100 }]]);
+
+      expect(stretchRingToViewport(positions, 300, 500)).toBe(positions);
+    });
+
+    it('caps the stretch so spokes stay angularly distinct', () => {
+      // An extremely wide pane must not flatten the ring into a line.
+      const stretched = stretchRingToViewport(
+        new Map([['a', { x: 1100, y: 100 }]]),
+        1000,
+        10
+      );
+
+      expect(stretched.get('a')?.x).toBe(1000 + 100 * RING_STRETCH_MAX);
+    });
+  });
+
+  describe('resolveFocusNodeId', () => {
+    it('matches a node whose id equals the entity id', () => {
+      expect(
+        resolveFocusNodeId([makeNode('abc'), makeNode('def')], 'abc')
+      ).toBe('abc');
+    });
+
+    it('matches a prefixed node id by suffix', () => {
+      // The server may return `table::<uuid>` rather than the bare id.
+      expect(resolveFocusNodeId([makeNode('table::abc')], 'abc')).toBe(
+        'table::abc'
+      );
+    });
+
+    it('falls back to the entity id when no node matches', () => {
+      expect(resolveFocusNodeId([makeNode('other')], 'abc')).toBe('abc');
+    });
+
+    it('returns an empty string when there is no entity', () => {
+      expect(resolveFocusNodeId([makeNode('abc')])).toBe('');
+    });
+  });
+
+  describe('applyGraphLayout', () => {
+    const graph = () => ({
+      nodes: [makeNode('focus'), makeNode('other')],
+      edges: [makeEdge('e1', 'focus', 'other')],
+    });
+
+    const layoutOptions = {
+      focusNodeId: 'focus',
+      width: 1200,
+      height: 500,
+      hasEntity: true,
+    };
+
+    it('sizes the focus node to the full card width', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      expect(result.nodes?.find((n) => n.id === 'focus')?.style?.size).toEqual([
+        MAX_NODE_WIDTH,
+        NODE_HEIGHT,
+      ]);
+    });
+
+    it('gives every node side ports in the layered layout', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      result.nodes?.forEach((node) => {
+        expect(node.style?.ports).toEqual(DAGRE_PORTS);
+      });
+    });
+
+    it('bows the edges in the radial layout so spokes stay separable', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'radial',
+      });
+
+      result.edges?.forEach((edge) => {
+        expect(edge.style?.curveOffset).toBe(RADIAL_EDGE_CURVE_OFFSET);
+      });
+    });
+
+    it('leaves edges unbowed in the layered layout', async () => {
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'dagre',
+      });
+
+      result.edges?.forEach((edge) => {
+        expect(edge.style?.curveOffset).toBeUndefined();
+      });
+    });
+
+    it('skips radial positioning when there is no entity to centre on', async () => {
+      // Without an entity there is no meaningful centre, so the rings would be
+      // arbitrary; the nodes keep whatever positions they arrived with.
+      const result = await applyGraphLayout(graph(), {
+        ...layoutOptions,
+        layout: 'radial',
+        hasEntity: false,
+      });
+
+      expect(result.nodes?.every((n) => n.style?.x === undefined)).toBe(true);
+    });
+
+    it('tolerates a graph with no nodes or edges', async () => {
+      const result = await applyGraphLayout(
+        {},
+        { ...layoutOptions, layout: 'dagre' }
+      );
+
+      expect(result.nodes).toEqual([]);
+      expect(result.edges).toEqual([]);
+    });
+  });
+
+  describe('isGraphEmpty', () => {
+    it('treats a null response as empty', () => {
+      expect(isGraphEmpty(null)).toBe(true);
+    });
+
+    it('treats a response with no nodes as empty', () => {
+      expect(isGraphEmpty({ nodes: [], edges: [] })).toBe(true);
+    });
+
+    it('is not empty once there is a node', () => {
+      expect(
+        isGraphEmpty({
+          nodes: [{ id: 'a', label: 'A', type: 'table' }],
+          edges: [],
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('hasActiveGraphFilters', () => {
+    const defaults = {
+      layout: 'radial' as const,
+      selectedEntityTypes: [],
+      selectedRelationshipTypes: [],
+      selectedDepth: 1,
+      defaultDepth: 1,
+    };
+
+    it('is false at the default control state', () => {
+      expect(hasActiveGraphFilters(defaults)).toBe(false);
+    });
+
+    it('is true once the layout moves off radial', () => {
+      expect(hasActiveGraphFilters({ ...defaults, layout: 'dagre' })).toBe(
+        true
+      );
+    });
+
+    it('is true once an entity type is selected', () => {
+      expect(
+        hasActiveGraphFilters({ ...defaults, selectedEntityTypes: ['table'] })
+      ).toBe(true);
+    });
+
+    it('is true once a relationship type is selected', () => {
+      expect(
+        hasActiveGraphFilters({
+          ...defaults,
+          selectedRelationshipTypes: ['hasColumn'],
+        })
+      ).toBe(true);
+    });
+
+    it('is true once depth differs from the default', () => {
+      expect(hasActiveGraphFilters({ ...defaults, selectedDepth: 3 })).toBe(
+        true
+      );
+    });
+  });
+
+  describe('getFullscreenClassNames', () => {
+    it('applies no fullscreen classes when not fullscreen', () => {
+      expect(getFullscreenClassNames(false, false)).toEqual({
+        'full-screen-knowledge-graph': false,
+        'sidebar-collapsed': false,
+        'sidebar-expanded': false,
+      });
+    });
+
+    it('widens the graph when the sidebar is collapsed', () => {
+      const classes = getFullscreenClassNames(true, true);
+
+      expect(classes['sidebar-collapsed']).toBe(true);
+      expect(classes['sidebar-expanded']).toBe(false);
+    });
+
+    it('leaves room for an expanded sidebar', () => {
+      const classes = getFullscreenClassNames(true, false);
+
+      expect(classes['sidebar-expanded']).toBe(true);
+      expect(classes['sidebar-collapsed']).toBe(false);
+    });
+
+    it('treats an unknown sidebar state as expanded', () => {
+      expect(getFullscreenClassNames(true)['sidebar-expanded']).toBe(true);
     });
   });
 
@@ -321,9 +1079,9 @@ describe('KnowledgeGraph.utils', () => {
         leftPort as NodePortStyleProps,
         rightPort as NodePortStyleProps
       );
-      const nodeA = result.find((n) => n.id === 'A')!;
+      const nodeA = result.find((n) => n.id === 'A');
 
-      expect(nodeA.style?.ports).toEqual([leftPort]);
+      expect(nodeA?.style?.ports).toEqual([leftPort]);
     });
 
     it('assigns right port when all neighbors are to the right of the node', () => {
@@ -340,9 +1098,9 @@ describe('KnowledgeGraph.utils', () => {
         leftPort as NodePortStyleProps,
         rightPort as NodePortStyleProps
       );
-      const nodeA = result.find((n) => n.id === 'A')!;
+      const nodeA = result.find((n) => n.id === 'A');
 
-      expect(nodeA.style?.ports).toEqual([rightPort]);
+      expect(nodeA?.style?.ports).toEqual([rightPort]);
     });
   });
 
@@ -481,7 +1239,7 @@ describe('KnowledgeGraph.utils', () => {
               label: 'B',
             },
           ],
-          pendingHighlightRef: { current: null },
+          showEdgeLabels: true,
           selectedNodeIdRef: { current: null },
           setSelectedNode: jest.fn(),
           setEdgeTooltip: jest.fn(),
@@ -490,6 +1248,81 @@ describe('KnowledgeGraph.utils', () => {
         graph: mockGraph,
       };
     };
+
+    /** Runs the handler G6 would call for `event`. */
+    const fire = (
+      graph: ReturnType<typeof buildMockGraph>,
+      event: string,
+      target: { id: string }
+    ) => {
+      const entry = graph.on.mock.calls.find(
+        ([name]: [string]) => name === event
+      );
+      entry?.[1]({ target, client: { x: 0, y: 0 } });
+    };
+
+    /** The node ids the last updateNodeData call marked focused / dimmed. */
+    const lastNodeStates = (graph: ReturnType<typeof buildMockGraph>) => {
+      const calls = graph.updateNodeData.mock.calls;
+      const payload = calls.at(-1)?.[0] ?? [];
+
+      return {
+        focused: payload
+          .filter(
+            (n: { data?: { highlighted?: boolean } }) => n.data?.highlighted
+          )
+          .map((n: { id: string }) => n.id),
+        dimmed: payload
+          .filter((n: { data?: { dimmed?: boolean } }) => n.data?.dimmed)
+          .map((n: { id: string }) => n.id),
+      };
+    };
+
+    it('dims everything off the hovered path', () => {
+      const { ctx, graph } = buildCtx();
+      setupGraphEventHandlers(ctx);
+
+      fire(graph, 'node:pointerover', { id: 'B' });
+
+      const { focused, dimmed } = lastNodeStates(graph);
+
+      expect(focused).toEqual(expect.arrayContaining(['A', 'B']));
+      expect(dimmed).toEqual([]);
+    });
+
+    it('keeps the hovered node lit when it has no path to the focus entity', () => {
+      // C is not reachable from the focus node A, so the path is empty. Dimming
+      // strictly by path would black out the graph including C itself.
+      const graph = buildMockGraph();
+      const { ctx } = buildCtx(graph);
+      ctx.g6Nodes = [makeNode('A'), makeNode('B'), makeNode('C')];
+      ctx.graphDataNodes = [
+        ...ctx.graphDataNodes,
+        { id: 'C', type: 'table', fullyQualifiedName: 'ns.C', label: 'C' },
+      ];
+      setupGraphEventHandlers(ctx);
+
+      fire(graph, 'node:pointerover', { id: 'C' });
+
+      const { focused, dimmed } = lastNodeStates(graph);
+
+      expect(focused).toEqual(['C']);
+      expect(dimmed).toEqual(expect.arrayContaining(['A', 'B']));
+    });
+
+    it('restores every element when the pointer leaves with nothing selected', () => {
+      const { ctx, graph } = buildCtx();
+      setupGraphEventHandlers(ctx);
+
+      fire(graph, 'node:pointerover', { id: 'B' });
+      graph.updateNodeData.mockClear();
+      fire(graph, 'node:pointerleave', { id: 'B' });
+
+      const { focused, dimmed } = lastNodeStates(graph);
+
+      expect(focused).toEqual([]);
+      expect(dimmed).toEqual([]);
+    });
 
     it('registers all 8 expected G6 event handlers', () => {
       const { ctx, graph } = buildCtx();
@@ -577,7 +1410,7 @@ describe('KnowledgeGraph.utils', () => {
               label: 'B',
             },
           ],
-          pendingHighlightRef: { current: null },
+          showEdgeLabels: true,
           selectedNodeIdRef: { current: null },
           setSelectedNode: jest.fn(),
           setEdgeTooltip: jest.fn(),
@@ -762,5 +1595,170 @@ describe('KnowledgeGraph.utils', () => {
 
       openSpy.mockRestore();
     });
+  });
+});
+
+describe('fitGraphViewport', () => {
+  const card = (
+    id: string,
+    x: number,
+    y: number,
+    size: [number, number] = [212, 58]
+  ) => ({ id, style: { x, y, size }, data: {} });
+  const makeGraph = (nodes: ReturnType<typeof card>[], fittedZoom: number) => {
+    let zoom = 1;
+    const graph = {
+      getNodeData: () => nodes,
+      getZoom: () => zoom,
+      fitView: jest.fn(async () => {
+        zoom = fittedZoom;
+      }),
+      zoomTo: jest.fn(async (value: number) => {
+        zoom = value;
+      }),
+      focusElement: jest.fn().mockResolvedValue(undefined),
+    };
+
+    return { graph: graph as unknown as Graph, mocks: graph };
+  };
+
+  it('centres a small graph on the subject without magnifying past the cap', async () => {
+    const { graph, mocks } = makeGraph(
+      [card('root', 0, 0, [252, 80]), card('a', -350, 0), card('b', 350, 0)],
+      2
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).not.toHaveBeenCalled();
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MAX_ZOOM, false);
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('uses the zoom that seats every card and the band padding around the subject', async () => {
+    const { graph, mocks } = makeGraph(
+      [card('root', 0, 0, [252, 80]), card('a', -350, 0), card('b', 350, 0)],
+      2
+    );
+
+    await fitGraphViewport(graph, 'root', 800, 600);
+
+    const halfWidth = 350 + 212 / 2 + BAND_PADDING.x;
+
+    expect(mocks.zoomTo).toHaveBeenCalledWith(
+      (800 - 64) / (2 * halfWidth),
+      false
+    );
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('holds the minimum zoom and centres the subject when the graph cannot fit legibly', async () => {
+    const { graph, mocks } = makeGraph(
+      [
+        card('root', 0, 0),
+        card('far-left', -3000, 0),
+        card('far-right', 3000, 0),
+      ],
+      0.3
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MIN_ZOOM, false);
+    expect(mocks.focusElement).toHaveBeenCalledWith('root', false);
+  });
+
+  it('keeps a whole-graph fit that already lands inside the legible band', async () => {
+    const { graph, mocks } = makeGraph(
+      [
+        card('root', 0, 0),
+        card('far-left', -3000, 0),
+        card('far-right', 3000, 0),
+      ],
+      0.8
+    );
+
+    await fitGraphViewport(graph, 'root', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).not.toHaveBeenCalled();
+    expect(mocks.focusElement).not.toHaveBeenCalled();
+    expect(graph.getZoom()).toBe(0.8);
+  });
+
+  it('falls back to a capped whole-graph fit when the subject is not drawn', async () => {
+    const { graph, mocks } = makeGraph([card('a', 0, 0), card('b', 300, 0)], 3);
+
+    await fitGraphViewport(graph, 'missing', 1600, 800);
+
+    expect(mocks.fitView).toHaveBeenCalledTimes(1);
+    expect(mocks.zoomTo).toHaveBeenCalledWith(FIT_MAX_ZOOM, false);
+    expect(mocks.focusElement).not.toHaveBeenCalled();
+  });
+});
+
+describe('getLaneLevelBands', () => {
+  const laid = (
+    id: string,
+    level: number,
+    x: number,
+    y: number,
+    size: [number, number] = [212, 58]
+  ) => ({
+    id,
+    style: { x, y },
+    data: { level, presentation: { level, position: { x, y }, size } },
+  });
+  const edges = (ring: {
+    x: number;
+    y: number;
+    radiusX: number;
+    radiusY: number;
+  }) => ({
+    left: ring.x - ring.radiusX,
+    right: ring.x + ring.radiusX,
+    top: ring.y - ring.radiusY,
+    bottom: ring.y + ring.radiusY,
+  });
+
+  it('pads the direct band around every card at or inside level 2', () => {
+    const rings = getLaneLevelBands([
+      laid('root', 1, 0, 0, [252, 80]),
+      laid('left', 2, -350, 0),
+      laid('right', 2, 350, 0),
+      laid('dock', 2, 0, -300, [222, 152]),
+    ]);
+
+    expect(rings.map((ring) => ring.level)).toEqual([2]);
+    expect(edges(rings[0])).toEqual({
+      left: -350 - 106 - BAND_PADDING.x,
+      right: 350 + 106 + BAND_PADDING.x,
+      top: -300 - 76 - BAND_PADDING.top,
+      bottom: 40 + BAND_PADDING.bottom,
+    });
+  });
+
+  it('draws the extended band outermost and clear of the direct band on every side', () => {
+    const rings = getLaneLevelBands([
+      laid('root', 1, 0, 0, [252, 80]),
+      laid('left', 2, -350, 0),
+      laid('right', 2, 350, 0),
+      laid('outer', 3, 730, 0),
+    ]);
+    const [extended, direct] = rings.map(edges);
+
+    expect(rings.map((ring) => ring.level)).toEqual([3, 2]);
+    expect(extended.left).toBe(direct.left - BAND_PADDING.x);
+    expect(extended.right).toBe(730 + 106 + BAND_PADDING.x);
+    expect(extended.top).toBe(direct.top - BAND_PADDING.top);
+    expect(extended.bottom).toBe(direct.bottom + BAND_PADDING.bottom);
+  });
+
+  it('draws nothing while only the entity itself is on the canvas', () => {
+    expect(getLaneLevelBands([laid('root', 1, 0, 0, [252, 80])])).toEqual([]);
+    expect(getLaneLevelBands([{ id: 'loose', style: {}, data: {} }])).toEqual(
+      []
+    );
   });
 });

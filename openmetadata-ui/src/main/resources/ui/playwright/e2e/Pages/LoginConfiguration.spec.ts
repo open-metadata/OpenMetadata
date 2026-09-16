@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
@@ -50,7 +52,7 @@ const expectSavedLoginConfig = async (
   await toastNotification(page, 'Login Configuration updated successfully.');
 };
 
-test.describe('Login configuration', () => {
+test.describe('Login configuration', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LOGIN_CONFIGURATION);

@@ -3,6 +3,7 @@ package org.openmetadata.service.security;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,6 +19,7 @@ import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,6 +34,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -438,7 +442,67 @@ class SecurityUtilTest {
                     "example.com",
                     Set.of(),
                     true));
-    assertTrue(invalidDomainException.getMessage().contains("principal domain example.com"));
+    assertTrue(invalidDomainException.getMessage().contains("principal domain"));
+    assertTrue(invalidDomainException.getMessage().contains("other.com"));
+    assertTrue(invalidDomainException.getMessage().contains("example.com"));
+  }
+
+  @Test
+  void testValidateDomainEnforcementIsCaseInsensitive() {
+    Map<String, String> mapping = Map.of("username", "preferred_username", "email", "email_claim");
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.OnMicrosoft.com")),
+                "BCPCorp.net",
+                Set.of("bcpcorp.net", "bcpcorp.onmicrosoft.com"),
+                true));
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.net")),
+                "bcpcorp.net",
+                Set.of(),
+                true));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenRequiresMatchingIssuerAndKeyId() {
+    Map<String, Claim> claims = Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertTrue(
+        SecurityUtil.isOpenMetadataIssuedToken(claims, "om-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            claims, "attacker-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("evil.com")),
+            "om-key",
+            "open-metadata.org",
+            "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(Map.of(), "om-key", "open-metadata.org", "om-key"));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenFalseWhenServerHasNoSigningIdentity() {
+    Map<String, Claim> spoofed =
+        Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", null, "om-key"));
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "open-metadata.org", null));
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "", ""));
   }
 
   @Test
@@ -451,8 +515,66 @@ class SecurityUtilTest {
 
     verify(response).setContentType("application/json");
     verify(response).setCharacterEncoding("UTF-8");
-    verify(response).setStatus(HttpServletResponse.SC_OK);
     assertEquals("{\"ok\":true}", outputStream.content());
+  }
+
+  @Test
+  void testWriteFailureResponseMapsMissingUserToUnauthorized() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(response, new EntityNotFoundException("user not found"));
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    assertTrue(outputStream.content().contains("Invalid credentials"));
+  }
+
+  @Test
+  void testWriteFailureResponseKeepsStatusOfRejectedCredentials() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    // What BasicAuthenticator throws for a bad password: carries a 401 Response but is not a
+    // WebApplicationException, so it used to fall through to a 500.
+    SecurityUtil.writeFailureResponse(
+        response, new AuthenticationException("You have entered an invalid username or password."));
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void testWriteFailureResponseKeepsStatusOfCustomExceptionMessage() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    // What a login for a soft-deleted user actually reaches this method as: CustomExceptionMessage
+    // extends the SDK's WebServiceException, which is a plain RuntimeException — so without an
+    // explicit branch its 4xx was reported as a 500.
+    SecurityUtil.writeFailureResponse(
+        response,
+        new CustomExceptionMessage(
+            Response.Status.BAD_REQUEST,
+            "INVALID_USER_OR_PASSWORD",
+            "You have entered an invalid username or password."));
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertTrue(outputStream.content().contains("invalid username or password"));
+  }
+
+  @Test
+  void testWriteFailureResponseFallsBackToServerError() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(response, new IllegalStateException("boom"));
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    // The exception text is an internal detail: callers log it, the client gets a generic message.
+    assertFalse(outputStream.content().contains("boom"));
   }
 
   @Test
@@ -640,5 +762,77 @@ class SecurityUtilTest {
     private String content() {
       return delegate.toString(StandardCharsets.UTF_8);
     }
+  }
+
+  @Test
+  void validateRedirectUri_allowsExactTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "https://app.example.com/auth/callback",
+            Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_allowsRootRelativeTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "/auth/callback", Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_returnsConfiguredTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "https://app.example.com:443/auth/callback",
+            Set.of("https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_allowsRootRelativeRedirectMatchingAnyTrustedRedirect() {
+    String redirect =
+        SecurityUtil.validateRedirectUri(
+            "/auth/callback",
+            List.of(
+                "https://admin.example.com/admin/callback",
+                "https://app.example.com/auth/callback"));
+
+    assertEquals("https://app.example.com/auth/callback", redirect);
+  }
+
+  @Test
+  void validateRedirectUri_rejectsDifferentPathOnTrustedOrigin() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SecurityUtil.validateRedirectUri(
+                    "https://app.example.com/evil",
+                    Set.of("https://app.example.com/auth/callback")));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", exception.getMessage());
+  }
+
+  @Test
+  void buildRedirectWithToken_usesFragmentNotQueryString() {
+    String redirectUrl =
+        SecurityUtil.buildRedirectWithToken(
+            "https://app.example.com/callback", "token-value", "user@example.com", "Jane & John");
+
+    java.net.URI uri = java.net.URI.create(redirectUrl);
+    assertNull(uri.getRawQuery(), "Token must be in fragment, not query string");
+
+    String fragment = uri.getRawFragment();
+    assertNotNull(fragment, "Fragment should contain token parameters");
+    assertEquals(3, fragment.split("&").length);
+    assertTrue(fragment.contains("id_token="));
+    assertTrue(fragment.contains("email="));
+    assertTrue(fragment.contains("name="));
+    assertTrue(fragment.contains("%26"));
   }
 }

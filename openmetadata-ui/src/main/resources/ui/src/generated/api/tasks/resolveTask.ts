@@ -47,6 +47,7 @@ export enum ResolutionType {
     AutoRejected = "AutoRejected",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Rejected = "Rejected",
     Revoked = "Revoked",
     TimedOut = "TimedOut",

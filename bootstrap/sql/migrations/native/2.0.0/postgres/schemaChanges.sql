@@ -1,6 +1,37 @@
 -- Task System Redesign - OpenMetadata 2.0.0
 -- This migration creates the new Task entity tables and related infrastructure
 
+-- CSV import/export and bulk-edit background job metadata.
+ALTER TABLE background_jobs
+  ADD COLUMN IF NOT EXISTS progress integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS total integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS result text,
+  ADD COLUMN IF NOT EXISTS error text,
+  ADD COLUMN IF NOT EXISTS message character varying(2048),
+  ADD COLUMN IF NOT EXISTS cancelRequested boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS completedAt bigint;
+
+CREATE INDEX IF NOT EXISTS idx_background_jobs_job_type_created_by
+  ON background_jobs (jobType, createdBy, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_background_jobs_status_updated_at
+  ON background_jobs (status, updatedAt);
+
+CREATE TABLE IF NOT EXISTS background_job_logs (
+  logId character varying(36) NOT NULL,
+  jobId bigint NOT NULL,
+  createdAt bigint NOT NULL,
+  level character varying(16) NOT NULL,
+  message character varying(4096) NOT NULL,
+  PRIMARY KEY (logId),
+  CONSTRAINT fk_background_job_logs_job_id
+    FOREIGN KEY (jobId) REFERENCES background_jobs(id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_background_job_logs_job_id_created_at
+  ON background_job_logs (jobId, createdAt);
+
 CREATE TABLE IF NOT EXISTS task_entity (
     id character varying(36) NOT NULL,
     json jsonb NOT NULL,
@@ -68,7 +99,8 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     entityfqnhash character varying(768),
     about character varying(2048),
     aboutfqnhash character varying(768),
-    actorid character varying(36) NOT NULL,
+    -- Nullable for system events and hard-deleted users; actorname is the display fallback.
+    actorid character varying(36),
     actorname character varying(256),
     timestamp bigint NOT NULL,
     summary character varying(500),
@@ -285,8 +317,10 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL,
+  claimToken VARCHAR(36) NULL,
   PRIMARY KEY (entityId, entityFqn)
 );
+ALTER TABLE search_index_retry_queue ADD COLUMN IF NOT EXISTS claimToken VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
@@ -306,3 +340,209 @@ CREATE TABLE IF NOT EXISTS context_memory (
   UNIQUE (nameHash)
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
+
+-- AI Governance Studio (Phase 4): framework + control entity tables.
+CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_name_index ON ai_governance_framework_entity(name);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_deleted_index ON ai_governance_framework_entity(deleted);
+COMMENT ON TABLE ai_governance_framework_entity IS 'AI Governance Framework entities';
+
+CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_framework_control_name_index ON ai_framework_control_entity(name);
+CREATE INDEX IF NOT EXISTS ai_framework_control_deleted_index ON ai_framework_control_entity(deleted);
+COMMENT ON TABLE ai_framework_control_entity IS 'AI Framework Control entities';
+
+CREATE TABLE IF NOT EXISTS audit_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    status VARCHAR(32) GENERATED ALWAYS AS (json->>'status') STORED,
+    requestSignature VARCHAR(512) GENERATED ALWAYS AS (json->>'requestSignature') STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS audit_report_name_index ON audit_report_entity(name);
+CREATE INDEX IF NOT EXISTS audit_report_status_index ON audit_report_entity(status);
+CREATE INDEX IF NOT EXISTS audit_report_deleted_index ON audit_report_entity(deleted);
+CREATE INDEX IF NOT EXISTS audit_report_request_signature_index ON audit_report_entity(requestSignature);
+COMMENT ON TABLE audit_report_entity IS 'AI Audit Report entities';
+-- Database-backed user session store for multi-pod session management (issue #21971).
+CREATE TABLE IF NOT EXISTS user_session (
+    id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    userid character varying(36) GENERATED ALWAYS AS ((json ->> 'userId'::text)) STORED,
+    status character varying(32) GENERATED ALWAYS AS ((json ->> 'status'::text)) STORED NOT NULL,
+    expiresat bigint GENERATED ALWAYS AS (((json ->> 'expiresAt'::text))::bigint) STORED NOT NULL,
+    idleexpiresat bigint GENERATED ALWAYS AS (((json ->> 'idleExpiresAt'::text))::bigint) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    sessiontype character varying(32) GENERATED ALWAYS AS ((json ->> 'type'::text)) STORED,
+    provider character varying(64) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    version bigint GENERATED ALWAYS AS (((json ->> 'version'::text))::bigint) STORED,
+    lastaccessedat bigint GENERATED ALWAYS AS (((json ->> 'lastAccessedAt'::text))::bigint) STORED,
+    refreshleaseuntil bigint GENERATED ALWAYS AS (((json ->> 'refreshLeaseUntil'::text))::bigint) STORED,
+    json jsonb NOT NULL,
+    CONSTRAINT user_session_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS user_session_user_status_idx ON user_session USING btree (userid, status);
+CREATE INDEX IF NOT EXISTS user_session_expiry_idx ON user_session USING btree (status, expiresat);
+CREATE INDEX IF NOT EXISTS user_session_idle_expiry_idx ON user_session USING btree (status, idleexpiresat);
+CREATE INDEX IF NOT EXISTS user_session_prune_idx ON user_session USING btree (status, updatedat);
+
+-- Per-entity `name` index for entity tables first created in 2.0.0, so the distributed
+-- reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
+-- (EntityRepository.getCursorAtOffset) runs index-only instead of a sort that can exhaust
+-- work_mem on large tables. Added here (not 1.13.1) because these tables are created above
+-- in this same 2.0.0 migration. Idempotent via IF NOT EXISTS.
+CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
+CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
+CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
+CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
+-- context_file / context_memory are also created above in this migration and are reindexed;
+-- they only had a `nameHash` unique key, so add the leading-`name` index the cursor query needs.
+CREATE INDEX IF NOT EXISTS context_file_name_index ON context_file (name);
+CREATE INDEX IF NOT EXISTS context_memory_name_index ON context_memory (name);
+
+-- Task workflow cutover support - OpenMetadata 2.0.0 (moved from 2.0.1)
+-- Maps legacy thread task IDs to new task entity IDs for migration traceability and redirects.
+
+CREATE TABLE IF NOT EXISTS task_migration_mapping (
+    old_thread_id character varying(36) NOT NULL,
+    new_task_id character varying(36) NOT NULL,
+    migrated_at bigint NOT NULL,
+    source character varying(64) DEFAULT 'thread_task_migration',
+    PRIMARY KEY (old_thread_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
+    ON task_migration_mapping (new_task_id);
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters).
+CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
+    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    json #- '{connection,config,token}',
+    '{connection,config,authType}',
+    jsonb_build_object('token', json #> '{connection,config,token}')
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND json #> '{connection,config,token}' IS NOT NULL
+  AND NOT jsonb_exists(json #> '{connection,config}', 'authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX IF NOT EXISTS idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    PRIMARY KEY (userId)
+);
+
+-- Index the FQN-hash prefix scan behind the table hard-delete profiler purge (issue #27041).
+--
+-- TableRepository.entitySpecificCleanup purges a hard-deleted table's column profiles through
+-- ProfilerDataTimeSeriesDAO before the table can be recreated. The purge matches
+--   entityFQNHash LIKE '<table hash>.%'
+-- because column profiles are keyed by the *column* FQN, not the table FQN. The only persistent
+-- index with entityFQNHash leading is the 1.1.5 unique constraint
+-- (entityFQNHash, extension, operation, timestamp); it uses the default operator class and the
+-- column inherits the database default collation (en_US.UTF-8 on managed Postgres / RDS), neither
+-- of which qualifies the planner to use it for LIKE 'prefix%'. The 1.9.9 migration did create
+-- idx_pdts_entityFQNHash_prefix, but that was a migration-time helper and the same script drops it
+-- again, so nothing persistent covers this predicate today.
+--
+-- Without this index every table hard delete costs at least one sequential scan of
+-- profiler_data_time_series, and a recursive service delete costs one per table. Measured on
+-- postgres:15 (lc_collate=en_US.utf8) with 300k rows / 211 MB, using the exact statement the DAO
+-- issues (JDBC binds the prefix as text):
+--   before: Parallel Seq Scan, 24.174 ms, 11112 buffers   (terminal batch, prefix matches nothing)
+--   after : Index Scan,         0.056 ms,     3 buffers
+--   before: Seq Scan,          16.579 ms,  3701 buffers   (first batch, prefix matches 3000 rows)
+--   after : Bitmap Heap Scan,   8.647 ms,  1006 buffers
+-- Index size 2776 kB against a 211 MB table.
+--
+-- Why text_pattern_ops and not varchar_pattern_ops:
+-- entityFQNHash is VARCHAR(768), so varchar_pattern_ops is the type-matched choice on paper. In
+-- practice the planner normalises `varchar LIKE text` — which is what every JDBC setString bind
+-- produces — by casting the column, giving `(entityfqnhash)::text ~~ ...`. text_pattern_ops matches
+-- that cast expression on every version; the 1.13.0 fqnHash pass documents an environment where
+-- varchar_pattern_ops was silently unused and the table seq-scanned. This file follows the same
+-- opclass as the idx_*_fqnhash_pattern family for that reason.
+--
+-- Built CONCURRENTLY so the migration takes no write lock, matching the 1.11.0 idx_tag_usage_* and
+-- 1.13.0 idx_*_fqnhash_pattern pattern. Each statement runs outside an implicit transaction, which
+-- the native migration runner supports.
+--
+-- OPERATOR RUNBOOK — interrupted CONCURRENTLY builds.
+-- An interrupted CREATE INDEX CONCURRENTLY leaves an INVALID index behind, and `IF NOT EXISTS`
+-- would then no-op against it forever. Detect and remediate:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid
+--      AND c.relname = 'idx_profiler_data_time_series_fqnhash_pattern';
+--   DROP INDEX CONCURRENTLY idx_profiler_data_time_series_fqnhash_pattern;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.0.0'
+--      AND sqlstatement LIKE '%idx\_profiler\_data\_time\_series\_fqnhash\_pattern%' ESCAPE '\';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_profiler_data_time_series_fqnhash_pattern
+    ON profiler_data_time_series (entityFQNHash text_pattern_ops);

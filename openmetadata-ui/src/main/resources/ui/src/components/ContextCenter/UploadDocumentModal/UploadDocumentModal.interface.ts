@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import { Asset } from '../../../generated/attachments/asset';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
-  entityLink: string;
+  folderFqn?: string;
   onClose: () => void;
-  onUploaded?: (assets: Asset[]) => void;
+  onUploaded?: (files: ContextFile[]) => void;
 }
 
-export type UploadStatus = 'uploading' | 'done' | 'error';
-
-export interface StagedFile {
-  id: string;
-  file: File;
+export enum UploadStatus {
+  Done = 'done',
+  Error = 'error',
+  Uploaded = 'uploaded',
+  Retrying = 'retrying',
 }
 
 export interface QueuedFile {
@@ -32,4 +32,5 @@ export interface QueuedFile {
   file: File;
   progress: number;
   status: UploadStatus;
+  sizeExceeded?: boolean;
 }

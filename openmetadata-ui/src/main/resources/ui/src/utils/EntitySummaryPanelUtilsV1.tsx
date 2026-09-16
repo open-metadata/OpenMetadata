@@ -19,7 +19,8 @@ import {
   Table,
   Typography as AntTypography,
 } from 'antd';
-import { isEmpty } from 'lodash';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
@@ -27,8 +28,9 @@ import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.i
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -48,37 +50,38 @@ import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
 } from '../rest/dataModelsAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
 import {
   getTableColumnsByFQN,
   getTableList,
   searchTableColumnsByFQN,
 } from '../rest/tableAPI';
-import { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import {
+  filterItemsBySearchText,
+  filterNestedFields,
+} from './EntitySummaryPanelPureUtilsV1';
+import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
+import { pruneEmptyChildren } from './TablePureUtils';
+import { showErrorToast } from './ToastUtils';
 
-import { pruneEmptyChildren } from './TableUtils';
+const REQUEST_SCHEMA = 'request-schema' as const;
+
 const { Text } = AntTypography;
 
-/**
- * Shared utility to filter items by search text using case-insensitive
- * name/displayName matching. Used by all entity child components.
- */
-const filterItemsBySearchText = <T extends { name?: string }>(
-  items: T[],
-  searchText?: string
-): T[] => {
-  if (!searchText) {
-    return items;
-  }
-  const lowerSearch = searchText.toLowerCase();
+const getFieldRowKey = (column: {
+  fullyQualifiedName?: string;
+  name: string;
+}): string => column.fullyQualifiedName ?? column.name;
 
-  return items.filter(
-    (item) =>
-      item.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(item)?.toLowerCase().includes(lowerSearch)
-  );
-};
+const getExpandToggleLabel = (
+  isExpanded: boolean,
+  childrenCount: number
+): string =>
+  isExpanded
+    ? t('label.show-less')
+    : `${t('label.show-nested')} (${childrenCount})`;
 
 // Recursive component to render nested columns
 const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
@@ -99,8 +102,8 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
     <div>
       <div
         className="nested-field-card-wrapper"
-        data-row-key={column.fullyQualifiedName ?? column.name}
-        key={column.fullyQualifiedName ?? column.name}
+        data-row-key={getFieldRowKey(column)}
+        key={getFieldRowKey(column)}
         style={{
           paddingLeft: `${level * 24}px`,
           paddingBottom: hasChildren ? '8px' : '0',
@@ -130,9 +133,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
               type="link"
               onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
               <Typography as="span" className="tw:text-xs tw:text-primary">
-                {isExpanded
-                  ? t('label.show-less')
-                  : `${t('label.show-nested')} (${childrenCount})`}
+                {getExpandToggleLabel(isExpanded, childrenCount)}
               </Typography>
             </Button>
           </div>
@@ -236,32 +237,6 @@ const NestedSchemaFieldCard: React.FC<{
       )}
     </div>
   );
-};
-
-// Shared recursive filter that preserves tree structure (used by Topic, Container, SearchIndex)
-const filterNestedFields = (
-  fieldList: GenericNestedField[],
-  searchText: string
-): GenericNestedField[] => {
-  const lowerSearch = searchText.toLowerCase();
-
-  return fieldList.reduce<GenericNestedField[]>((acc, field) => {
-    const nameMatch =
-      field.name?.toLowerCase().includes(lowerSearch) ||
-      getEntityName(field)?.toLowerCase().includes(lowerSearch);
-    const filteredChildren = field.children
-      ? filterNestedFields(field.children, searchText)
-      : [];
-
-    if (nameMatch || filteredChildren.length > 0) {
-      acc.push({
-        ...field,
-        children: nameMatch ? field.children : filteredChildren,
-      });
-    }
-
-    return acc;
-  }, []);
 };
 
 // Component for Table and Dashboard Data Model schema fields
@@ -524,7 +499,56 @@ const ContainerFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const columns = entityInfo.dataModel?.columns || [];
+  const [fetchedColumns, setFetchedColumns] = useState<Column[]>();
+
+  const inlineColumns = entityInfo.dataModel?.columns;
+  const containerFqn = entityInfo.fullyQualifiedName;
+  // Start in the loading state when columns must be fetched on demand, so the first render shows the
+  // loader instead of briefly flashing "No data available".
+  const [isColumnsLoading, setIsColumnsLoading] = useState(
+    () => isUndefined(inlineColumns) && Boolean(containerFqn)
+  );
+
+  useEffect(() => {
+    // dataModel is excluded from Explore search payloads because it can be very large, so when it is
+    // absent on the search hit we fetch it on demand from the entity API.
+    if (!isUndefined(inlineColumns) || !containerFqn) {
+      // No on-demand fetch needed (columns already inline, or no FQN). Clear any loading flag left
+      // set by a now-cancelled in-flight fetch so the loader can't get stuck on.
+      setIsColumnsLoading(false);
+
+      return;
+    }
+    // Drop any previously-fetched columns and show the loader so the prior container's schema isn't
+    // shown while the new one loads; the cancelled guard also ignores a stale in-flight result if
+    // the user switches containers again before it resolves.
+    let cancelled = false;
+    setFetchedColumns(undefined);
+    setIsColumnsLoading(true);
+    getContainerByFQN(containerFqn, { fields: TabSpecificField.DATAMODEL })
+      .then((container) => {
+        if (!cancelled) {
+          setFetchedColumns(container.dataModel?.columns ?? []);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setFetchedColumns([]);
+          showErrorToast(error as AxiosError);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsColumnsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [containerFqn, inlineColumns]);
+
+  const columns = inlineColumns ?? fetchedColumns ?? [];
 
   const filteredColumns = useMemo(
     () =>
@@ -540,7 +564,7 @@ const ContainerFieldCardsV1: React.FC<{
     );
   }, []);
 
-  if (loading) {
+  if (loading || isColumnsLoading) {
     return (
       <div className="flex-center p-lg">
         <Loader size="default" />
@@ -911,7 +935,7 @@ const APIEndpointSchemaV1: React.FC<{
 }> = ({ entityInfo, loading, searchText }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
-  >('request-schema');
+  >(REQUEST_SCHEMA);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const requestSchemaFields = entityInfo.requestSchema?.schemaFields || [];
@@ -920,7 +944,7 @@ const APIEndpointSchemaV1: React.FC<{
   const viewTypeOptions = [
     {
       label: t('label.request'),
-      value: 'request-schema',
+      value: REQUEST_SCHEMA,
     },
     {
       label: t('label.response'),
@@ -930,9 +954,7 @@ const APIEndpointSchemaV1: React.FC<{
 
   const activeSchemaFields = useMemo(() => {
     const fields =
-      viewType === 'request-schema'
-        ? requestSchemaFields
-        : responseSchemaFields;
+      viewType === REQUEST_SCHEMA ? requestSchemaFields : responseSchemaFields;
 
     if (!searchText) {
       return fields;
@@ -949,13 +971,14 @@ const APIEndpointSchemaV1: React.FC<{
           : [];
 
         if (nameMatch || filteredChildren.length > 0) {
+          let matchedChildren = field.children;
+          if (!nameMatch && filteredChildren.length > 0) {
+            matchedChildren = filteredChildren;
+          }
+
           acc.push({
             ...field,
-            children: nameMatch
-              ? field.children
-              : filteredChildren.length > 0
-              ? filteredChildren
-              : field.children,
+            children: matchedChildren,
           });
         }
 
@@ -1005,7 +1028,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: Record<string, any>) => (
+      render: (name: string, record: Field) => (
         <div className="d-inline-flex" style={{ maxWidth: '68%' }}>
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -1016,7 +1039,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: Record<string, any>) => (
+      render: (dataType: string, record: Field) => (
         <Typography as="span" className="tw:text-xs">
           {record.dataTypeDisplay || dataType || 'Unknown'}
         </Typography>
@@ -1039,15 +1062,14 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'tags',
       key: 'tags',
       width: 200,
-      render: (tags: TagLabel[]) => (
-        <div className="d-flex flex-wrap gap-2">
-          {tags?.map((tag) => (
-            <span className="tag-container" key={tag.tagFQN}>
-              {tag.displayName || tag.name}
-            </span>
-          )) || <span className="text-grey-muted">{t('label.no-tags')}</span>}
-        </div>
-      ),
+      render: (tags: TagLabel[]) =>
+        isEmpty(tags) ? (
+          <Typography className="tw:text-secondary">
+            {t('label.no-entity', { entity: t('label.tag-plural') })}
+          </Typography>
+        ) : (
+          <TagsViewer maxWidth={120} tags={tags} />
+        ),
     },
   ];
 
@@ -1218,6 +1240,141 @@ const SearchIndexFieldCardsV1: React.FC<{
   );
 };
 
+type EntityChildDetailsRendererArgs = {
+  entityType: EntityType;
+  entityInfo: SearchedDataProps['data'][number]['_source'];
+  highlights?: SearchedDataProps['data'][number]['highlight'];
+  loading?: boolean;
+  searchText?: string;
+};
+
+const ENTITY_CHILD_DETAILS_RENDERERS: Partial<
+  Record<EntityType, (args: EntityChildDetailsRendererArgs) => JSX.Element>
+> = {
+  [EntityType.TABLE]: ({
+    entityInfo,
+    entityType,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SchemaFieldCardsV1
+      entityInfo={entityInfo as TableEntity}
+      entityType={entityType}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DASHBOARD_DATA_MODEL]: ({
+    entityInfo,
+    entityType,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SchemaFieldCardsV1
+      entityInfo={entityInfo as TableEntity}
+      entityType={entityType}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DATABASE_SCHEMA]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <DatabaseSchemaTablesV1
+      entityInfo={entityInfo as DatabaseSchema}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DASHBOARD]: ({ entityInfo, highlights, loading, searchText }) => (
+    <DashboardChartsV1
+      entityInfo={entityInfo as Dashboard}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.TOPIC]: ({ entityInfo, highlights, loading, searchText }) => (
+    <TopicFieldCardsV1
+      entityInfo={entityInfo as Topic}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.CONTAINER]: ({ entityInfo, highlights, loading, searchText }) => (
+    <ContainerFieldCardsV1
+      entityInfo={entityInfo as Container}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.SEARCH_INDEX]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <SearchIndexFieldCardsV1
+      entityInfo={entityInfo as SearchIndex}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.API_ENDPOINT]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <APIEndpointSchemaV1
+      entityInfo={entityInfo as APIEndpoint}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.DATABASE]: ({ entityInfo, highlights, loading, searchText }) => (
+    <DatabaseSchemasV1
+      entityInfo={entityInfo}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.PIPELINE]: ({ entityInfo, highlights, loading, searchText }) => (
+    <PipelineTasksV1
+      entityInfo={entityInfo as Pipeline}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+  [EntityType.API_COLLECTION]: ({
+    entityInfo,
+    highlights,
+    loading,
+    searchText,
+  }) => (
+    <APICollectionEndpointsV1
+      entityInfo={entityInfo as APICollection}
+      highlights={highlights}
+      loading={loading}
+      searchText={searchText}
+    />
+  ),
+};
+
 export const getEntityChildDetailsV1 = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
@@ -1225,111 +1382,9 @@ export const getEntityChildDetailsV1 = (
   loading?: boolean,
   searchText?: string
 ) => {
-  // kept for potential future use; remove unused to satisfy linter
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as TableEntity}
-          entityType={entityType}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
+  const renderer = ENTITY_CHILD_DETAILS_RENDERERS[entityType];
 
-    case EntityType.DATABASE_SCHEMA:
-      return (
-        <DatabaseSchemaTablesV1
-          entityInfo={entityInfo as DatabaseSchema}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.DASHBOARD:
-      return (
-        <DashboardChartsV1
-          entityInfo={entityInfo as Dashboard}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.TOPIC:
-      return (
-        <TopicFieldCardsV1
-          entityInfo={entityInfo as Topic}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.CONTAINER:
-      return (
-        <ContainerFieldCardsV1
-          entityInfo={entityInfo as Container}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.SEARCH_INDEX:
-      return (
-        <SearchIndexFieldCardsV1
-          entityInfo={entityInfo as SearchIndex}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.API_ENDPOINT:
-      return (
-        <APIEndpointSchemaV1
-          entityInfo={entityInfo as APIEndpoint}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.DATABASE:
-      return (
-        <DatabaseSchemasV1
-          entityInfo={entityInfo}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.PIPELINE:
-      return (
-        <PipelineTasksV1
-          entityInfo={entityInfo as Pipeline}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    case EntityType.API_COLLECTION:
-      return (
-        <APICollectionEndpointsV1
-          entityInfo={entityInfo as APICollection}
-          highlights={highlights}
-          loading={loading}
-          searchText={searchText}
-        />
-      );
-
-    default:
-      return null;
-  }
+  return renderer
+    ? renderer({ entityInfo, entityType, highlights, loading, searchText })
+    : null;
 };

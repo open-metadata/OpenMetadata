@@ -38,28 +38,30 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import directoryClassBase from '../../../utils/DirectoryClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -74,7 +76,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -184,6 +185,8 @@ function DirectoryDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -191,6 +194,8 @@ function DirectoryDetails({
           entity: t('label.directory'),
         })
       );
+
+      return false;
     }
   };
 
@@ -271,19 +276,37 @@ function DirectoryDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityTaskCountsInto(decodedDirectoryFQN, setFeedCount);
+    }
+  }, [decodedDirectoryFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DIRECTORY,
+        decodedDirectoryFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDirectoryFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
+  // editAllPermission/viewAllPermission (raw directoryPermissions.EditAll/.ViewAll
+  // reads) dropped here: computed but never consumed anywhere in this component (only
+  // ever listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -307,13 +330,11 @@ function DirectoryDetails({
           directoryPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: directoryPermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           directoryPermissions,
           Operation.EditLineage
         ) && !deleted,
-      viewAllPermission: directoryPermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         directoryPermissions,
         Operation.ViewCustomFields
@@ -323,7 +344,8 @@ function DirectoryDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [directoryPermissions, decodedDirectoryFQN]);
 
   const tabs = useMemo(() => {
@@ -390,8 +412,6 @@ function DirectoryDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

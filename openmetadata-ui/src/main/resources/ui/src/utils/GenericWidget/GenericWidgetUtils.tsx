@@ -10,30 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
-import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
-import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import TagButton from '../../components/common/TagButton/TagButton.component';
-import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
-import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';
-import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTable/DashboardChartTable';
-import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
-import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
-import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
-import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
-import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
-import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
-import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
-import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
-import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import MlModelFeaturesList from '../../components/MlModel/MlModelDetail/MlModelFeaturesList';
-import { PipelineTaskTab } from '../../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
-import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { lazy, type ComponentType } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type { PropertyValueProps } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import type { DomainLabelProps } from '../../components/common/DomainLabel/DomainLabel.interface';
+import type { PreviewerProp } from '../../components/common/RichTextEditor/RichTextEditor.interface';
+import type { TagButtonProps } from '../../components/common/TagButton/TagButton.component';
+import type { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
@@ -44,16 +30,206 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { EntityReference, TagSource } from '../../generated/tests/testCase';
-import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
-import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
-import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
-import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
-import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
+import type { EntityReference } from '../../generated/tests/testCase';
+import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
+import { toOwnerRefs } from '../Owner/ownerConversionUtils';
 import tableClassBase from '../TableClassBase';
+
+const PropertyValue = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/common/CustomPropertyTable/PropertyValue').then(
+      (m) => ({ default: m.PropertyValue })
+    )
+  )
+) as ComponentType<PropertyValueProps>;
+
+const DomainLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/common/DomainLabel/DomainLabel.component').then(
+      (m) => ({ default: m.DomainLabel })
+    )
+  )
+) as ComponentType<DomainLabelProps>;
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/common/RichTextEditor/RichTextEditorPreviewerV1')
+  )
+) as ComponentType<PreviewerProp>;
+
+const TagButton = withSuspenseFallback(
+  lazy(() => import('../../components/common/TagButton/TagButton.component'))
+) as ComponentType<TagButtonProps>;
+
+const ContainerWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Container/ContainerWidget/ContainerWidget').then(
+      (m) => ({ default: m.ContainerWidget })
+    )
+  )
+);
+
+const StoredProcedureCodeCard = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard'
+    ).then((m) => ({ default: m.StoredProcedureCodeCard }))
+  )
+);
+
+const APIEndpointSchema = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema')
+  )
+);
+
+const ContainerChildren = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/Container/ContainerChildren/ContainerChildren')
+  )
+);
+
+const DashboardChartTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Dashboard/DashboardChartTable/DashboardChartTable'
+    ).then((m) => ({ default: m.DashboardChartTable }))
+  )
+);
+
+const ModelTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component'
+      )
+  )
+);
+
+const DatabaseSchemaTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable'
+    ).then((m) => ({ default: m.DatabaseSchemaTable }))
+  )
+);
+
+const SchemaTable = withSuspenseFallback(
+  lazy(
+    () => import('../../components/Database/SchemaTable/SchemaTable.component')
+  )
+);
+
+const MarketplaceDataProductsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component'
+      )
+  )
+);
+
+const MarketplaceDomainsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component'
+      )
+  )
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  )
+);
+
+const GlossaryTermTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component'
+      )
+  )
+);
+
+const MlModelFeaturesList = withSuspenseFallback(
+  lazy(
+    () => import('../../components/MlModel/MlModelDetail/MlModelFeaturesList')
+  )
+);
+
+const PipelineTaskTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Pipeline/PipelineTaskTab/PipelineTaskTab').then(
+      (m) => ({ default: m.PipelineTaskTab })
+    )
+  )
+);
+
+const TagsViewer = withSuspenseFallback(
+  lazy(() => import('../../components/Tag/TagsViewer/TagsViewer'))
+);
+
+const TopicSchemaFields = withSuspenseFallback(
+  lazy(() => import('../../components/Topic/TopicSchema/TopicSchema'))
+);
+
+const APIEndpointsTab = withSuspenseFallback(
+  lazy(() => import('../../pages/APICollectionPage/APIEndpointsTab'))
+);
+
+const SearchIndexFieldsTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
+      )
+  )
+);
+
+const SchemaTablesTab = withSuspenseFallback(
+  lazy(() => import('../../pages/DatabaseSchemaPage/SchemaTablesTab'))
+);
+
+const FrequentlyJoinedTables = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
+    ).then((m) => ({ default: m.FrequentlyJoinedTables }))
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
+
+const PartitionedKeys = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
+    ).then((m) => ({ default: m.PartitionedKeys }))
+  )
+);
+
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((m) => ({ default: m.TableAliases }))
+  )
+);
 
 export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.GLOSSARY_TERMS]: () => (
@@ -105,7 +281,12 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.OWNER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
     <div className="flex gap-2 flex-col">
@@ -137,7 +318,12 @@ export const WIDGET_COMPONENTS = {
   ),
 
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
     <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
@@ -168,9 +354,11 @@ export const WIDGET_COMPONENTS = {
     <DashboardChartTable isCustomizationPage />
   ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
-    <OwnerLabel
+    <Owner
       hasPermission={false}
-      owners={domainClassBase.getDummyData().experts ?? []}
+      isCompactView={false}
+      owners={toOwnerRefs(domainClassBase.getDummyData().experts ?? [])}
+      showLabel={false}
     />
   ),
   [DetailPageWidgetKeys.API_ENDPOINTS]: () => (
@@ -190,6 +378,9 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
+  ),
+  [DetailPageWidgetKeys.TABLE_ALIASES]: () => (
+    <TableAliases renderAsExpandableCard={false} />
   ),
   [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: () => (
     <MarketplaceDataProductsWidget

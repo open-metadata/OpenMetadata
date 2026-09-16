@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import cronstrue from 'cronstrue';
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
@@ -23,6 +22,31 @@ import {
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
+
+// cronstrue (~54 KB raw / ~15 KB brotli) is only needed by scheduler views.
+// Defer the import so it doesn't ship in the entry / shared chunk.
+type CronstrueModule = typeof import('cronstrue');
+let cronstrueModule: CronstrueModule | null = null;
+let cronstruePromise: Promise<CronstrueModule> | null = null;
+
+const loadCronstrue = (): Promise<CronstrueModule> => {
+  if (cronstrueModule) {
+    return Promise.resolve(cronstrueModule);
+  }
+  if (!cronstruePromise) {
+    cronstruePromise = import('cronstrue').then((m) => {
+      cronstrueModule = m;
+
+      return m;
+    });
+  }
+
+  return cronstruePromise;
+};
+
+export const getLoadedCronstrue = (): CronstrueModule | null => cronstrueModule;
+
+export const ensureCronstrueLoaded = loadCronstrue;
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
 export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
@@ -109,6 +133,12 @@ export const getTimeZone = (): string => {
 
   return abbreviation;
 };
+
+/**
+ * Returns the local UTC offset label, e.g. `UTC+05:30` / `UTC-07:00`.
+ */
+export const getUtcOffsetLabel = (): string =>
+  DateTime.local().toFormat("'UTC'ZZ");
 
 /**
  *
@@ -299,6 +329,29 @@ export const calculateInterval = (
 };
 
 /**
+ * Joins the non-zero unit parts into a compact human-readable string, applying an
+ * optional max-unit cap and a negative-value prefix. Returns '0s' when empty.
+ */
+const buildHumanReadableResult = (
+  parts: string[],
+  length: number | undefined,
+  isNegative: boolean,
+  prependForNegativeValue: string
+): string => {
+  if (parts.length === 0) {
+    return '0s';
+  }
+
+  const limitedParts =
+    length && parts.length > length ? parts.slice(0, length) : parts;
+  const formattedResult = limitedParts.join(' ');
+
+  return isNegative
+    ? `${prependForNegativeValue}${formattedResult}`
+    : formattedResult;
+};
+
+/**
  * Converts a given time in milliseconds to a human-readable format.
  *
  * @param milliseconds - The time duration in milliseconds to be converted.
@@ -323,55 +376,34 @@ export const convertMillisecondsToHumanReadableFormat = (
   const absoluteTimestamp = Math.abs(timestamp);
 
   const duration = Duration.fromMillis(absoluteTimestamp);
-  const result: string[] = [];
 
   // Extract each unit from the duration
-  const years = Math.floor(duration.as('years'));
-  const months = Math.floor(duration.as('months')) % 12;
-  const days = Math.floor(duration.as('days')) % 30;
-  const hours = Math.floor(duration.as('hours')) % 24;
-  const minutes = Math.floor(duration.as('minutes')) % 60;
-  const seconds = Math.floor(duration.as('seconds')) % 60;
-  const milliseconds = Math.floor(duration.as('milliseconds')) % 1000;
+  const units: Array<{ value: number; suffix: string }> = [
+    { value: Math.floor(duration.as('years')), suffix: 'Y' },
+    { value: Math.floor(duration.as('months')) % 12, suffix: 'M' },
+    { value: Math.floor(duration.as('days')) % 30, suffix: 'd' },
+    { value: Math.floor(duration.as('hours')) % 24, suffix: 'h' },
+    { value: Math.floor(duration.as('minutes')) % 60, suffix: 'm' },
+    { value: Math.floor(duration.as('seconds')) % 60, suffix: 's' },
+  ];
 
-  // Add non-zero units to the result
-  if (years > 0) {
-    result.push(`${years}Y`);
-  }
-  if (months > 0) {
-    result.push(`${months}M`);
-  }
-  if (days > 0) {
-    result.push(`${days}d`);
-  }
-  if (hours > 0) {
-    result.push(`${hours}h`);
-  }
-  if (minutes > 0) {
-    result.push(`${minutes}m`);
-  }
-  if (seconds > 0) {
-    result.push(`${seconds}s`);
-  }
-  if (showMilliseconds && milliseconds > 0) {
-    result.push(`${milliseconds}ms`);
+  if (showMilliseconds) {
+    units.push({
+      value: Math.floor(duration.as('milliseconds')) % 1000,
+      suffix: 'ms',
+    });
   }
 
-  // If no units found, return 0s
-  if (result.length === 0) {
-    return '0s';
-  }
+  const result = units
+    .filter((unit) => unit.value > 0)
+    .map((unit) => `${unit.value}${unit.suffix}`);
 
-  let formattedResult = result.join(' ');
-
-  if (length && result.length > length) {
-    formattedResult = result.slice(0, length).join(' ');
-  }
-
-  // Prepend minus sign for negative values
-  return isNegative
-    ? `${prependForNegativeValue}${formattedResult}`
-    : formattedResult;
+  return buildHumanReadableResult(
+    result,
+    length,
+    isNegative,
+    prependForNegativeValue
+  );
 };
 
 /**
@@ -399,62 +431,36 @@ export const convertSecondsToHumanReadableFormat = (
 
   const result: string[] = [];
 
-  // Extract years first (using 360 days per year: 12 months × 30 days)
-  const years = Math.floor(remainingSeconds / YEAR_SECONDS);
-  if (years > 0) {
-    result.push(`${years}Y`);
-    remainingSeconds -= years * YEAR_SECONDS;
-  }
+  // Extract each fixed-size unit from largest to smallest, subtracting as we go
+  // (using 360 days per year: 12 months × 30 days).
+  const unitDivisors: Array<{ unitSeconds: number; suffix: string }> = [
+    { unitSeconds: YEAR_SECONDS, suffix: 'Y' },
+    { unitSeconds: MONTH_SECONDS, suffix: 'M' },
+    { unitSeconds: DAY_SECONDS, suffix: 'd' },
+    { unitSeconds: HOUR_SECONDS, suffix: 'h' },
+    { unitSeconds: MINUTE_SECONDS, suffix: 'm' },
+  ];
 
-  // Extract months (only from what remains after years)
-  const months = Math.floor(remainingSeconds / MONTH_SECONDS);
-  if (months > 0) {
-    result.push(`${months}M`);
-    remainingSeconds -= months * MONTH_SECONDS;
-  }
+  unitDivisors.forEach(({ unitSeconds, suffix }) => {
+    const value = Math.floor(remainingSeconds / unitSeconds);
+    if (value > 0) {
+      result.push(`${value}${suffix}`);
+      remainingSeconds -= value * unitSeconds;
+    }
+  });
 
-  // Extract days
-  const days = Math.floor(remainingSeconds / DAY_SECONDS);
-  if (days > 0) {
-    result.push(`${days}d`);
-    remainingSeconds -= days * DAY_SECONDS;
-  }
-
-  // Extract hours
-  const hours = Math.floor(remainingSeconds / HOUR_SECONDS);
-  if (hours > 0) {
-    result.push(`${hours}h`);
-    remainingSeconds -= hours * HOUR_SECONDS;
-  }
-
-  // Extract minutes
-  const minutes = Math.floor(remainingSeconds / MINUTE_SECONDS);
-  if (minutes > 0) {
-    result.push(`${minutes}m`);
-    remainingSeconds -= minutes * MINUTE_SECONDS;
-  }
-
-  // Extract seconds
+  // Extract remaining whole seconds
   const secs = Math.floor(remainingSeconds);
   if (secs > 0) {
     result.push(`${secs}s`);
   }
 
-  // If no units found, return 0s
-  if (result.length === 0) {
-    return '0s';
-  }
-
-  let formattedResult = result.join(' ');
-
-  if (length && result.length > length) {
-    formattedResult = result.slice(0, length).join(' ');
-  }
-
-  // Prepend prefix for negative values
-  return isNegative
-    ? `${prependForNegativeValue}${formattedResult}`
-    : formattedResult;
+  return buildHumanReadableResult(
+    result,
+    length,
+    isNegative,
+    prependForNegativeValue
+  );
 };
 
 export const formatDuration = (ms: number) => {
@@ -515,12 +521,21 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
 };
 
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+  if (!cronstrueModule) {
+    // Kick off the lazy load so subsequent calls (and the hook) succeed.
+    loadCronstrue();
+
+    return { descriptionFirstPart: '', descriptionSecondPart: '' };
+  }
   try {
-    const scheduleDescription = cronstrue.toString(scheduleInterval, {
-      use24HourTimeFormat: false,
-      verbose: true,
-      locale: getCurrentLocaleForConstrue(), // To get localized string
-    });
+    const scheduleDescription = cronstrueModule.default.toString(
+      scheduleInterval,
+      {
+        use24HourTimeFormat: false,
+        verbose: true,
+        locale: getCurrentLocaleForConstrue(), // To get localized string
+      }
+    );
 
     const firstSentenceEndIndex = scheduleDescription.indexOf(',');
 

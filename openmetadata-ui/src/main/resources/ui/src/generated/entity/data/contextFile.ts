@@ -48,6 +48,10 @@ export interface ContextFile {
      */
     extractedText?: string;
     /**
+     * Statistics from the most recent knowledge-pill extraction run.
+     */
+    extractionStats?: ExtractionStats;
+    /**
      * File extension (e.g., pdf, xlsx).
      */
     fileExtension?: string;
@@ -88,6 +92,10 @@ export interface ContextFile {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Number of knowledge pills (context memories) extracted from this file.
+     */
+    memoryCount?: number;
+    /**
      * Name of the file.
      */
     name: string;
@@ -99,6 +107,10 @@ export interface ContextFile {
      * Number of pages (PDF) or sheets (spreadsheet).
      */
     pageCount?: number;
+    /**
+     * Reason the most recent processing attempt failed. Cleared when a new attempt starts.
+     */
+    processingError?: string;
     /**
      * Current processing state after upload.
      */
@@ -263,6 +275,33 @@ export interface EntityReference {
 }
 
 /**
+ * Statistics from the most recent knowledge-pill extraction run.
+ */
+export interface ExtractionStats {
+    /**
+     * Number of chunks the LLM successfully processed.
+     */
+    chunksProcessed?: number;
+    /**
+     * Number of chunks the document text splits into.
+     */
+    chunksTotal?: number;
+    /**
+     * Time of the last extraction run in Unix epoch time milliseconds.
+     */
+    lastExtractedAt?: number;
+    /**
+     * Number of knowledge pills persisted by the run.
+     */
+    pillsCreated?: number;
+    /**
+     * Hash of the source content used for the most recent extraction. Lets the processing
+     * engine skip re-extraction when the content is unchanged.
+     */
+    sourceHash?: string;
+}
+
+/**
  * Type of file (PDF, Spreadsheet, etc.).
  *
  * Type of file based on content.
@@ -286,6 +325,7 @@ export enum FileType {
  */
 export enum ProcessingStatus {
     Analyzing = "Analyzing",
+    ExtractingContext = "ExtractingContext",
     Failed = "Failed",
     Processed = "Processed",
     Unsupported = "Unsupported",

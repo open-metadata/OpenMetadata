@@ -388,4 +388,14 @@ public final class TestCases {
       }
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().testCases().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().testCases().getContextByName(fqn);
+  }
 }

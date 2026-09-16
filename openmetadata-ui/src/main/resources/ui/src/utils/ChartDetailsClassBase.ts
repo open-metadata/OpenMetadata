@@ -29,7 +29,7 @@ import {
   getChartDetailPageTabs,
   getChartWidgetsFromKey,
 } from './ChartDetailsUtils';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 
 export interface ChartDetailsTabsProps {
   chartDetails: Chart;

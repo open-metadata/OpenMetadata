@@ -11,15 +11,24 @@
  *  limitations under the License.
  */
 
+import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import ContextCenterHeader from './ContextCenterHeader.component';
 
-jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
-  jest.fn(() => <nav data-testid="title-breadcrumb" />)
-);
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(() => jest.fn()),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  Breadcrumbs: jest.fn(() => <nav data-testid="title-breadcrumb" />),
   Button: jest.fn(
     ({
       children,
@@ -32,17 +41,66 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+  Input: jest.fn(
+    ({
+      onChange,
+      value,
+      placeholder,
+      'data-testid': testId,
+    }: {
+      onChange?: (value: string) => void;
+      value?: string;
+      placeholder?: string;
+      'data-testid'?: string;
+    }) => (
+      <input
+        aria-label={testId}
+        data-testid={testId}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    )
+  ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        breadcrumb,
+        subtitle,
+        title,
+        variant,
+      }: {
+        actions?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        subtitle?: React.ReactNode;
+        title: React.ReactNode;
+        variant?: string;
+      }) => (
+        <div data-testid="page-header" data-variant={variant}>
+          {breadcrumb}
+          <span>{title}</span>
+          <span>{subtitle}</span>
+          {actions}
+        </div>
+      )
+    ),
+  },
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
 }));
 
-const mockBreadcrumbs: TitleLink[] = [
-  { name: 'Home', url: '/' },
-  { name: 'Context Center', url: '/context-center' },
+const mockBreadcrumbs: BreadcrumbItemType[] = [
+  { id: 'home', label: 'Home', href: '/' },
+  { id: 'context-center', label: 'Context Center', href: '/context-center' },
 ];
 
 describe('ContextCenterHeader', () => {
+  beforeEach(() => {
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   it('renders the header with title', () => {
     render(
       <ContextCenterHeader
@@ -64,6 +122,25 @@ describe('ContextCenterHeader', () => {
     );
 
     expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+  });
+
+  it('uses the embedded header presentation in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(
+      <ContextCenterHeader
+        breadcrumbs={mockBreadcrumbs}
+        title="Knowledge Center"
+      />
+    );
+
+    expect(screen.getByTestId('page-header')).toHaveAttribute(
+      'data-variant',
+      'gradient'
+    );
+    expect(screen.getByTestId('page-header')).toContainElement(
+      screen.getByTestId('title-breadcrumb')
+    );
   });
 
   it('renders subtitle when provided', () => {

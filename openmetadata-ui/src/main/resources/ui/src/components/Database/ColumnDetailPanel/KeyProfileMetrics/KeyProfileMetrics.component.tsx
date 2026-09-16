@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
 
   const sectionClassName =
     'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
-  const titleClassName = 'tw:text-[13px] tw:font-semibold tw:mb-1.5';
+  const titleClassName = 'tw:text-sm tw:font-semibold tw:mb-1.5';
 
   return (
     <div className={sectionClassName}>
@@ -47,10 +47,11 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
                   {metric.label}
                 </span>
                 {metric.tooltip && (
-                  <Tooltip placement="top" title={metric.tooltip}>
-                    <TooltipTrigger>
-                      <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
-                    </TooltipTrigger>
+                  <Tooltip
+                    placement="top"
+                    title={metric.tooltip}
+                    triggerClassName="tw:inline-flex">
+                    <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
                   </Tooltip>
                 )}
               </div>

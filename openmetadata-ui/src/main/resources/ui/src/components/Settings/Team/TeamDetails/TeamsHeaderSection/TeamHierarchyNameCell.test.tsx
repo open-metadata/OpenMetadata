@@ -14,12 +14,10 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../../utils/StringUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
 jest.mock('antd', () => {
@@ -45,8 +43,11 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
+}));
+
+jest.mock('../../../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text: string) => text),
 }));
 
@@ -54,7 +55,7 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/StringsUtils', () => ({
+jest.mock('../../../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn((html: string) => html),
 }));
 

@@ -45,6 +45,7 @@ export interface CreateDatabaseService {
      */
     owners?:     EntityReference[];
     serviceType: DatabaseServiceType;
+    style?:      Style;
     /**
      * Tags for this Database Service.
      */
@@ -68,6 +69,8 @@ export interface DatabaseConnection {
  * Azure SQL Connection Config
  *
  * Clickhouse Connection Config
+ *
+ * ClickZetta Database Connection Config
  *
  * Databricks Connection Config
  *
@@ -172,6 +175,10 @@ export interface DatabaseConnection {
  * IOMETE Connection Config
  *
  * QuestDB Connection Config
+ *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
+ * SAP BW/4HANA Database Connection Config
  */
 export interface Connection {
     /**
@@ -194,6 +201,8 @@ export interface Connection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
+     * Regex to only include or exclude matching databases.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -204,6 +213,8 @@ export interface Connection {
      * Host and port of the AzureSQL service.
      *
      * Host and port of the Clickhouse service.
+     *
+     * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
      *
@@ -270,6 +281,8 @@ export interface Connection {
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
+     *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      */
     hostPort?: string;
     /**
@@ -279,6 +292,8 @@ export interface Connection {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include or exclude matching schemas.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -290,6 +305,8 @@ export interface Connection {
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+     *
+     * Regex to only include/exclude InfoAreas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -323,11 +340,16 @@ export interface Connection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      *
+     * Regex to only include or exclude matching tables.
+     *
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+     * pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -361,6 +383,12 @@ export interface Connection {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      *
+     * ClickZetta workspace to ingest.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
+     *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      */
@@ -389,17 +417,18 @@ export interface Connection {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -504,6 +533,8 @@ export interface Connection {
      * Password to connect to Informix.
      *
      * Password to connect to IOMETE.
+     *
+     * Password for the HANA database user.
      */
     password?: string;
     /**
@@ -511,6 +542,8 @@ export interface Connection {
      *
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
+     *
+     * Username to connect to ClickZetta.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -619,12 +652,16 @@ export interface Connection {
      * Username to connect to IOMETE.
      *
      * Username to connect to QuestDB.
+     *
+     * HANA database username with access to BW metadata tables.
      */
     username?: string;
     /**
      * Database Schema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
+     *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
      *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
@@ -655,6 +692,8 @@ export interface Connection {
      */
     secure?: boolean;
     /**
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -666,6 +705,31 @@ export interface Connection {
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      */
     authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -690,13 +754,9 @@ export interface Connection {
      */
     httpPath?: string;
     /**
-     * Table name to fetch the query history.
-     *
-     * Table name to fetch the query history. When set, this overrides the default
-     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
-     * must expose columns compatible with the selected log path.
+     * Policy agent configuration for access control extraction.
      */
-    queryHistoryTable?: string;
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -770,6 +830,11 @@ export interface Connection {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -832,25 +897,40 @@ export interface Connection {
      */
     queryStatementSource?: string;
     /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
-    /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
     /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
+    /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -913,6 +993,13 @@ export interface Connection {
      */
     verifySSL?: VerifySSL;
     /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -926,8 +1013,7 @@ export interface Connection {
      */
     accountUsageSchema?: string;
     /**
-     * Optional configuration for ingestion to keep the client session active in case the
-     * ingestion process runs for longer durations.
+     * Keep the session alive for long-running scans.
      */
     clientSessionKeepAlive?: boolean;
     /**
@@ -935,17 +1021,19 @@ export interface Connection {
      */
     creditCost?: number;
     /**
-     * Optional configuration for ingestion of Snowflake stages (internal and external). By
-     * default, stages are not ingested.
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
+    /**
+     * Ingest external and internal stages.
      */
     includeStages?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     * Ingest Snowflake streams as data assets.
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
-     * TRANSIENT tables.
+     * Ingest transient tables alongside permanent ones.
      */
     includeTransientTables?: boolean;
     /**
@@ -965,6 +1053,13 @@ export interface Connection {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -1068,6 +1163,9 @@ export interface Connection {
     apiKey?: string;
     /**
      * Pagination limit used while querying the SAP ERP API for fetching the entities
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
      */
     paginationLimit?: number;
     /**
@@ -1138,6 +1236,11 @@ export interface Connection {
      * IOMETE data plane name.
      */
     dataPlane?: string;
+    /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
     [property: string]: any;
 }
 
@@ -1168,6 +1271,12 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
+ * Common Database Connection Config
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -1177,10 +1286,6 @@ export enum AuthMechanismEnum {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -1201,6 +1306,14 @@ export enum AuthMechanismEnum {
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  */
 export interface AuthenticationType {
+    /**
+     * Password to connect to source.
+     *
+     * Database user password. Leave empty if using IAM database authentication.
+     *
+     * Password for the Dremio Software user account.
+     */
+    password?: string;
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
@@ -1228,16 +1341,8 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
-    /**
-     * Password to connect to source.
-     *
-     * Database user password. Leave empty if using IAM database authentication.
-     *
-     * Password for the Dremio Software user account.
-     */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
-    azureConfig?: AzureCredentials;
+    awsConfig?:     AWSCredentials;
+    azureConfig?:   AzureCredentials;
     /**
      * Use GCP IAM for database authentication instead of a password.
      */
@@ -1828,6 +1933,12 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include/exclude tables that matches the pattern.
  *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -1849,6 +1960,11 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+ *
+ * Regex to only include/exclude InfoAreas that match the pattern.
+ *
+ * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+ * pattern.
  */
 export interface FilterPattern {
     /**
@@ -1911,9 +2027,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -2208,6 +2324,28 @@ export interface OracleConnectionType {
 }
 
 /**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -2219,12 +2357,15 @@ export enum ConfigScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -2241,6 +2382,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -2290,9 +2432,11 @@ export enum ConfigType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -2325,6 +2469,7 @@ export enum ConfigType {
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapSuccessFactors = "SapSuccessFactors",
@@ -2422,9 +2567,11 @@ export enum DatabaseServiceType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
+    Data360 = "Data360",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",
@@ -2459,6 +2606,7 @@ export enum DatabaseServiceType {
     SAS = "SAS",
     SQLite = "SQLite",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapSuccessFactors = "SapSuccessFactors",
@@ -2473,6 +2621,43 @@ export enum DatabaseServiceType {
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -2636,41 +2821,4 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
-}
-
-/**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
 }

@@ -131,6 +131,19 @@ public final class DescriptionSanitizer {
           .allowElements("details", "summary")
           // Definition lists
           .allowElements("dl", "dt", "dd")
+          // Math equation node (BlockEditor MathEquation extension)
+          .allowElements("block-math-equation")
+          .allowAttributes("math_equation")
+          .onElements("block-math-equation")
+          .allowAttributes("isediting")
+          .matching(
+              (elementName, attributeName, value) -> {
+                if ("true".equals(value) || "false".equals(value)) {
+                  return value;
+                }
+                return null;
+              })
+          .onElements("block-math-equation")
           .toFactory();
 
   private static final Pattern ENTITY_LINK_PATTERN = Pattern.compile("<#E::[^<>]+>");
@@ -151,6 +164,22 @@ public final class DescriptionSanitizer {
    * @return sanitized description safe for storage and rendering, or null if input is null
    */
   public static String sanitize(String description) {
+    return sanitizeWith(MARKDOWN_POLICY, description);
+  }
+
+  /**
+   * Sanitizes with a caller-supplied policy, preserving entity-link tokens exactly as {@link
+   * #sanitize(String)} does.
+   *
+   * <p>Exists so consumers that need a different trade-off can reuse the token-preservation step
+   * instead of copying it. The AI-context renderer is one: it strips markup a model cannot read
+   * (inline images, CSS classes) that the storage policy here must keep for the browser.
+   *
+   * @param policy the element/attribute policy to apply
+   * @param description the raw description from user input
+   * @return the sanitized description, or null if input is null
+   */
+  public static String sanitizeWith(PolicyFactory policy, String description) {
     if (description == null) {
       return null;
     }
@@ -164,7 +193,7 @@ public final class DescriptionSanitizer {
     }
     matcher.appendTail(replaced);
 
-    String sanitized = MARKDOWN_POLICY.sanitize(replaced.toString());
+    String sanitized = policy.sanitize(replaced.toString());
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =

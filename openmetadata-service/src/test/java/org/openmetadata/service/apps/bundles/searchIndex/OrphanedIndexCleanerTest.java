@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 
 class OrphanedIndexCleanerTest {
@@ -84,6 +85,21 @@ class OrphanedIndexCleanerTest {
   }
 
   @Test
+  void countMethodsUseBulkInventory() {
+    long oldTimestamp = System.currentTimeMillis() - (31L * 60 * 1000);
+    long recentTimestamp = System.currentTimeMillis() - (5L * 60 * 1000);
+    List<IndexStats> indexStats =
+        List.of(
+            indexStats("table_rebuild_" + oldTimestamp, Set.of()),
+            indexStats("user_rebuild_" + oldTimestamp, Set.of("user")),
+            indexStats("dashboard_rebuild_" + recentTimestamp, Set.of()),
+            indexStats("topic", Set.of()));
+
+    assertEquals(3, cleaner.countRebuildIndices(indexStats));
+    assertEquals(1, cleaner.countOrphanedIndices(indexStats));
+  }
+
+  @Test
   @DisplayName("private orphan checks require rebuild naming and tolerate alias lookup errors")
   void privateOrphanChecksHandleNamingAndAliasFailures() throws Exception {
     when(searchClient.getAliases("table_rebuild_1")).thenReturn(Set.of());
@@ -114,5 +130,9 @@ class OrphanedIndexCleanerTest {
         OrphanedIndexCleaner.class.getDeclaredMethod("isOldEnough", String.class, long.class);
     method.setAccessible(true);
     return (Boolean) method.invoke(cleaner, indexName, now);
+  }
+
+  private static IndexStats indexStats(String name, Set<String> aliases) {
+    return new IndexStats(name, 0, 0, 1, 0, 0, "GREEN", aliases);
   }
 }

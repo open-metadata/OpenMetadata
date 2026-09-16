@@ -25,16 +25,15 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GREY_100, GREY_200 } from '../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   axisTickFormatter,
   createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -45,6 +44,7 @@ const CustomBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const { cursorFill, grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -87,7 +87,7 @@ const CustomBarChart = ({
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
         <CartesianGrid
           horizontal={renderHorizontalGridLine}
-          stroke={GRAPH_BACKGROUND_COLOR}
+          stroke={grid}
           strokeDasharray="3 3"
           vertical={false}
         />
@@ -116,8 +116,8 @@ const CustomBarChart = ({
             />
           }
           cursor={{
-            fill: GREY_100,
-            stroke: GREY_200,
+            fill: cursorFill,
+            stroke: grid,
             strokeDasharray: '3 3',
           }}
         />

@@ -28,12 +28,14 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 describe('QueryViewer Component', () => {
-  it('should render with SQL query', () => {
+  it('should render with SQL query', async () => {
     const sqlQuery = 'SELECT * FROM table';
     render(<QueryViewer sqlQuery={sqlQuery} title={<span>Test Title</span>} />);
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-    expect(screen.getByTestId('schema-editor')).toHaveTextContent(sqlQuery);
+    const schemaEditor = await screen.findByTestId('schema-editor');
+
+    expect(schemaEditor).toBeInTheDocument();
+    expect(schemaEditor).toHaveTextContent(sqlQuery);
     expect(screen.getByTestId('query-line')).toBeInTheDocument();
     expect(screen.getByTestId('query-entity-copy-button')).toBeInTheDocument();
   });

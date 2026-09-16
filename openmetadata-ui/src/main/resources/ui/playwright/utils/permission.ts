@@ -21,6 +21,7 @@ import { RolesClass } from '../support/access-control/RolesClass';
 import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { dismissLineageMapOnboarding } from './lineage';
 
 let policy: PolicyClass;
 let role: RolesClass;
@@ -137,9 +138,12 @@ export const validateViewPermissions = async (
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
   if (permission?.editDisplayName) {
-    expect(
-      await page.locator('[data-testid="edit-displayName-button"]').count()
-    ).toBeGreaterThan(0);
+    const editDisplayNameButton = page.locator(
+      '[data-testid="edit-displayName-button"]'
+    );
+    await expect(editDisplayNameButton.first()).toBeVisible({
+      timeout: 30_000,
+    });
   } else {
     await expect(
       page.locator('[data-testid="edit-displayName-button"]')
@@ -212,6 +216,7 @@ export const validateViewPermissions = async (
   );
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
+  await dismissLineageMapOnboarding(page);
 
   await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 

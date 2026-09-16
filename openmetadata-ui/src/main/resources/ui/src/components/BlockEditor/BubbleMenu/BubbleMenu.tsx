@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, isNodeSelection } from '@tiptap/core';
+import { isNodeSelection, type Editor } from '@tiptap/core';
 import {
   BubbleMenu as CoreBubbleMenu,
   BubbleMenuProps as CoreBubbleMenuProps,
@@ -112,14 +112,12 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     // - the selection is a node selection (for drag handles)
     // - link is active
     // - editor is not editable
-    if (
+    const isNonTextSelection =
       editor.isActive('image') ||
       empty ||
       isNodeSelection(selection) ||
-      editor.isActive('link') ||
-      editor.isActive('table') ||
-      !editor.isEditable
-    ) {
+      editor.isActive('link');
+    if (isNonTextSelection || editor.isActive('table') || !editor.isEditable) {
       return false;
     }
 

@@ -22,10 +22,8 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import {
   TermItem,
   TermSelectItem,

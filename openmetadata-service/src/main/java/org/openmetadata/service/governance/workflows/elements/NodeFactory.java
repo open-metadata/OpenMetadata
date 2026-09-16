@@ -81,6 +81,22 @@ public class NodeFactory {
           (ApplyRecognizerFeedbackTaskDefinition) nodeDefinition, config);
       case REJECT_RECOGNIZER_FEEDBACK_TASK -> new RejectRecognizerFeedbackTask(
           (RejectRecognizerFeedbackTaskDefinition) nodeDefinition, config);
+      case POLICY_AGENT_TASK -> NodeFactoryRegistry.getInstance()
+          .create(NodeSubType.POLICY_AGENT_TASK, nodeDefinition, config, workflowDefinitionName)
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "policyAgentTask is a Collate-only feature — handler not registered"));
+      case CREATE_AND_RUN_AI_AUTOMATION_TASK -> NodeFactoryRegistry.getInstance()
+          .create(
+              NodeSubType.CREATE_AND_RUN_AI_AUTOMATION_TASK,
+              nodeDefinition,
+              config,
+              workflowDefinitionName)
+          .orElseThrow(
+              () ->
+                  new IllegalStateException(
+                      "createAndRunAIAutomationTask is a Collate-only feature — handler not registered"));
       default -> throw new IllegalArgumentException(
           "Unsupported node subtype: " + nodeDefinition.getSubType());
     };

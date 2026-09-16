@@ -18,6 +18,10 @@ import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 let letExpectedUserName = {
   name: 'sample123',
   email: 'sample123@sample.com',

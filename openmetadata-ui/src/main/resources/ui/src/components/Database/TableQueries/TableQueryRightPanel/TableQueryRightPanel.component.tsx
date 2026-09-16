@@ -12,7 +12,9 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
@@ -20,13 +22,14 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -39,8 +42,15 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
+  // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
+  // off `permission` — canEditOwners/canEditDescription/canEditTags already
+  // fold the "field permission wins over EditAll" prioritization in.
+  const { canEditOwners, canEditDescription, canEditTags } = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
@@ -90,9 +100,9 @@ const TableQueryRightPanel = ({
                       {t('label.owner-plural')}
                     </Typography.Text>
 
-                    {(EditAll || EditOwners) && (
+                    {canEditOwners && (
                       <UserTeamSelectableList
-                        hasPermission={EditAll || EditOwners}
+                        hasPermission={canEditOwners}
                         multiple={{
                           user: entityRules.canAddMultipleUserOwners,
                           team: entityRules.canAddMultipleTeamOwner,
@@ -113,22 +123,23 @@ const TableQueryRightPanel = ({
                   </Space>
                 ),
               }}>
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={query.owners}
+                owners={toOwnersWithHref(query.owners)}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </ExpandableCard>
           </Col>
           <Col span={24}>
-            <DescriptionV1
+            <Description
               wrapInCard
               className="w-full"
               description={query?.description || ''}
               entityFullyQualifiedName={query?.fullyQualifiedName}
               entityType={EntityType.QUERY}
-              hasEditAccess={EditDescription || EditAll}
+              hasEditAccess={canEditDescription}
               showCommentsIcon={false}
               onDescriptionUpdate={onDescriptionUpdate}
             />
@@ -136,7 +147,7 @@ const TableQueryRightPanel = ({
           <Col span={24}>
             <TagsContainerV2
               newLook
-              permission={EditAll || EditTags}
+              permission={canEditTags}
               selectedTags={query?.tags || []}
               showTaskHandler={false}
               tagType={TagSource.Classification}

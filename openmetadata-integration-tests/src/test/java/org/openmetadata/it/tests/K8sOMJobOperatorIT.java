@@ -40,7 +40,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -137,10 +136,6 @@ public class K8sOMJobOperatorIT {
     // Note: CRDs should be installed manually or by the operator deployment
     // TODO: we need to fix this, it's giving us 422 error
     // installCRDs();
-
-    // Setup Awaitility defaults for operator tests
-    Awaitility.setDefaultTimeout(TIMEOUT.toSeconds(), TimeUnit.SECONDS);
-    Awaitility.setDefaultPollInterval(5, TimeUnit.SECONDS);
 
     LOG.info("K3s cluster setup complete with namespace: {}", TEST_NAMESPACE);
   }
@@ -289,6 +284,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for main pod to be created
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -310,6 +306,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for main pod to complete
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -321,6 +318,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for exit handler to be created
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -342,6 +340,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for exit handler to complete
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -373,6 +372,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for main pod to fail
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -393,6 +393,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for exit handler to be created
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -414,6 +415,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for exit handler to complete
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -450,6 +452,7 @@ public class K8sOMJobOperatorIT {
     jobs.forEach(
         (jobName, omJob) -> {
           Awaitility.await()
+              .pollInterval(Duration.ofSeconds(5))
               .atMost(TIMEOUT.multipliedBy(2))
               .until(
                   () -> {
@@ -484,6 +487,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for main pod to be created and running
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -516,6 +520,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for operator to detect pod deletion and handle it
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -545,6 +550,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for job to complete
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(TIMEOUT)
         .until(
             () -> {
@@ -631,6 +637,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for the CronOMJob to create at least one OMJob
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(Duration.ofMinutes(2))
         .until(
             () -> {
@@ -718,6 +725,7 @@ public class K8sOMJobOperatorIT {
 
     // Wait for at least one schedule
     Awaitility.await()
+        .pollInterval(Duration.ofSeconds(5))
         .atMost(Duration.ofMinutes(6))
         .until(
             () -> {

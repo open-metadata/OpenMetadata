@@ -13,6 +13,7 @@
 import atexit
 import contextlib
 import logging
+import sys
 import threading
 import time
 from queue import Empty, Full, Queue
@@ -29,6 +30,10 @@ logger = ingestion_logger()
 # Recursion guard: sender threads set shipping=True so emit() returns
 # immediately if it ever fires from inside the shipping path.
 _shipping_state = threading.local()
+
+# Idempotency guard for one-shot global capture installation. Process is
+# one-shot (single workflow per pod), so we install once and never restore.
+_global_capture_installed = False
 
 
 class StreamableLogHandler(logging.Handler):
@@ -66,14 +71,12 @@ class StreamableLogHandler(logging.Handler):
         self._buffer: Queue = Queue(maxsize=max_buffer)
         self._stop_event = threading.Event()
         self._closed = False
-        self._worker: Optional[threading.Thread] = None  # noqa: UP045
+        self._worker: threading.Thread | None = None
         self._post_in_flight = threading.Event()
 
         # Isolated session/connection pool; shares ClientConfig so token
         # refresh on the main client is visible here.
-        self._client: Optional[REST] = (  # noqa: UP045
-            REST(metadata.client.config) if enable_streaming else None
-        )
+        self._client: REST | None = REST(metadata.client.config) if enable_streaming else None
 
         # Counters surfaced at shutdown.
         self.shipped_records = 0
@@ -319,7 +322,7 @@ class StreamableLogHandlerManager:
         if cls._instance and cls._instance is not handler:
             # Detach before close so in-flight emits don't route at a closed handler.
             with contextlib.suppress(Exception):
-                logging.getLogger(METADATA_LOGGER).removeHandler(cls._instance)
+                logging.getLogger().removeHandler(cls._instance)
             with contextlib.suppress(Exception):
                 cls._instance.close()
         cls._instance = handler
@@ -330,7 +333,7 @@ class StreamableLogHandlerManager:
             return
         try:
             with contextlib.suppress(Exception):
-                logging.getLogger(METADATA_LOGGER).removeHandler(cls._instance)
+                logging.getLogger().removeHandler(cls._instance)
             with contextlib.suppress(Exception):
                 cls._instance.close()
         finally:
@@ -339,11 +342,11 @@ class StreamableLogHandlerManager:
 
 def setup_streamable_logging_for_workflow(
     metadata: OpenMetadata,
-    pipeline_fqn: Optional[str] = None,  # noqa: UP045
-    run_id: Optional[UUID] = None,  # noqa: UP045
+    pipeline_fqn: str | None = None,
+    run_id: UUID | None = None,
     log_level: int = logging.INFO,
     enable_streaming: bool = False,
-) -> Optional[StreamableLogHandler]:  # noqa: UP045
+) -> StreamableLogHandler | None:
     if not enable_streaming or not pipeline_fqn or not run_id:
         logger.debug(
             "Streamable logging not configured: enable=%s, pipeline_fqn=%s, run_id=%s",
@@ -354,11 +357,11 @@ def setup_streamable_logging_for_workflow(
         return None
 
     try:
-        metadata_logger = logging.getLogger(METADATA_LOGGER)
+        root_logger = logging.getLogger()
         existing = StreamableLogHandlerManager.get_handler()
         if existing is not None:
             with contextlib.suppress(Exception):
-                metadata_logger.removeHandler(existing)
+                root_logger.removeHandler(existing)
 
         handler = StreamableLogHandler(
             metadata=metadata,
@@ -370,7 +373,8 @@ def setup_streamable_logging_for_workflow(
         handler.setFormatter(formatter)
         handler.setLevel(log_level)
 
-        metadata_logger.addHandler(handler)
+        root_logger.addHandler(handler)
+        _install_global_capture(handler)
         StreamableLogHandlerManager.set_handler(handler)
 
         logger.info(
@@ -383,6 +387,42 @@ def setup_streamable_logging_for_workflow(
     except Exception as e:
         logger.warning("Failed to setup streamable logging: %s", e)
         return None
+
+
+def _install_global_capture(handler: "StreamableLogHandler") -> None:
+    """Route uncaught exceptions and `warnings` records to the logger. Idempotent."""
+    global _global_capture_installed  # noqa: PLW0603
+    if _global_capture_installed:
+        return
+
+    prev_sys_excepthook = sys.excepthook
+
+    def _sys_excepthook(exc_type, exc, tb):
+        try:
+            logger.error("Workflow terminated with uncaught exception", exc_info=(exc_type, exc, tb))
+            with contextlib.suppress(Exception):
+                handler.flush(timeout=5.0)
+        finally:
+            prev_sys_excepthook(exc_type, exc, tb)
+
+    prev_threading_excepthook = threading.excepthook
+
+    def _threading_excepthook(args):
+        # Worker self-crash: skip logging to avoid re-entering the dead worker
+        # via emit() (would deadlock the flush attempt and never ship).
+        if args.thread is handler._worker:
+            return prev_threading_excepthook(args)
+        logger.error(
+            "Uncaught exception in thread %s",
+            args.thread.name if args.thread is not None else "<unknown>",
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+        return prev_threading_excepthook(args)
+
+    sys.excepthook = _sys_excepthook
+    threading.excepthook = _threading_excepthook
+    logging.captureWarnings(True)
+    _global_capture_installed = True
 
 
 def cleanup_streamable_logging():

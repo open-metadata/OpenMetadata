@@ -1,8 +1,20 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.service.rdf;
 
-import io.micrometer.core.instrument.Timer;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.time.Clock;
+import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -10,224 +22,114 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
-public class RdfUpdater {
-
-  private static final int MAX_PENDING_RDF_WRITES = 1000;
-  private static final AtomicInteger pendingWrites = new AtomicInteger(0);
-  private static final AtomicLong droppedWrites = new AtomicLong(0L);
-
-  private static RdfRepository rdfRepository;
+public final class RdfUpdater {
+  private static volatile Consumer<RdfLiveWrite> writeQueue;
+  private static RdfLiveWriter writer;
 
   private RdfUpdater() {}
 
-  public static void initialize(RdfConfiguration config) {
-    if (config.getEnabled() != null && config.getEnabled()) {
+  public static void initialize(final RdfConfiguration config) {
+    initialize(config, new AsyncOperationsConfiguration());
+  }
+
+  public static synchronized void initialize(
+      final RdfConfiguration config,
+      final AsyncOperationsConfiguration asyncOperationsConfiguration) {
+    disable();
+    if (Boolean.TRUE.equals(config.getEnabled())) {
+      if (asyncOperationsConfiguration.getMaxConcurrentRdfWrites() > 1) {
+        LOG.warn(
+            "Durable live RDF delivery uses one cluster-wide writer to preserve mutation order");
+      }
+      final RdfLiveWriteStore store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+      RdfProjectionHealth.initialize(store);
       RdfRepository.initialize(config);
-      rdfRepository = RdfRepository.getInstance();
-      LOG.info("RDF updater initialized");
-    } else {
-      LOG.info("RDF updater disabled");
+      final RdfRepository repository = RdfRepository.getInstance();
+      writer =
+          new RdfLiveWriter(
+              store,
+              command -> command.apply(repository),
+              AsyncService.getInstance().getExecutorService());
+      writeQueue = writer::enqueue;
+      writer.start();
+      LOG.info("RDF updater initialized with durable, ordered live writes");
     }
-  }
-
-  public static void updateEntity(EntityInterface entity) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    submitAsync(
-        "updateEntity " + entity.getId(),
-        () -> {
-          Timer.Sample sample = RequestLatencyContext.startRdfOperation();
-          try {
-            rdfRepository.createOrUpdate(entity);
-          } catch (Exception e) {
-            LOG.error("Failed to update entity {} in RDF", entity.getId(), e);
-          } finally {
-            RequestLatencyContext.endRdfOperation(sample);
-          }
-        });
-  }
-
-  public static void deleteEntity(EntityReference entityReference) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    submitAsync(
-        "deleteEntity " + entityReference.getId(),
-        () -> {
-          Timer.Sample sample = RequestLatencyContext.startRdfOperation();
-          try {
-            rdfRepository.delete(entityReference);
-          } catch (Exception e) {
-            LOG.error("Failed to delete entity {} in RDF", entityReference.getId(), e);
-          } finally {
-            RequestLatencyContext.endRdfOperation(sample);
-          }
-        });
-  }
-
-  public static void addRelationship(EntityRelationship relationship) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    if (isGlossaryTermRelatedTo(relationship)) {
-      // Glossary term ⇔ glossary term RELATED_TO is owned by the typed path
-      // (addGlossaryTermRelation), which writes the precise predicate —
-      // skos:exactMatch for synonym, skos:broader for broader, om:relatedTo
-      // for relatedTo, etc. The generic addRelationship would unconditionally
-      // write om:relatedTo on top of that, so every type change would leak a
-      // residual om:relatedTo triple that nothing later cleans up.
-      return;
-    }
-    submitAsync(
-        "addRelationship",
-        () -> {
-          Timer.Sample sample = RequestLatencyContext.startRdfOperation();
-          try {
-            rdfRepository.addRelationship(relationship);
-          } catch (Exception e) {
-            LOG.error("Failed to add relationship in RDF", e);
-          } finally {
-            RequestLatencyContext.endRdfOperation(sample);
-          }
-        });
-  }
-
-  public static void removeRelationship(EntityRelationship relationship) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    if (isGlossaryTermRelatedTo(relationship)) {
-      // See addRelationship — the typed removal path
-      // (removeGlossaryTermRelation) owns these deletions.
-      return;
-    }
-    submitAsync(
-        "removeRelationship",
-        () -> {
-          Timer.Sample sample = RequestLatencyContext.startRdfOperation();
-          try {
-            rdfRepository.removeRelationship(relationship);
-          } catch (Exception e) {
-            LOG.error("Failed to remove relationship in RDF", e);
-          } finally {
-            RequestLatencyContext.endRdfOperation(sample);
-          }
-        });
-  }
-
-  private static boolean isGlossaryTermRelatedTo(EntityRelationship relationship) {
-    return Entity.GLOSSARY_TERM.equals(relationship.getFromEntity())
-        && Entity.GLOSSARY_TERM.equals(relationship.getToEntity())
-        && relationship.getRelationshipType() == Relationship.RELATED_TO;
   }
 
   public static boolean isEnabled() {
-    return rdfRepository != null && rdfRepository.isEnabled();
+    return writeQueue != null;
   }
 
-  public static void disable() {
-    rdfRepository = null;
+  public static synchronized void disable() {
+    stop();
     RdfRepository.reset();
-    LOG.info("RDF updater disabled");
+  }
+
+  public static synchronized void stop() {
+    writeQueue = null;
+    if (writer != null) {
+      writer.close();
+      writer = null;
+    }
+  }
+
+  public static void updateEntity(final EntityInterface entity) {
+    if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
+      submit(RdfLiveWrite.EntityUpdate.capture(entity));
+    }
+  }
+
+  public static void deleteEntity(final EntityReference entity) {
+    if (isEnabled() && !RdfExcludedEntities.isExcluded(entity.getType())) {
+      submit(new RdfLiveWrite.EntityDelete(entity.getType(), entity.getId()));
+    }
+  }
+
+  public static void addRelationship(final EntityRelationship relationship) {
+    submitRelationship(relationship, false);
+  }
+
+  public static void removeRelationship(final EntityRelationship relationship) {
+    submitRelationship(relationship, true);
+  }
+
+  private static void submitRelationship(
+      final EntityRelationship relationship, final boolean remove) {
+    if (isEnabled() && shouldIndexRelationship(relationship)) {
+      submit(RdfLiveWrite.RelationshipChange.capture(relationship, remove));
+    }
+  }
+
+  private static boolean shouldIndexRelationship(final EntityRelationship relationship) {
+    // Typed glossary hooks own these edges; the generic hook would leak an extra om:relatedTo.
+    final boolean typedGlossaryRelation =
+        Entity.GLOSSARY_TERM.equals(relationship.getFromEntity())
+            && Entity.GLOSSARY_TERM.equals(relationship.getToEntity())
+            && relationship.getRelationshipType() == Relationship.RELATED_TO;
+    return !typedGlossaryRelation
+        && !RdfExcludedEntities.isExcluded(relationship.getFromEntity())
+        && !RdfExcludedEntities.isExcluded(relationship.getToEntity());
   }
 
   public static void addGlossaryTermRelation(
-      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    submitAsync(
-        "addGlossaryTermRelation",
-        () -> {
-          try {
-            rdfRepository.addGlossaryTermRelation(fromTermId, toTermId, relationType);
-          } catch (Exception e) {
-            LOG.error(
-                "Failed to add glossary term relation {} -> {} ({}) to RDF",
-                fromTermId,
-                toTermId,
-                relationType,
-                e);
-          }
-        });
+      final UUID fromId, final UUID toId, final String relationType) {
+    submit(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, relationType, false));
   }
 
   public static void removeGlossaryTermRelation(
-      java.util.UUID fromTermId, java.util.UUID toTermId, String relationType) {
-    if (rdfRepository == null || !rdfRepository.isEnabled()) {
-      return;
-    }
-    submitAsync(
-        "removeGlossaryTermRelation",
-        () -> {
-          try {
-            rdfRepository.removeGlossaryTermRelation(fromTermId, toTermId, relationType);
-          } catch (Exception e) {
-            LOG.error(
-                "Failed to remove glossary term relation {} -> {} ({}) from RDF",
-                fromTermId,
-                toTermId,
-                relationType,
-                e);
-          }
-        });
+      final UUID fromId, final UUID toId, final String relationType) {
+    submit(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, relationType, true));
   }
 
-  // Bounded fire-and-forget submission: a request thread that triggers an RDF
-  // write must NOT wait for Fuseki. We submit to AsyncService (virtual-thread
-  // pool) but gate first on a soft cap of in-flight writes so that, if Fuseki
-  // is unreachable and tasks pile up, we drop with a logged warning instead
-  // of spawning unbounded virtual threads. RDF is a derived index — missed
-  // writes are reconciled by the weekly RdfIndexApp run.
-  //
-  // Ordering trade-off (deliberate): pre-PR the EntityRepository hook chain
-  // (removeOwners → storeOwners → postUpdate → RdfUpdater.updateEntity) ran
-  // synchronously on the request thread and was therefore implicitly
-  // sequenced per entity. Submitting through AsyncService loses that
-  // sequencing — concurrent operations for the same entity / edge can land
-  // in any order. We accept the race because:
-  //   1. EntityUpdater diff-applies changes per request, so an add-then-remove
-  //      of the same edge within one API call nets to no-op (no hooks fire).
-  //   2. Cross-request races resolve at the next weekly recreate-index
-  //      (RdfIndexApp with recreateIndex=true wipes and rebuilds from MySQL,
-  //      so any temporarily out-of-order RDF state is reconciled within a week).
-  //   3. The alternative — per-entity sequencing via a striped lock —
-  //      costs memory and adds latency for the common case where there is
-  //      no contention.
-  // If observed-in-production ordering bugs emerge, this is the place to
-  // add a ConcurrentHashMap<UUID, Semaphore>-style per-entity gate.
-  private static void submitAsync(String description, Runnable task) {
-    int newCount = pendingWrites.incrementAndGet();
-    if (newCount > MAX_PENDING_RDF_WRITES) {
-      pendingWrites.decrementAndGet();
-      long dropped = droppedWrites.incrementAndGet();
-      if (dropped == 1 || dropped % 100 == 0) {
-        LOG.warn(
-            "Dropping RDF {} due to backpressure (pending={}, total dropped={})",
-            description,
-            newCount - 1,
-            dropped);
-      }
-      return;
-    }
-    try {
-      AsyncService.getInstance()
-          .execute(
-              () -> {
-                try {
-                  task.run();
-                } finally {
-                  pendingWrites.decrementAndGet();
-                }
-              });
-    } catch (RuntimeException e) {
-      pendingWrites.decrementAndGet();
-      LOG.error("Failed to submit RDF {} to async executor", description, e);
+  private static void submit(final RdfLiveWrite command) {
+    final Consumer<RdfLiveWrite> queue = writeQueue;
+    if (queue != null) {
+      PostCommitActionQueue.runOrDefer(() -> queue.accept(command));
     }
   }
 }

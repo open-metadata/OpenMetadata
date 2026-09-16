@@ -372,10 +372,11 @@ class TestHexSource(TestCase):
         result = self.hex_source.yield_dashboard_chart(SAMPLE_PROJECT)
         self.assertIsNone(result)
 
-    @patch("metadata.ingestion.source.dashboard.hex.metadata.get_connection")
-    def test_create_source(self, mock_get_connection):
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def test_create_source(self, mock_create_connection, mock_run_test_connection):
         """Test creating HexSource instance"""
-        mock_get_connection.return_value = MagicMock()
+        mock_create_connection.return_value.client = MagicMock()
 
         config = WorkflowSource.model_validate(MOCK_CONFIG["source"])
         metadata = MagicMock()

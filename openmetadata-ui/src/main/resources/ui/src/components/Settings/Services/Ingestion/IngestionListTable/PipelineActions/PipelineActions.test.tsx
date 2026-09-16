@@ -14,17 +14,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { MemoryRouter } from 'react-router-dom';
-import {
-  ingestionDataName,
-  mockPipelineActionsProps,
-} from '../../../../../../mocks/IngestionListTable.mock';
+import { mockPipelineActionsProps } from '../../../../../../mocks/IngestionListTable.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
-const mockNavigate = jest.fn();
+const mockOpenLogs = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+jest.mock('../../../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
 }));
 
 jest.mock('./PipelineActionsDropdown', () =>
@@ -38,10 +35,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditAll: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: true,
           }}
         />,
         {
@@ -59,10 +54,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              Delete: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            Delete: true,
           }}
         />,
         {
@@ -74,14 +67,100 @@ describe('PipelineAction', () => {
     expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
   });
 
-  it('should not render PipelineActionsDropdown if both EditAll and delete permission is not present', async () => {
+  it('should render PipelineActionsDropdown if only Deploy permission is present', async () => {
     await act(async () => {
       render(
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: DEFAULT_ENTITY_PERMISSION,
+            ...DEFAULT_ENTITY_PERMISSION,
+            Deploy: true,
           }}
+          pipeline={{ ...mockPipelineActionsProps.pipeline, enabled: true }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
+  });
+
+  it('should render PipelineActionsDropdown if only Trigger permission is present', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Trigger: true,
+          }}
+          pipeline={{
+            ...mockPipelineActionsProps.pipeline,
+            deployed: true,
+            enabled: true,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
+  });
+
+  it('should not render PipelineActionsDropdown with only Deploy permission when pipeline is disabled', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Deploy: true,
+          }}
+          pipeline={{ ...mockPipelineActionsProps.pipeline, enabled: false }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.queryByText('PipelineActionsDropdown')).toBeNull();
+  });
+
+  it('should not render PipelineActionsDropdown with only Trigger permission when pipeline is not deployed', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Trigger: true,
+          }}
+          pipeline={{
+            ...mockPipelineActionsProps.pipeline,
+            deployed: false,
+            enabled: true,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.queryByText('PipelineActionsDropdown')).toBeNull();
+  });
+
+  it('should not render PipelineActionsDropdown without an action permission', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={DEFAULT_ENTITY_PERMISSION}
         />,
         {
           wrapper: MemoryRouter,
@@ -98,9 +177,7 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
           }}
         />,
         {
@@ -119,10 +196,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditIngestionPipelineStatus: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditIngestionPipelineStatus: true,
           }}
         />,
         {
@@ -150,7 +225,7 @@ describe('PipelineAction', () => {
     expect(screen.getByText('label.pause')).toBeInTheDocument();
   });
 
-  it('should redirect to logs page when clicked on logs button', async () => {
+  it('should open the logs modal when clicked on logs button', async () => {
     await act(async () => {
       render(<PipelineActions {...mockPipelineActionsProps} />, {
         wrapper: MemoryRouter,
@@ -161,9 +236,10 @@ describe('PipelineAction', () => {
 
     fireEvent.click(logsButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/searchServices/OpenMetadata.OpenMetadata_elasticSearchReIndex/logs'
-    );
+    expect(mockOpenLogs).toHaveBeenCalledWith({
+      logEntityType: 'searchServices',
+      fqn: 'OpenMetadata.OpenMetadata_elasticSearchReIndex',
+    });
   });
 
   it('should call handleEnableDisableIngestion when clicked on pause or resume click', async () => {

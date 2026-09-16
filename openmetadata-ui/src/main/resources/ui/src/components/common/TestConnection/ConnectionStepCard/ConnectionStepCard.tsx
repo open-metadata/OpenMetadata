@@ -25,7 +25,7 @@ import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-ba
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { requiredField } from '../../../../utils/CommonUtils';
+import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
 import './connection-step-card.less';
 
 const { Panel } = Collapse;
@@ -36,12 +36,10 @@ interface ConnectionStepCardProp {
   isTestingConnection: boolean;
 }
 
-const ConnectionStepCard = ({
-  testConnectionStep,
-  testConnectionStepResult,
-  isTestingConnection,
-}: ConnectionStepCardProp) => {
-  const { t } = useTranslation();
+const getConnectionStepStatus = (
+  testConnectionStepResult: TestConnectionStepResult | undefined,
+  isTestingConnection: boolean
+) => {
   const isSkipped =
     isUndefined(testConnectionStepResult) && !isTestingConnection;
   const hasPassed = !isSkipped && testConnectionStepResult?.passed;
@@ -50,6 +48,106 @@ const ConnectionStepCard = ({
   const isMandatoryStepsFailing = failed && testConnectionStepResult?.mandatory;
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
+
+  return {
+    isSkipped,
+    success,
+    isMandatoryStepsFailing,
+    isNonMandatoryStepsFailing,
+  };
+};
+
+const ConnectionStepStatusBadge = ({
+  isTestingConnection,
+  success,
+  isMandatoryStepsFailing,
+  isNonMandatoryStepsFailing,
+  isSkipped,
+}: {
+  isTestingConnection: boolean;
+  success: boolean | undefined;
+  isMandatoryStepsFailing: boolean | undefined;
+  isNonMandatoryStepsFailing: boolean | undefined;
+  isSkipped: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  if (isTestingConnection) {
+    return (
+      <Typography.Text className="awaiting-status">
+        {`${t('label.awaiting-status')}...`}
+      </Typography.Text>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="d-flex gap-2 align-center">
+        <Typography.Text className="success-status">
+          {`${t('label.success')}`}
+        </Typography.Text>
+        <Icon
+          component={SuccessIcon}
+          data-testid="success-badge"
+          style={{ fontSize: '20px' }}
+        />
+      </div>
+    );
+  }
+
+  if (isMandatoryStepsFailing) {
+    return (
+      <div className="d-flex gap-2 align-center">
+        <Typography.Text className="failure-status">
+          {`${t('label.failed')}`}
+        </Typography.Text>
+        <Icon
+          component={FailIcon}
+          data-testid="fail-badge"
+          style={{ fontSize: '20px' }}
+        />
+      </div>
+    );
+  }
+
+  if (isNonMandatoryStepsFailing) {
+    return (
+      <div className="d-flex gap-2 align-center">
+        <Typography.Text className="warning-status">
+          {`${t('label.attention')}`}
+        </Typography.Text>
+        <Icon
+          component={AttentionIcon}
+          data-testid="warning-badge"
+          style={{ fontSize: '20px' }}
+        />
+      </div>
+    );
+  }
+
+  if (isSkipped) {
+    return (
+      <Typography.Text className="skipped-status">
+        {t('label.skipped')}
+      </Typography.Text>
+    );
+  }
+
+  return null;
+};
+
+const ConnectionStepCard = ({
+  testConnectionStep,
+  testConnectionStepResult,
+  isTestingConnection,
+}: ConnectionStepCardProp) => {
+  const { t } = useTranslation();
+  const {
+    isSkipped,
+    success,
+    isMandatoryStepsFailing,
+    isNonMandatoryStepsFailing,
+  } = getConnectionStepStatus(testConnectionStepResult, isTestingConnection);
 
   const logs =
     testConnectionStepResult?.errorLog ??
@@ -92,52 +190,13 @@ const ConnectionStepCard = ({
               <InfoCircleOutlined />
             </Tooltip>
           </Space>
-          {isTestingConnection && (
-            <Typography.Text className="awaiting-status">
-              {`${t('label.awaiting-status')}...`}
-            </Typography.Text>
-          )}
-          {success && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="success-status">
-                {`${t('label.success')}`}
-              </Typography.Text>
-              <Icon
-                component={SuccessIcon}
-                data-testid="success-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isMandatoryStepsFailing && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="failure-status">
-                {`${t('label.failed')}`}
-              </Typography.Text>
-              <Icon
-                component={FailIcon}
-                data-testid="fail-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isNonMandatoryStepsFailing && (
-            <div className="d-flex gap-2 align-center">
-              <Typography.Text className="warning-status">
-                {`${t('label.attention')}`}
-              </Typography.Text>
-              <Icon
-                component={AttentionIcon}
-                data-testid="warning-badge"
-                style={{ fontSize: '20px' }}
-              />
-            </div>
-          )}
-          {isSkipped && (
-            <Typography.Text className="skipped-status">{`${t(
-              'label.skipped'
-            )}`}</Typography.Text>
-          )}
+          <ConnectionStepStatusBadge
+            isMandatoryStepsFailing={isMandatoryStepsFailing}
+            isNonMandatoryStepsFailing={isNonMandatoryStepsFailing}
+            isSkipped={isSkipped}
+            isTestingConnection={isTestingConnection}
+            success={success}
+          />
         </Space>
       </div>
       {(isMandatoryStepsFailing ||

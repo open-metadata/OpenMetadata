@@ -16,6 +16,7 @@ import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -23,14 +24,26 @@ import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
 
+export const getSamlCallbackParams = ({
+  hash,
+  search,
+}: {
+  hash: string;
+  search: string;
+}) => {
+  const fragmentParams = new URLSearchParams(hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(search);
+
+  return fragmentParams.has('id_token') ? fragmentParams : queryParams;
+};
+
 const SamlCallback = () => {
   const { handleSuccessfulLogin } = useAuthProvider();
   const location = useCustomLocation();
   const { t } = useTranslation();
 
   const processLogin = useCallback(async () => {
-    // get #id_token from hash params in the URL
-    const params = new URLSearchParams(location.search);
+    const params = getSamlCallbackParams(location);
     const idToken = params.get('id_token');
     const name = params.get('name');
     const email = params.get('email');
@@ -73,6 +86,7 @@ const SamlCallback = () => {
 
   return (
     <>
+      <DocumentTitle title={t('label.sign-in')} />
       <div data-testid="redirect-message">{t('message.redirect-message')}</div>
       <Loader fullScreen />
     </>

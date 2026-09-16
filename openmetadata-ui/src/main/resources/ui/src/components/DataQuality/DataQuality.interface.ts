@@ -13,7 +13,7 @@
 
 import { DateRangeObject } from 'Models';
 import { SVGAttributes } from 'react';
-import { LinkProps } from 'react-router-dom';
+import type { LinkProps, NavigateFunction } from 'react-router-dom';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
@@ -37,13 +37,14 @@ export type TestCaseSearchParams = {
   searchValue?: string;
   tableFqn?: string;
   testPlatforms?: TestPlatform[];
-  testCaseStatus?: TestCaseStatus;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
   testCaseType?: TestCaseType;
   lastRunRange?: DateRangeObject;
   tier?: string;
   tags?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  dataProductFqn?: string;
 };
 
 export type DataQualityPageParams = TestCaseSearchParams & {
@@ -87,6 +88,8 @@ export interface TestCaseStatusAreaChartWidgetProps {
 export interface PieChartWidgetCommonProps {
   className?: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  navigate?: NavigateFunction;
+  redirectPath?: string;
 }
 
 export interface DataStatisticWidgetProps {

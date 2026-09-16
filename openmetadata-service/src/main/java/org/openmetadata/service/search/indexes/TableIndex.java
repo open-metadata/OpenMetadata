@@ -14,7 +14,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
+public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AIContextIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -54,6 +54,16 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     // fetches the declared fields — without this it's dropped from _source on reindex,
     // breaking Explore's "Sort by Weekly Usage" (reads usageSummary.weeklyStats.count).
     fields.add("usageSummary");
+    // "testSuite" is fields-gated as well (TableRepository.clearFields nulls it when not
+    // requested). Lineage nodes read (node as Table).testSuite to render the data-observability
+    // summary, so without it getDataQualityLineage loses its test information after a reindex.
+    fields.add("testSuite");
+    // The AIContextIndex mixin materializes aiContext/aiContextForeignKeyTargets from these
+    // fields-gated relationships; without them reindex-built docs would carry an empty context.
+    fields.add("tableConstraints");
+    fields.add("joins");
+    fields.add("tablePartition");
+    fields.add("schemaDefinition");
     return java.util.Collections.unmodifiableSet(fields);
   }
 
@@ -79,6 +89,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     }
 
     doc.put("locationPath", table.getLocationPath());
+    doc.put("aliases", table.getAliases());
     doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("processedLineage", table.getProcessedLineage());
@@ -100,7 +111,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 3.0f);
+    fields.put("columnNamesFuzzy", 3.0f);
     return fields;
   }
 }

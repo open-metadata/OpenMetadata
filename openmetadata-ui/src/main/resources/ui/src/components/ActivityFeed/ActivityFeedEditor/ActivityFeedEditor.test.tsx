@@ -22,7 +22,7 @@ const onSaveHandler = jest.fn().mockImplementation(() => {
   onSave();
 });
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getBackendFormat: jest.fn(),
   HTMLToMarkdown: jest.fn().mockReturnValue({ turndown: jest.fn() }),
 }));
@@ -35,6 +35,7 @@ jest.mock('../FeedEditor/FeedEditor', () => ({
         <div
           data-testid="feed-editor"
           ref={ref}
+          role="presentation"
           onChange={onChangeHandler}
           onClick={onSave}>
           FeedEditor

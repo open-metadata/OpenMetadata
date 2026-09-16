@@ -12,8 +12,8 @@
  */
 @import (reference) '../../../styles/variables.less';
 
-@lineage-border: #b1b1b7;
-@lineage-collapse-header: #fafafa;
+@lineage-border: var(--om-legacy-color-b1b1b7);
+@lineage-collapse-header: var(--om-color-gray-50);
 
 .ant-btn.ant-btn-background-ghost.expand-btn {
   background-color: white;
@@ -26,6 +26,16 @@
 
 .react-flow__node {
   box-shadow: none;
+
+  &.lineage-path-highlight > .lineage-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-path-highlight > .lineage-scene-layer-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+  }
 }
 
 // Node default state
@@ -33,8 +43,104 @@
   width: 100%;
   max-width: 400px; //  Max width of Lineage Node, in case of long columns names
   border: 1px solid @lineage-border;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   overflow: hidden;
+  transition: border-color var(--om-duration-150) ease, box-shadow var(--om-duration-150) ease,
+    opacity var(--om-duration-150) ease;
+
+  &.lineage-path-highlight {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-scene-layer-node {
+    min-height: 66px;
+    border-color: @grey-200;
+    border-radius: var(--om-radius-xl);
+    background: @white;
+    box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
+
+    &.lineage-path-highlight,
+    &.custom-node-header-active {
+      border-color: @primary-color;
+      box-shadow: 0 0 0 1px @primary-color, 0 2px 8px var(--om-legacy-color-16-24-40-0-12);
+    }
+
+    .lineage-node-content {
+      min-height: 66px;
+
+      .lineage-scene-drill-button {
+        top: 50%;
+        right: 14px;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: var(--om-radius-md);
+        background: @primary-1;
+        box-shadow: none;
+        transform: translateY(-50%);
+        opacity: 1;
+
+        svg {
+          width: 13px;
+          height: 13px;
+        }
+      }
+
+      .label-container {
+        border-radius: var(--om-radius-xl);
+      }
+    }
+
+    .custom-node-label-container {
+      .entity-label-container {
+        min-height: 64px;
+        padding: var(--om-space-10) var(--om-space-46) var(--om-space-10) var(--om-space-14);
+
+        .entity-service-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          margin-right: var(--om-space-10);
+
+          svg,
+          img {
+            width: 22px;
+            height: 22px;
+            margin-bottom: 0;
+          }
+        }
+
+        .entity-header-display-name {
+          width: auto !important;
+          max-width: 170px;
+          color: @grey-900;
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-semibold);
+          line-height: 18px;
+        }
+
+        .lineage-breadcrumbs {
+          margin-bottom: 0;
+
+          .lineage-breadcrumb-item {
+            max-width: 72px;
+            font-size: var(--om-font-size-11_5);
+            line-height: 16px;
+          }
+        }
+
+        .lineage-service-subtitle {
+          display: block;
+          color: @grey-600;
+          font-size: var(--om-font-size-11_5);
+          line-height: 16px;
+        }
+      }
+    }
+  }
 
   .lineage-expand-icon {
     width: 12px;
@@ -43,72 +149,86 @@
   }
 
   .profiler-item {
-    margin-right: 4px;
-    border-radius: 4px;
+    margin-right: var(--om-space-4);
+    border-radius: var(--om-radius-sm);
 
     &.medium {
       width: 36px;
       height: 36px;
       line-height: 36px;
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
     }
 
     &.small {
       width: 24px;
       height: 24px;
       line-height: 24px;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
 
     &.green {
-      border: 1px solid #23aa66;
+      border: 1px solid var(--om-legacy-color-23aa66);
     }
 
     &.amber {
-      border: 1px solid #dc6803;
+      border: 1px solid var(--om-color-warning-600);
     }
 
     &.red {
-      border: 1px solid #d92d20;
+      border: 1px solid var(--om-color-error-600);
     }
   }
 
   .lineage-node-content {
+    position: relative;
+
+    .lineage-scene-drill-button {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: var(--om-z-2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid @grey-200;
+      border-radius: var(--om-radius-md);
+      background: @primary-1;
+      color: @primary-color;
+      cursor: pointer;
+      opacity: 0;
+      box-shadow: @box-shadow-base;
+      transition: opacity var(--om-duration-150) ease, background-color var(--om-duration-150) ease;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: @white;
+        opacity: 1;
+      }
+    }
+
+    &:hover,
+    &:focus-within {
+      .lineage-scene-drill-button {
+        opacity: 1;
+      }
+    }
+
     .label-container {
       .custom-node-label-container {
         width: 100%;
 
-        .lineage-breadcrumbs {
-          .lineage-breadcrumb-item {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 12px;
-            max-width: 80px;
-          }
-
-          .lineage-breadcrumb-item-separator {
-            position: relative;
-            display: inline-block;
-            width: 7px;
-            height: 7px;
-            margin: 0 6px 0 4px;
-
-            &::after {
-              content: '';
-              position: absolute;
-              inset: 1px;
-              border-top: 1px solid @grey-400;
-              border-right: 1px solid @grey-400;
-              transform: rotate(45deg);
-            }
-          }
-        }
-
         .entity-header-name {
           .node-service-type::after {
             content: '|';
-            margin-left: 6px;
+            margin-left: var(--om-space-6);
           }
 
           svg {
@@ -118,18 +238,18 @@
         }
 
         .entity-label-container {
-          padding: 8px 16px 0 16px;
+          padding: var(--om-space-8) var(--om-space-16) 0 var(--om-space-16);
 
           .entity-service-icon svg {
             height: 32px;
             width: 32px;
-            margin-bottom: 6px;
+            margin-bottom: var(--om-space-6);
           }
 
           .entity-service-icon img {
             height: 32px;
             width: 32px;
-            margin-bottom: 6px;
+            margin-bottom: var(--om-space-6);
           }
 
           &.with-footer::after {
@@ -145,41 +265,35 @@
         .entity-footer {
           display: flex;
           justify-content: space-between;
-          gap: 20px;
-          padding: 8px 16px;
+          gap: var(--om-space-20);
+          padding: var(--om-space-8) var(--om-space-16);
 
           &__entity-type-and-dropdown {
             display: flex;
-            gap: 6px;
-
-            .MuiChip-root {
-              background-color: @grey-9;
-              border-color: @grey-15;
-              color: @grey-600;
-            }
+            gap: var(--om-space-6);
           }
 
           &__test-summary-and-filter {
             display: flex;
-            gap: 6px;
+            gap: var(--om-space-6);
           }
 
           .test-summary-and-mapping {
             display: flex;
-            gap: 5px;
+            gap: var(--om-space-5);
           }
 
           .children-info-dropdown-label {
             min-width: fit-content;
-            padding: 2px @size-xs 2px @size-sm;
+            padding: var(--om-space-2) @size-xs var(--om-space-2) @size-sm;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--om-radius-lg);
             box-shadow: none;
 
             background-color: @primary-1;
             color: @blue-7;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--om-font-size-xs);
+            font-weight: var(--om-font-weight-medium);
             line-height: 18px;
             text-transform: none;
             cursor: pointer;
@@ -233,12 +347,12 @@
 
     .column-container {
       min-height: 48px;
-      padding: 12px;
+      padding: var(--om-space-12);
       padding-top: 0;
       background-color: @grey-9;
 
       .inside-current-page-item {
-        margin-top: 0px;
+        margin-top: 0;
         display: block;
 
         .custom-node-header-column-tracing {
@@ -252,13 +366,13 @@
 
       .outside-current-page-item:has(.custom-node-header-column-tracing) {
         display: block;
-        margin-top: 0px;
+        margin-top: 0;
       }
 
       .outside-current-page-items:has(.custom-node-header-column-tracing) {
         border-top: 1px solid silver;
-        margin-top: 8px;
-        padding-top: 8px;
+        margin-top: var(--om-space-8);
+        padding-top: var(--om-space-8);
       }
 
       .lineage-collapse-column.ant-collapse {
@@ -266,13 +380,13 @@
         border-radius: 0;
 
         .ant-collapse-header {
-          padding: 4px;
-          font-size: 12px;
+          padding: var(--om-space-4);
+          font-size: var(--om-font-size-xs);
           display: inherit; // to fix the overflow issue of parent column node, which has children.
         }
 
         .ant-collapse-content-box {
-          padding: 4px;
+          padding: var(--om-space-4);
         }
 
         .ant-collapse-item {
@@ -282,21 +396,21 @@
       }
 
       .custom-node-column-container {
-        padding: 6px 8px;
+        padding: var(--om-space-6) var(--om-space-8);
         background-color: inherit;
         position: relative;
-        font-size: 12px;
-        font-weight: 400;
+        font-size: var(--om-font-size-xs);
+        font-weight: var(--om-font-weight-regular);
         border: 1px solid @grey-1;
         border-left: 6px solid transparent;
-        border-radius: 4px;
-        border-top-left-radius: 6px;
-        border-bottom-left-radius: 6px;
+        border-radius: var(--om-radius-sm);
+        border-top-left-radius: var(--om-radius-md);
+        border-bottom-left-radius: var(--om-radius-md);
 
         .custom-node-column-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: var(--om-space-12);
         }
 
         .custom-node-summary {
@@ -309,7 +423,7 @@
           display: flex;
           align-items: center;
           text-align: left;
-          gap: 4px;
+          gap: var(--om-space-4);
 
           .custom-node-name-icon {
             width: 14px;
@@ -323,8 +437,8 @@
         }
 
         .custom-node-constraint {
-          padding-left: 4px;
-          padding-right: 12px;
+          padding-left: var(--om-space-4);
+          padding-right: var(--om-space-12);
         }
 
         .ant-skeleton-element {
@@ -358,22 +472,22 @@
   }
 
   &.custom-node-header-active {
-    background-color: #eff8ff;
+    background-color: var(--om-color-brand-50);
 
     .lineage-node-content {
       .label-container {
-        background-color: #eff8ff;
+        background-color: var(--om-color-brand-50);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #eff8ff;
+            background-color: var(--om-color-brand-50);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #eff8ff;
+      background-color: var(--om-color-brand-50);
     }
 
     &.columns-expanded {
@@ -385,13 +499,13 @@
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #eff8ff;
+              background-color: var(--om-color-brand-50);
             }
           }
         }
 
         .column-container {
-          background-color: #eff8ff;
+          background-color: var(--om-color-brand-50);
         }
       }
 
@@ -402,45 +516,45 @@
   }
 
   &.custom-node-header-active.data-quality-failed-custom-node-header {
-    background-color: #fffbfa;
+    background-color: var(--om-color-error-25);
 
     .lineage-node-content {
       .label-container {
-        background-color: #fffbfa;
+        background-color: var(--om-color-error-25);
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: #fffbfa;
+            background-color: var(--om-color-error-25);
           }
         }
       }
     }
 
     .lineage-node-badge-container {
-      background-color: #fffbfa;
-      border-color: #d92d20;
+      background-color: var(--om-color-error-25);
+      border-color: var(--om-color-error-600);
     }
 
     &.columns-expanded {
-      background-color: #fee4e2;
+      background-color: var(--om-color-error-100);
 
       .lineage-node-badge-container {
-        background-color: #fee4e2;
+        background-color: var(--om-color-error-100);
       }
 
       .lineage-node-content {
         .label-container {
-          background-color: #fee4e2;
+          background-color: var(--om-color-error-100);
 
           .custom-node-label-container {
             .entity-footer {
-              background-color: #fffbfa;
+              background-color: var(--om-color-error-25);
             }
           }
         }
 
         .column-container {
-          background-color: #fffbfa;
+          background-color: var(--om-color-error-25);
         }
       }
     }
@@ -498,7 +612,7 @@
 }
 
 .lineage-base-node {
-  border-top-left-radius: 0px;
+  border-top-left-radius: var(--om-radius-none);
 
   .lineage-node-badge-container {
     position: absolute;
@@ -507,12 +621,12 @@
     width: 68px;
     height: 15px;
 
-    border: 1px solid rgb(177, 177, 183);
+    border: 1px solid var(--om-legacy-color-b1b1b7);
     border-bottom: 0px;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
+    border-top-left-radius: var(--om-radius-10);
+    border-top-right-radius: var(--om-radius-10);
 
-    background: rgb(255, 255, 255);
+    background: var(--om-color-white);
 
     .lineage-node-badge {
       position: absolute;
@@ -522,17 +636,17 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 4px;
+      gap: var(--om-space-4);
 
       width: 60px;
-      padding: 2px;
-      border-radius: 7px;
+      padding: var(--om-space-2);
+      border-radius: var(--om-radius-7);
 
-      background-color: #175cd3;
+      background-color: var(--om-color-brand-700);
       color: white;
 
-      font-size: 12px;
-      font-weight: 500;
+      font-size: var(--om-font-size-xs);
+      font-weight: var(--om-font-weight-medium);
 
       &::before {
         display: inline-block;
@@ -553,7 +667,7 @@
   }
 
   .lineage-node-content {
-    margin-top: 10px;
+    margin-top: var(--om-space-10);
   }
 }
 
@@ -570,8 +684,8 @@
 .react-flow__node-load-more {
   padding: 0 !important;
   box-shadow: none !important;
-  font-weight: 500;
-  font-size: 16px;
+  font-weight: var(--om-font-weight-medium);
+  font-size: var(--om-font-size-md);
 }
 
 // Node hovered state
@@ -588,7 +702,7 @@
     border-color: @primary-color;
 
     .lineage-node-badge-container {
-      border-color: rgb(53, 111, 231);
+      border-color: var(--om-legacy-color-356fe7);
     }
   }
 
@@ -603,9 +717,9 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            color: #bc1b06;
-            border-left-color: #d92d20;
+            background-color: var(--om-color-error-50);
+            color: var(--om-color-orange-dark-700);
+            border-left-color: var(--om-color-error-600);
 
             .profiler-item {
               color: black;
@@ -621,8 +735,8 @@
       .column-container {
         .custom-node-column-container {
           &:hover {
-            background-color: #fef3f2;
-            border-left-color: #d92d20;
+            background-color: var(--om-color-error-50);
+            border-left-color: var(--om-color-error-600);
           }
         }
       }
@@ -636,8 +750,8 @@
     .lineage-node-content {
       .column-container {
         .custom-node-column-container.custom-node-header-column-tracing {
-          border-color: #d92d20;
-          background-color: #ffffff;
+          border-color: var(--om-color-error-600);
+          background-color: var(--om-color-white);
           color: black;
         }
       }
@@ -664,14 +778,14 @@
     width: max-content !important;
     min-width: 20px !important;
     height: 20px !important;
-    border-radius: 4px !important;
+    border-radius: var(--om-radius-sm) !important;
     border-color: @lineage-border !important;
     background: @white !important;
     top: min(58px, 50%) !important;
 
-    gap: 1px;
+    gap: var(--om-space-1);
     border: 1px solid;
-    transition: transform 0.2s ease;
+    transition: transform var(--om-duration-200) ease;
 
     &.react-flow__handle-right {
       left: 100%;
@@ -694,14 +808,14 @@
     svg {
       color: @grey-4;
       cursor: pointer;
-      padding: 1px;
+      padding: var(--om-space-1);
       width: 18px;
       height: 18px;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
 
       &:hover {
         color: @primary-color;
-        background-color: #eff8ff;
+        background-color: var(--om-color-brand-50);
       }
     }
 
@@ -742,7 +856,9 @@
   height: 25px;
   transform: none;
   border: none;
-  z-index: 1; // Adding as column text and data type should be behind handles
+  z-index: var(
+    --om-z-1
+  ); // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
     left: -10px;
@@ -765,26 +881,20 @@
   svg:first-child {
     border-right: 1px solid @grey-15;
     width: 22px;
-    padding-right: 6px;
+    padding-right: var(--om-space-6);
   }
 }
 
 .custom-node-deleted-icon {
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   border: 1px solid @error-color;
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
 }
 
 .manage-node {
   position: absolute;
   top: 10px;
   right: 4px;
-}
-
-.manage-node-menu .MuiMenuItem-root {
-  display: flex;
-  gap: 10px;
-  margin: 0px;
 }
 
 .react-flow__edge :hover {

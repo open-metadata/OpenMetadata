@@ -442,11 +442,9 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     assertEquals(Integer.valueOf(1024000), updated.getSize());
   }
 
-  @Disabled(
-      "Worksheet relationship not returned in spreadsheet fields - backend setFields needs worksheets support")
   @Test
   void test_spreadsheetWithWorksheets(TestNamespace ns) {
-    DriveService driveService = sharedDriveService(ns);
+    DriveService driveService = DriveServiceTestFactory.createGoogleDrive(ns);
 
     Spreadsheet spreadsheet =
         Spreadsheets.create()
@@ -464,17 +462,35 @@ public class SpreadsheetResourceIT extends BaseEntityIT<Spreadsheet, CreateSprea
     Spreadsheet spreadsheetWithWorksheets =
         Spreadsheets.find(spreadsheet.getId().toString()).withFields("worksheets").fetch();
     assertNotNull(spreadsheetWithWorksheets.getWorksheets());
-    // Filter worksheets that belong to this test by namespace prefix
-    long testWorksheetCount =
+    long getWorksheetCount =
         spreadsheetWithWorksheets.getWorksheets().stream()
-            .filter(ws -> ws.getName().startsWith(ns.prefix("sheet")))
+            .filter(ws -> ws.getName().startsWith("sheet"))
             .count();
-    assertEquals(3, testWorksheetCount, "Should have 3 worksheets with test namespace prefix");
+    assertEquals(3, getWorksheetCount, "Single GET should return 3 worksheets");
 
     for (EntityReference worksheetRef : spreadsheetWithWorksheets.getWorksheets()) {
       assertNotNull(worksheetRef.getId());
       assertNotNull(worksheetRef.getName());
     }
+
+    ListParams params =
+        new ListParams().withService(driveService.getFullyQualifiedName()).setFields("worksheets");
+    ListResponse<Spreadsheet> listed = SdkClients.adminClient().spreadsheets().list(params);
+
+    Spreadsheet listedSpreadsheet =
+        listed.getData().stream()
+            .filter(s -> s.getId().equals(spreadsheet.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Spreadsheet missing from list response"));
+
+    assertNotNull(
+        listedSpreadsheet.getWorksheets(), "List path must populate worksheets (silently dropped)");
+    long listWorksheetCount =
+        listedSpreadsheet.getWorksheets().stream()
+            .filter(ws -> ws.getName().startsWith("sheet"))
+            .count();
+    assertEquals(3, listWorksheetCount, "List path should return 3 worksheets");
+    assertNotNull(listedSpreadsheet.getService(), "List path must populate service");
   }
 
   @Test

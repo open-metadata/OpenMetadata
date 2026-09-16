@@ -52,6 +52,7 @@ jest.mock('react-codemirror2', () => ({
         <div>
           <span>{value}</span>
           <input
+            aria-label="code-mirror-editor-input"
             data-testid="code-mirror-editor-input"
             type="text"
             onChange={onChange}

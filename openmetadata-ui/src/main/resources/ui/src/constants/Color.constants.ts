@@ -14,6 +14,13 @@
 
 import { DEFAULT_THEME } from './Appearance.constants';
 
+export const TEST_STATUS_COLORS = {
+  SUCCESS: '#12B76A',
+  FAILED: '#F04438',
+  ABORTED: '#F79009',
+  QUEUED: '#414651',
+};
+
 export const GREEN_1 = '#067647';
 export const GREEN_6 = '#079455';
 export const GREEN_3 = '#48ca9e';
@@ -54,6 +61,12 @@ export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
 export const COLOR_GREY_400 = '#98A2B3';
 export const COLOR_GREY_300 = '#D0D5DD';
+
+// Data Quality dashboard chart palette (2.0 redesign shades)
+export const DQ_CHART_SUCCESS_COLOR = '#17b26a';
+export const DQ_CHART_WARNING_COLOR = '#f79009';
+export const DQ_CHART_FAILED_COLOR = '#cb5a50';
+export const DQ_CHART_BLUE_COLOR = '#1570ef';
 
 export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
   Severity1: {

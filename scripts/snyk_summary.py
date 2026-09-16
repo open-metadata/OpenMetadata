@@ -155,20 +155,26 @@ def render_code_slack(name, by_rule, rules, total, top):
     return head + "\n" + "\n".join(rows)
 
 
-def count_severities(libs, by_rule):
-    """Snyk Code SARIF uses level (error/warning/note); treat error=high, warning=medium, note=low.
-    Dep libs already have explicit severity."""
+def count_severities(libs, by_rule=None):
+    """Count vulnerable dependency packages only — one per (package, version)
+    library at its most-severe severity. Snyk Code (SAST) findings are still
+    shown in the detail sections but are deliberately excluded from the severity
+    totals and the high/critical build gate: they are code-quality findings, not
+    package vulnerabilities, and folding them in (even per-rule) conflated the
+    two and inflated the counts."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for info in libs.values():
         sev = (info["sev"] or "low").lower()
         if sev in counts:
-            counts[sev] += info["paths"]
-    for rid, items in by_rule.items():
-        for uri, level, lines in items:
-            mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            # Count one per (rule, file, level) group to match `total` in collect_code.
-            counts[mapped] += 1
+            counts[sev] += 1
     return counts
+
+
+def count_fixable(libs):
+    """Number of vulnerable libraries Snyk has a fix for — one per
+    (package, version) with a non-empty `fixedIn`. Mirrors the per-library
+    `fix: X` / `no fix` label rendered in the Slack detail rows."""
+    return sum(1 for info in libs.values() if info["fixedIn"])
 
 
 def main():
@@ -182,6 +188,7 @@ def main():
     md_parts = ["## 🛡️ Snyk Security Scan\n"]
     slack_parts = ["*🛡️ Snyk Security Scan*"]
     totals = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    fixable = 0
 
     files = sorted(glob.glob(os.path.join(args.src, "*.json")))
     # exclude our own output files if present
@@ -192,7 +199,7 @@ def main():
         sys.stdout.write("\n".join(md_parts) + "\n")
         if args.counts_file:
             with open(args.counts_file, "w") as f:
-                json.dump({**totals, "total": 0}, f)
+                json.dump({**totals, "total": 0, "fixable": 0}, f)
         if args.slack_file:
             with open(args.slack_file, "w") as f:
                 f.write("*🛡️ Snyk Security Scan*\n> No JSON reports found.")
@@ -215,6 +222,7 @@ def main():
             md_parts.append(render_deps_md(name, libs, total))
             slack_parts.append(render_deps_slack(name, libs, total, args.top))
             sub = count_severities(libs, {})
+            fixable += count_fixable(libs)
         for k in totals:
             totals[k] += sub[k]
 
@@ -222,17 +230,23 @@ def main():
 
     if args.counts_file:
         with open(args.counts_file, "w") as f:
-            json.dump({**totals, "total": sum(totals.values())}, f)
+            json.dump({**totals, "total": sum(totals.values()), "fixable": fixable}, f)
 
     if args.slack_file:
         header = (
-            f"*🛡️ Snyk Security Scan* — 🚨 {totals['critical']} · 🔴 {totals['high']} · "
-            f"🟠 {totals['medium']} · 🟡 {totals['low']}"
+            f"*🛡️ Snyk Security Scan*\n"
+            f"🚨 {totals['critical']} critical  ·  🔴 {totals['high']} high  ·  "
+            f"🟠 {totals['medium']} medium  ·  🟡 {totals['low']} low"
         )
         body = "\n\n".join([header] + slack_parts[1:])
-        # Slack hard limit 4000 chars per text field; truncate safely.
-        if len(body) > 3800:
-            body = body[:3750] + "\n…truncated. See Job Summary for full report."
+        # Slack section block text limit 3000 chars; leave headroom for shell-added header lines.
+        # Truncate at the last newline before the limit so we don't cut a Slack mrkdwn link
+        # (`<url|text>`) or a multi-codepoint emoji sequence mid-token.
+        if len(body) > 2800:
+            cut = body.rfind("\n", 0, 2750)
+            if cut < 0:
+                cut = 2750
+            body = body[:cut].rstrip() + "\n…truncated. See Job Summary for full report."
         with open(args.slack_file, "w") as f:
             f.write(body)
 

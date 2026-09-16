@@ -24,6 +24,11 @@
       "description": "Display Name that identifies this glossary term.",
       "type": "string"
     },
+    "iri": {
+      "description": "Canonical IRI of this term in its source ontology. Preserves identity across ontology import/export round-trips.",
+      "type": "string",
+      "format": "uri"
+    },
     "description": {
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
@@ -56,7 +61,21 @@
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+        "$ref": "../../type/conceptMapping.json"
+      }
+    },
+    "attributes": {
+      "description": "Typed properties governed by this ontology concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
+      }
+    },
+    "realizedIn": {
+      "description": "Data assets that physically realize this concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/assetRealization.json"
       }
     },
     "reviewers": {
@@ -87,6 +106,13 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Fully qualified names of the domains the Glossary Term belongs to.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": ["glossary", "name", "description"],

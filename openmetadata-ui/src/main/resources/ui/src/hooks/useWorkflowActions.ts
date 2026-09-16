@@ -14,7 +14,7 @@
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Node } from 'reactflow';
+import type { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../contexts/WorkflowModeContext';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { UseWorkflowActionsProps } from '../interface/workflow-builder-components.interface';

@@ -46,7 +46,7 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   ))
 );
 
-jest.mock('../../utils/DataInsightUtils', () => ({
+jest.mock('../../utils/DataInsightPureUtils', () => ({
   getDataInsightPathWithFqn: jest.fn().mockReturnValue('/'),
 }));
 

@@ -12,7 +12,7 @@
  */
 import { LoadingState } from 'Models';
 import { Dispatch, DragEvent, ReactNode, SetStateAction } from 'react';
-import {
+import type {
   Connection,
   Edge,
   EdgeChange,
@@ -24,7 +24,10 @@ import {
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
-import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
+import {
+  EntityLineageResponse,
+  LineageNodeType,
+} from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -41,15 +44,23 @@ export enum LineagePlatformView {
   DataProduct = 'DataProduct',
 }
 
+export interface LineageTimeRange {
+  startTime?: number;
+  endTime?: number;
+}
+
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   dataQualityLineage?: EntityLineageResponse;
   nodes: Node[];
+  setSceneNodes: (nodes: Node[]) => void;
   edges: Edge[];
   init: boolean;
   status: LoadingState;
   entityLineage: EntityLineageResponse;
   entityFqn: string;
+  timeFilter: LineageTimeRange;
+  setTimeFilter: (range: LineageTimeRange) => void;
   exportLineageData: (_: string) => Promise<CSVExportResponse>;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -58,12 +69,13 @@ export interface LineageContextType {
   onColumnMouseEnter: (columnName: string) => void;
   selectedQuickFilters: ExploreQuickFilterField[];
   setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
+  queryFilter: string;
   onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   loadChildNodesHandler: (
-    node: SourceType,
+    node: LineageNodeType,
     direction: LineageDirection,
     depth: number
   ) => Promise<void>;

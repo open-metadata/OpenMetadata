@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 type LearningResourceContext = {
@@ -92,9 +93,8 @@ export class LearningResourceClass {
     apiContext: APIRequestContext,
     patchData: Partial<LearningResourceData>
   ) {
-    const response = await apiContext.patch(
-      `/api/v1/learning/resources/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/learning/resources/${this.responseData.id}`, {
         data: [
           ...Object.entries(patchData).map(([key, value]) => ({
             op: 'replace',
@@ -105,9 +105,9 @@ export class LearningResourceClass {
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
-    const data = await response.json();
+    const data = await okJson(response, 'LearningResourceClass.patch');
     this.responseData = data;
 
     return data;

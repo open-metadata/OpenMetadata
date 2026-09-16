@@ -13,10 +13,9 @@
 
 import { useMemo } from 'react';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV1/AnnouncementCardV1/AnnouncementCardV1Content.component';
-
 interface AnnouncementItemV2Props {
   announcement: AnnouncementEntity;
   onClick: () => void;
@@ -32,7 +31,6 @@ const AnnouncementItemV2 = ({
     entityFQN,
     entityName,
     entityType,
-    fieldOperation,
     timestamp,
     title,
     userName,
@@ -50,7 +48,6 @@ const AnnouncementItemV2 = ({
       entityName,
       entityType,
       entityFQN: fqn,
-      fieldOperation: undefined,
       columnName: '',
     };
   }, [announcement]);
@@ -81,7 +78,6 @@ const AnnouncementItemV2 = ({
         entityIcon={entityIcon}
         entityName={entityName}
         entityType={entityType}
-        fieldOperation={fieldOperation}
         timestamp={timestamp}
         title={title}
         userName={userName}

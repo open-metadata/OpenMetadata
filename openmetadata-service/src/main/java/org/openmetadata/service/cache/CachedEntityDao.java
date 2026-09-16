@@ -6,79 +6,31 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 @Slf4j
 @RequiredArgsConstructor
 public class CachedEntityDao {
-  private final CollectionDAO dao;
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final CacheConfig config;
 
-  public String getBase(UUID entityId, String entityType) {
-    // Reindex worker threads opt out of the cache via EntityCacheBypass so a 580k-entity reindex
-    // doesn't generate millions of pointless Redis writes (cache hit rate during reindex ≈ 0)
-    // and isn't held hostage to Redis health (300ms timeouts add up fast at this volume). Go
-    // straight to DB; skip the write-through.
+  public Optional<String> getBase(UUID entityId, String entityType) {
     if (EntityCacheBypass.isSkipped()) {
-      String entityJson = fetchEntityFromDatabase(entityId, entityType);
-      return entityJson != null ? entityJson : "{}";
+      return Optional.empty();
     }
 
     String cacheKey = keys.entity(entityType, entityId);
-
-    // Try to get from cache first
     Optional<String> cached = cache.hget(cacheKey, "base");
     CacheMetrics m = CacheMetrics.getInstance();
     if (cached.isPresent()) {
       LOG.debug("Cache hit for entity: {} -> {}", entityType, entityId);
       if (m != null) m.recordLayerHit(entityType);
-      return cached.get();
+      return cached;
     }
 
     LOG.debug("Cache miss for entity: {} -> {}", entityType, entityId);
     if (m != null) m.recordLayerMiss(entityType);
-
-    // Fetch from database
-    String entityJson = fetchEntityFromDatabase(entityId, entityType);
-
-    // Write to cache (write-through caching)
-    if (entityJson != null && !entityJson.equals("{}")) {
-      try {
-        cache.hset(
-            cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds));
-        if (m != null) m.recordLayerWrite(entityType);
-        LOG.debug("Cached entity: {} -> {}", entityType, entityId);
-      } catch (Exception e) {
-        LOG.warn("Failed to cache entity: {} -> {}", entityType, entityId, e);
-      }
-    }
-
-    return entityJson != null ? entityJson : "{}";
-  }
-
-  private String fetchEntityFromDatabase(UUID entityId, String entityType) {
-    try {
-      // Directly fetch the raw JSON from database - this will have null relationship fields
-      // just like how it's stored in the database
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-      if (repository != null && repository.getDao() != null) {
-        EntityDAO<?> entityDao = repository.getDao();
-        String tableName = entityDao.getTableName();
-        String entityJson = entityDao.findById(tableName, entityId, "");
-        if (entityJson != null && !entityJson.isEmpty()) {
-          LOG.debug("Fetched raw entity JSON from database: {} -> {}", entityType, entityId);
-          return entityJson;
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Failed to fetch entity from database: {} -> {}", entityType, entityId, e);
-    }
-    return null;
+    return Optional.empty();
   }
 
   /**

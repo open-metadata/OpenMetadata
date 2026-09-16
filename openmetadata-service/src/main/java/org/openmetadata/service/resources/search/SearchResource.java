@@ -20,6 +20,7 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -62,11 +63,15 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -79,8 +84,13 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
@@ -160,9 +170,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
-                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2. Each value carried as its own "
+                      + "parameter so values containing ',' (e.g. a glossary term FQN) are safe.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(
               description =
                   "Sort the search results by field, available fields to "
@@ -416,24 +428,77 @@ public class SearchResource {
       String postFilter,
       String sortFieldParam,
       String sortOrder) {
-    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+    return SearchResultCsvExporter.buildExportSearchRequest(
+        subjectContext, query, index, deleted, queryFilter, postFilter, sortFieldParam, sortOrder);
+  }
 
-    List<EntityReference> domains = new ArrayList<>();
-    if (!subjectContext.isAdmin()) {
-      domains = subjectContext.getUserDomains();
-    }
-
-    return new SearchRequest()
-        .withQuery(resolvedQuery)
-        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-        .withQueryFilter(queryFilter)
-        .withPostFilter(postFilter)
-        .withDeleted(deleted)
-        .withSortFieldParam(sortFieldParam)
-        .withSortOrder(sortOrder)
-        .withDomains(domains)
-        .withApplyDomainFilter(
-            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+  @GET
+  @Path("/export/async")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportSearchResultsAsync",
+      summary = "Export search results as a background CSV job",
+      description =
+          "Queues a background job that exports the matching search results to CSV. "
+              + "Track it via /v1/csvAsyncJobs and download the file from "
+              + "/v1/csvAsyncJobs/{jobId}/result once completed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export job accepted",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportSearchResultsAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(description = "Elasticsearch query appended to the query string generator")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(description = "Sort order asc or desc, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(description = "Maximum number of rows to export") @QueryParam("size") Integer size,
+      @Parameter(description = "Starting offset for the export")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    CsvAsyncJobArgs.SearchExportArgs searchExport =
+        new CsvAsyncJobArgs.SearchExportArgs()
+            .setQuery(query)
+            .setIndex(index)
+            .setDeleted(deleted)
+            .setQueryFilter(queryFilter)
+            .setPostFilter(postFilter)
+            .setSortField(sortFieldParam)
+            .setSortOrder(sortOrder)
+            .setSize(size)
+            .setFrom(from);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createSearchExportJob(index, subjectContext.user().getName(), searchExport);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   @POST
@@ -470,6 +535,7 @@ public class SearchResource {
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
+            .withDeleted(previewRequest.getDeleted())
             .withFetchSource(previewRequest.getFetchSource())
             .withTrackTotalHits(previewRequest.getTrackTotalHits())
             .withSortFieldParam(previewRequest.getSortField())
@@ -518,9 +584,12 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values")
+      @Parameter(
+              description =
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(description = "Sort the search results by field")
           @DefaultValue("_score")
           @QueryParam("sort_field")
@@ -770,6 +839,40 @@ public class SearchResource {
   }
 
   @GET
+  @Path("/entityTypes")
+  @Operation(
+      operationId = "getIndexedEntityTypes",
+      summary = "List the entity types that have a search index",
+      description =
+          "Entity types registered in the index mapping for this deployment, sorted. Includes "
+              + "distribution-specific indexes (e.g. Collate-only entity types) because the "
+              + "registry is merged from the classpath at startup. This is the same set that "
+              + "reindexing expands \"all\" into, so clients can offer an entity picker without "
+              + "hardcoding a list that goes stale.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "No view permission on Application")
+      })
+  public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
+    // Gate on Application view, not admin: SettingsRouter renders the app details page for
+    // `isAdminUser || hasViewPermissions(APPLICATION)` and that page fetches the config schema on
+    // every mount, so an admin-only check here would 403 a legitimate viewer on a request they
+    // never triggered.
+    OperationContext operationContext =
+        new OperationContext(Entity.APPLICATION, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(Entity.APPLICATION));
+
+    return List.copyOf(searchRepository.getIndexedEntityTypes());
+  }
+
+  @GET
   @Path("/entityTypeCounts")
   @Operation(
       operationId = "getEntityTypeCounts",
@@ -828,7 +931,7 @@ public class SearchResource {
             .withPostFilter(postFilter)
             .withDomains(domains);
 
-    return searchRepository.getEntityTypeCounts(request, index);
+    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @POST
@@ -853,12 +956,6 @@ public class SearchResource {
   public Response reindexEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
-          @DefaultValue("false")
-          @QueryParam("recreate")
-          boolean recreate,
       @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
           @DefaultValue("5")
           @QueryParam("timeoutMinutes")
@@ -894,8 +991,9 @@ public class SearchResource {
 
     Future<?> future =
         AsyncService.getInstance()
-            .getExecutorService()
-            .submit(
+            .submitCancellableDatabaseTask(
+                DatabaseOperation.SEARCH_OPERATION,
+                "entities:" + entities.size(),
                 () -> {
                   int totalEntities = entities.size();
                   int successCount = 0;
@@ -905,17 +1003,14 @@ public class SearchResource {
                   long startTime = System.currentTimeMillis();
 
                   LOG.info(
-                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      "Starting reindex job for {} entities. Timeout: {} minutes",
                       totalEntities,
-                      recreate,
                       timeoutMinutes);
 
                   for (EntityReference ref : entities) {
                     try {
-                      EntityInterface entity = Entity.getEntity(ref, "*", Include.ALL);
-
-                      String entityId = entity.getId().toString();
-                      String entityType = entity.getEntityReference().getType();
+                      String entityId = ref.getId().toString();
+                      String entityType = ref.getType();
                       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
                       if (indexMapping == null) {
@@ -927,6 +1022,10 @@ public class SearchResource {
                         skippedCount++;
                         continue;
                       }
+
+                      String fields =
+                          String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
+                      EntityInterface entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
@@ -976,27 +1075,18 @@ public class SearchResource {
                             reducedSize);
                       }
 
-                      if (recreate) {
-                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
-                        LOG.debug(
-                            "Deleted entity {} ({}) from index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
-                        LOG.debug(
-                            "Recreated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      } else {
-                        searchRepository.updateEntityIndex(entity);
-                        LOG.debug(
-                            "Updated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      }
+                      searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                      LOG.debug(
+                          "Deleted entity {} ({}) from index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
+                      searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                      LOG.debug(
+                          "Recreated entity {} ({}) in index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
 
                       successCount++;
 
@@ -1038,6 +1128,7 @@ public class SearchResource {
                   if (!failures.isEmpty()) {
                     LOG.warn("Failed entities: {}", String.join("; ", failures));
                   }
+                  return null;
                 });
 
     AsyncService.getInstance()
@@ -1107,10 +1198,10 @@ public class SearchResource {
 
       SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
       indexStat.setName(stats.name());
-      indexStat.setDocuments((int) stats.documents());
+      indexStat.setDocuments(stats.documents());
       indexStat.setPrimaryShards(stats.primaryShards());
       indexStat.setReplicaShards(stats.replicaShards());
-      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeInBytes(stats.sizeInBytes());
       indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
       indexStat.setHealth(stats.health());
       indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
@@ -1133,7 +1224,7 @@ public class SearchResource {
                           .findFirst()
                           .map(IndexStats::sizeInBytes)
                           .orElse(0L);
-                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeInBytes(size);
                   orphan.setSizeFormatted(formatBytes(size));
                   return orphan;
                 })
@@ -1142,8 +1233,8 @@ public class SearchResource {
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
     response.setTotalIndexes(allIndexStats.size());
-    response.setTotalDocuments((int) totalDocs);
-    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalDocuments(totalDocs);
+    response.setTotalSizeInBytes(totalSize);
     response.setTotalSizeFormatted(formatBytes(totalSize));
     response.setTotalPrimaryShards(totalPrimaryShards);
     response.setTotalReplicaShards(totalReplicaShards);

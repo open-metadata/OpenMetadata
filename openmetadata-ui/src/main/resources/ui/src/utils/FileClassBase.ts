@@ -25,7 +25,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { File } from '../generated/entity/data/file';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import {
   FileDetailPageTabProps,
   getFileDetailsPageTabs,

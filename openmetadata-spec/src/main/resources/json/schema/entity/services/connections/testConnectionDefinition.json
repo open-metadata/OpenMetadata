@@ -33,6 +33,12 @@
           "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
           "type": "boolean",
           "default": false
+        },
+        "category": {
+          "description": "Whether the step gates connectivity (ConnectionGate) or verifies an optional capability (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.",
+          "type": "string",
+          "enum": ["ConnectionGate", "Capability"],
+          "default": "Capability"
         }
       },
       "additionalProperties": false,
@@ -105,7 +111,7 @@
       "type": "boolean",
       "default": false
     },
-    "domains" : {
+    "domains": {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../../type/entityReferenceList.json"
     }

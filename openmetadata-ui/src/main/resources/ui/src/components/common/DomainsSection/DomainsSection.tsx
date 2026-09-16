@@ -24,7 +24,7 @@ import {
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
@@ -122,11 +122,14 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           return;
         }
 
-        const domainsToSave = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : isEmpty(selectedDomain)
-          ? []
-          : [selectedDomain];
+        let domainsToSave: EntityReference[];
+        if (Array.isArray(selectedDomain)) {
+          domainsToSave = selectedDomain;
+        } else if (isEmpty(selectedDomain)) {
+          domainsToSave = [];
+        } else {
+          domainsToSave = [selectedDomain];
+        }
 
         // Create JSON patch
         const jsonPatch = compare(entityDetailsResponse, {

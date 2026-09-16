@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Button, Chip, IconButton, Tooltip } from '@mui/material';
-import { Col, Space, Typography } from 'antd';
+import {
+  BadgeWithIcon,
+  Box,
+  Breadcrumbs,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -27,27 +33,31 @@ import {
 } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
-import {
-  getBreadcrumbsFromFqn,
-  getEntityName,
-} from '../../../utils/EntityUtils';
-import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
+import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
+import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
   node: LineageNodeType;
+  onEntityClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
-const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+const EntityLabel = ({
+  node,
+  onEntityClick,
+}: Pick<LineageNodeLabelProps, 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
+        !node.deleted &&
         node.entityType === EntityType.TABLE &&
         (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
         (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
@@ -57,63 +67,84 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 
   const { childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
-  const breadcrumbs = useMemo(
-    () => getBreadcrumbsFromFqn(node.fullyQualifiedName ?? ''),
-    [node.fullyQualifiedName]
+  const breadcrumbItems = useMemo(
+    () =>
+      getEntityBreadcrumbs(
+        node as unknown as Table,
+        node.entityType as EntityType,
+        false
+      ).map((breadcrumb, index) => ({
+        id: `${index}-${breadcrumb.name}`,
+        label: (
+          <span className="lineage-breadcrumb-item">{breadcrumb.name}</span>
+        ),
+      })),
+    [node]
   );
+  const serviceSubtitle = useMemo(
+    () => (breadcrumbItems.length === 0 ? node.serviceType : undefined),
+    [breadcrumbItems.length, node.serviceType]
+  );
+  const subtitle = node.lineageMapSubtitle ?? serviceSubtitle;
 
-  const renderBreadcrumbItem = useCallback(
-    (item: string) => (
-      <Typography.Text
-        className="text-grey-muted lineage-breadcrumb-item"
-        ellipsis={{ tooltip: true }}
-        key={item}>
-        {item}
-      </Typography.Text>
-    ),
-    []
-  );
+  const entityName = getEntityName(node);
 
   return (
-    <Col
+    <div
       className={classNames(
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
       )}>
-      <Col className="d-flex items-center" flex="auto">
+      <div className="d-flex items-center flex-auto">
         {!node.isTempTable && (
           <div className="d-flex entity-service-icon m-r-xs">
             {getServiceIcon(node)}
           </div>
         )}
-        <Space align="start" className="flex-1" direction="vertical" size={0}>
-          <Typography.Text
-            className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
+        <Box className="flex-1 tw:min-w-0" direction="col">
+          <Typography
+            ellipsis
+            as="span"
+            className="m-b-0 d-block text-left entity-header-display-name w-54"
             data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {getEntityName(node)}
-          </Typography.Text>
+            size="text-md"
+            title={entityName}
+            weight="medium">
+            {onEntityClick ? (
+              <Button
+                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0 tw:truncate"
+                color="link-gray"
+                size="sm"
+                onClick={onEntityClick}>
+                {entityName}
+              </Button>
+            ) : (
+              entityName
+            )}
+          </Typography>
 
-          <Space
-            className="d-flex items-center m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs">
+          {subtitle ? (
+            <Typography
+              as="span"
+              className="lineage-service-subtitle"
+              size="text-xs">
+              {subtitle}
+            </Typography>
+          ) : null}
+          {!subtitle && breadcrumbItems.length > 0 ? (
             <Breadcrumbs
-              separator={<span className="lineage-breadcrumb-item-separator" />}
-              sx={{
-                '& ol': {
-                  gap: 0,
-                },
-              }}>
-              {breadcrumbs.map((breadcrumb) =>
-                renderBreadcrumbItem(breadcrumb.name)
-              )}
-            </Breadcrumbs>
-          </Space>
-        </Space>
-        {!showDeletedIcon && showDbtIcon && (
+              autoCollapse
+              className="m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs"
+              items={breadcrumbItems}
+              size="xs"
+            />
+          ) : null}
+        </Box>
+        {showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />
           </div>
@@ -125,8 +156,8 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             </div>
           </div>
         )}
-      </Col>
-    </Col>
+      </div>
+    </div>
   );
 };
 
@@ -177,13 +208,13 @@ const TestSuiteSummaryContainer = ({ node }: LineageNodeLabelProps) => {
   );
 };
 
-const EntityTypeIcon = memo(({ entityType }: { entityType?: string }) => {
-  return (
-    <span style={{ width: '16px', height: '16px' }}>
-      {getEntityTypeIcon(entityType)}
-    </span>
-  );
-});
+const EntityTypeIcon = memo(
+  ({ entityType, className }: { entityType?: string; className?: string }) => {
+    return (
+      <>{getEntityIcon(entityType ?? '', classNames('w-4 h-4', className))}</>
+    );
+  }
+);
 
 const EntityFooter = ({
   isChildrenListExpanded,
@@ -196,7 +227,7 @@ const EntityFooter = ({
   const { isEditMode } = useLineageStore();
   const { childrenHeading, childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
   const childrenInfoDropdownLabel = useMemo(
@@ -220,6 +251,16 @@ const EntityFooter = ({
     [toggleOnlyShowColumnsWithLineageFilterActive]
   );
 
+  const renderEntityTypeIcon = useCallback(
+    (props: { className?: string }) => (
+      <EntityTypeIcon
+        className={props.className}
+        entityType={node.entityType}
+      />
+    ),
+    [node.entityType]
+  );
+
   if (childrenCount === 0) {
     return null;
   }
@@ -227,43 +268,40 @@ const EntityFooter = ({
   return (
     <div className="entity-footer">
       <div className="entity-footer__entity-type-and-dropdown">
-        <Chip
-          icon={<EntityTypeIcon entityType={node.entityType} />}
-          label={capitalize(node.entityType)}
-          sx={{
-            '& .MuiChip-label': {
-              marginLeft: 1.5,
-            },
-          }}
-          variant="outlined"
-        />
+        <BadgeWithIcon
+          color="gray"
+          iconLeading={renderEntityTypeIcon}
+          size="md"
+          type="color">
+          {capitalize(node.entityType)}
+        </BadgeWithIcon>
         <Button
           className={classNames(
             'children-info-dropdown-label',
             isChildrenListExpanded ? 'expanded' : 'collapsed'
           )}
+          color="tertiary"
           data-testid="children-info-dropdown-btn"
-          variant="outlined"
+          size="sm"
           onClick={handleClickColumnInfoDropdown}>
           {childrenInfoDropdownLabel}
         </Button>
       </div>
       <div className="entity-footer__test-summary-and-filter">
         <TestSuiteSummaryContainer node={node} />
-        <Tooltip
-          placement="right"
-          title={t('message.only-show-columns-with-lineage')}>
-          <IconButton
-            className={classNames(
-              'only-show-columns-with-lineage-filter-button',
-              isOnlyShowColumnsWithLineageFilterActive && 'active'
-            )}
-            data-testid="lineage-filter-button"
-            disabled={isEditMode}
-            onClick={handleOnlyShowColumnsWithLineage}>
-            <FilterIcon height={20} width={20} />
-          </IconButton>
-        </Tooltip>
+        <ButtonUtility
+          className={classNames(
+            'only-show-columns-with-lineage-filter-button',
+            isOnlyShowColumnsWithLineageFilterActive && 'active'
+          )}
+          color="tertiary"
+          data-testid="lineage-filter-button"
+          icon={FilterIcon}
+          isDisabled={isEditMode}
+          tooltip={t('message.only-show-columns-with-lineage')}
+          tooltipPlacement="right"
+          onClick={handleOnlyShowColumnsWithLineage}
+        />
       </div>
     </div>
   );
@@ -271,6 +309,7 @@ const EntityFooter = ({
 
 const LineageNodeLabelV1 = ({
   node,
+  onEntityClick,
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
@@ -278,7 +317,7 @@ const LineageNodeLabelV1 = ({
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
-      <EntityLabel node={node} />
+      <EntityLabel node={node} onEntityClick={onEntityClick} />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
         isOnlyShowColumnsWithLineageFilterActive={

@@ -13,7 +13,8 @@
 
 import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { getAggregations } from '../../../../utils/ExploreUtils';
+import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
+import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
 import { useSelectionState } from '../data/useSelectionState';
@@ -21,7 +22,6 @@ import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
 import { CellRenderer, ColumnConfig, ListingData } from '../shared/types';
 import { useActionHandlers } from './useActionHandlers';
-
 interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
@@ -72,6 +72,7 @@ export const useListingData = <
     setFilters,
     setCurrentPage,
     setPageSize,
+    resetAll,
   } = urlStateHook;
 
   const effectivePageSize = urlState.pageSize || pageSize;
@@ -154,6 +155,14 @@ export const useListingData = <
   // selectedEntities should be an array of IDs, not entities
   const selectedEntities = selectionState.selectedEntities;
 
+  // The URL carries only the lowercased aggregation key, so the chips and the
+  // checked dropdown options get their casing restored here.
+  const hydratedFilters = useQuickFilterLabels({
+    fields: parsedFilters,
+    sources: dataFetching.entities,
+    index: searchIndex,
+  });
+
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {
     dataFetching.searchEntities(
@@ -185,12 +194,13 @@ export const useListingData = <
     isSelected: selectionState.isSelected,
     clearSelection: selectionState.clearSelection,
     urlState,
-    parsedFilters,
+    parsedFilters: hydratedFilters,
     actionHandlers,
     filterOptions: {},
     aggregations: getAggregations(dataFetching.aggregations || {}),
     handleSearchChange,
     handleFilterChange,
+    handleClearAll: resetAll,
     handlePageChange,
     handlePageSizeChange,
     refetch,

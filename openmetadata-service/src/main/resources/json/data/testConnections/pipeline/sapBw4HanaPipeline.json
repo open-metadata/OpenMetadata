@@ -1,0 +1,21 @@
+{
+  "name": "SapBw4HanaPipeline",
+  "displayName": "SAP BW/4HANA Pipeline Test Connection",
+  "description": "This Test Connection validates access against the SAP BW/4HANA ABAP catalog tables and basic metadata extraction of Process Chains.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can connect to the underlying SAP HANA database and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to SAP HANA. Please validate the host, port, username, and password.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetProcessChains",
+      "description": "List Process Chains from the RSPCCHAIN table. Process Chains are the ETL orchestration mechanism in BW/4HANA that sequence Data Transfer Processes (mapped to Pipelines in OpenMetadata).",
+      "errorMessage": "Failed to fetch Process Chains from RSPCCHAIN. Please validate that the ABAP schema is correct and the user has SELECT privilege on BW catalog tables.",
+      "shortCircuit": true,
+      "mandatory": true
+    }
+  ]
+}

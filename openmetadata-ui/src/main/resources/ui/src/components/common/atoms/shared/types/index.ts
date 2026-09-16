@@ -140,6 +140,7 @@ export interface ListingData<T> {
   aggregations?: Aggregations | null;
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
+  handleClearAll: () => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
   refetch: (options?: { silent?: boolean }) => void | Promise<void>;

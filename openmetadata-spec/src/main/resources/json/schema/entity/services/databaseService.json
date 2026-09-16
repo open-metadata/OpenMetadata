@@ -36,6 +36,7 @@
         "Druid",
         "Db2",
         "Clickhouse",
+        "Clickzetta",
         "Databricks",
         "AzureSQL",
         "DynamoDB",
@@ -72,7 +73,9 @@
         "BurstIQ",
         "Informix",
         "Iomete",
-        "QuestDB"
+        "QuestDB",
+        "Data360",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -248,6 +251,12 @@
         },
         {
           "name": "QuestDB"
+        },
+        {
+          "name": "Data360"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -275,6 +284,9 @@
             },
             {
               "$ref": "./connections/database/clickhouseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/clickzettaConnection.json"
             },
             {
               "$ref": "./connections/database/databricksConnection.json"
@@ -428,6 +440,12 @@
             },
             {
               "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/data360Connection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
@@ -478,6 +496,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "version": {
       "description": "Metadata version of the entity.",

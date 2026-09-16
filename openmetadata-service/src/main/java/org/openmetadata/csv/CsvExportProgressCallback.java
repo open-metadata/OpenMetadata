@@ -24,4 +24,6 @@ public interface CsvExportProgressCallback {
    * @param message Human-readable progress message
    */
   void onProgress(int exported, int total, String message);
+
+  default void checkpoint() {}
 }

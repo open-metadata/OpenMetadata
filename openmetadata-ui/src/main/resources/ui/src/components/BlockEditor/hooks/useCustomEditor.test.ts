@@ -17,6 +17,7 @@ import { useCustomEditor } from './useCustomEditor';
 
 class MockEditor {
   options: Partial<EditorOptions> = {};
+  isDestroyed = false;
   constructor(options?: Partial<EditorOptions>) {
     if (options) {
       this.setOptions(options);
@@ -25,6 +26,10 @@ class MockEditor {
 
   setOptions(options?: Partial<EditorOptions>): void {
     this.options = options || {};
+  }
+
+  destroy(): void {
+    this.isDestroyed = true;
   }
   on(_name: string, callback: (props: { editor: Editor }) => void) {
     callback({ editor: new Editor() });
@@ -122,6 +127,17 @@ describe('useCustomEditor hook', () => {
     });
 
     expect(mockOnUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('Should destroy the editor instance on unmount', () => {
+    const { result, unmount } = renderHook(() => useCustomEditor({}));
+    const instance = result.current as unknown as MockEditor;
+
+    expect(instance.isDestroyed).toBe(false);
+
+    unmount();
+
+    expect(instance.isDestroyed).toBe(true);
   });
 
   it('Should not update the editor event handlers if editor is not defined', () => {

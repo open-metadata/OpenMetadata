@@ -45,6 +45,29 @@ class DistributedReindexFinalizerTest {
   }
 
   @Test
+  void finalizeRemainingEntitiesTreatsEntityWithoutStatsAsSuccess() {
+    // vectorEmbedding has a staged index (built by RecreateWithEmbeddings) but the
+    // distributed reader/sink pipeline doesn't run for it, so entityStats has no entry.
+    // The finalizer must still promote the staged index rather than mark the entity
+    // failed and roll the whole job up to FAILED.
+    RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    ReindexContext stagedIndexContext = stagedContext("vectorEmbedding");
+
+    DistributedReindexFinalizer finalizer =
+        new DistributedReindexFinalizer(indexPromotionHandler, stagedIndexContext, DEFAULT_POLICY);
+    finalizer.finalizeRemainingEntities(Set.of(), Map.of(), true);
+
+    ArgumentCaptor<EntityReindexContext> contextCaptor =
+        ArgumentCaptor.forClass(EntityReindexContext.class);
+    ArgumentCaptor<Boolean> successCaptor = ArgumentCaptor.forClass(Boolean.class);
+    verify(indexPromotionHandler, times(1))
+        .finalizeReindex(contextCaptor.capture(), successCaptor.capture());
+
+    assertEquals("vectorEmbedding", contextCaptor.getValue().getEntityType());
+    assertEquals(Boolean.TRUE, successCaptor.getValue());
+  }
+
+  @Test
   void finalizeRemainingEntitiesDoesNotRepromoteAlreadyPromotedColumnWhenTableRemains() {
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE, Entity.TABLE_COLUMN);

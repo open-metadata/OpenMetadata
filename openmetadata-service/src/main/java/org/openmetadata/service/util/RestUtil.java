@@ -119,7 +119,7 @@ public final class RestUtil {
   public static String decodeCursor(String cursor) {
     return cursor == null || cursor.isEmpty()
         ? null
-        : new String(Base64.getUrlDecoder().decode(cursor));
+        : new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
   }
 
   public static class PutResponse<T> {

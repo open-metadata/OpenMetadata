@@ -11,44 +11,38 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChartDetails from '../../components/Chart/ChartDetails/ChartDetails.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
-  getChartByFqn,
   patchChartDetails,
   removeFollower,
   updateChartVotes,
 } from '../../rest/chartsAPI';
+import { chartQueryFn, chartQueryKey } from '../../rest/queries/chartQuery';
 import { defaultFields } from '../../utils/ChartDetailsUtils';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -57,100 +51,144 @@ const ChartDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: chartFQN } = useFqn();
-  const [chartDetails, setChartDetails] = useState<Chart>({} as Chart);
-  const [isLoading, setLoading] = useState<boolean>(false);
-  const [isError, setIsError] = useState(false);
+  const queryClient = useQueryClient();
 
-  const [chartPermissions, setChartPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Fetch-owner, by fqn. Deliberately kept even though ChartDetails (child) also calls
+  // useEntityPermissions itself (by id, for its own edit-tier flags) — this page's view-tier
+  // flags gate the chart entity query below (canViewUsage decides whether USAGE_SUMMARY is
+  // requested; hasViewAccess decides whether the query fires and drives the
+  // permission-denied placeholder), and the child only exists once chartId is known.
+  // NOTE: two network requests — this page fetches by fqn while ChartDetails fetches by id
+  // (different query keys, different REST calls — NOT the same shared-cache situation as
+  // TableDetailsPageV1's own two same-fqn calls). Consolidation candidate: pass one
+  // identifier form through or drop the page fetch if the child's data suffices.
+  const {
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    canViewUsage: viewUsagePermission,
+    hasViewAccess: canViewChart,
+  } = useEntityPermissions(ResourceEntity.CHART, chartFQN, {
+    enabled: Boolean(chartFQN),
+  });
 
-  const { id: chartId, version } = chartDetails;
-
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CHART,
-        entityFqn
-      );
-      setChartPermissions(entityPermission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
+          entity: chartFQN,
         })
       );
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [permissionsError]);
 
-  const saveUpdatedChartData = (updatedData: Chart) => {
-    const jsonPatch = compare(omitBy(chartDetails, isUndefined), updatedData);
+  const chartFields = useMemo(() => {
+    let fields = defaultFields;
+    if (viewUsagePermission) {
+      fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+    }
 
-    return patchChartDetails(chartId, jsonPatch);
-  };
+    return fields;
+  }, [viewUsagePermission]);
 
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        chartPermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [chartPermissions]
+  const chartCacheKey = useMemo(
+    () => chartQueryKey(chartFQN, chartFields),
+    [chartFQN, chartFields]
   );
 
-  const fetchChartDetail = async (chartFQN: string) => {
-    setLoading(true);
+  const isChartQueryEnabled = useMemo(
+    () => Boolean(chartFQN && canViewChart && !permissionsLoading),
+    [chartFQN, canViewChart, permissionsLoading]
+  );
 
-    try {
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const res = await getChartByFqn(chartFQN, { fields });
+  const {
+    data: chartDetails,
+    isLoading: chartLoading,
+    error: chartError,
+  } = useQuery({
+    queryKey: chartCacheKey,
+    queryFn: chartQueryFn(chartFQN, chartFields),
+    enabled: isChartQueryEnabled,
+  });
 
-      const { id, fullyQualifiedName, serviceType } = res;
-      setChartDetails(res);
+  const isError = useMemo(
+    () => (chartError as AxiosError | undefined)?.response?.status === 404,
+    [chartError]
+  );
 
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.CHART,
-        fqn: fullyQualifiedName ?? '',
-        serviceType: serviceType,
-        timestamp: 0,
-        id: id,
-      });
-
-      setLoading(false);
-    } catch (error) {
-      if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.chart'),
-            entityName: chartFQN,
-          })
-        );
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const status = (chartError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        chartError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.chart'),
+          entityName: chartFQN,
+        })
+      );
     }
-  };
+  }, [chartError, navigate, chartFQN, t]);
+
+  useEffect(() => {
+    if (!chartDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(chartDetails),
+      entityType: EntityType.CHART,
+      fqn: chartDetails.fullyQualifiedName ?? '',
+      serviceType: chartDetails.serviceType,
+      timestamp: 0,
+      id: chartDetails.id,
+    });
+  }, [chartDetails]);
+
+  const setChartDetails = useCallback(
+    (
+      updater:
+        | Chart
+        | undefined
+        | ((prev: Chart | undefined) => Chart | undefined)
+    ) => {
+      queryClient.setQueryData<Chart | undefined>(chartCacheKey, updater);
+    },
+    [queryClient, chartCacheKey]
+  );
+
+  const refetchChartDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: chartCacheKey }),
+    [queryClient, chartCacheKey]
+  );
+
+  const { id: chartId, version } = chartDetails ?? {};
+  const isFollowing = useMemo(
+    () => chartDetails?.followers?.some(({ id }) => id === USERId) ?? false,
+    [chartDetails?.followers, USERId]
+  );
+  const entityName = useMemo(() => getEntityName(chartDetails), [chartDetails]);
+
+  const saveUpdatedChartData = useCallback(
+    (updatedData: Chart) => {
+      if (!chartDetails || !chartId) {
+        return Promise.reject(new Error('Chart not loaded'));
+      }
+      const jsonPatch = compare(omitBy(chartDetails, isUndefined), updatedData);
+
+      return patchChartDetails(chartId, jsonPatch);
+    },
+    [chartDetails, chartId]
+  );
 
   const onChartUpdate = async (updatedChart: Chart, key?: keyof Chart) => {
     try {
       const response = await saveUpdatedChartData(updatedChart);
       setChartDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
+
         return {
           ...previous,
           version: response.version,
@@ -162,45 +200,76 @@ const ChartDetailsPage = () => {
     }
   };
 
-  const followChart = async () => {
-    try {
-      const res = await addFollower(chartId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setChartDetails((prev) => ({
-        ...prev,
-        followers: [...(prev?.followers ?? []), ...newValue],
-      }));
-    } catch (error) {
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: Chart | undefined }
+  >({
+    mutationFn: async () => {
+      if (!chartId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeFollower(chartId, USERId);
+      } else {
+        await addFollower(chartId, USERId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: chartCacheKey });
+      const previous = queryClient.getQueryData<Chart | undefined>(
+        chartCacheKey
+      );
+      queryClient.setQueryData<Chart | undefined>(chartCacheKey, (prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const currentFollowers = prev.followers ?? [];
+        if (isFollowing) {
+          return {
+            ...prev,
+            followers: currentFollowers.filter(({ id }) => id !== USERId),
+          };
+        }
+
+        return {
+          ...prev,
+          followers: [
+            ...currentFollowers,
+            { id: USERId, type: 'user' },
+          ] as Chart['followers'],
+        };
+      });
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<Chart | undefined>(
+          chartCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(chartDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', { entity: entityName })
+          : t('server.entity-follow-error', { entity: entityName })
       );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: chartCacheKey });
+    },
+  });
 
-  const unFollowChart = async () => {
-    try {
-      const res = await removeFollower(chartId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+  const followChart = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
-      setChartDetails((prev) => ({
-        ...prev,
-        followers:
-          prev.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ) ?? [],
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(chartDetails),
-        })
-      );
-    }
-  };
+  const unFollowChart = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const versionHandler = () => {
     version &&
@@ -224,38 +293,25 @@ const ChartDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateChartVotes(id, data);
-      let fields = defaultFields;
-      if (viewUsagePermission) {
-        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
-      }
-      const details = await getChartByFqn(chartFQN, { fields });
-      setChartDetails(details);
+      await queryClient.invalidateQueries({ queryKey: chartCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const updateChartDetailsState = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Chart;
+  const updateChartDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Chart;
+      setChartDetails((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setChartDetails]
+  );
 
-    setChartDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
-
-  useEffect(() => {
-    if (chartPermissions.ViewAll || chartPermissions.ViewBasic) {
-      fetchChartDetail(chartFQN);
-    }
-  }, [chartFQN, chartPermissions]);
-
-  useEffect(() => {
-    fetchResourcePermission(chartFQN);
-  }, [chartFQN]);
-
-  if (isLoading) {
-    return <Loader />;
+  if (permissionsLoading || chartLoading) {
+    return <PageLoader />;
   }
   if (isError) {
     return (
@@ -264,7 +320,7 @@ const ChartDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!chartPermissions.ViewAll && !chartPermissions.ViewBasic) {
+  if (!canViewChart) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -275,11 +331,14 @@ const ChartDetailsPage = () => {
       />
     );
   }
+  if (!chartDetails) {
+    return <PageLoader />;
+  }
 
   return (
     <ChartDetails
       chartDetails={chartDetails}
-      fetchChart={() => fetchChartDetail(chartFQN)}
+      fetchChart={refetchChartDetails}
       followChartHandler={followChart}
       handleToggleDelete={handleToggleDelete}
       unFollowChartHandler={unFollowChart}

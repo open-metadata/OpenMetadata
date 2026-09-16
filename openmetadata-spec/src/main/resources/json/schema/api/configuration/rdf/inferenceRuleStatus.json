@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdf/inferenceRuleStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InferenceRuleStatus",
+  "description": "Durable definition and materialization state for an RDF inference rule.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus",
+  "properties": {
+    "dirty": {
+      "description": "Whether source RDF changed after the last successful materialization.",
+      "type": "boolean"
+    },
+    "graphUri": {
+      "description": "Named graph containing triples materialized by this rule.",
+      "type": "string",
+      "format": "uri"
+    },
+    "lastError": {
+      "description": "Most recent materialization error, if any.",
+      "type": "string"
+    },
+    "lastMaterializedAt": {
+      "description": "Timestamp of the most recent successful materialization.",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "rule": {
+      "$ref": "inferenceRule.json"
+    },
+    "systemRule": {
+      "description": "Whether the rule is part of the shipped starter pack.",
+      "type": "boolean"
+    },
+    "tripleCount": {
+      "description": "Number of triples in the rule's materialized graph.",
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    }
+  },
+  "required": ["dirty", "graphUri", "rule", "systemRule", "tripleCount"],
+  "additionalProperties": false
+}

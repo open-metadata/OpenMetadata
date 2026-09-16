@@ -50,22 +50,20 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-UNITY_CATALOG_SQL_STATEMENT_TEST = """
- SELECT statement_text from  system.query.history LIMIT 1
-"""
-
 UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
 
 UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
     """
     SELECT
         source_table_full_name,
-        target_table_full_name
+        source_path,
+        target_table_full_name,
+        target_path
     FROM system.access.table_lineage
     WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
-    GROUP BY source_table_full_name, target_table_full_name
+        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
+        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
+    GROUP BY source_table_full_name, source_path, target_table_full_name, target_path
     """
 )
 
@@ -73,19 +71,23 @@ UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
     """
     SELECT
         source_table_full_name,
+        source_path,
         source_column_name,
         target_table_full_name,
+        target_path,
         target_column_name
     FROM system.access.column_lineage
     WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
+        AND (source_table_full_name IS NOT NULL OR source_path IS NOT NULL)
+        AND (target_table_full_name IS NOT NULL OR target_path IS NOT NULL)
         AND source_column_name IS NOT NULL
         AND target_column_name IS NOT NULL
     GROUP BY
         source_table_full_name,
+        source_path,
         source_column_name,
         target_table_full_name,
+        target_path,
         target_column_name
     """
 )
@@ -100,6 +102,28 @@ UNITY_CATALOG_EXTERNAL_TABLES = textwrap.dedent(
     FROM system.information_schema.tables
     WHERE table_type = 'EXTERNAL'
         AND storage_path IS NOT NULL
+    """
+)
+
+UNITY_CATALOG_GET_CHANGED_TABLES = textwrap.dedent(
+    """
+    SELECT
+        table_schema,
+        table_name
+    FROM `{catalog}`.information_schema.tables
+    WHERE last_altered >= timestamp_millis({start_timestamp})
+    """
+)
+
+UNITY_CATALOG_GET_DELETED_TABLES = textwrap.dedent(
+    """
+    SELECT DISTINCT request_params.full_name_arg AS table_full_name
+    FROM system.access.audit
+    WHERE service_name = 'unityCatalog'
+        AND action_name = 'deleteTable'
+        AND event_date >= date(timestamp_millis({start_timestamp}))
+        AND event_time >= timestamp_millis({start_timestamp})
+        AND substring_index(request_params.full_name_arg, '.', 1) = '{catalog}'
     """
 )
 
@@ -118,3 +142,15 @@ UNITY_CATALOG_TEST_COLUMN_LINEAGE = textwrap.dedent(
     WHERE 1=0
     """
 )
+
+UNITY_CATALOG_TABLE_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT DISTINCT table_catalog, table_schema, table_name
+    FROM system.information_schema.table_constraints
+    WHERE 1=1
+    """
+)
+
+UNITY_CATALOG_GET_ALL_SCHEMAS = """
+SELECT catalog_name, schema_name FROM system.information_schema.schemata
+"""

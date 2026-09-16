@@ -11,15 +11,6 @@
  *  limitations under the License.
  */
 
-import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import {
-  createElement,
-  isValidElement,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import type { Key } from 'react-aria-components';
 import { normalizeHexColor } from '@/colors/colorValidation';
 import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
 import { Tabs } from '@/components/application/tabs/tabs';
@@ -29,6 +20,15 @@ import { Input } from '@/components/base/input/input';
 import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import {
+  createElement,
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import type { Key } from 'react-aria-components';
 import type {
   FormSelectItem,
   IconPickerFieldLabels,
@@ -107,7 +107,7 @@ export const IconPickerField = ({
   const selectedItem = items.find((item) => item.id === value);
   const backgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    ENTITY_PALETTE_HEX[0];
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
   const onBlurRef = useRef(onBlur);
   onBlurRef.current = onBlur;
@@ -204,11 +204,16 @@ export const IconPickerField = ({
               'aria-label': item.label ?? item.id,
               'aria-pressed': isSelected,
               className: cx(
-                'tw:size-9 tw:rounded-lg tw:p-0! tw:ring-1 tw:ring-secondary_alt tw:transition tw:duration-150',
+                'tw:size-9 tw:rounded-lg tw:p-0! tw:outline-1 tw:outline-secondary_alt tw:transition tw:duration-150',
                 isSelected
-                  ? 'tw:bg-primary_hover tw:ring-brand'
+                  ? 'tw:bg-primary_hover tw:outline-brand'
                   : 'tw:bg-primary tw:hover:bg-primary_hover',
-                'tw:focus-visible:ring-2 tw:focus-visible:ring-brand'
+                // The old focus ring had no `ring-offset`, so it sat flush against Button's
+                // own 2px focus outline at offset 2 and read as a single 4px brand band.
+                // `outline-4` at offset 0 reproduces that. The colour must be set here too:
+                // Button only contributes focus width/offset, and its base `outline-brand`
+                // is overridden by the base colours above.
+                'tw:focus-visible:outline-4 tw:focus-visible:outline-offset-0 tw:focus-visible:outline-brand'
               ),
               color: 'tertiary' as const,
               size: 'sm' as const,
@@ -265,11 +270,15 @@ export const IconPickerField = ({
           ariaLabel ?? placeholder ?? labels?.emptyState ?? 'Select icon'
         }
         className={cx(
-          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:ring-1 tw:ring-black/5 tw:transition tw:duration-150',
+          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:outline-1 tw:outline-black/5 tw:transition tw:duration-150',
           !disabled && 'tw:hover:scale-[1.02]',
           disabled && 'tw:opacity-50',
-          'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2',
-          isOpen && 'tw:ring-2 tw:ring-brand tw:ring-offset-2'
+          // The focus colour must be set explicitly. Button contributes the focus
+          // *width/offset* only; its `outline-brand` is a base colour that
+          // `outline-black/5` above overrides, so without this the focus ring would be
+          // 5% black — effectively invisible.
+          'tw:focus-visible:outline-brand',
+          isOpen && 'tw:outline-2 tw:outline-brand tw:outline-offset-2'
         )}
         color="tertiary"
         data-testid={dataTestId}
@@ -289,7 +298,7 @@ export const IconPickerField = ({
       />
 
       {isOpen && (
-        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">
+        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt">
           {allowUrl ? (
             <Tabs
               selectedKey={activeTab}

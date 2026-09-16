@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node, Position, Viewport } from 'reactflow';
+import type { Edge, Node, Viewport } from 'reactflow';
+import { Position } from 'reactflow';
 import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
 import {
   COLUMN_NODE_HEIGHT,
@@ -23,10 +24,8 @@ import {
 } from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { useLineageStore } from '../hooks/useLineageStore';
-import {
-  getEdgePathData,
-  getEntityChildrenAndLabel,
-} from './EntityLineageUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
 
 export interface BoundingBox {
   minX: number;
@@ -65,6 +64,21 @@ export function setupCanvas(
   return ctx;
 }
 
+const BASE_HEIGHT_ENTITY_TYPES: string[] = [
+  EntityType.METRIC,
+  EntityType.DRIVE_SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.API_SERVICE,
+];
+
 const getBaseNodeHeightFromType = (
   entityType: string,
   isRootNode: boolean,
@@ -74,22 +88,8 @@ const getBaseNodeHeightFromType = (
 
   let baseHeight = childrenPresent ? NODE_HEIGHT_WITH_CHILDREN : NODE_HEIGHT;
 
-  switch (entityType) {
-    case EntityType.METRIC:
-    case EntityType.DRIVE_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.METADATA_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.API_SERVICE:
-      baseHeight = NODE_BASE_HEIGHT;
-
-      break;
+  if (BASE_HEIGHT_ENTITY_TYPES.includes(entityType)) {
+    baseHeight = NODE_BASE_HEIGHT;
   }
 
   return isRootNode ? baseHeight + 10 : baseHeight;
@@ -658,3 +658,88 @@ export const computePathDataForEdge = (
 export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
+
+function drawEdgeArrowMarker(
+  ctx: CanvasRenderingContext2D,
+  pathData: EdgePathData,
+  strokeColor: string
+): void {
+  const { sourceX, sourceY, targetX, targetY, edgePath } = pathData;
+
+  if (
+    targetX === undefined ||
+    targetY === undefined ||
+    sourceX === undefined ||
+    sourceY === undefined
+  ) {
+    return;
+  }
+
+  drawArrowMarker(
+    ctx,
+    targetX,
+    targetY,
+    getBezierEndTangentAngle(edgePath, sourceX, sourceY, targetX, targetY),
+    strokeColor
+  );
+}
+
+export function drawEdgesForExport(
+  edges: Edge[],
+  nodeMap: Map<string, Node>,
+  exportViewport: Viewport,
+  imageWidth: number,
+  imageHeight: number,
+  padding: number,
+  pixelRatio: number,
+  columnsInCurrentPages: Map<string, string[]>
+): HTMLCanvasElement {
+  const finalWidth = imageWidth + padding * 2;
+  const finalHeight = imageHeight + padding * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = finalWidth * pixelRatio;
+  canvas.height = finalHeight * pixelRatio;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return canvas;
+  }
+
+  ctx.save();
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.translate(exportViewport.x + padding, exportViewport.y + padding);
+  ctx.scale(exportViewport.zoom, exportViewport.zoom);
+
+  for (const edge of edges) {
+    const sourceNode = nodeMap.get(edge.source);
+    const targetNode = nodeMap.get(edge.target);
+    const pathData = computePathDataForEdge(
+      edge,
+      sourceNode,
+      targetNode,
+      columnsInCurrentPages
+    );
+
+    if (!pathData) {
+      continue;
+    }
+
+    const isColumnLineage = edge.data?.isColumnLineage ?? false;
+    const strokeColor = 'rgb(177, 177, 183)';
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = isColumnLineage ? 1 : 2;
+    ctx.setLineDash(edge.animated ? [6, 4] : []);
+    ctx.globalAlpha = 1;
+
+    ctx.stroke(new Path2D(pathData.edgePath));
+    ctx.setLineDash([]);
+
+    drawEdgeArrowMarker(ctx, pathData, strokeColor);
+  }
+
+  ctx.restore();
+
+  return canvas;
+}

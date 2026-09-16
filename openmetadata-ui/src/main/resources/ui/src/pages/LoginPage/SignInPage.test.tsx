@@ -51,13 +51,6 @@ jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => ({
   })),
 }));
 
-jest.mock('../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockImplementation(() => ({
-    alert: null,
-    resetAlert: jest.fn(),
-  })),
-}));
-
 jest.mock('./LoginCarousel', () =>
   jest.fn().mockReturnValue(<p>LoginCarousel</p>)
 );

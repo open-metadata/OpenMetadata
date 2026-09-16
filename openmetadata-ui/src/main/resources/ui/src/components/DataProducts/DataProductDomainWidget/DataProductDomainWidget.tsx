@@ -19,8 +19,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getTermQuery } from '../../../utils/SearchUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
 
 export const DataProductDomainWidget = () => {
@@ -66,11 +66,14 @@ export const DataProductDomainWidget = () => {
 
       setIsLoading(true);
       try {
-        const rawDomains = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : isEmpty(selectedDomain)
-          ? []
-          : [selectedDomain];
+        let rawDomains: EntityReference[];
+        if (Array.isArray(selectedDomain)) {
+          rawDomains = selectedDomain;
+        } else if (isEmpty(selectedDomain)) {
+          rawDomains = [];
+        } else {
+          rawDomains = [selectedDomain];
+        }
 
         const domains: EntityReference[] = rawDomains.map((d) => ({
           id: d.id,
@@ -128,6 +131,7 @@ export const DataProductDomainWidget = () => {
       <DomainLabelV2
         showDomainHeading
         isClearable={false}
+        multiple={false}
         onUpdate={handleDomainUpdate}
       />
 

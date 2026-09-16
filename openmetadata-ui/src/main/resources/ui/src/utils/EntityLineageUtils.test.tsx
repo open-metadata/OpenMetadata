@@ -24,29 +24,40 @@ import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
-  addLineageHandler,
   createNewEdge,
   getAllTracedEdges,
-  getColumnFunctionValue,
   getColumnLineageData,
-  getConnectedNodesEdges,
-  getEntityChildrenAndLabel,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLineageTableConfig,
-  getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
+  getNodesBoundsReactFlow,
   getViewportForBoundsReactFlow,
+} from './EntityLineageLayoutUtils';
+import {
+  getConnectedNodesEdges,
+  getEntityChildrenAndLabel,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  getColumnFunctionValue,
   parseLineageData,
-} from './EntityLineageUtils';
+} from './EntityLineagePureUtils';
+import { getLineageTableConfig } from './EntityLineageUtils';
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
 
 import { get, isEqual, uniqWith } from 'lodash';
-import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../constants/Lineage.constants';
+import {
+  LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS,
+  NODE_HEIGHT,
+  ZOOM_TRANSITION_DURATION,
+} from '../constants/Lineage.constants';
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -213,6 +224,25 @@ describe('Test EntityLineageUtils utility', () => {
       },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
+  });
+
+  it('centerNodePosition should center on the node midpoint with the requested zoom', () => {
+    const setCenter = jest.fn();
+    const reactFlowInstance = {
+      setCenter,
+    } as unknown as Parameters<typeof centerNodePosition>[1];
+    const node = {
+      id: 'node1',
+      position: { x: 100, y: 200 },
+      width: 300,
+    } as Node;
+
+    centerNodePosition(node, reactFlowInstance, 1.25);
+
+    expect(setCenter).toHaveBeenCalledWith(250, 200 + NODE_HEIGHT / 2, {
+      duration: ZOOM_TRANSITION_DURATION,
+      zoom: 1.25,
+    });
   });
 
   it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for downstream', () => {

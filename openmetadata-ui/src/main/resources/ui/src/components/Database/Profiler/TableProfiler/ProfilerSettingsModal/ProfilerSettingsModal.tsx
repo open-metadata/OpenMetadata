@@ -32,6 +32,7 @@ import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
+  lazy,
   Reducer,
   useCallback,
   useEffect,
@@ -46,7 +47,6 @@ import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
   INTERVAL_UNIT_OPTIONS,
-  PROFILER_METRIC,
   PROFILER_MODAL_LABEL_STYLE,
   PROFILE_SAMPLE_OPTIONS,
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
@@ -63,20 +63,25 @@ import {
   getTableProfilerConfig,
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
-import { reducerWithoutAction } from '../../../../../utils/CommonUtils';
+import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
+import profilerMetricsClassBase from '../../../../../utils/ProfilerMetricsClassBase';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
-import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../SchemaEditor/SchemaEditor'))
+);
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -99,7 +104,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       excludeCol: [],
       includeCol: DEFAULT_INCLUDE_PROFILE,
       enablePartition: false,
-      partitionData: undefined,
       selectedProfileSampleType: ProfileSampleType.Percentage,
     }),
     []
@@ -131,12 +135,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
+    const profilerMetrics = profilerMetricsClassBase.getProfilerMetricOptions();
     const metricsOptions = [
       {
         title: t('label.all'),
         value: 'all',
         key: 'all',
-        children: PROFILER_METRIC.map((metric) => ({
+        children: profilerMetrics.map((metric) => ({
           title: startCase(metric),
           value: metric,
           key: metric,
@@ -184,30 +189,26 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     const staticConfig = profileSampleConfig?.config;
     const profileSample = staticConfig?.profileSample;
     const profileSampleType = staticConfig?.profileSampleType;
-    handleStateChange({
-      sqlQuery: profileQuery ?? '',
-      profileSample: profileSample,
-      excludeCol: excludeColumns ?? [],
-      selectedProfileSampleType: profileSampleType,
-      sampleDataCount,
-    });
-    form.setFieldsValue({
-      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
-    });
 
-    form.setFieldsValue({
-      profileSampleType,
-      profileSamplePercentage:
-        profileSample && profileSampleType === ProfileSampleType.Percentage
-          ? profileSample
-          : undefined,
-      profileSampleRows:
-        profileSample && profileSampleType === ProfileSampleType.Rows
-          ? profileSample
-          : undefined,
-    });
+    const applyProfileSampleFields = () => {
+      form.setFieldsValue({
+        profileSampleType,
+        profileSamplePercentage:
+          profileSample && profileSampleType === ProfileSampleType.Percentage
+            ? profileSample
+            : undefined,
+        profileSampleRows:
+          profileSample && profileSampleType === ProfileSampleType.Rows
+            ? profileSample
+            : undefined,
+      });
+    };
 
-    if (includeColumns && includeColumns?.length > 0) {
+    const applyIncludeColumns = () => {
+      if (!includeColumns || includeColumns.length === 0) {
+        return;
+      }
+
       const includeColValue = includeColumns.map((col) => {
         if (
           isUndefined(col.metrics) ||
@@ -222,8 +223,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         includeCol: includeColValue,
       });
-    }
-    if (partitioning) {
+    };
+
+    const applyPartitioning = () => {
+      if (!partitioning) {
+        return;
+      }
+
       handleStateChange({
         enablePartition: partitioning.enablePartitioning || false,
       });
@@ -231,7 +237,22 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       form.setFieldsValue({
         ...partitioning,
       });
-    }
+    };
+
+    handleStateChange({
+      sqlQuery: profileQuery ?? '',
+      profileSample: profileSample,
+      excludeCol: excludeColumns ?? [],
+      selectedProfileSampleType: profileSampleType,
+      sampleDataCount,
+    });
+    form.setFieldsValue({
+      sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
+    });
+
+    applyProfileSampleFields();
+    applyIncludeColumns();
+    applyPartitioning();
 
     Promise.resolve();
   };
@@ -280,61 +301,80 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const handleSave: FormProps['onFinish'] = useCallback(
     async (data: ProfilerForm) => {
-      const {
-        excludeCol,
-        sqlQuery,
-        includeCol,
-        enablePartition,
-        partitionData,
-      } = state;
+      const buildPartitioning = (): TableProfilerConfig['partitioning'] => {
+        if (!state.enablePartition) {
+          return undefined;
+        }
+
+        // Read straight from the form: the loaded config is pushed into the
+        // form with `setFieldsValue`, which never fires `onValuesChange`, so
+        // any state copy is stale until the user edits a partition field.
+        const partitionData = pick(
+          data,
+          'partitionColumnName',
+          'partitionIntegerRangeEnd',
+          'partitionIntegerRangeStart',
+          'partitionInterval',
+          'partitionIntervalType',
+          'partitionIntervalUnit',
+          'partitionValues'
+        );
+
+        return {
+          ...partitionData,
+          partitionValues:
+            data.partitionIntervalType === PartitionIntervalTypes.ColumnValue
+              ? partitionData.partitionValues?.filter(
+                  (value) => !isEmpty(value)
+                )
+              : undefined,
+          enablePartitioning: state.enablePartition,
+        };
+      };
+
+      const buildProfileConfig = (): TableProfilerConfig => {
+        const { excludeCol, sqlQuery, includeCol } = state;
+        const {
+          profileSamplePercentage,
+          profileSampleRows,
+          profileSampleType,
+          sampleDataCount,
+        } = data;
+
+        const profileSampleValue =
+          profileSampleType === ProfileSampleType.Percentage
+            ? profileSamplePercentage
+            : profileSampleRows;
+        const profileSample = profileSampleType
+          ? profileSampleValue
+          : undefined;
+
+        return {
+          excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
+          profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
+          profileSampleConfig:
+            profileSampleType && profileSample
+              ? {
+                  sampleConfigType: SampleConfigType.Static,
+                  config: {
+                    profileSample,
+                    profileSampleType,
+                  },
+                }
+              : undefined,
+          includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
+            ? getIncludesColumns()
+            : undefined,
+          partitioning: buildPartitioning(),
+          sampleDataCount,
+        };
+      };
 
       setIsLoading(true);
-      const {
-        profileSamplePercentage,
-        profileSampleRows,
-        profileSampleType,
-        sampleDataCount,
-      } = data;
-
-      const profileSample = profileSampleType
-        ? profileSampleType === ProfileSampleType.Percentage
-          ? profileSamplePercentage
-          : profileSampleRows
-        : undefined;
-
-      const profileConfig: TableProfilerConfig = {
-        excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
-        profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSampleConfig:
-          profileSampleType && profileSample
-            ? {
-                sampleConfigType: SampleConfigType.Static,
-                config: {
-                  profileSample,
-                  profileSampleType,
-                },
-              }
-            : undefined,
-        includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
-          ? getIncludesColumns()
-          : undefined,
-        partitioning: enablePartition
-          ? {
-              ...partitionData,
-              partitionValues:
-                partitionIntervalType === PartitionIntervalTypes.ColumnValue
-                  ? partitionData?.partitionValues?.filter(
-                      (value) => !isEmpty(value)
-                    )
-                  : undefined,
-              enablePartitioning: enablePartition,
-            }
-          : undefined,
-        sampleDataCount,
-      };
+      const profileConfig = buildProfileConfig();
       try {
-        const data = await putTableProfileConfig(tableId, profileConfig);
-        if (data) {
+        const response = await putTableProfileConfig(tableId, profileConfig);
+        if (response) {
           showSuccessToast(
             t('server.update-entity-success', {
               entity: t('label.profile-config'),
@@ -409,16 +449,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
       handleStateChange({
         includeCol: data.includeColumns,
-        partitionData: pick(
-          data,
-          'partitionColumnName',
-          'partitionIntegerRangeEnd',
-          'partitionIntegerRangeStart',
-          'partitionInterval',
-          'partitionIntervalType',
-          'partitionIntervalUnit',
-          'partitionValues'
-        ),
       });
     },
     []
@@ -485,6 +515,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               name="profileSampleType">
               <Select
                 allowClear
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the first field when the settings modal opens
                 autoFocus
                 className="w-full"
                 data-testid="profile-sample"

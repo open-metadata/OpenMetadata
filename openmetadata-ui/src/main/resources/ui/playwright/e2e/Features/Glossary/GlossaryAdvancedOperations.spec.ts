@@ -19,22 +19,24 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  assignSingleSelectDomain,
   clickOutside,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
-  removeSingleSelectDomain,
 } from '../../../utils/common';
+import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
+  fillStyleIconUrl,
   openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  selectStyleColor,
+  selectStyleIcon,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -62,7 +64,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       // Verify mutually exclusive toggle is OFF by default
       const mutuallyExclusiveBtn = page.getByTestId(
@@ -116,7 +118,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('form-heading').waitFor();
 
       await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillDescriptionBox(page, glossary.data.description);
 
       // Add first user owner
       await addMultiOwnerInDialog({
@@ -217,10 +219,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -299,10 +299,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -338,8 +336,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignSingleSelectDomain(page, domain.responseData);
-      await removeSingleSelectDomain(page, domain.responseData, false);
+      await assignDomainWidget(page, domain.responseData);
+      await removeDomainWidget(page, domain.responseData);
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -362,78 +360,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Add initial domain via UI first
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const searchDomain1 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain1.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain1.responseData.name);
-      await searchDomain1;
-
-      const domain1Tag = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain1Tag).toBeVisible();
-
-      const addPatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain1Tag.click();
-      await addPatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify initial domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain1.data.displayName
-      );
-
-      // Click on domain to change it
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Search for new domain
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .clear();
-
-      const searchDomain2 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain2.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain2.responseData.name);
-      await searchDomain2;
-
-      // Click on the new domain option
-      const domain2Tag = page.getByTestId(
-        `tag-${domain2.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain2Tag).toBeVisible();
-
-      const changePatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain2Tag.click();
-      await changePatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify new domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain2.data.displayName
-      );
+      await assignDomainWidget(page, domain1.responseData);
+      await assignDomainWidget(page, domain2.responseData, false, true);
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);
@@ -457,11 +385,11 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `ColorTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom color');
+      await fillDescriptionBox(page, 'Term with custom color');
 
-      // Set custom color
-      const customColor = '#FF5733';
-      await page.getByTestId('color-color-input').fill(customColor);
+      // Set custom color (must be one of the palette swatches)
+      const customColor = '#B93815';
+      await selectStyleColor(page, customColor);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -494,11 +422,11 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `IconTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom icon');
+      await fillDescriptionBox(page, 'Term with custom icon');
 
-      // Set custom icon URL
+      // Set custom icon URL through the picker's URL tab
       const iconUrl = 'https://example.com/icon.png';
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -509,6 +437,44 @@ test.describe('Glossary Advanced Operations', () => {
       expect(responseData.style?.iconURL).toBe(iconUrl);
 
       // Verify term is created
+      await expect(page.getByTestId(termName)).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // T-C16b: Create term with a built-in icon picked from the grid
+  test('should create term with an icon picked from the picker grid', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await openAddGlossaryTermModal(page);
+
+      const termName = `GridIconTerm${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
+      await fillDescriptionBox(page, 'Term with a built-in icon');
+
+      // The grid stores the icon's name, not a URL — the UI resolves it back
+      // to the component when rendering.
+      const iconName = 'Folder';
+      await selectStyleIcon(page, iconName);
+
+      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.click('[data-testid="save-glossary-term"]');
+      const response = await createResponse;
+      const responseData = await response.json();
+
+      expect(responseData.style?.iconURL).toBe(iconName);
+
       await expect(page.getByTestId(termName)).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
@@ -538,10 +504,9 @@ test.describe('Glossary Advanced Operations', () => {
 
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-      // Set custom color
-      const customColor = '#28A745';
-      await page.getByTestId('color-color-input').clear();
-      await page.getByTestId('color-color-input').fill(customColor);
+      // Set custom color (must be one of the palette swatches)
+      const customColor = '#067647';
+      await selectStyleColor(page, customColor);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="save-glossary-term"]');
@@ -579,10 +544,9 @@ test.describe('Glossary Advanced Operations', () => {
 
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
-      // Set custom icon URL
+      // Set custom icon URL through the picker's URL tab
       const iconUrl = 'https://example.com/new-icon.png';
-      await page.getByTestId('icon-url').clear();
-      await page.getByTestId('icon-url').fill(iconUrl);
+      await fillStyleIconUrl(page, iconUrl);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="save-glossary-term"]');
@@ -1086,7 +1050,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `RelatedTerm${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with related terms');
+      await fillDescriptionBox(page, 'Term with related terms');
 
       const searchResponse = page.waitForResponse('/api/v1/search/query*');
 
@@ -1198,7 +1162,7 @@ test.describe('Glossary Advanced Operations', () => {
 
     const glossaryName = `CancelTest${Date.now()}`;
     await page.fill('[data-testid="name"]', glossaryName);
-    await page.locator(descriptionBox).fill('This should be cancelled');
+    await fillDescriptionBox(page, 'This should be cancelled');
 
     // Click cancel button
     await page.click('[data-testid="cancel-glossary"]');
@@ -1225,7 +1189,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       const termName = `CancelTermTest${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('This should be cancelled');
+      await fillDescriptionBox(page, 'This should be cancelled');
 
       // Click cancel button (X or Cancel)
       await page.getByRole('button', { name: 'Cancel' }).click();
@@ -1372,7 +1336,7 @@ test.describe('Glossary Advanced Operations', () => {
       // Create a long name (128 chars is typically the limit)
       const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
       await page.fill('[data-testid="name"]', longName);
-      await page.locator(descriptionBox).fill('Term with long name');
+      await fillDescriptionBox(page, 'Term with long name');
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -1406,7 +1370,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       // Create a long description (5000+ chars)
       const longDescription = 'This is a test. '.repeat(350);
-      await page.locator(descriptionBox).fill(longDescription);
+      await fillDescriptionBox(page, longDescription);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');
@@ -1434,7 +1398,7 @@ test.describe('Glossary Advanced Operations', () => {
     // Try to enter name exceeding 128 chars
     const tooLongName = 'A'.repeat(150);
     await page.fill('[data-testid="name"]', tooLongName);
-    await page.locator(descriptionBox).fill('Test description');
+    await fillDescriptionBox(page, 'Test description');
 
     // Try to save
     await page.click('[data-testid="save-glossary"]');
@@ -1470,7 +1434,7 @@ test.describe('Glossary Advanced Operations', () => {
       // Try to enter name exceeding 128 chars
       const tooLongName = 'B'.repeat(150);
       await page.fill('[data-testid="name"]', tooLongName);
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       // Try to save
       await page.click('[data-testid="save-glossary-term"]');

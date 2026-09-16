@@ -10,28 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
-import { getTierTags } from '../../../utils/TableUtils';
-import { updateTierTag } from '../../../utils/TagsUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
+import {
+  getTagName,
+  getTagRedirectLink,
+  updateTierTag,
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../IconButtons/EditIconButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';
-
 const TierWidget = () => {
   const {
     data: entity,
@@ -70,48 +73,41 @@ const TierWidget = () => {
     [permissions, isVersionView]
   );
 
-  const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="tier-heading-name">
-        {t('label.tier')}
-      </Typography.Text>
-      {canEdit && (
-        <EditIconButton
-          newLook
-          data-testid="edit-tier"
-          size="small"
-          title={t('label.edit-entity', {
-            entity: t('label.tier'),
-          })}
-          onClick={() => setIsEditing(true)}
-        />
-      )}
-    </div>
-  );
-
-  const tierDisplay = tier ? (
-    <TagsV1
-      hideIcon
-      startWith={TAG_START_WITH.SOURCE_ICON}
-      tag={tier}
-      tagProps={{ 'data-testid': 'Tier' }}
+  const tierEditControl = tier ? (
+    <WidgetEditButton
+      data-testid="edit-tier"
+      title={t('label.edit-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
     />
   ) : (
-    <span className="no-data-placeholder" data-testid="Tier">
-      {t('label.no-entity-assigned', {
-        entity: t('label.tier'),
-      })}
-    </span>
+    <WidgetPlusButton
+      data-testid="add-tier"
+      title={t('label.add-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
   );
 
-  const content = isEditing ? (
+  const headerExtra = canEdit ? tierEditControl : null;
+
+  const tierDisplay = tier ? (
+    <ClassificationTag
+      color={tier.style?.color}
+      data-testid="Tier"
+      href={getTagRedirectLink(tier)}
+      icon={tier.style?.iconURL}
+      label={getTagName(tier)}
+      maxWidth={200}
+      size="sm"
+      tooltip={getTagName(tier)}
+    />
+  ) : null;
+
+  const content = (
     <TierCard
       currentTier={tier?.tagFQN}
       footerActionButtonsClassName="p-x-md"
       popoverProps={{
-        open: true,
+        open: isEditing,
         onOpenChange: (visible: boolean) => {
           if (!visible) {
             setIsEditing(false);
@@ -121,16 +117,19 @@ const TierWidget = () => {
       tierCardClassName="tier-widget-popover"
       updateTier={handleTierUpdate}
       onClose={() => setIsEditing(false)}>
-      <div data-testid="tier-selector-display">{tierDisplay}</div>
+      {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
     </TierCard>
-  ) : (
-    tierDisplay
   );
 
   return (
-    <ExpandableCard cardProps={{ title: header }} dataTestId="tier">
+    <WidgetCard
+      dataTestId="tier"
+      forceExpand={isEditing}
+      headerExtra={headerExtra}
+      isExpandDisabled={!tier && !isEditing}
+      title={t('label.tier')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

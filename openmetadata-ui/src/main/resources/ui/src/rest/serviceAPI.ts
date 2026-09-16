@@ -20,6 +20,10 @@ import {
 } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import {
+  ServiceHealth,
+  ServicesOverview,
+} from '../generated/api/services/servicesOverview';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
@@ -29,7 +33,7 @@ import {
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
@@ -59,6 +63,48 @@ export const getServices = async ({
   };
 
   const response = await APIClient.get<ServiceResponse>(url, { params });
+
+  return response.data;
+};
+
+/**
+ * Request-side mirror of the schema's providerType enum. Declared here rather than imported
+ * because quicktype inlines that enum into each generated response file that happens to reference
+ * it, and none of those files is about services — there is no canonical export to reuse.
+ */
+export type ServiceProviderFilter = 'system' | 'user' | 'automation';
+
+export interface ServicesOverviewParams {
+  entityType?: string[];
+  listEntityType?: string[];
+  serviceType?: string[];
+  health?: ServiceHealth[];
+  includeHealth?: boolean;
+  q?: string;
+  limit?: number;
+  offset?: number;
+  sortOrder?: 'asc' | 'desc';
+  include?: Include;
+  domain?: string;
+  excludeProvider?: ServiceProviderFilter;
+}
+
+/**
+ * Counts across every service entity type plus one merged, name-sorted page, in a single
+ * database-backed request. Unlike the per-service-type list APIs this never returns (or decrypts)
+ * connection configuration, and unlike the search API it reads the source of truth, so a service
+ * created a moment ago is immediately visible.
+ */
+export const getServicesOverview = async (
+  params: ServicesOverviewParams = {}
+): Promise<ServicesOverview> => {
+  const response = await APIClient.get<ServicesOverview>('/services/overview', {
+    params,
+    // The shared client serializes arrays as `key=a,b` (see rest/index.ts), but the repeatable
+    // params here bind to JAX-RS `Set<>` and need `key=a&key=b`. Without this override a
+    // multi-value filter silently arrives as a single unknown value.
+    paramsSerializer: { indexes: null },
+  });
 
   return response.data;
 };

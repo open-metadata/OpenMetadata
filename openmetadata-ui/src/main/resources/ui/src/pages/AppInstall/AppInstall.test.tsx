@@ -47,11 +47,11 @@ jest.mock('react-router-dom', () => ({
 jest.mock(
   '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
-    jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+    jest.fn().mockImplementation(({ onChange, value }) => (
       <div>
         ScheduleInterval
-        <button onClick={onDeploy}>Submit ScheduleInterval</button>
-        <button onClick={onBack}>Cancel ScheduleInterval</button>
+        <span data-testid="schedule-value">{value}</span>
+        <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
       </div>
     ))
 );
@@ -63,15 +63,23 @@ jest.mock(
     getJSONUISchema: jest.fn().mockReturnValue({}),
     getApplicationConfigurationComponent: jest
       .fn()
-      .mockReturnValue(({ onConfigSave, onCancel }: any) => (
-        <div>
-          FormBuilder
-          <button onClick={() => onConfigSave({ formData: {} })}>
-            Submit FormBuilder
-          </button>
-          <button onClick={onCancel}>Cancel FormBuilder</button>
-        </div>
-      )),
+      .mockReturnValue(
+        ({
+          onConfigSave,
+          onCancel,
+        }: {
+          onConfigSave: (data: { formData: Record<string, unknown> }) => void;
+          onCancel: () => void;
+        }) => (
+          <div>
+            FormBuilder
+            <button onClick={() => onConfigSave({ formData: {} })}>
+              Submit FormBuilder
+            </button>
+            <button onClick={onCancel}>Cancel FormBuilder</button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -126,7 +134,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../rest/applicationAPI', () => ({
-  installApplication: jest.fn(() => mockInstallApplication()),
+  installApplication: jest.fn((...args) => mockInstallApplication(...args)),
 }));
 
 jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
@@ -135,9 +143,11 @@ jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
   ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getIngestionFrequency: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
+}));
+jest.mock('../../utils/SchedularUtils', () => ({
+  getIngestionFrequency: jest.fn(),
 }));
 
 jest.mock('../../utils/JSONSchemaFormUtils', () => ({
@@ -180,12 +190,17 @@ describe('AppInstall component', () => {
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
     expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
 
-    // ScheduleInterval
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByTestId('deploy-button'));
 
     expect(mockInstallApplication).toHaveBeenCalled();
+    expect(mockInstallApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appSchedule: expect.objectContaining({
+          cronExpression: '0 12 * * *',
+        }),
+      })
+    );
 
     await waitFor(() =>
       expect(mockShowSuccessToast).toHaveBeenCalledWith(
@@ -194,9 +209,7 @@ describe('AppInstall component', () => {
     );
 
     // change ActiveServiceStep to 1
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByTestId('back-button'));
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
 
@@ -229,12 +242,28 @@ describe('AppInstall component', () => {
     expect(screen.getByText('ScheduleInterval')).toBeInTheDocument();
 
     // change ActiveServiceStep to 2
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
+    fireEvent.click(screen.getByTestId('back-button'));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel FormBuilder' }));
 
     expect(screen.getByText('AppInstallVerifyCard')).toBeInTheDocument();
+  });
+
+  it('preserves the selected schedule across back and forward navigation', async () => {
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce(MARKETPLACE_DATA);
+
+    render(<AppInstall />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Save AppInstallVerifyCard' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByTestId('back-button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit FormBuilder' }));
+
+    expect(screen.getByTestId('schedule-value')).toHaveTextContent(
+      '0 12 * * *'
+    );
   });
 
   it('actions check with schedule type noSchedule', async () => {
@@ -267,7 +296,7 @@ describe('AppInstall component', () => {
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(
-      'message.no-application-schema-found'
+      'server.no-application-schema-found'
     );
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
@@ -289,9 +318,7 @@ describe('AppInstall component', () => {
     expect(await screen.findByText('ScheduleInterval')).toBeInTheDocument();
 
     await act(async () => {
-      userEvent.click(
-        screen.getByRole('button', { name: 'Submit ScheduleInterval' })
-      );
+      userEvent.click(screen.getByTestId('deploy-button'));
     });
 
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR));

@@ -72,7 +72,7 @@ export const WithFooter: Story = {
                     Name
                   </label>
                   <input
-                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-none focus:tw:border-brand"
+                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-hidden focus:tw:border-brand"
                     defaultValue="My Dataset"
                     type="text"
                   />
@@ -82,7 +82,7 @@ export const WithFooter: Story = {
                     Description
                   </label>
                   <textarea
-                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-none tw:resize-none focus:tw:border-brand"
+                    className="tw:w-full tw:rounded-lg tw:border tw:border-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary tw:outline-hidden tw:resize-none focus:tw:border-brand"
                     defaultValue="A sample dataset for demonstration purposes."
                     rows={4}
                   />

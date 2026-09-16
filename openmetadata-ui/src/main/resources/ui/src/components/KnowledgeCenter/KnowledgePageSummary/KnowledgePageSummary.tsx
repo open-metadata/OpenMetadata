@@ -10,24 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Divider, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import SummaryTagsDescription from '../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import CommonEntitySummaryInfo from '../../../components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { lazy, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { EntityUnion } from '../../../components/Explore/ExplorePage.interface';
 import {
   KnowledgePage,
   PageType,
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
-
-import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import SummaryPanelSkeleton from '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
-import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+
+const SummaryPanelSkeleton = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component'
+      )
+  )
+);
+
+const SummaryTagsDescription = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component'
+      )
+  )
+);
+
+const RelatedDataAssets = withSuspenseFallback(
+  lazy(() => import('../RelatedDataAssets/RelatedDataAssets'))
+);
+
+const CommonEntitySummaryInfo = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo'
+      )
+  )
+);
 
 const KnowledgePageSummary = ({
   entityDetails,
@@ -40,7 +68,7 @@ const KnowledgePageSummary = ({
     return [
       {
         name: i18n.t('label.owner-plural'),
-        value: <OwnerLabel hasPermission={false} owners={owners} />,
+        value: <Owner hasPermission={false} owners={toOwnerRefs(owners)} />,
       },
     ];
   }, [entityDetails]);

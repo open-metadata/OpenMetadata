@@ -99,10 +99,13 @@ export async function addTestCaseListFilterByTable(
   await tableOption.waitFor({ state: 'visible' });
   await tableOption.click();
 
+  // Table filter must pair entityLink with includeAllTests=true so column
+  // tests under the picked table are not dropped server-side.
   const testCaseByTableResponse = page.waitForResponse(
     (url) =>
       url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      url.url().includes('entityLink')
+      url.url().includes('entityLink') &&
+      url.url().includes('includeAllTests=true')
   );
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await testCaseByTableResponse;

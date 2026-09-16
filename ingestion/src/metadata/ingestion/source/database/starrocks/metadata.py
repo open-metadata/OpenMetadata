@@ -12,7 +12,8 @@
 
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import sql
 from sqlalchemy.engine.reflection import Inspector
@@ -208,7 +209,7 @@ class StarRocksSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create a StarRocksSource instance (factory method)"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if not config.serviceConnection:
@@ -259,7 +260,7 @@ class StarRocksSource(CommonDbSourceService):
         return tables
 
     @staticmethod
-    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:  # noqa: UP045
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str | None:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
@@ -337,7 +338,7 @@ class StarRocksSource(CommonDbSourceService):
         db_name: str,
         inspector: Inspector,
         table_type: str = None,  # noqa: RUF013
-    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, list[TableConstraint] | None, list[dict] | None]:
         """Get column information and constraints (compatible with OpenMetadata schema)"""
         table_columns = []
         table_constraints = []
@@ -420,7 +421,7 @@ class StarRocksSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """Get partition information of the table"""
         if not self.engine:
             logger.debug("SQLAlchemy engine not initialized, cannot query partition information")
@@ -457,7 +458,7 @@ class StarRocksSource(CommonDbSourceService):
 
         return False, None
 
-    def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> Optional[int]:  # noqa: UP045
+    def _check_col_length(self, system_data_type: str, data_type: sqltypes.TypeEngine) -> int | None:
         """Check column length (compatible with sqlalchemy.sql.sqltypes types)"""
         if not isinstance(data_type, sqltypes.TypeEngine):
             logger.warning(f"Not a SQLAlchemy TypeEngine instance, cannot get length: {type(data_type)}")

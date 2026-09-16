@@ -36,6 +36,7 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryLineagePipe
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.metadataIngestion.MessagingServiceAutoClassificationPipeline;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.MlmodelServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
@@ -46,7 +47,6 @@ import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
@@ -91,6 +91,17 @@ public class CreateIngestionPipelineImpl {
     STORAGE_PIPELINE_MAP.put(
         PipelineType.AUTO_CLASSIFICATION,
         CreateIngestionPipelineImpl::getStorageServiceAutoClassificationPipeline);
+  }
+
+  private static final Map<PipelineType, Function<Map<String, FilterPattern>, Object>>
+      MESSAGING_PIPELINE_MAP = new HashMap<>();
+
+  static {
+    MESSAGING_PIPELINE_MAP.put(
+        PipelineType.METADATA, CreateIngestionPipelineImpl::getMessagingServiceMetadataPipeline);
+    MESSAGING_PIPELINE_MAP.put(
+        PipelineType.AUTO_CLASSIFICATION,
+        CreateIngestionPipelineImpl::getMessagingServiceAutoClassificationPipeline);
   }
 
   private static final Map<String, Function<Map<String, FilterPattern>, Object>>
@@ -159,18 +170,14 @@ public class CreateIngestionPipelineImpl {
   }
 
   private final IngestionPipelineMapper mapper;
-  private final PipelineServiceClientInterface pipelineServiceClient;
 
-  public CreateIngestionPipelineImpl(
-      IngestionPipelineMapper mapper, PipelineServiceClientInterface pipelineServiceClient) {
+  public CreateIngestionPipelineImpl(IngestionPipelineMapper mapper) {
     this.mapper = mapper;
-    this.pipelineServiceClient = pipelineServiceClient;
   }
 
   public CreateIngestionPipelineResult execute(
       ServiceEntityInterface service, PipelineType pipelineType, boolean deploy) {
-    if (!supportsPipelineType(
-        pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
+    if (!supportsPipelineType(service, pipelineType)) {
       LOG.debug(
           "[GovernanceWorkflows] Service '{}' does not support Ingestion Pipeline of type '{}'",
           service.getName(),
@@ -191,12 +198,11 @@ public class CreateIngestionPipelineImpl {
           "[GovernanceWorkflows] Deploying '{}' for '{}'",
           ingestionPipeline.getDisplayName(),
           service.getName());
-      wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+      IngestionPipelineRepository repository =
+          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      wasSuccessful = deployPipeline(repository, ingestionPipeline, service);
       if (wasSuccessful) {
-        // Mark the pipeline as deployed
         ingestionPipeline.setDeployed(true);
-        IngestionPipelineRepository repository =
-            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
       } else {
         LOG.warn(
@@ -209,19 +215,26 @@ public class CreateIngestionPipelineImpl {
     return new CreateIngestionPipelineResult(ingestionPipeline.getId(), wasSuccessful);
   }
 
-  private boolean supportsPipelineType(
-      PipelineType pipelineType, Map<String, Object> connectionConfig) {
+  private boolean supportsPipelineType(ServiceEntityInterface service, PipelineType pipelineType) {
+    // Messaging services set supportsProfiler to enable AutoClassification, but they have no
+    // Profiler agent. AutoPilot auto-creates the AutoClassification agent for them (like
+    // database/storage services) while skipping Profiler.
+    if (Entity.getEntityTypeFromObject(service).equals(MESSAGING_SERVICE)
+        && pipelineType.equals(PipelineType.PROFILER)) {
+      return false;
+    }
+    Map<String, Object> connectionConfig = JsonUtils.getMap(service.getConnection().getConfig());
     return Optional.ofNullable(connectionConfig.get(SUPPORT_FEATURE_MAP.get(pipelineType)))
         .map(supports -> (boolean) supports)
         .orElse(false);
   }
 
   private boolean deployPipeline(
-      PipelineServiceClientInterface pipelineServiceClient,
+      IngestionPipelineRepository repository,
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service) {
     PipelineServiceClientResponse response =
-        pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        repository.deployIngestionPipeline(ingestionPipeline, service);
     return response.getCode() == 200;
   }
 
@@ -338,6 +351,16 @@ public class CreateIngestionPipelineImpl {
                 pipelineType, STORAGE_PIPELINE_MAP.keySet()));
       }
       return mapper.apply(serviceDefaultFilters);
+    } else if (entityType.equals(MESSAGING_SERVICE)) {
+      Function<Map<String, FilterPattern>, Object> mapper =
+          MESSAGING_PIPELINE_MAP.get(pipelineType);
+      if (mapper == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Messaging service does not support pipeline type '%s'. Supported types: %s",
+                pipelineType, MESSAGING_PIPELINE_MAP.keySet()));
+      }
+      return mapper.apply(serviceDefaultFilters);
     } else if (pipelineType.equals(PipelineType.METADATA)) {
       return SERVICE_TO_PIPELINE_MAP.get(entityType).apply(serviceDefaultFilters);
     } else {
@@ -399,6 +422,14 @@ public class CreateIngestionPipelineImpl {
       Map<String, FilterPattern> defaultFilters) {
     return new MessagingServiceMetadataPipeline()
         .withTopicFilterPattern(defaultFilters.get(TOPIC_FILTER_PATTERN));
+  }
+
+  private static MessagingServiceAutoClassificationPipeline
+      getMessagingServiceAutoClassificationPipeline(Map<String, FilterPattern> defaultFilters) {
+    return new MessagingServiceAutoClassificationPipeline()
+        .withTopicFilterPattern(defaultFilters.get(TOPIC_FILTER_PATTERN))
+        .withEnableAutoClassification(true)
+        .withStoreSampleData(false);
   }
 
   private static DashboardServiceMetadataPipeline getDashboardServiceMetadataPipeline(

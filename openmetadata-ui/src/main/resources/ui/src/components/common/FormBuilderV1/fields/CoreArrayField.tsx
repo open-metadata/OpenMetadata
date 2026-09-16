@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { HintText, Label, Tooltip } from '@openmetadata/ui-core-components';
+import { Button, HintText, Label } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { splitCSV } from '../../../../utils/CSV/CSV.utils';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
+import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
@@ -109,26 +110,30 @@ const CoreArrayField = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
 
-  const fieldLabel = label || schema.title || startCase(fieldName);
+  const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
       <div
         className={[
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-[38px] tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
-          isInvalid ? 'tw:ring-error_subtle' : 'tw:ring-primary',
+          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
+          // only box-shadow, so it must name the outline properties now.
+          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
+          'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+          isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
           isDisabled
-            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled'
+            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
             : '',
         ]
           .filter(Boolean)
           .join(' ')}>
-        {value.map((v, idx) => (
+        {value.map((v) => (
           <span
             className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:ring-1 tw:ring-inset tw:ring-brand-200"
-            key={`${v}-${idx}`}>
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200"
+            key={v}>
             {v}
             {!isDisabled && (
               <button
@@ -156,21 +161,18 @@ const CoreArrayField = (props: FieldProps) => {
             onKeyDown={handleKeyDown}
           />
         )}
-        <Tooltip
-          title={
+        <Button
+          className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
+          color="tertiary"
+          iconLeading={Copy01}
+          tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }>
-          <button
-            className="tw:ml-auto tw:flex tw:cursor-pointer tw:items-center tw:p-1 tw:text-fg-quaternary tw:transition-colors tw:duration-200 hover:tw:text-fg-quaternary_hover"
-            tabIndex={-1}
-            type="button"
-            onClick={async (e) => {
-              e.stopPropagation();
-              await onCopyToClipBoard();
-            }}>
-            <Copy01 size={14} />
-          </button>
-        </Tooltip>
+          }
+          onPress={async (e) => {
+            e.stopPropagation();
+            await onCopyToClipBoard();
+          }}
+        />
       </div>
       {isInvalid && rawErrors && <HintText isInvalid>{rawErrors[0]}</HintText>}
     </div>

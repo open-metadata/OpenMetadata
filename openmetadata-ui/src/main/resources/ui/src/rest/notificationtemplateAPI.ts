@@ -21,7 +21,7 @@ import {
 import { Paging } from '../../src/generated/type/paging';
 import { ListParams } from '../../src/interface/API.interface';
 import APIClient from '../../src/rest/index';
-import { getEncodedFqn } from '../../src/utils/StringsUtils';
+import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { NotificationTemplateValidationResponse } from '../generated/api/events/notificationTemplateRenderResponse';
 import { NotificationTemplateSendRequest } from '../generated/api/events/notificationTemplateSendRequest';
 

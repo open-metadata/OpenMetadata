@@ -18,9 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.FieldDiff;
@@ -174,6 +177,24 @@ class ChangePreviewUtilsTest {
     assertEquals(List.of("old text"), result.get("description").removed());
   }
 
+  @Test
+  void buildChangeMap_sameFieldInAddedAndDeleted_accumulatesBothSides() {
+    FieldChange added =
+        new FieldChange().withName("tags").withNewValue("[{\"tagFQN\":\"PII.Sensitive\"}]");
+    FieldChange deleted =
+        new FieldChange().withName("tags").withOldValue("[{\"tagFQN\":\"PII.None\"}]");
+    ChangeDescription cd =
+        new ChangeDescription()
+            .withFieldsAdded(List.of(added))
+            .withFieldsDeleted(List.of(deleted))
+            .withFieldsUpdated(new ArrayList<>());
+
+    Map<String, FieldDiff> result = ChangePreviewUtils.buildChangeMap(cd);
+
+    assertEquals(List.of("PII.Sensitive"), result.get("tags").added());
+    assertEquals(List.of("PII.None"), result.get("tags").removed());
+  }
+
   // ---------------------------------------------------------------------------
   // mergeChangeMaps — set-cancellation semantics
   // ---------------------------------------------------------------------------
@@ -316,5 +337,226 @@ class ChangePreviewUtilsTest {
             .withFieldsDeleted(new ArrayList<>())
             .withFieldsUpdated(new ArrayList<>());
     assertTrue(!ChangePreviewUtils.hasNoChanges(cd));
+  }
+
+  // ---------------------------------------------------------------------------
+  // extractProposedChanges
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void extractProposedChanges_nullPayload_returnsEmpty() {
+    assertTrue(ChangePreviewUtils.extractProposedChanges(null).isEmpty());
+  }
+
+  @Test
+  void extractProposedChanges_payloadWithoutKey_returnsEmpty() {
+    Map<String, Object> payload = Map.of("feedback", "x");
+    assertTrue(ChangePreviewUtils.extractProposedChanges(payload).isEmpty());
+  }
+
+  @Test
+  void extractProposedChanges_payloadWithKey_returnsMap() {
+    Map<String, Object> payload =
+        Map.of(
+            "proposedChanges",
+            Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
+    Map<String, FieldDiff> result = ChangePreviewUtils.extractProposedChanges(payload);
+    assertEquals(List.of("PII.Sensitive"), result.get("tags").added());
+  }
+
+  // ---------------------------------------------------------------------------
+  // buildProposedChangesPayload
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void buildProposedChangesPayload_nullEntity_returnsInput() {
+    Map<String, Object> existing = Map.of("k", "v");
+    assertEquals(existing, ChangePreviewUtils.buildProposedChangesPayload(null, existing));
+  }
+
+  @Test
+  void extractProposedChanges_jsonRoundTripShape_recoversMap() {
+    Map<String, Object> persisted =
+        Map.of(
+            "proposedChanges",
+            Map.of(
+                "tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of("PII.None"))));
+
+    Map<String, FieldDiff> recovered = ChangePreviewUtils.extractProposedChanges(persisted);
+
+    assertEquals(List.of("PII.Sensitive"), recovered.get("tags").added());
+    assertEquals(List.of("PII.None"), recovered.get("tags").removed());
+  }
+
+  // ---------------------------------------------------------------------------
+  // preserveProposedChanges
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void preserveProposedChanges_nullRequestedPayload_returnsInput() {
+    assertNull(ChangePreviewUtils.preserveProposedChanges(null, Map.of("k", "v")));
+  }
+
+  @Test
+  void preserveProposedChanges_requestedCarriesOwnKey_returnsRequestedUnchanged() {
+    Map<String, Object> requested =
+        Map.of(
+            "proposedChanges", Map.of("tags", Map.of("added", List.of("X"), "removed", List.of())));
+    Map<String, Object> prior =
+        Map.of(
+            "proposedChanges", Map.of("tags", Map.of("added", List.of("Y"), "removed", List.of())));
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertEquals(requested, result);
+  }
+
+  @Test
+  void preserveProposedChanges_requestedMissingKey_copiesFromPrior() {
+    Map<String, Object> requested = new LinkedHashMap<>();
+    requested.put("feedback", "keep");
+    Map<String, Object> prior = new LinkedHashMap<>();
+    prior.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
+
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertTrue(result instanceof Map<?, ?>);
+    Map<?, ?> resultMap = (Map<?, ?>) result;
+    assertEquals("keep", resultMap.get("feedback"));
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  @Test
+  void preserveProposedChanges_priorMissingKey_returnsRequestedUnchanged() {
+    Map<String, Object> requested = Map.of("feedback", "keep");
+    Map<String, Object> prior = Map.of("other", "irrelevant");
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertEquals(requested, result);
+  }
+
+  @Test
+  void extractProposedChanges_jsonRoundTripMissingRemovedKey_defaultsToEmpty() {
+    Map<String, Object> persisted =
+        Map.of("proposedChanges", Map.of("tags", Map.of("added", List.of("PII.Sensitive"))));
+
+    Map<String, FieldDiff> recovered = ChangePreviewUtils.extractProposedChanges(persisted);
+
+    assertEquals(List.of("PII.Sensitive"), recovered.get("tags").added());
+    assertTrue(recovered.get("tags").removed().isEmpty());
+  }
+
+  @Test
+  void buildProposedChangesPayload_entityWithoutChanges_returnsInput() {
+    EntityInterface entity = new GlossaryTerm().withName("t");
+    Map<String, Object> existing = Map.of("k", "v");
+    assertEquals(existing, ChangePreviewUtils.buildProposedChangesPayload(entity, existing));
+  }
+
+  @Test
+  void buildProposedChangesPayload_prefersIncrementalOverCumulative() {
+    // Simulates the in-session-edit scenario: cumulative changeDescription reports a tag
+    // removal that the prior task payload already cancelled, while the latest hop only
+    // touches a different field. Without incremental preference, the cumulative removal
+    // double-counts and re-introduces the cancelled tag on the removed side.
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withOldValue("[{\"tagFQN\":\"PII.None\"}]"))))
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withOldValue("[{\"tagFQN\":\"KnowledgeCenter.Article\"}]"))));
+
+    Map<String, Object> priorPayload = new LinkedHashMap<>();
+    priorPayload.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("KnowledgeCenter.Article"), "removed", List.of())));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, priorPayload);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertNull(proposed.get("tags"));
+  }
+
+  @Test
+  void buildProposedChangesPayload_freshChanges_writesKey() {
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withNewValue("[{\"tagFQN\":\"PII.Sensitive\"}]"))));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, null);
+
+    assertTrue(result instanceof Map);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  @Test
+  void buildProposedChangesPayload_mergesWithExistingProposedChanges() {
+    Map<String, Object> existingPayload = new LinkedHashMap<>();
+    existingPayload.put("feedback", "keep me");
+    existingPayload.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of("PII.None"))));
+
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withNewValue("[{\"tagFQN\":\"PersonalData.Personal\"}]"))));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, existingPayload);
+
+    assertTrue(result instanceof Map<?, ?>);
+    Map<?, ?> resultMap = (Map<?, ?>) result;
+    assertEquals("keep me", resultMap.get("feedback"));
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+    assertEquals(List.of("PII.Sensitive", "PersonalData.Personal"), proposed.get("tags").added());
+    assertEquals(List.of("PII.None"), proposed.get("tags").removed());
+  }
+
+  @Test
+  void buildProposedChangesPayload_cancelsToEmpty_removesKey() {
+    Map<String, Object> existingPayload = new LinkedHashMap<>();
+    existingPayload.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
+
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withOldValue("[{\"tagFQN\":\"PII.Sensitive\"}]"))));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, existingPayload);
+
+    assertTrue(result instanceof Map<?, ?>);
+    assertTrue(!((Map<?, ?>) result).containsKey("proposedChanges"));
   }
 }

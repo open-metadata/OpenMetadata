@@ -14,7 +14,6 @@ Handles the TableMapper for the GX Action.
 
 import logging
 from enum import Enum, auto
-from typing import Dict, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ValidationError
 
@@ -34,9 +33,9 @@ class TableConfig(BaseModel):
     Defines a Mapping for a GX Expectation Suite to be mapped to an OpenMetadata Table.
     """
 
-    database_name: Optional[str]  # noqa: UP045
-    schema_name: Optional[str]  # noqa: UP045
-    table_name: Optional[str]  # noqa: UP045
+    database_name: str | None
+    schema_name: str | None
+    table_name: str | None
 
     @classmethod
     def default(cls):
@@ -49,8 +48,8 @@ class TableConfig(BaseModel):
 
 class TableConfigMap(DictModel[str, TableConfig]):
     @classmethod
-    def parse(cls, raw: Dict[str, Dict[str, str]]):  # noqa: UP006
-        parsed: Dict[str, TableConfig] = {}  # noqa: UP006
+    def parse(cls, raw: dict[str, dict[str, str]]):
+        parsed: dict[str, TableConfig] = {}
 
         for suite_name, cfg_dict in raw.items():
             try:
@@ -72,9 +71,9 @@ class TableMapper:
 
     def __init__(
         self,
-        default_database_name: Optional[str],  # noqa: UP045
-        default_schema_name: Optional[str],  # noqa: UP045
-        default_table_name: Optional[str],  # noqa: UP045
+        default_database_name: str | None,
+        default_schema_name: str | None,
+        default_table_name: str | None,
         expectation_suite_table_config_map: TableConfigMap,
     ):
         self.default = TableConfig(
@@ -85,7 +84,7 @@ class TableMapper:
 
         self.expectation_suite_table_config_map = expectation_suite_table_config_map
 
-    def get_part_name(self, part: TablePart, expectation_suite_name: Optional[str] = None):  # noqa: UP045
+    def get_part_name(self, part: TablePart, expectation_suite_name: str | None = None):
         table_config = self.default
         if self.expectation_suite_table_config_map and expectation_suite_name:
             table_config = self.expectation_suite_table_config_map.get(expectation_suite_name) or self.default

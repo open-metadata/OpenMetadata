@@ -12,17 +12,21 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
-  formatContent,
+  formatClientContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorUtils';
-import { getTrimmedContent } from '../../../utils/CommonUtils';
-import BlockEditor from '../../BlockEditor/BlockEditor';
+} from '../../../utils/BlockEditorPureUtils';
+import { getTrimmedContent } from '../../../utils/StringUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
+const BlockEditor = withSuspenseFallback(
+  lazy(() => import('../../BlockEditor/BlockEditor'))
+);
 
 const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   markdown = '',
@@ -36,7 +40,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   extensionOptions,
 }) => {
   const { t, i18n } = useTranslation();
-  const [content, setContent] = useState<string>('');
+  const content = useMemo(() => formatClientContent(markdown), [markdown]);
 
   const [readMore, setReadMore] = useState<boolean>(false);
 
@@ -59,10 +63,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
     return content;
   }, [hasReadMore, readMore, maxLength, content]);
-
-  useEffect(() => {
-    setContent(formatContent(markdown, 'client'));
-  }, [markdown]);
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));
@@ -88,6 +88,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
         )}
         data-testid="markdown-parser">
         <BlockEditor
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- explicitly disabled; BlockEditor prop
           autoFocus={false}
           content={viewerValue}
           editable={false}

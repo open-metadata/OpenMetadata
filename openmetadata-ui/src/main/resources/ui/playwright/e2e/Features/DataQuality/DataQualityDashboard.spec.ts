@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
+import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -23,8 +23,9 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../../support/tag/ClassificationClass';
 import { TagClass } from '../../../support/tag/TagClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage, uuid } from '../../../utils/common';
+import { createNewPage, getApiContext, uuid } from '../../../utils/common';
 import {
+  applyDashboardCertificationFilter,
   applyDashboardTagFilter,
   applyDashboardTierFilter,
   assertDimensionCard,
@@ -35,9 +36,11 @@ import {
   DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID,
   ENTITY_HEALTH_PIE_CHART_TEST_ID,
   goToDataQualityDashboard,
+  isDashboardReportBatchResponse,
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
@@ -410,63 +413,11 @@ test.describe(
       await afterAction();
     });
 
-    const waitForDashboardApiResponses = (page: Page, key: string) => {
-      const testCaseStatusResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCase&aggregationQuery=bucketName%3Dstatus%3AaggType%3Dterms%3Afield%3DtestCaseResult.testCaseStatus`
-      );
-      const unhealthyEntityResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCase&aggregationQuery=bucketName%3DentityWithTests%3AaggType%3Dcardinality%3Afield%3DoriginEntityFQN`
-      );
-      const totalCoveredEntityResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCase&aggregationQuery=bucketName%3DentityWithTests%3AaggType%3Dcardinality%3Afield%3DoriginEntityFQN`
-      );
-      const totalTestCaseResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCase&aggregationQuery=bucketName%3Ddimension%3AaggType%3Dterms%3Afield%3DdataQualityDimension%2CbucketName%3Dstatus%3AaggType%3Dterms%3Afield%3DtestCaseResult.testCaseStatus`
-      );
-      const successStatusResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCaseResult&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3DnewIncidents%3AaggType%3Dcardinality%3Afield%3DtestCase.fullyQualifiedName`
-      );
-      const abortedStatusResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCaseResult&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3DnewIncidents%3AaggType%3Dcardinality%3Afield%3DtestCase.fullyQualifiedName`
-      );
-      const failedStatusResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCaseResult&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3DnewIncidents%3AaggType%3Dcardinality%3Afield%3DtestCase.fullyQualifiedName`
-      );
-      const newIncidentResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCaseResolutionStatus&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3DnewIncidents%3AaggType%3Dcardinality%3Afield%3DstateId`
-      );
-      const resolvedIncidentResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?q=*${key}*&index=testCaseResolutionStatus&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3DnewIncidents%3AaggType%3Dcardinality%3Afield%3DstateId`
-      );
-      const timeToResponseMetricResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?*${key}*&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3Dmetrics%3AaggType%3Dnested%3Apath%3Dmetrics%2CbucketName%3DbyName%3AaggType%3Dterms%3Afield%3Dmetrics.name.keyword%2CbucketName%3DavgValue%3AaggType%3Davg%3Afield%3Dmetrics.value`
-      );
-      const timeToResolutionMetricResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?*${key}*&aggregationQuery=bucketName%3DbyDay%3AaggType%3Ddate_histogram%3Afield%3Dtimestamp%26calendar_interval%3Dday%2CbucketName%3Dmetrics%3AaggType%3Dnested%3Apath%3Dmetrics%2CbucketName%3DbyName%3AaggType%3Dterms%3Afield%3Dmetrics.name.keyword%2CbucketName%3DavgValue%3AaggType%3Davg%3Afield%3Dmetrics.value`
-      );
-      const entityWithTestCasesResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?*${key}*&index=testCase&aggregationQuery=bucketName%3DentityWithTests%3AaggType%3Dcardinality%3Afield%3DoriginEntityFQN`
-      );
-      const totalEntityCountResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testSuites/dataQualityReport?*${key}*&index=table&aggregationQuery=bucketName%3Dcount%3AaggType%3Dcardinality%3Afield%3DfullyQualifiedName`
-      );
-
-      return [
-        testCaseStatusResponse,
-        unhealthyEntityResponse,
-        totalCoveredEntityResponse,
-        totalTestCaseResponse,
-        successStatusResponse,
-        abortedStatusResponse,
-        failedStatusResponse,
-        newIncidentResponse,
-        resolvedIncidentResponse,
-        timeToResponseMetricResponse,
-        timeToResolutionMetricResponse,
-        entityWithTestCasesResponse,
-        totalEntityCountResponse,
-      ];
-    };
+    // The dashboard coalesces every widget aggregation into one batched POST
+    // whose body carries the filter `key`. Wait for that single round trip.
+    const waitForDashboardApiResponses = (page: Page, key: string) => [
+      page.waitForResponse((res) => isDashboardReportBatchResponse(res, key)),
+    ];
 
     test('DataQualityDashboardTab', async ({ page }) => {
       test.slow();
@@ -478,23 +429,21 @@ test.describe(
 
       await test.step('Filter by Owner and verify all API responses succeed', async () => {
         await page.getByRole('button', { name: 'Owner' }).click();
-        await expect(
-          page.locator("[data-testid='select-owner-tabs']")
-        ).toBeVisible();
+        await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await page.getByRole('tab', { name: 'Users' }).click();
         await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.getByTestId('owner-select-users-search-bar')
+        ).toBeVisible();
 
         const searchOwner = page.waitForResponse(
           'api/v1/search/query?q=*&index=user*'
         );
+        await page.getByTestId('owner-select-users-search-bar').clear();
         await page
-          .locator('[data-testid="owner-select-users-search-bar"]')
-          .clear();
-        await page.fill(
-          '[data-testid="owner-select-users-search-bar"]',
-          user1.getUserDisplayName()
-        );
+          .getByTestId('owner-select-users-search-bar')
+          .pressSequentially(user1.getUserDisplayName());
         await searchOwner;
         await waitForAllLoadersToDisappear(page);
 
@@ -503,7 +452,8 @@ test.describe(
           user1.responseData.name
         );
         await page
-          .getByRole('listitem', { name: user1.getUserDisplayName() })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.getUserDisplayName() })
           .click();
         for (const apiRes of ownerApiResponse) {
           const responseData = await apiRes;
@@ -628,7 +578,7 @@ test.describe(
           .click();
         const glossaryTermApiResponse = waitForDashboardApiResponses(
           page,
-          encodeURIComponent(glossaryTerm.responseData.name)
+          glossaryTerm.responseData.name
         );
         await page.getByTestId('update-btn').click();
         for (const apiRes of glossaryTermApiResponse) {
@@ -662,7 +612,7 @@ test.describe(
           .click();
         const dataProductApiResponse = waitForDashboardApiResponses(
           page,
-          encodeURIComponent(dataProduct.data.name)
+          dataProduct.data.name
         );
         await page.getByTestId('update-btn').click();
         for (const apiRes of dataProductApiResponse) {
@@ -677,7 +627,9 @@ test.describe(
         ).toBeVisible();
       });
 
-      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+      // table3 is given an owner in beforeAll, so the incident raised by the
+      // Consistency failure is auto-assigned on creation instead of opening as New.
+      await test.step('Verify Assigned incident for Consistency test case on table3 DQ tab', async () => {
         await visitDataQualityTab(page, table3);
         await expect(
           page.locator(
@@ -686,10 +638,10 @@ test.describe(
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
-        ).toContainText('New');
+        ).toContainText('Assigned');
       });
 
-      await test.step('Verify Resolved incident for Uniqueness test case on table4 DQ tab', async () => {
+      await test.step('Verify Resolved incident chip for Uniqueness test case on table4 DQ tab', async () => {
         await visitDataQualityTab(page, table4);
         await expect(
           page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
@@ -706,20 +658,11 @@ test.describe(
         await goToDataQualityDashboard(page);
         await waitForAllLoadersToDisappear(page);
 
-        await page.getByRole('button', { name: 'Certification' }).click();
-        await page.getByTestId('search-input').fill(cert2.data.name);
-        await page.getByTestId(cert2.responseData.fullyQualifiedName).click();
-        const certApiDone = page.waitForResponse(
-          (res) =>
-            res.url().includes('/dataQualityReport') &&
-            res
-              .url()
-              .includes(
-                encodeURIComponent(cert2.responseData.fullyQualifiedName)
-              )
+        await applyDashboardCertificationFilter(
+          page,
+          cert2.data.name,
+          cert2.responseData.fullyQualifiedName
         );
-        await page.getByTestId('update-btn').click();
-        await certApiDone;
         await waitForAllLoadersToDisappear(page);
 
         // table4 has exactly one test case: Uniqueness → Failed
@@ -729,6 +672,133 @@ test.describe(
           failed: '1',
           aborted: '0',
         });
+      });
+    });
+
+    // Regression for #30455: a resolved incident must stay visible with its
+    // edit affordance so it can be reopened in place, continuing the SAME
+    // incident (stateId) instead of forking a new one.
+    test('Reopen resolved incident in place from the Test Case page', async ({
+      page,
+    }) => {
+      let resolvedStateId = '';
+
+      await test.step('Open the resolved test case from the DQ tab', async () => {
+        await visitDataQualityTab(page, table4);
+        await page
+          .getByTestId(uniquenessTestCaseName)
+          .getByText(uniquenessTestCaseName)
+          .click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Test Case page shows the resolved incident with its edit affordance', async () => {
+        const { apiContext } = await getApiContext(page);
+        const fetchLatestIncident = () =>
+          apiContext
+            .get(
+              `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+                `&startTs=0&endTs=${getCurrentMillis()}` +
+                `&testCaseFQN=${uniquenessTestCaseFqn}`
+            )
+            .then((res) => res.json());
+
+        let latest = await fetchLatestIncident();
+        // A failed earlier attempt may have left the incident reopened;
+        // restore the resolved precondition so retries stay deterministic.
+        if (
+          latest.data?.[0]?.testCaseResolutionStatusType !==
+          TestCaseResolutionStatusTypes.Resolved
+        ) {
+          await apiContext.post(
+            '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+            {
+              data: {
+                testCaseReference: uniquenessTestCaseFqn,
+                testCaseResolutionStatusType:
+                  TestCaseResolutionStatusTypes.Resolved,
+              },
+            }
+          );
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          latest = await fetchLatestIncident();
+        }
+        resolvedStateId = latest.data?.[0]?.stateId ?? '';
+
+        expect(resolvedStateId).not.toBe('');
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Resolved');
+        await expect(
+          page.locator('[data-testid="edit-resolution-icon"]')
+        ).toBeVisible();
+      });
+
+      await test.step('Reopen the incident as Acknowledged from the header', async () => {
+        await page.click('[data-testid="edit-resolution-icon"]');
+        await page.click('[data-testid="test-case-resolution-status-type"]');
+        await page.click('[title="Ack"]');
+
+        const reopenResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/dataQuality/testCases/testCaseIncidentStatus') &&
+            response.request().method() === 'POST'
+        );
+        await page.click('#update-status-button');
+        const reopened = await (await reopenResponse).json();
+
+        expect(reopened.stateId).toBe(resolvedStateId);
+        expect(reopened.testCaseResolutionStatusType).toBe(
+          TestCaseResolutionStatusTypes.ACK
+        );
+
+        await expect(
+          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+        ).toContainText('Ack');
+      });
+    });
+
+    test('Dashboard batches all report aggregations into one request (no N+1)', async ({
+      page,
+    }) => {
+      const batchBodies: Array<{ requests?: unknown[] }> = [];
+      let individualReportGetCount = 0;
+      page.on('request', (req) => {
+        const url = req.url();
+        if (url.includes('/dataQualityReport/batch')) {
+          const body = req.postData();
+          if (body) {
+            batchBodies.push(JSON.parse(body));
+          }
+        } else if (
+          url.includes('/dataQualityReport') &&
+          req.method() === 'GET'
+        ) {
+          individualReportGetCount += 1;
+        }
+      });
+
+      await test.step('Navigate to Data Quality dashboard', async () => {
+        await goToDataQualityDashboard(page);
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Widgets coalesce into batch POST(s) with no per-widget GET fan-out', () => {
+        // The N+1 is gone: not a single per-widget GET dataQualityReport fired.
+        expect(individualReportGetCount).toBe(0);
+        expect(batchBodies.length).toBeGreaterThan(0);
+
+        // One round trip carries every widget aggregation across the dashboard.
+        const totalAggregations = batchBodies.reduce(
+          (sum, body) => sum + (body.requests?.length ?? 0),
+          0
+        );
+
+        expect(totalAggregations).toBeGreaterThanOrEqual(10);
       });
     });
 
@@ -913,9 +983,20 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
+        const navFailed = page.waitForURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -923,7 +1004,9 @@ test.describe(
         );
         await navFailed;
         await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 
@@ -1036,6 +1119,67 @@ test.describe(
         );
         await navExplore;
         await expect(page).toHaveURL(/\/explore/);
+      });
+    });
+
+    test('Test Cases list filter — Data Product', async ({ page }) => {
+      const dataProductDisplayName =
+        dataProduct.responseData.displayName ?? dataProduct.data.displayName;
+      const dataProductName = dataProduct.data.name;
+
+      await test.step('Navigate to DQ Test Cases tab', async () => {
+        await page.goto('/data-quality/test-cases');
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Add Data Product advanced filter', async () => {
+        const dataProductOptionsRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataProduct*'
+        );
+        await page.click('[data-testid="advanced-filter"]');
+        await page.click('[value="dataProductFqn"]');
+        await dataProductOptionsRes;
+
+        await expect(
+          page.getByTestId('data-product-select-filter')
+        ).toBeVisible();
+      });
+
+      await test.step('Select data product and verify API carries dataProductFqn', async () => {
+        const dataProductInput = page.locator('#dataProductFqn');
+        const dataProductOptionsRes = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/search/query') &&
+            r.url().includes('index=dataProduct') &&
+            r.url().includes(dataProductName)
+        );
+        await dataProductInput.click();
+        await dataProductInput.fill(dataProductName);
+        await dataProductOptionsRes;
+
+        const filterApiRes = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+            r.url().includes('dataProductFqn')
+        );
+        await page
+          .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+          .getByText(dataProductDisplayName)
+          .click();
+        await filterApiRes;
+      });
+
+      await test.step('Remove Data Product filter', async () => {
+        const getTestCases = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.click('[data-testid="advanced-filter"]');
+        await page.click('[value="dataProductFqn"]');
+        await getTestCases;
+
+        await expect(
+          page.getByTestId('data-product-select-filter')
+        ).not.toBeVisible();
       });
     });
   }

@@ -25,6 +25,8 @@ export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
 export const getInitOptions = (): InitOptions => {
   return {
     supportedLngs: Object.values(SupportedLocales),
+    ns: ['translation', 'core'],
+    defaultNS: 'translation',
     resources: {
       'en-US': { translation: enUS },
     },
@@ -35,6 +37,7 @@ export const getInitOptions = (): InitOptions => {
     },
     interpolation: {
       escapeValue: false,
+      defaultVariables: { brandName: process.env.BRAND_NAME ?? 'OpenMetadata' },
     },
     missingKeyHandler: (_lngs, _ns, key) =>
       // eslint-disable-next-line no-console
@@ -80,4 +83,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
   ar: SupportedLocales.العربية,
+  sv: SupportedLocales.Svenska,
 };

@@ -49,7 +49,11 @@ export interface UnityCatalogConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:                string;
+    httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?:       PolicyAgentConfig;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -58,14 +62,15 @@ export interface UnityCatalogConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     DatabricksScheme;
-    supportsDatabase?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    scheme?:                                DatabricksScheme;
+    supportsDatabase?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
+    supportsLineageExtraction?:             boolean;
+    supportsMetadataExtraction?:            boolean;
+    supportsProfiler?:                      boolean;
+    supportsQueryComment?:                  boolean;
+    supportsUsageExtraction?:               boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -135,6 +140,28 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**

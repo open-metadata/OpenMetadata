@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -52,6 +53,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
@@ -366,7 +368,14 @@ public class EventSubscriptionScheduler {
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     // Previously, getEventSubscription was called for each event in the stream
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -376,8 +385,12 @@ public class EventSubscriptionScheduler {
     return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .count();
@@ -458,7 +471,14 @@ public class EventSubscriptionScheduler {
   public List<ChangeEvent> getRelevantUnprocessedEvents(
       UUID subscriptionId, int limit, int paginationOffset) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    FilteringRules filteringRules = getEventSubscription(subscriptionId).getFilteringRules();
+    EventSubscription subscription = getEventSubscription(subscriptionId);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -471,8 +491,12 @@ public class EventSubscriptionScheduler {
         .parallelStream()
         .map(
             eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.checkIfChangeEventIsAllowed(event, filteringRules) ? event : null;
+              ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
+              return event != null
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
+                  ? event
+                  : null;
             })
         .filter(Objects::nonNull)
         .toList();
@@ -489,7 +513,8 @@ public class EventSubscriptionScheduler {
         .changeEventDAO()
         .listUnprocessedEvents(offset, limit, paginationOffset)
         .parallelStream()
-        .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
+        .map(eventJson -> ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -557,7 +582,8 @@ public class EventSubscriptionScheduler {
             .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
     return successfullySentChangeEvents.stream()
-        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -666,8 +692,8 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
-  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
   private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
 
   /**
@@ -676,29 +702,35 @@ public class EventSubscriptionScheduler {
    * in multi-server setups.
    */
   public void scheduleAuditLogConsumer() throws SchedulerException {
+    ensureAuditLogConsumerScheduled(alertsScheduler);
+  }
+
+  /**
+   * (Re)arms the audit log consumer trigger on every startup. With the clustered {@code JobStoreTX}
+   * the job and trigger persist across restarts, so a plain existence check sees the job and skips
+   * rescheduling forever. That strands the consumer whenever the persisted trigger stops firing —
+   * not only in ERROR/BLOCKED/PAUSED states, but also while still reported as WAITING/NORMAL with a
+   * frozen past next-fire-time (an abandoned trigger after an unclean shutdown). We therefore always
+   * replace it with a fresh trigger. The consumer offset lives in {@code change_event_consumers},
+   * not in Quartz, so re-arming loses no progress; {@code replace=true} swaps atomically so
+   * concurrent cluster nodes don't race.
+   */
+  static void ensureAuditLogConsumerScheduled(Scheduler scheduler) throws SchedulerException {
     JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
-
-    // Check if already scheduled
-    if (alertsScheduler.checkExists(jobKey)) {
-      LOG.info("Audit log consumer job already scheduled");
-      return;
-    }
-
     JobDetail jobDetail =
         JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
-
-    Trigger trigger =
-        TriggerBuilder.newTrigger()
-            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
-            .withSchedule(
-                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
-            .startNow()
-            .build();
-
-    alertsScheduler.scheduleJob(jobDetail, trigger);
+    scheduler.scheduleJob(jobDetail, Set.of(buildAuditLogTrigger()), true);
     LOG.info(
-        "Audit log consumer scheduled with poll interval: {} seconds",
+        "Audit log consumer (re)scheduled with poll interval: {} seconds",
         AUDIT_LOG_POLL_INTERVAL_SECONDS);
+  }
+
+  private static Trigger buildAuditLogTrigger() {
+    return TriggerBuilder.newTrigger()
+        .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+        .startNow()
+        .build();
   }
 
   public static void shutDown() throws SchedulerException {

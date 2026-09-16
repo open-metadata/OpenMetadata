@@ -14,8 +14,13 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityReference,
   EntityTypeEndpoint,
@@ -157,28 +162,39 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/dashboardServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post(
-      '/api/v1/dashboard/datamodels',
-      {
-        data: this.entity,
-      }
-    );
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardDataModelClass.create service',
+      createPath: '/api/v1/services/dashboardServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
+    // Both hand-rolled loops that used to live here — a 409 fallback for the
+    // service and a 5xx re-post for the data model — are now inside
+    // createOrFetch, which additionally looks the conflicting entity up with
+    // include=all so a soft-deleted leftover is found rather than 404ing.
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'DashboardDataModelClass.create dataModel',
+      createPath: '/api/v1/dashboard/datamodels',
+      // DashboardDataModelRepository builds the FQN as `<serviceFqn>.model.<name>`
+      // — a literal `model` segment the other entity types do not have.
+      fqnSegments: [this.service.name, 'model', this.entity.name],
+      data: this.entity,
+    });
 
+    const dataModelFqn = this.entityResponseData.fullyQualifiedName;
+    if (!dataModelFqn) {
+      throw new Error(
+        'Dashboard data model response is missing its fully qualified name'
+      );
+    }
     this.childrenSelectorId =
-      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
+      this.entityResponseData.columns?.[0]?.fullyQualifiedName ??
+      `${dataModelFqn}.${this.children[0].name}`;
 
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -189,17 +205,22 @@ export class DashboardDataModelClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/dashboard/datamodels/name/${this.entityResponseData?.fullyQualifiedName}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(
+      response,
+      'DashboardDataModelClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
@@ -222,12 +243,10 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

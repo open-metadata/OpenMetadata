@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from ast import literal_eval
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -47,7 +47,7 @@ class CliBase(ABC):
     openmetadata: OpenMetadata
     test_file_path: str
     config_file_path: str
-    ingestion_bot_jwt_token: Optional[str] = None  # noqa: UP045
+    ingestion_bot_jwt_token: str | None = None
 
     def run_command(self, command: str = "ingest", test_file_path=None) -> str:
         file_path = test_file_path if test_file_path is not None else self.test_file_path
@@ -128,7 +128,7 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX  # noqa: UP031
+        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX  # noqa: UP031
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
         try:
             return Status.model_validate(literal_eval(output_clean_regex))

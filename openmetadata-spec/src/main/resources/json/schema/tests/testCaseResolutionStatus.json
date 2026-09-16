@@ -89,6 +89,10 @@
       "description": "Severity failure for the test associated with the resolution.",
       "$ref": "#/definitions/severities"
     },
+    "failureSummary": {
+      "description": "Human-readable summary of the test failure that opened the incident, denormalized from the failed test case result so incident listings do not need a per-incident result lookup.",
+      "type": "string"
+    },
     "metrics": {
       "description": "List of metrics associated with the test case resolution.",
       "type": "array",

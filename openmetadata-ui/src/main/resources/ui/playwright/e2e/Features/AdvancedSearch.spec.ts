@@ -23,6 +23,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -38,6 +40,10 @@ import {
 } from '../../utils/advancedSearch';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -70,6 +76,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       topic1.create(apiContext),
       topic2.create(apiContext),
     ]);
+
     glossaryEntity = new Glossary(undefined, [
       {
         id: user.responseData.id,
@@ -105,13 +112,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain1.responseData.name,
-            displayName: EntityDataClass.domain1.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain1.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain1.responseData.name,
+              displayName: EntityDataClass.domain1.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -153,13 +162,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain2.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain2.responseData.name,
-            displayName: EntityDataClass.domain2.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain2.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain2.responseData.name,
+              displayName: EntityDataClass.domain2.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -444,26 +455,31 @@ test.describe(
       });
 
       await test.step('Select Status field and == operator', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.getByTestId('advanced-search-field-select'),
           'Status',
           true
         );
         await selectOption(
           page,
-          ruleLocator.locator('.rule--operator .ant-select'),
+          ruleLocator.getByTestId('advanced-search-operator-select'),
           '=='
         );
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
-        await ruleLocator.locator('.widget--widget > .ant-select').click();
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
+        const triggerBtn = ruleLocator.locator(
+          '[data-testid=advanced-search-value] button[aria-haspopup="listbox"]'
+        );
+
+        await expect(triggerBtn).toBeVisible();
+        await triggerBtn.click();
 
         const dropdown = page
-          .locator('.ant-select-dropdown')
+          .locator('[role="listbox"]')
           .filter({ hasText: EntityStatus.Approved })
           .last();
 
@@ -472,7 +488,7 @@ test.describe(
         for (const status of ENTITY_STATUSES) {
           await expect(
             dropdown
-              .locator('.ant-select-item-option')
+              .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
               .first()
           ).toBeVisible();
@@ -499,7 +515,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -538,7 +554,7 @@ test.describe(
           }
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       }
     });
 
@@ -563,7 +579,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -594,7 +610,7 @@ test.describe(
 
       await test.step('Draft and In Review entities appear when searched by their name and non-Approved status', async () => {
         for (const entry of otherEntries) {
-          await page.getByTestId('clear-filters').click();
+          await page.getByTestId('advance-search-clear-btn').click();
           await showAdvancedSearchDialog(page);
 
           await fillStaticListRule(page, {
@@ -604,7 +620,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -626,7 +642,7 @@ test.describe(
         }
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
   }
 );
@@ -710,7 +726,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Not Contains – table is NOT visible when filtering by a word that IS in the description', async ({
@@ -728,7 +744,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -753,7 +769,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Not Contains – table IS visible (word absent from description)', async ({
@@ -771,7 +787,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -796,7 +812,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Is not null – table with a description is visible', async ({
@@ -813,7 +829,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -838,7 +854,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Is null – table with a description is NOT visible', async ({
@@ -855,7 +871,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -880,7 +896,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test.describe('Description Status filter', () => {
@@ -899,7 +915,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -924,7 +940,7 @@ test.describe(
           ).toBeVisible();
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       });
 
       test('Description Status == Incomplete – table with description is NOT visible', async ({
@@ -942,7 +958,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -967,8 +983,738 @@ test.describe(
           ).not.toBeVisible();
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       });
+    });
+  }
+);
+
+test.describe(
+  'Explore Search Count Visibility',
+  { tag: ['@explore-search-count'] },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    test('Verify count shows with Advanced Search filter', async ({ page }) => {
+      let resultTotal = 0;
+
+      await test.step('Open Advanced Search', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Description Contains filter', async () => {
+        await fillRule(page, {
+          condition: 'Contains',
+          field: { id: 'Description', name: 'description' },
+          searchCriteria: 'test',
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=dataAsset') &&
+            response.url().includes('size=15')
+        );
+
+        await page.getByTestId('apply-btn').click();
+
+        const response = await searchRes;
+        resultTotal = (await response.json()).hits.total.value;
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Verify count is visible and matches the API total', async () => {
+        const countEl = page.getByTestId('search-results-count');
+
+        await expect(countEl).toBeVisible();
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
+      });
+
+      await test.step('Clear filters and verify count disappears', async () => {
+        await page.getByTestId('advance-search-clear-btn').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('Verify count matches the API total for a quick filter', async ({
+      page,
+    }) => {
+      let resultTotal = 0;
+
+      await test.step('Apply the Table data-asset quick filter', async () => {
+        await page.getByTestId('search-dropdown-Data Assets').click();
+
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=dataAsset') &&
+            response.url().includes('size=15')
+        );
+
+        await searchAndClickOnOption(
+          page,
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
+          true
+        );
+        await clickUpdateButtonIfVisible(page);
+
+        const response = await searchRes;
+        resultTotal = (await response.json()).hits.total.value;
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Count badge shows the same total as the API', async () => {
+        const countEl = page.getByTestId('search-results-count');
+
+        await expect(countEl).toBeVisible();
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
+      });
+    });
+
+    test('Verify the toolbar Clear All button is removed', async ({ page }) => {
+      await test.step('Apply a quick filter', async () => {
+        await page.getByTestId('search-dropdown-Data Assets').click();
+        await searchAndClickOnOption(
+          page,
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
+          true
+        );
+        await clickUpdateButtonIfVisible(page);
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Only the chip Clear button exists, no toolbar Clear All', async () => {
+        await expect(page.getByTestId('clear-filters')).not.toBeVisible();
+        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+      });
+    });
+
+    test('Verify browse mode has no count', async ({ page }) => {
+      await test.step('Verify no search and no filters are applied', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Verify count is not visible', async () => {
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+  }
+);
+
+const COLUMN_TAG_FIELD = {
+  id: 'Column Tags',
+  name: 'columns.tags.tagFQN',
+};
+
+let columnTagTable1: TableClass;
+let columnTagTable2: TableClass;
+let columnTagClassification: ClassificationClass;
+let columnTag1: TagClass;
+let columnTag2: TagClass;
+
+test.describe(
+  'Advanced Search – Column Tag filter',
+  { tag: ['@advanced-search'] },
+  () => {
+    test.beforeAll(
+      'Setup – create classification, tags, and two tables with column tags',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        columnTagClassification = new ClassificationClass();
+        await columnTagClassification.create(apiContext);
+
+        columnTag1 = new TagClass({
+          classification: columnTagClassification.responseData.name,
+        });
+        columnTag2 = new TagClass({
+          classification: columnTagClassification.responseData.name,
+        });
+        await Promise.all([
+          columnTag1.create(apiContext),
+          columnTag2.create(apiContext),
+        ]);
+
+        columnTagTable1 = new TableClass();
+        columnTagTable2 = new TableClass();
+        await Promise.all([
+          columnTagTable1.create(apiContext),
+          columnTagTable2.create(apiContext),
+        ]);
+
+        await columnTagTable1.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/0/tags/0',
+              value: {
+                tagFQN: columnTag1.responseData.fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await columnTagTable2.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/0/tags/0',
+              value: {
+                tagFQN: columnTag2.responseData.fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+    });
+
+    test('Column Tags == tag1 returns table1 and hides table2', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags == tag1', async () => {
+        await fillRule(page, {
+          condition: '==',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Filter chip reflects the applied column tag', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).toContainText(columnTag1.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
+      });
+
+      await test.step('table1 (tagged with tag1) is visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await test.step('table2 (tagged with tag2) is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable2.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags == tag2 returns table2 and hides table1', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags == tag2', async () => {
+        await fillRule(page, {
+          condition: '==',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag2.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Filter chip reflects the applied column tag', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).toContainText(columnTag2.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
+      });
+
+      await test.step('table2 (tagged with tag2) is visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable2.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await test.step('table1 (tagged with tag1) is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags != tag1 excludes table1 from results', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags != tag1 AND Service == table1 service', async () => {
+        await fillRule(page, {
+          condition: '!=',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: columnTagTable1.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 (excluded by != tag1) is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Contains tag1 name returns table1', async ({ page }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Contains tag1 name', async () => {
+        await fillRule(page, {
+          condition: 'Contains',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 is visible in results', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Not contains tag1 name excludes table1', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Not contains tag1 AND Service == table1 service', async () => {
+        await fillRule(page, {
+          condition: 'Not contains',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: columnTagTable1.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Any in [tag1, tag2] returns both tables', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Any in [tag1, tag2]', async () => {
+        await fillRule(page, {
+          condition: 'Any in',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 is visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Not in [tag1] AND Service == table1 service', async () => {
+        await fillRule(page, {
+          condition: 'Not in',
+          field: COLUMN_TAG_FIELD,
+          searchCriteria: columnTag1.responseData.fullyQualifiedName,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: columnTagTable1.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 is NOT visible (excluded by Not in filter)', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Is not null returns table with a column tag', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Is not null AND Service == table1 service', async () => {
+        await fillRule(page, {
+          condition: 'Is not null',
+          field: COLUMN_TAG_FIELD,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: columnTagTable1.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 (has column tag) is visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+
+    test('Column Tags Is null excludes tables that have column tags', async ({
+      page,
+    }) => {
+      await test.step('Open advanced search dialog', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Column Tags Is null AND Service == table1 service', async () => {
+        await fillRule(page, {
+          condition: 'Is null',
+          field: COLUMN_TAG_FIELD,
+          index: 1,
+        });
+
+        await page.getByTestId('advanced-search-add-rule').click();
+
+        await fillRule(page, {
+          condition: '==',
+          field: FIELDS.find((f) => f.id === 'Service')!,
+          searchCriteria: columnTagTable1.serviceResponseData.name,
+          index: 2,
+        });
+
+        const searchRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('apply-btn').click();
+        await searchRes;
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('table1 (has column tag) is NOT visible', async () => {
+        await expect(
+          page.getByTestId(
+            `table-data-card_${columnTagTable1.entityResponseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible();
+      });
+
+      await page.getByTestId('advance-search-clear-btn').click();
+    });
+  }
+);
+
+test.describe(
+  'Custom property enum lazy load in Advanced Search',
+  { tag: ['@advanced-search'] },
+  () => {
+    // 150 values: initial asyncFetch returns items 0-99, scroll triggers items 100-149
+    const ENUM_VALUES = Array.from(
+      { length: 150 },
+      (_, i) => `enum_val_${String(i).padStart(3, '0')}`
+    );
+    const FIRST_PAGE_VALUE = 'enum_val_000';
+    const SECOND_PAGE_VALUE = 'enum_val_100';
+
+    let enumCPName: string;
+    let enumCPId: string;
+    let lazyLoadTable: TableClass;
+
+    test.beforeAll(
+      'Setup enum custom property with 150 values on table',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          lazyLoadTable = new TableClass();
+          await lazyLoadTable.create(apiContext);
+
+          const cpMetadataTypeRes = await apiContext.get(
+            '/api/v1/metadata/types/name/table?fields=customProperties'
+          );
+          const cpMetadataType = await cpMetadataTypeRes.json();
+
+          const typesRes = await apiContext.get(
+            '/api/v1/metadata/types?category=field&limit=20'
+          );
+          const types = (await typesRes.json()).data as {
+            name: string;
+            id: string;
+          }[];
+          const enumTypeId =
+            types.find((t: { name: string }) => t.name === 'enum')?.id ?? '';
+
+          enumCPName = `enum-lazy-${uuid()}`;
+
+          const cpRes = await apiContext.put(
+            `/api/v1/metadata/types/${cpMetadataType.id}`,
+            {
+              data: {
+                name: enumCPName,
+                description: 'Enum CP for lazy load test',
+                propertyType: { name: 'enum', type: 'type', id: enumTypeId },
+                customPropertyConfig: {
+                  config: { values: ENUM_VALUES, multiSelect: true },
+                },
+              },
+            }
+          );
+          const cpData = await cpRes.json();
+          enumCPId = cpData.id;
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    const openEnumValueDropdown = async (
+      page: Parameters<typeof redirectToHomePage>[0]
+    ) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await showAdvancedSearchDialog(page);
+
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
+
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select'),
+        'Custom Properties',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
+        'Table',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
+        enumCPName,
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        'Equals'
+      );
+
+      const comboboxInput = ruleLocator.locator(
+        '[data-testid=advanced-search-value] input[role="combobox"]'
+      );
+
+      await expect(comboboxInput).toBeVisible({ timeout: 15000 });
+      // fill('') focuses the input (menuTrigger="focus" opens the popup)
+      // without pointer-clicking — the overlaid chevron button can intercept
+      // clicks at the input's center in narrow ComboBoxes.
+      await comboboxInput.fill('');
+
+      const dropdown = page.locator('[role="listbox"]:visible').last();
+
+      await expect(dropdown).toBeVisible();
+
+      return { ruleLocator, comboboxInput, dropdown };
+    };
+
+    test('should find page-2 items via search without clicking Load more', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
+
+      // Page 1 items load; page-2 item is not yet visible
+      await expect(
+        dropdown.getByRole('option', { name: FIRST_PAGE_VALUE })
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+      ).not.toBeVisible();
+
+      // Type to search — asyncFetch filters the full values array, not just the loaded page
+      const searchInput = ruleLocator.locator(
+        '[data-testid=advanced-search-value] input[role="combobox"]'
+      );
+
+      await searchInput.fill(SECOND_PAGE_VALUE);
+
+      // Item appears immediately without clicking Load more
+      await expect(
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+      ).toBeVisible({ timeout: 10000 });
     });
   }
 );

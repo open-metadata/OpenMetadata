@@ -43,12 +43,13 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { generatePalette } from '../../styles/colorPallet';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
+
+const orEmpty = (value?: string): string => value ?? '';
 
 const AppearanceConfigSettingsPage = () => {
   const navigate = useNavigate();
@@ -92,19 +93,19 @@ const AppearanceConfigSettingsPage = () => {
     try {
       const configValues = {
         customLogoConfig: {
-          customLogoUrlPath: values?.customLogoUrlPath ?? '',
-          customMonogramUrlPath: values?.customMonogramUrlPath ?? '',
-          customFaviconUrlPath: values?.customFaviconUrlPath ?? '',
+          customLogoUrlPath: orEmpty(values?.customLogoUrlPath),
+          customMonogramUrlPath: orEmpty(values?.customMonogramUrlPath),
+          customFaviconUrlPath: orEmpty(values?.customFaviconUrlPath),
         },
         customTheme: {
-          primaryColor: values?.primaryColor ?? '',
-          hoverColor: values?.hoverColor ?? '',
-          selectedColor: values?.selectedColor ?? '',
-          errorColor: values?.errorColor ?? '',
-          successColor: values?.successColor ?? '',
-          warningColor: values?.warningColor ?? '',
-          infoColor: values?.infoColor ?? '',
-          panelBackgroundColor: values?.panelBackgroundColor ?? '',
+          primaryColor: orEmpty(values?.primaryColor),
+          hoverColor: orEmpty(values?.hoverColor),
+          selectedColor: orEmpty(values?.selectedColor),
+          errorColor: orEmpty(values?.errorColor),
+          successColor: orEmpty(values?.successColor),
+          warningColor: orEmpty(values?.warningColor),
+          infoColor: orEmpty(values?.infoColor),
+          panelBackgroundColor: orEmpty(values?.panelBackgroundColor),
         },
       };
 
@@ -436,9 +437,7 @@ const AppearanceConfigSettingsPage = () => {
                 <PageHeader
                   data={{
                     header: t('label.theme'),
-                    subHeader: t('message.appearance-configuration-message', {
-                      brandName: brandClassBase.getPageTitle(),
-                    }),
+                    subHeader: t('message.appearance-configuration-message'),
                   }}
                 />
                 <Button

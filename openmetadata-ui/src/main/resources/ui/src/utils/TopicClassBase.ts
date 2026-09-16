@@ -26,7 +26,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getTopicDetailsPageTabs,
@@ -198,7 +198,7 @@ class TopicClassBase {
       CUSTOM_PROPERTIES_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-        name: i18n.t('label.knowledge-page-plural'),
+        name: i18n.t('label.article-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

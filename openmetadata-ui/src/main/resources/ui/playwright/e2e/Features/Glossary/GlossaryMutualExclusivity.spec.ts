@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
@@ -79,7 +80,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Open glossary term selector
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         // Wait for dropdown to open
@@ -165,7 +166,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -274,7 +275,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -367,7 +368,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -465,7 +466,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -592,7 +593,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         // Open glossary selector
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -701,7 +702,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await waitForAllLoadersToDisappear(page);
 
         // Select the glossary term from the flat list
-        const termOption = page.locator('.ant-list-item').filter({
+        const termOption = page.locator('[data-testid="owner-option"]').filter({
           hasText: child.responseData.displayName,
         });
         await expect(termOption).toBeVisible();
@@ -806,7 +807,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -869,7 +870,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -990,7 +991,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {
@@ -1135,7 +1136,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await page
           .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByRole('button', { name: 'plus' })
+          .getByTestId('add-tag')
           .click();
 
         await page.waitForSelector('.async-tree-select-list-dropdown', {

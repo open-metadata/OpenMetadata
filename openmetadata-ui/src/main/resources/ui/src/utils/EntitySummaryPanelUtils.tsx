@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,78 +13,142 @@
 
 import Icon from '@ant-design/icons';
 import { Col, Row, Typography } from 'antd';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty } from 'lodash';
+import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchedDataProps } from '../../src/components/SearchedData/SearchedData.interface';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
-import { ColumnOrTask } from '../components/Database/ColumnDetailPanel/ColumnDetailPanel.interface';
-import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import APIEndpointSummary from '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
-import { ColumnSummaryList } from '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList';
-import DataProductSummary from '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component';
-import DomainSummary from '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component';
-import GlossaryTermSummary from '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
-import SummaryList from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component';
-import {
-  BasicEntityInfo,
-  HighlightedTagLabel,
-} from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import TagsSummary from '../components/Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
-import MetricExpression from '../components/Metric/MetricExpression/MetricExpression';
-import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
+import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
-import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
-import { Tag } from '../generated/entity/classification/tag';
-import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
-import { Chart } from '../generated/entity/data/chart';
-import { Container, TagLabel } from '../generated/entity/data/container';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
-import { Database } from '../generated/entity/data/database';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
-import { Metric } from '../generated/entity/data/metric';
-import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
-import { Pipeline, Task } from '../generated/entity/data/pipeline';
-import { SearchIndex } from '../generated/entity/data/searchIndex';
-import {
+import type { Tag } from '../generated/entity/classification/tag';
+import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import type { Chart } from '../generated/entity/data/chart';
+import type { Container } from '../generated/entity/data/container';
+import type { Dashboard } from '../generated/entity/data/dashboard';
+import type { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import type { Database } from '../generated/entity/data/database';
+import type { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import type { Metric } from '../generated/entity/data/metric';
+import type { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import type { Pipeline, Task } from '../generated/entity/data/pipeline';
+import type { SearchIndex } from '../generated/entity/data/searchIndex';
+import type {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../generated/entity/data/storedProcedure';
-import { Column, Table, TableConstraint } from '../generated/entity/data/table';
-import { Field, Topic } from '../generated/entity/data/topic';
-import { DataProduct } from '../generated/entity/domains/dataProduct';
-import { Domain } from '../generated/entity/domains/domain';
-import { EntityReference } from '../generated/tests/testCase';
-import { EntityData } from '../pages/TasksPage/TasksPage.interface';
+import type {
+  Column,
+  Table,
+  TableConstraint,
+} from '../generated/entity/data/table';
+import type { Field, Topic } from '../generated/entity/data/topic';
+import type { DataProduct } from '../generated/entity/domains/dataProduct';
+import type { Domain } from '../generated/entity/domains/domain';
+import type { EntityReference } from '../generated/tests/testCase';
+import { getEntityName } from './EntityNameUtils';
+import {
+  getHighlightOfListItem,
+  getMapOfListHighlights,
+  getSummaryListItemType,
+  type ListItemHighlights,
+  type SummaryListItem,
+} from './EntitySummaryPanelPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
+
+const APIEndpointSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary'
+      )
+  )
+);
+
+const ColumnSummaryList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/Explore/EntitySummaryPanel/ColumnSummaryList/ColumnsSummaryList'
+    ).then((m) => ({ default: m.ColumnSummaryList }))
+  )
+);
+
+const DataProductSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/DataProductSummary/DataProductSummary.component'
+      )
+  )
+);
+
+const DomainSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/DomainSummary/DomainSummary.component'
+      )
+  )
+);
+
+const GlossaryTermSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component'
+      )
+  )
+);
+
+const SummaryList = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.component'
+      )
+  )
+);
+
+const TagsSummary = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component'
+      )
+  )
+);
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../components/Database/SchemaEditor/SchemaEditor'))
+);
+
+const MetricExpression = withSuspenseFallback(
+  lazy(() => import('../components/Metric/MetricExpression/MetricExpression'))
+);
+
+const RelatedMetrics = withSuspenseFallback(
+  lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
+);
 
 const { Text } = Typography;
 
-export type SummaryListItem = Column | Field | Chart | Task | MlFeature;
-
-export interface ListItemHighlights {
-  highlightedTags?: BasicEntityInfo['tags'];
-  highlightedTitle?: string;
-  highlightedDescription?: string;
-}
-
-/* @param {
-    listItem: SummaryItem,
-    highlightedTitle: will be a string if the title of given summaryItem is present in highlights | undefined
-}
-
-    @return SummaryItemTitle
-*/
+/*
+ * @param {
+ *   listItem: SummaryItem,
+ *   highlightedTitle: will be a string if the title of given summaryItem is present in highlights | undefined
+ * }
+ *
+ *  @return SummaryItemTitle
+ */
 export const getTitle = (
   listItem: SummaryListItem,
   highlightedTitle?: ListItemHighlights['highlightedTitle']
@@ -134,174 +197,20 @@ export const getTitle = (
   );
 };
 
-/* @param {
-    entityType: will be any type of SummaryEntityType,
-    listItem: SummaryItem
-}
-    @return listItemType
-*/
-export const getSummaryListItemType = (
-  entityType: SummaryEntityType,
-  listItem: SummaryListItem
-): BasicEntityInfo['type'] => {
-  switch (entityType) {
-    case SummaryEntityType.COLUMN:
-    case SummaryEntityType.FIELD:
-    case SummaryEntityType.MLFEATURE:
-    case SummaryEntityType.SCHEMAFIELD:
-      return (listItem as Column | Field | MlFeature).dataType;
-    case SummaryEntityType.CHART:
-      return (listItem as Chart).chartType;
-    case SummaryEntityType.TASK:
-      return (listItem as Task).taskType;
-    default:
-      return '';
-  }
-};
-
 /*
-    @params {
-        sortTagsBasedOnGivenTagFQNs: array of TagFQNs,
-        tags: Tags array,
-    }
-
-    @return array of tags highlighted and sorted if tagFQN present in sortTagsBasedOnGivenTagFQNs
-*/
-export const getSortedTagsWithHighlight = (
-  tags: TagLabel[] = [],
-  sortTagsBasedOnGivenTagFQNs: string[] = []
-): ListItemHighlights['highlightedTags'] => {
-  const { sortedTags, remainingTags } = tags.reduce(
-    (acc, tag) => {
-      if (sortTagsBasedOnGivenTagFQNs.includes(tag.tagFQN)) {
-        acc.sortedTags.push({ ...tag, isHighlighted: true });
-      } else {
-        acc.remainingTags.push(tag);
-      }
-
-      return acc;
-    },
-    {
-      sortedTags: [] as HighlightedTagLabel[],
-      remainingTags: [] as TagLabel[],
-    }
-  );
-
-  return [...sortedTags, ...remainingTags];
-};
-
-/* 
-    @param {highlights: all the other highlights come from the query api
-        only omitted displayName and description key as it is already updated in parent component
-    }
-
-    @return {
-        listHighlights: single array of all highlights get from query api 
-        listHighlightsMap: to reduce the search time complexity in listHighlight
-    }
-
-    Todo: apply highlights on entityData in parent where we apply highlight for entityDisplayName and entityDescription
-    for that we need to update multiple summary components
-*/
-export const getMapOfListHighlights = (
-  highlights?: SearchedDataProps['data'][number]['highlight']
-): {
-  listHighlights: string[];
-  listHighlightsMap: { [key: string]: number };
-} => {
-  // checking for the all highlight key present in highlight get from query api
-  // and create a array of highlights
-  const listHighlights: string[] = [];
-  SummaryListHighlightKeys.forEach((highlightKey) => {
-    listHighlights.push(...get(highlights, highlightKey, []));
-  });
-
-  // using hashmap methodology to reduce the search time complexity from O(n) to O(1)
-  // to get highlight from the listHighlights array for applying highlight
-  const listHighlightsMap: { [key: string]: number } = {};
-
-  listHighlights?.reduce((acc, colHighlight, index) => {
-    acc[colHighlight.replaceAll(/<\/?span(.*?)>/g, '')] = index;
-
-    return acc;
-  }, listHighlightsMap);
-
-  return { listHighlights, listHighlightsMap };
-};
-
-/*
-    @params {
-        listItem: SummaryItem
-        tagsHighlights: tagFQNs array to highlight and sort tags
-        listHighlights: single array of all highlights get from query api 
-        listHighlightsMap: to reduce the search time complexity in listHighlight
-    }
-    @return highlights of listItem
-*/
-export const getHighlightOfListItem = (
-  listItem: SummaryListItem,
-  tagHighlights: string[],
-  listHighlights: string[],
-  listHighlightsMap: { [key: string]: number }
-): ListItemHighlights => {
-  let highlightedTags;
-  let highlightedTitle;
-  let highlightedDescription;
-
-  // if any of the listItem.tags present in given tagHighlights list then sort and highlights the tag
-  const shouldSortListItemTags = listItem.tags?.find((tag) =>
-    tagHighlights.includes(tag.tagFQN)
-  );
-
-  if (shouldSortListItemTags) {
-    highlightedTags = getSortedTagsWithHighlight(listItem.tags, tagHighlights);
-  }
-
-  // highlightedListItemNameIndex will be undefined if listItem.name is not present in highlights
-  const highlightedListItemNameIndex = listHighlightsMap[listItem.name ?? ''];
-
-  const shouldApplyHighlightOnTitle = !isUndefined(
-    highlightedListItemNameIndex
-  );
-
-  if (shouldApplyHighlightOnTitle) {
-    highlightedTitle = listHighlights[highlightedListItemNameIndex];
-  }
-
-  // highlightedListItemDescriptionIndex will be undefined if listItem.description is not present in highlights
-  const highlightedListItemDescriptionIndex =
-    listHighlightsMap[listItem.description ?? ''];
-
-  const shouldApplyHighlightOnDescription = !isUndefined(
-    highlightedListItemDescriptionIndex
-  );
-
-  if (shouldApplyHighlightOnDescription) {
-    highlightedDescription =
-      listHighlights[highlightedListItemDescriptionIndex];
-  }
-
-  return {
-    highlightedTags,
-    highlightedTitle,
-    highlightedDescription,
-  };
-};
-
-/*
-    @params {
-        entityType: SummaryEntityType,
-        entityInfo: Array<SummaryListItem> = [],
-        highlights: highlights get from the query api + highlights added for tags (i.e. tag.name)
-        tableConstraints: only pass for SummayEntityType.Column
-    }
-    @return sorted and highlighted listItem array, but listItem will be type of BasicEntityInfo
-    
-    Note: SummaryItem will be sort and highlight only if -
-        # if listItem.tags present in highlights.tags
-        # if listItem.name present in highlights comes from query api
-        # if listItem.description present in highlights comes from query api
-*/
+ *  @params {
+ *     entityType: SummaryEntityType,
+ *     entityInfo: Array<SummaryListItem> = [],
+ *     highlights: highlights get from the query api + highlights added for tags (i.e. tag.name)
+ *     tableConstraints: only pass for SummayEntityType.Column
+ *  }
+ *  @return sorted and highlighted listItem array, but listItem will be type of BasicEntityInfo
+ *
+ *  Note: SummaryItem will be sort and highlight only if -
+ *      # if listItem.tags present in highlights.tags
+ *      # if listItem.name present in highlights comes from query api
+ *      # if listItem.description present in highlights comes from query api
+ */
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
   entityInfo: Array<SummaryListItem> = [],
@@ -312,13 +221,9 @@ export const getFormattedEntityData = (
     return [];
   }
 
-  // Only go ahead if entityType is present in SummaryEntityType enum
   if (Object.values(SummaryEntityType).includes(entityType)) {
-    // tagHighlights is the array of tagFQNs for highlighting tags
     const tagHighlights = get(highlights, 'tag.name', [] as string[]);
 
-    // listHighlights i.e. highlight get from query api
-    // listHighlightsMap i.e. map of highlight get from api to reduce search time complexity in highlights array
     const { listHighlights, listHighlightsMap } =
       getMapOfListHighlights(highlights);
 
@@ -330,7 +235,6 @@ export const getFormattedEntityData = (
 
     const { highlightedListItem, remainingListItem } = entityInfo.reduce(
       (acc, listItem) => {
-        // return the highlight of listItem
         const { highlightedTags, highlightedTitle, highlightedDescription } =
           getHighlightOfListItem(
             listItem,
@@ -339,7 +243,6 @@ export const getFormattedEntityData = (
             listHighlightsMap
           );
 
-        // convert listItem in BasicEntityInfo type
         const listItemModifiedData = {
           name: listItem.name ?? '',
           title: getTitle(listItem, highlightedTitle),
@@ -362,7 +265,6 @@ export const getFormattedEntityData = (
           }),
         };
 
-        // if highlights present in listItem then sort the listItem
         if (highlightedTags || highlightedTitle || highlightedDescription) {
           acc.highlightedListItem.push(listItemModifiedData);
         } else {
@@ -383,31 +285,38 @@ export const getFormattedEntityData = (
   return [];
 };
 
-export const getEntityChildDetails = (
+interface EntityChildComponentDetails {
+  heading: ReactNode;
+  headingTestId: string;
+  childComponent: ReactNode;
+}
+
+const SCHEMA_HEADER_TEST_ID = 'schema-header';
+const SCHEMA_LABEL_KEY = 'label.schema';
+
+const getChildComponentDetails = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
-  highlights?: SearchedDataProps['data'][number]['highlight'],
-  loading?: boolean
-) => {
-  let childComponent;
-  let heading;
-  let headingTestId = 'schema-header';
-
-  switch (entityType) {
-    case EntityType.TABLE:
-      heading = t('label.schema');
-      childComponent = (
+  highlights?: SearchedDataProps['data'][number]['highlight']
+): EntityChildComponentDetails | undefined => {
+  const builders: Partial<
+    Record<EntityType, () => EntityChildComponentDetails>
+  > = {
+    [EntityType.TABLE]: () => ({
+      heading: t(SCHEMA_LABEL_KEY),
+      headingTestId: SCHEMA_HEADER_TEST_ID,
+      childComponent: (
         <ColumnSummaryList
           entityInfo={entityInfo as Table}
           entityType={entityType}
           highlights={highlights}
         />
-      );
-
-      break;
-    case EntityType.TOPIC:
-      heading = t('label.schema');
-      childComponent = isEmpty(
+      ),
+    }),
+    [EntityType.TOPIC]: () => ({
+      heading: t(SCHEMA_LABEL_KEY),
+      headingTestId: SCHEMA_HEADER_TEST_ID,
+      childComponent: isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
         <Typography.Text data-testid="no-data-message">
@@ -423,13 +332,12 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-    case EntityType.PIPELINE:
-      heading = t('label.task-plural');
-      headingTestId = 'tasks-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.PIPELINE]: () => ({
+      heading: t('label.task-plural'),
+      headingTestId: 'tasks-header',
+      childComponent: (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
             SummaryEntityType.TASK,
@@ -437,63 +345,12 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-    case EntityType.DASHBOARD:
-      const formattedChartsData: BasicEntityInfo[] = getFormattedEntityData(
-        SummaryEntityType.CHART,
-        (entityInfo as Dashboard).charts,
-        highlights
-      );
-
-      const formattedDataModelData: BasicEntityInfo[] = getFormattedEntityData(
-        SummaryEntityType.COLUMN,
-        (entityInfo as Dashboard).dataModels,
-        highlights
-      );
-
-      return (
-        <>
-          <Row
-            className="p-md border-radius-card summary-panel-card"
-            gutter={[0, 8]}>
-            <Col span={24}>
-              <Typography.Text
-                className="summary-panel-section-title"
-                data-testid="charts-header">
-                {t('label.chart-plural')}
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <SummaryList
-                formattedEntityData={formattedChartsData}
-                loading={loading}
-              />
-            </Col>
-          </Row>
-
-          <Row
-            className="p-md border-radius-card summary-panel-card"
-            gutter={[0, 8]}>
-            <Col span={24}>
-              <Typography.Text
-                className="summary-panel-section-title"
-                data-testid="data-model-header">
-                {t('label.data-model-plural')}
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <SummaryList formattedEntityData={formattedDataModelData} />
-            </Col>
-          </Row>
-        </>
-      );
-
-    case EntityType.MLMODEL:
-      heading = t('label.feature-plural');
-      headingTestId = 'features-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.MLMODEL]: () => ({
+      heading: t('label.feature-plural'),
+      headingTestId: 'features-header',
+      childComponent: (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
             SummaryEntityType.MLFEATURE,
@@ -501,13 +358,12 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-
-    case EntityType.CONTAINER:
-      heading = t('label.schema');
-      childComponent = (
+      ),
+    }),
+    [EntityType.CONTAINER]: () => ({
+      heading: t(SCHEMA_LABEL_KEY),
+      headingTestId: SCHEMA_HEADER_TEST_ID,
+      childComponent: (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
             SummaryEntityType.COLUMN,
@@ -515,26 +371,23 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      heading = t('label.column-plural');
-      headingTestId = 'column-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.DASHBOARD_DATA_MODEL]: () => ({
+      heading: t('label.column-plural'),
+      headingTestId: 'column-header',
+      childComponent: (
         <ColumnSummaryList
           entityInfo={entityInfo as DashboardDataModel}
           entityType={entityType}
           highlights={highlights}
         />
-      );
-
-      break;
-    case EntityType.STORED_PROCEDURE:
-      heading = t('label.code');
-      headingTestId = 'code-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.STORED_PROCEDURE]: () => ({
+      heading: t('label.code'),
+      headingTestId: 'code-header',
+      childComponent: (
         <SchemaEditor
           editorClass="custom-code-mirror-theme summary-panel-custom-query-editor"
           mode={{ name: CSMode.SQL }}
@@ -549,13 +402,12 @@ export const getEntityChildDetails = (
             )?.code ?? ''
           }
         />
-      );
-
-      break;
-    case EntityType.SEARCH_INDEX:
-      heading = t('label.field-plural');
-      headingTestId = 'fields-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.SEARCH_INDEX]: () => ({
+      heading: t('label.field-plural'),
+      headingTestId: 'fields-header',
+      childComponent: (
         <SummaryList
           entityType={SummaryEntityType.FIELD}
           formattedEntityData={getFormattedEntityData(
@@ -564,20 +416,10 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-    case EntityType.API_ENDPOINT:
-    case EntityType.API_SERVICE:
-      return (
-        <APIEndpointSummary
-          entityDetails={entityInfo as APIEndpoint}
-          highlights={highlights}
-        />
-      );
-
-    case EntityType.METRIC:
-      heading = (
+      ),
+    }),
+    [EntityType.METRIC]: () => ({
+      heading: (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
@@ -585,22 +427,22 @@ export const getEntityChildDetails = (
           onUpdate={() => Promise.resolve()}>
           <MetricExpression />
         </GenericProvider>
-      );
-
-      childComponent = (
+      ),
+      headingTestId: 'schema-header',
+      childComponent: (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
-          <RelatedMetrics isInSummaryPanel />
+          <RelatedMetrics />
         </GenericProvider>
-      );
-
-      break;
-    case EntityType.DATABASE:
-      heading = t('label.schema');
-      childComponent = (
+      ),
+    }),
+    [EntityType.DATABASE]: () => ({
+      heading: t(SCHEMA_LABEL_KEY),
+      headingTestId: SCHEMA_HEADER_TEST_ID,
+      childComponent: (
         <SummaryList
           entityType={SummaryEntityType.SCHEMAFIELD}
           formattedEntityData={getFormattedEntityData(
@@ -609,107 +451,172 @@ export const getEntityChildDetails = (
             highlights
           )}
         />
-      );
-
-      break;
-    case EntityType.CHART:
-      heading = t('label.dashboard-plural');
-      headingTestId = 'dashboard-header';
-      childComponent = (
+      ),
+    }),
+    [EntityType.CHART]: () => ({
+      heading: t('label.dashboard-plural'),
+      headingTestId: 'dashboard-header',
+      childComponent: (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
             SummaryEntityType.DASHBOARD,
             (entityInfo as Chart).dashboards
           )}
         />
-      );
+      ),
+    }),
+  };
 
-      break;
-    case EntityType.DATA_PRODUCT:
-      return (
-        <DataProductSummary
-          entityDetails={entityInfo as DataProduct}
-          highlights={highlights}
-          isLoading={false}
-        />
-      );
+  const builder = builders[entityType];
 
-    case EntityType.DOMAIN:
-      return (
-        <DomainSummary
-          entityDetails={entityInfo as Domain}
-          highlights={highlights}
-          isLoading={false}
-        />
-      );
-    case EntityType.GLOSSARY_TERM:
-    case EntityType.GLOSSARY:
-      return (
-        <GlossaryTermSummary
-          entityDetails={entityInfo as GlossaryTerm}
-          isLoading={false}
-        />
-      );
-    case EntityType.TAG:
-      return (
-        <TagsSummary entityDetails={entityInfo as Tag} isLoading={false} />
-      );
+  return builder ? builder() : undefined;
+};
 
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.API_COLLECTION:
-    case EntityType.DATABASE_SCHEMA:
-      return null;
-    default:
-      return searchClassBase.getEntitySummaryComponent(entityInfo);
-  }
+const getDashboardSummary = (
+  entityInfo: SearchedDataProps['data'][number]['_source'],
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
+) => {
+  const formattedChartsData: BasicEntityInfo[] = getFormattedEntityData(
+    SummaryEntityType.CHART,
+    (entityInfo as Dashboard).charts,
+    highlights
+  );
+
+  const formattedDataModelData: BasicEntityInfo[] = getFormattedEntityData(
+    SummaryEntityType.COLUMN,
+    (entityInfo as Dashboard).dataModels,
+    highlights
+  );
 
   return (
-    <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
-      <Col span={24}>
-        <Typography.Text
-          className="summary-panel-section-title"
-          data-testid={headingTestId}>
-          {heading}
-        </Typography.Text>
-      </Col>
-      <Col span={24}>{childComponent}</Col>
-    </Row>
+    <>
+      <Row
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
+        <Col span={24}>
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid="charts-header">
+            {t('label.chart-plural')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <SummaryList
+            formattedEntityData={formattedChartsData}
+            loading={loading}
+          />
+        </Col>
+      </Row>
+
+      <Row
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
+        <Col span={24}>
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid="data-model-header">
+            {t('label.data-model-plural')}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>
+          <SummaryList formattedEntityData={formattedDataModelData} />
+        </Col>
+      </Row>
+    </>
   );
 };
 
-/**
- * Convert ColumnOrTask to EntityData for CustomPropertiesSection
- * @param column - Column or task-like entity
- * @returns EntityData object with extension property if available, or undefined
- */
-export const toEntityData = (
-  column: ColumnOrTask | null
-): EntityData | undefined => {
-  if (!column) {
-    return undefined;
+const getDirectSummaryComponent = (
+  entityType: EntityType,
+  entityInfo: SearchedDataProps['data'][number]['_source'],
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
+): ReactNode => {
+  const apiSummary = () => (
+    <APIEndpointSummary
+      entityDetails={entityInfo as APIEndpoint}
+      highlights={highlights}
+    />
+  );
+  const glossarySummary = () => (
+    <GlossaryTermSummary
+      entityDetails={entityInfo as GlossaryTerm}
+      isLoading={false}
+    />
+  );
+  const nullSummary = () => null;
+
+  const builders: Partial<Record<EntityType, () => ReactNode>> = {
+    [EntityType.DASHBOARD]: () =>
+      getDashboardSummary(entityInfo, highlights, loading),
+    [EntityType.API_ENDPOINT]: apiSummary,
+    [EntityType.API_SERVICE]: apiSummary,
+    [EntityType.DATA_PRODUCT]: () => (
+      <DataProductSummary
+        entityDetails={entityInfo as DataProduct}
+        highlights={highlights}
+        isLoading={false}
+      />
+    ),
+    [EntityType.DOMAIN]: () => (
+      <DomainSummary
+        entityDetails={entityInfo as Domain}
+        highlights={highlights}
+        isLoading={false}
+      />
+    ),
+    [EntityType.GLOSSARY_TERM]: glossarySummary,
+    [EntityType.GLOSSARY]: glossarySummary,
+    [EntityType.TAG]: () => (
+      <TagsSummary entityDetails={entityInfo as Tag} isLoading={false} />
+    ),
+    [EntityType.DATABASE_SERVICE]: nullSummary,
+    [EntityType.MESSAGING_SERVICE]: nullSummary,
+    [EntityType.DASHBOARD_SERVICE]: nullSummary,
+    [EntityType.PIPELINE_SERVICE]: nullSummary,
+    [EntityType.MLMODEL_SERVICE]: nullSummary,
+    [EntityType.SEARCH_SERVICE]: nullSummary,
+    [EntityType.STORAGE_SERVICE]: nullSummary,
+    [EntityType.API_COLLECTION]: nullSummary,
+    [EntityType.DATABASE_SCHEMA]: nullSummary,
+  };
+
+  const builder = builders[entityType];
+
+  return builder
+    ? builder()
+    : searchClassBase.getEntitySummaryComponent(entityInfo);
+};
+
+export const getEntityChildDetails = (
+  entityType: EntityType,
+  entityInfo: SearchedDataProps['data'][number]['_source'],
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
+) => {
+  const childDetails = getChildComponentDetails(
+    entityType,
+    entityInfo,
+    highlights
+  );
+
+  if (childDetails) {
+    return (
+      <Row
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
+        <Col span={24}>
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid={childDetails.headingTestId}>
+            {childDetails.heading}
+          </Typography.Text>
+        </Col>
+        <Col span={24}>{childDetails.childComponent}</Col>
+      </Row>
+    );
   }
 
-  // Check if column has extension property and create a new object that satisfies EntityData
-  // extension is typed as 'any' in entity interfaces, but EntityData.extension expects Record<string, unknown>
-  // so we cast it after runtime validation to ensure type safety
-  const extension =
-    'extension' in column &&
-    typeof column.extension === 'object' &&
-    column.extension !== null
-      ? column.extension
-      : undefined;
-
-  // Create an object that satisfies EntityData interface with index signature
-  const entityData: EntityData = {} as EntityData;
-  if (extension) {
-    entityData.extension = extension;
-  }
-
-  return entityData;
+  return getDirectSummaryComponent(entityType, entityInfo, highlights, loading);
 };

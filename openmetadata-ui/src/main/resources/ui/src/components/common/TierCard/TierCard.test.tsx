@@ -42,7 +42,7 @@ const mockProps = {
 };
 
 jest.mock('../../../rest/tagAPI', () => ({
-  getTags: jest.fn().mockImplementation(() => mockGetTags()),
+  getTags: jest.fn().mockImplementation((...args) => mockGetTags(...args)),
 }));
 
 jest.mock('../Loader/Loader', () => {
@@ -132,5 +132,15 @@ describe('Test TierCard Component', () => {
     });
 
     expect(mockGetTags).toHaveBeenCalled();
+  });
+
+  it('should request only enabled tiers by passing disabled false', async () => {
+    await act(async () => {
+      render(<TierCard {...mockProps} />);
+    });
+
+    expect(mockGetTags).toHaveBeenCalledWith(
+      expect.objectContaining({ parent: 'Tier', disabled: false })
+    );
   });
 });

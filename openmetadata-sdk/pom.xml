@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.open-metadata</groupId>
         <artifactId>platform</artifactId>
-        <version>1.12.0-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>openmetadata-sdk</artifactId>
@@ -16,7 +16,7 @@
 
     <properties>
         <okhttp.version>4.12.0</okhttp.version>
-        <junit.version>${org.junit.jupiter.version}</junit.version>
+        <junit.version>6.1.3</junit.version>
         <junit-platform.version>${org.junit.platform.version}</junit-platform.version>
         <mockito.version>5.5.0</mockito.version>
         <slf4j.version>2.0.9</slf4j.version>
@@ -129,7 +129,7 @@
         <dependency>
             <groupId>org.eclipse.parsson</groupId>
             <artifactId>parsson</artifactId>
-            <version>1.1.7</version>
+            <version>1.1.8</version>
             <optional>true</optional>
         </dependency>
 

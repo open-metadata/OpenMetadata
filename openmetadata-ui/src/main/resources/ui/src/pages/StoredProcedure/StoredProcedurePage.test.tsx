@@ -11,25 +11,50 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
 import StoredProcedurePage from './StoredProcedurePage';
 
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+const renderPage = () =>
+  renderWithQueryClient(
+    <MemoryRouter>
+      <StoredProcedurePage />
+    </MemoryRouter>
+  );
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+// StoredProcedurePage now fetches its own permission via useEntityPermissions rather than the
+// raw PermissionProvider.getEntityPermissionByFqn REST boundary — mock the hook directly
+// (TableDetailsPageV1.test.tsx / TagsPage.test.tsx pattern).
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<Record<string, boolean>> = {}
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
+
+beforeEach(() => {
+  setMockPermissions();
+});
 
 jest.mock('../../rest/storedProceduresAPI', () => ({
   getStoredProceduresByFqn: jest.fn().mockImplementation(() =>
@@ -44,8 +69,16 @@ jest.mock('../../rest/storedProceduresAPI', () => ({
   restoreStoredProcedures: jest.fn(),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../utils/RecentActivityUtils'),
+  addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -65,8 +98,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
+jest.mock('../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
 
 jest.mock('../../components/Lineage/Lineage.component', () => {
@@ -129,9 +162,13 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
@@ -163,41 +200,25 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('StoredProcedure component', () => {
   it('StoredProcedurePage should fetch permissions', () => {
-    render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+    renderPage();
 
-    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
-      'storedProcedure',
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.STORED_PROCEDURE,
       'fqn'
     );
   });
 
   it('StoredProcedurePage should not fetch details if permission is there', () => {
-    render(
-      <MemoryRouter>
-        <StoredProcedurePage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
 
   it('StoredProcedurePage should fetch details with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -207,20 +228,10 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should fetch details with all the permitted fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewAll: true,
-        ViewBasic: true,
-        ViewUsage: true,
-      })),
-    }));
+    setMockPermissions({ ViewAll: true, ViewBasic: true, ViewUsage: true });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -230,36 +241,20 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should render permission placeholder if not have required permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: false,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: false });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(await screen.findByText('testErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('StoredProcedurePage should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -279,18 +274,10 @@ describe('StoredProcedure component', () => {
   });
 
   it('StoredProcedurePage should render codeTab by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
@@ -312,25 +299,19 @@ describe('StoredProcedure component', () => {
       Promise.resolve(mockStoredProcedureData)
     );
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <StoredProcedurePage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: 'test-stored-procedure',
-      }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-stored-procedure',
+        }),
+        expect.anything()
+      );
+    });
   });
 });

@@ -1,0 +1,246 @@
+{
+  "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
+    "analysis": {
+      "tokenizer": {
+        "ontology_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 20,
+          "token_chars": ["letter", "digit"]
+        }
+      },
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": ["lowercase"]
+        }
+      },
+      "analyzer": {
+        "ontology_ngram": {
+          "type": "custom",
+          "tokenizer": "ontology_ngram_tokenizer",
+          "filter": ["lowercase"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": false,
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "ontology_ngram"
+          }
+        }
+      },
+      "fullyQualifiedName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "fqnHash": {
+        "type": "keyword"
+      },
+      "fqnParts": {
+        "type": "keyword"
+      },
+      "displayName": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "ontology_ngram"
+          }
+        }
+      },
+      "description": {
+        "type": "text"
+      },
+      "iri": {
+        "type": "keyword"
+      },
+      "rdfPredicate": {
+        "type": "keyword"
+      },
+      "category": {
+        "type": "keyword"
+      },
+      "characteristics": {
+        "type": "keyword"
+      },
+      "paletteKey": {
+        "type": "keyword"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "entityStatus": {
+        "type": "keyword"
+      },
+      "domain": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "iri": {
+            "type": "keyword"
+          },
+          "term": {
+            "type": "object",
+            "dynamic": false,
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "range": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "iri": {
+            "type": "keyword"
+          },
+          "term": {
+            "type": "object",
+            "dynamic": false,
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "cardinality": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "sourceMax": {
+            "type": "integer"
+          },
+          "targetMax": {
+            "type": "integer"
+          }
+        }
+      },
+      "inverse": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          }
+        }
+      },
+      "propertyChain": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          }
+        }
+      },
+      "disjointWith": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          }
+        }
+      },
+      "replacedBy": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          }
+        }
+      },
+      "crossGlossaryAllowed": {
+        "type": "boolean"
+      },
+      "systemDefined": {
+        "type": "boolean"
+      },
+      "owners": {
+        "type": "nested",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "reviewers": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword"
+          }
+        }
+      },
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "updatedBy": {
+        "type": "keyword"
+      },
+      "deleted": {
+        "type": "boolean"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
+      },
+      "ownerDisplayName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "ownerName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      }
+    }
+  }
+}

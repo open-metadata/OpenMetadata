@@ -33,4 +33,20 @@ public final class VersionUtils {
   public static String[] getVersionFromString(String input) {
     return input.split(Pattern.quote("."));
   }
+
+  /**
+   * Extracts the {@code MAJOR.MINOR} portion of a version string, ignoring the patch level and any
+   * qualifier such as {@code -SNAPSHOT}. Two versions sharing the same major/minor differ only by a
+   * patch release (e.g. {@code 1.12.8} and {@code 1.12.9} both yield {@code 1.12}).
+   */
+  public static String getMajorMinorVersion(String version) {
+    String majorMinor = version;
+    if (version != null) {
+      String[] parts = getVersionFromString(version);
+      if (parts.length >= 2) {
+        majorMinor = parts[0] + "." + parts[1];
+      }
+    }
+    return majorMinor;
+  }
 }

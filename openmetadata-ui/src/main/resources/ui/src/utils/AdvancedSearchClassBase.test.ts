@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Config, ConfigContext } from '@react-awesome-query-builder/core';
+import { AxiosHeaders } from 'axios';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   MULTISELECT_FIELD_OPERATORS,
@@ -20,10 +21,10 @@ import {
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
-import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchUtils';
-import { getEntityName } from './EntityUtils';
-
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
+import { getEntityName } from './EntityNameUtils';
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
     Promise.resolve({
@@ -36,11 +37,11 @@ jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('./AdvancedSearchUtils', () => ({
+jest.mock('./AdvancedSearchPureUtils', () => ({
   getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
 }));
 
@@ -76,6 +77,139 @@ describe('AdvancedSearchClassBase', () => {
       'createdBy',
       EntityFields.ENTITY_STATUS,
     ]);
+  });
+});
+
+describe('autocomplete', () => {
+  type AggregateResponse = Awaited<ReturnType<typeof getAggregateFieldOptions>>;
+
+  const responseFor = (name: string): AggregateResponse => ({
+    data: {
+      hits: { total: { value: 1 }, hits: [] },
+      aggregations: {
+        'sterms#name.keyword': { buckets: [{ key: name, doc_count: 1 }] },
+      },
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  });
+
+  const deferredResponse = () => {
+    let resolve!: (response: AggregateResponse) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<AggregateResponse>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    return { promise, resolve, reject };
+  };
+
+  const createAutocomplete = () => {
+    const autocomplete = new AdvancedSearchClassBase().autocomplete({
+      searchIndex: SearchIndex.TABLE,
+      entityField: EntityFields.NAME_KEYWORD,
+    });
+    if (!autocomplete) {
+      throw new Error('Autocomplete must provide a fetch function');
+    }
+
+    return autocomplete;
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.mocked(getAggregateFieldOptions).mockReset();
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  });
+
+  it('settles superseded searches while debouncing the latest request', async () => {
+    jest
+      .mocked(getAggregateFieldOptions)
+      .mockResolvedValue(responseFor('table'));
+    const autocomplete = createAutocomplete();
+    const previous = autocomplete('ta');
+    const latest = autocomplete('table');
+
+    await expect(previous).resolves.toEqual({ values: [], hasMore: false });
+
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(latest).resolves.toEqual({
+      values: [{ value: 'table', title: 'table' }],
+      hasMore: false,
+    });
+    expect(getAggregateFieldOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['older first', [0, 1]],
+    ['newer first', [1, 0]],
+  ] as const)(
+    'keeps overlapping responses with their own search: %s',
+    async (_, order) => {
+      const requests = [deferredResponse(), deferredResponse()];
+      jest
+        .mocked(getAggregateFieldOptions)
+        .mockReturnValueOnce(requests[0].promise)
+        .mockReturnValueOnce(requests[1].promise);
+      const autocomplete = createAutocomplete();
+      const previous = autocomplete('');
+      await jest.advanceTimersByTimeAsync(300);
+      const latest = autocomplete('table');
+      await jest.advanceTimersByTimeAsync(300);
+
+      const names = ['default', 'table'];
+      for (const index of order) {
+        requests[index].resolve(responseFor(names[index]));
+        await jest.advanceTimersByTimeAsync(0);
+      }
+
+      await expect(previous).resolves.toEqual({
+        values: [{ value: 'default', title: 'default' }],
+        hasMore: false,
+      });
+      await expect(latest).resolves.toEqual({
+        values: [{ value: 'table', title: 'table' }],
+        hasMore: false,
+      });
+    }
+  );
+
+  it('does not clear a newer search when an earlier request fails', async () => {
+    const previousResponse = deferredResponse();
+    jest
+      .mocked(getAggregateFieldOptions)
+      .mockReturnValueOnce(previousResponse.promise)
+      .mockResolvedValueOnce(responseFor('table'));
+    const autocomplete = createAutocomplete();
+    const previous = autocomplete('');
+    await jest.advanceTimersByTimeAsync(300);
+    const latest = autocomplete('table');
+    previousResponse.reject(new Error('Earlier request failed'));
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(previous).resolves.toEqual({ values: [], hasMore: false });
+    await expect(latest).resolves.toEqual({
+      values: [{ value: 'table', title: 'table' }],
+      hasMore: false,
+    });
+  });
+
+  it('returns empty options when the current request fails', async () => {
+    jest
+      .mocked(getAggregateFieldOptions)
+      .mockRejectedValue(new Error('Search failed'));
+    const result = createAutocomplete()('table');
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(result).resolves.toEqual({ values: [], hasMore: false });
   });
 });
 
@@ -231,7 +365,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       ['test.*pattern'],
@@ -252,7 +386,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       [],
@@ -273,7 +407,7 @@ describe('elasticSearchFormatValue function', () => {
     expect(formatValue).toBeDefined();
 
     const mockContext = { utils: {}, W: {}, O: {} } as ConfigContext;
-    const result = formatValue!.call(
+    const result = (formatValue as NonNullable<typeof formatValue>).call(
       mockContext,
       'text',
       [],
@@ -323,7 +457,7 @@ describe('getCustomPropertiesSubFields', () => {
     jest.clearAllMocks();
   });
 
-  it('should return correct configuration for enum type custom property with keyword suffix', () => {
+  it('should return asyncFetch configuration for enum type custom property with keyword suffix', () => {
     const mockField = {
       name: 'statusField',
       type: 'enum',
@@ -335,16 +469,7 @@ describe('getCustomPropertiesSubFields', () => {
     };
 
     const mockLabel = 'Status Field';
-    const mockEnumOptions = [
-      { value: 'ACTIVE', title: 'Active' },
-      { value: 'INACTIVE', title: 'Inactive' },
-      { value: 'PENDING', title: 'Pending' },
-    ];
-
     mockGetEntityName.mockReturnValue(mockLabel);
-    mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-      mockEnumOptions
-    );
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
       mockField as CustomPropertySummary,
@@ -352,11 +477,9 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(mockGetEntityName).toHaveBeenCalledWith(mockField);
-    expect(mockGetCustomPropertyAdvanceSearchEnumOptions).toHaveBeenCalledWith([
-      'ACTIVE',
-      'INACTIVE',
-      'PENDING',
-    ]);
+    expect(
+      mockGetCustomPropertyAdvanceSearchEnumOptions
+    ).not.toHaveBeenCalled();
 
     expect(result).toEqual({
       subfieldsKey: 'statusField.keyword',
@@ -366,9 +489,10 @@ describe('getCustomPropertiesSubFields', () => {
         label: mockLabel,
         operators: MULTISELECT_FIELD_OPERATORS,
         fieldSettings: {
-          listValues: mockEnumOptions,
+          asyncFetch: expect.any(Function),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
+          useLoadMore: true,
         },
       },
     });
@@ -859,7 +983,7 @@ describe('getCustomPropertiesSubFields', () => {
         });
       });
 
-      it('should use .keyword suffix for enum type with ElasticSearch output', () => {
+      it('should use asyncFetch with .keyword suffix for enum type with ElasticSearch output', () => {
         const mockField = {
           name: 'statusField',
           type: 'enum',
@@ -870,11 +994,7 @@ describe('getCustomPropertiesSubFields', () => {
           },
         };
         const mockLabel = 'Status Field';
-        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
         mockGetEntityName.mockReturnValue(mockLabel);
-        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-          mockEnumOptions
-        );
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
           mockField as CustomPropertySummary,
@@ -889,15 +1009,20 @@ describe('getCustomPropertiesSubFields', () => {
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: mockEnumOptions,
+              asyncFetch: expect.any(Function),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useLoadMore: true,
             },
           },
         });
+
+        expect(
+          mockGetCustomPropertyAdvanceSearchEnumOptions
+        ).not.toHaveBeenCalled();
       });
 
-      it('should use base field name for enum type with JSONLogic output', () => {
+      it('should use asyncFetch with base field name for enum type with JSONLogic output', () => {
         const mockField = {
           name: 'statusField',
           type: 'enum',
@@ -908,11 +1033,7 @@ describe('getCustomPropertiesSubFields', () => {
           },
         };
         const mockLabel = 'Status Field';
-        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
         mockGetEntityName.mockReturnValue(mockLabel);
-        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-          mockEnumOptions
-        );
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
           mockField as CustomPropertySummary,
@@ -927,12 +1048,17 @@ describe('getCustomPropertiesSubFields', () => {
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: mockEnumOptions,
+              asyncFetch: expect.any(Function),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useLoadMore: true,
             },
           },
         });
+
+        expect(
+          mockGetCustomPropertyAdvanceSearchEnumOptions
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -1191,5 +1317,127 @@ describe('getCustomPropertiesSubFields', () => {
         });
       });
     });
+  });
+});
+
+describe('buildEnumAsyncFetch', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
+  it('should return first 100 values when search is empty (offset 0)', async () => {
+    const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('');
+
+    expect(result.values).toHaveLength(100);
+    expect(result.values[0]).toEqual({ value: 'VAL_0', title: 'VAL_0' });
+    expect(result.hasMore).toBe(true);
+  });
+
+  it('should return next page when offset is provided', async () => {
+    const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('', 100);
+
+    expect(result.values).toHaveLength(50);
+    expect(result.values[0]).toEqual({ value: 'VAL_100', title: 'VAL_100' });
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should return all matching values when search filters below page size', async () => {
+    const values = ['ALPHA', 'BETA', 'GAMMA', 'ALPHABET'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('alpha');
+
+    expect(result.values).toEqual([
+      { value: 'ALPHA', title: 'ALPHA' },
+      { value: 'ALPHABET', title: 'ALPHABET' },
+    ]);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should return all values when list is smaller than page size', async () => {
+    const values = ['A', 'B', 'C'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('');
+
+    expect(result.values).toEqual([
+      { value: 'A', title: 'A' },
+      { value: 'B', title: 'B' },
+      { value: 'C', title: 'C' },
+    ]);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should be case-insensitive when filtering', async () => {
+    const values = ['Active', 'ACTIVE', 'Pending'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await (fetchFn as NonNullable<typeof fetchFn>)('active');
+
+    expect(result.values).toHaveLength(2);
+    expect(result.values.map((v) => v.value)).toEqual(['Active', 'ACTIVE']);
+  });
+});
+
+describe('tag-like field autocomplete casing (#31999)', () => {
+  // Terms aggregations on lowercase_normalizer fields return lowercased bucket
+  // keys; without a sourceFields top-hits sub-aggregation the option label falls
+  // back to that lowercased key. These configs must request fullyQualifiedName.
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+    jest.useFakeTimers();
+    (getAggregateFieldOptions as jest.Mock).mockClear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const expectSourceFieldsRequested = (field: {
+    fieldSettings?: { asyncFetch?: unknown };
+  }) => {
+    const asyncFetch = field.fieldSettings?.asyncFetch as (
+      search: string
+    ) => Promise<unknown>;
+    asyncFetch('pii');
+    jest.advanceTimersByTime(300);
+
+    expect(getAggregateFieldOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      EntityFields.FULLY_QUALIFIED_NAME,
+      'pii',
+      expect.anything(),
+      'fullyQualifiedName'
+    );
+  };
+
+  it.each([
+    EntityFields.TAG,
+    EntityFields.GLOSSARY_TERMS,
+    EntityFields.CERTIFICATION,
+    EntityFields.TIER,
+  ])('%s config should request fullyQualifiedName source field', (key) => {
+    const config = advancedSearchClassBase.getCommonConfig({});
+
+    expectSourceFieldsRequested(
+      config[key] as { fieldSettings?: { asyncFetch?: unknown } }
+    );
+  });
+
+  it('column tag config should request fullyQualifiedName source field', () => {
+    const config = advancedSearchClassBase.getColumnTagConfig([
+      SearchIndex.TABLE,
+    ]);
+
+    expectSourceFieldsRequested(
+      config[EntityFields.COLUMN_TAG] as {
+        fieldSettings?: { asyncFetch?: unknown };
+      }
+    );
   });
 });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAllLoadersToDisappear, waitForWidgetsToRender } from './entity';
 
 /**
  * Polls the search API until the given entity appears in Elasticsearch.
@@ -19,12 +19,29 @@ import { waitForAllLoadersToDisappear } from './entity';
  */
 export const waitForSearchIndexed = async (
   apiContext: APIRequestContext,
-  entityFqn: string,
+  entityFqn: string | undefined,
   index: string,
-  options?: { timeout?: number; intervals?: number[] }
+  options?: {
+    timeout?: number;
+    intervals?: number[];
+    queryFilter?: string;
+  }
 ) => {
+  // An empty q= becomes a match-all query in the search API: hits.total>0
+  // would resolve on the first poll against any non-empty index, silently
+  // bypassing the very race this helper exists to close. Fail fast with a
+  // clear message so a missing FQN is debuggable at the source.
+  if (!entityFqn) {
+    throw new Error(
+      `waitForSearchIndexed called with empty FQN for index "${index}"`
+    );
+  }
+
   const timeout = options?.timeout ?? 30_000;
   const intervals = options?.intervals ?? [500, 1_000, 2_000, 5_000];
+  const queryFilter = options?.queryFilter
+    ? `&query_filter=${encodeURIComponent(options.queryFilter)}`
+    : '';
   const start = Date.now();
   let intervalIdx = 0;
 
@@ -32,7 +49,7 @@ export const waitForSearchIndexed = async (
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=1`
+      )}&index=${index}&from=0&size=1${queryFilter}`
     );
 
     if (response.ok()) {
@@ -49,8 +66,11 @@ export const waitForSearchIndexed = async (
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
+  const expectedMetadata = options?.queryFilter
+    ? ' with the expected search metadata'
+    : '';
   throw new Error(
-    `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
+    `Entity "${entityFqn}" not found${expectedMetadata} in index "${index}" after ${timeout}ms`
   );
 };
 
@@ -61,4 +81,5 @@ export const waitForSearchIndexed = async (
 export const waitForPageLoaded = async (page: Page) => {
   await page.waitForLoadState('domcontentloaded');
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };

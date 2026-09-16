@@ -15,6 +15,7 @@ import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import {
   createContext,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -28,7 +29,6 @@ import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-o
 import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
 import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
 import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
-import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -47,15 +47,14 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
-import {
-  aggregateTestResultsByEntity,
-  TestCaseCountByStatus,
-} from '../../../../utils/DataQuality/DataQualityUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { bytesToSize } from '../../../../utils/StringUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
@@ -64,6 +63,14 @@ import {
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
+const TestCaseFormDrawer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer'
+      )
+  )
+);
 
 export const TableProfilerContext =
   createContext<TableProfilerContextInterface>(
@@ -77,7 +84,7 @@ export const TableProfilerProvider = ({
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, tourMockDatasetData } = useTourProvider();
   const testCasePaging = usePaging();
   const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
@@ -105,10 +112,20 @@ export const TableProfilerProvider = ({
     return subTab ?? defaultTab;
   }, [subTab, isTourOpen]);
 
+  // `permissions` stays raw here — TableProfilerContextInterface exposes it verbatim to
+  // consumers (context contract, kept raw per the GenericProvider precedent). `viewTest` is
+  // purely internal (never exposed via context), so it derives from named flags: hasViewAccess
+  // is a byte-for-byte match for the old raw `ViewAll || ViewBasic` (getDerivedPermissionFlags
+  // computes it from the same two raw fields, unprioritized), and since it already covers the
+  // ViewAll case, ORing in canViewTests (prioritized ViewTests-over-ViewAll) reproduces the old
+  // 3-way flat OR exactly — not an explicit-deny-wins change, because the old ViewAll term
+  // already makes the whole expression true whenever canViewTests' own ViewAll fallback would
+  // have mattered.
   const viewTest = useMemo(() => {
-    return (
-      permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests
-    );
+    const { hasViewAccess, canViewTests } =
+      getDerivedPermissionFlags(permissions);
+
+    return hasViewAccess || canViewTests;
   }, [permissions]);
 
   const getProfileSampleValue = () => {
@@ -242,10 +259,12 @@ export const TableProfilerProvider = ({
     // we are decoding FQN below to avoid double encoding in the API function
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(datasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
-      });
+      const [profiler, customMetricResponse] = await Promise.all([
+        getLatestTableProfileByFqn(datasetFQN),
+        getTableDetailsByFQN(datasetFQN, {
+          fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
+        }),
+      ]);
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
@@ -265,6 +284,7 @@ export const TableProfilerProvider = ({
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
           TabSpecificField.INCIDENT_ID,
+          TabSpecificField.INCIDENT_STATUS,
         ],
 
         entityLink: generateEntityLink(datasetFQN ?? ''),
@@ -283,10 +303,9 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
+    const isProfilerFetchable = !isTableDeleted && datasetFQN && !isTourOpen;
     const fetchProfiler =
-      !isTableDeleted &&
-      datasetFQN &&
-      !isTourOpen &&
+      isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
         activeTab
       ) &&
@@ -298,9 +317,12 @@ export const TableProfilerProvider = ({
       setIsProfilerDataLoading(false);
     }
     if (isTourOpen) {
-      setTableProfiler(mockDatasetData.tableDetails as unknown as Table);
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableProfiler(mock.tableDetails as Table);
+      }
     }
-  }, [datasetFQN, isTourOpen, activeTab]);
+  }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
 
   useEffect(() => {
     const fetchTest =
@@ -389,17 +411,13 @@ export const TableProfilerProvider = ({
           onVisibilityChange={handleSettingModal}
         />
       )}
-      {isTestCaseDrawerOpen && (
-        <TestCaseFormV1
-          drawerProps={{
-            open: isTestCaseDrawerOpen,
-          }}
-          table={table}
-          testLevel={testLevel}
-          onCancel={handleCloseTestCaseDrawer}
-          onFormSubmit={onTestCaseSubmit}
-        />
-      )}
+      <TestCaseFormDrawer
+        open={isTestCaseDrawerOpen}
+        table={table}
+        testLevel={testLevel}
+        onClose={handleCloseTestCaseDrawer}
+        onFormSubmit={onTestCaseSubmit}
+      />
     </TableProfilerContext.Provider>
   );
 };

@@ -25,7 +25,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -140,7 +140,9 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               />
             ) : (
               <p className="text-grey-muted text-center">
-                <span>{t('label.no-glossary-found')}</span>
+                <span>
+                  {t('label.no-entity', { entity: t('label.glossary') })}
+                </span>
               </p>
             )}
           </Col>

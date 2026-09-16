@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
 
-interface TagButtonProps {
+export interface TagButtonProps {
   label: string;
   icon?: React.ReactNode;
   className?: string;
@@ -43,9 +43,17 @@ const TagButton: React.FC<TagButtonProps> = ({
 
   return (
     <div
+      aria-label={label}
       className={buttonClassNames}
       data-testid={dataTestId}
-      onClick={onClick}>
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}>
       <Tooltip placement="bottomLeft" title={tooltip}>
         <div className="d-flex items-center">
           {icon && <span className="m-r-xss flex-center">{icon}</span>}

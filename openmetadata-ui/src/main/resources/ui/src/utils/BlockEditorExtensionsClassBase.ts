@@ -21,7 +21,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Text from '@tiptap/extension-text';
-import { Extensions } from '@tiptap/react';
+import type { Extensions } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
   ExtensionOptions,
@@ -104,7 +104,10 @@ export class BlockEditorExtensionsClassBase {
       }),
       LinkExtension.configure({
         autolink: false,
-        openOnClick: true,
+        // Open links on click only in read-only previews. While editing, a
+        // click should surface the link popup (edit/open/unlink) instead of
+        // navigating away.
+        openOnClick: 'whenNotEditable',
         linkOnPaste: true,
         HTMLAttributes: {
           rel: 'noopener noreferrer nofollow',

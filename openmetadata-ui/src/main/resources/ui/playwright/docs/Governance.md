@@ -598,15 +598,15 @@
 | | ↳ *Delete subdomain and verify its data products are not visible in domain* | |
 | | ↳ *Verify deeply nested subdomain data products are visible at each level* | |
 | 12 | **Domains** - Verify domain tags and glossary terms | Domain tags and glossary terms |
-| 13 | **Domains** - Create domain with tags using MUITagSuggestion | Create domain with tags using MUITagSuggestion |
+| 13 | **Domains** - Create domain with tags using TagSuggestion | Create domain with tags using TagSuggestion |
 | | ↳ *Navigate to add domain* | |
 | | ↳ *Fill domain form* | |
-| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Search and select tag via TagSuggestion* | |
 | | ↳ *Save domain and verify tag is applied* | |
-| 14 | **Domains** - Create subdomain with tags using MUITagSuggestion | Create subdomain with tags using MUITagSuggestion |
+| 14 | **Domains** - Create subdomain with tags using TagSuggestion | Create subdomain with tags using TagSuggestion |
 | | ↳ *Navigate to domain and open subdomain modal* | |
 | | ↳ *Fill subdomain form* | |
-| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Search and select tag via TagSuggestion* | |
 | | ↳ *Save subdomain and verify tag is applied* | |
 | 15 | **Domains** - Verify data product tags and glossary terms | Data product tags and glossary terms |
 | 16 | **Domains** - Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value |
@@ -999,10 +999,10 @@
 | | ↳ *Follow data product* | |
 | | ↳ *Verify follow button is changed to unfollow* | |
 | | ↳ *Cleanup test data product* | |
-| 8 | **Data Products** - Create data product with tags using MUITagSuggestion | Create data product with tags using MUITagSuggestion |
+| 8 | **Data Products** - Create data product with tags using TagSuggestion | Create data product with tags using TagSuggestion |
 | | ↳ *Navigate to add data product* | |
 | | ↳ *Fill data product form* | |
-| | ↳ *Search and select tag via MUITagSuggestion* | |
+| | ↳ *Search and select tag via TagSuggestion* | |
 | | ↳ *Save and verify tag is applied* | |
 | | ↳ *Cleanup* | |
 

@@ -16,16 +16,13 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import './../LoginPage/login.style.less';
 
 interface SignUpFormData {
@@ -40,13 +37,12 @@ const BasicSignUp = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
-  const { alert, resetAlert } = useAlertStore();
   const navigate = useNavigate();
 
   const [form] = Form.useForm();
   const password = Form.useWatch('password', form);
 
-  const brandName = brandClassBase.getPageTitle();
+  const brandName = t('label.brand-name');
 
   const { isAuthProviderBasic } = useMemo(() => {
     return {
@@ -70,7 +66,6 @@ const BasicSignUp = () => {
 
   const handleLogin = () => {
     navigate(ROUTES.SIGNIN);
-    resetAlert();
   };
 
   return (
@@ -86,16 +81,6 @@ const BasicSignUp = () => {
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
 
-          {alert && (
-            <div className="login-alert">
-              <AlertBar
-                defaultExpand
-                message={alert?.message}
-                type={alert?.type}
-              />
-            </div>
-          )}
-
           {isAuthProviderBasic ? (
             <div className="login-form">
               <Form
@@ -109,6 +94,7 @@ const BasicSignUp = () => {
                   name="firstName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first signup field for usability
                     autoFocus
                     className="input-field"
                     placeholder={t('label.enter-entity', {

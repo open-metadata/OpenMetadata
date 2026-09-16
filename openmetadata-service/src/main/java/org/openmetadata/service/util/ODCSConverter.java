@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -29,8 +32,10 @@ import org.openmetadata.schema.api.data.Policy;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSElementExtension;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
@@ -133,8 +138,12 @@ public class ODCSConverter {
       odcs.setTags(tags);
     }
 
-    if (contract.getOdcsQualityRules() != null && !contract.getOdcsQualityRules().isEmpty()) {
+    if (!nullOrEmpty(contract.getOdcsQualityRules())) {
       distributeQualityRules(odcs, contract.getOdcsQualityRules());
+    }
+
+    if (!nullOrEmpty(contract.getOdcsElementExtensions())) {
+      distributeElementExtensions(odcs, contract.getOdcsElementExtensions());
     }
 
     return odcs;
@@ -213,6 +222,11 @@ public class ODCSConverter {
     List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs);
     if (!allQualityRules.isEmpty()) {
       contract.setOdcsQualityRules(allQualityRules);
+    }
+
+    List<ODCSElementExtension> elementExtensions = collectElementExtensions(odcs);
+    if (!elementExtensions.isEmpty()) {
+      contract.setOdcsElementExtensions(elementExtensions);
     }
 
     return contract;
@@ -817,22 +831,129 @@ public class ODCSConverter {
 
   private static boolean placeRuleInSchema(
       List<ODCSSchemaElement> schemaElements, ODCSQualityRule rule) {
-    for (ODCSSchemaElement element : schemaElements) {
-      if (rule.getColumn().equals(element.getName())) {
-        if (element.getQuality() == null) {
-          element.setQuality(new ArrayList<>());
-        }
-        element.getQuality().add(rule);
-        return true;
+    ODCSSchemaElement target = findSchemaElement(schemaElements, rule.getColumn());
+    if (target != null) {
+      if (target.getQuality() == null) {
+        target.setQuality(new ArrayList<>());
       }
+      target.getQuality().add(rule);
+    }
+    return target != null;
+  }
 
-      if (element.getProperties() != null) {
-        if (placeRuleInSchema(element.getProperties(), rule)) {
-          return true;
-        }
+  private static ODCSSchemaElement findSchemaElement(
+      List<ODCSSchemaElement> schemaElements, String name) {
+    ODCSSchemaElement found = null;
+    for (ODCSSchemaElement element : schemaElements) {
+      if (name.equals(element.getName())) {
+        found = element;
+      } else if (element.getProperties() != null) {
+        found = findSchemaElement(element.getProperties(), name);
+      }
+      if (found != null) {
+        break;
       }
     }
-    return false;
+    return found;
+  }
+
+  /**
+   * Collects the ODCS attributes that OpenMetadata does not model on its own Column type, so that an
+   * imported contract can be exported back without losing them. Each entry is anchored by the name
+   * of the element it came from; an empty anchor means the attributes belong to the contract itself.
+   */
+  private static List<ODCSElementExtension> collectElementExtensions(ODCSDataContract odcs) {
+    List<ODCSElementExtension> extensions = new ArrayList<>();
+
+    if (!nullOrEmpty(odcs.getAuthoritativeDefinitions())) {
+      ODCSElementExtension contractExtension = new ODCSElementExtension();
+      contractExtension.setAuthoritativeDefinitions(odcs.getAuthoritativeDefinitions());
+      extensions.add(contractExtension);
+    }
+
+    if (odcs.getSchema() != null) {
+      for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
+        collectElementExtensionsFromElement(schemaObject, extensions);
+      }
+    }
+
+    return extensions;
+  }
+
+  private static void collectElementExtensionsFromElement(
+      ODCSSchemaElement element, List<ODCSElementExtension> extensions) {
+    ODCSElementExtension extension = toElementExtension(element);
+    if (extension != null) {
+      extensions.add(extension);
+    }
+
+    if (element.getProperties() != null) {
+      for (ODCSSchemaElement property : element.getProperties()) {
+        collectElementExtensionsFromElement(property, extensions);
+      }
+    }
+  }
+
+  private static ODCSElementExtension toElementExtension(ODCSSchemaElement element) {
+    boolean hasDefinitions = !nullOrEmpty(element.getAuthoritativeDefinitions());
+    boolean hasTransformSources = !nullOrEmpty(element.getTransformSourceObjects());
+
+    ODCSElementExtension extension = null;
+    if (hasDefinitions || hasTransformSources) {
+      extension = new ODCSElementExtension();
+      extension.setElement(element.getName());
+      if (hasDefinitions) {
+        extension.setAuthoritativeDefinitions(element.getAuthoritativeDefinitions());
+      }
+      if (hasTransformSources) {
+        extension.setTransformSourceObjects(element.getTransformSourceObjects());
+      }
+    }
+    return extension;
+  }
+
+  /**
+   * Reattaches preserved attributes to the elements they came from. An anchor that matches nothing
+   * in the exported schema — which happens for object-level attributes, because the exported object
+   * is renamed after the OpenMetadata entity — falls back to the contract level rather than being
+   * dropped, mirroring how an unplaceable quality rule falls back to the contract-level quality
+   * block.
+   */
+  private static void distributeElementExtensions(
+      ODCSDataContract odcs, List<ODCSElementExtension> extensions) {
+    List<ODCSAuthoritativeDefinition> contractDefinitions = new ArrayList<>();
+
+    for (ODCSElementExtension extension : extensions) {
+      boolean placed =
+          !nullOrEmpty(extension.getElement())
+              && odcs.getSchema() != null
+              && applyElementExtension(odcs.getSchema(), extension);
+      if (!placed && !nullOrEmpty(extension.getAuthoritativeDefinitions())) {
+        contractDefinitions.addAll(extension.getAuthoritativeDefinitions());
+      }
+    }
+
+    if (!contractDefinitions.isEmpty()) {
+      odcs.setAuthoritativeDefinitions(contractDefinitions);
+    }
+  }
+
+  private static boolean applyElementExtension(
+      List<ODCSSchemaElement> schemaElements, ODCSElementExtension extension) {
+    ODCSSchemaElement target = findSchemaElement(schemaElements, extension.getElement());
+    if (target == null) {
+      LOG.debug(
+          "No exported schema element named '{}'; its ODCS attributes fall back to contract level",
+          extension.getElement());
+    } else {
+      if (!nullOrEmpty(extension.getAuthoritativeDefinitions())) {
+        target.setAuthoritativeDefinitions(extension.getAuthoritativeDefinitions());
+      }
+      if (!nullOrEmpty(extension.getTransformSourceObjects())) {
+        target.setTransformSourceObjects(extension.getTransformSourceObjects());
+      }
+    }
+    return target != null;
   }
 
   /**
@@ -958,9 +1079,14 @@ public class ODCSConverter {
         imported.getExtension() != null ? imported.getExtension() : existing.getExtension());
 
     merged.setOdcsQualityRules(
-        imported.getOdcsQualityRules() != null && !imported.getOdcsQualityRules().isEmpty()
+        !nullOrEmpty(imported.getOdcsQualityRules())
             ? imported.getOdcsQualityRules()
             : existing.getOdcsQualityRules());
+
+    merged.setOdcsElementExtensions(
+        !nullOrEmpty(imported.getOdcsElementExtensions())
+            ? imported.getOdcsElementExtensions()
+            : existing.getOdcsElementExtensions());
 
     merged.setVersion(existing.getVersion());
     merged.setCreatedAt(existing.getCreatedAt());
@@ -1009,7 +1135,10 @@ public class ODCSConverter {
     replaced.setTermsOfUse(imported.getTermsOfUse());
     replaced.setExtension(imported.getExtension());
     replaced.setSemantics(imported.getSemantics());
-    replaced.setOdcsQualityRules(imported.getOdcsQualityRules());
+    // An empty list is how a replace says "the re-imported document declares none of these".
+    // Leaving null would read as "not specified" and be carried forward on the next write.
+    replaced.setOdcsQualityRules(listOrEmpty(imported.getOdcsQualityRules()));
+    replaced.setOdcsElementExtensions(listOrEmpty(imported.getOdcsElementExtensions()));
 
     return replaced;
   }

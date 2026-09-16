@@ -46,7 +46,6 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];
   entityType: EntityType;
-  onColumnsUpdate?: (columns: Column[]) => void;
 }
 
 export interface TestCaseStatusCounts {
@@ -54,4 +53,15 @@ export interface TestCaseStatusCounts {
   failed: number;
   aborted: number;
   total: number;
+}
+
+export interface ColumnDetailPanelTitleProps {
+  activeColumn: Column;
+  breadcrumbPath: Column[];
+  entityType: EntityType;
+  hasEditPermission: { displayName: boolean };
+  isPrimaryKey: boolean;
+  onBreadcrumbClick: (column: Column) => void;
+  onClose: () => void;
+  onEditDisplayName: () => void;
 }

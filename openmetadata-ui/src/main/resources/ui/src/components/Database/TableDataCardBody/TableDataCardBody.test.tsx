@@ -115,6 +115,22 @@ describe('Test TableDataCardBody Component', () => {
     expect(extraInfoTest).not.toBeInTheDocument();
   });
 
+  it('does not render a separator after the last visible extra info', () => {
+    const { getAllByText } = render(
+      <TableDataCardBody
+        description="test"
+        extraInfo={[
+          { key: 'Type', value: 'table' },
+          { key: 'Domain', value: '' },
+          { key: 'Owner', value: 'owner' },
+          { key: 'Tier', value: undefined },
+        ]}
+      />
+    );
+
+    expect(getAllByText('label.middot-symbol')).toHaveLength(2);
+  });
+
   it('Should render all the extra info', () => {
     const { queryByText, getByTestId } = render(
       <TableDataCardBody

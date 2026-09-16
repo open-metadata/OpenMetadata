@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as MyDataIcon } from '../../../assets/svg/ic-my-data.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-data-placeholder.svg';
+import { ReactComponent as MyDataIcon } from '../../../assets/svg/widget/my-data.svg';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -31,23 +32,23 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/tests/testCase';
+import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
-import { getTermQuery } from '../../../utils/SearchUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -56,7 +57,6 @@ import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './my-data-widget.less';
-
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
@@ -65,6 +65,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -108,9 +109,10 @@ const MyDataWidgetInternal = ({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
-            owners={(item.owners as EntityReference[]) ?? []}
+            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
+            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),
@@ -143,7 +145,7 @@ const MyDataWidgetInternal = ({
           queryFilter: queryFilterObj,
           sortField,
           sortOrder,
-          searchIndex: SearchIndex.ALL,
+          searchIndex: SearchIndex.DATA_ASSET,
         });
 
         // Extract useful details from the Response
@@ -170,22 +172,6 @@ const MyDataWidgetInternal = ({
   useEffect(() => {
     fetchMyDataAssets();
   }, [fetchMyDataAssets]);
-
-  const getEntityIcon = (item: SourceType) => {
-    if ('serviceType' in item && item.serviceType) {
-      return (
-        <img
-          alt={item.name}
-          className="w-8 h-8"
-          src={serviceUtilClassBase.getServiceTypeLogo({
-            serviceType: item.serviceType,
-          } as SearchSourceAlias)}
-        />
-      );
-    } else {
-      return searchClassBase.getEntityIcon(item.entityType ?? '');
-    }
-  };
 
   const emptyState = useMemo(
     () => (
@@ -216,15 +202,15 @@ const MyDataWidgetInternal = ({
                 <div className="d-flex items-center justify-between ">
                   <Link
                     className="item-link w-min-0"
-                    to={entityUtilClassBase.getEntityLink(
-                      item.entityType ?? '',
-                      item.fullyQualifiedName as string
+                    to={getEntityLinkFromType(
+                      item.fullyQualifiedName as string,
+                      item.entityType as EntityType
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                        <div className="d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
                       }
                       type="text">

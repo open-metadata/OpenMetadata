@@ -13,7 +13,22 @@
 
 import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetLabel } from './coreWidgetUtils';
+
+const parseNumericValue = (
+  nextValue: string,
+  schemaType: string | string[] | undefined
+): number | undefined => {
+  if (nextValue === '') {
+    return undefined;
+  }
+  const parsed =
+    schemaType === 'integer'
+      ? Number.parseInt(nextValue, 10)
+      : Number.parseFloat(nextValue);
+
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 const CoreInputWidget = ({
   id,
@@ -38,45 +53,47 @@ const CoreInputWidget = ({
 
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
-      if (nextValue === '') {
-        onChange(options.emptyValue ?? undefined);
-
-        return;
-      }
-
-      const parsedValue =
-        schema.type === 'integer'
-          ? Number.parseInt(nextValue, 10)
-          : Number.parseFloat(nextValue);
-
       onChange(
-        Number.isNaN(parsedValue)
-          ? options.emptyValue ?? undefined
-          : parsedValue
+        parseNumericValue(nextValue, schema.type) ??
+          options.emptyValue ??
+          undefined
       );
 
       return;
     }
 
-    onChange(nextValue);
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
+  const description =
+    (options.help as string | undefined) ?? schema.description;
+  const hint = rawErrors?.[0] ?? description;
+
   return (
-    <Input
-      autoFocus={autofocus}
-      hint={getWidgetHint({ rawErrors, schema, options })}
-      id={id}
-      isDisabled={disabled || readonly}
-      isInvalid={!!rawErrors?.length}
-      isRequired={required}
-      label={getWidgetLabel({ hideLabel, label })}
-      placeholder={placeholder}
-      type={inputType}
-      value={value ?? ''}
-      onBlur={() => onBlur(id, value)}
-      onChange={handleChange}
-      onFocus={() => onFocus(id, value)}
-    />
+    <div>
+      <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
+        autoFocus={autofocus}
+        hint={hint}
+        hintClassName="tw:text-xs"
+        id={id}
+        isDisabled={disabled || readonly}
+        isInvalid={!!rawErrors?.length}
+        isRequired={required}
+        label={getWidgetLabel({ hideLabel, label })}
+        placeholder={placeholder}
+        type={inputType}
+        value={value ?? ''}
+        onBlur={() => onBlur(id, value)}
+        onChange={handleChange}
+        onFocus={() => onFocus(id, value)}
+      />
+      {options.suffix && (
+        <span className="tw:mt-1 tw:block tw:text-xs tw:font-medium tw:text-quaternary">
+          {options.suffix as string}
+        </span>
+      )}
+    </div>
   );
 };
 

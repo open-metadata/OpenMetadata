@@ -26,7 +26,7 @@ const mockData = {
   data: { name: 'Test Gateway' },
 };
 
-jest.mock('../../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((entity) => entity.name),
 }));
 
@@ -68,7 +68,8 @@ describe('GatewayNode', () => {
     );
 
     fireEvent.click(
-      screen.getByText('Test Gateway').parentElement!.parentElement!
+      (screen.getByText('Test Gateway').parentElement as HTMLElement)
+        .parentElement as HTMLElement
     );
 
     expect(mockSetSelectedNode).toHaveBeenCalled();

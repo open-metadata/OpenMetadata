@@ -12,47 +12,47 @@
  */
 
 @import '../../../../styles/variables.less';
-@border-color: #dde3ea;
-@awaiting-bg: #dde3ea33;
-@success-bg: #28a7450f;
-@failure-bg: #cb24310f;
-@text-color: #37352f;
-@warning-bg: #fff3dc;
+@border-color: var(--om-legacy-color-dde3ea);
+@awaiting-bg: var(--om-legacy-color-221-227-234-0-2);
+@success-bg: var(--om-legacy-color-40-167-69-0-059);
+@failure-bg: var(--om-legacy-color-203-36-49-0-059);
+@text-color: var(--om-legacy-color-37352f);
+@warning-bg: var(--om-legacy-color-fff3dc);
 
 .connection-step-card {
   color: @text-color;
   box-sizing: border-box;
   border: 1px solid @border-color;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   &.success {
-    border-color: #28a7454d;
+    border-color: var(--om-legacy-color-40-167-69-0-302);
   }
 
   &.failure {
-    border-color: #efbdc1;
+    border-color: var(--om-legacy-color-efbdc1);
   }
   &.warning {
-    border-color: #ffe1a6;
+    border-color: var(--om-legacy-color-ffe1a6);
   }
   .connection-step-card-header {
     background: @awaiting-bg;
-    padding: 8px 16px;
+    padding: var(--om-space-8) var(--om-space-16);
     &.success {
       background: @success-bg;
     }
 
     &.failure {
       background: @failure-bg;
-      border-bottom-color: #efbdc1;
+      border-bottom-color: var(--om-legacy-color-efbdc1);
     }
     &.warning {
       background: @warning-bg;
-      border-bottom-color: #ffe1a6;
+      border-bottom-color: var(--om-legacy-color-ffe1a6);
     }
     .awaiting-status,
     .skipped-status {
       color: @text-color;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       opacity: 0.6;
     }
     .success-status,
@@ -62,22 +62,22 @@
     }
   }
   .connection-step-card-content {
-    padding: 12px 16px;
+    padding: var(--om-space-12) var(--om-space-16);
     .connection-step-card-content-logs {
       .ant-collapse-header {
-        padding: 0px;
+        padding: 0;
         .ant-collapse-header-text {
           color: @primary-color;
         }
       }
       .ant-collapse-content-box {
-        padding-left: 24px;
-        padding-bottom: 0px;
-        padding-top: 4px;
+        padding-left: var(--om-space-24);
+        padding-bottom: 0;
+        padding-top: var(--om-space-4);
       }
     }
     .connection-step-card-content-divider {
-      margin: 12px 0px;
+      margin: var(--om-space-12) 0;
     }
   }
 }

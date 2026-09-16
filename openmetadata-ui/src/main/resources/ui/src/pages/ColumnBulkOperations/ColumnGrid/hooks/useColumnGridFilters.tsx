@@ -19,8 +19,12 @@ import { useTranslation } from 'react-i18next';
 import { useQuickFiltersWithComponent } from '../../../../components/common/atoms/filters/useQuickFiltersWithComponent';
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import {
   ADDITIONAL_FILTER_KEYS,
   COLUMN_GRID_FILTERS,
@@ -102,7 +106,23 @@ export const useColumnGridFilters = (
         visibleFilterKeys.has(f.key)
     );
 
-    return [...defaultFilters, ...addedFilters];
+    return [...defaultFilters, ...addedFilters].map((f) => {
+      if (f.key !== EntityFields.ENTITY_TYPE || !f.options) {
+        return f;
+      }
+
+      return {
+        ...f,
+        options: f.options.map((opt) => ({
+          ...opt,
+          icon:
+            searchClassBase.getEntityIconWithBg(
+              getCanonicalEntityType(opt.key),
+              EntityIconSize.Size14
+            ) ?? undefined,
+        })),
+      };
+    });
   }, [visibleFilterKeys]);
 
   const remainingFilters = useMemo(

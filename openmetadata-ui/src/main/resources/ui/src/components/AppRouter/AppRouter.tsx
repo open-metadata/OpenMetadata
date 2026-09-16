@@ -13,19 +13,22 @@
 
 import { isEmpty } from 'lodash';
 import { lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
+import { AI_APP_MODE } from '../../constants/appMode.constants';
 import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useAppMode } from '../../hooks/useAppMode';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
+import { isAppModeSessionActive } from '../../utils/appModeSession';
 import Loader from '../common/Loader/Loader';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AuthenticatedApp = withSuspenseFallback(
+const AuthenticatedApp = withPageSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AuthenticatedRoutes = withSuspenseFallback(
+const AuthenticatedRoutes = withPageSuspenseFallback(
   lazy(() =>
     import('./AuthenticatedRoutes').then((m) => ({
       default: m.AuthenticatedRoutes,
@@ -33,12 +36,16 @@ const AuthenticatedRoutes = withSuspenseFallback(
   )
 );
 
+const AppModeRoutes = withPageSuspenseFallback(
+  lazy(() => import('../platform/ai-shell/AppModeRoutes/AppModeRoutes'))
+);
+
 // Lazy-load infrequently-visited unauthenticated pages
-const AccessNotAllowedPage = withSuspenseFallback(
+const AccessNotAllowedPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
 );
 
-const LogoutPage = withSuspenseFallback(
+const LogoutPage = withPageSuspenseFallback(
   lazy(() =>
     import('../../pages/LogoutPage/LogoutPage').then((m) => ({
       default: m.LogoutPage,
@@ -46,15 +53,15 @@ const LogoutPage = withSuspenseFallback(
   )
 );
 
-const PageNotFound = withSuspenseFallback(
+const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../pages/PageNotFound/PageNotFound'))
 );
 
-const SamlCallback = withSuspenseFallback(
+const SamlCallback = withPageSuspenseFallback(
   lazy(() => import('../../pages/SamlCallback'))
 );
 
-const SignUpPage = withSuspenseFallback(
+const SignUpPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/SignUp/SignUpPage'))
 );
 
@@ -76,6 +83,11 @@ const AppRouter = () => {
     }))
   );
 
+  const appMode = useAppMode();
+  // Subscribe to location so the app-mode-shell decision below is re-evaluated
+  // on every navigation (the session can end while the stored mode is unchanged).
+  useLocation();
+
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
    * and is false when the application is loaded.
@@ -89,9 +101,21 @@ const AppRouter = () => {
   }
 
   if (isAuthenticated) {
+    // Render the app-mode shell when the stored mode is AI, OR when an app-mode
+    // session is active — the user entered the AI experience (e.g. an AI-only
+    // deep link) and has not left it. The session keeps the shell across in-app
+    // navigation to shared routes (`/conversations` → `/explore` stays in the
+    // shell) without changing the stored mode, so the switcher still shows
+    // Classic. A fresh visit to a shared route with no session stays classic.
+    const shouldRenderAppModeShell =
+      appMode === AI_APP_MODE || isAppModeSessionActive();
+    const AuthenticatedRoutesComponent = shouldRenderAppModeShell
+      ? AppModeRoutes
+      : AuthenticatedRoutes;
+
     return (
       <AuthenticatedApp>
-        <AuthenticatedRoutes />
+        <AuthenticatedRoutesComponent />
       </AuthenticatedApp>
     );
   }

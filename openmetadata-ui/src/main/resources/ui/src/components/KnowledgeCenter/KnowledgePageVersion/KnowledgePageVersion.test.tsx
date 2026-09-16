@@ -20,14 +20,13 @@ const systemZoneName = Settings.defaultZone;
 
 const mockPush = jest.fn();
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => {
-    return <div data-testid="owner-label">OwnerLabel</div>;
-  }),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<div data-testid="owner-label">Owner</div>),
 }));
 
 jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>

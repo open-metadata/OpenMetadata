@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { InheritedRolesCardProps } from './InheritedRolesCard.interface';
 
 const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
@@ -37,8 +37,10 @@ const InheritedRolesCard = ({ userData }: InheritedRolesCardProps) => {
           </div>
         ) : (
           <div className="d-flex justify-between flex-col">
-            {userData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="mb-2 d-flex items-center gap-2" key={i}>
+            {userData.inheritedRoles?.map((inheritedRole) => (
+              <div
+                className="mb-2 d-flex items-center gap-2"
+                key={inheritedRole.id}>
                 <Icon component={IconUser} style={{ fontSize: '16px' }} />
                 <Typography.Text
                   className="ant-typography-ellipsis-custom w-48"

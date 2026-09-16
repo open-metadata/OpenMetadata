@@ -31,10 +31,9 @@ class ContextFileUploadSupportTest {
   }
 
   @Test
-  void sanitizeEntityNameProducesBoundedUniqueName() {
+  void sanitizeEntityNameProducesDeterministicBoundedName() {
     String name = ContextFileUploadSupport.sanitizeEntityName("Quarterly Report (Final).pdf");
-    assertTrue(name.startsWith("quarterly_report_final_.pdf_"));
-    assertTrue(name.length() <= 189);
+    assertEquals("quarterly_report_final_.pdf", name);
   }
 
   @Test

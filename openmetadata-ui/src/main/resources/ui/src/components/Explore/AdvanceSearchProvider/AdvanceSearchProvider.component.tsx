@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,11 +17,14 @@ import {
   ImmutableTree,
   OldJsonTree,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -34,21 +37,30 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
-  getEmptyJsonTree,
   getTreeConfig,
   processEntityTypeFields,
 } from '../../../utils/AdvancedSearchUtils';
+import {
+  getExploreClearQueryFilterSearchParams,
+  getExploreResetFiltersSearchParams,
+} from '../../../utils/ExplorePureUtils';
+import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
-import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
+
+const AdvancedSearchModal = lazy(() =>
+  import('../AdvanceSearchModal.component').then((m) => ({
+    default: m.AdvancedSearchModal,
+  }))
+);
 
 const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
@@ -94,10 +106,15 @@ export const AdvanceSearchProvider = ({
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
+      // Re-selecting the index the provider is already on must not enter the updating state.
+      if (isEqual(searchIndex, index)) {
+        return;
+      }
+
       setIsUpdating(true);
       setSearchIndex(index);
     },
-    []
+    [searchIndex]
   );
 
   const [config, setConfig] = useState<Config>(
@@ -183,11 +200,7 @@ export const AdvanceSearchProvider = ({
     (tree?: ImmutableTree) => {
       navigate({
         pathname: location.pathname,
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: tree ? JSON.stringify(tree) : undefined,
-          page: 1,
-        }),
+        search: getExploreClearQueryFilterSearchParams(parsedSearch, tree),
       });
     },
     [navigate, parsedSearch, location.pathname]
@@ -206,19 +219,20 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, [config]);
 
+  const handleResetQueryFilter = useCallback(() => {
+    handleReset();
+    handleTreeUpdate();
+  }, [handleReset, handleTreeUpdate]);
+
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
     navigate({
       pathname: location.pathname,
-      search: Qs.stringify({
-        quickFilter: undefined,
-        queryFilter: undefined,
-        page: 1,
-      }),
+      search: getExploreResetFiltersSearchParams(parsedSearch),
     });
-  }, [navigate, location.pathname]);
+  }, [navigate, parsedSearch, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, FieldOrGroup> = {};
@@ -262,8 +276,8 @@ export const AdvanceSearchProvider = ({
       actualConfig.fields.extension.subfields = extensionSubField;
     }
 
-    // Update field type if field override is provided
-    // For example type of extension is group but it is required as struct in some cases
+    // Update field type if field override is provided For example type of extension is group but it is required as
+    // struct in some cases
     fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
       if (actualConfig.fields[fieldOverride.field]) {
         actualConfig.fields[fieldOverride.field].type = fieldOverride.type;
@@ -338,6 +352,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       onReset: handleReset,
+      onResetQueryFilter: handleResetQueryFilter,
       onResetAllFilters: handleResetAllFilters,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
@@ -353,6 +368,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       handleReset,
+      handleResetQueryFilter,
       handleResetAllFilters,
       changeSearchIndex,
       handleSubmit,
@@ -363,11 +379,15 @@ export const AdvanceSearchProvider = ({
   return (
     <AdvancedSearchContext.Provider value={contextValues}>
       {loading ? <Loader /> : children}
-      <AdvancedSearchModal
-        visible={showModal}
-        onCancel={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-      />
+      {showModal && (
+        <Suspense fallback={null}>
+          <AdvancedSearchModal
+            visible={showModal}
+            onCancel={() => setShowModal(false)}
+            onSubmit={handleSubmit}
+          />
+        </Suspense>
+      )}
     </AdvancedSearchContext.Provider>
   );
 };

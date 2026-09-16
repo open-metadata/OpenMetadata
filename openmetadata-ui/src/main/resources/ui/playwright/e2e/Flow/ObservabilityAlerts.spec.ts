@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
+  WEBHOOK_DELIVERY_COLUMN_NAME,
 } from '../../constant/alert';
-import { ObservabilityCreationDetails } from '../../constant/alert.interface';
+import {
+  AlertDetails,
+  ObservabilityCreationDetails,
+} from '../../constant/alert.interface';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -34,7 +39,7 @@ import {
   verifyAlertDetails,
   visitAlertDetailsPage,
 } from '../../utils/alert';
-import { getApiContext } from '../../utils/common';
+import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
@@ -46,6 +51,13 @@ import {
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
+import {
+  clearCapturedWebhookRequests,
+  findWebhookDelivery,
+  getAddedColumnNames,
+  startWebhookReceiver,
+  stopWebhookReceiver,
+} from '../../utils/webhook';
 import { test as base } from '../fixtures/pages';
 
 const user1 = new UserClass();
@@ -93,11 +105,14 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  test.setTimeout(120_000);
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();
   domain = new Domain();
-  const { afterAction, apiContext } = await performAdminLogin(browser);
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
+    navigate: true,
+  });
   await commonPrerequisites({
     apiContext,
     table: table2,
@@ -168,18 +183,22 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await commonCleanup({
-    apiContext,
-    table: table2,
-    user1,
-    user2,
-    domain,
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
+    navigate: true,
   });
-  await table1.delete(apiContext);
-  await pipeline.delete(apiContext);
-
-  await afterAction();
+  try {
+    await commonCleanup({
+      apiContext,
+      table: table2,
+      user1,
+      user2,
+      domain,
+    });
+    await table1.delete(apiContext);
+    await pipeline.delete(apiContext);
+  } finally {
+    await afterAction();
+  }
 });
 
 test.beforeEach(async ({ page }) => {
@@ -187,6 +206,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Pipeline Alert', async ({ page }) => {
+  test.slow();
   const ALERT_NAME = generateAlertName();
 
   await test.step('Create alert', async () => {
@@ -277,6 +297,7 @@ const observabilityDetailsBySource = new Map<
 
 for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
+    test.slow();
     const alertDetails = observabilityDetailsBySource.get(source);
     if (!alertDetails) {
       throw new Error(
@@ -315,16 +336,202 @@ for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
     });
   });
 }
+
+test('delivers table schema changes to an external webhook', async ({
+  page,
+}) => {
+  test.slow();
+  const { afterAction, apiContext } = await getApiContext(page);
+  let webhookAlertDetails: AlertDetails | undefined;
+  const webhookTableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
+
+  try {
+    // Keep network-dependent receiver setup local so AUT routing failures cannot block unrelated
+    // observability coverage through this file's shared beforeAll hook.
+    const webhookEndpoint = await startWebhookReceiver();
+    clearCapturedWebhookRequests();
+    const webhookAlertCreationDetails: ObservabilityCreationDetails = {
+      source: 'table',
+      sourceDisplayName: 'Table',
+      filters: [
+        {
+          name: 'Table Name',
+          inputSelector: 'fqn-list-select',
+          inputValue: webhookTableFqn,
+        },
+      ],
+      actions: [{ name: 'Get Schema Changes' }],
+      destinations: [
+        {
+          mode: 'external',
+          category: 'Webhook',
+          inputValue: webhookEndpoint,
+        },
+      ],
+    };
+    await visitObservabilityAlertPage(page);
+    await createCommonObservabilityAlert({
+      page,
+      alertName: generateAlertName(),
+      sourceName: webhookAlertCreationDetails.source,
+      sourceDisplayName: webhookAlertCreationDetails.sourceDisplayName,
+      alertDetails: webhookAlertCreationDetails,
+      filters: webhookAlertCreationDetails.filters,
+      actions: webhookAlertCreationDetails.actions,
+    });
+    webhookAlertDetails = await saveAlertAndVerifyResponse(page);
+
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/columns/4',
+          value: {
+            name: WEBHOOK_DELIVERY_COLUMN_NAME,
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar(100)',
+          },
+        },
+      ],
+    });
+
+    const matchedDelivery: {
+      current: ReturnType<typeof findWebhookDelivery>;
+    } = { current: undefined };
+
+    await test.expect
+      .poll(
+        () => {
+          matchedDelivery.current = findWebhookDelivery(
+            table1.entityResponseData.id,
+            WEBHOOK_DELIVERY_COLUMN_NAME
+          );
+
+          return matchedDelivery.current !== undefined;
+        },
+        {
+          message: 'Expected the webhook to receive the table change event',
+          timeout: 60_000,
+        }
+      )
+      .toBe(true);
+
+    const delivery = matchedDelivery.current;
+    if (!delivery) {
+      throw new Error('Matching webhook delivery was not captured');
+    }
+
+    test.expect(delivery.request.method).toBe('POST');
+    test.expect(delivery.payload).toEqual(
+      test.expect.objectContaining({
+        entityFullyQualifiedName: webhookTableFqn,
+        entityId: table1.entityResponseData.id,
+        entityType: 'table',
+        eventType: 'entityUpdated',
+      })
+    );
+    test
+      .expect(getAddedColumnNames(delivery.payload))
+      .toContain(WEBHOOK_DELIVERY_COLUMN_NAME);
+  } finally {
+    try {
+      if (webhookAlertDetails) {
+        await deleteAlert(page, webhookAlertDetails, false);
+      }
+    } finally {
+      await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
+    }
+  }
+});
+
+test('Data Contract Name filter lists matching data contracts', async ({
+  page,
+}) => {
+  test.slow();
+  const { afterAction, apiContext } = await getApiContext(page);
+  let dataContract: DataContract | undefined;
+
+  try {
+    const dataContractName = `0-playwright-data-contract-${uuid()}`;
+    const createResponse = await apiContext.post('/api/v1/dataContracts', {
+      data: {
+        name: dataContractName,
+        description: 'Data contract for the observability alert filter test',
+        entity: {
+          id: table1.entityResponseData.id,
+          type: 'table',
+        },
+      },
+    });
+
+    test.expect(createResponse.ok()).toBeTruthy();
+    const createdDataContract: DataContract = await createResponse.json();
+    dataContract = createdDataContract;
+
+    if (!createdDataContract.fullyQualifiedName) {
+      throw new Error(
+        'Created data contract is missing its fully qualified name'
+      );
+    }
+    const dataContractFqn = createdDataContract.fullyQualifiedName;
+
+    await inputBasicAlertInformation({
+      page,
+      name: generateAlertName(),
+      sourceName: 'dataContract',
+      sourceDisplayName: 'Data Contract',
+      createButtonId: 'create-observability',
+    });
+
+    await page.getByTestId('add-filters').click();
+    await page.getByTestId('filter-select-0').click();
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .getByTestId('Data Contract Name-filter-option')
+      .click();
+
+    const fqnInput = page.getByTestId('fqn-list-select').getByRole('combobox');
+    await fqnInput.click();
+    await fqnInput.fill(dataContractName);
+
+    const dataContractOption = page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle(dataContractFqn);
+    const searchFailureAlert = page
+      .getByTestId('alert-bar')
+      .filter({ hasText: 'Search failed' })
+      .first();
+
+    await test.expect
+      .poll(async () => {
+        if (await dataContractOption.isVisible()) {
+          return 'data-contract-option';
+        }
+
+        if (await searchFailureAlert.isVisible()) {
+          return (await searchFailureAlert.textContent())?.trim();
+        }
+
+        return 'waiting-for-data-contract-option';
+      })
+      .toBe('data-contract-option');
+  } finally {
+    if (dataContract) {
+      await apiContext.delete(
+        `/api/v1/dataContracts/${dataContract.id}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
+});
+
 test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
 }) => {
-  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
-  test.fixme(
-    process.env.PLAYWRIGHT_IS_OSS !== 'true',
-    'Skipping in AUT environment'
-  );
   test.slow();
 
   const ALERT_NAME = generateAlertName();

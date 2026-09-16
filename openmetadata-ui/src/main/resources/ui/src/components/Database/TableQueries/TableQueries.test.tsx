@@ -17,6 +17,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -50,7 +51,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )),
     Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-      <div role="menuitem" onClick={onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={onClick}
+        {...props}>
         {children}
       </div>
     )),
@@ -128,10 +134,10 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
-    pageSize: 25,
+    pageSize: 15,
     paging: {
       currentPage: 1,
-      pageSize: 25,
+      pageSize: 15,
     },
     showPagination: true,
     handlePageChange: jest.fn(),
@@ -211,5 +217,14 @@ describe('Test TableQueries Component', () => {
       mockUsePaging.mock.results[0].value.handlePageSizeChange;
 
     expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          pageNumber: 1,
+          pageSize: 25,
+        })
+      )
+    );
   });
 });

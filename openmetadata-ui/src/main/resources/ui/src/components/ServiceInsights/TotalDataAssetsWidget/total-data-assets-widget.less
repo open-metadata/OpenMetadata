@@ -21,15 +21,15 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border-radius: 14px;
+    border-radius: var(--om-radius-14);
     background-color: @grey-2;
   }
 
   .assets-list-container {
-    padding: 16px;
+    padding: var(--om-space-16);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--om-space-8);
     background-color: @grey-50;
     border-radius: @border-rad-xs;
     height: 100%;
@@ -44,8 +44,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    padding: 8px;
-    z-index: 10;
+    padding: var(--om-space-8);
+    z-index: var(--om-z-10);
     pointer-events: none;
     text-align: center;
   }
@@ -54,7 +54,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--om-space-16);
 
     &::before,
     &::after {

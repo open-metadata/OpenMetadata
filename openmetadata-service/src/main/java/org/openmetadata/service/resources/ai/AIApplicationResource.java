@@ -60,7 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 public class AIApplicationResource extends EntityResource<AIApplication, AIApplicationRepository> {
   public static final String COLLECTION_PATH = "/v1/aiApplications/";
   private final AIApplicationMapper mapper = new AIApplicationMapper();
-  static final String FIELDS = "owners,followers,tags,extension,domains";
+  static final String FIELDS = "owners,followers,tags,extension,domains,reviewers";
 
   @Override
   public AIApplication addHref(UriInfo uriInfo, AIApplication aiApplication) {
@@ -368,9 +368,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -399,9 +397,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @GET
@@ -479,10 +475,15 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the AI Application", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -504,10 +505,15 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the AI Application", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -537,7 +543,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
       @Parameter(description = "Name of the AI Application", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT

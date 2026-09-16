@@ -27,18 +27,23 @@ import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
+  permissionQueryKeys,
+  PERMISSION_STALE_TIME,
+} from '../../hooks/useEntityPermissions/permissionQueryKeys';
+import { queryClient } from '../../queryClient';
+import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
 import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
+import { PERMISSION_POLICY } from '../../utils/permissionPolicy';
 import {
   getOperationPermissions,
   getUIPermission,
 } from '../../utils/PermissionsUtils';
 import {
-  EntityPermissionMap,
   PermissionContextType,
   PermissionProviderProps,
   ResourceEntity,
@@ -54,6 +59,14 @@ export const PermissionContext = createContext<PermissionContextType>(
   {} as PermissionContextType
 );
 
+// Single seam for the resource-level conditionalAllow policy (see
+// permissionPolicy.ts for the full rationale and blast radius). Reads as
+// `false` while the policy stays 'strict', which is byte-for-byte the
+// pre-refactor (base commit 9cf866cd23) behavior — resource-level
+// conditionalAllow counts as denied, matching entity-level gating.
+const RESOURCE_ALLOW_CONDITIONAL =
+  PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
+
 /**
  *
  * @param children:ReactNode
@@ -64,24 +77,22 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     {} as UIPermission
   );
   const { currentUser } = useApplicationStore();
-  const cookieStorage = new CookieStorage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
-  const [entitiesPermission, setEntitiesPermission] =
-    useState<EntityPermissionMap>({} as EntityPermissionMap);
-
-  const [resourcesPermission, setResourcesPermission] = useState<UIPermission>(
-    {} as UIPermission
-  );
-
   const redirectToStoredPath = useCallback(() => {
-    const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+    const urlPathname = new CookieStorage().getItem(REDIRECT_PATHNAME);
     if (urlPathname) {
       setUrlPathnameExpiryAfterRoute(urlPathname);
-      navigate(urlPathname);
+      if (urlPathname !== window.location.pathname) {
+        navigate(urlPathname);
+      }
     }
-  }, [history]);
+    // `navigate` is the actual dependency this callback reads (the router's
+    // navigate function) — `history` was never declared in this file and
+    // wasn't the global `window.history` either; it was a stale reference
+    // left over from the pre-react-router-v6 API.
+  }, [navigate]);
 
   /**
    * Fetch permission for logged in user
@@ -89,7 +100,14 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const fetchLoggedInUserPermissions = useCallback(async () => {
     try {
       const response = await getLoggedInUserPermissions();
-      setPermissions(getUIPermission(response.data || []));
+      // Behavior parity with base (9cf866cd23): strict translation by
+      // default (RESOURCE_ALLOW_CONDITIONAL is false while the policy stays
+      // 'strict'). Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
+      // to 'attempt' is the fix for OpenMetadata#31783 and ships as its own
+      // PR — see permissionPolicy.ts.
+      setPermissions(
+        getUIPermission(response.data || [], RESOURCE_ALLOW_CONDITIONAL)
+      );
       redirectToStoredPath();
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -99,71 +117,68 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     }
   }, [redirectToStoredPath]);
 
+  /**
+   * All three fetchers are backed by the singleton {@code queryClient} under
+   * {@code permissionQueryKeys} — the SAME cache and key namespace
+   * {@code useEntityPermissions}/{@code useBulkEntityPermissions} use.
+   * {@code fetchQuery} returns cached-fresh data without a request, dedupes
+   * concurrent identical calls, and respects {@code PERMISSION_STALE_TIME} —
+   * everything the old hand-rolled state maps + inflight-Promise refs did,
+   * plus cross-cache invalidation (#27591).
+   */
   const fetchEntityPermission = useCallback(
-    async (resource: ResourceEntity, entityId: string) => {
-      const entityPermission = entitiesPermission[entityId];
-      if (entityPermission) {
-        return entityPermission;
-      } else {
-        const response = await getEntityPermissionById(resource, entityId);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityId]: operationPermission,
-        }));
-
-        return operationPermission;
-      }
-    },
-    [entitiesPermission, setEntitiesPermission]
+    (resource: ResourceEntity, entityId: string) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.entityById(resource, entityId),
+        queryFn: async () =>
+          getOperationPermissions(
+            await getEntityPermissionById(resource, entityId)
+          ),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const fetchEntityPermissionByFqn = useCallback(
-    async (resource: ResourceEntity, entityFqn: string) => {
-      const entityPermission = entitiesPermission[entityFqn];
-      if (entityPermission) {
-        return entityPermission;
-      } else {
-        const response = await getEntityPermissionByFqn(resource, entityFqn);
-        const operationPermission = getOperationPermissions(response);
-        setEntitiesPermission((prev) => ({
-          ...prev,
-          [entityFqn]: operationPermission,
-        }));
-
-        return operationPermission;
-      }
-    },
-    [entitiesPermission, setEntitiesPermission]
+    (resource: ResourceEntity, entityFqn: string) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.entity(resource, entityFqn),
+        queryFn: async () =>
+          getOperationPermissions(
+            await getEntityPermissionByFqn(resource, entityFqn)
+          ),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const fetchResourcePermission = useCallback(
-    async (resource: ResourceEntity) => {
-      const resourcePermission = resourcesPermission[resource];
-      if (resourcePermission) {
-        return resourcePermission;
-      } else {
-        const response = await getResourcePermission(resource);
-        const operationPermission = getOperationPermissions(response);
-        /**
-         * Store resource permission if it's not exits
-         */
-        setResourcesPermission((prev) => ({
-          ...prev,
-          [resource]: operationPermission,
-        }));
-
-        return operationPermission;
-      }
-    },
-    [resourcesPermission, setResourcesPermission]
+    (resource: ResourceEntity) =>
+      queryClient.fetchQuery({
+        queryKey: permissionQueryKeys.resource(resource),
+        queryFn: async () =>
+          // Behavior parity with base (9cf866cd23): strict translation by
+          // default. Flipping PERMISSION_POLICY.resourceLevelConditionalAllow
+          // to 'attempt' is the fix for OpenMetadata#31783 and ships as its
+          // own PR — see permissionPolicy.ts.
+          getOperationPermissions(
+            await getResourcePermission(resource),
+            RESOURCE_ALLOW_CONDITIONAL
+          ),
+        staleTime: PERMISSION_STALE_TIME,
+      }),
+    []
   );
 
   const resetPermissions = useCallback(() => {
-    setEntitiesPermission({} as EntityPermissionMap);
     setPermissions({} as UIPermission);
-    setResourcesPermission({} as UIPermission);
-  }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
+    // Drop every cached permission (entity, entityById, resource) too —
+    // after a logout/login boundary the old principal's cached values would
+    // otherwise resolve into a cache the new user can read, which is wrong.
+    // This reaches BOTH the legacy provider path and the hook path since
+    // they share the same queryClient + key namespace.
+    queryClient.removeQueries({ queryKey: permissionQueryKeys.all });
+  }, [setPermissions]);
 
   useEffect(() => {
     /**

@@ -34,8 +34,8 @@ import {
 } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 import VirtualColumnList from './VirtualColumnList.component';
 
@@ -44,6 +44,8 @@ const NodeChildren = ({
   isConnectable,
   isChildrenListExpanded,
   isOnlyShowColumnsWithLineageFilterActive,
+  onColumnHover,
+  onColumnSelect,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -214,6 +216,8 @@ const NodeChildren = ({
                 pageSize={pageSize}
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
+                onColumnHover={onColumnHover}
+                onColumnSelect={onColumnSelect}
               />
             </div>
           </section>

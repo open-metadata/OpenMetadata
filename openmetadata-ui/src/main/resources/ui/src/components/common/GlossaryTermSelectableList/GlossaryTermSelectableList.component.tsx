@@ -19,7 +19,7 @@ import {
   convertEntityReferencesToTerms,
   convertTermsToEntityReferences,
   GlossaryTermListItemRenderer,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+} from '../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { EntitySelectableList } from '../EntitySelectableList/EntitySelectableList.component';
 import { EntitySelectableListConfig } from '../EntitySelectableList/EntitySelectableList.interface';

@@ -13,25 +13,8 @@
 
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
-import { Bucket } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
-import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
-import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
-import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
-import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
-import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
+import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
   Option,
   SearchSuggestions,
@@ -39,149 +22,127 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
-import { ElasticsearchQuery } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
+type SearchIndexGroupConfig = {
+  labelKey: string;
+  entityType?: EntityType;
+};
+
+const SEARCH_INDEX_GROUP_CONFIG: Record<string, SearchIndexGroupConfig> = {
+  [SearchIndex.TOPIC]: {
+    labelKey: 'label.topic-plural',
+    entityType: EntityType.TOPIC,
+  },
+  [SearchIndex.DATABASE]: {
+    labelKey: 'label.database-plural',
+    entityType: EntityType.DATABASE,
+  },
+  [SearchIndex.DATABASE_SCHEMA]: {
+    labelKey: 'label.database-schema-plural',
+    entityType: EntityType.DATABASE_SCHEMA,
+  },
+  [SearchIndex.DASHBOARD]: {
+    labelKey: 'label.dashboard-plural',
+    entityType: EntityType.DASHBOARD,
+  },
+  [SearchIndex.PIPELINE]: {
+    labelKey: 'label.pipeline-plural',
+    entityType: EntityType.PIPELINE,
+  },
+  [SearchIndex.MLMODEL]: {
+    labelKey: 'label.ml-model-plural',
+    entityType: EntityType.MLMODEL,
+  },
+  [SearchIndex.GLOSSARY_TERM]: {
+    labelKey: 'label.glossary-term-plural',
+    entityType: EntityType.GLOSSARY_TERM,
+  },
+  [SearchIndex.TAG]: {
+    labelKey: 'label.tag-plural',
+    entityType: EntityType.TAG,
+  },
+  [SearchIndex.CONTAINER]: {
+    labelKey: 'label.container-plural',
+    entityType: EntityType.CONTAINER,
+  },
+  [SearchIndex.STORED_PROCEDURE]: {
+    labelKey: 'label.stored-procedure-plural',
+    entityType: EntityType.STORED_PROCEDURE,
+  },
+  [SearchIndex.DASHBOARD_DATA_MODEL]: {
+    labelKey: 'label.data-model-plural',
+    entityType: EntityType.DASHBOARD_DATA_MODEL,
+  },
+  [SearchIndex.SEARCH_INDEX]: {
+    labelKey: 'label.search-index-plural',
+  },
+  [SearchIndex.DATA_PRODUCT]: {
+    labelKey: 'label.data-product-plural',
+    entityType: EntityType.DATA_PRODUCT,
+  },
+  [SearchIndex.CHART]: {
+    labelKey: 'label.chart-plural',
+    entityType: EntityType.CHART,
+  },
+  [SearchIndex.API_COLLECTION]: {
+    labelKey: 'label.api-collection-plural',
+    entityType: EntityType.API_COLLECTION,
+  },
+  [SearchIndex.API_ENDPOINT]: {
+    labelKey: 'label.api-endpoint-plural',
+    entityType: EntityType.API_ENDPOINT,
+  },
+  [SearchIndex.METRIC]: {
+    labelKey: 'label.metric-plural',
+    entityType: EntityType.METRIC,
+  },
+  [SearchIndex.DIRECTORY]: {
+    labelKey: 'label.directory-plural',
+    entityType: EntityType.DIRECTORY,
+  },
+  [SearchIndex.FILE]: {
+    labelKey: 'label.file-plural',
+    entityType: EntityType.FILE,
+  },
+  [SearchIndex.SPREADSHEET]: {
+    labelKey: 'label.spreadsheet-plural',
+    entityType: EntityType.SPREADSHEET,
+  },
+  [SearchIndex.WORKSHEET]: {
+    labelKey: 'label.worksheet-plural',
+    entityType: EntityType.WORKSHEET,
+  },
+  [SearchIndex.COLUMN]: {
+    labelKey: 'label.column-plural',
+    entityType: EntityType.TABLE_COLUMN,
+  },
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
+    labelKey: 'label.context-center',
+    entityType: EntityType.KNOWLEDGE_CENTER,
+  },
+};
+
 export const getGroupLabel = (index: string) => {
-  let label = '';
+  const config = SEARCH_INDEX_GROUP_CONFIG[index];
+
+  let label: string;
   let GroupIcon;
-  switch (index) {
-    case SearchIndex.TOPIC:
-      label = i18n.t('label.topic-plural');
-      GroupIcon = IconTopic;
 
-      break;
-    case SearchIndex.DATABASE:
-      label = i18n.t('label.database-plural');
-      GroupIcon = IconDatabase;
+  if (config) {
+    label = i18n.t(config.labelKey);
+    GroupIcon = config.entityType
+      ? ENTITY_ICON_MAPPER[config.entityType].icon
+      : SearchOutlined;
+  } else {
+    const { label: indexLabel, GroupIcon: IndexIcon } =
+      searchClassBase.getIndexGroupLabel(index);
 
-      break;
-    case SearchIndex.DATABASE_SCHEMA:
-      label = i18n.t('label.database-schema-plural');
-      GroupIcon = IconDatabaseSchema;
-
-      break;
-    case SearchIndex.DASHBOARD:
-      label = i18n.t('label.dashboard-plural');
-      GroupIcon = IconDashboard;
-
-      break;
-    case SearchIndex.PIPELINE:
-      label = i18n.t('label.pipeline-plural');
-      GroupIcon = IconPipeline;
-
-      break;
-    case SearchIndex.MLMODEL:
-      label = i18n.t('label.ml-model-plural');
-      GroupIcon = IconMlModal;
-
-      break;
-    case SearchIndex.GLOSSARY_TERM:
-      label = i18n.t('label.glossary-term-plural');
-      GroupIcon = GlossaryTermIcon;
-
-      break;
-    case SearchIndex.TAG:
-      label = i18n.t('label.tag-plural');
-      GroupIcon = IconTag;
-
-      break;
-    case SearchIndex.CONTAINER:
-      label = i18n.t('label.container-plural');
-      GroupIcon = IconContainer;
-
-      break;
-
-    case SearchIndex.STORED_PROCEDURE:
-      label = i18n.t('label.stored-procedure-plural');
-      GroupIcon = IconStoredProcedure;
-
-      break;
-
-    case SearchIndex.DASHBOARD_DATA_MODEL:
-      label = i18n.t('label.data-model-plural');
-      GroupIcon = IconDashboard;
-
-      break;
-
-    case SearchIndex.SEARCH_INDEX:
-      label = i18n.t('label.search-index-plural');
-      GroupIcon = SearchOutlined;
-
-      break;
-
-    case SearchIndex.DATA_PRODUCT:
-      label = i18n.t('label.data-product-plural');
-      GroupIcon = DataProductIcon;
-
-      break;
-
-    case SearchIndex.CHART:
-      label = i18n.t('label.chart-plural');
-      GroupIcon = IconChart;
-
-      break;
-    case SearchIndex.API_COLLECTION:
-      label = i18n.t('label.api-collection-plural');
-      GroupIcon = IconApiCollection;
-
-      break;
-
-    case SearchIndex.API_ENDPOINT:
-      label = i18n.t('label.api-endpoint-plural');
-      GroupIcon = IconApiEndpoint;
-
-      break;
-    case SearchIndex.METRIC:
-      label = i18n.t('label.metric-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.DIRECTORY:
-      label = i18n.t('label.directory-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.FILE:
-      label = i18n.t('label.file-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.SPREADSHEET:
-      label = i18n.t('label.spreadsheet-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.WORKSHEET:
-      label = i18n.t('label.worksheet-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-
-    case SearchIndex.COLUMN:
-      label = i18n.t('label.column-plural');
-      GroupIcon = ColumnIcon;
-
-      break;
-
-    case SearchIndex.KNOWLEDGE_PAGE_INDEX:
-      label = i18n.t('label.knowledge-center');
-      GroupIcon = KnowledgeCenterIconComponent;
-
-      break;
-
-    default: {
-      const { label: indexLabel, GroupIcon: IndexIcon } =
-        searchClassBase.getIndexGroupLabel(index);
-
-      label = indexLabel;
-      GroupIcon = IndexIcon;
-
-      break;
-    }
+    label = indexLabel;
+    GroupIcon = IndexIcon;
   }
 
   const groupLabel = (
@@ -256,243 +217,4 @@ export const filterOptionsByIndex = (
     .filter((option) => option._source?.entityType === entityType)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
-};
-
-export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
-  const commonAssets: Record<string, EntityType> = {
-    [SearchIndex.TABLE]: EntityType.TABLE,
-    [SearchIndex.PIPELINE]: EntityType.PIPELINE,
-    [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
-    [SearchIndex.MLMODEL]: EntityType.MLMODEL,
-    [SearchIndex.TOPIC]: EntityType.TOPIC,
-    [SearchIndex.CONTAINER]: EntityType.CONTAINER,
-    [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
-    [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
-    [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
-    [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
-    [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
-    [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
-    [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
-    [SearchIndex.PIPELINE_SERVICE]: EntityType.PIPELINE_SERVICE,
-    [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
-    [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
-    [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
-    [SearchIndex.GLOSSARY_TERM]: EntityType.GLOSSARY_TERM,
-    [SearchIndex.TAG]: EntityType.TAG,
-    [SearchIndex.DATABASE]: EntityType.DATABASE,
-    [SearchIndex.DOMAIN]: EntityType.DOMAIN,
-    [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
-    [SearchIndex.API_COLLECTION]: EntityType.API_COLLECTION,
-    [SearchIndex.API_ENDPOINT]: EntityType.API_ENDPOINT,
-    [SearchIndex.METRIC]: EntityType.METRIC,
-    [SearchIndex.API_SERVICE]: EntityType.API_SERVICE,
-  };
-
-  return commonAssets[searchIndex] || null; // Return null if not found
-};
-
-/**
- * Parse bucket data from aggregation responses into a format suitable for select fields
- * @param buckets - The bucket data from aggregation response
- * @param sourceFields - Optional string representing dot-notation path to extract values
- * @returns An array of objects with value and title properties
- */
-export const parseBucketsData = (
-  buckets: Array<Bucket>,
-  sourceFields?: string,
-  sourceFieldOptionType?: {
-    label: string;
-    value: string;
-  }
-) => {
-  if (sourceFieldOptionType) {
-    return buckets.map((bucket) => {
-      const topHitsData = (bucket as Record<string, unknown>)[
-        'top_hits#top'
-      ] as
-        | {
-            hits?: {
-              hits?: Array<{
-                _source?: Record<string, unknown>;
-              }>;
-            };
-          }
-        | undefined;
-      const data = topHitsData?.hits?.hits?.[0]?._source;
-
-      return {
-        title: data?.[sourceFieldOptionType.label] as string,
-        value: data?.[sourceFieldOptionType.value] as string,
-      };
-    });
-  }
-
-  return buckets.map((bucket) => {
-    const topHitsSource = (
-      (bucket as Record<string, unknown>)['top_hits#top'] as
-        | {
-            hits?: {
-              hits?: Array<{
-                _source?: Record<string, unknown>;
-              }>;
-            };
-          }
-        | undefined
-    )?.hits?.hits?.[0]?._source;
-
-    const actualValue =
-      sourceFields && topHitsSource
-        ? sourceFields
-            .split('.')
-            .reduce(
-              (obj: unknown, key: string): unknown =>
-                obj && typeof obj === 'object' && obj !== null && key in obj
-                  ? (obj as Record<string, unknown>)[key]
-                  : undefined,
-              topHitsSource
-            ) ?? bucket.key
-        : bucket.key;
-
-    return {
-      value: actualValue,
-      title: bucket.label ?? actualValue,
-    };
-  });
-};
-
-/**
- * Generic term query builder from object
- * Creates an Elasticsearch query filter structure from field-value pairs
- * @param terms - Record of field names and their values, or mixed query configuration
- * @param queryType - Type of boolean query: 'must' | 'must_not' | 'should' | 'should_not'
- * @param minimumShouldMatch - Minimum number of should clauses that must match (only for 'should')
- * @param wildcardTerms - Optional record for wildcard queries
- * @returns Query filter object for searchQuery API
- */
-const NESTED_FIELDS = ['owners'];
-
-const getNestedPath = (field: string): string | undefined => {
-  return NESTED_FIELDS.find((nested) => field.startsWith(`${nested}.`));
-};
-
-const wrapTermQuery = (
-  field: string,
-  value: string | number | boolean,
-  nestedPath?: string
-): ElasticsearchQuery => {
-  const termQuery: ElasticsearchQuery = { term: { [field]: value } };
-  if (nestedPath) {
-    return { nested: { path: nestedPath, query: termQuery } };
-  }
-
-  return termQuery;
-};
-
-export const getTermQuery = (
-  terms: Record<string, string | string[] | number | boolean>,
-  queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
-  minimumShouldMatch?: number,
-  options?: {
-    wildcardTerms?: Record<string, string>;
-    wildcardShouldQueries?: Record<string, string>;
-    mustNotTerms?: Record<string, string | string[] | number | boolean>;
-    matchTerms?: Record<string, string | number | boolean>;
-    wildcardMustNotQueries?: Record<string, string | string[]>;
-  }
-) => {
-  const termQueries = Object.entries(terms).flatMap(([field, value]) => {
-    const nestedPath = getNestedPath(field);
-    if (Array.isArray(value)) {
-      return value.map((v) => wrapTermQuery(field, v, nestedPath));
-    }
-
-    return wrapTermQuery(field, value, nestedPath);
-  });
-
-  const wildcardQueries = options?.wildcardTerms
-    ? Object.entries(options.wildcardTerms).map(([field, value]) => ({
-        wildcard: { [field]: value },
-      }))
-    : [];
-
-  const mustNotQueries = options?.mustNotTerms
-    ? Object.entries(options.mustNotTerms).flatMap(([field, value]) => {
-        const nestedPath = getNestedPath(field);
-        if (Array.isArray(value)) {
-          return value.map((v) => wrapTermQuery(field, v, nestedPath));
-        }
-
-        return wrapTermQuery(field, value, nestedPath);
-      })
-    : [];
-
-  const matchQueries = options?.matchTerms
-    ? Object.entries(options.matchTerms).map(([field, value]) => ({
-        match: { [field]: value },
-      }))
-    : [];
-
-  const allQueries: ElasticsearchQuery[] = [
-    ...termQueries,
-    ...wildcardQueries,
-    ...matchQueries,
-  ];
-
-  // Handle wildcardShouldQueries - creates a nested bool with should clauses
-  if (
-    options?.wildcardShouldQueries &&
-    Object.keys(options.wildcardShouldQueries).length > 0
-  ) {
-    const shouldWildcardQueries = Object.entries(
-      options.wildcardShouldQueries
-    ).map(([field, value]) => ({
-      wildcard: { [field]: value },
-    }));
-
-    allQueries.push({
-      bool: {
-        should: shouldWildcardQueries,
-        minimum_should_match: 1,
-      },
-    });
-  }
-
-  // Define type for Elasticsearch bool query structure
-  type ESBoolQuery = Record<string, ElasticsearchQuery[] | number> & {
-    must_not?: ElasticsearchQuery[];
-    minimum_should_match?: number;
-  };
-
-  const boolQuery: ESBoolQuery = {
-    [queryType]: allQueries,
-  };
-
-  // Handle wildcardMustNotQueries
-  const wildcardMustNotQueries = options?.wildcardMustNotQueries
-    ? Object.entries(options.wildcardMustNotQueries).flatMap(
-        ([field, value]) => {
-          if (Array.isArray(value)) {
-            return value.map((v) => ({ wildcard: { [field]: v } }));
-          }
-
-          return { wildcard: { [field]: value } };
-        }
-      )
-    : [];
-
-  const allMustNotQueries = [...mustNotQueries, ...wildcardMustNotQueries];
-
-  if (allMustNotQueries.length > 0) {
-    boolQuery.must_not = allMustNotQueries;
-  }
-
-  if (queryType === 'should' && minimumShouldMatch !== undefined) {
-    boolQuery.minimum_should_match = minimumShouldMatch;
-  }
-
-  return {
-    query: {
-      bool: boolQuery,
-    },
-  };
 };

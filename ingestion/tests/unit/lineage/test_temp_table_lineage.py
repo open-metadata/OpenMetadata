@@ -613,7 +613,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == hops
         assert details.sqlQuery is None
 
@@ -633,7 +633,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables is None
         assert details.sqlQuery is not None
 
@@ -653,7 +653,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        assert result.right.edge.lineageDetails.tempLineageTables is None
+        assert result.right.lineage_details.tempLineageTables is None
 
 
 class TestGetLineageForPathTempLineage:
@@ -686,7 +686,7 @@ class TestGetLineageForPathTempLineage:
         )
 
         assert result is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == [
             TempLineageTable(fromEntity="svc.db.sch.source", toEntity="temp1"),
             TempLineageTable(fromEntity="temp1", toEntity="temp2"),
@@ -713,7 +713,7 @@ class TestGetLineageForPathTempLineage:
         )
 
         assert result is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == [
             TempLineageTable(fromEntity="svc.db.sch.source", toEntity="svc.db.sch.target"),
         ]
@@ -947,7 +947,7 @@ class TestMergedLineageByGraph:
 
         # Should produce exactly one request (not two)
         assert len(results) == 1
-        details = results[0].right.edge.lineageDetails
+        details = results[0].right.lineage_details
         hops = details.tempLineageTables
         assert len(hops) == 4
         assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t1") in hops
@@ -998,10 +998,7 @@ class TestMergedLineageByGraph:
         assert len(results) == 2
         fqn_pairs = set()
         for r in results:
-            edge = r.right.edge
-            from_fqn = edge.fromEntity.id
-            to_fqn = edge.toEntity.id
-            fqn_pairs.add((str(from_fqn), str(to_fqn)))
+            fqn_pairs.add((r.right.from_entity_fqn, r.right.to_entity_fqn))
         # Two distinct pairs
         assert len(fqn_pairs) == 2
 
@@ -1051,7 +1048,7 @@ class TestMergedLineageByGraph:
         results = list(get_lineage_by_graph(graph, mock_metadata))
 
         assert len(results) == 1
-        hops = results[0].right.edge.lineageDetails.tempLineageTables
+        hops = results[0].right.lineage_details.tempLineageTables
         # Both temp tables must be present
         to_entities = [h.toEntity for h in hops]
         from_entities = [h.fromEntity for h in hops]

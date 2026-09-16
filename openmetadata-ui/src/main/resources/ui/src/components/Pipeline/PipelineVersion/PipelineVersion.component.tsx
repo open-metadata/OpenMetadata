@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,12 +24,12 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/schema';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { t } from '../../../utils/i18next/LocalUtil';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
@@ -39,9 +38,10 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { PipelineVersionProp } from './PipelineVersion.interface';
-
 const PipelineVersion: FC<PipelineVersionProp> = ({
   version,
   currentVersionData,
@@ -192,7 +191,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.PIPELINE}
                     showActions={false}

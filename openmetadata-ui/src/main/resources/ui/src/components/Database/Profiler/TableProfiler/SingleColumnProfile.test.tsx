@@ -20,10 +20,13 @@ import { Operation } from '../../../../generated/entity/policies/accessControl/r
 import { DataType } from '../../../../generated/tests/testDefinition';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
+
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ emptyFill: '#123456' }),
+}));
 
 const MOCK_START_TS = 1703980800000;
 const MOCK_END_TS = 1704067200000;
@@ -95,14 +98,18 @@ jest.mock('recharts', () => ({
   Tooltip: () => <div data-testid="tooltip" />,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  formatNumberWithComma: (value: number) => value.toString(),
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { name?: string }) => entity.name ?? '',
 }));
 

@@ -18,7 +18,7 @@ import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-do
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
-import { getEntityCountAtDepth } from '../../../utils/EntityLineageUtils';
+import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import {

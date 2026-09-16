@@ -11,7 +11,29 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import React from 'react';
+import {
+  Control,
+  FieldValues,
+  FormProvider,
+  useController,
+  useForm,
+  useFormContext,
+} from 'react-hook-form';
 import CreateMemoryModal from './CreateMemoryModal.component';
+
+jest.mock('react-markdown', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock(
+  '../../../components/common/MarkdownEditor/markdownComponents',
+  () => ({
+    getCustomMarkdownComponents: jest.fn(() => ({})),
+    preprocessMarkdownText: jest.fn((text: string) => text),
+  })
+);
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
@@ -33,15 +55,20 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
+
+jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
+  jest.fn(() => <div data-testid="classification-tag" />)
+);
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)
 );
 
 jest.mock(
-  '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList',
+  '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
@@ -67,11 +94,17 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: jest.fn(({ title }: { title: string }) => (
+    <div role="alert">{title}</div>
+  )),
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
   BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
+  )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
   )),
   Button: jest.fn(
     ({
@@ -99,6 +132,105 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }
   ),
   Dot: jest.fn(() => <span />),
+  FieldTypes: { TEXT: 'text', SELECT: 'select' },
+  FormField: ({
+    control,
+    name,
+    children,
+  }: {
+    control: Control<FieldValues>;
+    name: string;
+    children: (controller: unknown) => React.ReactNode;
+  }) => {
+    const controller = useController({ control, name });
+
+    return <>{children(controller)}</>;
+  },
+  FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
+    // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
+    <label>{label}</label>
+  )),
+  getField: (fieldProp: {
+    name: string;
+    label: React.ReactNode;
+    type: string;
+    props?: Record<string, unknown>;
+  }) => {
+    const MockField = () => {
+      const { control } = useFormContext();
+      const { field } = useController({ control, name: fieldProp.name });
+      const testId = fieldProp.props?.['data-testid'] as string | undefined;
+
+      if (fieldProp.type === 'select') {
+        const options =
+          (fieldProp.props?.options as { id: string; label: string }[]) ?? [];
+
+        return (
+          <div>
+            <label htmlFor={testId}>
+              {fieldProp.label}
+              <select
+                data-testid={testId}
+                id={testId}
+                value={field.value?.id ?? ''}
+                onChange={(e) => {
+                  let next: { id: string; label: string } | null = null;
+                  for (const opt of options) {
+                    if (opt.id === e.target.value) {
+                      next = opt;
+
+                      break;
+                    }
+                  }
+                  field.onChange(next);
+                }}>
+                <option aria-label={testId} value="" />
+                {options.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <label htmlFor={testId}>
+            {fieldProp.label}
+            <input
+              aria-label={testId}
+              data-testid={testId}
+              id={testId}
+              value={field.value ?? ''}
+              onChange={(e) => field.onChange(e.target.value)}
+            />
+          </label>
+        </div>
+      );
+    };
+
+    return <MockField />;
+  },
+  HookForm: ({
+    form,
+    children,
+    className,
+    onSubmit,
+  }: {
+    form: ReturnType<typeof useForm>;
+    children: React.ReactNode;
+    className?: string;
+    onSubmit?: (e: React.FormEvent) => void;
+  }) => (
+    <FormProvider {...form}>
+      <form className={className} onSubmit={onSubmit}>
+        {children}
+      </form>
+    </FormProvider>
+  ),
   Input: jest.fn(
     ({
       'data-testid': testId,
@@ -110,6 +242,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: (val: string) => void;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
@@ -148,12 +281,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange?: (val: string) => void;
     }) => (
       <textarea
+        aria-label={testId}
         data-testid={testId}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
       />
     )
   ),
+  Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
+  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

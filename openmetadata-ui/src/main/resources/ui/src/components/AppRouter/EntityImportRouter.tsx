@@ -10,16 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { SUPPORTED_BULK_IMPORT_EDIT_ENTITY } from '../../constants/BulkImport.constant';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useFqn } from '../../hooks/useFqn';
-import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
+
+const BulkEntityImportPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage'
+      )
+  )
+);
 
 const EntityImportRouter = () => {
   const navigate = useNavigate();
@@ -65,9 +75,14 @@ const EntityImportRouter = () => {
     return null;
   }
 
+  // Fetch mechanism (either the TEST_CASE resource-level `permissions.testCase` shortcut, or
+  // an entity-level fetch by fqn for every other supported type) is unchanged — only the raw
+  // `.EditAll` read on the resolved permission object is routed through the named-flag
+  // derivation, matching the KnowledgeCenterFilterPage/SchemaTablesTab precedent. Ungated:
+  // the old raw read never referenced `deleted`.
   return (
     <Routes>
-      {entityPermission.EditAll && (
+      {getDerivedPermissionFlags(entityPermission).canEditAll && (
         <Route element={<BulkEntityImportPage />} path="*" />
       )}
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />

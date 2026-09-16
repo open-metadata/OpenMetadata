@@ -20,8 +20,8 @@ import {
 
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
 import { MemoryRouter } from 'react-router-dom';
-import { getTags } from 'rest/tagAPI';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import { getTags } from '../../../rest/tagAPI';
 import KnowledgePageListRightPanel, {
   KnowledgePageListRightPanelProps,
 } from './KnowledgePageListRightPanel';
@@ -82,11 +82,11 @@ describe('KnowledgePageListRightPanel', () => {
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    expect(
-      screen.getByTestId('create-error-placeholder-label.quick-link-plural')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
 
-    const addQuickLinkBtn = screen.getByTestId('add-quick-link');
+    const addQuickLinkBtn = screen.getByRole('button', {
+      name: 'label.create-entity',
+    });
 
     expect(addQuickLinkBtn).toBeInTheDocument();
 
@@ -109,7 +109,7 @@ describe('KnowledgePageListRightPanel', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.no-recently-viewed-date')
+      screen.getByText('message.no-recently-viewed-data')
     ).toBeInTheDocument();
   });
 

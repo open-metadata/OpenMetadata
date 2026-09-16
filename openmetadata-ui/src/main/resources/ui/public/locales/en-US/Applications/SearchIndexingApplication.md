@@ -12,7 +12,7 @@ $$
 $$section
 ### Payload Size $(id="payLoadSize")
 
-Maximum number of events entities in a batch (Default 100).
+Payload size in bytes (Default 104857600).
 
 $$
 
@@ -66,7 +66,9 @@ Maximum backoff time in milliseconds
 $$
 
 $$section
-### entities $(id="entities")
+### Entities $(id="entities")
+
+List of entities that you need to reindex
 
 $$
 

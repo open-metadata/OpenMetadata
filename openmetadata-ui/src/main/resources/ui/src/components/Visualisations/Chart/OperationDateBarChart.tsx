@@ -26,13 +26,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { CustomTooltip } from '../../../utils/DataInsightChartUtils';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -42,6 +42,7 @@ const OperationDateBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const { grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -91,7 +92,7 @@ const OperationDateBarChart = ({
           tickFormatter={() => ''}
           tickLine={false}
         />
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid stroke={grid} />
         <Tooltip
           content={
             <CustomTooltip

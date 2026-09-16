@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Settings } from 'luxon';
-import '../../../test/unit/mocks/mui.mock';
-
-import { usePermissionProvider } from 'context/PermissionProvider/PermissionProvider';
-import { User } from 'generated/entity/teams/user';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,
@@ -25,8 +26,29 @@ import {
   QUICK_LINK_MOCK_DATA,
 } from './KnowledgeCard.mock';
 
-const systemLocale = Settings.defaultLocale;
-const systemZoneName = Settings.defaultZone;
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockOnUpdateVote = jest.fn();
 const mockOnFollow = jest.fn();
@@ -42,23 +64,68 @@ const mockProps: KnowledgeCardProps = {
   readonly: false,
 };
 
-const mockUserData: User = {
-  name: 'aaron_johnson0',
-  email: 'testUser1@email.com',
-  id: '9304f330-2e9a-4513-883b-c939e29683a8',
-};
-
-jest.mock('hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    currentUser: mockUserData,
-    userProfilePics: {},
-  })),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest
+    .fn()
+    .mockImplementation(({ children }) => (
+      <span data-testid="badge">{children}</span>
+    )),
+  Box: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  ButtonUtility: jest
+    .fn()
+    .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )),
+  Card: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <div {...props}>{children}</div>
+    )),
+  Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+  TooltipTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <span>{children}</span>),
+  Typography: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <span {...props}>{children}</span>
+    )),
 }));
 
-jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest.fn().mockReturnValue(<div data-testid="viewer-container">Viewer</div>)
-);
-jest.mock('components/common/PopOverCard/UserPopOverCard', () =>
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
+jest.mock('../../common/atoms/Tag', () => ({
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
+}));
+
+jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest
     .fn()
     .mockImplementation(({ userName }) => (
@@ -74,17 +141,65 @@ jest.mock('../QuickLinkFormModal/QuickLinkFormModal', () => ({
     ),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
-    .mockReturnValue(
-      <div data-testid="delete-widget-modal">DeleteWidgetModal</div>
-    )
+    .mockReturnValue(<div data-testid="delete-widget-modal">DeleteModal</div>)
 );
 
-jest.mock('context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+jest.mock('../../../utils/StringUtils', () => ({
+  stripMarkdown: jest.fn().mockImplementation((text: string) => text),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  getFrontEndFormat: jest.fn().mockImplementation((text: string) => text),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  getEpochMillisForPastDays: jest
+    .fn()
+    .mockImplementation(
+      (days: number) => Date.now() - days * 24 * 60 * 60 * 1000
+    ),
+  getCurrentMillis: jest.fn().mockReturnValue(Date.now()),
+  getShortRelativeTime: jest.fn().mockReturnValue('2 days ago'),
+}));
+
+jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: jest.fn().mockReturnValue({
+    preferences: { recentlyViewedQuickLinks: [] },
+  }),
+}));
+
+jest.mock('../../../utils/KnowledgePageUtils', () => ({
+  addToKnowledgeCenterRecentViewed: jest.fn(),
+  updateKnowledgeCenterRecentViewed: jest.fn(),
+  getKnowledgePageName: jest
+    .fn()
+    .mockImplementation(
+      (page: { displayName?: string; name?: string }) =>
+        page.displayName ?? page.name ?? ''
+    ),
+}));
+
+jest.mock('../../../utils/ContextCenterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getArticlePath: jest
+      .fn()
+      .mockImplementation((fqn: string) => `/knowledge/${fqn}`),
+  },
+}));
+
+jest.mock('../../../rest/knowledgeCenterAPI', () => ({
+  deleteKnowledgePage: jest.fn().mockResolvedValue({}),
+}));
+
+describe('Knowledge Card', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
       Create: true,
       Delete: true,
       ViewAll: true,
@@ -92,366 +207,264 @@ jest.mock('context/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditTags: true,
-    })),
-  }),
-}));
-
-describe('Knowledge Card', () => {
-  beforeAll(() => {
-    // Explicitly set locale and time zone to make sure date time manipulations and literal
-    // results are consistent regardless of where tests are run
-    Settings.defaultLocale = 'en-US';
-    Settings.defaultZone = 'UTC';
-  });
-
-  afterAll(() => {
-    // Restore locale and time zone
-    Settings.defaultLocale = systemLocale;
-    Settings.defaultZone = systemZoneName;
-  });
-
-  it('Should render the knowledge card', async () => {
-    render(<KnowledgeCard {...mockProps} />, {
-      wrapper: MemoryRouter,
-    });
-    const dateOwnerElement = screen.getByTestId('date-owner-col');
-    const titleDescriptionElement = screen.getByTestId(
-      'knowledge-title-description'
-    );
-
-    const metadataElement = screen.getByTestId('knowledge-metadata');
-
-    expect(dateOwnerElement).toBeInTheDocument();
-    expect(titleDescriptionElement).toBeInTheDocument();
-    expect(metadataElement).toBeInTheDocument();
-
-    const ownerName = screen.getByTestId('owner-link');
-
-    expect(ownerName).toHaveTextContent('admin');
-
-    const lastEditedByName = screen.getByTestId('owner-name');
-
-    const updatedAt = screen.getByTestId('updated-at');
-
-    expect(updatedAt).toHaveTextContent('Sep 20, 2023');
-
-    const title = screen.getByTestId('entity-header-display-name');
-
-    expect(title).toHaveTextContent('OpenMetadata 1.1.0 Release UI');
-
-    const description = screen.getByTestId('viewer-container');
-
-    expect(description).toBeInTheDocument();
-
-    const upVoteButton = screen.getByTestId('up-vote-btn');
-    const upVoteCount = screen.getByTestId('up-vote-count');
-
-    expect(upVoteButton).toBeInTheDocument();
-    expect(upVoteCount).toHaveTextContent('1');
-
-    const downVoteButton = screen.getByTestId('down-vote-btn');
-    const downVoteCount = screen.getByTestId('down-vote-count');
-
-    expect(downVoteButton).toBeInTheDocument();
-    expect(downVoteCount).toHaveTextContent('0');
-
-    const updatedAtMetadata = screen.getByTestId('updated-at-metadata');
-
-    expect(lastEditedByName).toHaveTextContent('sachinchaurasiya87');
-    expect(updatedAtMetadata).toHaveTextContent('Sep 20, 2023');
-
-    const bookmarkBtn = screen.getByTestId('bookmark-btn');
-
-    expect(bookmarkBtn).toBeInTheDocument();
-    expect(bookmarkBtn).toHaveAttribute('data-isfollowing', 'true');
-
-    KNOWLEDGE_PAGE_TAGS.forEach((tag) => {
-      const tagElement = screen.getByText(tag.name);
-
-      expect(tagElement).toBeInTheDocument();
     });
   });
 
-  it('Should render the fallback data', async () => {
-    render(
-      <KnowledgeCard
-        {...mockProps}
-        knowledgeItem={KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const dateOwnerElement = screen.getByTestId('date-owner-col');
-    const titleDescriptionElement = screen.getByTestId(
-      'knowledge-title-description'
-    );
-
-    const metadataElement = screen.getByTestId('knowledge-metadata');
-
-    expect(dateOwnerElement).toBeInTheDocument();
-    expect(titleDescriptionElement).toBeInTheDocument();
-    expect(metadataElement).toBeInTheDocument();
-
-    const ownerName = screen.getByTestId('owner-link');
-
-    expect(ownerName).toHaveTextContent('label.no-entity');
-
-    const updatedAt = screen.getByTestId('updated-at');
-
-    expect(updatedAt).toHaveTextContent('Sep 20, 2023');
-
-    const title = screen.getByTestId('entity-header-display-name');
-
-    expect(title).toHaveTextContent('OpenMetadata 1.1.0 Release UI');
-
-    const noDescription = screen.getByTestId('no-description');
-
-    expect(noDescription).toHaveTextContent('label.no-description');
-
-    const upVoteCount = screen.getByTestId('up-vote-count');
-
-    expect(upVoteCount).toHaveTextContent('0');
-
-    const downVoteCount = screen.getByTestId('down-vote-count');
-
-    expect(downVoteCount).toHaveTextContent('0');
-
-    const bookmarkBtn = screen.getByTestId('bookmark-btn');
-
-    expect(bookmarkBtn).toBeInTheDocument();
-    expect(bookmarkBtn).toHaveAttribute('data-isfollowing', 'false');
+  // Guardrail: this component owns the single useEntityPermissions call whose raw
+  // `permissions` prop feeds QuickLinkFormModal — see TableDetailsPageV1.test.tsx's afterEach
+  // for the general rationale on asserting the (resource, identifier) pair.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toEqual(expectedIdentifier);
+    });
   });
 
-  it('OnUpdateVote Should work', async () => {
+  it('fetches permissions for the knowledge item fqn, enabled only for quick links', async () => {
     render(
-      <KnowledgeCard
-        {...mockProps}
-        knowledgeItem={KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
     );
 
-    // upVote simulation
-    const upVoteButton = screen.getByTestId('up-vote-btn');
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.KNOWLEDGE_PAGE,
+        QUICK_LINK_MOCK_DATA.fullyQualifiedName,
+        { enabled: true, deleted: false }
+      );
+    });
+  });
 
-    fireEvent.click(upVoteButton);
+  it('disables the permission fetch for a non-quick-link (article) card', async () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(mockOnUpdateVote).toHaveBeenCalledWith(
-      {
-        updatedVoteType: 'votedUp',
-      },
-      '8e6427d6-98cc-4334-b2f2-15fb62bde887'
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.KNOWLEDGE_PAGE,
+        KNOWLEDGE_PAGE_MOCK_DATA.fullyQualifiedName,
+        { enabled: false, deleted: false }
+      );
+    });
+  });
+
+  it('should render the knowledge card with title and description', async () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByTestId('knowledge-card-title')).toHaveTextContent(
+      'OpenMetadata 1.1.0 Release UI'
     );
 
-    // downVote simulation
-    const downVoteButton = screen.getByTestId('down-vote-btn');
+    expect(
+      screen.getByTestId('knowledge-card-description')
+    ).toBeInTheDocument();
+  });
 
-    fireEvent.click(downVoteButton);
+  it('should render owner name via UserPopOverCard', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(mockOnUpdateVote).toHaveBeenCalledWith(
-      {
-        updatedVoteType: 'votedDown',
-      },
-      '8e6427d6-98cc-4334-b2f2-15fb62bde887'
+    // component passes getEntityName(owners[0]) which returns displayName ?? name
+    expect(screen.getByTestId('owner-name')).toHaveTextContent(
+      KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0]?.name as string
     );
   });
 
-  it('onFollow Should work', async () => {
-    render(
-      <KnowledgeCard
-        {...mockProps}
-        knowledgeItem={KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const bookmarkBtn = screen.getByTestId('bookmark-btn');
-
-    fireEvent.click(bookmarkBtn);
-
-    expect(mockOnFollow).toHaveBeenCalledWith(
-      '8e6427d6-98cc-4334-b2f2-15fb62bde887'
-    );
-  });
-
-  it('onUnFollow Should work', async () => {
-    render(<KnowledgeCard {...mockProps} />, {
+  it('should render domain name when domain is present', () => {
+    const withDomain: KnowledgePage = {
+      ...KNOWLEDGE_PAGE_MOCK_DATA,
+      domains: [
+        {
+          id: 'd1',
+          type: 'domain',
+          name: 'Marketing',
+          fullyQualifiedName: 'Marketing',
+        },
+      ],
+    };
+    render(<KnowledgeCard {...mockProps} knowledgeItem={withDomain} />, {
       wrapper: MemoryRouter,
     });
 
-    const bookmarkBtn = screen.getByTestId('bookmark-btn');
+    expect(screen.getByTestId('domain-name')).toHaveTextContent('Marketing');
+  });
 
-    fireEvent.click(bookmarkBtn);
+  it('should render "No domain" placeholder when domain is absent', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
 
-    expect(mockOnUnFollow).toHaveBeenCalledWith(
-      '8e6427d6-98cc-4334-b2f2-15fb62bde887'
+    expect(screen.getByTestId('domain-name')).toHaveTextContent(
+      'label.no-entity'
     );
+  });
+
+  it('should render no-description placeholder when description is empty', () => {
+    render(
+      <KnowledgeCard
+        {...mockProps}
+        knowledgeItem={KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('no-description')).toHaveTextContent(
+      'label.no-description'
+    );
+  });
+
+  it('should render UserPopOverCard when owners are absent', () => {
+    render(
+      <KnowledgeCard
+        {...mockProps}
+        knowledgeItem={KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('owner-name')).toBeInTheDocument();
+  });
+
+  it('should render the footer row', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByTestId('knowledge-footer')).toBeInTheDocument();
+  });
+
+  it('should render at most 2 tags as TagChip and an overflow count', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    const visibleTags = KNOWLEDGE_PAGE_TAGS.slice(0, 2);
+    visibleTags.forEach((tag) => {
+      expect(screen.getByText(tag.displayName ?? tag.name)).toBeInTheDocument();
+    });
+
+    const overflowCount = KNOWLEDGE_PAGE_TAGS.length - 2;
+
+    expect(screen.getByText(`+${overflowCount}`)).toBeInTheDocument();
+  });
+
+  it('should pass tag style color to TagChip', () => {
+    render(<KnowledgeCard {...mockProps} />, { wrapper: MemoryRouter });
+
+    const styledTag = KNOWLEDGE_PAGE_TAGS.find((t) => t.style?.color);
+    if (styledTag) {
+      const chip = screen.getByText(styledTag.displayName ?? styledTag.name);
+
+      expect(chip).toHaveAttribute('data-color', styledTag.style?.color);
+    }
   });
 
   it('should render the edit and delete button for quick link', async () => {
-    await act(async () => {
-      render(
-        <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const editButton = screen.getByTestId('edit-quick-link-btn');
-    const deleteButton = screen.getByTestId('delete-quick-link-btn');
-
-    expect(editButton).toBeInTheDocument();
-    expect(deleteButton).toBeInTheDocument();
-  });
-
-  it('edit should render the quick link modal', async () => {
-    await act(async () => {
-      render(
-        <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const editButton = screen.getByTestId('edit-quick-link-btn');
-
-    fireEvent.click(editButton);
-
-    const quickLinkFormModal = screen.getByTestId('quick-link-form-modal');
-
-    expect(quickLinkFormModal).toBeInTheDocument();
-  });
-
-  it('delete should render the delete widget modal', async () => {
-    await act(async () => {
-      render(
-        <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const deleteButton = screen.getByTestId('delete-quick-link-btn');
-
-    fireEvent.click(deleteButton);
-
-    const deleteWidgetModal = screen.getByTestId('delete-widget-modal');
-
-    expect(deleteWidgetModal).toBeInTheDocument();
-  });
-
-  it('quick link title should have target as _blank', async () => {
     render(
       <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-      {
-        wrapper: MemoryRouter,
-      }
+      { wrapper: MemoryRouter }
     );
 
-    const quickLinkTitle = screen.getByTestId('knowledge-link');
-
-    expect(quickLinkTitle).toHaveAttribute('target', '_blank');
+    expect(
+      await screen.findByTestId('edit-quick-link-btn')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('delete-quick-link-btn')).toBeInTheDocument();
   });
 
-  it("should not render the edit and delete button for quick link if user doesn't have permission", async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: false,
-        Delete: false,
-        ViewAll: false,
-        EditAll: false,
-        EditDescription: false,
-        EditDisplayName: false,
-        EditTags: false,
-      }),
-    }));
+  it('should open the quick link form modal on edit click', async () => {
     render(
       <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-      {
-        wrapper: MemoryRouter,
-      }
+      { wrapper: MemoryRouter }
     );
 
-    const editButton = screen.queryByTestId('edit-quick-link-btn');
-    const deleteButton = screen.queryByTestId('delete-quick-link-btn');
+    fireEvent.click(await screen.findByTestId('edit-quick-link-btn'));
 
-    expect(editButton).not.toBeInTheDocument();
-    expect(deleteButton).not.toBeInTheDocument();
+    expect(screen.getByTestId('quick-link-form-modal')).toBeInTheDocument();
   });
 
-  it('should render the edit button for quick link if user have some edit permission', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: false,
-        Delete: false,
-        ViewAll: false,
-        EditAll: false,
-        EditDescription: true,
-        EditDisplayName: false,
-        EditTags: true,
-      }),
-    }));
-    await act(async () => {
-      render(
-        <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+  it('should open the delete modal on delete click', async () => {
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(await screen.findByTestId('delete-quick-link-btn'));
+
+    expect(screen.getByTestId('delete-widget-modal')).toBeInTheDocument();
+  });
+
+  it('should render the link with target _blank for quick links', () => {
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByTestId('knowledge-link')).toHaveAttribute(
+      'target',
+      '_blank'
+    );
+  });
+
+  it('should not render edit and delete buttons when user has no permission', async () => {
+    setMockPermissions({
+      Create: false,
+      Delete: false,
+      ViewAll: false,
+      EditAll: false,
+      EditDescription: false,
+      EditDisplayName: false,
+      EditTags: false,
     });
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
 
-    const editButton = screen.getByTestId('edit-quick-link-btn');
-
-    expect(editButton).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-quick-link-btn')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-quick-link-btn')
+    ).not.toBeInTheDocument();
   });
 
-  it('should not render the votes-section and bookmark-section if readonly is true', async () => {
-    render(<KnowledgeCard {...mockProps} readonly />, {
-      wrapper: MemoryRouter,
+  it('should render edit button when user has partial edit permission', async () => {
+    setMockPermissions({
+      Create: false,
+      Delete: false,
+      ViewAll: false,
+      EditAll: false,
+      EditDescription: true,
+      EditDisplayName: false,
+      EditTags: true,
     });
+    render(
+      <KnowledgeCard {...mockProps} knowledgeItem={QUICK_LINK_MOCK_DATA} />,
+      { wrapper: MemoryRouter }
+    );
 
-    const voteSection = screen.queryByTestId('votes-section');
-    const bookmarkSection = screen.queryByTestId('bookmark-section');
-
-    expect(voteSection).not.toBeInTheDocument();
-    expect(bookmarkSection).not.toBeInTheDocument();
+    expect(
+      await screen.findByTestId('edit-quick-link-btn')
+    ).toBeInTheDocument();
   });
 
-  it('should not render the edit and delete button for quick link if readonly is true', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockReturnValue({
-        Create: true,
-        Delete: true,
-        ViewAll: true,
-        EditAll: true,
-        EditDescription: true,
-        EditDisplayName: true,
-        EditTags: true,
-      }),
-    }));
+  it('should not render edit and delete buttons for quick link when readonly', () => {
+    setMockPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditTags: true,
+    });
     render(
       <KnowledgeCard
         {...mockProps}
         readonly
         knowledgeItem={QUICK_LINK_MOCK_DATA}
       />,
-      {
-        wrapper: MemoryRouter,
-      }
+      { wrapper: MemoryRouter }
     );
 
-    const editButton = screen.queryByTestId('edit-quick-link-btn');
-    const deleteButton = screen.queryByTestId('delete-quick-link-btn');
-
-    expect(editButton).not.toBeInTheDocument();
-    expect(deleteButton).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-quick-link-btn')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-quick-link-btn')
+    ).not.toBeInTheDocument();
   });
 });

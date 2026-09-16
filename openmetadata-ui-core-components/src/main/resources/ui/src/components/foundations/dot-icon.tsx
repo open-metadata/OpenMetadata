@@ -1,6 +1,16 @@
 import type { HTMLAttributes } from 'react';
 
 const sizes = {
+  micro: {
+    wh: 2,
+    c: 1,
+    r: 0.5,
+  },
+  tiny: {
+    wh: 4,
+    c: 2,
+    r: 1,
+  },
   xs: {
     wh: 6,
     c: 3,
@@ -21,7 +31,9 @@ const sizes = {
 export const Dot = ({
   size = 'md',
   ...props
-}: HTMLAttributes<HTMLOrSVGElement> & { size?: 'sm' | 'md' | 'xs' }) => {
+}: HTMLAttributes<HTMLOrSVGElement> & {
+  size?: 'micro' | 'tiny' | 'xs' | 'sm' | 'md';
+}) => {
   return (
     <svg
       fill="none"

@@ -16,16 +16,18 @@ import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import glossaryTermClassBase from '../Glossary/GlossaryTermClassBase';
 import {
-  checkIfExpandViewSupported,
   getDefaultTabs,
   getGlossaryDefaultTabs,
   getGlossaryTermDefaultTabs,
+} from './CustomizePageDispatchUtils';
+import {
+  checkIfExpandViewSupported,
   getTabDisplayName,
-  getTabLabelFromId,
   getTabLabelMapFromTabs,
   sortTabs,
-  updateWidgetHeightRecursively,
-} from './CustomizePageUtils';
+} from './CustomizePageEntityTabUtils';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
+import { updateWidgetHeightRecursively } from './CustomizePageWidgetUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {
@@ -188,6 +190,26 @@ describe('CustomizePageUtils', () => {
       );
 
       expect(result).toBe(true);
+    });
+
+    it('should return true for chart details view (mirrors dashboard)', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.DETAILS,
+        PageType.Chart
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false for chart non-details view', () => {
+      const result = checkIfExpandViewSupported(
+        { key: EntityTabs.DETAILS, label: 'Details' },
+        EntityTabs.ACTIVITY_FEED,
+        PageType.Chart
+      );
+
+      expect(result).toBe(false);
     });
   });
 

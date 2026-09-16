@@ -1,0 +1,326 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Box,
+  EmptyPlaceholder,
+  Owner,
+  Skeleton,
+  Table,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
+import { ShieldTick } from '@untitledui/icons';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import { Table as TableType } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/tests/testCase';
+import {
+  Assigned,
+  Severities,
+  TestCaseResolutionStatus,
+} from '../../generated/tests/testCaseResolutionStatus';
+import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  getNameFromFQN,
+  getPartialNameFromTableFQN,
+} from '../../utils/FqnUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
+import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  ProfilerTabPath,
+  TestCasePermission,
+} from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
+import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
+
+export interface IncidentManagerTableProps {
+  isIncidentPage: boolean;
+  /** Origin crumbs attached to the test case link's navigation state so
+   * the detail page can render a path-aware breadcrumb. */
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
+  tableDetails?: TableType;
+  testCaseListData: TestCaseIncidentStatusData;
+  isPermissionLoading: boolean;
+  testCasePermissions: TestCasePermission[];
+  showPagination: boolean;
+  pagingData: NextPreviousProps;
+  handleStatusSubmit: (value: TestCaseResolutionStatus) => void;
+  handleSeveritySubmit: (
+    record: TestCaseResolutionStatus,
+    severity?: Severities
+  ) => Promise<void>;
+  handleAssigneeUpdate: (
+    record: TestCaseResolutionStatus,
+    assignee?: EntityReference[]
+  ) => Promise<void>;
+}
+
+const IncidentManagerTable = ({
+  isIncidentPage,
+  breadcrumbData,
+  tableDetails,
+  testCaseListData,
+  isPermissionLoading,
+  testCasePermissions,
+  showPagination,
+  pagingData,
+  handleStatusSubmit,
+  handleSeveritySubmit,
+  handleAssigneeUpdate,
+}: IncidentManagerTableProps) => {
+  const { t } = useTranslation();
+
+  // Per-row bulk permission lookup (DashboardChartTable.tsx precedent, Task 8 Batch 5): the
+  // bulk fetch itself (testCasePermissions, populated by the caller) is untouched — only the
+  // 3 flagged raw `.EditAll` reads convert, via one shared lookup+derivation helper. A test
+  // case with no permissions entry (fetch pending/not found) falls back to
+  // DEFAULT_ENTITY_PERMISSION, reproducing the old optional-chaining-is-falsy behavior.
+  //
+  // Incident actions (status, severity and assignee) are gated by `EditStatus` on the test
+  // case rather than `EditAll`, so a role can manage incidents while keeping read-only access
+  // to the test cases themselves. `can(EditStatus)` routes through the same
+  // getPrioritizedEditPermission path — falling back to `EditAll` when the payload carries no
+  // `EditStatus` — and applies the `deleted` gate, so it is equivalent to the
+  // hasIncidentEditPermission helper this replaces.
+  const getRowEditPermission = (fqn?: string) => {
+    const hasPermission = testCasePermissions.find(
+      (item) => item.fullyQualifiedName === fqn
+    );
+
+    return getDerivedPermissionFlags(
+      hasPermission ?? DEFAULT_ENTITY_PERMISSION,
+      Boolean(tableDetails?.deleted)
+    ).can(Operation.EditStatus);
+  };
+
+  const testCaseResolutionStatusDetailsRender = (
+    value?: Assigned,
+    record?: TestCaseResolutionStatus
+  ) => {
+    if (isPermissionLoading) {
+      return <Skeleton height={24} variant="rectangular" width={100} />;
+    }
+
+    return (
+      <div data-testid="assignee">
+        <Owner
+          className="m-0"
+          hasPermission={getRowEditPermission(
+            record?.testCaseReference?.fullyQualifiedName
+          )}
+          isCompactView={false}
+          multiple={{
+            user: false,
+            team: false,
+          }}
+          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
+          placeHolder={t('label.no-entity', {
+            entity: t('label.assignee'),
+          })}
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission={getRowEditPermission(
+                record?.testCaseReference?.fullyQualifiedName
+              )}
+              multiple={{ user: false, team: false }}
+              owner={value?.assignee ? [value.assignee] : []}
+              onUpdate={(assignees) =>
+                record && handleAssigneeUpdate(record, assignees)
+              }
+            />
+          }
+        />
+      </div>
+    );
+  };
+
+  const columns = useMemo(
+    () => [
+      { id: 'name', label: t('label.test-case-name') },
+      ...(isIncidentPage
+        ? [{ id: 'testCaseReference', label: t('label.table') }]
+        : []),
+      { id: 'timestamp', label: t('label.last-updated') },
+      { id: 'testCaseResolutionStatusType', label: t('label.status') },
+      { id: 'severity', label: t('label.severity') },
+      { id: 'testCaseResolutionStatusDetails', label: t('label.assignee') },
+    ],
+    [isIncidentPage, t]
+  );
+
+  const loadingSkeletons = useMemo(
+    () => (
+      <div className="tw:p-4">
+        {Array.from({ length: 5 }, (_, i) => `incident-skeleton-${i}`).map(
+          (skeletonKey) => (
+            <Skeleton
+              className="tw:mb-2"
+              height={40}
+              key={skeletonKey}
+              width="100%"
+            />
+          )
+        )}
+      </div>
+    ),
+    []
+  );
+
+  const renderRow = (record: TestCaseResolutionStatus) => {
+    const ref = record.testCaseReference;
+    const tableFqn = getPartialNameFromTableFQN(
+      ref?.fullyQualifiedName ?? '',
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      '.'
+    );
+    const canEditRow = getRowEditPermission(ref?.fullyQualifiedName);
+
+    return (
+      <Table.Row id={record.id ?? ''} key={record.id}>
+        {/* The table lays out `auto`, so `wrap-break-word` would leave a long
+            test case name as one unbreakable min-content word and stretch the
+            column to fit it. `wrap-anywhere` shrinks that contribution; the
+            floor matches the declared width so auto-layout cannot then
+            collapse the column and wrap every name onto three lines. */}
+        <Table.Cell className="tw:w-72 tw:min-w-72">
+          <Link
+            className="tw:m-0 tw:wrap-anywhere"
+            data-testid={`test-case-${ref?.name}`}
+            state={{ breadcrumbData }}
+            to={observabilityRouterClassBase.getTestCaseDetailPagePath(
+              ref?.fullyQualifiedName ?? ''
+            )}>
+            {getEntityName(ref)}
+          </Link>
+        </Table.Cell>
+        {isIncidentPage && (
+          <Table.Cell>
+            <Tooltip placement="top" title={tableFqn}>
+              <TooltipTrigger>
+                <Link
+                  className="tw:inline-block tw:max-w-52 tw:truncate tw:align-middle"
+                  data-testid="table-link"
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )}
+                  onClick={(e) => e.stopPropagation()}>
+                  {getNameFromFQN(tableFqn) || ref?.fullyQualifiedName}
+                </Link>
+              </TooltipTrigger>
+            </Tooltip>
+          </Table.Cell>
+        )}
+        <Table.Cell className="tw:whitespace-nowrap">
+          <DateTimeDisplay size="compact" timestamp={record.timestamp} />
+        </Table.Cell>
+        <Table.Cell>
+          {isPermissionLoading ? (
+            <Skeleton height={24} variant="rectangular" width={100} />
+          ) : (
+            <TestCaseIncidentManagerStatus
+              isInline
+              data={record}
+              hasPermission={canEditRow}
+              onSubmit={handleStatusSubmit}
+            />
+          )}
+        </Table.Cell>
+        <Table.Cell>
+          {isPermissionLoading ? (
+            <Skeleton height={24} variant="rectangular" width={100} />
+          ) : (
+            <Severity
+              isInline
+              hasPermission={canEditRow}
+              severity={record.severity}
+              onSubmit={(severity) => handleSeveritySubmit(record, severity)}
+            />
+          )}
+        </Table.Cell>
+        {/* antd's `.ant-typography` sets `word-break: break-word`, which drops
+            the "No Assignee" placeholder's min-content contribution to a single
+            character. Owner names render nowrap+ellipsis already, so once every
+            row is unassigned nothing holds the column open and it collapses,
+            stacking the placeholder one letter per line. */}
+        <Table.Cell className="tw:whitespace-nowrap">
+          {testCaseResolutionStatusDetailsRender(
+            record.testCaseResolutionStatusDetails,
+            record
+          )}
+        </Table.Cell>
+      </Table.Row>
+    );
+  };
+
+  return (
+    <>
+      <Table
+        aria-label={t('label.incident-manager')}
+        data-testid="test-case-incident-manager-table"
+        size="sm">
+        <Table.Header columns={columns}>
+          {(col) => (
+            <Table.Head
+              id={col.id}
+              isRowHeader={col.id === 'name'}
+              key={col.id}
+              label={col.label}
+            />
+          )}
+        </Table.Header>
+        <Table.Body
+          dependencies={[
+            isPermissionLoading,
+            testCasePermissions,
+            testCaseListData.data,
+            tableDetails?.deleted,
+          ]}
+          items={testCaseListData.isLoading ? [] : testCaseListData.data}
+          renderEmptyState={() =>
+            testCaseListData.isLoading ? (
+              loadingSkeletons
+            ) : (
+              <Box className="tw:relative tw:min-h-80 tw:w-full">
+                <EmptyPlaceholder
+                  description={t('message.no-active-incidents-description')}
+                  icon={<ShieldTick className="tw:text-fg-brand-primary" />}
+                  title={t('message.no-active-incidents')}
+                  variant="blank"
+                />
+              </Box>
+            )
+          }>
+          {(record) => renderRow(record)}
+        </Table.Body>
+      </Table>
+      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+    </>
+  );
+};
+
+export default IncidentManagerTable;

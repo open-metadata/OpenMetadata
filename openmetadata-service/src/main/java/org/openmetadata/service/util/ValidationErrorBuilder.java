@@ -34,6 +34,8 @@ public class ValidationErrorBuilder {
     public static final String OIDC_SERVER_URL =
         "authenticationConfiguration.oidcConfiguration.serverUrl";
     public static final String OIDC_SCOPE = "authenticationConfiguration.oidcConfiguration.scope";
+    public static final String OIDC_TOKEN_VALIDITY =
+        "authenticationConfiguration.oidcConfiguration.tokenValidity";
     public static final String OIDC_CALLBACK_URL =
         "authenticationConfiguration.oidcConfiguration.callbackUrl";
     public static final String OIDC_TENANT = "authenticationConfiguration.oidcConfiguration.tenant";
@@ -90,6 +92,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.samlConfiguration.sp.spPrivateKey";
     public static final String SAML_SP_CALLBACK =
         "authenticationConfiguration.samlConfiguration.sp.callback";
+    public static final String SAML_SECURITY_TOKEN_VALIDITY =
+        "authenticationConfiguration.samlConfiguration.security.tokenValidity";
     public static final String SAML_SECURITY_AUTHN_SIGNED =
         "authenticationConfiguration.samlConfiguration.security.wantAuthnRequestsSigned";
     public static final String SAML_SECURITY_ASSERTIONS_SIGNED =

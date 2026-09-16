@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   mockedGlossaryTerms,
   MOCK_GLOSSARY,
@@ -65,7 +66,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
@@ -84,13 +85,6 @@ jest.mock(
         <button onClick={onCancel}>Cancel_Button</button>
       </div>
     ));
-  }
-);
-
-jest.mock(
-  '../../../components/Modals/EntityDeleteModal/EntityDeleteModal',
-  () => {
-    return jest.fn().mockImplementation(() => <p>EntityDeleteModal</p>);
   }
 );
 
@@ -117,8 +111,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../Modals/StyleModal/StyleModal.component', () => {
-  return jest.fn().mockImplementation(() => <p>StyleModal</p>);
+jest.mock('../../Modals/IconColorModal/IconColorModal', () => {
+  return jest.fn().mockImplementation(() => <p>IconColorModal</p>);
 });
 
 jest.mock('../../Entity/Voting/Voting.component', () => {
@@ -128,11 +122,11 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockReturnValue(QueryVoteType.votedUp),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn(),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
@@ -176,7 +170,7 @@ const mockContext = {
   permissions: DEFAULT_ENTITY_PERMISSION,
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
@@ -208,6 +202,7 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.queryByText('label.import')).toBeInTheDocument();
     expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(screen.queryByText('label.import-ontology')).toBeInTheDocument();
 
     expect(
       screen.queryByText('label.change-parent-entity')
@@ -217,7 +212,7 @@ describe('GlossaryHeader component', () => {
 
   it('should not render import and export dropdown menu items if no permission', async () => {
     mockGlossaryTermPermission.All = false;
-    mockGlossaryTermPermission.EditAll = false;
+    mockGlossaryTermPermission[Operation.EditAll] = false;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -229,11 +224,44 @@ describe('GlossaryHeader component', () => {
     expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
   });
 
+  it('should hide the import ontology action when the user lacks import/export permission', async () => {
+    // Import/export permission is off, but display-name edit is on — so the
+    // manage menu still opens and we are testing the per-item gate, not the
+    // whole-menu gate.
+    mockContext.type = EntityType.GLOSSARY;
+    mockContext.permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditDisplayName: true,
+    };
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission[Operation.EditAll] = false;
+
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('manage-button'));
+    });
+
+    expect(screen.queryByText('label.import-ontology')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+
+    mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission[Operation.EditAll] = true;
+  });
+
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
     mockContext.type = EntityType.GLOSSARY_TERM;
     mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
     mockGlossaryTermPermission.All = true;
-    mockGlossaryTermPermission.EditAll = true;
+    mockGlossaryTermPermission[Operation.EditAll] = true;
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -321,5 +349,125 @@ describe('GlossaryHeader component', () => {
     expect(
       screen.queryByText('ChangeParentHierarchyComponent')
     ).not.toBeInTheDocument();
+  });
+
+  describe('import/export visibility with conditional policies', () => {
+    it('should show import/export when globalPermissions denies but entity-level permissions allow (isOwner condition satisfied)', async () => {
+      // Simulate a conditional policy: resource-level check returns false because
+      // the backend cannot evaluate isOwner() without entity context.
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+
+      // Entity-level permissions are fetched with the glossary ID so the backend
+      // correctly evaluates isOwner() and returns Allow.
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.import')).toBeInTheDocument();
+      expect(screen.queryByText('label.export')).toBeInTheDocument();
+    });
+
+    it('should hide import/export when both globalPermissions and entity-level permissions deny', async () => {
+      // Both resource-level and entity-level permissions deny — user is not the
+      // owner and no other condition grants access.
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        All: false,
+        EditAll: false,
+      };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    });
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 4):
+  // an explicit EditDisplayName: false must win over a bare EditAll grant
+  // (explicit-deny-wins, Task 6 Finding 1) — the old raw
+  // `permissions.EditAll || permissions.EditDisplayName` let EditAll grant
+  // unconditionally. Self-contained (explicit setup + reset), matching the
+  // 'import/export visibility with conditional policies' block above rather than the
+  // implicit state-leak pattern some earlier tests in this file rely on.
+  describe('rename menu item explicit-deny-wins', () => {
+    afterEach(() => {
+      mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockContext.type = EntityType.GLOSSARY;
+      mockGlossaryTermPermission.All = true;
+      mockGlossaryTermPermission[Operation.EditAll] = true;
+    });
+
+    it('denies the rename menu item when EditDisplayName is explicitly false, even with EditAll true', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: true,
+        EditDisplayName: false,
+      };
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.rename')).not.toBeInTheDocument();
+      // EditAll still independently grants the style/change-parent menu items.
+      expect(screen.getByText('label.style')).toBeInTheDocument();
+    });
+
+    it('renders the rename menu item when EditDisplayName is true, even with EditAll false', async () => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditDisplayName: true,
+      };
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission[Operation.EditAll] = false;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.getByText('label.rename')).toBeInTheDocument();
+    });
   });
 });

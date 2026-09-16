@@ -13,33 +13,52 @@
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
+import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Task } from '../../generated/entity/tasks/task';
 import {
   TestCaseParameterValue,
   TestCaseResult,
   TestCaseStatus,
 } from '../../generated/tests/testCase';
 import { axisTickFormatter } from '../ChartUtils';
-import { getRandomHexColor } from '../DataInsightUtils';
+import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
+import {
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+} from '../TaskNavigationUtils';
 
 const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
-  entityThread: Thread[];
-  testCaseFqn?: string;
+  tasks?: Task[];
+};
+
+/**
+ * Converts an incident task into the fields used by the tooltip, keeping the
+ * display component independent of the incident API.
+ */
+export const getIncidentDetails = (task?: Task) => {
+  if (!task) {
+    return {};
+  }
+
+  return {
+    incidentDisplayId: getTaskDisplayId(task.taskId),
+    incidentPath: getTaskDetailPathFromTask(task),
+    incidentAssignees: task.assignees,
+  };
 };
 
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
-  entityThread,
-  testCaseFqn,
+  tasks = [],
 }: PrepareChartDataType) => {
   // Bond will only be shown if params length is 2 and both values are present
   const params =
@@ -91,9 +110,7 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task: entityThread.find(
-        (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-      ),
+      task: tasks.find((task) => task.id === result.incidentId),
     });
   });
 
@@ -115,7 +132,6 @@ export const prepareChartData = ({
     })),
     data: dataPoints,
     showAILearningBanner,
-    testCaseFqn,
   };
 };
 
@@ -138,3 +154,97 @@ export const formatTestSummaryYAxis = (
   useFreshnessFormat
     ? convertSecondsToHumanReadableFormat(value, 2)
     : axisTickFormatter(value);
+
+export interface TooltipSize {
+  height: number;
+  width: number;
+}
+
+export interface TooltipPosition {
+  x: number;
+  y: number;
+}
+
+export interface TooltipBoundary extends TooltipSize, TooltipPosition {}
+
+interface TooltipPositionOptions {
+  anchor: TooltipPosition;
+  boundary: TooltipBoundary;
+  gap: number;
+  tooltipSize: TooltipSize;
+}
+
+/**
+ * Browsers report fractional, layout-dependent sizes for the same tooltip, and
+ * the flipped placement derives the position from that size. Comparing exactly
+ * would let sub-pixel noise feed a new position back into state indefinitely.
+ */
+const TOOLTIP_POSITION_EPSILON = 0.5;
+
+export const isSameTooltipPosition = (
+  current: TooltipPosition,
+  next: TooltipPosition
+): boolean =>
+  Math.abs(current.x - next.x) < TOOLTIP_POSITION_EPSILON &&
+  Math.abs(current.y - next.y) < TOOLTIP_POSITION_EPSILON;
+
+/**
+ * Recharts types every view-box coordinate as optional, while overflow-aware
+ * placement requires complete finite bounds. Invalid bounds intentionally fall
+ * back to the dot-relative position instead of hiding the tooltip.
+ */
+export const isTestSummaryTooltipBoundary = (
+  viewBox: CartesianViewBox
+): viewBox is TooltipBoundary =>
+  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
+    Number.isFinite(value)
+  );
+
+const getTooltipAxisPosition = (
+  anchor: number,
+  tooltipDimension: number,
+  boundaryStart: number,
+  boundaryDimension: number,
+  gap: number
+) => {
+  if (tooltipDimension >= boundaryDimension) {
+    return boundaryStart;
+  }
+
+  const positivePosition = anchor + gap;
+  const negativePosition = anchor - tooltipDimension - gap;
+  const boundaryEnd = boundaryStart + boundaryDimension;
+  const preferredPosition =
+    positivePosition + tooltipDimension <= boundaryEnd
+      ? positivePosition
+      : negativePosition;
+
+  return Math.min(
+    Math.max(preferredPosition, boundaryStart),
+    boundaryEnd - tooltipDimension
+  );
+};
+
+// A fixed Recharts position bypasses its collision detection. Resolve each
+// axis independently so the tooltip remains anchored to the triggering dot.
+export const getTestSummaryTooltipPosition = ({
+  anchor,
+  boundary,
+  gap,
+  tooltipSize,
+}: TooltipPositionOptions): TooltipPosition => ({
+  x: getTooltipAxisPosition(
+    anchor.x,
+    tooltipSize.width,
+    boundary.x,
+    boundary.width,
+    gap
+  ),
+  y: getTooltipAxisPosition(
+    anchor.y,
+    tooltipSize.height,
+    boundary.y,
+    boundary.height,
+    gap
+  ),
+});

@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
@@ -24,8 +25,9 @@ import {
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
-  clickLineageNode,
   connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+  editLineageClick,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -59,11 +61,13 @@ test.beforeAll(async ({ browser }) => {
       },
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          type: 'domain',
-          id: EntityDataClass.domain1.responseData.id,
-        },
+        path: '/domains',
+        value: [
+          {
+            type: 'domain',
+            id: EntityDataClass.domain1.responseData.id,
+          },
+        ],
       },
     ],
   });
@@ -91,10 +95,14 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 // ====================
 // Suite 1: Canvas Control Buttons (4 tests)
 // ====================
-test.describe('Canvas Controls', () => {
+test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await table.visitEntityPage(page);
     await visitLineageTab(page);
@@ -121,17 +129,20 @@ test.describe('Canvas Controls', () => {
 
   test('Verify fit view options menu', async ({ page }) => {
     await page.getByTestId('fit-screen').click();
-    await expect(page.locator('#lineage-view-options-menu')).toBeVisible();
+    await expect(
+      page.getByRole('menu', { name: 'Lineage View Options' })
+    ).toBeVisible();
 
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
-    await clickLineageNode(page, tableFqn);
-
-    await page.getByTestId('drawer-close-icon').click();
+    await editLineageClick(page);
+    await page.getByTestId(`lineage-node-${tableFqn}`).dispatchEvent('click');
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Refocused to selected' }).click();
+
+    await editLineageClick(page);
 
     await page.getByTestId('fit-screen').click();
     await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
@@ -164,7 +175,7 @@ test.describe('Canvas Controls', () => {
   });
 });
 
-test.describe('Lineage Layers', () => {
+test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Data Observability Layer', () => {
     test.beforeEach(async ({ page }) => {
       await table.visitEntityPage(page);
@@ -172,47 +183,27 @@ test.describe('Lineage Layers', () => {
       await performZoomOut(page);
     });
 
-    test('Verify DQ layer toggle activation', async ({ page }) => {
+    test('Verify unsupported DQ overlay is hidden in scene mode', async ({
+      page,
+    }) => {
       await page.getByTestId('lineage-layer-btn').click();
 
-      const observabilityBtn = page.getByTestId(
-        'lineage-layer-observability-btn'
-      );
-      await expect(observabilityBtn).toBeVisible();
-
-      await expect(observabilityBtn).not.toHaveClass(/Mui-selected/);
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveClass(/Mui-selected/);
-    });
-
-    test('Verify DQ layer toggle off removes highlights', async ({ page }) => {
-      await page.getByTestId('lineage-layer-btn').click();
-
-      const observabilityBtn = page.getByTestId(
-        'lineage-layer-observability-btn'
-      );
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveClass(/Mui-selected/);
-
-      await observabilityBtn.click();
-      await page.keyboard.press('Escape');
-
-      await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).not.toHaveClass(/Mui-selected/);
+      await expect(
+        page.getByTestId('lineage-layer-observability-btn')
+      ).not.toBeVisible();
+      await expect(
+        page.getByTestId('lineage-layer-lens-service')
+      ).toBeVisible();
+      await expect(page.getByTestId('lineage-layer-band-FIELD')).toBeVisible();
     });
   });
 
   test.describe('Error Handling', () => {
     test('Verify invalid entity search handling', async ({ page }) => {
+      const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
+      expect((await sceneResponse).ok()).toBeTruthy();
+      await dismissLineageMapOnboarding(page);
 
       await waitForAllLoadersToDisappear(page);
 

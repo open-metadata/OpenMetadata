@@ -16,16 +16,24 @@ import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
+  lazy,
   LegacyRef,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
-import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtilsPure';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
-import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
+const FeedEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../FeedEditor/FeedEditor').then((m) => ({
+      default: m.FeedEditor,
+    }))
+  )
+);
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;
@@ -62,15 +70,11 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
     };
 
     const onSaveHandler = () => {
-      if (editorRef.current) {
-        if (editorRef.current?.getEditorContent()) {
-          setEditorValue('');
-          editorRef.current?.clearEditorContent();
-          const message = getBackendFormat(
-            editorRef.current?.getEditorContent()
-          );
-          onSave && onSave(message);
-        }
+      if (editorRef.current && editorRef.current?.getEditorContent()) {
+        setEditorValue('');
+        editorRef.current?.clearEditorContent();
+        const message = getBackendFormat(editorRef.current?.getEditorContent());
+        onSave && onSave(message);
       }
     };
 
@@ -87,6 +91,7 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
       <div
         className={classNames('relative', className)}
         data-testid="activity-feed-editor-new"
+        role="presentation"
         onClick={(e) => e.stopPropagation()}>
         <FeedEditor
           defaultValue={defaultValue}

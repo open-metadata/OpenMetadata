@@ -94,6 +94,24 @@
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -279,7 +297,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "mlFeatures": {
         "properties": {

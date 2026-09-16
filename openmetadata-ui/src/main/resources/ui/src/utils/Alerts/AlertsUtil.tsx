@@ -13,97 +13,67 @@
 
 import {
   CheckCircleOutlined,
-  CloseOutlined,
   ExclamationCircleOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import {
   AlertProps,
-  Button,
   Checkbox,
   Col,
-  Collapse,
   Divider,
-  Input,
   MenuProps,
-  Radio,
-  Row,
   Select,
   Skeleton,
-  Switch,
   Tooltip,
   Typography,
 } from 'antd';
-import Form, { RuleObject } from 'antd/lib/form';
+import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  map,
-  omitBy,
-  startCase,
-  uniqBy,
-} from 'lodash';
+import { isEmpty, uniqBy } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as ConfigIcon } from '../../assets/svg/configuration-icon.svg';
 import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
-import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
+import FQNListSelect from '../../components/Alerts/FQNListSelect/FQNListSelect.component';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
-import {
-  DATA_CONTRACT_STATUS_OPTIONS,
-  DEFAULT_READ_TIMEOUT,
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  DESTINATION_TYPE_BASED_PLACEHOLDERS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+import { DATA_CONTRACT_STATUS_OPTIONS } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
-import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
-import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { Status } from '../../generated/events/api/typedEvent';
 import {
-  ChangeEvent,
-  Status,
-  TypedEvent,
-} from '../../generated/events/api/typedEvent';
-import {
-  Destination,
   EventFilterRule,
-  HTTPMethod,
   InputType,
-  SubscriptionCategory,
   SubscriptionType,
-  Type,
-  Webhook,
 } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
-import { getEntityName, getEntityNameLabel } from '../EntityUtils';
+import { EntityIconSize } from '../EntityIconUtils';
+import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
-import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
+import {
+  getAlertEventsFilterLabels,
+  getMessageFromArgumentName,
+  getSelectOptionsFromEnum,
+  getSelectOptionsFromValues,
+} from './AlertsUtilPure';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -121,86 +91,6 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   }
 };
 
-export const getFunctionDisplayName = (func: string): string => {
-  switch (func) {
-    case 'matchAnyEntityFqn':
-      return t('label.fqn-uppercase');
-    case 'matchAnyOwnerName':
-      return t('label.owner-plural');
-    case 'matchAnyEventType':
-      return t('label.event-type');
-    case 'matchTestResult':
-      return t('label.test-entity', {
-        entity: t('label.result-plural'),
-      });
-    case 'matchUpdatedBy':
-      return t('label.updated-by');
-    case 'matchAnyFieldChange':
-      return t('label.field-change');
-    case 'matchPipelineState':
-      return t('label.pipeline-state');
-    case 'matchIngestionPipelineState':
-      return t('label.pipeline-state');
-    case 'matchAnySource':
-      return t('label.source-match');
-    case 'matchAnyEntityId':
-      return t('label.entity-id-match');
-    default:
-      return '';
-  }
-};
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T,>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
-  };
-
-export const getAlertActionTypeDisplayName = (
-  alertActionType: SubscriptionType
-) => {
-  switch (alertActionType) {
-    case SubscriptionType.ActivityFeed:
-      return t('label.activity-feed-plural');
-    case SubscriptionType.Email:
-      return t('label.email');
-    case SubscriptionType.Webhook:
-      return t('label.webhook');
-    case SubscriptionType.Slack:
-      return t('label.slack');
-    case SubscriptionType.MSTeams:
-      return t('label.ms-team-plural');
-    case SubscriptionType.GChat:
-      return t('label.g-chat');
-    default:
-      return '';
-  }
-};
-
-export const getDisplayNameForEntities = (entity: string) => {
-  switch (entity) {
-    case 'kpi':
-      return t('label.kpi-uppercase');
-    case 'mlmodel':
-      return t('label.ml-model');
-    default:
-      return startCase(entity);
-  }
-};
-
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 
 export const searchEntity = async ({
@@ -209,12 +99,14 @@ export const searchEntity = async ({
   queryFilter,
   showDisplayNameAsLabel = true,
   setSourceAsValue = false,
+  wildcardEntityTypes,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
   queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
+  wildcardEntityTypes?: string[];
 }) => {
   try {
     const response = await searchQuery({
@@ -235,6 +127,13 @@ export const searchEntity = async ({
           ? getEntityName(d._source)
           : d._source.fullyQualifiedName ?? '';
 
+        // Container options (a type that has in-scope descendants) show a display-only ".*" hint
+        // to convey "matches everything under this FQN"; the stored value stays the plain FQN.
+        const isContainerOption =
+          !!d._source.entityType &&
+          (wildcardEntityTypes ?? []).includes(d._source.entityType);
+        const label = isContainerOption ? `${displayName}.*` : displayName;
+
         const value = setSourceAsValue
           ? JSON.stringify({
               ...d._source,
@@ -243,7 +142,7 @@ export const searchEntity = async ({
           : d._source.fullyQualifiedName ?? '';
 
         return {
-          label: displayName,
+          label,
           value,
         };
       }),
@@ -261,12 +160,54 @@ export const searchEntity = async ({
   }
 };
 
+// Indexes to search for an Entity FQN filter: the source plus its ancestor (container) entity
+// types from the resource descriptor, so a parent FQN can be selected to scope to its descendants.
+export const getFqnSearchIndexes = (
+  selectedTrigger: string,
+  containerEntities: string[] = []
+): SearchIndex[] => {
+  const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
+  const sourceIndex = mapping[selectedTrigger];
+
+  // The "all" index already spans every entity, so ancestor indexes are redundant there.
+  if (sourceIndex === SearchIndex.ALL) {
+    return [sourceIndex];
+  }
+
+  return [selectedTrigger, ...containerEntities]
+    .map((type) => mapping[type])
+    .filter((index): index is SearchIndex => Boolean(index));
+};
+
 const getTableSuggestions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.TABLE,
     showDisplayNameAsLabel: false,
   });
+};
+
+const getDataContractSuggestions = async (searchText = '') => {
+  try {
+    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
+
+    return contracts
+      .map((contract) => contract.fullyQualifiedName ?? '')
+      .filter(Boolean)
+      .map((fullyQualifiedName) => ({
+        label: fullyQualifiedName,
+        value: fullyQualifiedName,
+      }));
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.data-contract'),
+      })
+    );
+
+    return [];
+  }
 };
 
 const getTestSuiteSuggestions = async (searchText: string) => {
@@ -304,33 +245,6 @@ const getUserBotOptions = async (searchText: string) => {
   });
 };
 
-const getTeamOptions = async (searchText: string) => {
-  return searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
-};
-
-const getSelectOptionsFromEnum = (type: { [s: number]: string }) =>
-  map(type, (value) => ({
-    label: startCase(value),
-    value,
-  }));
-
-// Disabling all options except Email for SubscriptionCategory Users, Followers and Admins
-// Since there is no provision for webhook subscription for users
-export const getSubscriptionTypeOptions = (destinationType: string) => {
-  return EXTERNAL_CATEGORY_OPTIONS.map((item) => {
-    const isEmailType = isEqual(item.value, SubscriptionType.Email);
-    const shouldDisable =
-      isEqual(destinationType, SubscriptionCategory.Users) ||
-      isEqual(destinationType, SubscriptionCategory.Followers) ||
-      isEqual(destinationType, SubscriptionCategory.Admins);
-
-    return {
-      ...item,
-      disabled: !isEmailType && shouldDisable,
-    };
-  });
-};
-
 export const getSupportedFilterOptions = (
   selectedFilters: EventFilterRule[],
   supportedFilters?: EventFilterRule[]
@@ -347,714 +261,24 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
-export const getConnectionTimeoutField = () => (
-  <Row align="middle">
-    <Col span={7}>{`${t('label.connection-timeout')} (${t(
-      'label.second-plural'
-    )})`}</Col>
-    <Col span={1}>:</Col>
-    <Col data-testid="connection-timeout" span={16}>
-      <Form.Item name="timeout">
-        <Input
-          data-testid="connection-timeout-input"
-          defaultValue={10}
-          placeholder={`${t('label.connection-timeout')} (${t(
-            'label.second-plural'
-          )})`}
-          type="number"
-        />
-      </Form.Item>
-    </Col>
-  </Row>
-);
-
-export const getReadTimeoutField = () => (
-  <>
-    <Row align="middle" className="mt-4">
-      <Col span={7}>{`${t('label.read-type', {
-        type: t('label.timeout'),
-      })} (${t('label.second-plural')})`}</Col>
-      <Col span={1}>:</Col>
-      <Col data-testid="read-timeout" span={16}>
-        <Form.Item name="readTimeout">
-          <Input
-            data-testid="read-timeout-input"
-            defaultValue={DEFAULT_READ_TIMEOUT}
-            placeholder={`${t('label.read-type', {
-              type: t('label.timeout'),
-            })} (${t('label.second-plural')})`}
-            type="number"
-          />
-        </Form.Item>
-      </Col>
-    </Row>
-    <Divider className="p-x-xs" />
-  </>
-);
-
-export const getDestinationConfigField = (
-  type: SubscriptionType | SubscriptionCategory,
-  fieldName: number
-) => {
-  switch (type) {
-    case SubscriptionType.Slack:
-    case SubscriptionType.MSTeams:
-    case SubscriptionType.GChat:
-    case SubscriptionType.Webhook:
-      return (
-        <>
-          <Col span={12}>
-            <Form.Item
-              name={[fieldName, 'config', 'endpoint']}
-              rules={[
-                {
-                  required: true,
-                  message: t('message.field-text-is-required', {
-                    fieldText: t('label.endpoint-url'),
-                  }),
-                },
-              ]}>
-              <Input
-                data-testid={`endpoint-input-${fieldName}`}
-                placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-              />
-            </Form.Item>
-          </Col>
-          {(type === SubscriptionType.Webhook ||
-            type === SubscriptionType.Slack ||
-            type === SubscriptionType.MSTeams ||
-            type === SubscriptionType.GChat) && (
-            <Col span={24}>
-              <Collapse
-                className="webhook-config-collapse"
-                expandIconPosition="end">
-                <Collapse.Panel
-                  header={
-                    <Row align="middle" gutter={[8, 8]}>
-                      <Col>
-                        <ConfigIcon className="configuration-icon" />
-                      </Col>
-                      <Col>
-                        <Typography.Text>
-                          {t('label.advanced-configuration')}
-                        </Typography.Text>
-                      </Col>
-                    </Row>
-                  }
-                  key={`advanced-configuration-${fieldName}`}>
-                  <Row align="middle" gutter={[8, 8]}>
-                    <Col data-testid="auth-type" span={24}>
-                      <Form.Item
-                        label={
-                          <Typography.Text>{`${t(
-                            'label.authentication-type'
-                          )}:`}</Typography.Text>
-                        }
-                        labelCol={{ span: 24 }}
-                        name={[fieldName, 'config', 'authType', 'type']}>
-                        <Select
-                          className="w-full"
-                          data-testid={`auth-type-select-${fieldName}`}
-                          options={[
-                            {
-                              label: t('label.no-authentication'),
-                              value: Type.None,
-                            },
-                            {
-                              label: t('label.bearer-hmac-signature'),
-                              value: Type.Bearer,
-                            },
-                            {
-                              label: t('label.oauth2-client-credential-plural'),
-                              value: Type.Oauth2,
-                            },
-                          ]}
-                          placeholder={t('label.authentication-type')}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Form.Item
-                      noStyle
-                      shouldUpdate={(prevValues, currentValues) => {
-                        const prevType =
-                          prevValues?.destinations?.[fieldName]?.config
-                            ?.authType?.type;
-                        const currentType =
-                          currentValues?.destinations?.[fieldName]?.config
-                            ?.authType?.type;
-
-                        return prevType !== currentType;
-                      }}>
-                      {({ getFieldValue }) => {
-                        const selectedAuthType = getFieldValue([
-                          'destinations',
-                          fieldName,
-                          'config',
-                          'authType',
-                          'type',
-                        ]);
-
-                        if (selectedAuthType === Type.Bearer) {
-                          return (
-                            <Col data-testid="secret-key" span={24}>
-                              <Form.Item
-                                label={
-                                  <Typography.Text>{`${t(
-                                    'label.secret-key'
-                                  )}:`}</Typography.Text>
-                                }
-                                labelCol={{ span: 24 }}
-                                name={[
-                                  fieldName,
-                                  'config',
-                                  'authType',
-                                  'secretKey',
-                                ]}
-                                rules={[
-                                  {
-                                    required: true,
-                                    message: t(
-                                      'message.field-text-is-required',
-                                      {
-                                        fieldText: t('label.secret-key'),
-                                      }
-                                    ),
-                                  },
-                                ]}>
-                                <Input.Password
-                                  data-testid={`secret-key-input-${fieldName}`}
-                                  placeholder={t('label.secret-key')}
-                                />
-                              </Form.Item>
-                            </Col>
-                          );
-                        }
-
-                        if (selectedAuthType === Type.Oauth2) {
-                          return (
-                            <>
-                              <Col span={24}>
-                                <Form.Item
-                                  label={
-                                    <Typography.Text>{`${t(
-                                      'label.token-url'
-                                    )}:`}</Typography.Text>
-                                  }
-                                  labelCol={{ span: 24 }}
-                                  name={[
-                                    fieldName,
-                                    'config',
-                                    'authType',
-                                    'tokenUrl',
-                                  ]}
-                                  rules={[
-                                    {
-                                      required: true,
-                                      message: t(
-                                        'message.field-text-is-required',
-                                        {
-                                          fieldText: t('label.token-url'),
-                                        }
-                                      ),
-                                    },
-                                  ]}>
-                                  <Input
-                                    data-testid={`token-url-input-${fieldName}`}
-                                    placeholder="https://auth.example.com/oauth/token"
-                                  />
-                                </Form.Item>
-                              </Col>
-                              <Col span={12}>
-                                <Form.Item
-                                  label={
-                                    <Typography.Text>{`${t(
-                                      'label.client-id'
-                                    )}:`}</Typography.Text>
-                                  }
-                                  labelCol={{ span: 24 }}
-                                  name={[
-                                    fieldName,
-                                    'config',
-                                    'authType',
-                                    'clientId',
-                                  ]}
-                                  rules={[
-                                    {
-                                      required: true,
-                                      message: t(
-                                        'message.field-text-is-required',
-                                        {
-                                          fieldText: t('label.client-id'),
-                                        }
-                                      ),
-                                    },
-                                  ]}>
-                                  <Input.Password
-                                    data-testid={`client-id-input-${fieldName}`}
-                                    placeholder={t('label.client-id')}
-                                  />
-                                </Form.Item>
-                              </Col>
-                              <Col span={12}>
-                                <Form.Item
-                                  label={
-                                    <Typography.Text>{`${t(
-                                      'label.client-secret'
-                                    )}:`}</Typography.Text>
-                                  }
-                                  labelCol={{ span: 24 }}
-                                  name={[
-                                    fieldName,
-                                    'config',
-                                    'authType',
-                                    'clientSecret',
-                                  ]}
-                                  rules={[
-                                    {
-                                      required: true,
-                                      message: t(
-                                        'message.field-text-is-required',
-                                        {
-                                          fieldText: t('label.client-secret'),
-                                        }
-                                      ),
-                                    },
-                                  ]}>
-                                  <Input.Password
-                                    data-testid={`client-secret-input-${fieldName}`}
-                                    placeholder={t('label.client-secret')}
-                                  />
-                                </Form.Item>
-                              </Col>
-                              <Col span={24}>
-                                <Form.Item
-                                  label={
-                                    <Typography.Text>{`${t(
-                                      'label.scope'
-                                    )}:`}</Typography.Text>
-                                  }
-                                  labelCol={{ span: 24 }}
-                                  name={[
-                                    fieldName,
-                                    'config',
-                                    'authType',
-                                    'scope',
-                                  ]}>
-                                  <Input
-                                    data-testid={`scope-input-${fieldName}`}
-                                    placeholder={`${t('label.scope')} (${t(
-                                      'label.optional'
-                                    )})`}
-                                  />
-                                </Form.Item>
-                              </Col>
-                            </>
-                          );
-                        }
-
-                        return null;
-                      }}
-                    </Form.Item>
-                    <Col span={24}>
-                      <Form.List name={[fieldName, 'config', 'headers']}>
-                        {(fields, { add, remove }, { errors }) => (
-                          <Row
-                            data-testid={`webhook-${fieldName}-headers-list`}
-                            gutter={[8, 8]}
-                            key="headers">
-                            <Col span={24}>
-                              <Row align="middle" justify="space-between">
-                                <Col>
-                                  <Typography.Text>
-                                    {`${t('label.header-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col>
-                                  <Col>
-                                    <Button
-                                      data-testid={`add-header-button-${fieldName}`}
-                                      icon={<PlusOutlined />}
-                                      type="primary"
-                                      onClick={() => add({})}
-                                    />
-                                  </Col>
-                                </Col>
-                              </Row>
-                            </Col>
-                            {fields.map(({ key, name }) => (
-                              <Col key={key} span={24}>
-                                <div className="flex gap-4">
-                                  <div className="flex-1 w-min-0">
-                                    <Row gutter={[8, 8]}>
-                                      <Col span={12}>
-                                        <Form.Item
-                                          required
-                                          name={[name, 'key']}
-                                          rules={[
-                                            {
-                                              required: true,
-                                              message: t(
-                                                'message.field-text-is-required',
-                                                {
-                                                  fieldText: t('label.key'),
-                                                }
-                                              ),
-                                            },
-                                          ]}>
-                                          <Input
-                                            data-testid={`header-key-input-${name}`}
-                                            placeholder={t('label.key')}
-                                          />
-                                        </Form.Item>
-                                      </Col>
-                                      <Col span={12}>
-                                        <Form.Item
-                                          required
-                                          name={[name, 'value']}
-                                          rules={[
-                                            {
-                                              required: true,
-                                              message: t(
-                                                'message.field-text-is-required',
-                                                {
-                                                  fieldText: t('label.value'),
-                                                }
-                                              ),
-                                            },
-                                          ]}>
-                                          <Input
-                                            data-testid={`header-value-input-${name}`}
-                                            placeholder={t('label.value')}
-                                          />
-                                        </Form.Item>
-                                      </Col>
-                                    </Row>
-                                  </div>
-
-                                  <Button
-                                    icon={<CloseOutlined />}
-                                    onClick={() => remove(name)}
-                                  />
-                                </div>
-                              </Col>
-                            ))}
-
-                            <Col span={24}>
-                              <Form.ErrorList errors={errors} />
-                            </Col>
-                          </Row>
-                        )}
-                      </Form.List>
-                    </Col>
-                    <Col span={24}>
-                      <Form.List name={[fieldName, 'config', 'queryParams']}>
-                        {(fields, { add, remove }, { errors }) => (
-                          <Row
-                            data-testid={`webhook-${fieldName}-query-params-list`}
-                            gutter={[8, 8]}
-                            key="queryParams">
-                            <Col span={24}>
-                              <Row align="middle" justify="space-between">
-                                <Col>
-                                  <Typography.Text>
-                                    {`${t('label.query-parameter-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col>
-                                  <Col>
-                                    <Button
-                                      data-testid={`add-query-param-button-${fieldName}`}
-                                      icon={<PlusOutlined />}
-                                      type="primary"
-                                      onClick={() => add({})}
-                                    />
-                                  </Col>
-                                </Col>
-                              </Row>
-                            </Col>
-                            {fields.map(({ key, name }) => (
-                              <Col key={key} span={24}>
-                                <div className="flex gap-4">
-                                  <div className="flex-1 w-min-0">
-                                    <Row gutter={[8, 8]}>
-                                      <Col span={12}>
-                                        <Form.Item
-                                          required
-                                          name={[name, 'key']}
-                                          rules={[
-                                            {
-                                              required: true,
-                                              message: t(
-                                                'message.field-text-is-required',
-                                                {
-                                                  fieldText: t('label.key'),
-                                                }
-                                              ),
-                                            },
-                                          ]}>
-                                          <Input
-                                            data-testid={`query-param-key-input-${name}`}
-                                            placeholder={t('label.key')}
-                                          />
-                                        </Form.Item>
-                                      </Col>
-                                      <Col span={12}>
-                                        <Form.Item
-                                          required
-                                          name={[name, 'value']}
-                                          rules={[
-                                            {
-                                              required: true,
-                                              message: t(
-                                                'message.field-text-is-required',
-                                                {
-                                                  fieldText: t('label.value'),
-                                                }
-                                              ),
-                                            },
-                                          ]}>
-                                          <Input
-                                            data-testid={`query-param-value-input-${name}`}
-                                            placeholder={t('label.value')}
-                                          />
-                                        </Form.Item>
-                                      </Col>
-                                    </Row>
-                                  </div>
-
-                                  <Button
-                                    icon={<CloseOutlined />}
-                                    onClick={() => remove(name)}
-                                  />
-                                </div>
-                              </Col>
-                            ))}
-
-                            <Col span={24}>
-                              <Form.ErrorList errors={errors} />
-                            </Col>
-                          </Row>
-                        )}
-                      </Form.List>
-                    </Col>
-                    <Col data-testid="http-method" span={24}>
-                      <Form.Item
-                        label={
-                          <Typography.Text>{`${t(
-                            'label.http-method'
-                          )}:`}</Typography.Text>
-                        }
-                        labelCol={{ span: 24 }}
-                        name={[fieldName, 'config', 'httpMethod']}>
-                        <Radio.Group
-                          data-testid={`http-method-${fieldName}`}
-                          defaultValue={HTTPMethod.Post}
-                          options={[
-                            { label: HTTPMethod.Post, value: HTTPMethod.Post },
-                            { label: HTTPMethod.Put, value: HTTPMethod.Put },
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                </Collapse.Panel>
-              </Collapse>
-            </Col>
-          )}
-        </>
-      );
-    case SubscriptionType.Email:
-      return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'receivers']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.email'),
-                }),
-              },
-            ]}>
-            <Select
-              className="w-full"
-              data-testid={`email-input-${fieldName}`}
-              mode="tags"
-              open={false}
-              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-            />
-          </Form.Item>
-        </Col>
-      );
-    case SubscriptionCategory.Teams:
-    case SubscriptionCategory.Users:
-      return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'receivers']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.entity-list', {
-                    entity: t('label.entity-name', {
-                      entity:
-                        type === SubscriptionCategory.Teams
-                          ? t('label.team')
-                          : t('label.user'),
-                    }),
-                  }),
-                }),
-              },
-            ]}>
-            <TeamAndUserSelectItem
-              destinationNumber={fieldName}
-              entityType={
-                type === SubscriptionCategory.Teams
-                  ? t('label.team-lowercase')
-                  : t('label.user-lowercase')
-              }
-              fieldName={[fieldName, 'config', 'receivers']}
-              onSearch={
-                type === SubscriptionCategory.Teams
-                  ? getTeamOptions
-                  : getUserOptions
-              }
-            />
-          </Form.Item>
-        </Col>
-      );
-    case SubscriptionCategory.Admins:
-    case SubscriptionCategory.Owners:
-    case SubscriptionCategory.Followers:
-      return (
-        <Form.Item
-          hidden
-          initialValue
-          name={[fieldName, 'config', getConfigFieldFromDestinationType(type)]}>
-          <Switch />
-        </Form.Item>
-      );
-    default:
-      return null;
-  }
-};
-
-export const getMessageFromArgumentName = (argumentName: string) => {
-  switch (argumentName) {
-    case 'fqnList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.fqn-uppercase'),
-        }),
-      });
-    case 'domainList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.domain'),
-        }),
-      });
-    case 'tableNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.table'),
-          }),
-        }),
-      });
-    case 'entityNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.entity'),
-          }),
-        }),
-      });
-    case 'ownerNameList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.owner-plural'),
-          }),
-        }),
-      });
-    case 'updateByUserList':
-    case 'userList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.user'),
-          }),
-        }),
-      });
-    case 'eventTypeList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-name', {
-            entity: t('label.event'),
-          }),
-        }),
-      });
-    case 'entityIdList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.entity-id', {
-            entity: t('label.data-asset'),
-          }),
-        }),
-      });
-    case 'pipelineStateList':
-    case 'ingestionPipelineStateList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.pipeline-state'),
-        }),
-      });
-    case 'testStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite-status'),
-        }),
-      });
-    case 'testResultList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-case-result'),
-        }),
-      });
-    case 'contractStatusList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.data-contract-status'),
-        }),
-      });
-    case 'testSuiteList':
-      return t('message.field-text-is-required', {
-        fieldText: t('label.entity-list', {
-          entity: t('label.test-suite'),
-        }),
-      });
-    default:
-      return '';
-  }
-};
-
 export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
   index: number,
-  selectedTrigger: string
+  selectedTrigger: string,
+  containerEntities: string[] = [],
+  supportedEventTypes: EventType[] = []
 ) => {
-  let field: JSX.Element;
-
   const getEntityByFQN = async (searchText: string) => {
-    const searchIndexMapping =
-      searchClassBase.getEntityTypeSearchIndexMapping();
+    if (selectedTrigger === EntityType.DATA_CONTRACT) {
+      return getDataContractSuggestions(searchText);
+    }
 
     return searchEntity({
       searchText,
-      searchIndex: searchIndexMapping[selectedTrigger],
+      searchIndex: getFqnSearchIndexes(selectedTrigger, containerEntities),
       showDisplayNameAsLabel: false,
+      wildcardEntityTypes: containerEntities,
     });
   };
 
@@ -1107,234 +331,192 @@ export const getFieldByArgumentType = (
     })
   );
 
-  switch (argument) {
-    case 'fqnList':
-      field = (
-        <AsyncSelect
-          api={getEntityByFQN}
-          className="w-full"
-          data-testid="fqn-list-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.fqn-uppercase'),
-          })}
-        />
-      );
+  const fieldRenderers: Record<string, () => JSX.Element> = {
+    fqnList: () => (
+      <FQNListSelect
+        api={getEntityByFQN}
+        className="w-full"
+        containerEntities={containerEntities}
+        data-testid="fqn-list-select"
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.fqn-uppercase'),
+        })}
+        searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
+      />
+    ),
+    domainList: () => (
+      <AsyncSelect
+        api={getDomainOptions}
+        className="w-full"
+        data-testid="domain-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.domain-lowercase'),
+        })}
+      />
+    ),
+    tableNameList: () => (
+      <AsyncSelect
+        api={getTableSuggestions}
+        className="w-full"
+        data-testid="table-name-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.table-lowercase'),
+        })}
+      />
+    ),
+    entityNameList: () => (
+      <AsyncSelect
+        api={getTableSuggestions}
+        className="w-full"
+        data-testid="entity-name-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.entity-lowercase'),
+        })}
+      />
+    ),
+    ownerNameList: () => (
+      <AsyncSelect
+        api={getOwnerOptions}
+        className="w-full"
+        data-testid="owner-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.owner-lowercase-plural'),
+        })}
+      />
+    ),
+    // For updateByUserList, we need to show bot users as well; for userList,
+    // which is an argument for `conversation` filters, only non-bot users.
+    updateByUserList: () => (
+      <AsyncSelect
+        api={getUserBotOptions}
+        className="w-full"
+        data-testid="user-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.user'),
+        })}
+      />
+    ),
+    userList: () => (
+      <AsyncSelect
+        api={getUserOptions}
+        className="w-full"
+        data-testid="user-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.user'),
+        })}
+      />
+    ),
+    eventTypeList: () => (
+      <Select
+        className="w-full"
+        data-testid="event-type-select"
+        mode="multiple"
+        options={
+          isEmpty(supportedEventTypes)
+            ? getSelectOptionsFromEnum(EventType)
+            : getSelectOptionsFromValues(supportedEventTypes)
+        }
+        placeholder={t('label.search-by-type', {
+          type: t('label.event-type-lowercase'),
+        })}
+      />
+    ),
+    entityIdList: () => (
+      <AsyncSelect
+        api={getEntityByIdSuggestions}
+        className="w-full"
+        data-testid="entity-id-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionLabelProp="uuid"
+        placeholder={t('label.search-by-type', {
+          type: t('label.entity-id', {
+            entity: t('label.data-asset'),
+          }),
+        })}
+      />
+    ),
+    pipelineStateList: () => (
+      <Select
+        className="w-full"
+        data-testid="pipeline-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(StatusType)}
+        placeholder={t('label.select-field', {
+          field: t('label.pipeline-state'),
+        })}
+      />
+    ),
+    ingestionPipelineStateList: () => (
+      <Select
+        className="w-full"
+        data-testid="pipeline-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(PipelineState)}
+        placeholder={t('label.select-field', {
+          field: t('label.pipeline-state'),
+        })}
+      />
+    ),
+    testStatusList: () => (
+      <Select
+        className="w-full"
+        data-testid="test-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(TestCaseStatus)}
+        placeholder={t('label.select-field', {
+          field: t('label.test-suite-status'),
+        })}
+      />
+    ),
+    testResultList: () => (
+      <Select
+        className="w-full"
+        data-testid="test-result-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(TestCaseStatus)}
+        placeholder={t('label.select-field', {
+          field: t('label.test-case-result'),
+        })}
+      />
+    ),
+    contractStatusList: () => (
+      <Select
+        className="w-full"
+        data-testid="contract-status-select"
+        mode="multiple"
+        options={translatedContractStatusOptions}
+        placeholder={t('label.select-field', {
+          field: t('label.data-contract-status'),
+        })}
+      />
+    ),
+    testSuiteList: () => (
+      <AsyncSelect
+        api={getTestSuiteSuggestions}
+        className="w-full"
+        data-testid="test-suite-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.test-suite'),
+        })}
+      />
+    ),
+  };
 
-      break;
-
-    case 'domainList':
-      field = (
-        <AsyncSelect
-          api={getDomainOptions}
-          className="w-full"
-          data-testid="domain-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.domain-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'tableNameList':
-      field = (
-        <AsyncSelect
-          api={getTableSuggestions}
-          className="w-full"
-          data-testid="table-name-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.table-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'entityNameList':
-      field = (
-        <AsyncSelect
-          api={getTableSuggestions}
-          className="w-full"
-          data-testid="entity-name-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.entity-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'ownerNameList':
-      field = (
-        <AsyncSelect
-          api={getOwnerOptions}
-          className="w-full"
-          data-testid="owner-name-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.owner-lowercase-plural'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'updateByUserList':
-    case 'userList':
-      field = (
-        <AsyncSelect
-          api={
-            argument === 'updateByUserList'
-              ? getUserBotOptions // For updateByUserList, we need to show bot users as well
-              : getUserOptions // For userList, which is an argument for `conversation` filters we need to show only non-bot users
-          }
-          className="w-full"
-          data-testid="user-name-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.user'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'eventTypeList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="event-type-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(EventType)}
-          placeholder={t('label.search-by-type', {
-            type: t('label.event-type-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'entityIdList':
-      field = (
-        <AsyncSelect
-          api={getEntityByIdSuggestions}
-          className="w-full"
-          data-testid="entity-id-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionLabelProp="uuid"
-          placeholder={t('label.search-by-type', {
-            type: t('label.entity-id', {
-              entity: t('label.data-asset'),
-            }),
-          })}
-        />
-      );
-
-      break;
-
-    case 'pipelineStateList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="pipeline-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(StatusType)}
-          placeholder={t('label.select-field', {
-            field: t('label.pipeline-state'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'ingestionPipelineStateList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="pipeline-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(PipelineState)}
-          placeholder={t('label.select-field', {
-            field: t('label.pipeline-state'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testStatusList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="test-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
-            field: t('label.test-suite-status'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testResultList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="test-result-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
-            field: t('label.test-case-result'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'contractStatusList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="contract-status-select"
-          mode="multiple"
-          options={translatedContractStatusOptions}
-          placeholder={t('label.select-field', {
-            field: t('label.data-contract-status'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testSuiteList':
-      field = (
-        <AsyncSelect
-          api={getTestSuiteSuggestions}
-          className="w-full"
-          data-testid="test-suite-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.test-suite'),
-          })}
-        />
-      );
-
-      break;
-    default:
-      field = <></>;
-  }
+  const field = fieldRenderers[argument]?.() ?? <></>;
 
   return (
     <>
@@ -1365,7 +547,9 @@ export const getConditionalField = (
   condition: string,
   name: number,
   selectedTrigger: string,
-  supportedActions?: EventFilterRule[]
+  supportedActions?: EventFilterRule[],
+  containerEntities?: string[],
+  supportedEventTypes?: EventType[]
 ) => {
   const selectedAction = supportedActions?.find(
     (action) => action.name === condition
@@ -1380,166 +564,16 @@ export const getConditionalField = (
   return (
     <>
       {requiredArguments?.map((argument, index) => {
-        return getFieldByArgumentType(name, argument, index, selectedTrigger);
+        return getFieldByArgumentType(
+          name,
+          argument,
+          index,
+          selectedTrigger,
+          containerEntities,
+          supportedEventTypes
+        );
       })}
     </>
-  );
-};
-
-export const getRandomizedAlertName = () => {
-  return `${OPEN_METADATA}_alert_${cryptoRandomString({
-    length: 9,
-    type: 'alphanumeric',
-  })}`;
-};
-
-/**
- * @description Function to get header object of webhook config from the form data
- * Since the form data is in the form of { key: string, value: string }[]
- */
-export const getConfigHeaderObjectFromArray = (
-  headers?: {
-    key: string;
-    value: string;
-  }[]
-) =>
-  headers?.reduce(
-    (prev, curr) => ({
-      ...prev,
-      [curr.key]: curr.value,
-    }),
-    {} as { [key: string]: string }
-  );
-
-/**
- * @description Function to get header webhook config converted from an object
- * in the form of { key: string, value: string }[]
- * to render Form.List
- */
-export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
-  isUndefined(headers)
-    ? headers
-    : Object.entries(headers).map(([key, value]) => ({
-        key,
-        value,
-      }));
-
-/**
- * @description Function to get query params webhook config converted from an array
- */
-export const getConfigQueryParamsObjectFromArray = (
-  queryParams?: {
-    key: string;
-    value: string;
-  }[]
-) =>
-  queryParams?.reduce(
-    (prev, curr) => ({
-      ...prev,
-      [curr.key]: curr.value,
-    }),
-    {} as { [key: string]: string }
-  );
-
-/**
- * @description Function to get query params webhook config converted from an object
- */
-export const getConfigQueryParamsArrayFromObject = (
-  queryParams?: Webhook['queryParams']
-) =>
-  isUndefined(queryParams)
-    ? queryParams
-    : Object.entries(queryParams).map(([key, value]) => ({
-        key,
-        value,
-      }));
-
-/**
- * @description Normalizes destination config for comparison by converting headers and queryParams to array format
- */
-export const normalizeDestinationConfig = (config?: Destination['config']) =>
-  omitBy(
-    {
-      ...config,
-      headers: getConfigHeaderArrayFromObject(config?.headers),
-      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
-    },
-    isUndefined
-  );
-
-export const getFormattedDestinations = (
-  destinations?: ModifiedDestination[]
-) => {
-  const formattedDestinations = destinations?.map((destination) => {
-    const {
-      destinationType: _destinationType,
-      config,
-      ...otherData
-    } = destination;
-
-    const headers = getConfigHeaderObjectFromArray(config?.headers);
-    const queryParams = getConfigQueryParamsObjectFromArray(
-      config?.queryParams
-    );
-
-    return {
-      ...otherData,
-      config: omitBy(
-        {
-          ...config,
-          headers: isEmpty(headers) ? undefined : headers,
-          queryParams: isEmpty(queryParams) ? undefined : queryParams,
-        },
-        isUndefined
-      ),
-    };
-  });
-
-  return formattedDestinations;
-};
-
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Default: exclude Assignees and Mentions for all non-thread entities
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  // Thread-specific exclusions
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
   );
 };
 
@@ -1549,39 +583,24 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[],
   showIcon?: boolean
 ) =>
-  resources.map((resource) => {
-    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
-
-    return {
-      label: (
-        <div
-          className="d-flex items-center gap-2"
-          data-testid={`${resource}-option`}>
-          {showCheckbox && (
-            <Checkbox checked={selectedResource?.includes(resource)} />
+  resources.map((resource) => ({
+    label: (
+      <div
+        className="d-flex items-center gap-2"
+        data-testid={`${resource}-option`}>
+        {showCheckbox && (
+          <Checkbox checked={selectedResource?.includes(resource)} />
+        )}
+        {showIcon &&
+          searchClassBase.getEntityIconWithBg(
+            resource ?? '',
+            EntityIconSize.Size14
           )}
-          {sourceIcon && showIcon && (
-            <div className="d-flex h-4 w-4">{sourceIcon}</div>
-          )}
-          <span>{getEntityNameLabel(resource ?? '')}</span>
-        </div>
-      ),
-      value: resource ?? '',
-    };
-  });
-
-export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
-  switch (status) {
-    case AlertRecentEventFilters.SUCCESSFUL:
-      return t('label.successful');
-    case AlertRecentEventFilters.FAILED:
-      return t('label.failed');
-    case AlertRecentEventFilters.ALL:
-      return t('label.all');
-    default:
-      return '';
-  }
-};
+        <span>{getEntityNameLabel(resource ?? '')}</span>
+      </div>
+    ),
+    value: resource ?? '',
+  }));
 
 export const getAlertRecentEventsFilterOptions = () => {
   const filters: MenuProps['items'] = Object.values(
@@ -1611,68 +630,6 @@ export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
   }
 };
 
-export const getLabelsForEventDetails = (
-  prop: keyof AlertEventDetailsToDisplay
-) => {
-  switch (prop) {
-    case 'eventType':
-      return t('label.event-type');
-    case 'entityId':
-      return t('label.entity-id', { entity: t('label.entity') });
-    case 'userName':
-      return t('label.user-name');
-    case 'previousVersion':
-      return t('label.previous-version');
-    case 'currentVersion':
-      return t('label.current-version');
-    case 'reason':
-      return t('label.reason');
-    case 'source':
-      return t('label.source');
-    case 'failingSubscriptionId':
-      return t('label.failing-subscription-id');
-    default:
-      return '';
-  }
-};
-
-export const getChangeEventDataFromTypedEvent = (
-  typedEvent: TypedEvent
-): {
-  changeEventData: ChangeEvent;
-  changeEventDataToDisplay: AlertEventDetailsToDisplay;
-} => {
-  let changeEventData = typedEvent.data[0];
-
-  // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
-  }
-
-  const { eventType, entityId, userName, previousVersion, currentVersion } =
-    changeEventData;
-
-  // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
-
-  return {
-    changeEventData,
-    changeEventDataToDisplay: {
-      reason,
-      source,
-      failingSubscriptionId,
-      eventType,
-      entityId,
-      userName,
-      previousVersion,
-      currentVersion,
-    },
-  };
-};
-
 export const getAlertExtraInfo = (
   alertEventCountsLoading: boolean,
   alertEventCounts?: EventsRecord
@@ -1680,12 +637,14 @@ export const getAlertExtraInfo = (
   if (alertEventCountsLoading) {
     return (
       <>
-        {new Array(3).fill(null).map((_, id) => (
-          <Fragment key={id}>
-            <Divider className="self-center" type="vertical" />
-            <Skeleton.Button active className="extra-info-skeleton" />
-          </Fragment>
-        ))}
+        {Array.from({ length: 3 }, (_, id) => `alert-skeleton-${id}`).map(
+          (skeletonKey) => (
+            <Fragment key={skeletonKey}>
+              <Divider className="self-center" type="vertical" />
+              <Skeleton.Button active className="extra-info-skeleton" />
+            </Fragment>
+          )
+        )}
       </>
     );
   }
@@ -1745,38 +704,3 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     alertIcon,
   };
 };
-
-export const getDiagnosticItems = (
-  diagnosticData: EventSubscriptionDiagnosticInfo | undefined
-) => [
-  {
-    key: t('label.latest-offset'),
-    value: diagnosticData?.latestOffset,
-    description: t('message.latest-offset-description'),
-  },
-  {
-    key: t('label.current-offset'),
-    value: diagnosticData?.currentOffset,
-    description: t('message.current-offset-description'),
-  },
-  {
-    key: t('label.starting-offset'),
-    value: diagnosticData?.startingOffset,
-    description: t('message.starting-offset-description'),
-  },
-  {
-    key: t('label.successful-event-plural'),
-    value: diagnosticData?.successfulEventsCount,
-    description: t('message.successful-events-description'),
-  },
-  {
-    key: t('label.failed-event-plural'),
-    value: diagnosticData?.failedEventsCount,
-    description: t('message.failed-events-description'),
-  },
-  {
-    key: t('label.processed-all-event-plural'),
-    value: diagnosticData?.hasProcessedAllEvents,
-    description: t('message.processed-all-events-description'),
-  },
-];

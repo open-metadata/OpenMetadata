@@ -11,45 +11,183 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Carousel, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/filter.svg';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import LandingPageBg from '../../../../assets/svg/landing-page-header-bg.svg';
-import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
-import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useDomainStore } from '../../../../hooks/useDomainStore';
-import { SearchSourceAlias } from '../../../../interface/search.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../../../rest/announcementsAPI';
-import {
-  getRecentlyViewedData,
-  isLinearGradient,
-} from '../../../../utils/CommonUtils';
-import {
-  CustomNextArrow,
-  CustomPrevArrow,
-} from '../../../../utils/CustomizableLandingPageUtils';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getDomainDisplayName } from '../../../../utils/EntityUtils';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { isLinearGradient } from '../../../../utils/ColorUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
-import AnnouncementsWidgetV1 from '../../Widgets/AnnouncementsWidgetV1/AnnouncementsWidgetV1.component';
-import CustomiseHomeModal from '../CustomiseHomeModal/CustomiseHomeModal';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import './customise-landing-page-header.less';
 import { CustomiseLandingPageHeaderProps } from './CustomiseLandingPageHeader.interface';
 import CustomiseSearchBar from './CustomiseSearchBar';
+
+const AnnouncementsWidgetV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../Widgets/AnnouncementsWidgetV1/AnnouncementsWidgetV1.component'
+      )
+  )
+);
+
+const CustomiseHomeModal = withSuspenseFallback(
+  lazy(() => import('../CustomiseHomeModal/CustomiseHomeModal'))
+);
+
+const LandingPageDomainSelector = lazy(
+  () => import('./LandingPageDomainSelector')
+);
+
+const RecentlyViewedCarousel = lazy(() => import('./RecentlyViewedCarousel'));
+
+const DomainSelectorPlaceholder = () => (
+  <div className="border-radius-sm p-x-md bg-white domain-selector" />
+);
+
+const resolveHeaderBackgroundColor = (
+  backgroundColor?: string,
+  adminPanelBackgroundColor?: string
+): string =>
+  backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
+
+const getCanDisplayAnnouncements = (
+  isPreviewHeader: boolean,
+  showAnnouncements: boolean,
+  isAnnouncementLoading: boolean
+): boolean => !isPreviewHeader && showAnnouncements && !isAnnouncementLoading;
+
+const resolveAnnouncementsState = (
+  announcementsFromParent: AnnouncementEntity[] | undefined,
+  internalAnnouncements: AnnouncementEntity[],
+  isAnnouncementLoadingFromParent: boolean | undefined,
+  internalIsAnnouncementLoading: boolean
+) => ({
+  announcements: announcementsFromParent ?? internalAnnouncements,
+  isAnnouncementLoading:
+    isAnnouncementLoadingFromParent ?? internalIsAnnouncementLoading,
+});
+
+interface CustomiseHeaderButtonProps {
+  hidden: boolean;
+  onClick: () => void;
+}
+
+const CustomiseHeaderButton = ({
+  hidden,
+  onClick,
+}: CustomiseHeaderButtonProps) =>
+  hidden ? null : (
+    <Button
+      className="customise-header-btn"
+      data-testid="customise-header-btn"
+      icon={
+        <Icon
+          component={FilterIcon}
+          style={{ fontSize: '16px', color: 'white' }}
+        />
+      }
+      onClick={onClick}
+    />
+  );
+
+interface LandingPageRecentlyViewedProps {
+  isPreviewHeader: boolean;
+  onHomePage: boolean;
+  showAnnouncements: boolean;
+}
+
+const LandingPageRecentlyViewed = ({
+  isPreviewHeader,
+  onHomePage,
+  showAnnouncements,
+}: LandingPageRecentlyViewedProps) =>
+  isPreviewHeader ? null : (
+    <Suspense fallback={null}>
+      <RecentlyViewedCarousel
+        disabled={!onHomePage}
+        showAnnouncements={showAnnouncements}
+      />
+    </Suspense>
+  );
+
+interface LandingPageAnnouncementsProps {
+  canDisplay: boolean;
+  announcements: AnnouncementEntity[];
+  bgColor: string;
+  onHomePage: boolean;
+  onClose: () => void;
+}
+
+const LandingPageAnnouncements = ({
+  canDisplay,
+  announcements,
+  bgColor,
+  onHomePage,
+  onClose,
+}: LandingPageAnnouncementsProps) =>
+  canDisplay && announcements.length > 0 ? (
+    <div className="announcements-container">
+      <AnnouncementsWidgetV1
+        announcements={announcements}
+        currentBackgroundColor={bgColor}
+        disabled={!onHomePage}
+        onClose={onClose}
+      />
+    </div>
+  ) : null;
+
+interface LandingPageCustomiseModalProps {
+  hideCustomiseButton: boolean;
+  showCustomiseHomeModal: boolean;
+  addedWidgetsList?: CustomiseLandingPageHeaderProps['addedWidgetsList'];
+  bgColor: string;
+  handleAddWidget: CustomiseLandingPageHeaderProps['handleAddWidget'];
+  placeholderWidgetKey?: string;
+  onBackgroundColorUpdate: CustomiseLandingPageHeaderProps['onBackgroundColorUpdate'];
+  onClose: () => void;
+  onHomePage: boolean;
+}
+
+const LandingPageCustomiseModal = ({
+  hideCustomiseButton,
+  showCustomiseHomeModal,
+  addedWidgetsList,
+  bgColor,
+  handleAddWidget,
+  placeholderWidgetKey,
+  onBackgroundColorUpdate,
+  onClose,
+  onHomePage,
+}: LandingPageCustomiseModalProps) =>
+  !hideCustomiseButton && showCustomiseHomeModal ? (
+    <CustomiseHomeModal
+      addedWidgetsList={addedWidgetsList}
+      currentBackgroundColor={bgColor}
+      handleAddWidget={handleAddWidget}
+      open={showCustomiseHomeModal}
+      placeholderWidgetKey={placeholderWidgetKey}
+      onBackgroundColorUpdate={onBackgroundColorUpdate}
+      onClose={onClose}
+      onHomePage={onHomePage}
+    />
+  ) : null;
 
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
@@ -62,21 +200,34 @@ const CustomiseLandingPageHeader = ({
   onHomePage = false,
   overlappedContainer = false,
   placeholderWidgetKey,
+  announcements: announcementsFromParent,
+  isAnnouncementLoading: isAnnouncementLoadingFromParent,
 }: CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { currentUser, applicationConfig } = useApplicationStore();
-  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
-    useDomainStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
-  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(true);
+  // Internal fallback state — only used when the parent doesn't pass announcements through.
+  // The landing page (MyDataPage) already fetches global announcements for the sidebar
+  // widget; passing them down here de-duplicates the {@code GET /announcements/active} call.
+  // Standalone callers (customize-page preview, header-theme picker) still hit the API.
+  const [internalAnnouncements, setInternalAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
+  const [internalIsAnnouncementLoading, setInternalIsAnnouncementLoading] =
+    useState(true);
+  const { announcements, isAnnouncementLoading } = resolveAnnouncementsState(
+    announcementsFromParent,
+    internalAnnouncements,
+    isAnnouncementLoadingFromParent,
+    internalIsAnnouncementLoading
+  );
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const adminPanelBackgroundColor =
     applicationConfig?.customTheme?.panelBackgroundColor;
-  const bgColor =
-    backgroundColor || adminPanelBackgroundColor || DEFAULT_HEADER_BG_COLOR;
+  const bgColor = resolveHeaderBackgroundColor(
+    backgroundColor,
+    adminPanelBackgroundColor
+  );
 
   const landingPageStyle = useMemo(() => {
     const backgroundImage = isLinearGradient(bgColor)
@@ -90,39 +241,18 @@ const CustomiseLandingPageHeader = ({
     };
   }, [bgColor]);
 
-  const recentlyViewData = useMemo(() => {
-    const entities = getRecentlyViewedData();
-
-    return entities.map((entity) => {
-      return {
-        icon: (
-          <img
-            alt={get(entity, 'service.displayName', '')}
-            className="entity-icon"
-            src={serviceUtilClassBase.getServiceTypeLogo(
-              entity as unknown as SearchSourceAlias
-            )}
-          />
-        ),
-        name: entity.displayName,
-        entityType: entity.entityType,
-        fullyQualifiedName: entity.fqn,
-      };
-    });
-  }, []);
-
   const fetchAnnouncements = useCallback(async () => {
     try {
-      setIsAnnouncementLoading(true);
+      setInternalIsAnnouncementLoading(true);
       const response = await getActiveAnnouncements();
 
-      setAnnouncements(response.data);
+      setInternalAnnouncements(response.data);
       setShowAnnouncements(response.data.length > 0);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setShowAnnouncements(false);
     } finally {
-      setIsAnnouncementLoading(false);
+      setInternalIsAnnouncementLoading(false);
     }
   }, []);
 
@@ -134,34 +264,22 @@ const CustomiseLandingPageHeader = ({
     setShowCustomiseHomeModal(false);
   };
 
-  const handleDomainChange = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      updateActiveDomain(domain as EntityReference);
-      setIsDomainDropdownOpen(false);
-      navigate(0);
-    },
-    [updateActiveDomain, navigate]
-  );
-
-  const domainDisplayName = useMemo(
-    () => getDomainDisplayName(activeDomainEntityRef, activeDomain),
-    [activeDomainEntityRef, activeDomain, t]
-  );
-
-  const navigateToEntity = (data: {
-    entityType: string;
-    fullyQualifiedName: string;
-  }) => {
-    const path = entityUtilClassBase.getEntityLink(
-      data.entityType || '',
-      data.fullyQualifiedName
-    );
-    navigate(path);
-  };
-
   useEffect(() => {
+    // Skip the duplicate fetch when the parent already provided announcements. Keep showing
+    // them when non-empty, mirroring what the internal fetch path does.
+    if (announcementsFromParent !== undefined) {
+      setShowAnnouncements(announcementsFromParent.length > 0);
+
+      return;
+    }
     fetchAnnouncements();
-  }, [fetchAnnouncements]);
+  }, [announcementsFromParent, fetchAnnouncements]);
+
+  const canDisplayAnnouncements = getCanDisplayAnnouncements(
+    isPreviewHeader,
+    showAnnouncements,
+    isAnnouncementLoading
+  );
 
   return (
     <div
@@ -179,162 +297,49 @@ const CustomiseLandingPageHeader = ({
                 name: currentUser?.displayName || currentUser?.name,
               })}
             </Typography.Text>
-            {!hideCustomiseButton && (
-              <Button
-                className="customise-header-btn"
-                data-testid="customise-header-btn"
-                icon={
-                  <Icon
-                    component={FilterIcon}
-                    style={{ fontSize: '16px', color: 'white' }}
-                  />
-                }
-                onClick={handleOpenCustomiseHomeModal}
-              />
-            )}
+            <CustomiseHeaderButton
+              hidden={hideCustomiseButton}
+              onClick={handleOpenCustomiseHomeModal}
+            />
           </div>
           <div className="mb-9 customise-search-container">
             <div className="d-flex items-center gap-4 mb-9">
               <CustomiseSearchBar disabled={!onHomePage} />
-              <DomainSelectableList
-                hasPermission
-                showAllDomains
-                disabled={!onHomePage}
-                popoverProps={{
-                  open: isDomainDropdownOpen,
-                  onOpenChange: (open) => {
-                    setIsDomainDropdownOpen(open);
-                  },
-                }}
-                selectedDomain={activeDomainEntityRef}
-                wrapInButton={false}
-                onCancel={() => setIsDomainDropdownOpen(false)}
-                onUpdate={handleDomainChange}>
-                <div
-                  className={classNames(
-                    'd-flex items-center gap-2 border-radius-sm p-x-md bg-white domain-selector',
-                    {
-                      'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                      disabled: !onHomePage,
-                    }
-                  )}
-                  data-testid="domain-selector"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    setIsDomainDropdownOpen(!isDomainDropdownOpen);
-                  }}>
-                  <DomainIcon
-                    className="domain-icon"
-                    data-testid="domain-icon"
-                    height={22}
-                    width={22}
-                  />
-                  <Typography.Text className="text-sm font-medium domain-title">
-                    {domainDisplayName}
-                  </Typography.Text>
-                  <DropdownIcon
-                    className="dropdown-icon"
-                    data-testid="dropdown-icon"
-                    height={14}
-                    width={14}
-                  />
-                </div>
-              </DomainSelectableList>
+              <Suspense fallback={<DomainSelectorPlaceholder />}>
+                <LandingPageDomainSelector disabled={!onHomePage} />
+              </Suspense>
             </div>
-            {!isPreviewHeader && recentlyViewData.length > 0 && (
-              <Carousel
-                arrows
-                className={classNames('recently-viewed-data-carousel', {
-                  'slick-list-center': !showAnnouncements,
-                })}
-                infinite={false}
-                nextArrow={<CustomNextArrow />}
-                prevArrow={<CustomPrevArrow />}
-                responsive={[
-                  {
-                    breakpoint: 1900,
-                    settings: {
-                      slidesToShow: 8,
-                      slidesToScroll: 8,
-                    },
-                  },
-                  {
-                    breakpoint: 1600,
-                    settings: {
-                      slidesToShow: 6,
-                      slidesToScroll: 6,
-                    },
-                  },
-                  {
-                    breakpoint: 1300,
-                    settings: {
-                      slidesToShow: 4,
-                      slidesToScroll: 4,
-                    },
-                  },
-                ]}
-                slidesToScroll={10}
-                slidesToShow={10}>
-                {recentlyViewData.map((data, index) => (
-                  <div
-                    className={classNames('customise-recently-viewed-data', {
-                      disabled: !onHomePage,
-                    })}
-                    data-testid="recently-viewed-asset"
-                    key={index}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigateToEntity(data)}>
-                    <div
-                      className="recent-item d-flex flex-col items-center gap-3"
-                      key={data.name}>
-                      <div className="d-flex items-center justify-center entity-icon-container">
-                        {data.icon}
-                      </div>
-                      <Typography.Text
-                        className="text-sm font-medium text-white"
-                        ellipsis={{ tooltip: true }}>
-                        {data.name}
-                      </Typography.Text>
-                    </div>
-                  </div>
-                ))}
-              </Carousel>
-            )}
+            <LandingPageRecentlyViewed
+              isPreviewHeader={isPreviewHeader}
+              showAnnouncements={showAnnouncements}
+              onHomePage={onHomePage}
+            />
           </div>
         </div>
 
-        {!isPreviewHeader &&
-          showAnnouncements &&
-          !isAnnouncementLoading &&
-          announcements.length > 0 && (
-            <div className="announcements-container">
-              <AnnouncementsWidgetV1
-                announcements={announcements}
-                currentBackgroundColor={bgColor}
-                disabled={!onHomePage}
-                onClose={() => {
-                  setShowAnnouncements(false);
-                }}
-              />
-            </div>
-          )}
+        <LandingPageAnnouncements
+          announcements={announcements}
+          bgColor={bgColor}
+          canDisplay={canDisplayAnnouncements}
+          onClose={() => {
+            setShowAnnouncements(false);
+          }}
+          onHomePage={onHomePage}
+        />
       </div>
       {overlappedContainer && <div className="overlapped-container" />}
 
-      {!hideCustomiseButton && showCustomiseHomeModal && (
-        <CustomiseHomeModal
-          addedWidgetsList={addedWidgetsList}
-          currentBackgroundColor={bgColor}
-          handleAddWidget={handleAddWidget}
-          open={showCustomiseHomeModal}
-          placeholderWidgetKey={placeholderWidgetKey}
-          onBackgroundColorUpdate={onBackgroundColorUpdate}
-          onClose={handleCloseCustomiseHomeModal}
-          onHomePage={onHomePage}
-        />
-      )}
+      <LandingPageCustomiseModal
+        addedWidgetsList={addedWidgetsList}
+        bgColor={bgColor}
+        handleAddWidget={handleAddWidget}
+        hideCustomiseButton={hideCustomiseButton}
+        placeholderWidgetKey={placeholderWidgetKey}
+        showCustomiseHomeModal={showCustomiseHomeModal}
+        onBackgroundColorUpdate={onBackgroundColorUpdate}
+        onClose={handleCloseCustomiseHomeModal}
+        onHomePage={onHomePage}
+      />
     </div>
   );
 };

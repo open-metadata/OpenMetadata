@@ -10,8 +10,90 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { COLLATE_SAAS_RUNNER } from '../constant/serviceForm';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
+import { selectOptionWithRetry } from './common';
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getOneOfOptionLabels = (optionName: string) => {
+  const spacedLabel = optionName.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+
+  return [...new Set([optionName, spacedLabel])];
+};
+
+// Callers name a oneOf branch by its schema title, but CoreOneOfField renders every
+// option through `getFormDisplayLabel`, which spaces camelCase and re-cases known
+// acronyms — the title "DBT S3 Config" renders as "dbt S3 Config".
+//
+// Playwright may not import that function (app code outside src/generated and src/enums
+// is restricted), and copying its acronym table here would reintroduce the same drift
+// from the other side. Casing is the only thing the table changes, so matching the title
+// and its spaced form case-insensitively covers the transform without restating it.
+// The pattern stays anchored, so it is as strict as `exact: true` about substrings.
+// `getFormDisplayLabel`'s own behaviour is pinned in formBuilderV1LabelUtils.test.ts.
+const getOneOfOptionNamePattern = (optionName: string) =>
+  new RegExp(
+    `^(${getOneOfOptionLabels(optionName).map(escapeRegExp).join('|')})$`,
+    'i'
+  );
+
+export const selectOneOfOption = async (
+  page: Page,
+  fieldId: string,
+  selectTestId: string,
+  optionName: string
+) => {
+  const field = page.locator(`[data-field-id="${fieldId}"]`);
+  const optionNamePattern = getOneOfOptionNamePattern(optionName);
+
+  const tab = field.getByRole('tab', { name: optionNamePattern });
+
+  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await tab.click();
+
+    return;
+  }
+
+  const selectWidget = page.getByTestId(selectTestId);
+
+  if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const trigger = selectWidget.getByRole('button');
+    const option = page
+      .locator('.core-one-of-field-select-popover')
+      .getByRole('option', { name: optionNamePattern });
+
+    await selectOptionWithRetry(trigger, option);
+
+    return;
+  }
+
+  throw new Error(
+    `Unable to select oneOf option "${optionName}" for field "${fieldId}"`
+  );
+};
+
+export const selectIngestionRunnerFromDropdown = async (
+  page: Page,
+  runnerDisplayName: string
+) => {
+  // Select the ingestion runner if the selector is visible. The runner control
+  // migrated from an antd Select to a react-aria Select — clicking the trigger
+  // opens a role="listbox" of runner options instead of an `.ant-select-dropdown`.
+  const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
+
+  if (await runnerSelector.isVisible()) {
+    const trigger = runnerSelector.getByRole('button');
+    const option = page
+      .locator('.core-select-widget-popover')
+      .getByRole('option', { name: runnerDisplayName, exact: true });
+
+    await selectOptionWithRetry(trigger, option);
+    await expect(runnerSelector).toContainText(runnerDisplayName);
+  }
+};
 
 export const fillSupersetFormDetails = async ({
   page,
@@ -29,26 +111,29 @@ export const fillSupersetFormDetails = async ({
   await page.fill(String.raw`#root\/hostPort`, hostPort);
 
   if (connectionType === 'SupersetApiConnection') {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
     );
 
     if (provider) {
-      await page.getByTestId('select-widget-root/connection/provider').click();
-      await page.click(`.ant-select-dropdown:visible [title="${provider}"]`);
+      await page.getByRole('button', { name: 'db Provider *' }).click();
+      await page
+        .locator(`.core-select-widget-popover:visible`)
+        .getByRole('option', { name: provider })
+        .click();
     }
   } else if (
     connectionType === 'PostgresConnection' ||
     connectionType === 'MysqlConnection'
   ) {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
     );
 
     if (connectionHostPort) {
@@ -87,30 +172,5 @@ export const fillSupersetFormDetails = async ({
       { force: true } // eslint-disable-line playwright/no-force-option -- form field overlay covers input
     );
   }
-
-  // Select the ingestion runner if the selector is visible
-  const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
-
-  if (await runnerSelector.isVisible()) {
-    await runnerSelector.click();
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
-
-    // Search for the runner using the search input
-    await runnerSelector.locator('input').fill('CollateSaaS');
-
-    // Using data-key which relies on `name` which is more reliable data in AUTs
-    // instead of data-testid which depends on the `displayName` which can change
-    await page
-      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
-      .waitFor({ state: 'visible' });
-    await page
-      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
-      .click();
-
-    await expect(
-      page.getByTestId('select-widget-root/ingestionRunner')
-    ).toContainText('Collate SaaS');
-  }
+  await selectIngestionRunnerFromDropdown(page, COLLATE_SAAS_RUNNER);
 };

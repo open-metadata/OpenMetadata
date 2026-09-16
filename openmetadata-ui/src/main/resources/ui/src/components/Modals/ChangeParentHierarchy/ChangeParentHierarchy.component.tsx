@@ -21,15 +21,14 @@ import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/Tree
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -213,7 +212,6 @@ const ChangeParentHierarchy = ({
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
-            tagType={TagSource.Glossary}
             onCancel={handleTreeAsyncSelectCancel}
             onChange={handleTagSelection}
           />

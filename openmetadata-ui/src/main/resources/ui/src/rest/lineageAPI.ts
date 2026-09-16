@@ -24,7 +24,15 @@ import {
 } from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
+import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
+import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
+import {
+  LineageBand,
+  LineageLens,
+  LineageScene,
+} from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import { LineageDetails } from '../generated/type/entityLineage';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -37,7 +45,9 @@ export const exportLineageAsync = async (
   fqn: string,
   entityType?: string,
   config?: LineageConfig,
-  queryFilter?: string
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
 ) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<CSVExportResponse>(
@@ -50,6 +60,8 @@ export const exportLineageAsync = async (
         downstreamDepth,
         query_filter: queryFilter,
         includeDeleted: false,
+        startTime,
+        endTime,
       },
     }
   );
@@ -65,6 +77,8 @@ export const getLineageDataByFQN = async ({
   columnFilter,
   from,
   direction,
+  startTime,
+  endTime,
 }: {
   fqn: string;
   entityType: string;
@@ -73,6 +87,8 @@ export const getLineageDataByFQN = async ({
   columnFilter?: string;
   from?: number;
   direction?: LineageDirection;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const API_PATH = direction
@@ -91,10 +107,76 @@ export const getLineageDataByFQN = async ({
       includeDeleted: false,
       size: config?.nodesPerLayer,
       from,
+      startTime,
+      endTime,
     },
   });
 
   return response.data;
+};
+
+export type LineageSceneFocus =
+  | {
+      focusFqn: string;
+      // Not EntityType: this round-trips the scene response's `originEntityType` /
+      // `focusEntityType`, which the JSON Schema types as a plain string, and the
+      // /lineage/scene endpoint takes it as an unvalidated String. Custom entity
+      // types are legal, so narrowing to the enum would misstate the contract.
+      entityType: string;
+    }
+  | {
+      focusFqn?: never;
+      entityType?: never;
+    };
+
+export type LineageSceneRequest = LineageSceneFocus & {
+  lens: LineageLens;
+  band: LineageBand;
+  config?: LineageConfig;
+  queryFilter?: string;
+};
+
+export const getLineageScene = async ({
+  focusFqn,
+  entityType,
+  lens,
+  band,
+  config,
+  queryFilter,
+}: LineageSceneRequest) => {
+  const {
+    upstreamDepth = 1,
+    downstreamDepth = 1,
+    nodesPerLayer = 200,
+  } = config ?? {};
+  const response = await APIClient.get<LineageScene>('lineage/scene', {
+    params: {
+      focusFqn,
+      entityType,
+      lens,
+      band,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: nodesPerLayer,
+    },
+  });
+
+  return response.data;
+};
+
+export const getLineageEdgeDetails = async (
+  fromId: string,
+  toId: string
+): Promise<LineageDetails> => {
+  const encodedFromId = encodeURIComponent(fromId);
+  const encodedToId = encodeURIComponent(toId);
+  const response = await APIClient.get<{ edge: LineageDetails }>(
+    `lineage/getLineageEdge/${encodedFromId}/${encodedToId}`
+  );
+
+  return response.data.edge;
 };
 
 export const getPlatformLineage = async ({
@@ -126,7 +208,9 @@ export const getPlatformLineage = async ({
 export const getDataQualityLineage = async (
   fqn: string,
   config?: Partial<LineageConfig>,
-  queryFilter?: string
+  queryFilter?: string,
+  startTime?: number,
+  endTime?: number
 ) => {
   const { upstreamDepth = 1 } = config ?? {};
   const response = await APIClient.get<EntityLineageResponse>(
@@ -137,6 +221,8 @@ export const getDataQualityLineage = async (
         upstreamDepth,
         includeDeleted: false,
         query_filter: queryFilter,
+        startTime,
+        endTime,
       },
     }
   );
@@ -158,6 +244,8 @@ export const getLineageByEntityCount = async (params: {
   query_filter?: string;
   column_filter?: string;
   include_pagination_info?: boolean;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<{
     nodes: Record<string, LineageNodeData>;
@@ -193,6 +281,8 @@ export const exportLineageByEntityCountAsync = async (params: {
   from?: number;
   size?: number;
   query_filter?: string;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
@@ -209,6 +299,34 @@ export const exportLineageByEntityCountAsync = async (params: {
   return response.data;
 };
 
+/**
+ * Batch-hydrate a set of lineage nodes (entityType + id pairs) into full entity objects in a
+ * single round-trip. Server replies with {@link HydrateLineageResponse} — an
+ * `entitiesByType` map keyed by entityType plus a `droppedCount` of entries the caller could
+ * not see.
+ *
+ * Use this in place of N parallel `GET /:type/:id` calls when rendering a graph that needs
+ * fully-hydrated node detail (tags, owners, domains, etc.). Entities the caller cannot read
+ * are silently dropped from `entitiesByType` and counted in `droppedCount` so the UI can
+ * surface "N items hidden by permissions" if it wants.
+ *
+ * Treat each map value as `unknown[]` because the server returns heterogeneous full entity
+ * objects (Table, Dashboard, Container, Pipeline, …) keyed by `entityType` and OpenMetadata
+ * does not have a discriminated-union JSON schema for `EntityInterface`. Callers should narrow
+ * per-type at the call-site — e.g. `entitiesByType.table as Table[]` — once they know which key
+ * they're consuming.
+ */
+export const hydrateLineageEntities = async (
+  params: HydrateLineageRequest
+): Promise<HydrateLineageResponse> => {
+  const response = await APIClient.post<HydrateLineageResponse>(
+    `/lineage/hydrate`,
+    params
+  );
+
+  return response.data;
+};
+
 export const getLineagePagingData = async (params: {
   fqn: string;
   upstreamDepth?: number;
@@ -216,6 +334,8 @@ export const getLineagePagingData = async (params: {
   type?: EntityType;
   entityType?: EntityType;
   query_filter?: string;
+  startTime?: number;
+  endTime?: number;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,

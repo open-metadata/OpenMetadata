@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { ColumnsType } from '../../common/Table/Table.interface';
 
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -41,31 +49,39 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
 import {
   fieldExistsByFQN,
   getAllRowKeysByKeyName,
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 interface APIEndpointSchemaProps {
   isVersionView?: boolean;
@@ -100,6 +116,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
+
+  // Consumer via useGenericContext() — `permissions` stays the raw `OperationPermission`
+  // object (GenericProvider precedent). No `deleted` argument: the old raw expressions never
+  // gated on it themselves — `isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}`
+  // is a separate prop on the same components.
+  const { canEditDescription, canEditTags, canEditGlossaryTerms } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const viewTypeOptions = [
     {
@@ -354,6 +379,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     }
   };
 
+  const { tagFilterState, filteredData, handleTableChange } = useTreeTagFilter(
+    isVersionView ? activeSchemaFieldsDiff : activeSchemaFields
+  );
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -391,9 +420,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             }}
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
-            hasEditPermission={
-              permissions.EditDescription || permissions.EditAll
-            }
+            hasEditPermission={canEditDescription}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
@@ -411,7 +438,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={canEditTags}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -421,7 +448,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -434,9 +461,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={
-              permissions.EditGlossaryTerms || permissions.EditAll
-            }
+            hasTagEditAccess={canEditGlossaryTerms}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -446,7 +471,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
     [
@@ -458,8 +483,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       theme,
       handleFieldTagsChange,
       handleFieldClick,
-      permissions,
+      canEditDescription,
+      canEditTags,
+      canEditGlossaryTerms,
       isVersionView,
+      tagFilterState,
     ]
   );
 
@@ -470,9 +498,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           className={classNames('align-table-filter-left')}
           columns={columns}
           data-testid="schema-fields-table"
-          dataSource={
-            isVersionView ? activeSchemaFieldsDiff : activeSchemaFields
-          }
+          dataSource={filteredData}
           defaultVisibleColumns={DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS}
           expandable={{
             ...getTableExpandableConfig<Field>(false, 'text-link-color'),
@@ -503,6 +529,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           scroll={TABLE_SCROLL_VALUE}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       </Col>
       {editFieldDescription && (

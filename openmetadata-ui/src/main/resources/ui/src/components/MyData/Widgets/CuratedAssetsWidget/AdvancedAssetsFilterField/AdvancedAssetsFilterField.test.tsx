@@ -37,22 +37,35 @@ jest.mock(
   })
 );
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  Builder: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="query-builder">Query Builder</div>
-    )),
-  Query: jest.fn().mockImplementation(({ children, onChange }) => (
-    <div data-testid="query-component">
-      {children}
-      <button onClick={() => onChange && onChange({}, {})}>Change Query</button>
-    </div>
-  )),
+// Spread the real module: the config layer reads `BasicConfig` at import time,
+// so a mock that only names Query/Builder/Utils breaks module evaluation.
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Utils: {
+    ...jest.requireActual('@react-awesome-query-builder/ui').Utils,
     checkTree: jest.fn(),
     loadTree: jest.fn(),
+    getTree: jest.fn().mockReturnValue({ id: 'root', type: 'group' }),
   },
+}));
+
+// This field now renders the canonical builder, which has its own suite. Here
+// the contract is the form value it writes back.
+jest.mock('../../../../common/QueryBuilder/QueryBuilder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onChange }) => (
+    <div data-testid="query-component">
+      <button onClick={() => onChange?.('{"query":"changed"}', undefined)}>
+        Change Query
+      </button>
+    </div>
+  )),
+}));
+
+jest.mock('../../../../../utils/CuratedAssetsPureUtils', () => ({
+  getExpandedResourceList: jest.fn().mockReturnValue(['table']),
+  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
+  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
@@ -61,15 +74,13 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
-  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../../utils/QueryBuilderElasticsearchFormatUtils', () => ({
   elasticSearchFormat: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../../../utils/QueryBuilderUtils', () => ({
+jest.mock('../../../../../utils/QueryBuilderPureUtils', () => ({
   getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
 }));
 

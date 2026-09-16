@@ -126,6 +126,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         id_token: idToken,
         scope: scopes,
         profile: {
+          ...info,
           email: info.email ?? '',
           name: info.name ?? '',
           picture: info.imageUrl ?? '',

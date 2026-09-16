@@ -39,6 +39,9 @@ ENTITY_TYPE
     | 'databaseSchema'
     | 'glossary'
     | 'glossaryTerm'
+    | 'relationshipType'
+    | 'ontologyAxiom'
+    | 'ontologyChangeSet'
     | 'databaseService'
     | 'messagingService'
     | 'metadataService'
@@ -105,9 +108,12 @@ ENTITY_TYPE
     | 'contextMemory'
     | 'type'
     | 'aiApplication'
+    | 'aiGovernanceFramework'
+    | 'aiFrameworkControl'
     | 'llmModel'
     | 'promptTemplate'
     | 'aiGovernancePolicy'
+    | 'auditReport'
     | 'notificationTemplate'
     | 'workflow'
     | 'document'
@@ -115,6 +121,7 @@ ENTITY_TYPE
     | 'mcpService'
     | 'mcpServer'
     | 'mcpExecution'
+    | 'intakeForm'
     ;
 
 ENTITY_FIELD

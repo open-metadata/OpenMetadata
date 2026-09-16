@@ -14,28 +14,19 @@ Utilities for working with the Presidio Library.
 
 import inspect
 import logging
+import re
 import types
+from collections.abc import Callable, Iterable
 from functools import cache, wraps
 from itertools import groupby
-from typing import (  # noqa: UP035
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import ClassVar, cast
 
 import spacy
 from dateutil import parser
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
+    Pattern,
     PatternRecognizer,
     RecognizerRegistry,
     RecognizerResult,
@@ -46,6 +37,7 @@ from presidio_analyzer.predefined_recognizers import (
     AuTfnRecognizer,
     CreditCardRecognizer,
     DateRecognizer,
+    InAadhaarRecognizer,
     NhsRecognizer,
     UsBankRecognizer,
     UsLicenseRecognizer,
@@ -67,12 +59,42 @@ from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
+MIN_SCORE_FOR_ENHANCEMENT = 0.3
+
+_CONTEXT_TOKEN_SEPARATORS = re.compile(r"[^0-9a-z]+")
+
+
+def context_matches(recognizer_context: Iterable[str], context: list[str]) -> bool:
+    """
+    Whether any of the recognizer's context words is present in the given context
+    (the column name, split into its parts by `split_column_name`).
+
+    Single-word context entries are matched against whole tokens, never as substrings.
+    A plain `"cid" in "acid level"` test is true, which would boost the CVV recognizer on
+    any column whose name merely contains the letters of a context word -- `acid_level`,
+    `incident_count`, `decoder_ring` -- turning a 0.5 "3-4 digits" regex into a 1.0 match.
+    Multi-word entries keep substring semantics; they have no single token to compare against.
+    """
+    context_lower = " ".join(context).lower()
+    tokens = {token for token in _CONTEXT_TOKEN_SEPARATORS.split(context_lower) if token}
+
+    for ctx_word in recognizer_context:
+        word = ctx_word.lower()
+        parts = [part for part in _CONTEXT_TOKEN_SEPARATORS.split(word) if part]
+        if len(parts) == 1:
+            if parts[0] in tokens:
+                return True
+        elif word in context_lower:
+            return True
+
+    return False
+
 
 @cache
 def load_nlp_engine(
-    model_name: Optional[str] = None,  # noqa: UP045
-    supported_language: Optional[str] = None,  # noqa: UP045
-    classification_language: Optional[ClassificationLanguage] = None,  # noqa: UP045
+    model_name: str | None = None,
+    supported_language: str | None = None,
+    classification_language: ClassificationLanguage | None = None,
 ) -> SpacyNlpEngine:
     if classification_language:
         model_name = get_model_for_language(classification_language)
@@ -109,16 +131,14 @@ def build_analyzer_engine(
         recognizers=list(_get_all_pattern_recognizers()),
         supported_languages=[supported_language],
     )
-    analyzer_engine = AnalyzerEngine(
+    return AnalyzerEngine(
         nlp_engine=nlp_engine,
         supported_languages=[supported_language],
         registry=recognizer_registry,
     )
 
-    return analyzer_engine  # noqa: RET504
 
-
-def set_presidio_logger_level(log_level: Union[int, str] = logging.ERROR) -> None:  # noqa: UP007
+def set_presidio_logger_level(log_level: int | str = logging.ERROR) -> None:
     """
     Set the presidio logger to talk less about internal entities unless we are debugging.
     """
@@ -139,12 +159,13 @@ def _load_spacy_model(model_name: str) -> None:
         _ = spacy.load(model_name)
 
 
-def _get_all_entity_recognizer_classes() -> Iterable[Type[EntityRecognizer]]:  # noqa: UP006
+def _get_all_entity_recognizer_classes() -> Iterable[type[EntityRecognizer]]:
     """
     Iterate over all subclasses of the `EntityRecognizer` exposed
     in the predefined_recognizers module.
     """
-    for name in getattr(predefined_recognizers, "__all__", []):
+    exported: list[str] = list(getattr(predefined_recognizers, "__all__", []))
+    for name in exported:
         obj = getattr(predefined_recognizers, name, None)
         if inspect.isclass(obj) and issubclass(obj, EntityRecognizer):
             yield obj
@@ -157,10 +178,10 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
     def analyze(
         self,
         text: str,
-        entities: List[str],  # noqa: UP006
-        nlp_artifacts: Optional[NlpArtifacts] = None,  # noqa: UP045
-        regex_flags: Optional[int] = None,  # noqa: UP045
-    ) -> List[RecognizerResult]:  # noqa: UP006
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
         return super().analyze(
             self.sanitize_value(text, self.replacement_pairs),
             entities,
@@ -172,32 +193,71 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     CreditCardRecognizer
 )
-def credit_card_factory(**kwargs: Any) -> SanitizedCreditCardRecognizer:
+def credit_card_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> SanitizedCreditCardRecognizer:
     return SanitizedCreditCardRecognizer(
         patterns=patterns.credit_cards,
-        **kwargs,
+        supported_language=supported_language,
+        context=context,
     )
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     UsLicenseRecognizer
 )
-def us_license_factory(**kwargs: Any) -> UsLicenseRecognizer:
-    return UsLicenseRecognizer(patterns=patterns.us_driving_license, **kwargs)
+def us_license_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> UsLicenseRecognizer:
+    return UsLicenseRecognizer(
+        patterns=patterns.us_driving_license,
+        supported_language=supported_language,
+        context=context,
+    )
 
 
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     AuTfnRecognizer
 )
-def au_tfn_factory(**kwargs: Any) -> AuTfnRecognizer:
+def au_tfn_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> AuTfnRecognizer:
     return AuTfnRecognizer(
         patterns=patterns.au_tfn_number,
-        **kwargs,
+        supported_language=supported_language,
+        context=context,
+    )
+
+
+@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
+    InAadhaarRecognizer
+)
+def in_aadhaar_factory(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> InAadhaarRecognizer:
+    return InAadhaarRecognizer(
+        patterns=[
+            Pattern(
+                "AADHAAR",
+                r"(?<![0-9])(?<![0-9]{4}[- ])[0-9]{4}(?:[- ]?[0-9]{4}){2}(?![- ]?[0-9])",
+                0.01,
+            )
+        ],
+        supported_language=supported_language,
+        context=context,
     )
 
 
 class ContextAwareNhsRecognizer(NhsRecognizer):
-    TIMESTAMP_KEYWORDS: Set[str] = {  # noqa: RUF012, UP006
+    TIMESTAMP_KEYWORDS: ClassVar[set[str]] = {
         "time",
         "timestamp",
         "date",
@@ -228,11 +288,11 @@ class ContextAwareNhsRecognizer(NhsRecognizer):
     def enhance_using_context(
         self,
         text: str,
-        raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
-        other_raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
+        raw_recognizer_results: list[RecognizerResult],
+        other_raw_recognizer_results: list[RecognizerResult],
         nlp_artifacts: NlpArtifacts,
-        context: Optional[List[str]] = None,  # noqa: UP006, UP045
-    ) -> List[RecognizerResult]:  # noqa: UP006
+        context: list[str] | None = None,
+    ) -> list[RecognizerResult]:
         """Enhance confidence score using context of the entity.
 
         Filter out NHS number false positives when context suggests
@@ -256,7 +316,7 @@ class ContextAwareNhsRecognizer(NhsRecognizer):
 
         return raw_recognizer_results
 
-    def _is_timestamp_context(self, context: List[str]) -> bool:  # noqa: UP006
+    def _is_timestamp_context(self, context: list[str]) -> bool:
         """Check if the context contains timestamp-related keywords."""
         context_lower = {word.lower() for word in context}
         return bool(context_lower & self.TIMESTAMP_KEYWORDS)
@@ -265,12 +325,19 @@ class ContextAwareNhsRecognizer(NhsRecognizer):
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     NhsRecognizer
 )
-def nhs_recognizer(**kwargs: Any) -> NhsRecognizer:
-    return ContextAwareNhsRecognizer(**kwargs)
+def nhs_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> NhsRecognizer:
+    return ContextAwareNhsRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
 
 
 class ValidatedDateRecognizer(DateRecognizer):
-    def validate_result(self, pattern_text: str) -> Optional[bool]:  # noqa: UP045
+    def validate_result(self, pattern_text: str) -> bool | None:
         try:
             _ = parser.parse(pattern_text)
         except Exception as e:
@@ -285,19 +352,26 @@ class ValidatedDateRecognizer(DateRecognizer):
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     DateRecognizer
 )
-def date_recognizer(**kwargs: Any) -> ValidatedDateRecognizer:
-    return ValidatedDateRecognizer(**kwargs)
+def date_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ValidatedDateRecognizer:
+    return ValidatedDateRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
 
 
 class ContextAwareUsBankRecognizer(UsBankRecognizer):
     def enhance_using_context(
         self,
         text: str,
-        raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
-        other_raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
+        raw_recognizer_results: list[RecognizerResult],
+        other_raw_recognizer_results: list[RecognizerResult],
         nlp_artifacts: NlpArtifacts,
-        context: Optional[List[str]] = None,  # noqa: UP006, UP045
-    ) -> List[RecognizerResult]:  # noqa: UP006
+        context: list[str] | None = None,
+    ) -> list[RecognizerResult]:
         """Enhance confidence score using context of the entity.
 
         Boosts the very low scores of the patterns
@@ -312,10 +386,10 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
                               accuracy of the context enhancement process
         :param context: list of context words
         """
-        if context is None:
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not context or not self.context or not context_matches(self.context, context):
             return raw_recognizer_results
-
-        context_lower = " ".join(context).lower()
 
         for result in raw_recognizer_results:
             # if previously enhanced, then ignore
@@ -324,17 +398,16 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
             ):
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in self.context):
-                original_score = result.score
-                result.score = self.MAX_SCORE
+            original_score = result.score
+            result.score = self.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {self.context})"
+            )
 
         return raw_recognizer_results
 
@@ -342,8 +415,15 @@ class ContextAwareUsBankRecognizer(UsBankRecognizer):
 @recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
     UsBankRecognizer
 )
-def eager_us_bank_recognizer(**kwargs: Any) -> ContextAwareUsBankRecognizer:
-    return ContextAwareUsBankRecognizer(**kwargs)
+def eager_us_bank_recognizer(
+    *,
+    supported_language: str = SUPPORTED_LANG,
+    context: list[str] | None = None,
+) -> ContextAwareUsBankRecognizer:
+    return ContextAwareUsBankRecognizer(
+        supported_language=supported_language,
+        context=context,
+    )
 
 
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
@@ -352,7 +432,7 @@ def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
             try:
                 # Try to instantiate the recognizer
                 factory = cast(
-                    Callable[..., PatternRecognizer],  # noqa: TC006
+                    "Callable[..., PatternRecognizer]",
                     recognizer_factories.get(  # pyright: ignore[reportUnknownMemberType]
                         cls, cls
                     ),
@@ -376,9 +456,9 @@ def apply_confidence_threshold(
         def analyze(
             instance: EntityRecognizer,  # pyright: ignore[reportUnusedParameter]
             text: str,
-            entities: List[str],  # noqa: UP006
+            entities: list[str],
             nlp_artifacts: NlpArtifacts,
-        ) -> List[RecognizerResult]:  # noqa: UP006
+        ) -> list[RecognizerResult]:
             results = original_analyze(text, entities, nlp_artifacts)
             return [result for result in results if result.score >= threshold]
 
@@ -389,18 +469,17 @@ def apply_confidence_threshold(
 
 
 def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
-    MIN_SCORE_FOR_ENHANCEMENT = 0.3  # noqa: N806
     old_enhancing_function = recognizer.enhance_using_context
 
     @wraps(old_enhancing_function)
     def wrapped(
         rec: EntityRecognizer,
         text: str,
-        raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
-        other_raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
+        raw_recognizer_results: list[RecognizerResult],
+        other_raw_recognizer_results: list[RecognizerResult],
         nlp_artifacts: NlpArtifacts,
-        context: Optional[List[str]] = None,  # noqa: UP006, UP045
-    ) -> List[RecognizerResult]:  # noqa: UP006
+        context: list[str] | None = None,
+    ) -> list[RecognizerResult]:
         results = old_enhancing_function(
             text,
             raw_recognizer_results,
@@ -409,12 +488,12 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             context,
         )
 
-        if not rec.context or not context:
-            # If no context is given or the recognizer does not support it,
-            # then ignore this
+        # The match depends only on the recognizer and the column, not on the individual
+        # result, so resolve it once instead of re-tokenizing the context for every result.
+        if not rec.context or not context or not context_matches(rec.context, context):
+            # If no context is given, the recognizer does not support it, or none of its
+            # context words match the column, then ignore this
             return results
-
-        context_lower = " ".join(context).lower()
 
         for result in results:
             # if previously enhanced, then ignore
@@ -427,17 +506,16 @@ def enhance_using_context(recognizer: EntityRecognizer) -> EntityRecognizer:
             if result.score < MIN_SCORE_FOR_ENHANCEMENT:
                 continue
 
-            if any(ctx_word.lower() in context_lower for ctx_word in rec.context):
-                original_score = result.score
-                result.score = rec.MAX_SCORE
+            original_score = result.score
+            result.score = rec.MAX_SCORE
 
-                result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
-                    RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-                ] = True
+            result.recognition_metadata[  # pyright: ignore[reportUnknownMemberType]
+                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
+            ] = True
 
-                logger.debug(
-                    f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
-                )
+            logger.debug(
+                f"Enhanced {result.entity_type} score: {original_score:.2f} → {result.score:.2f} (context: {rec.context})"
+            )
 
         return results
 
@@ -456,11 +534,11 @@ def filter_enhanced_results_below_threshold(
         def wrapped(
             rec: EntityRecognizer,  # pyright: ignore[reportUnusedParameter]
             text: str,
-            raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
-            other_raw_recognizer_results: List[RecognizerResult],  # noqa: UP006
+            raw_recognizer_results: list[RecognizerResult],
+            other_raw_recognizer_results: list[RecognizerResult],
             nlp_artifacts: NlpArtifacts,
-            context: Optional[List[str]] = None,  # noqa: UP006, UP045
-        ) -> List[RecognizerResult]:  # noqa: UP006
+            context: list[str] | None = None,
+        ) -> list[RecognizerResult]:
             results = old_enhancing_function(
                 text,
                 raw_recognizer_results,
@@ -489,11 +567,11 @@ def decorate_recognizer(
     return decorator
 
 
-def explain_recognition_results(results: List[RecognizerResult]) -> str:  # noqa: UP006
+def explain_recognition_results(results: list[RecognizerResult]) -> str:
     """Builds a verbose explanation of the recognition results taking into account multiple values"""
 
     def _get_getter(res: RecognizerResult) -> str:
-        return cast(Dict[str, str], res.recognition_metadata).get(  # noqa: TC006, UP006
+        return cast("dict[str, str]", res.recognition_metadata).get(
             presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
             presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
         )
@@ -507,7 +585,7 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:  # noqa
     for recognizer_identifier, group in grouped_results:
         group_list = list(group)
 
-        recognizer_name: str = cast(Dict[str, str], group_list[0].recognition_metadata).get(  # noqa: TC006, UP006
+        recognizer_name: str = cast("dict[str, str]", group_list[0].recognition_metadata).get(
             presidio_constants.RECOGNIZER_METADATA_NAME, recognizer_identifier
         )
         results_count = len(group_list)
@@ -524,7 +602,7 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:  # noqa
             + "\n"
         )
 
-        patterns_matched: Set[Tuple[str, float]] = set()  # noqa: UP006
+        patterns_matched: set[tuple[str, float]] = set()
         for result in group_list:
             if (
                 result.analysis_explanation is None  # pyright: ignore[reportUnnecessaryComparison]

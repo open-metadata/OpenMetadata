@@ -16,6 +16,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import DataInsightProgressBar from './DataInsightProgressBar';
 
+jest.mock('../../hooks/insights/useDataInsightChartColors', () => ({
+  useDataInsightChartColors: jest.fn().mockReturnValue({
+    progress: '#123456',
+  }),
+}));
+
 const MOCK_DATA = {
   changeInValue: -0.32000000000000006,
   className: 'm-b-md',
@@ -65,5 +71,15 @@ describe('Test DataInsightProgressBar Component', () => {
     const progressBarLabel = screen.getByText('CustomStatistic.component');
 
     expect(progressBarLabel).toBeInTheDocument();
+  });
+
+  it('uses the active theme color for the progress stroke', async () => {
+    const { container } = render(<DataInsightProgressBar {...MOCK_DATA} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(container.querySelector('.ant-progress-bg')).toHaveStyle({
+      backgroundColor: '#123456',
+    });
   });
 });

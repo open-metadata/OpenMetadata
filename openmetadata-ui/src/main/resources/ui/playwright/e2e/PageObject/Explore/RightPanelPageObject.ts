@@ -337,6 +337,36 @@ export class RightPanelPageObject {
     );
   }
 
+  private static resolveConfig(
+    configKey: string,
+    entityTypeLabel: string
+  ): DataAssetConfig {
+    return (
+      RightPanelPageObject.DATA_ASSET_CONFIGS[configKey] ?? {
+        entityType: entityTypeLabel,
+        availableTabs: [
+          RIGHT_PANEL_TAB.OVERVIEW,
+          RIGHT_PANEL_TAB.LINEAGE,
+          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
+        ],
+        supportsCustomProperties: true,
+      }
+    );
+  }
+
+  /** Static tab-availability check usable at test-collection time (no browser/page object). */
+  public static isTabAvailableForEntity(
+    entity: EntityClass,
+    tabName: string
+  ): boolean {
+    const entityType = entity.getType();
+
+    return RightPanelPageObject.resolveConfig(
+      entityType,
+      entityType
+    ).availableTabs.includes(tabName.toLowerCase());
+  }
+
   constructor(page: Page, entity?: EntityClass) {
     this.page = page;
 
@@ -383,19 +413,10 @@ export class RightPanelPageObject {
   public setEntityConfig(entity: EntityClass): void {
     this.entityEndpoint = entity.endpoint;
     const entityType = entity.getType();
-    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
-
-    if (!this.entityConfig) {
-      this.entityConfig = {
-        entityType,
-        availableTabs: [
-          RIGHT_PANEL_TAB.OVERVIEW,
-          RIGHT_PANEL_TAB.LINEAGE,
-          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
-        ],
-        supportsCustomProperties: true,
-      };
-    }
+    this.entityConfig = RightPanelPageObject.resolveConfig(
+      entityType,
+      entityType
+    );
   }
 
   /**
@@ -404,18 +425,10 @@ export class RightPanelPageObject {
    */
   public setEntityConfigByType(assetType: string): void {
     const configKey = RightPanelPageObject.getConfigKey(assetType);
-    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[configKey];
-    if (!this.entityConfig) {
-      this.entityConfig = {
-        entityType: assetType,
-        availableTabs: [
-          RIGHT_PANEL_TAB.OVERVIEW,
-          RIGHT_PANEL_TAB.LINEAGE,
-          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
-        ],
-        supportsCustomProperties: true,
-      };
-    }
+    this.entityConfig = RightPanelPageObject.resolveConfig(
+      configKey,
+      assetType
+    );
   }
 
   /**
@@ -948,7 +961,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    await this.pageLoader.waitFor({ state: 'detached' });
+    await expect(this.pageLoader).toHaveCount(0, { timeout: 10000 });
   }
 
   /**

@@ -50,17 +50,18 @@ export interface AvatarProps {
    */
   focusable?: boolean;
   style?: CSSProperties;
+  'data-testid'?: string;
 }
 
 const styles = {
   xxs: {
     root: 'tw:size-4 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[8px] tw:font-semibold',
     icon: 'tw:size-3',
   },
   xs: {
     root: 'tw:size-6 tw:outline-[0.5px] tw:-outline-offset-[0.5px]',
-    initials: 'tw:text-xs tw:font-semibold',
+    initials: 'tw:text-[10px] tw:font-semibold',
     icon: 'tw:size-4',
   },
   sm: {
@@ -104,6 +105,7 @@ export const Avatar = ({
   focusable = false,
   className,
   style,
+  'data-testid': dataTestId,
 }: AvatarProps) => {
   const [isFailed, setIsFailed] = useState(false);
 
@@ -122,7 +124,7 @@ export const Avatar = ({
 
     if (initials) {
       return (
-        <span className={cx('tw:text-quaternary', styles[size].initials)}>
+        <span className={cx('tw:text-current', styles[size].initials)}>
           {initials}
         </span>
       );
@@ -170,7 +172,7 @@ export const Avatar = ({
     <div
       data-avatar
       className={cx(
-        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-avatar-bg tw:outline-transparent',
+        'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-transparent',
         // Focus styles
         focusable &&
           'tw:group-outline-focus-ring tw:group-focus-visible:outline-2 tw:group-focus-visible:outline-offset-2',
@@ -178,6 +180,7 @@ export const Avatar = ({
         styles[size].root,
         className
       )}
+      data-testid={dataTestId}
       style={style}>
       {renderMainContent()}
       {renderBadgeContent()}

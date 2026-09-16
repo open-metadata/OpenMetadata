@@ -268,6 +268,101 @@ public static SubjectContext getSubjectContext(SecurityContext securityContext) 
 - If alice lacks permission to update a table, the operation fails
 - This prevents privilege escalation
 
+### 4.4 Bot Impersonation Grants and RBAC Scoping (v1.1 — June 2026)
+
+This section supersedes the parts of 4.1/4.2 that the initial implementation simplified, and addresses two issues:
+
+- **OpenMetadata #28043**: custom bots cannot enable impersonation. The `allowImpersonation` flag exists only on the `user` entity, is not part of `createUser.json`/`createBot.json`, and PATCHing it on the bot user fails (500 in 1.12.x). Only application bots (`CreateApp.allowBotImpersonation`) could ever receive the flag.
+- **Collate #3581**: bots with impersonation enabled can impersonate **admin** users. Admins cannot be restricted via RBAC, so this is privilege escalation. Blocking it outright breaks workflows that legitimately need it (e.g. AskCollate), so the control must be configurable.
+
+#### 4.4.1 Design Decision: Single Flag + RBAC Scope
+
+The split of responsibility is:
+
+| Question | Mechanism |
+|----------|-----------|
+| *Can this bot impersonate at all?* | `allowImpersonation` boolean on the bot user — an admin-granted capability, set at bot creation |
+| *Who can this bot impersonate?* | Standard policy evaluation of the `Impersonate` operation with the **target user as the resource** |
+
+A second boolean (`allowAdminImpersonation`) was considered and rejected: target scoping belongs in policies/rules, where it is already expressive (conditions, deny rules, teams, domains) and admin-manageable without code changes.
+
+#### 4.4.1.1 Why a dedicated flag and not RBAC alone
+
+This question recurs ("`Impersonate` is already an operation — drop the flag, grant it through a role like everything else"). It has been evaluated and **rejected**. The flag and RBAC answer two different questions, and collapsing them opens a real privilege-escalation gap:
+
+- **The flag is the enablement-authority gate**: *may this bot impersonate at all?* — admin-only, set at bot creation, enforced in `DefaultAuthorizer` **independently of RBAC**.
+- **RBAC is the target-scope gate**: *whom may it impersonate?* — policies, conditions, deny rules.
+
+If enablement were pure RBAC, "who can enable impersonation" would collapse into "who can grant the `Impersonate` operation" — i.e. anyone with `EditRoles` on a bot user or `EditPolicy`+`Create` on policies. **That permission set is routinely delegated to non-admins** (orgs delegate RBAC management). Impersonation — which lets a bot act as any user, including bypassing controls admins can't otherwise be restricted by — would then become grantable by non-admins. The flag keeps enablement admin-only **regardless of how RBAC editing is delegated**.
+
+The flag is also the *robust* control, not merely an extra layer. Under RBAC-only, the `Impersonate` grant can arrive through **many** paths — a direct role, a team's `defaultRoles` the bot inherits, an inherited policy, or a broad `["All"]`-operations policy (subsumption). Guaranteeing "admin-only" would mean guarding every one of those write paths. The flag is instead a **single chokepoint**: one admin-only, creation-time write, checked before any policy evaluation. It is belt-and-suspenders — **even if `Impersonate` leaks into a bot's effective policy, no flag means no impersonation.**
+
+Two facts bound the surface and explain what the flag does and does not cover:
+
+- `JwtFilter` rejects the `X-Impersonate-User` header for any non-bot principal (`"Only bot users can impersonate other users"`). So a **regular user self-granting** `Impersonate` achieves nothing — they are not a bot. By default they also cannot edit RBAC. This case is already closed without the flag.
+- The case the flag uniquely closes is a **non-admin RBAC delegate enabling impersonation on a bot**. RBAC-only would permit it; the flag does not.
+
+Conclusion: the flag is not redundant with RBAC — it is the admin-only, single-chokepoint enablement gate that RBAC delegation cannot widen. Do not remove it without replacing this property. The only redundancy ever identified was cosmetic: `BotImpersonationRole` is auto-attached when the flag is set, so the two travel together for UX. That convenience does not make the flag itself redundant.
+
+#### 4.4.2 Granting the Capability (`createBot.json`)
+
+`createBot.json` gains an optional `allowImpersonation` boolean with **tri-state semantics** (no schema default, so an absent field is `null`):
+
+- `null` (absent) — keep the bot user's current value. Critical for PUT-based upserts (ingestion re-applies bots via `PUT /v1/bots`); an absent field must not silently revoke the grant.
+- `true` — grant. **Admin-only**, and **only when the bot is being created**. Enabling impersonation on an existing bot is rejected with 400: an existing bot's token is already distributed, and flipping the flag would silently upgrade every holder of that token. Granting at creation forces a new bot + new token + deliberate admin action.
+- `false` — revoke. Admin-only, allowed at any time (privilege reduction).
+
+When the grant is applied, `BotResource` propagates the flag to the **bot user** entity (single source of truth — the authorizer reads it from the user) and attaches the seeded `BotImpersonationRole` to the bot user so the capability works out of the box. Revoking removes the flag and detaches that role.
+
+`User.allowImpersonation` becomes effectively read-only on the user APIs:
+
+- `PATCH /v1/users` changing it → 400 `user attribute allowImpersonation can't be modified` (replaces the unhandled 500 from #28043).
+- `PUT /v1/users` always carries over the stored value (fixes a latent bug where any PUT on a bot user nulled the flag, because `CreateUser` has no such field).
+
+#### 4.4.3 Scoping Who Can Be Impersonated (policies)
+
+`checkImpersonationAuthorization` in `DefaultAuthorizer` evaluates, on every impersonated request:
+
+1. The impersonating principal is a bot with `allowImpersonation=true` (capability gate, unchanged).
+2. `PolicyEvaluator.hasPermission(botSubjectContext, targetUserResourceContext, OperationContext(user, IMPERSONATE))` — full policy evaluation, with the target user as the resource. This replaces the previous flat scan of role policies for the `Impersonate` operation, which ignored rule `effect` (a `deny` rule counted as allow) and could not discriminate targets.
+
+Because this is the standard evaluation path, deny-overrides-allow, SpEL conditions, and compiled-rule caching all apply. Two new condition functions make target discrimination possible:
+
+| Function | True when |
+|----------|-----------|
+| `isAdminUser()` | the resource (target user) is an admin |
+| `isBotUser()` | the resource (target user) is a bot |
+
+Existing functions compose for finer scoping: `matchTeam()` (team-scoped impersonation), `hasDomain()`, `matchAnyTag()`.
+
+The `Impersonate` operation is registered as a `user`-resource operation, so the policy editor offers it on the `user` resource and the functions appear in the condition dropdown (`/v1/policies/functions`).
+
+`Impersonate` is **explicit-grant-only**: `CompiledRule.matchOperation` excludes it from `ALL`/`EditAll`/`ViewAll` subsumption. A broad god-mode policy (`operations: ["All"]`) therefore neither grants nor *appears* to grant impersonation; only a rule naming `Impersonate` does. With the flag in place this is defense-in-depth (the flag already gates enablement), but it keeps permission listings honest and prevents impersonation from silently riding along with broad policies.
+
+#### 4.4.4 Seed Policies and Defaults
+
+- **`BotImpersonationPolicy`** (new, the default): allow `Impersonate` on `user`, **no deny rules**. **Backward-compatible by default**: a freshly granted bot can impersonate any user, *including admins*, matching the pre-existing `ApplicationBotImpersonationPolicy` (`All`/allow) behavior. This is deliberate — silently denying admin impersonation would break workflows (e.g. AskCollate) that rely on it.
+- **`BotImpersonationRole`** (new): `DefaultBotPolicy` + `BotImpersonationPolicy`. Auto-attached at grant time.
+- **`BotNonAdminImpersonationPolicy`** (new, opt-in restriction): allow `Impersonate` on `user` + **deny `isAdminUser()`**. Admins who want to prevent a bot from impersonating admins attach this instead of the permissive default.
+- **`BotNonAdminImpersonationRole`** (new): `DefaultBotPolicy` + `BotNonAdminImpersonationPolicy`. The directly-assignable form of the opt-in restriction — swap a bot's `BotImpersonationRole` for this to deny admin targets.
+- **`ApplicationBotImpersonationPolicy`** (existing, `All`/allow) is unchanged: application bots created with `allowBotImpersonation` (e.g. AskCollate) keep their current behavior, including admin impersonation.
+
+Restriction is therefore **opt-in**, not default — the "configurable policy control" Collate #3581 asks for, delivered without breaking any bot that currently impersonates admins. The `isAdminUser()` / `isBotUser()` condition functions and deny-overrides-allow semantics let admins author any narrower scope (per-team, per-domain, deny-bot, etc.).
+
+**No migration needed.** All four impersonation seeds (`BotImpersonationPolicy`, `BotNonAdminImpersonationPolicy`, and their roles) are new in this change — no released version has them. Seed loading is insert-if-missing, so a fresh install and any upgrade from a prior release both get the current (permissive) JSON seeded directly. There is no prior on-disk state to convert, so no Flyway migration or startup reconciliation is required.
+
+#### 4.4.5 Threat-Model Delta
+
+| Threat | Before | After |
+|--------|--------|-------|
+| Bot impersonates admin | Allowed for any impersonation bot | Allowed by default (backward-compatible); deniable opt-in via `BotNonAdminImpersonationPolicy` (`isAdminUser()` deny) |
+| Bot impersonates another bot (token laundering) | Allowed | Allowed by default; deniable via an `isBotUser()` deny rule in a custom policy |
+| Flag flipped on live bot via PATCH | 500, undefined behavior (works on newer builds) | 400, read-only; grant is creation-time via `createBot` |
+| Flag silently wiped by PUT on bot user | Yes (latent bug) | PUT carries over stored value |
+| `deny` rule with `Impersonate` op | Counted as **allow** | Honored (standard evaluator) |
+| Non-admin RBAC delegate enables impersonation on a bot | n/a | Blocked — enablement is the admin-only flag, independent of RBAC editing (see 4.4.1.1) |
+| Broad `["All"]` policy grants impersonation by subsumption | Would grant | `Impersonate` excluded from `ALL`/`EditAll`/`ViewAll` subsumption; flag still required |
+
 ## 5. Data Model Changes
 
 ### 5.1 JSON Schema Updates
@@ -1585,7 +1680,8 @@ components:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-10-01
+**Document Version**: 1.1
+**Last Updated**: 2026-06-12
 **Authors**: OpenMetadata Engineering
+**v1.1**: Custom-bot impersonation grants via `createBot.json`, RBAC target scoping (`isAdminUser()`/`isBotUser()` conditions), read-only `User.allowImpersonation` on user APIs, `Impersonate` excluded from `ALL` subsumption. Default `BotImpersonationPolicy` is **permissive/backward-compatible** (admin impersonation stays allowed); admin restriction is opt-in via `BotNonAdminImpersonationPolicy`/`BotNonAdminImpersonationRole`. All seeds are new, so no migration is needed. See section 4.4.
 **Status**: Draft for Review

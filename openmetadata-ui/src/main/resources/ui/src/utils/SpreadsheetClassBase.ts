@@ -27,7 +27,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getSpreadsheetDetailsPageTabs,

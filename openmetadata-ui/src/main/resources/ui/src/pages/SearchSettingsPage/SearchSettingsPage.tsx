@@ -21,6 +21,7 @@ import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.s
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import FieldValueBoostList from '../../components/SearchSettings/FieldValueBoostList/FieldValueBoostList';
@@ -42,6 +43,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   getSettingsByType,
+  restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -51,6 +53,132 @@ import { getSearchSettingCategories } from '../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-settings.less';
 import { UpdateConfigParams } from './searchSettings.interface';
+
+interface SearchBoostsSectionProps {
+  searchConfig?: SearchSettings;
+  isUpdating: boolean;
+  isLoading: boolean;
+  showNewTermBoost: boolean;
+  showFieldValueBoostModal: boolean;
+  termBoostsChanged: boolean;
+  onSaveTermBoost: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onAddNewTermBoost: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onDeleteTermBoost: (value: string) => void;
+  onTermBoostChange: (newTermBoost: TermBoost) => void;
+  onAddFieldValueBoost: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onDeleteFieldValueBoost: (fieldName: string) => Promise<void>;
+  onEditFieldValueBoost: (boost: FieldValueBoost) => void;
+}
+
+const SearchBoostsSection = ({
+  searchConfig,
+  isUpdating,
+  isLoading,
+  showNewTermBoost,
+  showFieldValueBoostModal,
+  termBoostsChanged,
+  onSaveTermBoost,
+  onAddNewTermBoost,
+  onDeleteTermBoost,
+  onTermBoostChange,
+  onAddFieldValueBoost,
+  onDeleteFieldValueBoost,
+  onEditFieldValueBoost,
+}: SearchBoostsSectionProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
+      <Collapse
+        accordion
+        bordered={false}
+        className="w-full search-settings-collapse">
+        <Collapse.Panel
+          className="term-boost-panel"
+          header={
+            <Row className="d-flex items-center justify-between w-full">
+              <Col className="d-flex items-center gap-4">
+                <Typography.Text className="text-sm font-semibold m-0">
+                  {t('label.term-boost')}
+                </Typography.Text>
+                <span className="count-label">
+                  {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
+                </span>
+              </Col>
+              <Col className="d-flex items-center gap-2">
+                <Button
+                  className="term-boost-save-btn"
+                  data-testid="term-boost-save-btn"
+                  disabled={!termBoostsChanged}
+                  onClick={onSaveTermBoost}>
+                  {t('label.save')}
+                </Button>
+                <Button
+                  className="term-boost-add-btn"
+                  data-testid="term-boost-add-btn"
+                  disabled={isUpdating || showNewTermBoost}
+                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  type="primary"
+                  onClick={onAddNewTermBoost}>
+                  {t('label.add')}
+                </Button>
+              </Col>
+            </Row>
+          }
+          key="1">
+          <Col span={24}>
+            <TermBoostList
+              handleDeleteTermBoost={onDeleteTermBoost}
+              handleTermBoostChange={onTermBoostChange}
+              showNewTermBoost={showNewTermBoost}
+              termBoostCardClassName="settings-term-boost-card"
+              termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
+            />
+          </Col>
+        </Collapse.Panel>
+        <Collapse.Panel
+          className="field-value-boost-panel"
+          header={
+            <Row className="d-flex items-center justify-between w-full">
+              <Col className="d-flex items-center gap-4">
+                <Typography.Text className="text-sm font-semibold m-0">
+                  {t('label.field-value-boost')}
+                </Typography.Text>
+                <span className="count-label">
+                  {searchConfig?.globalSettings?.fieldValueBoosts?.length ?? 0}
+                </span>
+              </Col>
+              <Col className="d-flex items-center gap-2">
+                <Button
+                  className="field-value-boost-add-btn"
+                  data-testid="add-field-value-boost-btn"
+                  disabled={isUpdating || showFieldValueBoostModal}
+                  icon={<Icon className="text-sm" component={PlusOutlined} />}
+                  onClick={onAddFieldValueBoost}>
+                  {t('label.add')}
+                </Button>
+              </Col>
+            </Row>
+          }
+          key="2">
+          <Row className="p-t-sm w-full">
+            <div className="field-value-boost-table-container">
+              <FieldValueBoostList
+                dataTestId="field-value-boost-table"
+                fieldValueBoosts={
+                  searchConfig?.globalSettings?.fieldValueBoosts ?? []
+                }
+                handleDeleteFieldValueBoost={onDeleteFieldValueBoost}
+                handleEditFieldValueBoost={onEditFieldValueBoost}
+                isLoading={isLoading}
+              />
+            </div>
+          </Row>
+        </Collapse.Panel>
+      </Collapse>
+    </Row>
+  );
+};
 
 const SearchSettingsPage = () => {
   const { t } = useTranslation();
@@ -71,6 +199,7 @@ const SearchSettingsPage = () => {
   >();
   const [hybridWeightsChanged, setHybridWeightsChanged] =
     useState<boolean>(false);
+  const [showResetModal, setShowResetModal] = useState<boolean>(false);
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -165,6 +294,24 @@ const SearchSettingsPage = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleResetToDefault = async () => {
+    try {
+      setIsUpdating(true);
+      await restoreSettingsConfig(SettingType.SearchSettings);
+      await fetchSearchConfig();
+      showSuccessToast(
+        t('server.update-entity-success', {
+          entity: t('label.search-setting-plural'),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsUpdating(false);
+      setShowResetModal(false);
     }
   };
 
@@ -362,9 +509,19 @@ const SearchSettingsPage = () => {
       </Row>
       <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
         <Col span={24}>
-          <Typography.Title className="text-sm font-semibold" level={5}>
-            {t('label.global-setting-plural')}
-          </Typography.Title>
+          <Row align="middle" justify="space-between">
+            <Typography.Title className="text-sm font-semibold m-b-0" level={5}>
+              {t('label.global-setting-plural')}
+            </Typography.Title>
+            {isAdminUser && (
+              <Button
+                data-testid="reset-search-settings-btn"
+                disabled={isUpdating}
+                onClick={() => setShowResetModal(true)}>
+                {t('label.reset')}
+              </Button>
+            )}
+          </Row>
         </Col>
         <Col span={24}>
           <Row className="p-x-xs global-settings-cards-container" gutter={0}>
@@ -472,100 +629,21 @@ const SearchSettingsPage = () => {
               </Col>
             </Row>
           )}
-          <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
-            <Collapse
-              accordion
-              bordered={false}
-              className="w-full search-settings-collapse">
-              <Collapse.Panel
-                className="term-boost-panel"
-                header={
-                  <Row className="d-flex items-center justify-between w-full">
-                    <Col className="d-flex items-center gap-4">
-                      <Typography.Text className="text-sm font-semibold m-0">
-                        {t('label.term-boost')}
-                      </Typography.Text>
-                      <span className="count-label">
-                        {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
-                      </span>
-                    </Col>
-                    <Col className="d-flex items-center gap-2">
-                      <Button
-                        className="term-boost-save-btn"
-                        data-testid="term-boost-save-btn"
-                        disabled={!termBoostsChanged}
-                        onClick={handleSaveTermBoost}>
-                        {t('label.save')}
-                      </Button>
-                      <Button
-                        className="term-boost-add-btn"
-                        data-testid="term-boost-add-btn"
-                        disabled={isUpdating || showNewTermBoost}
-                        icon={
-                          <Icon className="text-sm" component={PlusOutlined} />
-                        }
-                        type="primary"
-                        onClick={handleAddNewTermBoost}>
-                        {t('label.add')}
-                      </Button>
-                    </Col>
-                  </Row>
-                }
-                key="1">
-                <Col span={24}>
-                  <TermBoostList
-                    handleDeleteTermBoost={handleDeleteTermBoost}
-                    handleTermBoostChange={handleTermBoostChange}
-                    showNewTermBoost={showNewTermBoost}
-                    termBoostCardClassName="settings-term-boost-card"
-                    termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
-                  />
-                </Col>
-              </Collapse.Panel>
-              <Collapse.Panel
-                className="field-value-boost-panel"
-                header={
-                  <Row className="d-flex items-center justify-between w-full">
-                    <Col className="d-flex items-center gap-4">
-                      <Typography.Text className="text-sm font-semibold m-0">
-                        {t('label.field-value-boost')}
-                      </Typography.Text>
-                      <span className="count-label">
-                        {searchConfig?.globalSettings?.fieldValueBoosts
-                          ?.length ?? 0}
-                      </span>
-                    </Col>
-                    <Col className="d-flex items-center gap-2">
-                      <Button
-                        className="field-value-boost-add-btn"
-                        data-testid="add-field-value-boost-btn"
-                        disabled={isUpdating || showFieldValueBoostModal}
-                        icon={
-                          <Icon className="text-sm" component={PlusOutlined} />
-                        }
-                        onClick={handleAddFieldValueBoost}>
-                        {t('label.add')}
-                      </Button>
-                    </Col>
-                  </Row>
-                }
-                key="2">
-                <Row className="p-t-sm w-full">
-                  <div className="field-value-boost-table-container">
-                    <FieldValueBoostList
-                      dataTestId="field-value-boost-table"
-                      fieldValueBoosts={
-                        searchConfig?.globalSettings?.fieldValueBoosts ?? []
-                      }
-                      handleDeleteFieldValueBoost={handleDeleteFieldValueBoost}
-                      handleEditFieldValueBoost={handleEditFieldValueBoost}
-                      isLoading={isLoading}
-                    />
-                  </div>
-                </Row>
-              </Collapse.Panel>
-            </Collapse>
-          </Row>
+          <SearchBoostsSection
+            isLoading={isLoading}
+            isUpdating={isUpdating}
+            searchConfig={searchConfig}
+            showFieldValueBoostModal={showFieldValueBoostModal}
+            showNewTermBoost={showNewTermBoost}
+            termBoostsChanged={termBoostsChanged}
+            onAddFieldValueBoost={handleAddFieldValueBoost}
+            onAddNewTermBoost={handleAddNewTermBoost}
+            onDeleteFieldValueBoost={handleDeleteFieldValueBoost}
+            onDeleteTermBoost={handleDeleteTermBoost}
+            onEditFieldValueBoost={handleEditFieldValueBoost}
+            onSaveTermBoost={handleSaveTermBoost}
+            onTermBoostChange={handleTermBoostChange}
+          />
         </Col>
       </Row>
 
@@ -586,6 +664,18 @@ const SearchSettingsPage = () => {
         }}
         onSave={handleSaveFieldValueBoost}
       />
+      {showResetModal && (
+        <ConfirmationModal
+          bodyText={t('message.reset-search-settings-confirmation')}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.reset')}
+          header={t('label.reset')}
+          isLoading={isUpdating}
+          visible={showResetModal}
+          onCancel={() => setShowResetModal(false)}
+          onConfirm={handleResetToDefault}
+        />
+      )}
     </PageLayoutV1>
   );
 };

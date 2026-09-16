@@ -40,6 +40,12 @@ export interface OpenLineageSettings {
      * 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
+    /**
+     * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+     * mode, resolved owners from the current event replace existing owners. In append mode,
+     * resolved owners are appended to active existing Pipeline owners.
+     */
+    ownershipUpdateMode?: OwnershipUpdateMode;
 }
 
 export enum EventTypeFilter {
@@ -49,4 +55,14 @@ export enum EventTypeFilter {
     Other = "OTHER",
     Running = "RUNNING",
     Start = "START",
+}
+
+/**
+ * Set how owners from OpenLineage job ownership facets update Pipeline owners. In replace
+ * mode, resolved owners from the current event replace existing owners. In append mode,
+ * resolved owners are appended to active existing Pipeline owners.
+ */
+export enum OwnershipUpdateMode {
+    Append = "append",
+    Replace = "replace",
 }

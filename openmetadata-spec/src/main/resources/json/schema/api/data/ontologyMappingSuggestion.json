@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyMappingSuggestion.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyMappingSuggestion",
+  "description": "A validated standards-mapping proposal represented as a Draft-ready operation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyMappingSuggestion",
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "operation": {
+      "$ref": "../../type/ontologyChangeOperation.json"
+    },
+    "targetLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    }
+  },
+  "required": [
+    "id",
+    "operation",
+    "targetLabel",
+    "confidence",
+    "rationale"
+  ],
+  "additionalProperties": false
+}

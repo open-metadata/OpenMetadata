@@ -13,21 +13,252 @@
 # openmetadata-integration-tests under the `ui-it` Maven profile. Runs the
 # external-mode matrix (ES + OS). Tracks EPIC #3731 / tickets #3767, #3792.
 #
-# The schedule trigger is intentionally disabled while the suite stabilises;
-# run on demand via workflow_dispatch (pick the branch to test as the ref).
-# Re-add `schedule: - cron: '0 2 * * *'` once the suite is green on main.
+# The schedule trigger is intentionally disabled while the suite stabilises. Run it
+# on demand via workflow_dispatch (pick the branch to test as the ref); it also runs
+# automatically on any PR that touches search-indexing code (see the `changes` job's
+# paths-filter), exercising this whole suite (both engines + search-it) against the PR head
+# in embedded mode. Re-add `schedule: - cron: '0 2 * * *'` once green on main.
+#
+# Topology:
+#   - changes: dorny/paths-filter deciding whether the search-indexing paths were touched;
+#     everything below is skipped when they were not, so the required `java-ui-it` gate still
+#     reports green on unrelated PRs.
+#   - build-image: builds the openmetadata-dist tarball and bakes the local
+#     openmetadata-server:jpw-snapshot image (BuildKit + GHA layer cache), saves it
+#     to a workflow artifact, and primes the Maven cache for downstream jobs.
+#   - ui-it-nightly (x2): matrix over [opensearch, elasticsearch]. Both download the
+#     pre-built image artifact, restore the Maven cache, then run `mvn verify -P ui-it`
+#     with OM_TEST_IMAGE pointing at the pre-loaded tag so ContainerizedServer skips
+#     its own build.
+#   - search-it-nightly: server-global destructive search ITs (tests/search/*IT.java) via
+#     `mvn verify -P search-it`. They run on the embedded bootstrap (testcontainers), not the
+#     baked image, so this job is independent of build-image and runs them serially.
+#   - java-ui-it: the required status check. Aggregates the three jobs above under `always()`.
 
-name: UI Integration Tests (Nightly)
+name: JavaUIIT Integration Tests Running on PRs
 
 on:
   workflow_dispatch:
+    inputs:
+      includeSsoBootstrap:
+        description: 'Also run @Tag("sso-bootstrap") UIITs (slower; second OM lifecycle)'
+        required: false
+        type: boolean
+        default: false
+      simpleReindexTables:
+        description: 'SimpleReindexTriggerUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'SimpleReindexTriggerUIIT topic cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'SimpleReindexTriggerUIIT dashboard cohort size'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'SimpleReindexTriggerUIIT pipeline cohort size'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'SearchAvailableDuringReindexUIIT table cohort size'
+        required: false
+        type: string
+        default: '5000'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
+  # Auto-run on PRs that modify search-indexing code: the full suite runs against the PR head in
+  # embedded mode (testcontainers), NOT the external cluster — so a change to the reindex app,
+  # search clients, or index mappings is validated before merge without anyone remembering a label.
+  # Uses `pull_request` (NOT pull_request_target) on purpose: fork PRs run WITHOUT secrets, so
+  # untrusted code never executes with credentials; same-repo branch PRs (the common case here)
+  # still get secrets and full check reporting.
+  #
+  # `java-ui-it` is a REQUIRED status check on main, so there is deliberately no `paths:` filter
+  # here: a path-filtered workflow never reports on PRs that miss the filter, and the required
+  # context would hang at "Expected — waiting for status" forever. Path selection lives in the
+  # `changes` job below instead (dorny/paths-filter), which skips the expensive jobs while the
+  # gate still reports green. `merge_group` is required for the same reason — without it the
+  # merge queue waits out `check_response_timeout_minutes` and fails.
+  pull_request:
+  merge_group:
 
 permissions:
   contents: read
   checks: write
+  pull-requests: read
+
+concurrency:
+  # One run per PR (or per ref for dispatch/cron); a new push cancels the prior in-flight run.
+  group: java-playwright-nightly-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  SERVER_IMAGE_TAG: openmetadata-server:jpw-snapshot
 
 jobs:
+  # Path selection for the required `java-ui-it` check. The workflow itself has no `paths:`
+  # filter (see the trigger comment); this job decides whether the 90-minute matrix actually
+  # runs. Keep this filter list as the single source of truth for "search-indexing code".
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      search: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.search }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            search:
+              # --- Production search-indexing code (openmetadata-service) ---
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/search/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/searchindex/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/search/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/testsupport/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/events/lifecycle/handlers/SearchIndexHandler.java'
+              # --- Index mappings + loader (canonical source lives in the spec module) ---
+              - 'openmetadata-spec/src/main/resources/elasticsearch/**'
+              - 'openmetadata-spec/src/main/java/org/openmetadata/search/**'
+              # --- The search ITs / UIITs, their test harness, and the Maven profiles that run them ---
+              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/search/**'
+              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**'
+              - 'openmetadata-integration-tests/src/test/java/org/openmetadata/playwright/scenarios/search/**'
+              - 'openmetadata-integration-tests/pom.xml'
+              # --- This workflow itself ---
+              - '.github/workflows/java-playwright-nightly.yml'
+
+  build-image:
+    needs: changes
+    if: ${{ needs.changes.outputs.search == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      ref-sha: ${{ steps.checkout.outputs.commit }}
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+        with:
+          # On a PR, test the PR head (the changed code). workflow_dispatch honours the
+          # dispatched ref so feature branches can validate the nightly matrix before merge.
+          # merge_group runs the merge-queue commit; cron/anything else is the default-branch
+          # head, which github.sha already is (EPIC #3731 / PR #28008).
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || github.sha) }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+
+      - name: Restore openmetadata-ui dist cache
+        # Only the next step (openmetadata-dist -am) transitively builds UI.
+        uses: ./.github/actions/cache-ui-dist
+
+      - name: Build openmetadata-dist tarball
+        # ContainerizedServer.buildLocalImageContainer needs
+        # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image.
+        # Dist is NOT a transitive dep of integration-tests, so the previous step
+        # doesn't produce it — build it explicitly here.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-dist -am
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build openmetadata-server image (with GHA layer cache)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/development/Dockerfile
+          tags: ${{ env.SERVER_IMAGE_TAG }}
+          load: true
+          # Shared scope across matrix entries so the cache primed by this build
+          # is reused by everything that runs this workflow on the same SHA (or
+          # later runs whose Dockerfile + dist tarball haven't changed).
+          cache-from: type=gha,scope=jpw-server-image
+          # Never WRITE from a merge_group run. The queue's gh-readonly-queue/*
+          # ref dies the moment its entry merges or is dequeued, but every
+          # buildkit-blob-* entry saved there (mode=max exports each layer —
+          # dozens per build, 0–380 MB each) stays charged against the repo's
+          # 10 GB LRU budget until evicted. Measured 2026-09-09: one queue ref
+          # alone held ~40 blobs and the repo sat at 18 GB, which evicted every
+          # main-scoped Playwright cache (golden fixture, distribution,
+          # ingestion image). Downstream, 231 of 235 merge_group Playwright runs
+          # in 24h missed the fixture cache and rebuilt it from scratch (~17 min
+          # each on the critical path). Reads stay unconditional so queue runs
+          # still benefit from a PR- or dispatch-primed scope; only those two
+          # events, which run on refs that outlive the run, may repopulate it.
+          # Same rule the Playwright reusable applies to its own saves.
+          cache-to: ${{ github.event_name != 'merge_group' && 'type=gha,scope=jpw-server-image,mode=max' || '' }}
+
+      - name: Export server image as artifact
+        run: |
+          docker save "${SERVER_IMAGE_TAG}" -o /tmp/jpw-server-image.tar
+          ls -lh /tmp/jpw-server-image.tar
+
+      - name: Upload server image artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: jpw-server-image-${{ github.run_id }}
+          path: /tmp/jpw-server-image.tar
+          retention-days: 1
+
   ui-it-nightly:
+    needs: [changes, build-image]
+    if: ${{ needs.changes.outputs.search == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -47,21 +278,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          # Cron always runs against main. workflow_dispatch honours the ref the
-          # workflow was dispatched against so feature branches can validate the
-          # nightly matrix before merge (EPIC #3731 / PR #28008).
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || github.sha) }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -71,7 +299,9 @@ jobs:
       - name: Install Ubuntu dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jq
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
 
       - name: Add /etc/hosts entry for mock OIDC server
         # The SSO test infrastructure (MockOidcServer) needs `om-mock-idp` to resolve to
@@ -81,9 +311,21 @@ jobs:
         run: echo "127.0.0.1 om-mock-idp" | sudo tee -a /etc/hosts
 
       - name: Build dependencies for integration-tests
+        # Maven cache primed by build-image makes this a fast restore-only invocation.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Download server image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: jpw-server-image-${{ github.run_id }}
+          path: /tmp
+
+      - name: Load server image into local Docker
+        run: |
+          docker load -i /tmp/jpw-server-image.tar
+          docker image ls "${SERVER_IMAGE_TAG}"
 
       - name: Install Playwright browsers
         run: |
@@ -100,21 +342,44 @@ jobs:
       - name: Run UI integration tests (${{ matrix.searchEngine }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # OM_TEST_IMAGE makes ContainerizedServer skip its in-test `docker build`
+          # and reuse the image artifact loaded above. Cuts ~10-90s per launch.
+          OM_TEST_IMAGE: ${{ env.SERVER_IMAGE_TAG }}
           # UiSessionExtension reads PW_VIDEO and records every test's BrowserContext
           # to target/playwright-videos when true. Kept off locally; on in CI for triage.
           PW_VIDEO: 'true'
         run: |
+          # Nightly bumps the per-test cohort sizes up to the historical stress numbers.
+          # PR runs use the smaller defaults baked into each test so `mvn verify` is fast.
+          # Sizes are workflow_dispatch inputs (defaults below) so they're tunable per run.
+          # Embedded nightly recreates a fresh stack each run, so data never persists — these
+          # small-footprint suites always create on the fly (jpw.data.mode=ingest). Static/ensure
+          # reuse only pays off against a cluster you keep around between runs, which no workflow
+          # here does; set OM_URL + OM_ADMIN_TOKEN to point the suites at one by hand.
+          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
+            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
+            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
+            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }} \
+            -Djpw.data.mode=ingest \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}"
+          # Opt-in for SSO bootstrap UIITs (second OM lifecycle); default off.
+          if [ "${{ github.event.inputs.includeSsoBootstrap }}" = "true" ]; then
+            SSO_PROPS="-Dui.it.excludedGroups="
+          else
+            SSO_PROPS=""
+          fi
           if [ "${{ matrix.searchEngine }}" = "elasticsearch" ]; then
-            mvn verify -P ui-it -pl :openmetadata-integration-tests \
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $SSO_PROPS \
               -DsearchType=elasticsearch \
               -DsearchImage=docker.elastic.co/elasticsearch/elasticsearch:9.3.0
           else
-            mvn verify -P ui-it -pl :openmetadata-integration-tests
+            mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $SSO_PROPS
           fi
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -123,7 +388,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -132,7 +397,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -141,21 +406,144 @@ jobs:
 
       - name: Publish Test Report
         id: report
-        if: ${{ always() }}
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: scacap/action-surefire-report@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
+          # mvn verify already fails the job on test failures. This step just
+          # publishes the check run with per-test details; it shouldn't itself
+          # gate the job conclusion (otherwise a flake here breaks Slack).
+          fail_on_test_failures: false
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
+      # Failures only: a green nightly is the expected case and notifying on it trains
+      # the channel to ignore the alert.
       - name: Slack notification
-        if: ${{ always() }}
-        uses: slackapi/slack-github-action@v1.23.0
+        if: ${{ failure() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v4.0.0
         with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
           payload: |
-            {
-              "text": "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+            text: ":fire: Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  search-it-nightly:
+    # Server-global destructive search ITs (tests/search/*IT.java): full reindex with
+    # recreateIndex, alias swaps, and ES container pause. They mutate cluster-wide state, so
+    # the default PR profiles exclude them; here the `search-it` Maven profile runs them
+    # serially on their own embedded-bootstrap server (testcontainers). That bootstrap is
+    # independent of the baked image, so this job does not need build-image.
+    needs: changes
+    if: ${{ needs.changes.outputs.search == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || github.sha) }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Run isolated search ITs (postgres + opensearch)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Embedded bootstrap = fresh stack each run; these search ITs create their cohorts on the
+        # fly (jpw.data.mode=ingest). Static/ensure reuse is for the external cluster only.
+        run: mvn verify -P search-it -pl :openmetadata-integration-tests -DdatabaseType=postgres -DsearchType=opensearch -Djpw.data.mode=ingest -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: failsafe-reports-search-it-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      # Failures only: a green nightly is the expected case and notifying on it trains
+      # the channel to ignore the alert.
+      - name: Slack notification
+        if: ${{ failure() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: ":fire: Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  # Required status check on main (ruleset `merge-rules`). Named to match the context exactly.
+  # `always()` so it reports on every PR: when nothing search-related changed the upstream jobs
+  # are skipped and this exits 0; otherwise every job must have succeeded.
+  java-ui-it:
+    name: java-ui-it
+    needs: [changes, build-image, ui-it-nightly, search-it-nightly]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() }}
+    steps:
+      - name: Verify JavaUIIT suite
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          SEARCH_CHANGED: ${{ needs.changes.outputs.search }}
+          BUILD_RESULT: ${{ needs.build-image.result }}
+          UI_IT_RESULT: ${{ needs.ui-it-nightly.result }}
+          SEARCH_IT_RESULT: ${{ needs.search-it-nightly.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" == "success" && "$SEARCH_CHANGED" != "true" ]]; then
+            echo "No search-indexing paths changed."
+            exit 0
+          fi
+
+          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" \
+                || "$UI_IT_RESULT" != "success" || "$SEARCH_IT_RESULT" != "success" ]]; then
+            echo "JavaUIIT jobs did not complete successfully: changes=${CHANGES_RESULT}, build=${BUILD_RESULT}, ui-it=${UI_IT_RESULT}, search-it=${SEARCH_IT_RESULT}"
+            exit 1
+          fi

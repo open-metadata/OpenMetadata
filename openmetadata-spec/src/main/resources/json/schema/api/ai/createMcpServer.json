@@ -84,6 +84,10 @@
       "description": "Summary of data access patterns",
       "$ref": "../../entity/ai/mcpServer.json#/definitions/dataAccessSummary"
     },
+    "usageMetrics": {
+      "description": "Usage metrics for the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/usageMetrics"
+    },
     "securityMetrics": {
       "description": "Security metrics and settings",
       "$ref": "../../entity/ai/mcpServer.json#/definitions/securityMetrics"

@@ -268,6 +268,14 @@ public final class CatalogExceptionMessage {
     return String.format("%s is not empty", entityType);
   }
 
+  public static String testDefinitionHasTestCases(String testDefinitionName, int testCaseCount) {
+    return String.format(
+        "Test definition '%s' has %d test case(s) that depend on it. Deleting it will also "
+            + "delete those test case(s). Retry with 'recursive=true' to confirm and delete them "
+            + "along with the test definition.",
+        testDefinitionName, testCaseCount);
+  }
+
   public static String unknownCustomField(String fieldName) {
     return String.format("Unknown custom field %s", fieldName);
   }
@@ -306,9 +314,9 @@ public final class CatalogExceptionMessage {
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
-  public static String invalidTeamUpdateUsers(TeamType teamType) {
+  public static String invalidTeamDirectUserAssignment(TeamType teamType) {
     return String.format(
-        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
+        "Team is of type %s. Direct users can only be assigned to teams of type Group.", teamType);
   }
 
   public static String invalidOwnerType(String entityType) {

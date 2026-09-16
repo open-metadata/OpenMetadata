@@ -11,79 +11,109 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, Col, Row, Select, Typography } from 'antd';
+import {
+  Badge,
+  Box,
+  Card,
+  Input,
+  Select,
+  SelectItem,
+  Typography,
+  type SelectItemType,
+} from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {
+  ALL_SERVICES_CATEGORY,
   BETA_SERVICES,
   excludedService,
   SERVICE_CATEGORY_OPTIONS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
+import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../../../../generated/entity/services/pipelineService';
-import { errorMsg, getServiceLogo } from '../../../../../utils/CommonUtils';
+import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
+import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
-import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
   serviceCategory,
-  selectServiceType,
   showError,
   serviceCategoryHandler,
   handleServiceTypeClick,
-  onCancel,
-  onNext,
 }: SelectServiceTypeProps) => {
   const { t } = useTranslation();
   const [category, setCategory] = useState('');
   const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
-  const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
   const serviceTypes = ServiceUtilClassBase.getSupportedServiceFromList();
 
-  const handleConnectorSearchTerm = (value: string) => {
-    setConnectorSearchTerm(value);
-    setSelectedConnectors(
-      serviceTypes[serviceCategory].filter((c) =>
-        c.toLowerCase().includes(value.toLowerCase())
-      )
-    );
-  };
+  // "All Services" leads the list so a category-agnostic entry point has something truthful to
+  // show as selected instead of silently defaulting to the first category.
+  const categorySelectItems: SelectItemType[] = useMemo(
+    () => [
+      { id: ALL_SERVICES_CATEGORY, label: t('label.all-services') },
+      ...SERVICE_CATEGORY_OPTIONS.map(({ label, value }) => ({
+        id: value,
+        label,
+      })),
+    ],
+    [t]
+  );
 
   useEffect(() => {
     const allCategory = Object.values(ServiceCategory);
-    const selectedCategory = allCategory.includes(serviceCategory)
-      ? serviceCategory
-      : allCategory[0];
-    setCategory(selectedCategory);
-    setSelectedConnectors(
-      serviceTypes[selectedCategory].filter(
-        (service) => !excludedService.find((e) => e === service)
-      )
-    );
+    // The `all` sentinel is a legitimate selection, not an unrecognized category — only genuinely
+    // unknown values fall back to the first category.
+    const isKnownCategory =
+      serviceCategory === ALL_SERVICES_CATEGORY ||
+      allCategory.includes(serviceCategory as ServiceCategory);
+    setCategory(isKnownCategory ? serviceCategory : allCategory[0]);
+    setConnectorSearchTerm('');
   }, [serviceCategory]);
 
-  const filteredConnectors = useMemo(
-    () =>
-      selectedConnectors.filter(
-        (connectorType) =>
-          !excludedService.includes(
-            connectorType as MlModelServiceType | MetadataServiceType
-          )
-      ),
-    [selectedConnectors]
-  );
+  // Each connector is paired with the category it came from, so clicking a card in the flattened
+  // grid can tell the page which category's wizard to continue in.
+  const categoryConnectors = useMemo(() => {
+    const categories =
+      category === ALL_SERVICES_CATEGORY
+        ? Object.values(ServiceCategory)
+        : ([category] as ServiceCategory[]);
+
+    return categories.flatMap((serviceCategoryKey) =>
+      (serviceTypes[serviceCategoryKey] ?? [])
+        .filter(
+          (connectorType) =>
+            !excludedService.includes(
+              connectorType as MlModelServiceType | MetadataServiceType
+            )
+        )
+        .map((connectorType) => ({
+          category: serviceCategoryKey,
+          type: connectorType,
+        }))
+    );
+  }, [category, serviceTypes]);
+
+  const filteredConnectors = useMemo(() => {
+    const searchTerm = connectorSearchTerm.trim().toLowerCase();
+
+    return searchTerm
+      ? categoryConnectors.filter(({ type }) =>
+          type.toLowerCase().includes(searchTerm)
+        )
+      : categoryConnectors;
+  }, [categoryConnectors, connectorSearchTerm]);
 
   const getServiceName = (type: string) => {
     if (type.includes('Custom')) {
@@ -94,29 +124,34 @@ const SelectServiceType = ({
   };
 
   return (
-    <Row>
-      <Col span={24}>
+    <div>
+      <div>
         <Select
-          className="w-full"
+          className="tw:w-full"
           data-testid="service-category"
           id="serviceCategory"
-          options={SERVICE_CATEGORY_OPTIONS}
-          value={category}
-          onChange={(value) => {
+          items={categorySelectItems}
+          selectedKey={category}
+          size="md"
+          onSelectionChange={(key: Key | null) => {
+            if (key === null) {
+              return;
+            }
             setConnectorSearchTerm('');
-            serviceCategoryHandler(value as ServiceCategory);
-          }}
-        />
-      </Col>
-      <Col className="m-t-lg" span={24}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-for-type', {
-            type: t('label.connector'),
-          })}
-          searchValue={connectorSearchTerm}
-          typingInterval={500}
-          onSearch={handleConnectorSearchTerm}
+            // Includes the `all` sentinel — the handler's parameter is widened to match.
+            serviceCategoryHandler(key as ServiceCategoryParam);
+          }}>
+          {(item) => <SelectItem id={item.id} label={item.label} />}
+        </Select>
+      </div>
+
+      <div className="tw:mt-3.5">
+        <Input
+          icon={SearchLg}
+          placeholder={t('label.search-for-a-connector')}
+          size="md"
+          value={connectorSearchTerm}
+          onChange={setConnectorSearchTerm}
         />
 
         {isEmpty(filteredConnectors) && (
@@ -124,44 +159,53 @@ const SelectServiceType = ({
             <ErrorPlaceHolder
               className="border-none"
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph>
+              <Typography>
                 {t('message.no-connectors-available-for-service')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolder>
           </div>
         )}
-        <Row className="service-list-container" data-testid="select-service">
-          {filteredConnectors.map((type) => (
-            <Button
-              className={classNames('service-box', {
-                'selected-service': type === selectServiceType,
-              })}
+
+        <div
+          className="tw:mt-4 tw:grid tw:grid-cols-5 tw:gap-3"
+          data-testid="select-service">
+          {filteredConnectors.map(({ category: connectorCategory, type }) => (
+            <Card
+              isClickable
+              className={classNames(
+                'tw:h-[100px] tw:w-full tw:flex-col tw:px-2.5 tw:py-4',
+                'tw:hover:bg-utility-brand-50 tw:hover:border-utility-brand-300'
+              )}
               data-testid={type}
-              key={type}
-              onClick={() => handleServiceTypeClick(type)}>
-              <div data-testid="service-icon">
-                {getServiceLogo(type || '', 'h-9')}
+              // Composite key: connector types are unique across categories today, but the grid
+              // spans every category in the `all` view so the category has to be part of the key.
+              key={`${connectorCategory}-${type}`}
+              size="sm"
+              onClick={() => handleServiceTypeClick(type, connectorCategory)}>
+              <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
+                <div
+                  className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-secondary"
+                  data-testid="service-icon">
+                  <div className="tw:flex tw:size-6 tw:items-center tw:justify-center">
+                    {getServiceLogo(type || '', 'tw:size-6 tw:object-contain')}
+                  </div>
+                </div>
+                <Box align="center" gap={2} justify="center">
+                  <Typography size="text-xs" weight="semibold">
+                    {getServiceName(type)}
+                  </Typography>
+                  {BETA_SERVICES.includes(
+                    type as DatabaseServiceType | PipelineServiceType
+                  ) ? (
+                    <Badge color="brand" size="xs" type="pill-color">
+                      {t('label.beta')}
+                    </Badge>
+                  ) : null}
+                </Box>
               </div>
-              <div className="absolute" style={{ right: '4px', top: '0px' }}>
-                {type === selectServiceType && (
-                  <Icon
-                    className="align-middle"
-                    component={IconCheckboxPrimary}
-                    style={{ fontSize: '14px' }}
-                  />
-                )}
-              </div>
-              <p className="w-full text-center m-t-md">
-                {getServiceName(type)}
-                {BETA_SERVICES.includes(
-                  type as DatabaseServiceType | PipelineServiceType
-                ) ? (
-                  <Badge className="service-beta-tag" count={t('label.beta')} />
-                ) : null}
-              </p>
-            </Button>
+            </Card>
           ))}
-        </Row>
+        </div>
 
         {showError &&
           errorMsg(
@@ -169,26 +213,8 @@ const SelectServiceType = ({
               fieldText: t('label.service'),
             })
           )}
-      </Col>
-
-      <Col className="d-flex justify-end mt-12" span={24}>
-        <Button
-          className="m-r-xs"
-          data-testid="previous-button"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-
-        <Button
-          className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-          data-testid="next-button"
-          type="primary"
-          onClick={onNext}>
-          {t('label.next')}
-        </Button>
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 
