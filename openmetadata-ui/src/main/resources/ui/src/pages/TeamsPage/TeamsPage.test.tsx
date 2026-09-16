@@ -179,6 +179,7 @@ describe('Test Teams Page', () => {
           'defaultPersona',
           'policies',
           'childrenCount',
+          'descendantTeams',
           'domains',
         ],
         include: 'all',
