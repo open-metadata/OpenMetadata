@@ -15,7 +15,6 @@ Expand sqlalchemy types to map them to OpenMetadata DataType
 
 # pylint: disable=duplicate-code,abstract-method
 import traceback
-from typing import Optional, Union
 
 import chardet
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
@@ -39,7 +38,7 @@ class HexByteString(TypeDecorator):
         return str
 
     @staticmethod
-    def validate(value: Union[bytes, bytearray, memoryview]):  # noqa: UP007
+    def validate(value: bytes | bytearray | memoryview):
         """
         Make sure the data is of correct type
         """
@@ -49,7 +48,7 @@ class HexByteString(TypeDecorator):
                 f" Received {type(value).__name__}."
             )
 
-    def process_result_value(self, value: Optional[Union[bytes, bytearray, memoryview]], dialect) -> Optional[str]:  # noqa: UP007, UP045
+    def process_result_value(self, value: bytes | bytearray | memoryview | None, dialect) -> str | None:
         """This is executed during result retrieval
 
         Args:

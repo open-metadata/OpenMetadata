@@ -18,7 +18,7 @@
   align-items: flex-start;
 
   .thread-author {
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     color: @text-color;
   }
 
@@ -35,11 +35,11 @@
 }
 
 .feed-header-timestamp {
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   color: @grey-3;
 }
 .feed-header-timestamp::before {
   content: '\2022';
-  margin-right: 8px;
-  margin-left: 4px;
+  margin-right: var(--om-space-8);
+  margin-left: var(--om-space-4);
 }

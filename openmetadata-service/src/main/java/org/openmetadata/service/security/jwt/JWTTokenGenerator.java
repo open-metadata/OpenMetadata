@@ -59,6 +59,11 @@ public class JWTTokenGenerator {
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String SESSION_ID_CLAIM = "sessionId";
   public static final String SCOPE_CLAIM = "scope";
+  private static final String INTERNAL_TOKEN_CONFIGURATION_ERROR =
+      "Internal action tokens require valid values for "
+          + "jwtTokenConfiguration.rsaprivateKeyFilePath, "
+          + "jwtTokenConfiguration.rsapublicKeyFilePath, "
+          + "jwtTokenConfiguration.jwtissuer, and jwtTokenConfiguration.keyId";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
@@ -72,6 +77,28 @@ public class JWTTokenGenerator {
 
   public static JWTTokenGenerator getInstance() {
     return INSTANCE;
+  }
+
+  Algorithm internalSigningAlgorithm() {
+    requireInitialized();
+    return getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+  }
+
+  Algorithm internalVerificationAlgorithm() {
+    requireInitialized();
+    return getAlgorithm(tokenValidationAlgorithm, publicKey, null);
+  }
+
+  private void requireInitialized() {
+    if (tokenValidationAlgorithm == null
+        || privateKey == null
+        || publicKey == null
+        || nullOrEmpty(issuer)
+        || issuer.isBlank()
+        || nullOrEmpty(kid)
+        || kid.isBlank()) {
+      throw new IllegalStateException(INTERNAL_TOKEN_CONFIGURATION_ERROR);
+    }
   }
 
   /** Expected to be initialized only once during application start */

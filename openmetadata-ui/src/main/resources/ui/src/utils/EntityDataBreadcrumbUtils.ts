@@ -14,7 +14,6 @@
 import { startCase } from 'lodash';
 import type { EntityWithServices } from '../components/Explore/ExplorePage.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
@@ -25,14 +24,10 @@ import type { Directory } from '../generated/entity/data/directory';
 import type { File } from '../generated/entity/data/file';
 import type { Table } from '../generated/entity/data/table';
 import type { EntityReference } from '../generated/type/entityUsage';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
-import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-  getSettingPath,
-} from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 
 export const getBreadcrumbForTable = (
   entity: Table,
@@ -49,6 +44,7 @@ export const getBreadcrumbForTable = (
             ServiceCategory.DATABASE_SERVICES
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     {
       name: getEntityName(database),
@@ -56,6 +52,7 @@ export const getBreadcrumbForTable = (
         EntityType.DATABASE,
         database?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.DATABASE,
     },
     {
       name: getEntityName(databaseSchema),
@@ -63,6 +60,7 @@ export const getBreadcrumbForTable = (
         EntityType.DATABASE_SCHEMA,
         databaseSchema?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.DATABASE_SCHEMA,
     },
     ...(includeCurrent
       ? [
@@ -73,6 +71,9 @@ export const getBreadcrumbForTable = (
               ((entity as SourceType).entityType as EntityType) ??
                 EntityType.TABLE
             ),
+            iconType:
+              ((entity as SourceType).entityType as EntityType) ??
+              EntityType.TABLE,
           },
         ]
       : []),
@@ -91,6 +92,7 @@ export const getBreadcrumbForChart = (entity: Chart) => {
           service?.type as keyof typeof ServiceCategoryPlural
         ]
       ),
+      isServiceBreadcrumb: true,
     },
   ];
 };
@@ -101,10 +103,13 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
   return [
     {
       name: startCase(ServiceCategory.API_SERVICES),
-      url: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      // Delegated rather than built here so the crumb follows whatever surface owns the service
+      // listing. The base implementation returns the same settings path; an embedded experience
+      // that lists services elsewhere overrides it, category and all.
+      url: connectionsRouterClassBase.getSettingsServicesPath(
+        ServiceCategory.API_SERVICES
       ),
+      iconType: EntityType.API_SERVICE,
     },
     {
       name: getEntityName(service),
@@ -116,6 +121,7 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
   ];
 };
@@ -126,10 +132,13 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
   return [
     {
       name: startCase(ServiceCategory.API_SERVICES),
-      url: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      // Delegated rather than built here so the crumb follows whatever surface owns the service
+      // listing. The base implementation returns the same settings path; an embedded experience
+      // that lists services elsewhere overrides it, category and all.
+      url: connectionsRouterClassBase.getSettingsServicesPath(
+        ServiceCategory.API_SERVICES
       ),
+      iconType: EntityType.API_SERVICE,
     },
     {
       name: getEntityName(service),
@@ -141,6 +150,7 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     {
       name: getEntityName(apiCollection),
@@ -148,6 +158,7 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
         EntityType.API_COLLECTION,
         apiCollection?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.API_COLLECTION,
     },
   ];
 };
@@ -169,6 +180,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     ...(includeCurrent
       ? [
@@ -206,6 +218,7 @@ export function getBreadcrumbForEntityWithParent<
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     ...(parents.length > 0
       ? parents.map((parent) => ({
@@ -214,6 +227,7 @@ export function getBreadcrumbForEntityWithParent<
             parent?.fullyQualifiedName ?? '',
             entityType
           ),
+          iconType: entityType,
         }))
       : []),
     ...(includeCurrent
@@ -224,6 +238,7 @@ export function getBreadcrumbForEntityWithParent<
               entity.fullyQualifiedName ?? '',
               (entity as SourceType).entityType as EntityType
             ),
+            iconType: (entity as SourceType).entityType as EntityType,
           },
         ]
       : []),

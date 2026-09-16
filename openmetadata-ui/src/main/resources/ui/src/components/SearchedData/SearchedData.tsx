@@ -40,39 +40,53 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   selectedEntityId,
   handleSummaryPanelDisplay,
   filter,
+  showRankingDetails,
 }) => {
   const searchResultCards = useMemo(() => {
-    return data.map(({ _source: table, highlight, _id }) => {
-      const matches = highlight
-        ? Object.entries(highlight)
-            .filter(([key]) => !key.includes('.ngram'))
-            .map(([key, value]) => ({ key, value: value?.length || 1 }))
-            .filter((d) => !ASSETS_NAME.has(d.key))
-        : [];
+    return data.map(
+      ({
+        _source: table,
+        highlight,
+        _id,
+        _score,
+        _explanation,
+        matched_queries,
+      }) => {
+        const matches = highlight
+          ? Object.entries(highlight)
+              .filter(([key]) => !key.includes('.ngram'))
+              .map(([key, value]) => ({ key, value: value?.length || 1 }))
+              .filter((d) => !ASSETS_NAME.has(d.key))
+          : [];
 
-      return (
-        <ExploreSearchCard
-          showEntityIcon
-          className={classNames(
-            table.id === selectedEntityId && isSummaryPanelVisible
-              ? 'highlight-card'
-              : ''
-          )}
-          handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-          highlight={highlight}
-          id={`search-card-${_id}`}
-          key={_id}
-          matches={matches}
-          showTags={false}
-          source={table}
-        />
-      );
-    });
+        return (
+          <ExploreSearchCard
+            showEntityIcon
+            className={classNames(
+              table.id === selectedEntityId && isSummaryPanelVisible
+                ? 'highlight-card'
+                : ''
+            )}
+            handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+            highlight={highlight}
+            id={`search-card-${_id}`}
+            key={_id}
+            matchedQueries={showRankingDetails ? matched_queries : undefined}
+            matches={matches}
+            score={showRankingDetails ? _score : undefined}
+            scoreExplanation={showRankingDetails ? _explanation : undefined}
+            showTags={false}
+            source={table}
+          />
+        );
+      }
+    );
   }, [
     data,
     isSummaryPanelVisible,
     handleSummaryPanelDisplay,
     selectedEntityId,
+    showRankingDetails,
   ]);
 
   const ResultCount = useCallback(

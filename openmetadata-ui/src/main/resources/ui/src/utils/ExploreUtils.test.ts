@@ -16,6 +16,7 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import * as miscAPI from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import {
   extractTermKeys,
@@ -26,7 +27,7 @@ import {
   getSubLevelHierarchyKey,
   updateTreeData,
 } from './ExplorePureUtils';
-import { fetchEntityData } from './ExploreUtils';
+import { fetchEntityData, getAggregationOptions } from './ExploreUtils';
 
 jest.mock('../rest/searchAPI');
 jest.mock('./ToastUtils');
@@ -35,6 +36,33 @@ const mockSearchQuery = searchQuery as jest.Mock;
 const mockNlqSearch = nlqSearch as jest.Mock;
 
 describe('Explore Utils', () => {
+  it('passes search text to independent aggregation requests', async () => {
+    const postAggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue({ data: {} } as never);
+
+    await getAggregationOptions(
+      SearchIndex.DATA_ASSET,
+      EntityFields.SERVICE,
+      '',
+      '{}',
+      true,
+      false,
+      10,
+      false,
+      'customer'
+    );
+
+    expect(postAggregateSpy).toHaveBeenCalledWith({
+      fieldName: EntityFields.SERVICE,
+      fieldValue: '',
+      index: SearchIndex.DATA_ASSET,
+      query: '{}',
+      queryText: 'customer',
+      size: 10,
+    });
+  });
+
   it('should return undefined if data is empty', () => {
     const data: ExploreQuickFilterField[] = [];
     const result = getQuickFilterQuery(data);
@@ -731,6 +759,7 @@ describe('fetchEntityData', () => {
       TABS_SEARCH_INDEXES: [SearchIndex.TABLE],
       EntityTypeSearchIndexMapping: { [EntityType.TABLE]: SearchIndex.TABLE },
       setSearchHitCounts: jest.fn(),
+      setAutoSelectedSearchIndex: jest.fn(),
       setSearchResults: jest.fn(),
       setUpdatedAggregations: jest.fn(),
       setShowIndexNotFoundAlert: jest.fn(),
@@ -770,13 +799,104 @@ describe('fetchEntityData', () => {
     expect(mockSearchQuery.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         searchIndex: SearchIndex.DATA_ASSET,
-        pageSize: 0,
+        pageNumber: 1,
+        pageSize: 1,
+        fetchSource: true,
+        includeFields: ['entityType'],
       })
     );
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
     });
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+  });
+
+  it('selects the index of the top ranked hit instead of the largest bucket', async () => {
+    const countResponse = {
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'dashboard', doc_count: 20 },
+            { key: 'chart', doc_count: 1 },
+          ],
+        },
+      },
+      hits: {
+        hits: [{ _source: { entityType: EntityType.CHART } }],
+        total: { value: 21 },
+      },
+    };
+    mockSearchQuery
+      .mockResolvedValueOnce(countResponse)
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'revenue chart',
+      tab: '',
+      tabsInfo: {
+        [SearchIndex.DASHBOARD]: {},
+        [SearchIndex.CHART]: {},
+      },
+      TABS_SEARCH_INDEXES: [SearchIndex.DASHBOARD, SearchIndex.CHART],
+      EntityTypeSearchIndexMapping: {
+        [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+        [EntityType.CHART]: SearchIndex.CHART,
+      },
+    });
+
+    await fetchEntityData(params);
+
+    expect(mockSearchQuery.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ searchIndex: SearchIndex.CHART })
+    );
+    expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
+      SearchIndex.CHART
+    );
+  });
+
+  it('ignores the tied top hit and uses the counts when NLQ is enabled', async () => {
+    // The NLQ count query spans the 24-index dataAsset alias, where RRF ranks per
+    // shard: two dozen documents tie on an identical score, so hits[0] is arbitrary
+    // and carries no relevance signal. The aggregation counts do.
+    const countResponse = {
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'table', doc_count: 24 },
+            { key: 'apiEndpoint', doc_count: 4 },
+          ],
+        },
+      },
+      hits: {
+        hits: [{ _source: { entityType: EntityType.API_ENDPOINT } }],
+        total: { value: 28 },
+      },
+    };
+    mockNlqSearch
+      .mockResolvedValueOnce(countResponse)
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'revenue by region',
+      isNLPRequestEnabled: true,
+      tab: '',
+      tabsInfo: {
+        [SearchIndex.TABLE]: {},
+        [SearchIndex.API_ENDPOINT]: {},
+      },
+      TABS_SEARCH_INDEXES: [SearchIndex.TABLE, SearchIndex.API_ENDPOINT],
+      EntityTypeSearchIndexMapping: {
+        [EntityType.TABLE]: SearchIndex.TABLE,
+        [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT,
+      },
+    });
+
+    await fetchEntityData(params);
+
+    expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
+      SearchIndex.TABLE
+    );
+    expect(mockNlqSearch.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ searchIndex: SearchIndex.TABLE })
+    );
   });
 
   it('ANDs the browse/filter scope into the query_filter sent to search', async () => {
@@ -816,10 +936,18 @@ describe('fetchEntityData', () => {
   });
 
   it('uses NLQ search and surfaces applied filters when NLP is enabled', async () => {
-    mockNlqSearch.mockResolvedValueOnce(COUNT_RESPONSE).mockResolvedValueOnce({
-      ...RESULTS_RESPONSE,
-      applied_quick_filters: { fieldList: ['owner'] },
-    });
+    mockNlqSearch
+      .mockResolvedValueOnce({
+        ...COUNT_RESPONSE,
+        hits: {
+          ...COUNT_RESPONSE.hits,
+          hits: [{ _id: 'source-less-hit' }],
+        },
+      })
+      .mockResolvedValueOnce({
+        ...RESULTS_RESPONSE,
+        applied_quick_filters: { fieldList: ['owner'] },
+      });
     const params = buildParams({
       searchQueryParam: 'customer',
       isNLPRequestEnabled: true,
@@ -827,7 +955,7 @@ describe('fetchEntityData', () => {
 
     await fetchEntityData(params);
 
-    expect(mockNlqSearch).toHaveBeenCalled();
+    expect(mockNlqSearch).toHaveBeenCalledTimes(2);
     expect(mockSearchQuery).not.toHaveBeenCalled();
     expect(params.onNlqAppliedFilters).toHaveBeenCalledWith({
       fieldList: ['owner'],
@@ -835,7 +963,7 @@ describe('fetchEntityData', () => {
   });
 
   it('issues the results query without waiting for the count when a tab is selected', async () => {
-    let resolveCount: (value: unknown) => void = () => undefined;
+    let resolveCount: (value: unknown) => void = (_value) => undefined;
     mockSearchQuery
       .mockImplementationOnce(
         () =>

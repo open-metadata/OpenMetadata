@@ -70,7 +70,7 @@ const DataQualityDashboard = ({
   });
 
   const cardClassName = classNames('data-quality-dashboard-card-section', {
-    'tw:ring-0': isGovernanceView,
+    // `Card` draws a real border, so no edge suppressor is needed — only the shadow.
     'tw:shadow-none': isGovernanceView,
   });
 
@@ -105,15 +105,7 @@ const DataQualityDashboard = ({
                       onUpdate={filter.onChange}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1  tw:rounded-md quick-filter-dropdown-trigger-btn"
-                        data-testid={`search-dropdown-${filter.key}`}
-                        title={
-                          filter.selectedOwnerKeys.length > 0
-                            ? getSelectedOptionLabelString(
-                                filter.selectedOwnerKeys,
-                                true
-                              )
-                            : undefined
-                        }>
+                        data-testid={`search-dropdown-${filter.key}`}>
                         <div className="tw:flex tw:items-center tw:gap-0">
                           <span>{filter.label}</span>
                           {filter.selectedOwnerKeys.length > 0 && (

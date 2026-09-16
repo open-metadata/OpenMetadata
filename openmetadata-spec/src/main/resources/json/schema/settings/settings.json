@@ -42,8 +42,9 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "aiSettings",
-        "searchIndexMappings"
+        "sparqlQuerySettings",
+        "appConfiguration",
+        "startupChecksums"
       ]
     }
   },
@@ -121,10 +122,13 @@
           "$ref": "../configuration/glossaryTermRelationSettings.json"
         },
         {
-          "$ref": "../configuration/aiSettings.json"
+          "$ref": "../configuration/sparqlQuerySettings.json"
         },
         {
-          "$ref": "../configuration/searchIndexMappings.json"
+          "$ref": "../api/configuration/appConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

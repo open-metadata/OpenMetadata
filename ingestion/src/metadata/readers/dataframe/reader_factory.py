@@ -18,7 +18,7 @@ ConfigSource Reader Factory: Helps us choose the reader from
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.base import DataFrameReader
@@ -78,9 +78,9 @@ DF_READER_MAP = {
 def get_df_reader(
     type_: SupportedTypes,
     config_source: ConfigSource,
-    client: Optional[Any],  # noqa: UP045
-    separator: Optional[str] = None,  # noqa: UP045
-    session: Optional[Any] = None,  # noqa: UP045
+    client: Any | None,
+    separator: str | None = None,
+    session: Any | None = None,
 ) -> DataFrameReader:
     """
     Load the File Reader based on the Config Source

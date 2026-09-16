@@ -18,7 +18,7 @@ import { fetchIdpX509Certificate } from './saml-metadata';
 
 const SUPPORTED_OM_BASE_URL = 'http://localhost:8585';
 
-const KEYCLOAK_SAML = {
+export const KEYCLOAK_SAML = {
   baseUrl:
     process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL] ?? 'http://localhost:8080',
   azureRealm: process.env[SSO_ENV.KEYCLOAK_SAML_AZURE_REALM] ?? 'om-azure-saml',
@@ -31,10 +31,10 @@ interface KeycloakSamlProfile {
   providerName: string;
 }
 
-const escapeRegExp = (value: string): string =>
+export const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const assertSupportedBaseUrl = (): void => {
+export const assertSupportedBaseUrl = (): void => {
   if (OM_BASE_URL !== SUPPORTED_OM_BASE_URL) {
     throw new Error(
       `Keycloak SAML fixture realms are imported for ${SUPPORTED_OM_BASE_URL}. ` +
@@ -90,7 +90,9 @@ const buildConfigPayload = async ({
   };
 };
 
-const performProviderLogin = async (
+// Keycloak renders the same login theme for every protocol in a realm, so the
+// OIDC leg reuses this driver verbatim.
+export const performProviderLogin = async (
   page: Page,
   { username, password }: ProviderCredentials
 ): Promise<void> => {

@@ -23,6 +23,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.jupiter.api.AfterAll;
@@ -32,12 +36,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests for the validateLineageDetails logic in LineageRepository.
@@ -171,6 +177,135 @@ class LineageRepositoryTest {
     assertTrue(
         deserializedDetails.getColumnsLineage() == null
             || deserializedDetails.getColumnsLineage().isEmpty());
+  }
+
+  @Test
+  void testValidateLineageDetails_EntityOnlyAI_lineageDoesNotLogColumnErrors() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference llmModel = entityReference("llmModel", "service.model");
+    final EntityReference aiApplication = entityReference("aiApplication", "application");
+    final LineageDetails details =
+        new LineageDetails()
+            .withDescription("Uses the model")
+            .withSource(LineageDetails.Source.MANUAL);
+    final Logger logger = (Logger) LoggerFactory.getLogger(LineageRepository.class);
+    final ListAppender<ILoggingEvent> appender = attachListAppender(logger);
+
+    try {
+      final String result = repository.validateLineageDetails(llmModel, aiApplication, details);
+      assertNotNull(result);
+      assertNoColumnLineageErrors(appender);
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  private static EntityReference entityReference(final String type, final String fqn) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(type)
+        .withFullyQualifiedName(fqn);
+  }
+
+  @Test
+  void testValidateLineageDetails_TableColumnToMetric_KeepsColumnLineage() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails("db.schema.sales.amount", metric.getFullyQualifiedName());
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(table, metric, details), LineageDetails.class);
+
+    assertEquals(1, saved.getColumnsLineage().size());
+    assertEquals("metricService.total_sales", saved.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("db.schema.sales.amount"), saved.getColumnsLineage().get(0).getFromColumns());
+  }
+
+  @Test
+  void testValidateLineageDetails_MetricToTableColumn_KeepsColumnLineage() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails(metric.getFullyQualifiedName(), "db.schema.sales.amount");
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(metric, table, details), LineageDetails.class);
+
+    assertEquals(1, saved.getColumnsLineage().size());
+    assertEquals("db.schema.sales.amount", saved.getColumnsLineage().get(0).getToColumn());
+    assertEquals(
+        List.of("metricService.total_sales"), saved.getColumnsLineage().get(0).getFromColumns());
+  }
+
+  @Test
+  void testValidateLineageDetails_UnknownMetricChild_IsFilteredOut() {
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference table = entityReference(Entity.TABLE, "db.schema.sales");
+    final EntityReference metric = entityReference(Entity.METRIC, "metricService.total_sales");
+    mockSalesTable(table);
+
+    final LineageDetails details =
+        columnLineageDetails(
+            "db.schema.sales.amount", metric.getFullyQualifiedName() + ".not_a_column");
+
+    final LineageDetails saved =
+        JsonUtils.readValue(
+            repository.validateLineageDetails(table, metric, details), LineageDetails.class);
+
+    assertTrue(saved.getColumnsLineage().isEmpty());
+  }
+
+  private static void mockSalesTable(final EntityReference table) {
+    final Table salesTable =
+        new Table()
+            .withId(table.getId())
+            .withName("sales")
+            .withFullyQualifiedName(table.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withFullyQualifiedName(table.getFullyQualifiedName() + ".amount")));
+    mockedEntity
+        .when(() -> Entity.getEntity(Entity.TABLE, table.getId(), "columns", Include.NON_DELETED))
+        .thenReturn(salesTable);
+  }
+
+  private static LineageDetails columnLineageDetails(
+      final String fromColumn, final String toColumn) {
+    return new LineageDetails()
+        .withSource(LineageDetails.Source.MANUAL)
+        .withColumnsLineage(
+            List.of(
+                new ColumnLineage()
+                    .withFromColumns(new ArrayList<>(List.of(fromColumn)))
+                    .withToColumn(toColumn)));
+  }
+
+  private static ListAppender<ILoggingEvent> attachListAppender(final Logger logger) {
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private static void assertNoColumnLineageErrors(final ListAppender<ILoggingEvent> appender) {
+    assertTrue(
+        appender.list.stream()
+            .filter(event -> event.getLevel() == Level.ERROR)
+            .noneMatch(event -> event.getFormattedMessage().contains("for column lineage")));
   }
 
   @Test

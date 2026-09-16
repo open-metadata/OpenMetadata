@@ -13,12 +13,15 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { debounce } from 'lodash';
 import { act } from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
+// Route changes are mocked so the dropdown cleanup can be tested without a router.
+const mockUseLocation = jest.fn();
 
 const searchOptions = [
   { key: 'User 1', label: 'User 1' },
@@ -48,7 +51,15 @@ jest.mock('lodash', () => ({
     .mockImplementation((fn) => Object.assign(fn, { cancel: jest.fn() })),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useLocation: () => mockUseLocation(),
+}));
+
 describe('Search DropDown Component', () => {
+  beforeEach(() => {
+    mockUseLocation.mockReturnValue({ pathname: '/explore' });
+  });
+
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);
 
@@ -288,6 +299,24 @@ describe('Search DropDown Component', () => {
     expect(dropdownMenu).toBeNull();
   });
 
+  it('closes the dropdown when the route pathname changes', async () => {
+    const { rerender } = render(<SearchDropdown {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    // Simulate navigating away while the dropdown overlay is still open.
+    mockUseLocation.mockReturnValue({ pathname: '/observability' });
+    rerender(<SearchDropdown {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+    });
+  });
+
   it('The selected options should be checked correctly each time popover renders', async () => {
     render(<SearchDropdown {...mockProps} />);
 
@@ -374,6 +403,31 @@ describe('Search DropDown Component', () => {
     const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
 
     expect(noOwnerCheckbox).toBeInTheDocument();
+  });
+
+  it('Should cancel a pending search when the dropdown is closed', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const trigger = await screen.findByTestId('search-dropdown-Owner');
+    const { cancel } = (debounce as jest.Mock).mock.results.at(-1)?.value ?? {};
+
+    await act(async () => {
+      userEvent.click(trigger);
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    const cancelCallsWhileOpen = cancel.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('close-btn'));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument()
+    );
+
+    expect(cancel.mock.calls.length).toBeGreaterThan(cancelCallsWhileOpen);
   });
 
   it('Should send null option in payload if selected', async () => {

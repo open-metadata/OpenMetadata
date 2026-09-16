@@ -105,13 +105,14 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         aria-label={t('label.view-entity', {
           entity: t('label.owner-plural'),
         })}
-        className="owner-stack-overflow-trigger"
+        className="owner-stack-overflow-trigger tw:flex tw:items-center tw:justify-center tw:leading-none"
         color="link-color"
         data-testid="owners-overflow-trigger"
-        size="xs">
+        size="xs"
+        style={{ padding: 0 }}>
         <Avatar
           className={classNames(
-            'tw:bg-brand-50 tw:ring-2 tw:ring-white tw:text-brand-700 tw:font-medium',
+            'tw:bg-secondary tw:text-tertiary tw:font-semibold',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}
@@ -121,7 +122,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
       <AriaTooltip
         className={({ isEntering, isExiting }) =>
           classNames(
-            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+            'tw:z-50 tw:max-h-96! tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
             isExiting &&

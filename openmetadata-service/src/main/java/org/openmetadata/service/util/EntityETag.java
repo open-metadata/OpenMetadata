@@ -19,6 +19,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 /**
@@ -38,30 +40,62 @@ public class EntityETag {
   private static final String WEAK_PREFIX = "W/";
 
   /**
-   * Generate an ETag for an entity based on its version and last updated timestamp.
-   * Format: "version-updatedAt" wrapped in quotes as per HTTP ETag specification.
+   * Generate a strong ETag for an entity from a hash of its serialized representation.
+   *
+   * <p>An ETag must change whenever the representation the client would receive changes (RFC 7232
+   * §2.3). Hashing only {@code version}+{@code updatedAt} is not enough: relationship-only
+   * mutations — {@code updateVote}, {@code addFollower}/{@code removeFollower},
+   * {@code DataContractRepository.updateLatestResult} — rewrite the response body (e.g. the
+   * {@code votes} block) without bumping either field. A version-based ETag therefore stayed
+   * constant across such a mutation, so a conditional GET was wrongly answered {@code 304 Not
+   * Modified} and the client rendered the stale pre-mutation body (the up/down vote regression).
+   * Hashing the serialized entity ties the ETag to the exact bytes returned.
    *
    * @param entity The entity to generate ETag for
-   * @return ETag string in format "version-updatedAt"
+   * @return quoted strong ETag, or {@code null} if entity is null
    */
   public static String generateETag(EntityInterface entity) {
-    if (entity == null) {
-      return null;
+    String etag = null;
+    if (entity != null) {
+      etag = ETAG_PREFIX + generateHash(fingerprint(entity)) + ETAG_SUFFIX;
     }
+    return etag;
+  }
 
-    // Use version and updatedAt to generate a unique ETag
-    String etagValue = entity.getVersion() + "-" + entity.getUpdatedAt();
-
-    // Generate SHA-256 hash for consistency and to handle special characters
-    String hash = generateHash(etagValue);
-
-    // Return ETag wrapped in quotes as per HTTP specification
-    return ETAG_PREFIX + hash + ETAG_SUFFIX;
+  /**
+   * Content the ETag hashes: the serialized entity. Falls back to {@code version}+{@code updatedAt}
+   * if serialization fails, so a serializer hiccup degrades to the old ETag rather than failing the
+   * response this decorates.
+   *
+   * <p>Best-effort cache-validation key, not a canonical digest: it relies on the entity serializing
+   * in a stable field/element order across requests. If a map-typed field or a DB-ordered collection
+   * ever serializes differently for otherwise-identical state, the ETag differs and the conditional
+   * GET is answered {@code 200} with the full body instead of {@code 304} — a missed optimization,
+   * never a stale or incorrect body. OpenMetadata map fields (e.g. {@code extension}) deserialize
+   * into order-preserving structures, so this stays stable in practice.
+   */
+  private static String fingerprint(EntityInterface entity) {
+    String result;
+    try {
+      result = JsonUtils.pojoToJson(entity);
+    } catch (JsonParsingException e) {
+      LOG.warn(
+          "ETag falling back to version+updatedAt; entity {} failed to serialize: {}",
+          entity.getId(),
+          e.getMessage());
+      result = entity.getVersion() + "-" + entity.getUpdatedAt();
+    }
+    return result;
   }
 
   /**
    * Generate a weak ETag that only considers the version.
    * Weak ETags are prefixed with W/ and are useful when byte-for-byte equality is not required.
+   *
+   * <p>This is the validator clients should send on {@code If-Match} for optimistic-concurrency
+   * writes, because it does not depend on which {@code fields} projection the client fetched — see
+   * {@link #validateETag}. Its exact rendering is therefore a cross-language contract that
+   * non-Java clients reproduce locally; {@code EntityETagTest} pins it.
    *
    * @param entity The entity to generate weak ETag for
    * @return Weak ETag string in format W/"version"
@@ -78,6 +112,15 @@ public class EntityETag {
    * Validate if the provided ETag matches the entity's current ETag.
    * If validation is enabled and ETags don't match, throws PreconditionFailedException.
    *
+   * <p><b>Conditional writes must send the weak validator</b> {@code W/"<version>"} (see
+   * {@link #generateWeakETag}). The strong ETag hashes the serialized entity, and {@code entity}
+   * here is the copy a PATCH loaded with the repository's {@code patchFields} — a different
+   * projection from the one a GET published the ETag for. So a client that faithfully echoes the
+   * strong ETag from its own read still fails this check, no matter how correctly it stored it.
+   * The version is projection-independent and bumps on every update, which is what makes it a
+   * usable precondition. Callers relying on this: {@code patch_mixin._entity_etag} in the Python
+   * ingestion client.
+   *
    * @param ifMatchHeader The If-Match header value from the request
    * @param entity The current entity
    * @param enforceETag Whether to enforce ETag validation (optional for backward compatibility)
@@ -85,7 +128,7 @@ public class EntityETag {
    */
   public static void validateETag(
       String ifMatchHeader, EntityInterface entity, boolean enforceETag) {
-    LOG.info(
+    LOG.debug(
         "validateETag called - ifMatchHeader: {}, enforceETag: {}, entity: {}",
         ifMatchHeader,
         enforceETag,
@@ -93,7 +136,7 @@ public class EntityETag {
 
     if (!enforceETag || ifMatchHeader == null || ifMatchHeader.isEmpty()) {
       // ETag validation is optional - skip if not enforced or no header provided
-      LOG.info(
+      LOG.debug(
           "ETag validation skipped - enforceETag: {}, ifMatchHeader: {}",
           enforceETag,
           ifMatchHeader);
@@ -101,7 +144,7 @@ public class EntityETag {
     }
 
     String currentETag = generateETag(entity);
-    LOG.info("Current ETag for entity {}: {}", entity.getId(), currentETag);
+    LOG.debug("Current ETag for entity {}: {}", entity.getId(), currentETag);
 
     // Handle multiple ETags in If-Match header (comma-separated)
     String[] providedETags = ifMatchHeader.split(",");

@@ -1,10 +1,13 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_SUBSTRING;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_SUBSTRING;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
@@ -14,7 +17,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -39,8 +44,20 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     fields.add(Entity.FIELD_TEST_SUITES);
     fields.add(TestCaseRepository.TEST_DEFINITION_FIELD);
     fields.add(Entity.TEST_CASE_RESULT);
-    fields.add(TestCaseRepository.INCIDENTS_FIELD);
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    Long revision = ctx.relationshipRevision();
+    if (revision == null) {
+      revision =
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(testCase.getId()))
+              .getOrDefault(testCase.getId(), 0L);
+    }
+    doc.put(TestCaseRepository.TEST_SUITES_REVISION_FIELD, revision);
+    return doc;
   }
 
   @Override
@@ -59,18 +76,42 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
-    try {
-      TestDefinition testDefinition =
-          Entity.getEntity(
-              Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-      doc.put("testPlatforms", testDefinition.getTestPlatforms());
-      doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
-      doc.put("testCaseType", testDefinition.getEntityType());
-    } catch (EntityNotFoundException ex) {
-      LOG.warn(
-          "TestDefinition not found for TestCase [{}]: {}",
-          testCase.getFullyQualifiedName(),
-          ex.getMessage());
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    UUID ongoingIncidentId = tcrsRepo.getOngoingIncidentStateId(testCase.getFullyQualifiedName());
+    doc.put(
+        TestCaseRepository.INCIDENTS_FIELD,
+        ongoingIncidentId != null ? ongoingIncidentId.toString() : null);
+    if (testCase.getTestDefinition() != null) {
+      try {
+        TestDefinition testDefinition =
+            Entity.getEntity(
+                Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+        doc.put("testPlatforms", testDefinition.getTestPlatforms());
+        // The dimension is indexed by name so that the existing keyword filters and aggregations
+        // keep working: system dimension names are exactly the values the enum used to hold.
+        // No fallback to the test definition: every test case carries its own dimension
+        // relationship, inherited ones included (backfilled in 2.1.0 and repointed by
+        // TestDefinitionRepository when a definition is reclassified).
+        String dimensionName =
+            testCase.getDataQualityDimension() != null
+                ? testCase.getDataQualityDimension().getName()
+                : null;
+        // The "No Dimension" filter is a must_not-exists on this field, so an effective
+        // NoDimension has to stay unset in the document instead of being indexed by name.
+        doc.put(
+            "dataQualityDimension",
+            DataQualityDimensionRepository.NO_DIMENSION.equals(dimensionName)
+                ? null
+                : dimensionName);
+        doc.put("testCaseType", testDefinition.getEntityType());
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "TestDefinition not found for TestCase [{}]: {}",
+            testCase.getFullyQualifiedName(),
+            ex.getMessage());
+      }
     }
     setParentRelationships(doc, testCase);
     return doc;
@@ -125,6 +166,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     fields.put("testSuite.description", 1.0f);
     fields.put("entityLink", 3.0f);
     fields.put("entityFQN", 10.0f);
+    // The DQ list endpoints treat q as literal text, so a user's mid-token substring
+    // ("alues" in column_values_to_be_between) has no wildcard to fall back on. The
+    // *.ngram fields are edge_ngram, which only matches token prefixes; these are the
+    // only fields backing true substring matching, so they are scoped to the DQ
+    // indexes rather than added to SearchIndex.getDefaultFields().
+    fields.put(FIELD_NAME_SUBSTRING, 1.0f);
+    fields.put(FIELD_DISPLAY_NAME_SUBSTRING, 1.0f);
     return fields;
   }
 }

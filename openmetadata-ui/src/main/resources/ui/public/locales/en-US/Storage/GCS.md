@@ -2,7 +2,7 @@
 
 In this section, we provide guides and references to use the GCS connector.
 
-By default, the GCS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the <a href="https://docs.open-metadata.org/connectors/storage" target="_blank">docs</a>.
+By default, the GCS connector will ingest only top-level containers (Buckets). If you want to extract any information from within and their data models, you can follow the <a href="https://docs.open-metadata.org/connectors/storage/gcs" target="_blank">docs</a>.
 
 ## Requirements
 

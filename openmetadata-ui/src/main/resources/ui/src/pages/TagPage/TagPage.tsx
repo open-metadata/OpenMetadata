@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -41,7 +42,12 @@ import {
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
+import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
+import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -62,14 +68,15 @@ import AssetsTabs, {
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
+  CERTIFICATION_CATEGORY,
   DE_ACTIVE_COLOR,
   ROUTES,
+  TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -88,7 +95,9 @@ import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -98,18 +107,14 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
-import {
-  getEntityDeleteMessage,
-  getEntityMissingError,
-} from '../../utils/EntityDisplayPureUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import { renderIcon } from '../../utils/IconUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -132,15 +137,30 @@ const EntitySummaryPanel = withSuspenseFallback(
   )
 );
 
+const getDqFilterKey = (
+  classificationName?: string
+): 'tier' | 'certification' | 'tags' => {
+  if (classificationName === TIER_CATEGORY) {
+    return 'tier';
+  }
+  if (classificationName === CERTIFICATION_CATEGORY) {
+    return 'certification';
+  }
+
+  return 'tags';
+};
+
 const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAiMode = useIsAiMode();
+  const showAiHeader = isAiMode;
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab?: string;
   }>();
-  const { permissions, getEntityPermission } = usePermissionProvider();
+  const { permissions } = usePermissionProvider();
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.Tag
   );
@@ -151,9 +171,6 @@ const TagPage = () => {
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const [assetCount, setAssetCount] = useState<number>(0);
-  const [tagPermissions, setTagPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -187,6 +204,28 @@ const TagPage = () => {
       showErrorToast(tagError as AxiosError);
     }
   }, [tagError]);
+
+  // By-id fetch (Task 8 mixed-gating note, TagsPage.tsx sibling precedent): tagItem only
+  // resolves after the entity useQuery above, so this is the by-id identifier form.
+  // Deliberately ungated (no `deleted` option): the delete-menu-item gate below never
+  // checked `tagItem.deleted` in the old raw read, and the disabled/deleted-aware block
+  // further down applies its own `isEditable` (disabled AND deleted) multiplication —
+  // folding `deleted` in here would double-gate one site and wrongly gate the other.
+  const {
+    permissions: tagPermissions,
+    canEditAll: tagCanEditAll,
+    error: tagPermissionsError,
+  } = useEntityPermissions(
+    ResourceEntity.TAG,
+    { id: tagItem?.id ?? '' },
+    { enabled: Boolean(tagItem?.id) }
+  );
+
+  useEffect(() => {
+    if (tagPermissionsError) {
+      showErrorToast(tagPermissionsError as AxiosError);
+    }
+  }, [tagPermissionsError]);
 
   const setTagItem = useCallback(
     (
@@ -223,6 +262,22 @@ const TagPage = () => {
       : [];
   }, [tagItem]);
 
+  const aiBreadcrumbItems = useMemo(
+    () => [
+      getGlossaryHomeCrumb(t),
+      { label: t('label.classification-plural'), href: ROUTES.TAGS },
+      {
+        label: tagItem?.classification?.name ?? '',
+        href: tagItem?.classification?.fullyQualifiedName
+          ? getClassificationDetailsPath(
+              tagItem.classification.fullyQualifiedName
+            )
+          : '',
+      },
+    ],
+    [tagItem, t]
+  );
+
   const handleAssetClick = useCallback(
     (asset?: EntityDetailsObjectInterface) => {
       setPreviewAsset(asset);
@@ -239,12 +294,12 @@ const TagPage = () => {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
-        editTagsPermission: isEditable && tagPermissions.EditAll,
+        editTagsPermission: isEditable && tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
           EditOwners:
-            isEditable && (tagPermissions.EditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagPermissions.EditAll,
+            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
+          EditAll: isEditable && tagCanEditAll,
         },
       };
     }
@@ -253,7 +308,12 @@ const TagPage = () => {
       editTagsPermission: false,
       disabledAwarePermissions: tagPermissions,
     };
-  }, [tagPermissions, tagItem?.disabled, tagItem?.deleted]);
+    // `tagItem` itself is the real dependency here — a pre-existing missing-dependency gap
+    // (the `if (tagItem)` branch never re-ran once tagItem loaded, because
+    // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
+    // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
+    // (Task 8 Batches 3–4) of fixing missing deps in passing.
+  }, [tagPermissions, tagCanEditAll, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -268,7 +328,8 @@ const TagPage = () => {
   );
 
   const classificationName = tagItem?.classification?.name;
-  const isCertificationClassification = classificationName === 'Certification';
+  const isCertificationClassification =
+    classificationName === CERTIFICATION_CATEGORY;
 
   // Tier and Certification are first-class entity fields (entity.tier,
   // entity.certification), not entries in entity.tags[]. When this page
@@ -276,31 +337,12 @@ const TagPage = () => {
   // matching filter key — otherwise the dashboard queries `tags.tagFQN`,
   // which never matches assets carrying these system tags.
   const dqFilterKey: 'tier' | 'certification' | 'tags' =
-    classificationName === 'Tier'
-      ? 'tier'
-      : classificationName === 'Certification'
-      ? 'certification'
-      : 'tags';
+    getDqFilterKey(classificationName);
 
   const showDisableOption = useMemo(
-    () => tagPermissions.EditAll && !tagItem?.deleted,
-    [tagPermissions.EditAll, tagItem?.deleted]
+    () => tagCanEditAll && !tagItem?.deleted,
+    [tagCanEditAll, tagItem?.deleted]
   );
-
-  const fetchCurrentTagPermission = useCallback(async () => {
-    if (!tagItem?.id) {
-      return;
-    }
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.TAG,
-        tagItem?.id
-      );
-      setTagPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [tagItem?.id, getEntityPermission]);
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
@@ -474,7 +516,7 @@ const TagPage = () => {
     }
   }, [assetTabRef, activeTab, activeTabHandler, fetchClassificationTagAssets]);
 
-  const manageButtonContent: ItemType[] = [
+  const getManageButtonContent = (): ItemType[] => [
     ...(editTagsPermission
       ? [
           {
@@ -541,7 +583,7 @@ const TagPage = () => {
           },
         ]
       : []),
-    ...(tagItem?.provider !== ProviderType.System && tagPermissions.EditAll
+    ...(tagItem?.provider !== ProviderType.System && tagCanEditAll
       ? [
           {
             label: (
@@ -567,6 +609,8 @@ const TagPage = () => {
         ]
       : []),
   ];
+
+  const manageButtonContent: ItemType[] = getManageButtonContent();
 
   const tabItems = useMemo(() => {
     if (!tagItem) {
@@ -715,14 +759,17 @@ const TagPage = () => {
     assetTabRef,
     t,
   ]);
+
+  const aiHeaderTabs = useMemo<EntityDetailTab[]>(
+    () => tabItems.map((tab) => ({ key: tab.key, label: tab.label })),
+    [tabItems]
+  );
+
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
       return (
         <div className="align-middle" data-testid="icon">
-          {renderIcon(tagItem.style.iconURL, {
-            size: 36,
-            className: 'object-contain',
-          })}
+          <Icon iconValue={tagItem.style.iconURL} size={36} />
         </div>
       );
     }
@@ -777,11 +824,10 @@ const TagPage = () => {
 
   useEffect(() => {
     if (tagItem) {
-      fetchCurrentTagPermission();
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [tagItem, fetchCurrentTagPermission, fetchTaskCounts, fetchActivityCount]);
+  }, [tagItem, fetchTaskCounts, fetchActivityCount]);
 
   if (tagLoading || isCustomPageLoading) {
     return <Loader />;
@@ -808,112 +854,113 @@ const TagPage = () => {
     );
   }
 
-  return (
-    <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          <Row
-            className="data-classification"
-            data-testid="data-classification"
-            gutter={[0, 12]}>
-            <Col className="p-x-md" flex="1">
-              <EntityHeader
-                badge={badge}
-                breadcrumb={breadcrumb}
-                entityData={tagItem}
-                entityType={EntityType.TAG}
-                icon={icon}
-                serviceName={tagItem.name}
-                suffix={
-                  <LearningIcon
-                    className="m-t-xss"
-                    pageId={LEARNING_PAGE_IDS.TAGS}
-                  />
-                }
-                titleColor={tagItem.style?.color ?? BLACK_COLOR}
-              />
-            </Col>
-            {haveAssetEditPermission && (
-              <Col className="p-x-md">
-                <div className="d-flex self-end">
-                  {!isCertificationClassification && !tagItem.disabled && (
-                    <Button
-                      data-testid="data-classification-add-button"
-                      type="primary"
-                      onClick={() => setAssetModalVisible(true)}>
-                      {t('label.add-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                    </Button>
-                  )}
-                  {manageButtonContent.length > 0 && (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      className="m-l-xs"
-                      menu={{
-                        items: manageButtonContent,
-                      }}
-                      open={showActions}
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}
-                      onOpenChange={setShowActions}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.tag-lowercase'),
-                        })}>
-                        <Button
-                          className="flex-center"
-                          data-testid="manage-button"
-                          icon={
-                            <IconDropdown className="manage-dropdown-icon" />
-                          }
-                          onClick={() => setShowActions(true)}
-                        />
-                      </Tooltip>
-                    </Dropdown>
-                  )}
-                </div>
-              </Col>
-            )}
-          </Row>
+  const learningIcon = (
+    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
+  );
+
+  const renderAddAssetsButton = () =>
+    !isCertificationClassification && !tagItem.disabled ? (
+      <Button
+        data-testid="data-classification-add-button"
+        type="primary"
+        onClick={() => setAssetModalVisible(true)}>
+        {t('label.add-entity', {
+          entity: t('label.asset-plural'),
+        })}
+      </Button>
+    ) : null;
+
+  const manageDropdown =
+    manageButtonContent.length > 0 ? (
+      <Dropdown
+        align={{ targetOffset: [-12, 0] }}
+        className="m-l-xs"
+        menu={{
+          items: manageButtonContent,
+        }}
+        open={showActions}
+        overlayStyle={{ width: '350px' }}
+        placement="bottomRight"
+        trigger={['click']}
+        onOpenChange={setShowActions}>
+        <Tooltip
+          placement="topRight"
+          title={t('label.manage-entity', {
+            entity: t('label.tag-lowercase'),
+          })}>
+          <Button
+            className="flex-center"
+            data-testid="manage-button"
+            icon={<IconDropdown className="manage-dropdown-icon" />}
+            onClick={() => setShowActions(true)}
+          />
+        </Tooltip>
+      </Dropdown>
+    ) : null;
+
+  const renderAiHeader = () => (
+    <div>
+      <EntityDetailHeader
+        activeKey={activeTab}
+        badge={
+          <>
+            {badge}
+            {learningIcon}
+          </>
+        }
+        breadcrumb={
+          <HeaderBreadcrumb items={aiBreadcrumbItems} showHome={false} />
+        }
+        data-testid="tag-detail-header"
+        leading={icon}
+        primaryAction={
+          haveAssetEditPermission ? renderAddAssetsButton() : undefined
+        }
+        renderPanels={false}
+        secondaryActions={haveAssetEditPermission ? manageDropdown : null}
+        tabs={aiHeaderTabs}
+        title={getEntityName(tagItem)}
+        onTabChange={activeTabHandler}
+      />
+    </div>
+  );
+
+  const renderClassicHeader = () => (
+    <Row
+      className="data-classification"
+      data-testid="data-classification"
+      gutter={[0, 12]}>
+      <Col className="p-x-md" flex="1">
+        <EntityHeader
+          badge={badge}
+          breadcrumb={breadcrumb}
+          entityData={tagItem}
+          entityType={EntityType.TAG}
+          icon={icon}
+          serviceName={tagItem.name}
+          suffix={learningIcon}
+          titleColor={tagItem.style?.color ?? BLACK_COLOR}
+        />
+      </Col>
+      {haveAssetEditPermission && (
+        <Col className="p-x-md">
+          <div className="d-flex self-end">
+            {renderAddAssetsButton()}
+            {manageDropdown}
+          </div>
         </Col>
+      )}
+    </Row>
+  );
 
-        <GenericProvider<Tag>
-          customizedPage={customizedPage}
-          data={tagItem}
-          isVersionView={false}
-          permissions={disabledAwarePermissions}
-          type={EntityType.TAG as CustomizeEntityType}
-          onUpdate={(updatedData: Tag) =>
-            Promise.resolve(updateTag(updatedData))
-          }>
-          <Col
-            span={24}
-            style={{
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              height: 'calc(100vh - 170px)',
-            }}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new tag-page-tabs"
-              items={tabItems}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </GenericProvider>
-      </Row>
-
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(tagItem.name, '')}
-        entityName={tagItem.name}
-        entityType="Tag"
-        visible={isDelete}
+  const renderModals = () => (
+    <>
+      <DeleteModal
+        entityTitle={tagItem.name}
+        message={t('message.delete-entity-message', { entity: tagItem.name })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={handleDelete}
+        onDelete={handleDelete}
       />
 
       <EntityNameModal
@@ -956,6 +1003,47 @@ const TagPage = () => {
           onSave={handleAssetSave}
         />
       )}
+    </>
+  );
+
+  return (
+    <PageLayoutV1
+      pageTitle={tagItem.name}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <Row gutter={[0, 12]}>
+        <Col span={24}>
+          {showAiHeader ? renderAiHeader() : renderClassicHeader()}
+        </Col>
+
+        <GenericProvider<Tag>
+          customizedPage={customizedPage}
+          data={tagItem}
+          isVersionView={false}
+          permissions={disabledAwarePermissions}
+          type={EntityType.TAG as CustomizeEntityType}
+          onUpdate={(updatedData: Tag) =>
+            Promise.resolve(updateTag(updatedData))
+          }>
+          <Col
+            span={24}
+            style={{
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              height: 'calc(100vh - 170px)',
+            }}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab}
+              className="tabs-new tag-page-tabs"
+              items={tabItems}
+              renderTabBar={showAiHeader ? () => <></> : undefined}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </GenericProvider>
+      </Row>
+
+      {renderModals()}
     </PageLayoutV1>
   );
 };

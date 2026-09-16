@@ -16,9 +16,8 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 
 /**
  * Holds the platform-wide {@link LLMConfiguration} loaded from {@code openmetadata.yaml} at startup,
- * so any feature needing LLM access (e.g. the MCP Chat application) can read it without threading
- * the config through every layer. Features build their own client from this config via {@link
- * LlmClientFactory}.
+ * so any feature needing LLM access (e.g. semantic-search embeddings) can read it without threading
+ * the config through every layer.
  */
 public final class LlmConfigHolder {
   private static volatile LLMConfiguration configuration;

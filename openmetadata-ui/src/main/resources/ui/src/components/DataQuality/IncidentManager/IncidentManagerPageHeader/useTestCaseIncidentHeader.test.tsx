@@ -12,7 +12,11 @@
  */
 import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  Severities,
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TASK_DATA,
   MOCK_TEST_CASE_DATA,
@@ -100,7 +104,10 @@ jest.mock('react-router-dom', () => ({
 
 const mockUseTestCaseStore = {
   testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' } as
-    | (typeof MOCK_TEST_CASE_DATA & { incidentId?: string })
+    | (typeof MOCK_TEST_CASE_DATA & {
+        incidentId?: string;
+        incidentStatus?: TestCaseResolutionStatus;
+      })
     | undefined,
   testCasePermission: mockEntityPermissions,
   setTestCase: jest.fn(),
@@ -121,9 +128,14 @@ jest.mock('../../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
-}));
+// PermissionsUtils is intentionally left unmocked (no jest.mock call at all):
+// the source under test calls getPrioritizedEditPermission directly, and
+// getDerivedPermissionFlags (from PermissionDerivation.ts) calls both
+// getPrioritizedEditPermission and getPrioritizedViewPermission internally.
+// Stubbing either would force every derived canEdit*/hasEdit* flag to a
+// constant, making allow/deny assertions below vacuous. Running the real
+// implementation means the permission fixtures below (mockEntityPermissions
+// and its deny variants) genuinely exercise field-priority-over-EditAll.
 
 jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDisplayId: jest.fn().mockReturnValue(9),
@@ -156,6 +168,9 @@ describe('useTestCaseIncidentHeader', () => {
       ...MOCK_TEST_CASE_DATA,
       incidentId: '123',
     };
+    // Reset between tests: the deny-path tests below mutate this fixture in
+    // place, and it must not leak into unrelated tests.
+    mockUseTestCaseStore.testCasePermission = mockEntityPermissions;
   });
 
   it('should fetch the incident task and resolution status on mount', async () => {
@@ -181,6 +196,68 @@ describe('useTestCaseIncidentHeader', () => {
     expect(getIncidentTaskByStateId).not.toHaveBeenCalled();
     expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
     expect(result.current.testCaseStatusData).toBeUndefined();
+  });
+
+  it('should render the resolved inline status when there is no incident id', async () => {
+    const resolvedInlineStatus = {
+      ...MOCK_TEST_CASE_INCIDENT.data[0],
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+    } as unknown as TestCaseResolutionStatus;
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentStatus: resolvedInlineStatus,
+    };
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(
+      resolvedInlineStatus.stateId
+    );
+    expect(result.current.testCaseStatusData).toEqual(resolvedInlineStatus);
+    expect(result.current.incidentTask).toEqual(MOCK_TASK_DATA[1]);
+  });
+
+  it('should ignore a non-resolved inline status when there is no incident id', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentStatus: MOCK_TEST_CASE_INCIDENT
+        .data[0] as unknown as TestCaseResolutionStatus,
+    };
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getIncidentTaskByStateId).not.toHaveBeenCalled();
+    expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
+    expect(result.current.testCaseStatusData).toBeUndefined();
+  });
+
+  it('should clear stale incident state when moving to a test case without an incident', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentId: '123',
+    };
+
+    const { result, rerender } = renderIncidentHeaderHook();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toEqual(
+        MOCK_TEST_CASE_INCIDENT.data[0]
+      )
+    );
+
+    mockUseTestCaseStore.testCase = { ...MOCK_TEST_CASE_DATA };
+    rerender();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toBeUndefined()
+    );
+
+    expect(result.current.incidentTask).toBeNull();
   });
 
   it('should expose the owner version diff only on the version page', async () => {
@@ -281,8 +358,66 @@ describe('useTestCaseIncidentHeader', () => {
     expect(result.current.canAddMultipleTeamOwner).toBe(false);
   });
 
+  it('should deny hasEditStatusPermission/hasEditOwnerPermission when the field-level permission explicitly denies, even with EditAll granted', async () => {
+    // Field-level denial wins over the broader EditAll grant (explicit
+    // deny-wins — getPrioritizedEditPermission returns the field key when
+    // present, regardless of EditAll). Assigned through a variable (not a
+    // fresh literal) so the extra keys don't trip excess-property checking.
+    const deniedFieldPermissions = {
+      ...mockEntityPermissions,
+      EditAll: true,
+      EditStatus: false,
+      EditOwners: false,
+    };
+    mockUseTestCaseStore.testCasePermission = deniedFieldPermissions;
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasEditStatusPermission).toBe(false);
+    expect(result.current.hasEditOwnerPermission).toBe(false);
+    // hasEditDomainPermission is unaffected by field-level denial — it reads
+    // EditAll directly (getDerivedPermissionFlags.canEditAll), not through
+    // getPrioritizedEditPermission.
+    expect(result.current.hasEditDomainPermission).toBe(true);
+  });
+
+  it('should deny hasEditDomainPermission when EditAll is denied', async () => {
+    const deniedEditAllPermissions = {
+      ...mockEntityPermissions,
+      EditAll: false,
+    };
+    mockUseTestCaseStore.testCasePermission = deniedEditAllPermissions;
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasEditDomainPermission).toBe(false);
+    // No EditStatus/EditOwners field key is present in the fixture, so both
+    // fall back to the (now-denied) EditAll value.
+    expect(result.current.hasEditStatusPermission).toBe(false);
+    expect(result.current.hasEditOwnerPermission).toBe(false);
+  });
+
   it('should disable edit permissions on version pages', async () => {
     const { result } = renderIncidentHeaderHook(true);
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.hasEditStatusPermission).toBe(false);
+    expect(result.current.hasEditOwnerPermission).toBe(false);
+    expect(result.current.hasEditDomainPermission).toBe(false);
+  });
+
+  it('should disable edit permissions for deleted test cases', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    };
+
+    const { result } = renderIncidentHeaderHook();
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 

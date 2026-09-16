@@ -12,10 +12,10 @@
  */
 
 import { Alert, TreeSelect } from 'antd';
-import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 
 import { isEmpty } from 'lodash';
+import { BaseSelectRef } from 'rc-select';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
@@ -25,8 +25,20 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
+import { buildTeamsSelectableTree } from './TeamsSelectable.utils';
 
-const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
+const renderMaxTagPlaceholder = (
+  count: number,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <span className="max-tag-text">
+    {t('label.plus-count-more', {
+      count,
+    })}
+  </span>
+);
+
+const TeamsSelectableNew = forwardRef<BaseSelectRef, TeamsSelectableProps>(
   (
     {
       showTeamsAlert,
@@ -77,25 +89,10 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
 
     const showLeafIcon = false;
 
-    const getTreeNodeData = (team: TeamHierarchy): BaseOptionType => {
-      const teamName = getEntityName(team);
-      const value = team.id;
-      const disabled = filterJoinable ? !team.isJoinable : false;
-
-      return {
-        title: teamName,
-        value,
-        selectable: !team.children?.length,
-        disabled,
-        children:
-          team.children &&
-          team.children.map((n: TeamHierarchy) => getTreeNodeData(n)),
-      };
-    };
-
-    const teamsTree = useMemo(() => {
-      return teams.map((team) => getTreeNodeData(team));
-    }, [teams]);
+    const teamsTree = useMemo(
+      () => buildTeamsSelectableTree(teams, filterJoinable),
+      [teams, filterJoinable]
+    );
 
     const selectedTeamsInternal = useMemo(() => {
       return selectedTeams?.map((selectedTeam) => ({
@@ -118,18 +115,14 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           getPopupContainer={(trigger) => trigger.parentElement}
           loading={isLoading}
           maxTagCount={maxValueCount}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', {
-                count: omittedValues.length,
-              })}
-            </span>
-          )}
+          maxTagPlaceholder={(omittedValues) =>
+            renderMaxTagPlaceholder(omittedValues.length, t)
+          }
           open={open}
           placeholder={placeholder}
           placement="bottomLeft"
           popupClassName="teams-custom-dropdown-class"
-          ref={ref as any}
+          ref={ref}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
           tagRender={TagRenderer}

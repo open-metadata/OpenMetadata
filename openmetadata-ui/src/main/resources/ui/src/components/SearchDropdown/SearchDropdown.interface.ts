@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import type { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
 
 export interface SearchDropdownProps {
   triggerButtonSize?: 'large' | 'middle' | 'small';
@@ -43,10 +43,6 @@ export interface SearchDropdownProps {
   getPopupContainer?: (triggerNode: HTMLElement) => HTMLElement;
 }
 
-export interface SearchDropdownOption {
-  key: string;
-  label: string;
-  labelKeyOptions?: Record<string, string | number | boolean>;
-  count?: number;
-  description?: string;
-}
+import type { SearchDropdownOption } from '../../interface/quickFilter.interface';
+
+export type { SearchDropdownOption };

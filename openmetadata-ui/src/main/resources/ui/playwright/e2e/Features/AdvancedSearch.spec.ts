@@ -76,6 +76,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       topic1.create(apiContext),
       topic2.create(apiContext),
     ]);
+
     glossaryEntity = new Glossary(undefined, [
       {
         id: user.responseData.id,
@@ -111,13 +112,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain1.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain1.responseData.name,
-            displayName: EntityDataClass.domain1.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain1.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain1.responseData.name,
+              displayName: EntityDataClass.domain1.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -159,13 +162,15 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
         },
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: EntityDataClass.domain2.responseData.id,
-            type: 'domain',
-            name: EntityDataClass.domain2.responseData.name,
-            displayName: EntityDataClass.domain2.responseData.displayName,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: EntityDataClass.domain2.responseData.id,
+              type: 'domain',
+              name: EntityDataClass.domain2.responseData.name,
+              displayName: EntityDataClass.domain2.responseData.displayName,
+            },
+          ],
         },
       ],
     });
@@ -450,26 +455,31 @@ test.describe(
       });
 
       await test.step('Select Status field and == operator', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.getByTestId('advanced-search-field-select'),
           'Status',
           true
         );
         await selectOption(
           page,
-          ruleLocator.locator('.rule--operator .ant-select'),
+          ruleLocator.getByTestId('advanced-search-operator-select'),
           '=='
         );
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
-        await ruleLocator.locator('.widget--widget > .ant-select').click();
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
+        const triggerBtn = ruleLocator.locator(
+          '[data-testid=advanced-search-value] button[aria-haspopup="listbox"]'
+        );
+
+        await expect(triggerBtn).toBeVisible();
+        await triggerBtn.click();
 
         const dropdown = page
-          .locator('.ant-select-dropdown')
+          .locator('[role="listbox"]')
           .filter({ hasText: EntityStatus.Approved })
           .last();
 
@@ -478,7 +488,7 @@ test.describe(
         for (const status of ENTITY_STATUSES) {
           await expect(
             dropdown
-              .locator('.ant-select-item-option')
+              .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
               .first()
           ).toBeVisible();
@@ -505,7 +515,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -569,7 +579,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -610,7 +620,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -734,7 +744,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -777,7 +787,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -819,7 +829,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -861,7 +871,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -905,7 +915,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -948,7 +958,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -1053,7 +1063,7 @@ test.describe(
 
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);
@@ -1077,7 +1087,7 @@ test.describe(
         await page.getByTestId('search-dropdown-Data Assets').click();
         await searchAndClickOnOption(
           page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          { label: 'Data Assets', key: 'entityType', value: 'table' },
           true
         );
         await clickUpdateButtonIfVisible(page);
@@ -1212,9 +1222,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag1.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag1.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table1 (tagged with tag1) is visible', async () => {
@@ -1262,9 +1272,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag2.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag2.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table2 (tagged with tag2) is visible', async () => {
@@ -1301,7 +1311,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1376,7 +1386,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1451,7 +1461,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1493,7 +1503,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1535,7 +1545,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1561,6 +1571,150 @@ test.describe(
       });
 
       await page.getByTestId('advance-search-clear-btn').click();
+    });
+  }
+);
+
+test.describe(
+  'Custom property enum lazy load in Advanced Search',
+  { tag: ['@advanced-search'] },
+  () => {
+    // 150 values: initial asyncFetch returns items 0-99, scroll triggers items 100-149
+    const ENUM_VALUES = Array.from(
+      { length: 150 },
+      (_, i) => `enum_val_${String(i).padStart(3, '0')}`
+    );
+    const FIRST_PAGE_VALUE = 'enum_val_000';
+    const SECOND_PAGE_VALUE = 'enum_val_100';
+
+    let enumCPName: string;
+    let enumCPId: string;
+    let lazyLoadTable: TableClass;
+
+    test.beforeAll(
+      'Setup enum custom property with 150 values on table',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          lazyLoadTable = new TableClass();
+          await lazyLoadTable.create(apiContext);
+
+          const cpMetadataTypeRes = await apiContext.get(
+            '/api/v1/metadata/types/name/table?fields=customProperties'
+          );
+          const cpMetadataType = await cpMetadataTypeRes.json();
+
+          const typesRes = await apiContext.get(
+            '/api/v1/metadata/types?category=field&limit=20'
+          );
+          const types = (await typesRes.json()).data as {
+            name: string;
+            id: string;
+          }[];
+          const enumTypeId =
+            types.find((t: { name: string }) => t.name === 'enum')?.id ?? '';
+
+          enumCPName = `enum-lazy-${uuid()}`;
+
+          const cpRes = await apiContext.put(
+            `/api/v1/metadata/types/${cpMetadataType.id}`,
+            {
+              data: {
+                name: enumCPName,
+                description: 'Enum CP for lazy load test',
+                propertyType: { name: 'enum', type: 'type', id: enumTypeId },
+                customPropertyConfig: {
+                  config: { values: ENUM_VALUES, multiSelect: true },
+                },
+              },
+            }
+          );
+          const cpData = await cpRes.json();
+          enumCPId = cpData.id;
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    const openEnumValueDropdown = async (
+      page: Parameters<typeof redirectToHomePage>[0]
+    ) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await showAdvancedSearchDialog(page);
+
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
+
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select'),
+        'Custom Properties',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
+        'Table',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
+        enumCPName,
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        'Equals'
+      );
+
+      const comboboxInput = ruleLocator.locator(
+        '[data-testid=advanced-search-value] input[role="combobox"]'
+      );
+
+      await expect(comboboxInput).toBeVisible({ timeout: 15000 });
+      // fill('') focuses the input (menuTrigger="focus" opens the popup)
+      // without pointer-clicking — the overlaid chevron button can intercept
+      // clicks at the input's center in narrow ComboBoxes.
+      await comboboxInput.fill('');
+
+      const dropdown = page.locator('[role="listbox"]:visible').last();
+
+      await expect(dropdown).toBeVisible();
+
+      return { ruleLocator, comboboxInput, dropdown };
+    };
+
+    test('should find page-2 items via search without clicking Load more', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
+
+      // Page 1 items load; page-2 item is not yet visible
+      await expect(
+        dropdown.getByRole('option', { name: FIRST_PAGE_VALUE })
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+      ).not.toBeVisible();
+
+      // Type to search — asyncFetch filters the full values array, not just the loaded page
+      const searchInput = ruleLocator.locator(
+        '[data-testid=advanced-search-value] input[role="combobox"]'
+      );
+
+      await searchInput.fill(SECOND_PAGE_VALUE);
+
+      // Item appears immediately without clicking Load more
+      await expect(
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+      ).toBeVisible({ timeout: 10000 });
     });
   }
 );

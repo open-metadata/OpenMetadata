@@ -15,7 +15,9 @@ package org.openmetadata.service.migration.utils.v200;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -28,10 +30,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,14 +46,19 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -135,6 +145,102 @@ class MigrationUtilTaskWorkflowTest {
   }
 
   @Test
+  void runTaskWorkflowCutoverMigrationBackfillsEmptyTransitionMetadata() throws Exception {
+    stubTables(Set.of());
+    // Simulate a 1.13 or pre-fix builder-saved userApprovalTask whose config carries no
+    // transitionMetadata field. After the migration a fresh WorkflowDefinition — with the node's
+    // config carrying the default approve/reject pair — must be handed to createOrUpdate so
+    // freshly-created tasks project availableTransitions correctly.
+    WorkflowDefinition workflowDefinition =
+        userApprovalWorkflowFromJson(
+            "LegacyDomainWorkflow",
+            """
+                {"approvalThreshold":1,"rejectionThreshold":1,
+                 "assignees":{"addReviewers":false,"addOwners":false,"candidates":[]}}
+                """);
+    when(workflowDefinitionRepository.listAll(any(), any()))
+        .thenReturn(List.of(workflowDefinition));
+
+    newMigrationUtil().runTaskWorkflowCutoverMigration();
+
+    org.mockito.ArgumentCaptor<WorkflowDefinition> captor =
+        org.mockito.ArgumentCaptor.forClass(WorkflowDefinition.class);
+    verify(workflowDefinitionRepository).createOrUpdate(eq(null), captor.capture(), eq("admin"));
+    WorkflowDefinition persisted = captor.getValue();
+    Map<String, Object> persistedJson =
+        org.openmetadata.schema.utils.JsonUtils.convertValue(persisted, Map.class);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> nodes = (List<Map<String, Object>>) persistedJson.get("nodes");
+    Map<String, Object> approvalNode =
+        nodes.stream()
+            .filter(n -> "userApprovalTask".equals(n.get("subType")))
+            .findFirst()
+            .orElseThrow();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> configMap = (Map<String, Object>) approvalNode.get("config");
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> transitionMetadata =
+        (List<Map<String, Object>>) configMap.get("transitionMetadata");
+    assertNotNull(transitionMetadata);
+    assertEquals(2, transitionMetadata.size());
+    assertEquals("approve", transitionMetadata.get(0).get("id"));
+    assertEquals("Approved", transitionMetadata.get(0).get("targetTaskStatus"));
+    assertEquals("reject", transitionMetadata.get(1).get("id"));
+    assertEquals("Rejected", transitionMetadata.get(1).get("targetTaskStatus"));
+    // Backfill must preserve pre-existing config keys (thresholds + assignees).
+    assertEquals(1, configMap.get("approvalThreshold"));
+    assertEquals(1, configMap.get("rejectionThreshold"));
+    assertNotNull(configMap.get("assignees"));
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationDoesNotOverwritePopulatedTransitionMetadata()
+      throws Exception {
+    stubTables(Set.of());
+    WorkflowDefinition workflowDefinition =
+        userApprovalWorkflowFromJson(
+            "CustomTransitionWorkflow",
+            """
+                {"assignees":{"addReviewers":false,"addOwners":false,"candidates":[]},
+                 "transitionMetadata":[
+                   {"id":"customApprove","label":"Custom Approve",
+                    "targetStageId":"customApproved","targetTaskStatus":"Approved"}
+                 ]}
+                """);
+    when(workflowDefinitionRepository.listAll(any(), any()))
+        .thenReturn(List.of(workflowDefinition));
+
+    newMigrationUtil().runTaskWorkflowCutoverMigration();
+
+    // Populated transitionMetadata is untouched — the same instance flows through createOrUpdate.
+    verify(workflowDefinitionRepository).createOrUpdate(null, workflowDefinition, "admin");
+  }
+
+  /**
+   * Build a WorkflowDefinition with a single {@code userApprovalTask} node from a JSON literal —
+   * avoids depending on the jsonschema2pojo-generated numbered config class name, which can
+   * rename on any userApprovalTask schema edit.
+   */
+  private WorkflowDefinition userApprovalWorkflowFromJson(String name, String configJson) {
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "trigger": {"type":"noOp"},
+              "nodes": [
+                {"name":"start","type":"startEvent","subType":"startEvent"},
+                {"name":"TaskReview","type":"userTask","subType":"userApprovalTask",
+                 "config": %s}
+              ],
+              "edges": []
+            }
+            """
+            .formatted(name, configJson);
+    return org.openmetadata.schema.utils.JsonUtils.readValue(
+        workflowJson, WorkflowDefinition.class);
+  }
+
+  @Test
   void runTaskWorkflowCutoverMigrationSeedsPerTaskWorkflowDefaults() throws Exception {
     stubTables(Set.of());
     WorkflowDefinition descriptionWorkflow =
@@ -208,6 +314,226 @@ class MigrationUtilTaskWorkflowTest {
 
       verify(workflowHandler)
           .triggerByKey(eq("DescriptionUpdateTaskWorkflowTrigger"), eq(taskId.toString()), any());
+    }
+  }
+
+  @Test
+  void strandedGlossaryApprovalForInReviewTermRestartsGlossaryTermApprovalWorkflow()
+      throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID termId = UUID.randomUUID();
+    Task stranded =
+        new Task()
+            .withId(taskId)
+            .withName("TASK-00001")
+            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withAbout(
+                new EntityReference()
+                    .withId(termId)
+                    .withType("glossaryTerm")
+                    .withFullyQualifiedName("Glossary.Term"))
+            .withUpdatedBy("alice");
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(termId)
+            .withFullyQualifiedName("Glossary.Term")
+            .withEntityStatus(EntityStatus.IN_REVIEW);
+    WorkflowDefinition gtaw =
+        new WorkflowDefinition()
+            .withId(UUID.randomUUID())
+            .withName("GlossaryTermApprovalWorkflow")
+            .withFullyQualifiedName("GlossaryTermApprovalWorkflow");
+
+    Task freshBoundTask =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    // Pre-check: no active approval task. Post-restart re-query: the fresh
+    // GlossaryTermApprovalWorkflow
+    // task now exists, so the stranded row is confirmed superseded and gets closed.
+    when(taskRepository.listNonTerminalTasksByEntityAndCategory(
+            "Glossary.Term", TaskCategory.Approval))
+        .thenReturn(List.of(), List.of(freshBoundTask));
+    when(workflowDefinitionRepository.findByNameOrNull(
+            eq("GlossaryTermApprovalWorkflow"), eq(Include.NON_DELETED)))
+        .thenReturn(gtaw);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.GLOSSARY_TERM), eq(termId), anyString(), any()))
+          .thenReturn(term);
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      MigrationUtil.TaskWorkflow migrationUtil = new MigrationUtil.TaskWorkflow(handle);
+      migrationUtil.runTaskWorkflowCutoverMigration();
+
+      verify(workflowHandler)
+          .triggerByKey(eq("GlossaryTermApprovalWorkflowTrigger"), eq(termId.toString()), any());
+      verify(taskRepository).closeTask(eq(stranded), eq("admin"), anyString());
+    }
+  }
+
+  @Test
+  void strandedGlossaryApprovalForDraftTermIsClosedWithoutStartingWorkflow() throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID termId = UUID.randomUUID();
+    Task stranded =
+        new Task()
+            .withId(taskId)
+            .withName("TASK-00002")
+            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withAbout(
+                new EntityReference()
+                    .withId(termId)
+                    .withType("glossaryTerm")
+                    .withFullyQualifiedName("Glossary.DraftTerm"))
+            .withUpdatedBy("alice");
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(termId)
+            .withFullyQualifiedName("Glossary.DraftTerm")
+            .withEntityStatus(EntityStatus.DRAFT);
+
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.GLOSSARY_TERM), eq(termId), anyString(), any()))
+          .thenReturn(term);
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      MigrationUtil.TaskWorkflow migrationUtil = new MigrationUtil.TaskWorkflow(handle);
+      migrationUtil.runTaskWorkflowCutoverMigration();
+
+      verify(taskRepository).closeTask(eq(stranded), eq("admin"), anyString());
+      verify(workflowHandler, never())
+          .triggerByKey(eq("GlossaryTermApprovalWorkflowTrigger"), any(), any());
+    }
+  }
+
+  @Test
+  void strandedGlossaryApprovalLeftOpenWhenGlossaryTermApprovalWorkflowMissing() throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID termId = UUID.randomUUID();
+    Task stranded =
+        new Task()
+            .withId(taskId)
+            .withName("TASK-00003")
+            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withAbout(
+                new EntityReference()
+                    .withId(termId)
+                    .withType("glossaryTerm")
+                    .withFullyQualifiedName("Glossary.Term"))
+            .withUpdatedBy("alice");
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(termId)
+            .withFullyQualifiedName("Glossary.Term")
+            .withEntityStatus(EntityStatus.IN_REVIEW);
+
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    when(taskRepository.listNonTerminalTasksByEntityAndCategory(
+            "Glossary.Term", TaskCategory.Approval))
+        .thenReturn(List.of());
+    // GlossaryTermApprovalWorkflow definition intentionally not stubbed -> findByNameOrNull null.
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.GLOSSARY_TERM), eq(termId), anyString(), any()))
+          .thenReturn(term);
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      MigrationUtil.TaskWorkflow migrationUtil = new MigrationUtil.TaskWorkflow(handle);
+      migrationUtil.runTaskWorkflowCutoverMigration();
+
+      verify(workflowHandler, never())
+          .triggerByKey(eq("GlossaryTermApprovalWorkflowTrigger"), any(), any());
+      verify(taskRepository, never()).closeTask(eq(stranded), any(), any());
+    }
+  }
+
+  @Test
+  void strandedGlossaryApprovalLeftOpenWhenTermResolutionThrowsTransientError() throws Exception {
+    stubTables(Set.of());
+    UUID taskId = UUID.randomUUID();
+    UUID termId = UUID.randomUUID();
+    Task stranded =
+        new Task()
+            .withId(taskId)
+            .withName("TASK-00004")
+            .withType(TaskEntityType.GlossaryApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withAbout(
+                new EntityReference()
+                    .withId(termId)
+                    .withType("glossaryTerm")
+                    .withFullyQualifiedName("Glossary.Term"))
+            .withUpdatedBy("alice");
+
+    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(taskFormSchemaRepository);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+          .thenReturn(workflowDefinitionRepository);
+      // Transient (non EntityNotFound) failure while loading the term -> must NOT be treated as
+      // "term gone"; the stranded task stays open instead of being closed.
+      entityMock
+          .when(() -> Entity.getEntity(eq(Entity.GLOSSARY_TERM), eq(termId), anyString(), any()))
+          .thenThrow(new RuntimeException("transient db error"));
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+
+      MigrationUtil.TaskWorkflow migrationUtil = new MigrationUtil.TaskWorkflow(handle);
+      migrationUtil.runTaskWorkflowCutoverMigration();
+
+      verify(taskRepository, never()).closeTask(eq(stranded), any(), any());
+      verify(workflowHandler, never())
+          .triggerByKey(eq("GlossaryTermApprovalWorkflowTrigger"), any(), any());
     }
   }
 
@@ -297,6 +623,116 @@ class MigrationUtilTaskWorkflowTest {
     verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
     verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
     verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationAddsEntityStatusExcludeForGlossaryApprovalWorkflow()
+      throws Exception {
+    stubTables(Set.of());
+    WorkflowDefinition glossaryWorkflow =
+        glossaryTermApprovalWorkflowWithExclude(new ArrayList<>());
+    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+
+    MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
+    migrationUtil.runTaskWorkflowCutoverMigration();
+
+    assertEquals(List.of("entityStatus"), triggerExclude(glossaryWorkflow));
+    verify(workflowDefinitionRepository).createOrUpdate(null, glossaryWorkflow, "admin");
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationPreservesExistingExcludeEntriesForGlossaryWorkflow()
+      throws Exception {
+    stubTables(Set.of());
+    WorkflowDefinition glossaryWorkflow =
+        glossaryTermApprovalWorkflowWithExclude(new ArrayList<>(List.of("reviewers")));
+    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+
+    MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
+    migrationUtil.runTaskWorkflowCutoverMigration();
+
+    assertEquals(List.of("reviewers", "entityStatus"), triggerExclude(glossaryWorkflow));
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationIsIdempotentWhenGlossaryExcludeAlreadyHasEntityStatus()
+      throws Exception {
+    stubTables(Set.of());
+    WorkflowDefinition glossaryWorkflow =
+        glossaryTermApprovalWorkflowWithExclude(new ArrayList<>(List.of("entityStatus")));
+    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+
+    MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
+    migrationUtil.runTaskWorkflowCutoverMigration();
+
+    assertEquals(List.of("entityStatus"), triggerExclude(glossaryWorkflow));
+  }
+
+  @Test
+  void runTaskWorkflowCutoverMigrationDoesNotModifyNonGlossaryWorkflowExclude() throws Exception {
+    stubTables(Set.of());
+    WorkflowNodeDefinitionInterface approvalNode = mock(WorkflowNodeDefinitionInterface.class);
+    when(approvalNode.getSubType()).thenReturn("userApprovalTask");
+    Config config = new Config().withExclude(new ArrayList<>());
+    EventBasedEntityTriggerDefinition trigger =
+        new EventBasedEntityTriggerDefinition().withConfig(config);
+    WorkflowDefinition workflow =
+        new WorkflowDefinition()
+            .withName("SomeOtherApprovalWorkflow")
+            .withNodes(List.of(approvalNode))
+            .withTrigger(trigger);
+    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(workflow));
+
+    MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
+    migrationUtil.runTaskWorkflowCutoverMigration();
+
+    assertEquals(List.of(), config.getExclude());
+    verify(workflowDefinitionRepository).createOrUpdate(null, workflow, "admin");
+  }
+
+  /**
+   * Guard test: locks the shipped {@code GlossaryApprovalWorkflow.json} trigger exclude list to a
+   * known set. If a future change modifies this seed's exclude list, this test fails to force the
+   * author to also add a v20X migration step that mutates the same field on existing DB rows —
+   * fresh seed loads pick up JSON changes, upgraded rows do not.
+   */
+  @Test
+  void glossaryApprovalWorkflowSeedExcludeMatchesExpectedListOrRequiresNewMigration()
+      throws Exception {
+    String path = "json/data/governance/workflows/GlossaryApprovalWorkflow.json";
+    try (InputStream in = getClass().getClassLoader().getResourceAsStream(path)) {
+      assertNotNull(in, "Could not locate " + path + " on the test classpath");
+      String json = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+      WorkflowDefinition seed = JsonUtils.readValue(json, WorkflowDefinition.class);
+      assertTrue(
+          seed.getTrigger() instanceof EventBasedEntityTriggerDefinition,
+          "GlossaryApprovalWorkflow trigger must be eventBasedEntity");
+      List<String> exclude =
+          ((EventBasedEntityTriggerDefinition) seed.getTrigger()).getConfig().getExclude();
+      assertEquals(
+          List.of("entityStatus"),
+          exclude,
+          "GlossaryApprovalWorkflow.json trigger.exclude changed. If you added/removed an "
+              + "entry here, existing upgraded databases keep the old exclude list — write a "
+              + "MigrationUtil step (see v200 addEntityStatusToTriggerExclude) that mutates the "
+              + "same field on the DB row, then update this expected list.");
+    }
+  }
+
+  private WorkflowDefinition glossaryTermApprovalWorkflowWithExclude(List<String> exclude) {
+    WorkflowNodeDefinitionInterface approvalNode = mock(WorkflowNodeDefinitionInterface.class);
+    when(approvalNode.getSubType()).thenReturn("userApprovalTask");
+    Config config = new Config().withExclude(exclude);
+    EventBasedEntityTriggerDefinition trigger =
+        new EventBasedEntityTriggerDefinition().withConfig(config);
+    return new WorkflowDefinition()
+        .withName("GlossaryTermApprovalWorkflow")
+        .withNodes(List.of(approvalNode))
+        .withTrigger(trigger);
+  }
+
+  private List<String> triggerExclude(WorkflowDefinition workflow) {
+    return ((EventBasedEntityTriggerDefinition) workflow.getTrigger()).getConfig().getExclude();
   }
 
   private MigrationUtil.TaskWorkflow newMigrationUtil() {

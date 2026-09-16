@@ -7,8 +7,10 @@
       "name",
       "deleted",
       "version",
+      "updatedAt",
       "owners",
       "tags",
+      "ownerName",
       "extension",
       "votes",
       "fullyQualifiedName",
@@ -119,6 +121,11 @@
       "parent",
       "children",
       "usageCount"
+    ],
+    "apiEndpoint": [
+      "service",
+      "serviceType",
+      "apiCollection"
     ],
     "metric": [
       "metricType",

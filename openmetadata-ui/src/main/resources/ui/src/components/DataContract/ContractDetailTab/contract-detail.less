@@ -13,7 +13,7 @@
 @import (reference) '../../../styles/variables.less';
 
 .contract-detail-container {
-  padding-left: 16px;
+  padding-left: var(--om-space-16);
   width: 95%;
 
   .contract-dash-separator {
@@ -23,7 +23,7 @@
   }
 
   .contract-card-items {
-    margin-bottom: 32px;
+    margin-bottom: var(--om-space-32);
 
     &:last-child {
       margin-bottom: 0;
@@ -32,9 +32,9 @@
     .contract-card-header-container {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--om-space-12);
       overflow: hidden;
-      margin-bottom: 16px;
+      margin-bottom: var(--om-space-16);
 
       > div:first-child {
         flex-shrink: 0;
@@ -43,8 +43,8 @@
 
       .contract-card-header {
         min-width: fit-content;
-        font-size: 14px;
-        font-weight: 600;
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-semibold);
         color: @grey-900;
         white-space: nowrap;
       }
@@ -58,12 +58,12 @@
     .contract-status-container {
       display: flex;
       align-items: baseline;
-      gap: 12px;
+      gap: var(--om-space-12);
 
       .ant-typography {
         color: @grey-700;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-medium);
       }
 
       .status-badge-v2.success {
@@ -77,17 +77,17 @@
   .contract-card-title-container {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--om-space-4);
 
     .contract-card-title {
-      font-size: 18px;
-      font-weight: 600;
+      font-size: var(--om-font-size-lg);
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
     }
 
     .contract-card-description {
-      font-size: 14px;
-      font-weight: 400;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-regular);
       color: @grey-600;
     }
   }
@@ -95,33 +95,33 @@
 
 .contract-status-card-item {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: var(--om-space-12) var(--om-space-16);
+  border-radius: var(--om-radius-lg);
   border: 1px solid @border-color;
-  margin-bottom: 12px;
+  margin-bottom: var(--om-space-12);
   background: var(--tw-color-bg-primary);
 
   .contract-status-card-icon {
-    font-size: 20px;
+    font-size: var(--om-font-size-xl);
     color: @grey-700;
   }
 
   .contract-status-card-label {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-medium);
     color: @grey-900;
   }
 
   .contract-status-card-desc {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-medium);
     color: @grey-600;
   }
 
   .contract-status-card-time {
-    margin-left: 4px;
-    font-size: 10px;
-    font-weight: 300;
+    margin-left: var(--om-space-4);
+    font-size: var(--om-font-size-10);
+    font-weight: var(--om-font-weight-light);
     color: @grey-600;
   }
 }
@@ -129,20 +129,20 @@
 .rule-item-container {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--om-space-8);
 
   .rule-item {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--om-space-12);
 
     .rule-icon {
-      margin-top: 2px;
-      font-size: 32px;
+      margin-top: var(--om-space-2);
+      font-size: var(--om-font-size-32);
       color: transparent;
 
       &.rule-icon-default {
-        font-size: 22px;
+        font-size: var(--om-font-size-22);
         color: @grey-600;
       }
     }
@@ -151,14 +151,14 @@
       display: flex;
       flex-direction: column;
       .rule-name {
-        font-size: 14px;
-        font-weight: 500;
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-medium);
         color: @grey-900;
       }
 
       .rule-description {
-        font-size: 14px;
-        font-weight: 400;
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-regular);
         color: @grey-600;
       }
     }
@@ -177,16 +177,16 @@
   }
 
   .chart-label {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-semibold);
     color: @grey-900;
   }
 
   .data-quality-chart-container {
-    margin-bottom: 20px;
+    margin-bottom: var(--om-space-20);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 16px;
+    gap: var(--om-space-16);
     border: 1px solid @border-color-8;
     border-radius: @card-radius;
     padding: @padding-md;
@@ -204,11 +204,11 @@
 .data-quality-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--om-space-12);
 
   .data-quality-list-badge {
-    padding: 8px;
-    gap: 0px;
+    padding: var(--om-space-8);
+    gap: 0;
   }
 
   .data-quality-item-content {
@@ -216,13 +216,13 @@
     flex-direction: column;
 
     .data-quality-item-name-link {
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
   }
 
   .data-quality-item-description {
-    font-size: 14px;
-    font-weight: 400;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-regular);
     color: @grey-600;
   }
 
@@ -234,8 +234,8 @@
   }
 }
 .ant-tag.custom-tag {
-  border-radius: 6px;
-  padding: 2px @size-xs 2px 6px;
+  border-radius: var(--om-radius-md);
+  padding: var(--om-space-2) @size-xs var(--om-space-2) var(--om-space-6);
   font-size: @size-sm;
   font-weight: @font-medium;
   max-width: 100%;

@@ -28,7 +28,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -57,8 +56,10 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.filter = new ListFilter(Include.ALL);
-    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(this.filter);
+    EntityRepository<? extends EntityInterface> entityRepository =
+        Entity.getEntityRepository(entityType);
+    this.filter = entityRepository.getReindexFilter();
+    this.cachedTotalCount = entityRepository.getDao().listCount(this.filter);
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
@@ -71,7 +72,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.filter = new ListFilter(Include.ALL);
+    this.filter = Entity.getEntityRepository(entityType).getReindexFilter();
     this.cachedTotalCount = knownTotal;
     this.stats
         .withTotalRecords(cachedTotalCount)

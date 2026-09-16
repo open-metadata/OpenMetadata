@@ -19,10 +19,10 @@ import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 
 const mockStatusData = {
   title: 'Test Title',
-  total: 100,
-  success: 80,
-  aborted: 10,
-  failed: 10,
+  total: 10_000,
+  success: 3_333,
+  aborted: 3_334,
+  failed: 3_333,
 };
 
 const MockIcon = ({

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { Typography } from 'antd';
 import { startCase } from 'lodash';
@@ -457,9 +457,7 @@ export const renderColumnDataEditor = (
           containerClassName="tw:max-w-sm tw:break-all"
           placement="top"
           title={value}>
-          <TooltipTrigger>
-            <span className="tw:block tw:truncate">{value}</span>
-          </TooltipTrigger>
+          <span className="tw:block tw:truncate">{value}</span>
         </Tooltip>
       ) : (
         value
@@ -511,7 +509,8 @@ export const getColumnConfig = (
   },
   editable = false,
   isBulkEdit = false,
-  useMetricRichGrid = isBulkEdit
+  useMetricRichGrid = isBulkEdit,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
 ): Column<Record<string, string>> => {
   const colType = column.split('.').pop() ?? '';
   const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
@@ -548,6 +547,7 @@ export const getColumnConfig = (
       multipleOwner,
       {
         usePlainTextEditor: shouldUsePlainTextEditor,
+        onEditCellHeightChange,
       }
     ),
     renderCell: (data: RenderCellProps<Record<string, string>>) =>
@@ -575,7 +575,8 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   },
   cellEditable: boolean,
   isBulkEdit: boolean,
-  useMetricRichGrid = isBulkEdit
+  useMetricRichGrid = isBulkEdit,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
 ) => {
   const [cols, ...rows] = csv;
 
@@ -587,7 +588,8 @@ export const getEntityColumnsAndDataSourceFromCSV = (
         multipleOwner,
         cellEditable,
         isBulkEdit,
-        useMetricRichGrid
+        useMetricRichGrid,
+        onEditCellHeightChange
       )
     ) ?? [];
 

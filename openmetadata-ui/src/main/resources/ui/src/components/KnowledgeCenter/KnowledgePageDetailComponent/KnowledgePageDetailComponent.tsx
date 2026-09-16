@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -24,14 +26,12 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
@@ -49,21 +49,17 @@ import {
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  ArticleDraft,
+  useArticleDraftStore,
+} from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { FeedCounts } from '../../../interface/feed.interface';
 import {
   ContentChangeState,
@@ -71,7 +67,6 @@ import {
   KnowledgePage,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import {
   followKnowledgePage,
   getKnowledgePageByFqn,
@@ -79,56 +74,94 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n from '../../../utils/i18next/LocalUtil';
+import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+// Pure helper (module scope): decides whether a locally-stashed draft should be
+// merged into the freshly fetched page, and produces the merged shape. Kept out of
+// fetchKnowledgePage to keep that function's branching low.
+function getDraftMergeCandidate(
+  draft: ArticleDraft | undefined,
+  response: KnowledgePage
+): KnowledgePage | undefined {
+  if (!draft) {
+    return undefined;
+  }
+
+  const descriptionChanged =
+    draft.description !== undefined &&
+    draft.description !== response.description;
+  const displayNameChanged =
+    draft.displayName !== undefined &&
+    draft.displayName !== response.displayName;
+  const hasChanges = descriptionChanged || displayNameChanged;
+  const serverChangedSinceDraft =
+    draft.version !== undefined && draft.version !== response.version;
+
+  if (!hasChanges || serverChangedSinceDraft) {
+    return undefined;
+  }
+
+  return {
+    ...response,
+    description: draft.description ?? response.description,
+    displayName: draft.displayName ?? response.displayName,
+  };
+}
+
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
-  fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
+  // Called after a successful save so the left-tree can re-fetch and reflect the
+  // updatedAt-desc order (the edited page moves to the top of its branch).
+  onArticleSaved?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
-  fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
+  onArticleSaved,
 }) => {
   const { t } = i18n;
   const { hash } = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const pendingSaveCountRef = useRef(0);
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
+  const knowledgePageIdRef = useRef<string | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const { setDraft, removeDraft, getDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
 
   const { fqn, tab } = useRequiredParams<{ fqn: string; tab?: string }>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Entity-only loading now (permission loading moved to useEntityPermissions below) — starts
+  // `false` rather than the old shared `true`, since fetchPermission's own finally used to be
+  // what settled this flag to `false` when view permission was denied and fetchKnowledgePage
+  // never ran; that responsibility now belongs to isPermissionsLoading.
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [knowledgePage, setKnowledgePage] = useState<KnowledgePage>();
   const [activeTab, setActiveTab] = useState<string>(
     tab ?? EntityTabs.OVERVIEW
@@ -138,9 +171,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   const [threadLink, setThreadLink] = useState<string>('');
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const [contentChangeState, setContentChangeState] =
     useState<ContentChangeState>(ContentChangeState.SAVED);
 
@@ -150,18 +180,59 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const fetchPermission = async () => {
-    setIsLoading(true);
+  // Single useEntityPermissions call, by fqn — no genuine cycle: `hasViewAccess` gates the
+  // `fetchKnowledgePage` effect below (mirrors the old `permissions.ViewAll ||
+  // permissions.ViewBasic` gate exactly, now via the named flag), but `deleted` doesn't gate
+  // the permission fetch itself — it only feeds the canEdit* flags, and `knowledgePage` is
+  // component state independent of this hook, so referencing `knowledgePage?.deleted` here
+  // creates no ordering/TDZ problem (contrast TableDetailsPageV1's two-call pattern).
+  const {
+    permissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+    canEditDescription,
+    canEditDisplayName,
+  } = useEntityPermissions(ResourceEntity.KNOWLEDGE_PAGE, fqn, {
+    deleted: Boolean(knowledgePage?.deleted),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Persists a locally-stashed draft (created while offline/unsaved) back to the
+  // server once the canonical page has been fetched.
+  const syncDraftedKnowledgePage = async (
+    response: KnowledgePage,
+    pageWithDraft: KnowledgePage
+  ) => {
     try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity,
-        fqn
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
+      const patch = compare(response, pageWithDraft);
+      const saved = await patchKnowledgePage(response.id, patch);
+      setKnowledgePage((prev) => {
+        if (prev?.id !== response.id) {
+          return prev;
+        }
+
+        return {
+          ...(prev ?? response),
+          description: saved.description,
+          displayName: saved.displayName,
+          version: saved.version,
+        };
+      });
+      removeDraft(response.id);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.SAVED);
+      }
+    } catch (syncError) {
+      showErrorToast(syncError as AxiosError);
+      if (response.id === knowledgePageIdRef.current) {
+        setContentChangeState(ContentChangeState.UN_SAVED);
+      }
     }
   };
 
@@ -175,7 +246,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.PARENT,
         ]),
       });
-      setKnowledgePage(response);
+
+      const draft = getDraft(response.id);
+      const pageWithDraft = getDraftMergeCandidate(draft, response);
+
+      if (pageWithDraft) {
+        setKnowledgePage(pageWithDraft);
+        await syncDraftedKnowledgePage(response, pageWithDraft);
+      } else {
+        setKnowledgePage(response);
+        removeDraft(response.id);
+      }
+
       addToKnowledgeCenterRecentViewed({ ...response, timestamp: 0 });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -308,37 +390,47 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   // Multiple saves (content/displayName) can be in flight at once since they
-  // are debounced independently. Track how many are pending so the status
-  // only flips back to SAVED once every in-flight save has settled, instead
-  // of one save's `finally` block prematurely clearing the SAVING state set
-  // by another.
-  const beginTrackedSave = useCallback(() => {
-    pendingSaveCountRef.current += 1;
-    setContentChangeState(ContentChangeState.SAVING);
-  }, []);
+  // are debounced independently, and saves for an article the user has
+  // navigated away from can still resolve in the background. Track pending
+  // counts per article id so a stale save from a different article can
+  // never mask or clear the currently displayed article's own pending count.
+  const getPendingSaveCount = (articleId: string) =>
+    pendingSaveCountByArticleRef.current.get(articleId) ?? 0;
 
-  const endTrackedSave = useCallback(() => {
-    pendingSaveCountRef.current = Math.max(0, pendingSaveCountRef.current - 1);
-    if (pendingSaveCountRef.current === 0) {
-      setContentChangeState(ContentChangeState.SAVED);
+  const beginTrackedSave = useCallback((articleId: string) => {
+    pendingSaveCountByArticleRef.current.set(
+      articleId,
+      getPendingSaveCount(articleId) + 1
+    );
+    if (articleId === knowledgePageIdRef.current) {
+      setContentChangeState(ContentChangeState.SAVING);
     }
   }, []);
+
+  const endTrackedSave = useCallback(
+    (savedArticleId: string, didSucceed: boolean) => {
+      const remaining = Math.max(0, getPendingSaveCount(savedArticleId) - 1);
+      if (remaining === 0) {
+        pendingSaveCountByArticleRef.current.delete(savedArticleId);
+        if (savedArticleId === knowledgePageIdRef.current) {
+          setContentChangeState(
+            didSucceed ? ContentChangeState.SAVED : ContentChangeState.UN_SAVED
+          );
+        }
+        if (didSucceed) {
+          removeDraft(savedArticleId);
+        }
+      } else {
+        pendingSaveCountByArticleRef.current.set(savedArticleId, remaining);
+      }
+    },
+    [removeDraft]
+  );
 
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
-      const hasContentEditPermission =
-        permissions.EditAll || permissions.EditDescription;
-
-      if (isUndefined(knowledgePage) || !hasContentEditPermission) {
+      if (isUndefined(knowledgePage) || !canEditDescription) {
         return;
       }
 
@@ -349,8 +441,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         return;
       }
 
+      let didSucceed = false;
       try {
-        beginTrackedSave();
+        beginTrackedSave(currentKnowledgePage.id);
+
         const updatedKnowledgePage: KnowledgePage = {
           ...currentKnowledgePage,
           description: updatedContent,
@@ -363,42 +457,76 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           patch
         );
 
-        setKnowledgePage((prev) => ({
-          ...(prev ?? currentKnowledgePage),
-          description: response.description,
-          version: response.version,
-        }));
+        setKnowledgePage((prev) => {
+          if (prev?.id !== currentKnowledgePage.id) {
+            return prev;
+          }
+
+          return {
+            ...(prev ?? currentKnowledgePage),
+            description: response.description,
+            version: response.version,
+          };
+        });
+        didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        endTrackedSave();
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
     [
       knowledgePage,
       setKnowledgePage,
-      permissions,
+      canEditDescription,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
   const handleContentSave = useCallback(
     debounce(updatedPageContent, updateDelay),
-    [updatedPageContent, updateDelay, permissions]
+    [updatedPageContent, updateDelay, canEditDescription]
+  );
+
+  const saveDraftContent = useCallback(
+    debounce(
+      (id: string, fqn: string, description: string, version?: number) => {
+        setDraft(id, { description, fqn, version });
+      },
+      300
+    ),
+    [setDraft]
   );
 
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
+      );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
-      } else if (pendingSaveCountRef.current === 0) {
+        if (knowledgePage?.id) {
+          saveDraftContent(
+            knowledgePage.id,
+            knowledgePage.fullyQualifiedName,
+            persistableContent,
+            knowledgePage.version
+          );
+        }
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
-      handleContentSave(content);
+      handleContentSave(persistableContent);
     },
-    [knowledgePage, handleContentSave]
+    [knowledgePage, handleContentSave, saveDraftContent]
   );
 
   const updatePage = async (updatedKnowledgePage: KnowledgePage) => {
@@ -419,6 +547,12 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         dataProducts: response.dataProducts,
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -445,6 +579,12 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         tags: response.tags,
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
+      onArticleSaved?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -452,10 +592,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleDisplayNameUpdate = useCallback(
     async (updatedDisplayName: string) => {
-      const hasDisplayNameEditPermission =
-        permissions.EditAll || permissions.EditDisplayName;
-
-      if (!knowledgePage || !hasDisplayNameEditPermission) {
+      if (!knowledgePage || !canEditDisplayName) {
         return;
       }
       const currentKnowledgePage = cloneDeep(knowledgePage);
@@ -463,8 +600,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         ...knowledgePage,
         displayName: updatedDisplayName.trim(),
       };
+
+      let didSucceed = false;
       try {
-        beginTrackedSave();
+        beginTrackedSave(currentKnowledgePage.id);
+
         const patch = compare(currentKnowledgePage, updatedKnowledgePage);
 
         const response = await patchKnowledgePage(
@@ -481,35 +621,61 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           })
         );
 
-        setKnowledgePage((prev) => ({
-          ...(prev ?? currentKnowledgePage),
-          displayName: response.displayName,
-          version: response.version,
-        }));
+        setKnowledgePage((prev) => {
+          if (prev?.id !== currentKnowledgePage.id) {
+            return prev;
+          }
+
+          return {
+            ...(prev ?? currentKnowledgePage),
+            displayName: response.displayName,
+            version: response.version,
+          };
+        });
+        didSucceed = true;
+        onArticleSaved?.();
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        endTrackedSave();
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
     [
       knowledgePage,
       setKnowledgePage,
-      permissions,
+      canEditDisplayName,
       beginTrackedSave,
       endTrackedSave,
+      onArticleSaved,
     ]
   );
 
   const handleDisplayNameSave = useCallback(
     debounce(handleDisplayNameUpdate, updateDelay),
-    [handleDisplayNameUpdate, updateDelay, permissions]
+    [handleDisplayNameUpdate, updateDelay, canEditDisplayName]
+  );
+
+  const saveDraftDisplayName = useCallback(
+    debounce(
+      (id: string, fqn: string, displayName: string, version?: number) => {
+        setDraft(id, { displayName, fqn, version });
+      },
+      300
+    ),
+    [setDraft]
   );
 
   const handleSave = useCallback(() => {
+    saveDraftContent.flush();
+    saveDraftDisplayName.flush();
     handleDisplayNameSave.flush();
     handleContentSave.flush();
-  }, [handleDisplayNameSave, handleContentSave]);
+  }, [
+    saveDraftContent,
+    saveDraftDisplayName,
+    handleDisplayNameSave,
+    handleContentSave,
+  ]);
 
   const handleDisplayNameChange = useCallback(
     (updatedDisplayName: string) => {
@@ -519,12 +685,23 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
-      } else if (pendingSaveCountRef.current === 0) {
+        if (knowledgePage?.id) {
+          saveDraftDisplayName(
+            knowledgePage.id,
+            knowledgePage.fullyQualifiedName,
+            updatedDisplayName,
+            knowledgePage.version
+          );
+        }
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
       handleDisplayNameSave(updatedDisplayName);
     },
-    [knowledgePage, handleDisplayNameSave]
+    [knowledgePage, handleDisplayNameSave, saveDraftDisplayName]
   );
 
   const handleRelatedEntitiesUpdate = async (
@@ -549,6 +726,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         relatedEntities: response['relatedEntities'],
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -612,9 +794,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         children: (
           <>
             <TitleComponent
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the title input when creating a new page
               autoFocus={hash.slice(1) === CREATE_PAGE_HASH}
               placeholder={getKnowledgePageName(knowledgePage)}
-              readOnly={!(permissions.EditAll || permissions.EditDisplayName)}
+              readOnly={!canEditDisplayName}
               ref={titleRef}
               value={displayName}
               onChange={handleDisplayNameChange}
@@ -626,7 +809,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               entityType={EntityType.KNOWLEDGE_PAGE}>
               <BlockEditor
                 content={knowledgePage?.description ?? ''}
-                editable={permissions.EditAll || permissions.EditDescription}
+                editable={canEditDescription}
                 ref={editorRef}
                 showInlineAlert={false}
                 onChange={handleContentOnChange}
@@ -660,54 +843,34 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     ];
 
     return items;
-  }, [knowledgePage, feedCount, activeTab, permissions, displayName, fqn]);
-
-  const hasViewPermission = useMemo(
-    () => permissions.ViewAll || permissions.ViewBasic,
-    [permissions]
-  );
+  }, [
+    knowledgePage,
+    feedCount,
+    activeTab,
+    canEditDisplayName,
+    canEditDescription,
+    displayName,
+    fqn,
+  ]);
 
   const isContentUnsaved = useMemo(
     () => KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE.includes(contentChangeState),
     [contentChangeState]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <KnowledgeDetailPageHeader
-        contentChangeState={contentChangeState}
-        fetchKnowledgePageHierarchy={fetchKnowledgePageHierarchy}
-        isLoading={isLoading}
-        knowledgePage={knowledgePage}
-        permissions={permissions}
-        onFollowChange={handleFollowChange}
-        onSave={handleSave}
-        onSetThreadLink={setThreadLink}
-        onToggleDelete={handleToggleDelete}
-        onVoteChange={handleVoteChange}
-      />
-    ),
-    [
-      contentChangeState,
-      isLoading,
-      knowledgePage,
-      permissions,
-      setThreadLink,
-      handleToggleDelete,
-      handleVoteChange,
-      handleSave,
-    ]
-  );
-
   useEffect(() => {
-    fetchPermission();
-  }, []);
+    knowledgePageIdRef.current = knowledgePage?.id;
+  }, [knowledgePage?.id]);
 
   useEffect(() => {
     if (tab) {
       setActiveTab(tab);
     }
   }, [tab]);
+
+  useEffect(() => {
+    setContentChangeState(ContentChangeState.SAVED);
+  }, [fqn]);
 
   useEffect(() => {
     if (hasViewPermission) {
@@ -755,6 +918,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
+    return () => {
+      saveDraftContent.flush();
+      saveDraftDisplayName.flush();
+    };
+  }, [saveDraftContent, saveDraftDisplayName]);
+
+  useEffect(() => {
     tagClassBase.setFilterClassification([]);
 
     return () => {
@@ -799,7 +969,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
-      header: <div className="tw:mb-5 tw:rounded-xl">{getHeaderElement()}</div>,
       isRightPanelOpen,
       onTabChange: handleTabChange,
       onToggleRightPanel,
@@ -817,31 +986,45 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
-    getHeaderElement,
   ]);
 
   useEffect(() => {
     onPageChange(pageConfig);
   }, [pageConfig, onPageChange]);
 
-  if (isLoading) {
+  if (isPermissionsLoading || isLoading) {
     return <KnowledgePageDetailSkeleton />;
   }
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-access-placeholder"
+              renderElement={<b />}
+              values={{
+                entity: t('label.view-entity', { entity: t('label.article') }),
+              }}
+            />
+          }
+          icon={<Lock className="tw:text-secondary" />}
+          title={t('label.access-denied')}
+        />
+      </div>
     );
   }
 
   if (!knowledgePage) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:flex-1 tw:h-full">
+        <EmptyPlaceholder
+          icon={<Articles className="tw:text-secondary" />}
+          title={t('label.no-entity', { entity: t('label.article') })}
+        />
+      </div>
+    );
   }
 
   return (
@@ -849,13 +1032,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={ThreadType.Conversation}
-          updateThreadHandler={updateFeed}
           onCancel={() => setThreadLink('')}
         />
       ) : null}

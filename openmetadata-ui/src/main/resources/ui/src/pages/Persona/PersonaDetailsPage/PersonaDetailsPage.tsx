@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Modal, Row, Tabs, Typography } from 'antd';
+import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { User03 } from '@untitledui/icons';
+import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,8 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
-import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -34,7 +34,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
@@ -42,11 +41,11 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
   getPersonaDetailsPath,
@@ -54,6 +53,8 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './persona-details-page.less';
+
+const CUSTOMIZE_UI_KEY = 'customize-ui';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useFqn();
@@ -64,14 +65,11 @@ export const PersonaDetailsPage = () => {
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [isConfirmModalLoading, setIsConfirmModalLoading] = useState(false);
   const { t } = useTranslation();
-  const [entityPermission, setEntityPermission] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const location = useCustomLocation();
   const { activeKey, activeCategory, fullHash } = useMemo(() => {
-    const activeKey = (location.hash?.replace('#', '') || 'customize-ui').split(
-      '.'
-    )[0];
+    const activeKey = (
+      location.hash?.replace('#', '') || CUSTOMIZE_UI_KEY
+    ).split('.')[0];
     const activeCategory = (location.hash?.replace('#', '') || '').split(
       '.'
     )[1];
@@ -83,7 +81,26 @@ export const PersonaDetailsPage = () => {
     };
   }, [location.hash]);
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
+  // Personas aren't soft-deletable through this page (ManageButton is passed a hardcoded
+  // `deleted={false}` below), so this call is deliberately ungated — no `deleted` option.
+  // canEditDescription is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    canEditAll,
+    canEditDescription,
+    canDelete: hasDeletePermission,
+    error: permissionsError,
+  } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // AI is always available in OSS — the shell ships in-tree, no
+  // install-gate.
+  const hasNonDefaultMode = true;
 
   const breadcrumb = useMemo(() => {
     const breadcrumbList = [
@@ -98,9 +115,13 @@ export const PersonaDetailsPage = () => {
     ];
 
     if (activeCategory) {
-      const category = getCustomizePageCategories().find(
-        (category) => category.key === activeCategory
-      );
+      const category = getCustomizePageCategories()
+        .filter(
+          (item) =>
+            !['app-mode', 'askCollateSidebar'].includes(item.key) ||
+            hasNonDefaultMode
+        )
+        .find((category) => category.key === activeCategory);
 
       if (category) {
         breadcrumbList.push({
@@ -111,13 +132,7 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
-  }, [personaDetails, activeCategory, fqn]);
-
-  useEffect(() => {
-    getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
-      setEntityPermission
-    );
-  }, []);
+  }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -143,7 +158,7 @@ export const PersonaDetailsPage = () => {
       return;
     }
 
-    if (!location.hash.includes('customize-ui')) {
+    if (!location.hash.includes(CUSTOMIZE_UI_KEY)) {
       navigate(
         {
           pathname: location.pathname,
@@ -177,7 +192,7 @@ export const PersonaDetailsPage = () => {
   const handlePersonaUpdate = useCallback(
     async (data: Partial<Persona>, shouldRefetch = false) => {
       if (!personaDetails) {
-        return;
+        return false;
       }
       const diff = compare(personaDetails, { ...personaDetails, ...data });
 
@@ -187,11 +202,15 @@ export const PersonaDetailsPage = () => {
         if (shouldRefetch) {
           await fetchCurrentUser();
         }
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
-    [personaDetails]
+    [fetchCurrentUser, personaDetails]
   );
 
   const handleRemoveUser = useCallback(
@@ -202,7 +221,7 @@ export const PersonaDetailsPage = () => {
 
       handlePersonaUpdate({ users: updatedUsers }, true);
     },
-    [personaDetails]
+    [handlePersonaUpdate, personaDetails]
   );
 
   const handleAfterDeleteAction = async () => {
@@ -264,14 +283,14 @@ export const PersonaDetailsPage = () => {
         hash: key,
       });
     },
-    [history, fullHash]
+    [navigate, fullHash]
   );
 
   const tabItems = useMemo(() => {
     return [
       {
         label: t('label.customize-ui'),
-        key: 'customize-ui',
+        key: CUSTOMIZE_UI_KEY,
         children: <CustomizeUI />,
       },
       {
@@ -285,7 +304,12 @@ export const PersonaDetailsPage = () => {
         ),
       },
     ];
-  }, [personaDetails]);
+  }, [canEditAll, personaDetails, t]);
+
+  const activeTabContent = useMemo(
+    () => tabItems.find((item) => item.key === activeKey)?.children,
+    [activeKey, tabItems]
+  );
 
   const extraDropdownContent = useMemo(() => {
     const isDefault = personaDetails?.default;
@@ -322,7 +346,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[0, 16]}>
+      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
@@ -330,9 +354,7 @@ export const PersonaDetailsPage = () => {
               <EntityHeaderTitle
                 className="m-t-xs"
                 displayName={personaDetails.displayName}
-                icon={
-                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
-                }
+                icon={<FeaturedIcon color="brand" icon={User03} size="lg" />}
                 name={personaDetails?.name}
                 serviceName={personaDetails.name}
               />
@@ -340,58 +362,66 @@ export const PersonaDetailsPage = () => {
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
-              canDelete={entityPermission.EditAll || entityPermission.Delete}
+              canDelete={canEditAll || hasDeletePermission}
               deleted={false}
               displayName={getEntityName(personaDetails)}
-              editDisplayNamePermission={
-                entityPermission.EditAll || entityPermission.EditDescription
-              }
+              editDisplayNamePermission={canEditDescription}
               entityFQN={personaDetails.fullyQualifiedName}
               entityId={personaDetails.id}
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
               extraDropdownContent={extraDropdownContent}
-              onEditDisplayName={(data) => handlePersonaUpdate(data, true)}
+              onEditDisplayName={async (data) => {
+                await handlePersonaUpdate(data, true);
+              }}
             />
           </div>
         </Col>
         <Col span={24}>
-          <DescriptionV1
+          <Description
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
-            hasEditAccess={
-              entityPermission.EditAll || entityPermission.EditDescription
-            }
+            hasEditAccess={canEditDescription}
             showCommentsIcon={false}
-            onDescriptionUpdate={(description) =>
-              handlePersonaUpdate({ description })
-            }
+            onDescriptionUpdate={async (description) => {
+              await handlePersonaUpdate({ description });
+            }}
           />
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeKey}
-            className="tabs-new"
-            items={tabItems}
-            tabBarExtraContent={
-              activeKey === 'users' && (
-                <UserSelectableList
-                  hasPermission
-                  multiSelect
-                  selectedUsers={personaDetails.users ?? []}
-                  onUpdate={(users) => handlePersonaUpdate({ users }, true)}>
-                  <Button
-                    data-testid="add-persona-button"
-                    size="small"
-                    type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )
-            }
-            onTabClick={handleTabClick}
-          />
+            selectedKey={activeKey}
+            onSelectionChange={(key) => handleTabClick(String(key))}>
+            <div className="tw:relative tw:mb-6 tw:border-b tw:border-secondary">
+              <Tabs.List
+                className="tw:w-full tw:items-center tw:gap-7"
+                type="underline">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key} label={label} />
+                ))}
+              </Tabs.List>
+              {activeKey === 'users' && (
+                <div className="tw:absolute tw:right-0 tw:bottom-2">
+                  <UserSelectableList
+                    hasPermission
+                    multiSelect
+                    selectedUsers={personaDetails.users ?? []}
+                    onUpdate={async (users) => {
+                      await handlePersonaUpdate({ users }, true);
+                    }}>
+                    <Button
+                      data-testid="add-persona-button"
+                      size="small"
+                      type="primary">
+                      {t('label.add-entity', { entity: t('label.user') })}
+                    </Button>
+                  </UserSelectableList>
+                </div>
+              )}
+            </div>
+          </Tabs>
+          <div>{activeTabContent}</div>
         </Col>
       </Row>
 

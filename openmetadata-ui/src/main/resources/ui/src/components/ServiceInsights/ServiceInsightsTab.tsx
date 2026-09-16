@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, noop } from 'lodash';
 import { Bucket, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SOCKET_EVENTS } from '../../constants/constants';
@@ -30,13 +30,17 @@ import {
   WorkflowInstance,
   WorkflowStatus,
 } from '../../generated/governance/workflows/workflowInstance';
-import { getAgentRuns } from '../../rest/applicationAPI';
+import { getAiAutomationRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import {
+  automationRunToAppRunRecord,
+  getAutomationTemplate,
+} from '../../utils/AgentsStatusWidgetPureUtils';
 import {
   getFormattedAgentsList,
   getFormattedAgentsListFromAgentsLiveInfo,
@@ -46,6 +50,7 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityIcon } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import {
@@ -60,7 +65,6 @@ import {
   getServiceNameQueryFilter,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AgentsInfo } from './AgentsStatusWidget/AgentsStatusWidget.interface';
@@ -202,6 +206,7 @@ const ServiceInsightsTab = ({
       const { sessionId } = await setChartDataStreamConnection({
         chartNames: LIVE_CHARTS_LIST,
         serviceName,
+        serviceType: entityType,
         startTime: getCurrentDayStartGMTinMillis(),
         endTime: getCurrentDayStartGMTinMillis() + 360000000,
         entityLink: getEntityFeedLink(
@@ -212,7 +217,10 @@ const ServiceInsightsTab = ({
 
       sessionIdRef.current = sessionId;
     }
-  }, [serviceName, sessionIdRef.current]);
+    // The entity link is built from the service FQN, so the callback has to be
+    // rebuilt once the service resolves. Without it the session opens with an
+    // empty link and the stream reports no workflow instances.
+  }, [serviceName, serviceCategory, serviceDetails.fullyQualifiedName]);
 
   const getAgentStatuses = async () => {
     try {
@@ -224,22 +232,23 @@ const ServiceInsightsTab = ({
         const startTs = workflowStatesData?.mainInstanceState?.startedAt
           ? workflowStatesData.mainInstanceState.startedAt
           : getDayAgoStartGMTinMillis(6);
-        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
-          getAgentRuns(app.name, {
-            service: serviceDetails.id,
-            startTs,
-            endTs,
-          })
+        const recentRunStatusesPromise = collateAIagentsList.map((automation) =>
+          getAiAutomationRuns(automation.id, startTs, endTs)
         );
 
         const statusData = await Promise.allSettled(recentRunStatusesPromise);
 
         recentRunStatuses = statusData.reduce((acc, cv, index) => {
-          const app = collateAIagentsList[index];
+          const automation = collateAIagentsList[index];
+          const template =
+            getAutomationTemplate(automation.name) ?? automation.name;
 
           return {
             ...acc,
-            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
+            [template]:
+              cv.status === 'fulfilled'
+                ? cv.value.map(automationRunToAppRunRecord)
+                : [],
           };
         }, {});
       }
@@ -267,10 +276,11 @@ const ServiceInsightsTab = ({
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 
-          setAgentsInfo(
+          setAgentsInfo((prev) =>
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
-              data.appStatus
+              data.appStatus,
+              prev.filter((agent) => agent.isCollateAgent)
             )
           );
 
@@ -303,13 +313,17 @@ const ServiceInsightsTab = ({
     if (
       workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running
     ) {
-      triggerSocketConnection();
+      // The stream is best-effort, widgets fall back to the polled chart data,
+      // so a failed handshake must not surface as an unhandled rejection
+      triggerSocketConnection().catch(noop);
     }
 
     return () => {
       // Stop the socket connection if it is started and set the sessionId to undefined
       if (sessionIdRef.current) {
-        stopChartDataStreamConnection(sessionIdRef.current);
+        // The server may have already reaped the session (404 on teardown), and
+        // an unmount has nobody left to report to, so swallow the failure
+        stopChartDataStreamConnection(sessionIdRef.current).catch(noop);
         sessionIdRef.current = undefined;
       }
     };

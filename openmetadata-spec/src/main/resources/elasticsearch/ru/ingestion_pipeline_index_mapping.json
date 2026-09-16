@@ -391,6 +391,7 @@
         "normalizer": "lowercase_normalizer"
       },
       "pipelineStatuses": {
+        "dynamic": false,
         "properties": {
           "pipelineState": {
             "type": "keyword"

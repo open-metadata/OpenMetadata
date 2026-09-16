@@ -22,12 +22,14 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
   loadConnectionSchema,
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -174,6 +176,10 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getConnectionFieldSection: jest.fn().mockReturnValue('scope'),
+  getFieldSchemaForId: jest
+    .fn()
+    .mockReturnValue({ title: 'Taxonomy Project IDs' }),
   getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
   getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
@@ -191,6 +197,10 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
+let mockCapturedCustomValidate:
+  | ((formData: unknown, errors: unknown) => unknown)
+  | undefined;
+
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
     jest
@@ -198,42 +208,61 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
       .mockImplementation(
         ({
           children,
+          formContext,
           isSubmitDisabled,
           noValidate,
           onChange,
+          onFocus,
           onSubmit,
           onCancel,
-        }) => (
-          <div
-            data-no-validate={String(Boolean(noValidate))}
-            data-testid="form-builder">
-            {children}
-            <button
-              data-testid="change-valid-form"
-              onClick={() => onChange({ formData })}>
-              Change FormBuilder
-            </button>
-            <button
-              data-testid="change-edited-form"
-              onClick={() =>
-                onChange({
-                  formData: {
-                    ...formData,
-                    username: 'changed-admin',
-                  },
-                })
-              }>
-              Change FormBuilder With Edits
-            </button>
-            <button
-              data-testid="submit-button"
-              disabled={isSubmitDisabled}
-              onClick={() => onSubmit({ formData })}>
-              Submit FormBuilder
-            </button>
-            <button onClick={onCancel}>Cancel FormBuilder</button>
-          </div>
-        )
+          customValidate,
+        }) => {
+          mockCapturedCustomValidate = customValidate;
+
+          return (
+            <div
+              data-no-validate={String(Boolean(noValidate))}
+              data-testid="form-builder">
+              {children}
+              <button
+                data-testid="focus-via-form-context"
+                onClick={() =>
+                  formContext?.handleFocus?.('root/taxonomyProjectID')
+                }>
+                Focus via formContext
+              </button>
+              <button
+                data-testid="focus-via-rjsf"
+                onClick={() => onFocus?.('root/hostPort')}>
+                Focus via RJSF
+              </button>
+              <button
+                data-testid="change-valid-form"
+                onClick={() => onChange({ formData })}>
+                Change FormBuilder
+              </button>
+              <button
+                data-testid="change-edited-form"
+                onClick={() =>
+                  onChange({
+                    formData: {
+                      ...formData,
+                      username: 'changed-admin',
+                    },
+                  })
+                }>
+                Change FormBuilder With Edits
+              </button>
+              <button
+                data-testid="submit-button"
+                disabled={isSubmitDisabled}
+                onClick={() => onSubmit({ formData })}>
+                Submit FormBuilder
+              </button>
+              <button onClick={onCancel}>Cancel FormBuilder</button>
+            </div>
+          );
+        }
       )
   )
 );
@@ -317,6 +346,26 @@ describe('ServiceConfig', () => {
     ).toBeInTheDocument();
 
     expect(await screen.findByTestId('form-builder')).toBeInTheDocument();
+  });
+
+  it('wires validateSecretPrefixFields into RJSF customValidate and no-ops by default', async () => {
+    const validateSecretPrefixFieldsSpy = jest.spyOn(
+      serviceUtilClassBase,
+      'validateSecretPrefixFields'
+    );
+
+    render(<ConnectionConfigForm {...mockProps} />);
+
+    await waitFor(() => {
+      expect(mockCapturedCustomValidate).toBeDefined();
+    });
+
+    const errors = {} as Record<string, unknown>;
+    const result = mockCapturedCustomValidate?.(formData, errors);
+
+    expect(validateSecretPrefixFieldsSpy).toHaveBeenCalled();
+    expect(result).toBe(errors);
+    expect(Object.keys(errors)).toHaveLength(0);
   });
 
   it('should not render no config available message if form data has schema', async () => {
@@ -672,6 +721,18 @@ describe('ServiceConfig', () => {
     expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
   });
 
+  it('should forward additional validation pending state to TestConnection', async () => {
+    await act(async () => {
+      render(
+        <ConnectionConfigForm {...mockProps} isAdditionalValidationPending />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.isFormValidationPending).toBe(true);
+  });
+
   it('should call onValidateAdditionalRequiredFields when validating for test connection', async () => {
     const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
 
@@ -709,6 +770,36 @@ describe('ServiceConfig', () => {
     const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
 
     expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
+  it('should enrich focus events emitted through formContext.handleFocus', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-form-context'));
+
+    expect(getConnectionFieldSection).toHaveBeenCalledWith(
+      expect.anything(),
+      'root/taxonomyProjectID'
+    );
+    expect(mockOnFocus).toHaveBeenCalledWith('root/taxonomyProjectID', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
+  });
+
+  it('should enrich focus events emitted through the RJSF onFocus path', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-rjsf'));
+
+    expect(mockOnFocus).toHaveBeenCalledWith('root/hostPort', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
   });
 
   it('should render with correct brandName keys', async () => {

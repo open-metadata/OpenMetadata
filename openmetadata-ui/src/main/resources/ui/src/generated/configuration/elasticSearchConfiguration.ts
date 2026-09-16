@@ -28,6 +28,10 @@ export interface ElasticSearchConfiguration {
      */
     clusterAlias?: string;
     /**
+     * Maximum time in seconds to wait for a connection from the HTTP connection pool
+     */
+    connectionRequestTimeoutSecs: number;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs: number;
@@ -41,7 +45,9 @@ export interface ElasticSearchConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
-     * Maximum connections per host/route in the connection pool
+     * Maximum connections per host/route in the connection pool. Keep this below maxConnTotal
+     * for multi-host clusters so one slow host cannot consume the entire pool; single-host
+     * deployments can raise it up to maxConnTotal.
      */
     maxConnPerRoute?: number;
     /**
@@ -140,6 +146,12 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
+    /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */

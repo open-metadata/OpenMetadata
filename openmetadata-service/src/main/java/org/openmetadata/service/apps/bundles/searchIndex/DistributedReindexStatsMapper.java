@@ -43,10 +43,11 @@ class DistributedReindexStatsMapper {
     StatsSource source = resolveStatsSource(distributedJob, aggregatedStats, actualSinkStats);
 
     LOG.debug(
-        "Stats source: {}, success={}, failed={}",
+        "Stats source: {}, success={}, failed={}, warnings={}",
         source.name(),
         source.successRecords(),
-        source.failedRecords());
+        source.failedRecords(),
+        source.warningRecords());
 
     updateJobStats(stats, source);
     updateReaderStats(stats, distributedJob, aggregatedStats);
@@ -81,14 +82,21 @@ class DistributedReindexStatsMapper {
           aggregatedStats.sinkSuccess(),
           aggregatedStats.readerFailed()
               + aggregatedStats.sinkFailed()
-              + aggregatedStats.processFailed());
+              + aggregatedStats.processFailed(),
+          warningRecords(distributedJob));
     }
     if (actualSinkStats != null) {
       return new StatsSource(
-          "localSink", actualSinkStats.getSuccessRecords(), actualSinkStats.getFailedRecords());
+          "localSink",
+          actualSinkStats.getSuccessRecords(),
+          actualSinkStats.getFailedRecords(),
+          actualSinkStats.getWarningRecords());
     }
     return new StatsSource(
-        "partition-based", distributedJob.getSuccessRecords(), distributedJob.getFailedRecords());
+        "partition-based",
+        distributedJob.getSuccessRecords(),
+        distributedJob.getFailedRecords(),
+        warningRecords(distributedJob));
   }
 
   private boolean hasAggregatedStageRecords(
@@ -110,6 +118,7 @@ class DistributedReindexStatsMapper {
     if (jobStats != null) {
       jobStats.setSuccessRecords(saturatedToInt(source.successRecords()));
       jobStats.setFailedRecords(saturatedToInt(source.failedRecords()));
+      jobStats.setWarningRecords(saturatedToInt(source.warningRecords()));
     }
   }
 
@@ -146,10 +155,27 @@ class DistributedReindexStatsMapper {
 
     long processSuccess = aggregatedStats.processSuccess();
     long processFailed = aggregatedStats.processFailed();
-    processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed));
+    long processWarnings = processWarnings(aggregatedStats, processSuccess, processFailed);
+    processStats.setTotalRecords(saturatedToInt(processSuccess + processFailed + processWarnings));
     processStats.setSuccessRecords(saturatedToInt(processSuccess));
     processStats.setFailedRecords(saturatedToInt(processFailed));
+    processStats.setWarningRecords(saturatedToInt(processWarnings));
     processStats.setTotalTimeMs(aggregatedStats.processTimeMs());
+  }
+
+  /**
+   * Rows the doc build neither indexed nor failed on — a stale reference skipped the document (see
+   * {@code OpenSearchBulkSink.recordStaleReferenceWarning}). {@code StageStatsTracker.flush} folds
+   * every stage's warnings into the single {@code readerWarnings} column, so the process-stage
+   * share is recovered from the reader hand-off instead: each row the reader emitted gets exactly
+   * one process outcome, so whatever is neither a success nor a failure warned. Leaving these out
+   * would drop them from {@code totalRecords} and break the reader-equals-processor invariant.
+   */
+  private long processWarnings(
+      CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats aggregatedStats,
+      long processSuccess,
+      long processFailed) {
+    return Math.max(0, aggregatedStats.readerSuccess() - processSuccess - processFailed);
   }
 
   private void updateSinkStats(
@@ -165,9 +191,12 @@ class DistributedReindexStatsMapper {
     if (aggregatedStats != null) {
       long sinkSuccess = aggregatedStats.sinkSuccess();
       long sinkFailed = aggregatedStats.sinkFailed();
-      sinkStats.setTotalRecords(saturatedToInt(sinkSuccess + sinkFailed));
+      long processTotal = aggregatedStats.processSuccess() + aggregatedStats.processFailed();
+      long sinkWarnings = Math.max(0, processTotal - sinkSuccess - sinkFailed);
+      sinkStats.setTotalRecords(saturatedToInt(sinkSuccess + sinkFailed + sinkWarnings));
       sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
       sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
+      sinkStats.setWarningRecords(saturatedToInt(sinkWarnings));
       sinkStats.setTotalTimeMs(aggregatedStats.sinkTimeMs());
       return;
     }
@@ -175,6 +204,7 @@ class DistributedReindexStatsMapper {
     sinkStats.setTotalRecords(saturatedToInt(distributedJob.getTotalRecords()));
     sinkStats.setSuccessRecords(saturatedToInt(source.successRecords()));
     sinkStats.setFailedRecords(saturatedToInt(source.failedRecords()));
+    sinkStats.setWarningRecords(saturatedToInt(source.warningRecords()));
   }
 
   private void updateVectorStats(
@@ -237,6 +267,7 @@ class DistributedReindexStatsMapper {
       existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
       existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
       existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
+      existingColumnStats.setWarningRecords(columnStats.getWarningRecords());
     }
   }
 
@@ -244,5 +275,14 @@ class DistributedReindexStatsMapper {
     return (int) Math.min(value, Integer.MAX_VALUE);
   }
 
-  private record StatsSource(String name, long successRecords, long failedRecords) {}
+  private long warningRecords(SearchIndexJob distributedJob) {
+    return Math.max(
+        0,
+        distributedJob.getProcessedRecords()
+            - distributedJob.getSuccessRecords()
+            - distributedJob.getFailedRecords());
+  }
+
+  private record StatsSource(
+      String name, long successRecords, long failedRecords, long warningRecords) {}
 }

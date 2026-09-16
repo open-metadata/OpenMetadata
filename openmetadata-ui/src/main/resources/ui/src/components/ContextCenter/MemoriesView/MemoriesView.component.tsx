@@ -16,15 +16,21 @@ import {
   ButtonUtility,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Trash01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
+import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
@@ -46,11 +52,13 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
 
   return (
     <Dropdown.Root>
-      <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.memory') })}
+      />
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {
@@ -60,9 +68,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <Trash01
+              <TrashIcon
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                className="tw:shrink-0 tw:text-error-primary"
+                height={20}
+                width={20}
               />
               <Typography
                 ellipsis
@@ -104,6 +114,158 @@ const MemoryRowSkeleton: FC = () => (
   </Box>
 );
 
+const MemoryRowHeader: FC<{ updatedBy?: string; updatedAt?: number }> = ({
+  updatedBy,
+  updatedAt,
+}) => (
+  <Box align="center" gap={2} wrap="wrap">
+    {updatedBy && (
+      <Typography className="tw:text-secondary" size="text-sm">
+        {updatedBy}
+      </Typography>
+    )}
+    {updatedAt !== undefined && (
+      <>
+        <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
+          &middot;
+        </span>
+        <Typography className="tw:text-quaternary" size="text-xs">
+          {getShortRelativeTime(updatedAt)}
+        </Typography>
+      </>
+    )}
+  </Box>
+);
+
+interface MemoryLinkedEntitiesProps {
+  linkedEntities: EntityReference[];
+  hiddenLinkedEntitiesCount: number;
+}
+
+const MemoryLinkedEntities: FC<MemoryLinkedEntitiesProps> = ({
+  linkedEntities,
+  hiddenLinkedEntitiesCount,
+}) => {
+  const { t } = useTranslation();
+
+  if (linkedEntities.length === 0) {
+    return null;
+  }
+
+  return (
+    <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
+      {linkedEntities.map((entity) => (
+        <Badge
+          className="tw:max-w-60 tw:min-w-0"
+          key={entity.id ?? entity.fullyQualifiedName}
+          size="md"
+          type="color">
+          <div className="tw:shrink-0">
+            <Dot
+              className={
+                ENTITY_ICON_MAPPER?.[entity.type]?.iconClass ??
+                'tw:text-quaternary'
+              }
+              size="sm"
+              style={{ marginRight: '6px' }}
+            />
+          </div>
+          <Typography ellipsis className="tw:text-secondary" size="text-xs">
+            {getEntityName(entity)}
+          </Typography>
+        </Badge>
+      ))}
+      {hiddenLinkedEntitiesCount > 0 && (
+        <Badge size="md" type="color">
+          <Typography className="tw:text-secondary" size="text-xs">
+            {t('label.plus-count', {
+              count: hiddenLinkedEntitiesCount,
+            })}
+          </Typography>
+        </Badge>
+      )}
+    </Box>
+  );
+};
+
+interface MemoryUsageInfoProps {
+  usageCount?: number;
+  lastUsedAt?: number;
+}
+
+const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({
+  usageCount,
+  lastUsedAt,
+}) => {
+  const { t } = useTranslation();
+
+  if (usageCount === undefined && lastUsedAt === undefined) {
+    return null;
+  }
+
+  return (
+    <Box align="center" className="tw:mt-1" gap={1}>
+      <ClockIcon className="tw:text-quaternary" height={16} width={16} />
+      <Typography
+        className="tw:text-quaternary tw:whitespace-nowrap"
+        size="text-xs">
+        {usageCount === undefined
+          ? ''
+          : t('label.cited-n-times', { count: usageCount })}
+        {lastUsedAt
+          ? ` · ${t('label.last')} ${getShortRelativeTime(lastUsedAt)}`
+          : ''}
+      </Typography>
+    </Box>
+  );
+};
+
+interface MemoryRowActionsProps {
+  memory: ContextMemory;
+  memoryUrl: string;
+  canActOnMemory: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onDeleteMemory?: (memory: ContextMemory) => void;
+  onEditMemory?: (memory: ContextMemory) => void;
+}
+
+const MemoryRowActions: FC<MemoryRowActionsProps> = ({
+  memory,
+  memoryUrl,
+  canActOnMemory,
+  canEdit,
+  canDelete,
+  onDeleteMemory,
+  onEditMemory,
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
+      <CopyLinkButton url={memoryUrl}>
+        <CopyIcon aria-hidden="true" height={20} width={20} />
+      </CopyLinkButton>
+      {canActOnMemory && canEdit && onEditMemory && (
+        <Tooltip title={t('label.edit')}>
+          <TooltipTrigger>
+            <ButtonUtility
+              color="tertiary"
+              data-testid="edit-memory-btn"
+              icon={<EditIcon height={20} width={20} />}
+              size="sm"
+              onClick={() => onEditMemory(memory)}
+            />
+          </TooltipTrigger>
+        </Tooltip>
+      )}
+      {canActOnMemory && canDelete && (
+        <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
+      )}
+    </Box>
+  );
+};
+
 interface MemoryRowProps {
   currentUserName?: string;
   isAdminUser?: boolean;
@@ -130,7 +292,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
-  const { t } = useTranslation();
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -173,9 +334,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
-      {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
+      {memory?.updatedBy && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={getEntityName(memory.owners?.[0])} />
+          <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
       <Box
@@ -187,27 +348,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
           className="tw:min-w-0 tw:flex-1 tw:max-w-[75%]"
           direction="col"
           gap={1}>
-          <Box align="center" gap={2} wrap="wrap">
-            {(memory.owners?.[0]?.displayName ??
-              memory.owners?.[0]?.name ??
-              memory.updatedBy) && (
-              <Typography className="tw:text-secondary" size="text-sm">
-                {memory.owners?.[0]?.displayName ??
-                  memory.owners?.[0]?.name ??
-                  memory.updatedBy}
-              </Typography>
-            )}
-            {memory.updatedAt !== undefined && (
-              <>
-                <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
-                  &middot;
-                </span>
-                <Typography className="tw:text-quaternary" size="text-xs">
-                  {getShortRelativeTime(memory.updatedAt)}
-                </Typography>
-              </>
-            )}
-          </Box>
+          <MemoryRowHeader
+            updatedAt={memory.updatedAt}
+            updatedBy={memory.updatedBy}
+          />
 
           <Typography ellipsis weight="medium">
             {memory.title || memory.name}
@@ -219,90 +363,27 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          {linkedEntities.length > 0 && (
-            <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {linkedEntities.map((entity) => (
-                <Badge
-                  className="tw:max-w-60 tw:min-w-0"
-                  key={entity.id ?? entity.fullyQualifiedName}
-                  size="md"
-                  type="color">
-                  <div className="tw:shrink-0">
-                    <Dot
-                      className={
-                        ENTITY_ICON_MAPPER?.[entity.type]?.iconClass ??
-                        'tw:text-quaternary'
-                      }
-                      size="sm"
-                      style={{ marginRight: '6px' }}
-                    />
-                  </div>
-                  <Typography
-                    ellipsis
-                    className="tw:text-secondary"
-                    size="text-xs">
-                    {getEntityName(entity)}
-                  </Typography>
-                </Badge>
-              ))}
-              {hiddenLinkedEntitiesCount > 0 && (
-                <Badge size="md" type="color">
-                  <Typography className="tw:text-secondary" size="text-xs">
-                    {t('label.plus-count', {
-                      count: hiddenLinkedEntitiesCount,
-                    })}
-                  </Typography>
-                </Badge>
-              )}
-            </Box>
-          )}
+          <MemoryLinkedEntities
+            hiddenLinkedEntitiesCount={hiddenLinkedEntitiesCount}
+            linkedEntities={linkedEntities}
+          />
 
-          {(memory.usageCount !== undefined ||
-            memory.lastUsedAt !== undefined) && (
-            <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock
-                className="tw:text-utility-gray-500"
-                size={12}
-                strokeWidth={1.5}
-              />
-              <Typography
-                className="tw:text-quaternary tw:whitespace-nowrap"
-                size="text-xs">
-                {memory.usageCount === undefined
-                  ? ''
-                  : t('label.cited-n-times', { count: memory.usageCount })}
-                {memory.lastUsedAt
-                  ? ` · ${t('label.last')} ${getShortRelativeTime(
-                      memory.lastUsedAt
-                    )}`
-                  : ''}
-              </Typography>
-            </Box>
-          )}
+          <MemoryUsageInfo
+            lastUsedAt={memory.lastUsedAt}
+            usageCount={memory.usageCount}
+          />
         </Box>
 
         {/* Actions — always visible */}
-        <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
-          </CopyLinkButton>
-          {canActOnMemory && canEdit && onEditMemory && (
-            <Tooltip title={t('label.edit')}>
-              <TooltipTrigger>
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid="edit-memory-btn"
-                  icon={<EditNewIcon height={16} width={16} />}
-                  size="sm"
-                  onClick={() => onEditMemory(memory)}
-                />
-              </TooltipTrigger>
-            </Tooltip>
-          )}
-          {canActOnMemory && canDelete && (
-            <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
-          )}
-        </Box>
+        <MemoryRowActions
+          canActOnMemory={canActOnMemory}
+          canDelete={canDelete}
+          canEdit={canEdit}
+          memory={memory}
+          memoryUrl={memoryUrl}
+          onDeleteMemory={onDeleteMemory}
+          onEditMemory={onEditMemory}
+        />
       </Box>
     </Box>
   );
@@ -320,6 +401,9 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
+  isSearching,
+  isFiltered,
+  onClearFilters,
 }) => {
   const { t } = useTranslation();
   if (isLoading) {
@@ -332,26 +416,42 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     );
   }
 
-  if (data.length === 0) {
+  if (data.length === 0 && (isSearching || isFiltered)) {
     return (
-      <Box
-        align="center"
-        className="tw:py-12 tw:text-center"
-        direction="col"
-        gap={1}
-        justify="center">
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.no-entity-available', {
-            entity: t('label.memory-plural'),
-          })}
-        </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
-          {t('message.try-a-different-filter-or-search')}
-        </Typography>
-      </Box>
+      <div className="tw:relative tw:min-h-[320px] tw:py-12">
+        <EmptyPlaceholder
+          actions={
+            !isSearching && onClearFilters
+              ? [
+                  {
+                    key: 'clear-filters',
+                    label: t('label.clear-entity', { entity: t('label.all') }),
+                    color: 'primary',
+                    onClick: onClearFilters,
+                  },
+                ]
+              : undefined
+          }
+          description={
+            isSearching
+              ? t('message.check-spelling-or-try-different-term')
+              : t('message.no-results-for-filters-description')
+          }
+          icon={
+            isSearching ? (
+              <NoSearchResultIcon className="tw:text-quaternary" />
+            ) : (
+              <NoFilterResultsIcon className="tw:text-quaternary" />
+            )
+          }
+          title={
+            isSearching
+              ? t('label.no-matching-results')
+              : t('label.no-results-for-filters')
+          }
+          variant="blank"
+        />
+      </div>
     );
   }
 

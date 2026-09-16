@@ -31,6 +31,7 @@ import java.util.function.Consumer;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
@@ -87,6 +88,11 @@ public class IngestionProgressTracker {
   }
 
   public void updateProgress(String pipelineFqn, UUID runId, ProgressUpdate update) {
+    updateProgress(pipelineFqn, runId, update, null);
+  }
+
+  public void updateProgress(
+      String pipelineFqn, UUID runId, ProgressUpdate update, IngestionPipeline ingestionPipeline) {
     String key = buildKey(pipelineFqn, runId);
     progressUpdatesReceived.increment();
 
@@ -98,7 +104,7 @@ public class IngestionProgressTracker {
     }
 
     notifyListeners(key, update);
-    routeToService(pipelineFqn, runId, update);
+    routeToService(pipelineFqn, runId, update, ingestionPipeline);
   }
 
   public void addMetricsBatch(String pipelineFqn, UUID runId, OperationMetricsBatch batch) {
@@ -169,7 +175,8 @@ public class IngestionProgressTracker {
     return pipelineFqn + "/" + runId.toString();
   }
 
-  private void routeToService(String pipelineFqn, UUID runId, ProgressUpdate update) {
+  private void routeToService(
+      String pipelineFqn, UUID runId, ProgressUpdate update, IngestionPipeline ingestionPipeline) {
     String serviceFqn = FullyQualifiedName.getParentFQN(pipelineFqn);
     if (!nullOrEmpty(serviceFqn)) {
       String runKey = buildKey(pipelineFqn, runId);
@@ -177,7 +184,8 @@ public class IngestionProgressTracker {
           new ServiceProgressEvent()
               .withPipelineFqn(pipelineFqn)
               .withRunId(runId.toString())
-              .withEvent(update);
+              .withEvent(update)
+              .withIngestionPipeline(ingestionPipeline);
       recordActiveRun(serviceFqn, runKey, event);
       notifyServiceListeners(serviceFqn, event);
       dropRunIfTerminal(serviceFqn, runKey, update);

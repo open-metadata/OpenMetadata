@@ -105,7 +105,11 @@ class TestGCSArchiveIntegration:
         with (
             patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
             patch(
-                "metadata.ingestion.source.storage.storage_service.get_connection",
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.get_manifest_file",
+                return_value=None,
+            ),
+            patch(
+                "metadata.ingestion.source.storage.storage_service.create_connection",
                 return_value=MagicMock(),
             ),
         ):

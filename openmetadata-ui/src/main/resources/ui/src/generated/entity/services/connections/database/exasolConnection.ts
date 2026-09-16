@@ -38,6 +38,7 @@ export interface ExasolConnection {
     scheme?:                     ExasolScheme;
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
+    supportsUsageExtraction?:    boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

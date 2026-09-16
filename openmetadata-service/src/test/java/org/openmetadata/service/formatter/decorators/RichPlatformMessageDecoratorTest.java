@@ -32,7 +32,6 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -49,8 +48,9 @@ import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
-import org.openmetadata.service.util.FeedUtils;
 
 class RichPlatformMessageDecoratorTest {
 
@@ -69,11 +69,12 @@ class RichPlatformMessageDecoratorTest {
             .withTimestamp(FIXED_TIME);
 
     try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<FeedUtils> feedUtils = mockStatic(FeedUtils.class)) {
+        MockedStatic<ActivityMessageFormatter> activityFormatter =
+            mockStatic(ActivityMessageFormatter.class)) {
       alerts.when(() -> AlertsRuleEvaluator.getEntity(event)).thenReturn(new Table());
-      feedUtils
-          .when(() -> FeedUtils.getThreadWithMessage(decorator, event))
-          .thenReturn(List.of(new Thread().withMessage("Query text changed")));
+      activityFormatter
+          .when(() -> ActivityMessageFormatter.format(decorator, event))
+          .thenReturn(List.of(new FormattedMessage().withMessage("Query text changed")));
 
       SlackMessage message =
           assertDoesNotThrow(() -> decorator.buildEntityMessage("publisher", event));
@@ -97,11 +98,12 @@ class RichPlatformMessageDecoratorTest {
             .withTimestamp(FIXED_TIME);
 
     try (MockedStatic<AlertsRuleEvaluator> alerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<FeedUtils> feedUtils = mockStatic(FeedUtils.class)) {
+        MockedStatic<ActivityMessageFormatter> activityFormatter =
+            mockStatic(ActivityMessageFormatter.class)) {
       alerts.when(() -> AlertsRuleEvaluator.getEntity(event)).thenReturn(new Table());
-      feedUtils
-          .when(() -> FeedUtils.getThreadWithMessage(decorator, event))
-          .thenReturn(List.of(new Thread().withMessage("Query text changed")));
+      activityFormatter
+          .when(() -> ActivityMessageFormatter.format(decorator, event))
+          .thenReturn(List.of(new FormattedMessage().withMessage("Query text changed")));
 
       TeamsMessage message =
           assertDoesNotThrow(() -> decorator.buildEntityMessage("publisher", event));

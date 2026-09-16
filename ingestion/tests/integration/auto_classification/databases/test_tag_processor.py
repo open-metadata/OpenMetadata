@@ -7,10 +7,6 @@ from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.classification.classification import (
-    Classification,
-)
-from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -118,9 +114,6 @@ def autoclassification_config(db_service, bot_workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_autoclassification(
-    pii_classification: Classification,
-    sensitive_pii_tag: Tag,
-    non_sensitive_pii_tag: Tag,
     run_workflow,
     load_metadata: MetadataWorkflow,
     autoclassification_config,
@@ -134,6 +127,7 @@ def test_it_returns_the_expected_classifications(
     run_autoclassification: AutoClassificationWorkflow,
 ) -> None:
     (
+        academic_year_code_column,
         address_column,
         customer_id_column,
         dwh_x10_column,
@@ -170,7 +164,16 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `SpacyRecognizer`"),
         ),
     ]
-    assert address_column.tags == []
+    # SpacyRecognizer reads a street name as a PERSON in 2 of the 8 rows and as a LOCATION in 3.
+    # Neither survived the old sample-size average; scoring on the strongest single match means a
+    # column of postal addresses is now flagged, which is what it is.
+    assert address_column.tags == [
+        IsInstance(TagLabel)
+        & HasAttributes(
+            tagFQN=HasAttributes(root="PII.Sensitive"),
+            reason=Contains("Detected by `SpacyRecognizer`"),
+        ),
+    ]
     assert dwh_x20_column.tags == [
         IsInstance(TagLabel)
         & HasAttributes(
@@ -187,3 +190,7 @@ def test_it_returns_the_expected_classifications(
             reason=Contains("Detected by `ValidatedDateRecognizer`", "Patterns matched:"),
         ),
     ]
+    # SpacyRecognizer's DATE_TIME entity flags 4-digit year-like integers regardless of column
+    # type or semantics (#29083); date_time_patcher now drops them because a bare year names no
+    # month or day.
+    assert academic_year_code_column.tags == []

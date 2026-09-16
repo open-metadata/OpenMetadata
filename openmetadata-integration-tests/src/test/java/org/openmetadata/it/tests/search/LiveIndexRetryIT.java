@@ -53,7 +53,12 @@ class LiveIndexRetryIT {
   // just block-then-succeed on resume and never enqueue anything.
   private static final Duration FAILURE_TIMEOUT = Duration.ofSeconds(120);
   private static final Duration OUTAGE_BACKSTOP = Duration.ofSeconds(180);
-  private static final Duration DRAIN_TIMEOUT = Duration.ofMinutes(2);
+  // Drain budget after resume. The retry worker polls every 5s but, having seen the engine
+  // unavailable during the outage, backs off exponentially up to 60s before it re-checks a resumed
+  // engine — so the first post-resume claim can land ~a minute late, then cascade-reindex +
+  // bulk flushAndAwait(60) + engine refresh follow. Under concurrent full-suite load 2 min was too
+  // tight (nightly flake). Matches the 3-5 min budgets of the sibling ReindexOutageRecoveryIT.
+  private static final Duration DRAIN_TIMEOUT = Duration.ofMinutes(4);
 
   private static ServerHandle server;
   private static SearchAssertions search;
@@ -82,14 +87,18 @@ class LiveIndexRetryIT {
       Awaitility.await("blocked live-index write times out and enqueues a retry row")
           .atMost(FAILURE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
           .until(() -> pendingRetryCount() > 0);
     } finally {
       EsOutageInjector.unpause();
     }
 
+    // ignoreExceptions: the first polls run right as the engine resumes, so a transient
+    // search/DB read can throw before the cluster is fully serving — retry rather than fail.
     Awaitility.await("retry queue drains and table appears in index")
         .atMost(DRAIN_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
         .untilAsserted(
             () -> {
               assertThat(pendingRetryCount()).as("retry queue must drain to zero pending").isZero();

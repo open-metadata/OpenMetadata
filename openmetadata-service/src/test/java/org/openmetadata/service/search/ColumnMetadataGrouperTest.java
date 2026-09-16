@@ -403,6 +403,22 @@ class ColumnMetadataGrouperTest {
     assertEquals(List.of("Name", "name"), actual);
   }
 
+  @Test
+  void testGroupColumns_nullColumnNameIsSkipped() {
+    // A null column name (e.g. a null map key) is dropped, not returned with a null required field,
+    // and must not throw. The remaining valid columns still come back sorted.
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    columnsByName.put("beta", singleOccurrence("beta"));
+    columnsByName.put(null, singleOccurrence(null));
+    columnsByName.put("alpha", singleOccurrence("alpha"));
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    assertEquals(List.of("alpha", "beta"), actual);
+  }
+
   private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {
     Column column = new Column();
     column.setName(columnName);

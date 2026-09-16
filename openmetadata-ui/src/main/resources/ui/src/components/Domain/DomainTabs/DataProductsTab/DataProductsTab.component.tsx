@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { PagingResponse } from 'Models';
 import {
   forwardRef,
   lazy,
@@ -24,12 +23,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
-import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { ENTITY_PATH } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
@@ -38,6 +38,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
@@ -54,23 +56,27 @@ const DataProductsTab = forwardRef(
   ({ permissions, onAddDataProduct, domainFqn }: DataProductsTabProps, ref) => {
     const { t } = useTranslation();
     const { fqn: urlDomainFqn } = useFqn();
-    const [dataProducts, setDataProducts] = useState<
-      PagingResponse<DataProduct[]>
-    >({
-      data: [],
-      paging: { total: 0 },
-    });
+    const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
 
     const [selectedCard, setSelectedCard] = useState<DataProduct>();
     const [loading, setLoading] = useState(true);
 
-    const fetchDataProducts = async () => {
+    const {
+      currentPage,
+      pageSize,
+      paging,
+      handlePageChange,
+      handlePageSizeChange,
+      handlePagingChange,
+    } = usePaging();
+
+    const fetchDataProducts = useCallback(async () => {
       try {
         setLoading(true);
         const res = await searchQuery({
           query: '',
-          pageNumber: 1,
-          pageSize: PAGE_SIZE_LARGE,
+          pageNumber: currentPage,
+          pageSize: pageSize,
           queryFilter: getQueryFilterForDataProducts(
             urlDomainFqn || domainFqn || ''
           ),
@@ -78,23 +84,19 @@ const DataProductsTab = forwardRef(
         });
 
         const data = formatDataProductResponse(res.hits.hits);
-        setDataProducts({
-          data: data,
-          paging: { total: res.hits.total.value ?? 0 },
-        });
+        setDataProducts(data);
+        handlePagingChange({ total: res.hits.total.value ?? 0 });
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
-        setDataProducts({
-          data: [],
-          paging: { total: 0 },
-        });
+        setDataProducts([]);
+        handlePagingChange({ total: 0 });
       } finally {
         setLoading(false);
       }
-    };
+    }, [currentPage, pageSize, urlDomainFqn, domainFqn, handlePagingChange]);
 
     const updateSelectedCard = useCallback((dataProductCard: SourceType) => {
       setSelectedCard(dataProductCard as DataProduct);
@@ -102,19 +104,22 @@ const DataProductsTab = forwardRef(
 
     useImperativeHandle(ref, () => ({
       refreshDataProducts() {
-        fetchDataProducts();
+        handlePageChange(1);
+        if (currentPage === 1) {
+          fetchDataProducts();
+        }
       },
     }));
 
     useEffect(() => {
       fetchDataProducts();
-    }, [urlDomainFqn]);
+    }, [fetchDataProducts]);
 
-    if (loading) {
+    if (loading && isEmpty(dataProducts)) {
       return <Loader />;
     }
 
-    if (isEmpty(dataProducts.data) && !loading) {
+    if (isEmpty(dataProducts) && !loading) {
       return (
         <ErrorPlaceHolder
           buttonId="data-product-add-button"
@@ -139,8 +144,9 @@ const DataProductsTab = forwardRef(
           className: 'domain-resizable-panel-container',
           children: (
             <>
-              {dataProducts.data.map((dataProduct) => (
+              {dataProducts.map((dataProduct) => (
                 <ExploreSearchCard
+                  hideBreadcrumbs
                   className={classNames(
                     'm-b-sm cursor-pointer',
                     selectedCard?.id === dataProduct.id ? 'highlight-card' : ''
@@ -155,6 +161,17 @@ const DataProductsTab = forwardRef(
                   }}
                 />
               ))}
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                isLoading={loading}
+                pageSize={pageSize}
+                paging={paging}
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  handlePageChange(currentPage)
+                }
+                onShowSizeChange={handlePageSizeChange}
+              />
             </>
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,

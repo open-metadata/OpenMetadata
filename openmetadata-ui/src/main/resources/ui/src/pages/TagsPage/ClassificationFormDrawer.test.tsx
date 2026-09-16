@@ -12,8 +12,9 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FormInstance } from 'antd';
+import { UseFormReturn } from 'react-hook-form';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
+import { TagFormValues } from './TagsPage.interface';
 
 jest.mock('./TagsForm', () => {
   return jest.fn(() => <div data-testid="tags-form">Tags Form</div>);
@@ -52,7 +53,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }) => (
         <div data-testid={testId}>
           {children}
-          <button data-testid="drawer-close-icon" onClick={onClose} />
+          <button
+            aria-label="Close"
+            data-testid="drawer-close-icon"
+            onClick={onClose}
+          />
         </div>
       ),
       Content: ({ children }: { children: React.ReactNode }) => (
@@ -93,12 +98,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 const mockForm = {
-  submit: jest.fn(),
-  resetFields: jest.fn(),
-  getFieldsValue: jest.fn(),
-  setFieldsValue: jest.fn(),
-  validateFields: jest.fn(),
-} as unknown as FormInstance;
+  control: {},
+  handleSubmit: jest.fn(),
+  reset: jest.fn(),
+  formState: { isSubmitSuccessful: false },
+} as unknown as UseFormReturn<TagFormValues>;
 
 describe('ClassificationFormDrawer', () => {
   const mockOnClose = jest.fn();
@@ -106,7 +110,7 @@ describe('ClassificationFormDrawer', () => {
 
   const defaultProps = {
     open: true,
-    formRef: mockForm,
+    form: mockForm,
     classifications: [],
     isTier: false,
     isLoading: false,

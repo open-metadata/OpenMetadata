@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
@@ -23,6 +29,7 @@ import { useTestSuitesListPage } from './useTestSuitesListPage';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
+  const { createActions } = useDataQualityProvider();
   const {
     subTab,
     params,
@@ -48,7 +55,40 @@ export const TestSuites = () => {
     testCaseSummary,
   } = useTestSuitesListPage();
 
-  if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
+  // testSuitePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testSuite, threaded through useTestSuitesListPage/useTestSuitesData — the latter's own
+  // consumption of the raw object is out of this batch's scope and stays untouched). Itself
+  // OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly like an
+  // entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent). Falls back to
+  // DEFAULT_ENTITY_PERMISSION (all-false) to reproduce the old `?.` optional-chaining
+  // undefined-is-falsy behavior.
+  const testSuiteFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testSuitePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testSuitePermission]
+  );
+
+  const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
+    let action: EmptyPlaceholderAction | undefined;
+    if (
+      createActions?.canCreateBundleSuite &&
+      createActions?.onAddBundleSuite
+    ) {
+      action = {
+        key: 'new-bundle-suite',
+        label: t('label.new-entity', { entity: t('label.bundle-suite') }),
+        color: 'primary',
+        iconLeading: Plus,
+        onPress: createActions.onAddBundleSuite,
+      };
+    }
+
+    return action;
+  }, [createActions?.canCreateBundleSuite, createActions?.onAddBundleSuite, t]);
+
+  if (!testSuiteFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -97,6 +137,7 @@ export const TestSuites = () => {
           columnList={columnList}
           currentPage={currentPage}
           data={sortedData}
+          emptyStateAction={emptyStateAction}
           hasActiveFilters={!isEmpty(params)}
           isLoading={isLoading}
           pageSize={pageSize}

@@ -441,4 +441,14 @@ public final class Containers {
       return new ContainerDeleter(client, container.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().containers().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().containers().getContextByName(fqn);
+  }
 }

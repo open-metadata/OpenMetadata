@@ -12,32 +12,32 @@
  */
 @import (reference) '../../../styles/variables.less';
 .description-section {
-  margin-top: 12px;
-  padding-left: 14px;
-  padding-right: 14px;
+  margin-top: var(--om-space-12);
+  padding-left: var(--om-space-14);
+  padding-right: var(--om-space-14);
   border-bottom: 0.6px solid @grey-15;
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   .block-editor-wrapper .tiptap.ProseMirror {
-    font-size: 12px;
-    font-weight: 400;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-regular);
   }
   .description-header {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--om-space-8);
+    margin-bottom: var(--om-space-12);
 
     .description-title-row {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--om-space-8);
       min-width: 0;
     }
 
     .description-title {
-      font-weight: 600;
-      font-size: 13px;
+      font-weight: var(--om-font-weight-semibold);
+      font-size: var(--om-font-size-13);
       color: @grey-900;
     }
   }
@@ -58,7 +58,7 @@
               -webkit-box-orient: vertical;
               overflow: hidden;
               text-overflow: ellipsis;
-              font-size: 14px;
+              font-size: var(--om-font-size-sm);
               word-wrap: break-word;
               word-break: break-word;
               white-space: normal;
@@ -72,10 +72,10 @@
         border: none;
         color: @primary-color;
         cursor: pointer;
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
         padding: 0;
         text-decoration: none;
-        transition: color 0.2s ease;
+        transition: color var(--om-duration-200) ease;
 
         &:hover {
           color: @primary-6;
@@ -89,17 +89,17 @@
       }
 
       .description-metadata {
-        margin-top: 10px;
+        margin-top: var(--om-space-10);
       }
     }
 
     .no-data-placeholder {
       color: @grey-500;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
 
     .description-metadata {
-      margin-top: 10px;
+      margin-top: var(--om-space-10);
     }
   }
 }

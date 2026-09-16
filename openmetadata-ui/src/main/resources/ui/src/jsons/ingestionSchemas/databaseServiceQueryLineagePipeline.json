@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceQueryLineagePipeline",
+  "description": "DatabaseService Query Lineage Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "databaseLineageConfigType": {
+      "description": "Database Source Config Usage Pipeline type",
+      "type": "string",
+      "enum": [
+        "DatabaseLineage"
+      ],
+      "default": "DatabaseLineage"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/databaseLineageConfigType",
+      "default": "DatabaseLineage"
+    },
+    "queryLogDuration": {
+      "description": "Configuration to tune how far we want to look back in query logs to process lineage data.",
+      "type": "integer",
+      "default": 1,
+      "title": "Query Log Duration"
+    },
+    "queryLogFilePath": {
+      "description": "Configuration to set the file path for query logs",
+      "type": "string",
+      "title": "Query Log File Path"
+    },
+    "resultLimit": {
+      "description": "Configuration to set the limit for query logs",
+      "type": "integer",
+      "default": 1000,
+      "title": "Result Limit"
+    },
+    "parsingTimeoutLimit": {
+      "description": "Configuration to set the timeout for parsing the query in seconds.",
+      "type": "integer",
+      "default": 300,
+      "title": "Parsing Timeout Limit"
+    },
+    "queryParserConfig": {
+      "title": "Query Parser Configuration",
+      "description": "Configuration for SQL query parser selection for lineage extraction.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.parserconfig.QueryParserConfig",
+      "definitions": {
+        "QueryParserType": {
+          "description": "Type of SQL query parser to use for lineage and usage extraction. Auto mode is recommended for best results.",
+          "type": "string",
+          "enum": [
+            "Auto",
+            "SqlGlot",
+            "SqlFluff"
+          ],
+          "default": "Auto"
+        }
+      },
+      "properties": {
+        "type": {
+          "title": "Query Parser Type",
+          "description": "Choose the SQL parser for lineage extraction:\n• Auto (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.\n• SqlGlot: High-performance parser with excellent dialect support. Falls back to SqlParse on failure.\n• SqlFluff: Comprehensive parser with strong dialect support. Falls back to SqlParse on failure.",
+          "$ref": "#/properties/queryParserConfig/definitions/QueryParserType",
+          "default": "Auto"
+        }
+      },
+      "additionalProperties": false
+    },
+    "filterCondition": {
+      "description": "Configuration the condition to filter the query history.",
+      "type": "string",
+      "title": "Filter Condition"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Schema Filter Pattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "title": "Table Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Database Filter Pattern"
+    },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only fetch stored procedures that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
+    "overrideViewLineage": {
+      "title": "Override View Lineage",
+      "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",
+      "type": "boolean",
+      "default": false
+    },
+    "processViewLineage": {
+      "title": "Process View Lineage",
+      "description": "Set the 'Process View Lineage' toggle to control whether to process view lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "processQueryLineage": {
+      "title": "Process Query Lineage",
+      "description": "Set the 'Process Query Lineage' toggle to control whether to process query lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "processStoredProcedureLineage": {
+      "title": "Process Stored Procedure Lineage",
+      "description": "Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.",
+      "type": "boolean",
+      "default": true
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize lineage ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads",
+      "minimum": 1
+    },
+    "processCrossDatabaseLineage": {
+      "title": "Process Cross Database Lineage",
+      "description": "Set the 'Process Cross Database Lineage' toggle to control whether to process table lineage across different databases.",
+      "type": "boolean",
+      "default": false
+    },
+    "crossDatabaseServiceNames": {
+      "title": "Cross Database Service Names",
+      "description": "Set 'Cross Database Service Names' to process lineage with the database.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
+    },
+    "incrementalLineageProcessing": {
+      "title": "Incremental Lineage Processing",
+      "description": "Set the 'Incremental Lineage Processing' toggle to control whether to process lineage incrementally.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

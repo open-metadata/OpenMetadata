@@ -340,6 +340,20 @@ class TestTypeCastedDataset:
         assert result_df["name"].iloc[0] == "Alice"
         assert result_df["name"].iloc[4] == "Eve"
 
+    def test_missing_string_values_stay_null_not_nan_string(self):
+        """Fields BurstIQ omits arrive as NaN; the astype must not turn them
+        into the literal string 'nan' (which would inflate valuesCount)."""
+        df = DF_NORMAL.copy()
+        nan = float("nan")
+        df["name"] = ["Alice", nan, nan, nan, nan]
+        df_factory = lambda: iter([df.copy()])  # noqa: E731
+        with _make_interface(df_factory) as interface:
+            result_df = _get_cast_df(interface, df)
+
+        assert result_df["name"].count() == 1
+        assert result_df["name"].isna().sum() == 4
+        assert "nan" not in result_df["name"].dropna().tolist()
+
     def test_json_and_array_excluded_from_other_cast_map(self):
         """
         ARRAY and JSON columns must not be in other_cast_map; attempting to
@@ -503,3 +517,14 @@ class TestBurstIQProfilerIntegration:
             col_prof = profile_results["columns"][col_name]
             assert col_prof["name"] == col_name
             assert "timestamp" in col_prof
+
+    def test_no_object_store_stats_are_emitted(self):
+        """BurstIQ is not backed by an object store, so the table metrics carry no storage stats."""
+        df_factory = lambda: iter([DF_NORMAL.copy()])  # noqa: E731
+        with _make_interface(df_factory) as interface:
+            all_metrics = _build_all_threadpool_metrics(interface, FULL_TABLE_ENTITY)
+            profile_results = interface.get_all_metrics(all_metrics)
+
+        assert "rowCount" in profile_results["table"]
+        assert "sizeInBytes" not in profile_results["table"]
+        assert "createDateTime" not in profile_results["table"]

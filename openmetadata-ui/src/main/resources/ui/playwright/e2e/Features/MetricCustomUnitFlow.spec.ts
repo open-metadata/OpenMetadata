@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import {
   clickOutside,
   descriptionBox,
@@ -165,11 +166,11 @@ test.describe(
       await test.step('Clean up - delete the metric', async () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
-        await page.locator('[role="dialog"].ant-modal').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        await page.click('[data-testid="hard-delete"]');
 
         const deletePromise = page.waitForResponse(
           (response) =>

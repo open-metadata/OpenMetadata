@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Label } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
   Dropdown,
-  Form,
   Row,
   Select,
   TableProps,
@@ -23,8 +23,6 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
@@ -55,6 +53,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import {
   Column,
+  Constraint,
   Table as TableType,
 } from '../../../generated/entity/data/table';
 import { TestSummary } from '../../../generated/tests/testCase';
@@ -82,6 +81,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -102,14 +102,15 @@ import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import {
-  EntityName,
-  EntityNameWithAdditionFields,
-} from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -169,6 +170,9 @@ const SchemaTable = () => {
   } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const [editConstraint, setEditConstraint] = useState<
+    Constraint | undefined
+  >();
 
   const {
     permissions: tablePermissions,
@@ -205,25 +209,20 @@ const SchemaTable = () => {
     [fqn]
   );
 
+  // Named-flag derivation (Task 8): `tablePermissions` is the raw OperationPermission read
+  // off useGenericContext(). Every field below was a raw `(EditX || EditAll) && !deleted` OR
+  // — kept under its original local name (consumed throughout this file) but now sourced from
+  // the prioritized named flag, a documented explicit-deny-wins fix (Task 6 Finding 1 /
+  // Task 8 Batch 2 precedent): an explicit `EditX: false` now wins over a bare
+  // `EditAll: true` grant, where the old raw OR granted regardless.
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editDisplayNamePermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditDisplayName: editDisplayNamePermission,
+    canEditAll,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
-      editDescriptionPermission:
-        (tablePermissions.EditDescription || tablePermissions.EditAll) &&
-        !deleted,
-      editGlossaryTermsPermission:
-        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
-        !deleted,
-      editDisplayNamePermission:
-        (tablePermissions.EditDisplayName || tablePermissions.EditAll) &&
-        !deleted,
-    }),
+    () => getDerivedPermissionFlags(tablePermissions, deleted),
     [tablePermissions, deleted]
   );
 
@@ -599,10 +598,11 @@ const SchemaTable = () => {
 
   const handleEditDisplayNameClick = useCallback((record: Column) => {
     setEditColumnDisplayName(record);
+    setEditConstraint(record.constraint);
   }, []);
 
   const handleEditColumnData = async (data: EntityName) => {
-    const { displayName, constraint } = data as EntityNameWithAdditionFields;
+    const { displayName } = data;
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -612,21 +612,23 @@ const SchemaTable = () => {
           editColumnDisplayName.fullyQualifiedName,
           {
             displayName: displayName,
-            ...(isEmpty(constraint)
+            ...(isEmpty(editConstraint)
               ? {
                   removeConstraint: true,
                 }
-              : { constraint }),
-          },
+              : { constraint: editConstraint }),
+          } as Partial<Column>,
           'displayName'
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setEditColumnDisplayName(undefined);
+        setEditConstraint(undefined);
       }
     } else {
       setEditColumnDisplayName(undefined);
+      setEditConstraint(undefined);
     }
   };
 
@@ -661,10 +663,12 @@ const SchemaTable = () => {
         key: 'name',
         label: (
           <span data-testid="sort-alphabetical">
+            {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
             {t('label.alphabetical')} (A → Z)
           </span>
         ),
         icon:
+          // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
           sortBy === 'name' ? <span className="text-primary">✓</span> : null,
       },
       {
@@ -676,6 +680,7 @@ const SchemaTable = () => {
         ),
         icon:
           sortBy === 'ordinalPosition' ? (
+            // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
             <span className="text-primary">✓</span>
           ) : null,
       },
@@ -920,22 +925,26 @@ const SchemaTable = () => {
   );
 
   const additionalFieldsInEntityNameModal = (
-    <Form.Item
-      label={t('label.entity-type-plural', {
-        entity: t('label.constraint'),
-      })}
-      name="constraint">
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <Label>
+        {t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
+      </Label>
       <Select
         allowClear
         data-testid="constraint-type-select"
+        getPopupContainer={(triggerNode) => triggerNode.parentElement}
         options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
+        value={editConstraint}
+        onChange={(value) => setEditConstraint(value)}
       />
-    </Form.Item>
+    </div>
   );
 
   const handleEditTable = () => {
@@ -1020,10 +1029,7 @@ const SchemaTable = () => {
                   {t('label.sort')}
                 </Button>
               </Dropdown>
-              {getBulkEditButton(
-                tablePermissions.EditAll && !deleted,
-                handleEditTable
-              )}
+              {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
           loading={columnsLoading}

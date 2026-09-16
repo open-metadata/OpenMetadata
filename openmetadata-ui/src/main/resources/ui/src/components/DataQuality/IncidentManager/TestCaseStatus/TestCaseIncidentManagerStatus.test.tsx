@@ -89,7 +89,6 @@ jest.mock('./InlineTestCaseIncidentStatus.component', () => ({
       </div>
     )),
 }));
-jest.mock('../../../../test/unit/mocks/mui.mock');
 
 describe('TestCaseIncidentManagerStatus', () => {
   it('Should render component', async () => {

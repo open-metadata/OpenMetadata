@@ -171,6 +171,8 @@ export interface AwsCredentials {
  */
 export enum DruidScheme {
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
 }
 
 /**

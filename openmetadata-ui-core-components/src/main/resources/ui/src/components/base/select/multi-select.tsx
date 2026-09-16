@@ -37,7 +37,6 @@ import {
   ComboBoxStateContext,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
-import { useListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
 interface ComboBoxValueProps
@@ -174,7 +173,7 @@ const InnerMultiSelect = ({
       {!isSelectionEmpty &&
         comboBoxContext?.selectedItems?.items?.map((value) => (
           <span
-            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:ring-1 tw:ring-primary tw:ring-inset"
+            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
             <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
 
@@ -215,7 +214,7 @@ const InnerMultiSelect = ({
             )}>
             <span
               className={cx(
-                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:ring-1 tw:ring-secondary tw:select-none tw:ring-inset',
+                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:select-none',
                 isDisabled && 'tw:bg-transparent tw:text-disabled'
               )}>
               ⌘K
@@ -242,9 +241,12 @@ export const MultiSelectTagsValue = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
       }>
@@ -277,6 +279,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
   className: _className,
@@ -295,10 +298,15 @@ export const MultiSelectBase = ({
     [contains, selectedKeys]
   );
 
-  const accessibleList = useListData({
-    initialItems: items,
-    filter,
-  });
+  // Derive the visible options from the live `items` prop instead of
+  // useListData({ initialItems }) — that hook snapshots the items on mount,
+  // so async consumers that fetch options on input change never see their
+  // results reflected in the popup.
+  const [filterText, setFilterText] = useState('');
+  const filteredItems = useMemo(
+    () => (items ?? []).filter((item) => filter(item, filterText)),
+    [items, filter, filterText]
+  );
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -319,7 +327,7 @@ export const MultiSelectBase = ({
       return;
     }
 
-    const item = accessibleList.getItem(id);
+    const item = (items ?? []).find((currentItem) => currentItem.id === id);
 
     if (!item) {
       return;
@@ -330,14 +338,18 @@ export const MultiSelectBase = ({
       onItemInserted?.(id);
     }
 
-    accessibleList.setFilterText('');
+    setFilterText('');
   };
 
   const onInputChange = useCallback(
     (value: string) => {
-      accessibleList.setFilterText(value);
+      setFilterText(value);
+      // Chain the consumer's handler — the internal one is applied after
+      // {...props} on AriaComboBox and would otherwise silently drop it
+      // (async search widgets rely on it to fetch matching options).
+      onInputChangeProp?.(value);
     },
-    [accessibleList]
+    [onInputChangeProp]
   );
 
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -367,8 +379,8 @@ export const MultiSelectBase = ({
     <ComboboxContext.Provider value={contextValues}>
       <AriaComboBox
         allowsEmptyCollection
-        inputValue={accessibleList.filterText}
-        items={accessibleList.items}
+        inputValue={filterText}
+        items={filteredItems}
         menuTrigger="focus"
         // This keeps the combobox popover open and the input value unchanged when an item is selected.
         selectedKey={null}

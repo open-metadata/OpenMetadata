@@ -12,6 +12,11 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import {
+  okJson,
+  quoteFqnSegment,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { Domain } from './Domain';
 
@@ -51,7 +56,9 @@ export class SubDomain {
       domainType: 'Aggregate',
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
-      parent: domain.responseData.fullyQualifiedName ?? domain.data.name,
+      parent:
+        domain.responseData.fullyQualifiedName ??
+        quoteFqnSegment(domain.data.name),
     };
   }
 
@@ -59,7 +66,7 @@ export class SubDomain {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
     });
-    const data = await response.json();
+    const data = await okJson(response, 'SubDomain.create');
     this.responseData = data;
 
     return data;
@@ -86,17 +93,16 @@ export class SubDomain {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/domains/${this.responseData?.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/domains/${this.responseData?.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'SubDomain.patch');
 
     return {
       entity: this.responseData,

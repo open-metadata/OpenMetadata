@@ -242,9 +242,11 @@ public class StageStatsTracker {
     long rTimeNanos = reader.getTotalTimeNanos().getAndSet(0);
     long pSuccess = process.getSuccess().getAndSet(0);
     long pFailed = process.getFailed().getAndSet(0);
+    long pWarnings = process.getWarnings().getAndSet(0);
     long pTimeNanos = process.getTotalTimeNanos().getAndSet(0);
     long sSuccess = sink.getSuccess().getAndSet(0);
     long sFailed = sink.getFailed().getAndSet(0);
+    long sWarnings = sink.getWarnings().getAndSet(0);
     long sTimeNanos = sink.getTotalTimeNanos().getAndSet(0);
     long vSuccess = vector.getSuccess().getAndSet(0);
     long vFailed = vector.getFailed().getAndSet(0);
@@ -261,8 +263,10 @@ public class StageStatsTracker {
         && rWarnings == 0
         && pSuccess == 0
         && pFailed == 0
+        && pWarnings == 0
         && sSuccess == 0
         && sFailed == 0
+        && sWarnings == 0
         && vSuccess == 0
         && vFailed == 0
         && rTimeMs == 0
@@ -281,8 +285,10 @@ public class StageStatsTracker {
       if (rWarnings > 0) metrics.recordStageWarnings("reader", entityType, rWarnings);
       if (pSuccess > 0) metrics.recordStageSuccess("process", entityType, pSuccess);
       if (pFailed > 0) metrics.recordStageFailed("process", entityType, pFailed);
+      if (pWarnings > 0) metrics.recordStageWarnings("process", entityType, pWarnings);
       if (sSuccess > 0) metrics.recordStageSuccess("sink", entityType, sSuccess);
       if (sFailed > 0) metrics.recordStageFailed("sink", entityType, sFailed);
+      if (sWarnings > 0) metrics.recordStageWarnings("sink", entityType, sWarnings);
       if (vSuccess > 0) metrics.recordStageSuccess("vector", entityType, vSuccess);
       if (vFailed > 0) metrics.recordStageFailed("vector", entityType, vFailed);
     }
@@ -295,7 +301,7 @@ public class StageStatsTracker {
           entityType,
           rSuccess,
           rFailed,
-          rWarnings,
+          rWarnings + pWarnings + sWarnings,
           sSuccess,
           sFailed,
           pSuccess,
@@ -314,18 +320,21 @@ public class StageStatsTracker {
       lastFlushTime = System.currentTimeMillis();
 
       LOG.debug(
-          "Flushed stats for job {} entity {} on server {}: reader={}/{} ({}ms), process={}/{} ({}ms), sink={}/{} ({}ms), vector={}/{} ({}ms)",
+          "Flushed stats for job {} entity {} on server {}: reader={}/{}/{} ({}ms), process={}/{}/{} ({}ms), sink={}/{}/{} ({}ms), vector={}/{} ({}ms)",
           jobId,
           entityType,
           serverId,
           rSuccess,
           rFailed,
+          rWarnings,
           rTimeMs,
           pSuccess,
           pFailed,
+          pWarnings,
           pTimeMs,
           sSuccess,
           sFailed,
+          sWarnings,
           sTimeMs,
           vSuccess,
           vFailed,
@@ -338,9 +347,11 @@ public class StageStatsTracker {
       reader.getTotalTimeNanos().addAndGet(rTimeNanos);
       process.getSuccess().addAndGet(pSuccess);
       process.getFailed().addAndGet(pFailed);
+      process.getWarnings().addAndGet(pWarnings);
       process.getTotalTimeNanos().addAndGet(pTimeNanos);
       sink.getSuccess().addAndGet(sSuccess);
       sink.getFailed().addAndGet(sFailed);
+      sink.getWarnings().addAndGet(sWarnings);
       sink.getTotalTimeNanos().addAndGet(sTimeNanos);
       vector.getSuccess().addAndGet(vSuccess);
       vector.getFailed().addAndGet(vFailed);

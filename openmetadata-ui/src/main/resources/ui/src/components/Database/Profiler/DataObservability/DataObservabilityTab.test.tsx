@@ -20,7 +20,6 @@ import {
   Table,
 } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
-import '../../../../test/unit/mocks/mui.mock';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import DataObservabilityTab from './DataObservabilityTab';
 

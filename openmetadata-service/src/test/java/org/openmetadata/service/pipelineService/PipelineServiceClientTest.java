@@ -30,13 +30,19 @@ public class PipelineServiceClientTest {
   }
 
   @Test
+  public void testGetVersionFromStringDefaultsPatchToZero() {
+    assertEquals("1.9.0", mockPipelineServiceClient.getVersionFromString("1.9"));
+    assertEquals("1.9.0", mockPipelineServiceClient.getVersionFromString("1.9.dev0"));
+  }
+
+  @Test
   public void testGetVersionFromStringRaises() {
     Exception exception =
         assertThrows(
             PipelineServiceVersionException.class,
             () -> mockPipelineServiceClient.getVersionFromString("random"));
 
-    String expectedMessage = "Cannot extract version x.y.z from random";
+    String expectedMessage = "Cannot extract version x.y from random";
     String actualMessage = exception.getMessage();
 
     assertEquals(expectedMessage, actualMessage);

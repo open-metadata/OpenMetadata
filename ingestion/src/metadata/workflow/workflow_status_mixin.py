@@ -16,10 +16,6 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Optional, Tuple  # noqa: UP035
-
-if TYPE_CHECKING:
-    from metadata.workflow.progress_render import ProgressReporter
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -40,9 +36,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
-from metadata.workflow.progress_render import ProgressReporter
 
 logger = ometa_logger()
 
@@ -61,13 +57,13 @@ class WorkflowStatusMixin:
     """
 
     config: OpenMetadataWorkflowConfig
-    _run_id: Optional[str] = None  # noqa: UP045
+    _run_id: str | None = None
     metadata: OpenMetadata
     _start_ts: int
-    ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
+    ingestion_pipeline: IngestionPipeline | None
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step]  # noqa: UP006
+    steps: tuple[Step, ...]
 
     @property
     def run_id(self) -> str:
@@ -106,7 +102,7 @@ class WorkflowStatusMixin:
     def set_ingestion_pipeline_status(
         self,
         state: PipelineState,
-        ingestion_status: Optional[IngestionStatus] = None,  # noqa: UP045
+        ingestion_status: IngestionStatus | None = None,
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -163,7 +159,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
+    def build_ingestion_status(self) -> IngestionStatus | None:
         """
         Get the results from the steps and prep the payload
         we'll send to the API
@@ -176,17 +172,17 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def _progress_reporter(self) -> Optional["ProgressReporter"]:
-        """Reporter for the first workflow step that ran a topology walk. Reads
-        the backing attribute so we never create an empty registry on a step
-        that never tracked progress."""
-        reporter = None
+    def _find_progress_registry(self) -> ProgressRegistry | None:
+        """Registry of the first workflow step that tracked progress. Reads the
+        backing attribute so we never create an empty registry on a step that
+        never tracked progress."""
+        result = None
         for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
-            registry = getattr(step, "_progress_registry", None)
-            if registry is not None:
-                reporter = ProgressReporter(registry)
+            tracking = getattr(step, "_progress_tracking", None)
+            if tracking is not None:
+                result = tracking.registry
                 break
-        return reporter
+        return result
 
     def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
@@ -199,10 +195,11 @@ class WorkflowStatusMixin:
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                reporter = self._progress_reporter()
-                progress_data = reporter.payload() if reporter is not None else None
-                counters = reporter.global_counters() if reporter is not None else []
-                eta_seconds = reporter.eta_seconds() if reporter is not None else None
+                registry = self._find_progress_registry()
+                progress_data = registry.sse_payload() if registry is not None else None
+                counters = registry.global_counters() if registry is not None else []
+                eta_seconds = registry.eta_seconds() if registry is not None else None
+                total_assets = registry.assets_ingested() if registry is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
@@ -213,6 +210,7 @@ class WorkflowStatusMixin:
                         {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
                     ],
                     estimatedSecondsRemaining=eta_seconds,
+                    totalAssetsIngested=total_assets,
                     stepName=None,
                     currentEntity=None,
                     message=None,

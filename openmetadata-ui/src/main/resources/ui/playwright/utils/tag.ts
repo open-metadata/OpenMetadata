@@ -25,6 +25,7 @@ import {
   descriptionBox,
   descriptionBoxReadOnly,
   getApiContext,
+  getDescriptionBox,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -44,7 +45,7 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#F14C75',
+  color: '#C11574',
   icon: 'Cube01',
 };
 
@@ -55,7 +56,9 @@ export const visitClassificationPage = async (
 ) => {
   await redirectToHomePage(page);
   const fetchTags = page.waitForResponse(
-    `/api/v1/tags?*parent=${classificationName}**`
+    (url) =>
+      url.url().includes('/api/v1/tags') &&
+      url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
@@ -170,7 +173,19 @@ export const removeAssetsFromTag = async (
   assets: EntityClass[],
   tag: TagClass
 ) => {
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  // `/api/v1/tags/name/*` also fires for the classification-page sidebar that
+  // `tag.visitPage()` navigates through first, and even for other tag lookups
+  // that the layout may issue. The bare glob consumed the wait on those
+  // upstream calls, leaving the tag detail page's own fetch unwaited-for and
+  // the test blocked further down when the loader was still detached. Match
+  // the tag under test specifically so the wait cannot resolve early.
+  const tagFqn = tag.responseData.fullyQualifiedName;
+  const res = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/tags/name/') &&
+      decodeURIComponent(response.url()).includes(tagFqn ?? '')
+  );
   await tag.visitPage(page);
   await res;
 
@@ -199,9 +214,11 @@ export const removeAssetsFromTag = async (
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
+  // After a reload the badge renders only once the assets search returns —
+  // give it the same 30s the domain util allows instead of the default 15s.
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 30_000 });
 };
 
 export const setupAssetsForTag = async (page: Page) => {
@@ -247,22 +264,20 @@ export async function validateForm(page: Page) {
   await submitForm(page);
 
   // error messages
-  await expect(page.locator('#tags_name_help')).toBeVisible();
-  await expect(page.locator('#tags_name_help')).toContainText(
-    'Name is required'
-  );
+  await expect(page.getByText('Name is required')).toBeVisible();
 
-  await expect(page.locator('#tags_description_help')).toBeVisible();
-  await expect(page.locator('#tags_description_help')).toContainText(
-    'Description is required'
-  );
+  await expect(page.getByText('Description is required')).toBeVisible();
 
   // validation should work for invalid names
 
   // min length validation
   await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
+
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -270,8 +285,12 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // max length validation
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
+
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -279,9 +298,10 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // with special char validation
-  await page.locator('[data-testid="name"]').clear();
+  await page.getByTestId('name').getByRole('textbox').clear();
   await page
-    .locator('[data-testid="name"]')
+    .getByTestId('name')
+    .getByRole('textbox')
     .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
   await page.waitForLoadState('domcontentloaded');
 
@@ -392,10 +412,15 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   await expect(page.getByTestId('edit-description')).toBeVisible();
   await page.getByTestId('edit-description').click();
 
-  await expect(page.getByRole('dialog')).toBeVisible();
+  const descriptionModal = page.getByRole('dialog');
 
-  await page.locator(descriptionBox).clear();
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await expect(descriptionModal).toBeVisible();
+
+  const editor = getDescriptionBox(descriptionModal);
+
+  await expect(editor).toHaveCount(1);
+  await editor.clear();
+  await editor.fill(updatedDescription);
 
   const editDescription = page.waitForResponse(
     (response) =>
@@ -500,18 +525,21 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
 ];
 
 export const fillTagForm = async (adminPage: Page, domain: Domain) => {
-  await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
-  await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+  await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+  await adminPage
+    .getByTestId('displayName')
+    .getByRole('textbox')
+    .fill(NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.getByTestId('icon-picker-btn').click();
-  await adminPage
-    .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-    .click();
+  await adminPage.getByRole('button', { name: NEW_TAG.icon }).click();
   await adminPage
     .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
     .click();
 
-  const domainInput = adminPage.getByTestId('domain-select');
+  const domainInput = adminPage
+    .getByTestId('domain-select')
+    .getByRole('combobox');
   await domainInput.scrollIntoViewIfNeeded();
   await domainInput.waitFor({ state: 'visible' });
   await domainInput.click();

@@ -10,23 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
-import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Key,
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
@@ -66,6 +75,12 @@ import {
   ExploreTreeProps,
   TreeNodeData,
 } from './ExploreTree.interface';
+
+const SERVICE_ICON_CLASS = 'service-icon w-4 h-4';
+
+const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
+const SERVICE_STYLE_TOP_HITS_SIZE = 1;
+
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   const tooltipText = node.tooltip ?? node.title;
 
@@ -100,6 +115,177 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   );
 };
 
+const renderExploreTreeTitle = (node: DataNode) => (
+  <ExploreTreeTitle node={node as ExploreTreeNode} />
+);
+
+// Category visibility tracks the whole estate, not the filtered view, so it is
+// derived from an unfiltered aggregation cached per text query. Kept out of
+// fetchEntityCounts to keep its complexity down.
+const resolvePresenceBuckets = async ({
+  filterMust,
+  countBuckets,
+  presenceCacheKey,
+  presenceBucketsRef,
+  searchQueryParam,
+}: {
+  filterMust: unknown[];
+  countBuckets: Bucket[];
+  presenceCacheKey: string;
+  presenceBucketsRef: MutableRefObject<{
+    key: string;
+    buckets: Bucket[];
+  } | null>;
+  searchQueryParam: string;
+}): Promise<Bucket[]> => {
+  if (isEmpty(filterMust)) {
+    return countBuckets;
+  }
+  if (presenceBucketsRef.current?.key === presenceCacheKey) {
+    return presenceBucketsRef.current.buckets;
+  }
+
+  const res = await searchQuery({
+    query: searchQueryParam ?? '',
+    pageNumber: 0,
+    pageSize: 0,
+    queryFilter: {},
+    searchIndex: SearchIndex.DATA_ASSET,
+    includeDeleted: false,
+    trackTotalHits: true,
+    fetchSource: false,
+  });
+
+  return res.aggregations['entityType'].buckets;
+};
+
+const getServiceStyleIcon = (bucket: Bucket) => {
+  const iconURL = get(
+    bucket,
+    [
+      'top_hits#top',
+      'hits',
+      'hits',
+      0,
+      '_source',
+      'service',
+      'style',
+      'iconURL',
+    ],
+    ''
+  );
+
+  return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
+};
+
+// Resolves the icon/type pair for a single aggregation bucket while building
+// the tree's children — kept out of the map callback to keep its complexity down.
+const getBucketTypeAndLogo = (
+  bucketToFind: EntityFields,
+  bucket: Bucket,
+  isEntityType: boolean,
+  isServiceType: boolean,
+  // Typed loosely: the caller passes antd's TreeProps node icon (rc-tree's
+  // IconType), which is structurally incompatible with ExploreTreeNode['icon']
+  // even though both ultimately render fine as a tree node icon.
+  fallbackIcon: unknown,
+  t: (key: string) => string
+): { type: string | null; logo: unknown } => {
+  if (isEntityType) {
+    return {
+      type: null,
+      logo: searchClassBase.getEntityIcon(bucket.key, SERVICE_ICON_CLASS) ?? (
+        <></>
+      ),
+    };
+  }
+  if (isServiceType) {
+    const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
+
+    return {
+      type: null,
+      logo: (
+        <img
+          alt={t('label.service')}
+          src={serviceIcon}
+          style={{ width: 18, height: 18 }}
+        />
+      ),
+    };
+  }
+  if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+    return {
+      type: 'Database',
+      logo: searchClassBase.getEntityIcon('database', SERVICE_ICON_CLASS) ?? (
+        <></>
+      ),
+    };
+  }
+  if (bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME) {
+    return {
+      type: 'Database Schema',
+      logo: searchClassBase.getEntityIcon(
+        'databaseSchema',
+        SERVICE_ICON_CLASS
+      ) ?? <></>,
+    };
+  }
+  if (bucketToFind === EntityFields.SERVICE) {
+    const serviceIcon = getServiceStyleIcon(bucket);
+
+    return {
+      type: null,
+      logo: serviceIcon ? (
+        <img
+          alt={t('label.service')}
+          src={serviceIcon}
+          style={{ width: 18, height: 18 }}
+        />
+      ) : (
+        fallbackIcon
+      ),
+    };
+  }
+
+  return { type: null, logo: undefined };
+};
+
+export const getExploreTreeAggregationResponse = async ({
+  bucketToFind,
+  countQueryFilter,
+  searchQueryParam,
+}: {
+  bucketToFind: EntityFields;
+  countQueryFilter: Record<string, unknown>;
+  searchQueryParam: string;
+}) =>
+  bucketToFind === EntityFields.SERVICE
+    ? (
+        await postAggregateFieldOptions({
+          query: JSON.stringify(countQueryFilter),
+          queryText: searchQueryParam,
+          fieldName: bucketToFind,
+          fieldValue: '',
+          index: SearchIndex.DATA_ASSET,
+          deleted: false,
+          size: Number(SIZE.X_LARGE),
+          sourceFields: SERVICE_STYLE_SOURCE_FIELDS,
+          topHits: {
+            size: SERVICE_STYLE_TOP_HITS_SIZE,
+          },
+        })
+      ).data
+    : searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: countQueryFilter,
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+
 const ExploreTree = ({
   additionalQueryFilter,
   onFieldValueSelect,
@@ -129,6 +315,7 @@ const ExploreTree = ({
   // count refresh.
   const treeSelectRef = useRef(false);
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -167,7 +354,11 @@ const ExploreTree = ({
   const onLoadData: TreeProps['loadData'] = useCallback(
     async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
-        if (treeNode.children || (treeNode as ExploreTreeNode).disabled) {
+        if (
+          isTourOpen ||
+          treeNode.children ||
+          (treeNode as ExploreTreeNode).disabled
+        ) {
           return;
         }
 
@@ -210,15 +401,10 @@ const ExploreTree = ({
           activeQueryFilter: additionalQueryFilter,
         });
 
-        const res = await searchQuery({
-          query: searchQueryParam ?? '',
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter: countQueryFilter,
-          searchIndex: SearchIndex.DATA_ASSET,
-          includeDeleted: false,
-          trackTotalHits: true,
-          fetchSource: false,
+        const res = await getExploreTreeAggregationResponse({
+          bucketToFind,
+          countQueryFilter,
+          searchQueryParam,
         });
 
         const aggregations = getAggregations(res.aggregations);
@@ -245,42 +431,14 @@ const ExploreTree = ({
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-          let type = null;
-          let logo = undefined;
-          if (isEntityType) {
-            const isColumn = bucket.key === EntityType.TABLE_COLUMN;
-            const iconClass = classNames('service-icon w-4 h-4', {
-              'text-grey-500': isColumn,
-            });
-            logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
-              <></>
-            );
-          } else if (isServiceType) {
-            const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
-            logo = (
-              <img
-                alt="logo"
-                src={serviceIcon}
-                style={{ width: 18, height: 18 }}
-              />
-            );
-          } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
-            type = 'Database';
-            logo = searchClassBase.getEntityIcon(
-              'database',
-              'service-icon w-4 h-4'
-            ) ?? <></>;
-          } else if (
-            bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
-          ) {
-            type = 'Database Schema';
-            logo = searchClassBase.getEntityIcon(
-              'databaseSchema',
-              'service-icon w-4 h-4'
-            ) ?? <></>;
-          } else if (bucketToFind === EntityFields.SERVICE) {
-            logo = treeNode.icon;
-          }
+          const { type, logo } = getBucketTypeAndLogo(
+            bucketToFind,
+            bucket,
+            isEntityType,
+            isServiceType,
+            treeNode.icon,
+            t
+          );
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
             setSelectedKeys([id]);
@@ -326,6 +484,7 @@ const ExploreTree = ({
       }
     },
     [
+      isTourOpen,
       updateTreeData,
       searchQueryParam,
       defaultServiceType,
@@ -337,7 +496,11 @@ const ExploreTree = ({
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? <IconDown /> : <IconRight />;
+    return expanded ? (
+      <ChevronDown className="tw:text-fg-tertiary!" />
+    ) : (
+      <ChevronRight className="tw:text-fg-tertiary!" />
+    );
   }, []);
 
   const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(
@@ -395,6 +558,13 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
+    // Explore is mock-driven during the tour; skip the real aggregation calls.
+    if (isTourOpen) {
+      setIsLoading(false);
+
+      return;
+    }
+
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     // A browse click keeps the expanded subtree; anything else (dropdown filter,
@@ -437,25 +607,13 @@ const ExploreTree = ({
       // cached per query: a no-filter response is reused directly, and a filter
       // change reuses the cache instead of paying for a second aggregation.
       const presenceCacheKey = searchQueryParam ?? '';
-      let presenceBuckets: Bucket[];
-      if (isEmpty(filterMust)) {
-        presenceBuckets = countBuckets;
-      } else if (presenceBucketsRef.current?.key === presenceCacheKey) {
-        presenceBuckets = presenceBucketsRef.current.buckets;
-      } else {
-        presenceBuckets = (
-          await searchQuery({
-            query: searchQueryParam ?? '',
-            pageNumber: 0,
-            pageSize: 0,
-            queryFilter: {},
-            searchIndex: SearchIndex.DATA_ASSET,
-            includeDeleted: false,
-            trackTotalHits: true,
-            fetchSource: false,
-          })
-        ).aggregations['entityType'].buckets;
-      }
+      const presenceBuckets = await resolvePresenceBuckets({
+        filterMust,
+        countBuckets,
+        presenceCacheKey,
+        presenceBucketsRef,
+        searchQueryParam: searchQueryParam ?? '',
+      });
       // A newer filter change superseded this fetch while it was in flight —
       // drop its result so the tree reflects the latest filter, not this one.
       if (!isLatestFetch()) {
@@ -498,6 +656,7 @@ const ExploreTree = ({
       }
     }
   }, [
+    isTourOpen,
     searchQueryParam,
     setTreeData,
     parsedSearch.quickFilter,
@@ -511,6 +670,15 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
+
+  const previousIsTourOpenRef = useRef(isTourOpen);
+  useEffect(() => {
+    // Fetch the counts skipped during the tour once it closes.
+    if (previousIsTourOpenRef.current && !isTourOpen) {
+      fetchEntityCounts();
+    }
+    previousIsTourOpenRef.current = isTourOpen;
+  }, [isTourOpen, fetchEntityCounts]);
 
   const filterSignature = useMemo(
     () =>
@@ -658,9 +826,7 @@ const ExploreTree = ({
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => (
-        <ExploreTreeTitle node={node as ExploreTreeNode} />
-      )}
+      titleRender={renderExploreTreeTitle}
       treeData={displayTreeData as DataNode[]}
       onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}

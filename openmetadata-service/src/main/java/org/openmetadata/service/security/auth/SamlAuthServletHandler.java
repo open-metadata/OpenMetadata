@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
@@ -19,7 +20,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +46,8 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.EmailFirstUserProvisioner;
+import org.openmetadata.service.security.SamlIdentityResolver;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -277,16 +279,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Extract user information from SAML response
-      String nameId = auth.getNameId();
-      String email = nameId;
-      String username;
-
-      if (nameId.contains("@")) {
-        username = nameId.split("@")[0];
-      } else {
-        username = nameId;
-        email = String.format("%s@%s", username, SamlSettingsHolder.getInstance().getDomain());
-      }
+      SamlIdentityResolver.ResolvedSamlIdentity identity = resolveSamlIdentity(auth);
+      String email = identity.email();
+      // The MCP bridge needs a username before provisioning. In the email-first flow the stored
+      // username is authoritative, so resolve it by email and fail closed when the email-derived
+      // candidate is already owned by a different account.
+      String username =
+          identity.emailFirstFlow() ? UserUtil.resolveUserNameForEmail(email) : identity.userName();
 
       // If this login was initiated by an MCP OAuth client (RelayState = "mcp:{authRequestId}"),
       // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
@@ -303,7 +302,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Extract display name from SAML attributes (name, given_name, family_name)
-      String displayName = extractDisplayNameFromSamlAttributes(auth);
+      String displayName =
+          identity.displayName() != null
+              ? identity.displayName()
+              : extractDisplayNameFromSamlAttributes(auth);
 
       // Extract team/group attributes from SAML response (supports multi-valued attributes)
       List<String> teamsFromClaim = new ArrayList<>();
@@ -325,7 +327,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       }
 
       // Get or create user
-      User user = getOrCreateUser(username, email, displayName, teamsFromClaim);
+      User user =
+          identity.emailFirstFlow()
+              ? getOrCreateEmailFirstSamlUser(email, displayName, teamsFromClaim)
+              : getOrCreateUser(username, email, displayName, teamsFromClaim);
 
       // Generate refresh token
       RefreshToken refreshToken = TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
@@ -576,6 +581,44 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
+  private SamlIdentityResolver.ResolvedSamlIdentity resolveSamlIdentity(Auth auth) {
+    return new SamlIdentityResolver(
+            authConfig,
+            authorizerConfig,
+            assertionAccessor -> extractDisplayNameFromSamlAttributes(auth),
+            () -> SamlSettingsHolder.getInstance().getDomain())
+        .resolve(
+            new SamlIdentityResolver.SamlAssertionAccessor() {
+              @Override
+              public Collection<String> getAttribute(String attributeName) {
+                return auth.getAttribute(attributeName);
+              }
+
+              @Override
+              public String getNameId() {
+                return auth.getNameId();
+              }
+            });
+  }
+
+  private User getOrCreateEmailFirstSamlUser(
+      String email, String displayName, List<String> teamsFromClaim) {
+    return EmailFirstUserProvisioner.forProvider(
+            "SAML",
+            authorizerConfig,
+            Entity.getUserRepository(),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+        // No subject binding: a SAML NameID is only stable for persistent formats, and a
+        // transient NameID rotates on every login, which would lock users out.
+        .getOrCreate(
+            email, displayName, null, Boolean.TRUE.equals(authConfig.getEnableSelfSignup()));
+  }
+
+  private boolean isUserAdmin(String email, String username) {
+    return UserUtil.isConfiguredAdmin(authorizerConfig, email, username);
+  }
+
   private User getOrCreateUser(
       String username, String email, String displayName, List<String> teamsFromClaim) {
     try {
@@ -584,7 +627,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
           Entity.getEntityByName(
               Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(username);
+      boolean shouldBeAdmin = isUserAdmin(email, username);
       boolean needsUpdate = false;
 
       LOG.debug(
@@ -626,7 +669,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       LOG.debug("User not found, creating new user: {}", username);
       if (authConfig.getEnableSelfSignup()) {
-        boolean isAdmin = getAdminPrincipals().contains(username);
+        boolean isAdmin = isUserAdmin(email, username);
         User newUser =
             UserUtil.getUser(
                     username, new CreateUser().withName(username).withEmail(email).withIsBot(false))
@@ -647,14 +690,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     }
   }
 
-  private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
-    return new HashSet<>(authorizerConfig.getAdminPrincipals());
-  }
-
   private Set<String> trustedSamlRedirects() {
-    return org.openmetadata.service.security.SecurityUtil.trustedRedirects(
-        authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+    Set<String> trusted =
+        org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+            authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
+    trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
+    return trusted;
   }
 
   private ServiceProviderConfig samlSp() {

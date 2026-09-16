@@ -12,12 +12,9 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityReferencesByIds;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -33,9 +30,6 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.attachments.AssetType;
 import org.openmetadata.schema.entity.data.Article;
@@ -44,7 +38,6 @@ import org.openmetadata.schema.entity.data.PageHierarchy;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -54,27 +47,22 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.drive.PageContextProcessingEngineHolder;
+import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -170,12 +158,27 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     fetchAndSetParents(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
     fetchAndSetEditors(entities, fields);
+    fetchAndSetMemoryCounts(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Page entity : entities) {
       setArticleFields(entity, fields);
       clearFieldsInternal(entity, fields);
     }
+  }
+
+  /**
+   * Batched memoryCount so a list response carries the same count a single GET does; the
+   * per-entity path in setFields would be one query per page here.
+   */
+  private void fetchAndSetMemoryCounts(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(MEMORY_COUNT)) {
+      return;
+    }
+    Map<UUID, Integer> countsByPageId =
+        MemoryCountFetcher.countByEntityId(
+            daoCollection, entityListToStrings(entities), KNOWLEDGE_PAGE_ENTITY);
+    entities.forEach(page -> page.setMemoryCount(countsByPageId.getOrDefault(page.getId(), 0)));
   }
 
   private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
@@ -244,8 +247,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();
@@ -390,6 +400,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     entity.withEditors(fields.contains(EDITORS) ? entity.getEditors() : null);
     entity.setParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
+    if (!fields.contains(MEMORY_COUNT)) {
+      entity.setMemoryCount(null);
+    }
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (entity.getPage() != null) {
@@ -403,13 +416,24 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   @Override
   public void prepare(Page knowledgePage, boolean update) {
+    // storeRelationships reads parent.getId() directly, so a parent given by name alone has to be
+    // resolved here or the CONTAINS row is written with a null id and the page loses its parent.
+    EntityReference parent = knowledgePage.getParent();
+    if (parent != null && parent.getId() == null) {
+      knowledgePage.withParent(Entity.getEntityReference(parent, Include.NON_DELETED));
+    }
+
     // Validate Related Entities
     List<EntityReference> relatedEntities = knowledgePage.getRelatedEntities();
     if (!nullOrEmpty(relatedEntities)) {
       List<EntityReference> filtered = filterOutDomainsAndDataProducts(relatedEntities);
       knowledgePage.withRelatedEntities(filtered);
     }
-    EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities());
+    // Capture the return so unresolvable refs (e.g. search-index-only pseudo-types such as
+    // tableColumn) are dropped before they are stored — otherwise they persist as HAS rows and
+    // fail every later read that resolves them via getEntityRepository.
+    knowledgePage.withRelatedEntities(
+        EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities()));
 
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
@@ -428,19 +452,19 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
-      String parent, PageType pageType, int offset, int limit) {
+      String parent, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchy(parent, pageTypeValue, offset, limit);
+        .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit);
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
-      String activeFqn, PageType pageType, int offset, int limit) {
+      String activeFqn, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
     return searchRepository
         .getSearchClient()
-        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, offset, limit);
+        .listPageHierarchyForActivePage(activeFqn, pageTypeValue, sortFilter, offset, limit);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
@@ -822,63 +846,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
   }
 
-  protected void updateTaskWithNewReviewers(Page page) {
-    try {
-      MessageParser.EntityLink about =
-          new MessageParser.EntityLink(KNOWLEDGE_PAGE_ENTITY, page.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      page =
-          Entity.getEntityByName(
-              KNOWLEDGE_PAGE_ENTITY,
-              page.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(page.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      // Task may not be present
-      LOG.debug("Task not found for page {}", page.getFullyQualifiedName());
-    }
-  }
-
-  @Override
-  public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    TaskType taskType = threadContext.getThread().getTask().getType();
-    return new ApprovalTaskWorkflow(threadContext);
-  }
-
-  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
-    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      Page page = (Page) threadContext.getAboutEntity();
-      checkUpdatedByReviewer(page, user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      return page;
-    }
-  }
-
   @Override
   public void postUpdate(Page original, Page updated) {
     super.postUpdate(original, updated);
@@ -918,7 +885,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   protected void postDelete(Page entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    if (LLMClientHolder.isEnabled()) {
+    if (LLMClientHolder.isMemoryExtractionEnabled()) {
       PageContextProcessingEngineHolder.get().cancel(entity.getId());
     }
   }
@@ -926,24 +893,19 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
   // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
   // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. The pills track the page's lifecycle: soft-deleted with it,
-  // hard-deleted with it, restored with it. Mirrors DashboardRepository's chart cascade.
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted page must leave none behind in either form. Mirrors DashboardRepository's chart
+  // cascade.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, false);
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, true);
-  }
-
-  @Override
-  @Transaction
-  protected void restoreAdditionalChildren(UUID pageId, String updatedBy) {
-    contextMemoryRepository().restoreExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   private ContextMemoryRepository contextMemoryRepository() {
@@ -968,30 +930,18 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   /** True when the LLM is configured and article (page) memory extraction is toggled on. */
   private boolean isExtractionEnabled() {
-    return LLMClientHolder.isEnabled()
-        && AISettingsUtil.isPageExtractionEnabled(AISettingsUtil.get());
+    return LLMClientHolder.isMemoryExtractionEnabled();
   }
 
   private void closeApprovalTask(Page entity, String comment) {
-    MessageParser.EntityLink about =
-        new MessageParser.EntityLink(KNOWLEDGE_PAGE_ENTITY, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-
-    // Skip closing tasks if updatedBy is null (e.g., during tests)
     if (entity.getUpdatedBy() == null) {
       LOG.debug(
           "Skipping task closure for page {} - updatedBy is null", entity.getFullyQualifiedName());
       return;
     }
-
-    // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for page {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   public static void checkUpdatedByReviewer(Page page, String updatedBy) {

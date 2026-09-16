@@ -11,15 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Divider,
-  List,
-  Popover,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, List, Popover, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { FC, useMemo, useState } from 'react';
@@ -36,7 +28,9 @@ import {
   MetricGranularity,
   MetricType,
 } from '../../../generated/entity/data/metric';
+import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import './metric-header-info.less';
 import UnitOfMeasurementInfoItem from './UnitOfMeasurementInfoItem';
 interface MetricInfoItemOption {
@@ -198,11 +192,16 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
   onUpdateMetricDetails,
 }) => {
   const { t } = useTranslation();
-  const hasPermission = Boolean(metricPermissions.EditAll);
+  // Named-flag derivation (rule 2 — prop-consumed OperationPermission, owner is
+  // MetricDetailsPage, Task 8 Batch 6). Ungated: the old raw expression never referenced
+  // `deleted` here — MetricInfoItem/UnitOfMeasurementInfoItem each AND their own
+  // `!metricDetails.deleted` check locally when they render the edit affordance, so the
+  // deleted-gating stays where it already lived, not folded into this flag.
+  const hasPermission = getDerivedPermissionFlags(metricPermissions).canEditAll;
 
   return (
     <>
-      <Divider className="self-center vertical-divider" type="vertical" />
+      <HeaderDotSeparator />
       <MetricInfoItem
         hasPermission={hasPermission}
         label={t('label.metric-type')}
@@ -216,7 +215,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         valueKey="metricType"
         onUpdateMetricDetails={onUpdateMetricDetails}
       />
-      <Divider className="self-center vertical-divider" type="vertical" />
+      <HeaderDotSeparator />
 
       <UnitOfMeasurementInfoItem
         hasPermission={hasPermission}
@@ -224,7 +223,7 @@ const MetricHeaderInfo: FC<MetricHeaderInfoProps> = ({
         metricDetails={metricDetails}
         onMetricUpdate={onUpdateMetricDetails}
       />
-      <Divider className="self-center vertical-divider" type="vertical" />
+      <HeaderDotSeparator />
 
       <MetricInfoItem
         hasPermission={hasPermission}

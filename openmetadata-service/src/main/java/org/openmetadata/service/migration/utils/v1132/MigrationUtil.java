@@ -5,11 +5,13 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.service.migration.utils.PiiRecognizerMigrationUtil;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 @Slf4j
@@ -78,5 +80,9 @@ public class MigrationUtil {
       }
     }
     return changed;
+  }
+
+  public static void removeBroadPiiContextKeywords(Handle handle) {
+    PiiRecognizerMigrationUtil.removeBroadPiiContextKeywords(handle, "v1132");
   }
 }

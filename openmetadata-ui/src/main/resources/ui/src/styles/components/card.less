@@ -93,7 +93,7 @@
 }
 
 .ant-card-feed > .ant-card-body {
-  padding-bottom: 0px;
+  padding-bottom: 0;
 }
 
 .custom-entity-schema > .CodeMirror {
@@ -101,7 +101,7 @@
 }
 
 .ant-card-extra {
-  padding: 0px;
+  padding: 0;
 }
 
 .ant-card.new-header-border-card {
@@ -112,13 +112,13 @@
     border-radius: @border-rad-sm;
 
     .text-sm();
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
 
   .ant-card-body {
     height: auto !important;
     max-height: none !important;
-    transition: all 200ms ease;
+    transition: all var(--om-duration-200) ease;
     transition-property: height, left, top;
   }
 
@@ -163,7 +163,7 @@
     background: @grey-50;
     border-radius: @border-rad-sm;
     .text-sm();
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     border-bottom: none;
   }
 

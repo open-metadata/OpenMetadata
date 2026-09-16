@@ -1,0 +1,1486 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Alert,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  FormItemLayout,
+  FormSelectItem,
+  getField,
+  HelperTextType,
+  useFieldDoc,
+  useFieldDocRegistry,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@untitledui/icons';
+import classNames from 'classnames';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { debounce, snakeCase } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { UseFormReturn, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
+import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  MAX_NAME_LENGTH,
+  PAGE_SIZE_LARGE,
+} from '../../../../constants/constants';
+import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { TagSource } from '../../../../generated/entity/data/container';
+import { Table } from '../../../../generated/entity/data/table';
+import { Operation } from '../../../../generated/entity/policies/policy';
+import {
+  EntityType,
+  TestDefinition,
+  TestPlatform,
+} from '../../../../generated/tests/testDefinition';
+import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
+import { TableSearchSource } from '../../../../interface/search.interface';
+import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
+import {
+  getListTestCaseBySearch,
+  getListTestDefinitions,
+} from '../../../../rest/testAPI';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import {
+  convertSearchSourceToTable,
+  getServiceTypeForTestDefinition,
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
+import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
+import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
+import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import ParameterFields from './ParameterFields';
+import {
+  FormValues,
+  TablesCache,
+  TestCaseFormBodyProps,
+  TestLevel,
+  TestLevelOption,
+} from './TestCaseFormV1.interface';
+import TestCaseSchedulerSection from './TestCaseSchedulerSection';
+import { toDataQualityDimensionItem } from './transformTestCaseFormData';
+
+const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
+const TABLES_CACHE_MAX_SIZE = 100;
+const ROOT_TABLE_PATH = 'root/table';
+const ROOT_TEST_TYPE_PATH = 'root/testType';
+
+const fqnFromSelectItem = (
+  value?: FormSelectItem | string | null
+): string | undefined => {
+  let result: string | undefined;
+  if (typeof value === 'string') {
+    result = value;
+  } else if (value) {
+    result = value.id;
+  }
+
+  return result;
+};
+
+// Small, pure branch-bearing calculations used while building the form's
+// FieldProp definitions — pulled out so each keeps its own (low) complexity
+// instead of accumulating inside the already-large form body component.
+const getFieldDoc = (
+  customDoc: string | undefined,
+  fallbackDoc: string | undefined
+): string | undefined => customDoc ?? fallbackDoc;
+
+const isTableFieldDisabled = (
+  table: Table | undefined,
+  isEditMode: boolean
+): boolean => Boolean(table) || isEditMode;
+
+const isColumnFieldDisabled = (
+  selectedTableFqn: string | undefined,
+  isEditMode: boolean
+): boolean => !selectedTableFqn || isEditMode;
+
+const getTestTypeFieldId = (selectedTestType: string | undefined): string =>
+  selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH;
+
+const getTestTypeFieldDoc = (
+  selectedTestDefinition: TestDefinition | undefined,
+  fieldDocs: Record<string, string>,
+  fallbackDoc: string
+): string | undefined =>
+  selectedTestDefinition?.description ??
+  getFieldDoc(fieldDocs.testType, fallbackDoc);
+
+const getHasTestSuite = (
+  testSuite?: { id?: string },
+  selectedTableData?: Table
+): boolean => Boolean(testSuite?.id || selectedTableData?.testSuite?.id);
+
+const getShowParameterFields = (
+  hasParameterDefinition: boolean,
+  useDynamicAssertionValue: unknown
+): boolean => hasParameterDefinition && useDynamicAssertionValue !== true;
+
+const getCanShowSchedulerSection = (
+  showOnlyParameter: boolean,
+  isEditMode: boolean,
+  selectedTableFqn: string | undefined
+): boolean => !showOnlyParameter && !isEditMode && Boolean(selectedTableFqn);
+
+// ─── Sub-sections (kept in-file: JSX helpers for the large form body) ─────────
+
+const TestLevelAndTableCard: FC<{
+  isEditMode: boolean;
+  testLevelDoc: ReturnType<typeof useFieldDoc>;
+  form: UseFormReturn<FormValues>;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  testLevelOptions: TestLevelOption[];
+  handleActiveField: (id: string) => void;
+  selectedTableField: FieldProp;
+  selectedTestLevel: TestLevel;
+  testLevelFieldValue: TestLevel;
+  selectedColumnField: FieldProp;
+  dimensionColumnsField: FieldProp;
+  topDimensionsField: FieldProp;
+}> = ({
+  isEditMode,
+  testLevelDoc,
+  form,
+  t,
+  testLevelOptions,
+  handleActiveField,
+  selectedTableField,
+  selectedTestLevel,
+  testLevelFieldValue,
+  selectedColumnField,
+  dimensionColumnsField,
+  topDimensionsField,
+}) => {
+  const showDimensionFields =
+    testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
+    (isEditMode && selectedTestLevel === TestLevel.COLUMN);
+
+  return (
+    <div className="form-card-section" data-testid="select-table-card">
+      {!isEditMode && (
+        <div {...testLevelDoc}>
+          <FormField control={form.control} name="testLevel">
+            {({ field }) => (
+              <>
+                <FormItemLabel
+                  required
+                  label={t('message.select-test-level')}
+                />
+                <SelectionCardGroup
+                  layout="vertical"
+                  options={testLevelOptions}
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    handleActiveField('root/testLevel');
+                  }}
+                />
+              </>
+            )}
+          </FormField>
+        </div>
+      )}
+
+      {getField(selectedTableField)}
+
+      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+
+      {showDimensionFields && getField(dimensionColumnsField)}
+
+      {showDimensionFields && getField(topDimensionsField)}
+    </div>
+  );
+};
+
+const CustomQueryToggle: FC<{
+  isCustomQuery: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  handleCustomQueryToggle: () => void;
+}> = ({ isCustomQuery, t, handleCustomQueryToggle }) => (
+  <div
+    className={classNames(
+      'custom-test-type-container d-flex items-center',
+      isCustomQuery ? 'justify-between' : 'justify-end'
+    )}>
+    {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
+    <Button
+      color="link-color"
+      data-testid={isCustomQuery ? 'test-type-btn' : 'custom-query'}
+      iconLeading={Edit01}
+      size="sm"
+      onClick={handleCustomQueryToggle}>
+      {isCustomQuery ? t('label.select-test-type') : t('label.custom-query')}
+    </Button>
+  </div>
+);
+
+const TestTypeCard: FC<{
+  isEditMode: boolean;
+  selectedTestLevel: TestLevel;
+  isCustomQuery: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  handleCustomQueryToggle: () => void;
+  testTypeField: FieldProp;
+  additionalFields: FieldProp[];
+  showParameterFields: boolean;
+  selectedTestDefinition?: TestDefinition;
+  form: UseFormReturn<FormValues>;
+  selectedTableData?: Table;
+  fieldDocs: Record<string, string>;
+  selectedTestType?: string;
+  handleActiveField: (id: string) => void;
+  isComputeRowCountFieldVisible: boolean;
+  computeRowCountField: FieldProp;
+  dataQualityDimensionField: FieldProp;
+}> = ({
+  isEditMode,
+  selectedTestLevel,
+  isCustomQuery,
+  t,
+  handleCustomQueryToggle,
+  testTypeField,
+  additionalFields,
+  showParameterFields,
+  selectedTestDefinition,
+  form,
+  selectedTableData,
+  fieldDocs,
+  selectedTestType,
+  handleActiveField,
+  isComputeRowCountFieldVisible,
+  computeRowCountField,
+  dataQualityDimensionField,
+}) => (
+  <div
+    className="form-card-section test-type-card test-type-section"
+    data-testid="test-type-card">
+    {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
+      <CustomQueryToggle
+        handleCustomQueryToggle={handleCustomQueryToggle}
+        isCustomQuery={isCustomQuery}
+        t={t}
+      />
+    )}
+
+    {!isCustomQuery && getField(testTypeField)}
+
+    {additionalFields.map((field) => (
+      <div key={field.name}>{getField(field)}</div>
+    ))}
+
+    {showParameterFields && selectedTestDefinition && (
+      <div
+        className="parameter-fields-wrapper"
+        onFocusCapture={() =>
+          handleActiveField(
+            selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH
+          )
+        }>
+        <ParameterFields
+          definition={selectedTestDefinition}
+          form={form}
+          table={selectedTableData}
+          testDefinitionDoc={getFieldDoc(
+            fieldDocs[selectedTestDefinition.name ?? ''],
+            selectedTestDefinition.description
+          )}
+        />
+      </div>
+    )}
+
+    {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+
+    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+        the test case result page. */}
+    {getField(dataQualityDimensionField)}
+  </div>
+);
+
+const TestDetailsCard: FC<{
+  testNameField: FieldProp;
+  isEditMode: boolean;
+  displayNameField: FieldProp;
+  form: UseFormReturn<FormValues>;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  descriptionDoc: ReturnType<typeof useFieldDoc>;
+  handleActiveField: (id: string) => void;
+  tagsDoc: ReturnType<typeof useFieldDoc>;
+  glossaryTermsDoc: ReturnType<typeof useFieldDoc>;
+}> = ({
+  testNameField,
+  isEditMode,
+  displayNameField,
+  form,
+  t,
+  descriptionDoc,
+  handleActiveField,
+  tagsDoc,
+  glossaryTermsDoc,
+}) => (
+  <div
+    className="form-card-section test-details-section"
+    data-testid="test-details-card">
+    {getField(testNameField)}
+
+    {isEditMode && getField(displayNameField)}
+
+    <FormField control={form.control} name="description">
+      {({ field }) => (
+        <div
+          className="tw:flex tw:flex-col tw:gap-1"
+          data-testid="description"
+          id="root/description"
+          {...descriptionDoc}>
+          <FormItemLabel label={t('label.description')} />
+          <RichTextEditor
+            initialValue={field.value ?? ''}
+            onFocus={() => handleActiveField('root/description')}
+            onTextChange={field.onChange}
+          />
+        </div>
+      )}
+    </FormField>
+
+    <FormField control={form.control} name="tags">
+      {({ field }) => (
+        <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+          <TagSuggestion
+            label={t('label.tag-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
+            value={field.value ?? []}
+            onChange={field.onChange}
+          />
+        </div>
+      )}
+    </FormField>
+
+    <FormField control={form.control} name="glossaryTerms">
+      {({ field }) => (
+        <div
+          data-testid="glossary-terms-selector"
+          id="root/glossaryTerms"
+          {...glossaryTermsDoc}>
+          <TagSuggestion
+            label={t('label.glossary-term-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.glossary-term-plural'),
+            })}
+            tagType={TagSource.Glossary}
+            value={field.value ?? []}
+            onChange={field.onChange}
+          />
+        </div>
+      )}
+    </FormField>
+  </div>
+);
+
+const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
+  form,
+  table,
+  testSuite,
+  errorMessage,
+  onErrorDismiss,
+  onActiveFieldChange,
+  onContextChange,
+  isEditMode = false,
+  showOnlyParameter = false,
+  editDefinition,
+}: TestCaseFormBodyProps) => {
+  const { t } = useTranslation();
+  const { config } = useLimitStore();
+  const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
+  const { ingestionPipeline, testCase } = permissions;
+
+  const [selectedTableData, setSelectedTableData] = useState<Table | undefined>(
+    table
+  );
+  const [tablesCache, setTablesCache] = useState<TablesCache>(new Map());
+  const [tableOptions, setTableOptions] = useState<FormSelectItem[]>([]);
+  const [isTableLoading, setIsTableLoading] = useState(false);
+
+  const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
+  // Seed from the drawer-resolved edit definition so the parameter section is
+  // present on the very first paint (the drawer only mounts this body once
+  // `editDefinition` is ready), rather than appearing a frame later when the
+  // effect below runs.
+  const [selectedTestDefinition, setSelectedTestDefinition] = useState<
+    TestDefinition | undefined
+  >(editDefinition);
+  const [selectedTestType, setSelectedTestType] = useState<string>();
+  const [currentColumnType, setCurrentColumnType] = useState<string>();
+  const [isCustomQuery, setIsCustomQuery] = useState(false);
+
+  // Per-field "Form Hint" text is sourced from the same TestCaseForm.md that
+  // backs the classic documentation panel, so the popover and the doc panel
+  // stay in sync and we don't duplicate the copy as translation strings.
+  const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    loadFormFieldDocs(TEST_CASE_FORM).then((docs) => {
+      if (!cancelled) {
+        setFieldDocs(docs);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const [existingTestCases, setExistingTestCases] = useState<string[]>([]);
+  const [canCreatePipeline, setCanCreatePipeline] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
+    useState(false);
+  const [isDimensionManuallyEdited, setIsDimensionManuallyEdited] =
+    useState(false);
+  // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
+  // owns the fetch so this form, the test definition form and the test case filters all list the
+  // same set and degrade the same way.
+  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
+    useDataQualityDimensions();
+
+  const testLevelFieldValue = useWatch({
+    control: form.control,
+    name: 'testLevel',
+  });
+  const selectedTableValue = useWatch({
+    control: form.control,
+    name: 'selectedTable',
+  });
+  const selectedColumnValue = useWatch({
+    control: form.control,
+    name: 'selectedColumn',
+  });
+  const testTypeValue = useWatch({
+    control: form.control,
+    name: 'testTypeId',
+  });
+  const useDynamicAssertionValue = useWatch({
+    control: form.control,
+    name: 'useDynamicAssertion',
+  });
+  const dimensionColumnsValue = useWatch({
+    control: form.control,
+    name: 'dimensionColumns',
+  });
+  const dataQualityDimensionValue = useWatch({
+    control: form.control,
+    name: 'dataQualityDimension',
+  });
+
+  const selectedTableFqn = fqnFromSelectItem(
+    selectedTableValue as FormSelectItem | string | null
+  );
+  const selectedColumn = fqnFromSelectItem(
+    selectedColumnValue as FormSelectItem | string | null
+  );
+  const selectedTestTypeFqn = fqnFromSelectItem(
+    testTypeValue as FormSelectItem | string | null
+  );
+
+  const handleActiveField = useCallback(
+    (id: string) => {
+      onActiveFieldChange?.(id);
+    },
+    [onActiveFieldChange]
+  );
+
+  // Legacy parity: without global testCase.Create, require EditAll/EditTests
+  // on the selected table and gate pipeline creation on the result.
+  const checkTablePermissions = useCallback(
+    async (tableFqn: string): Promise<true | string> => {
+      if (testCase?.Create) {
+        return true;
+      }
+      setIsCheckingPermissions(true);
+      try {
+        const tablePermissions = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          tableFqn
+        );
+        // N-term-OR-with-bare-EditAll (Task 8 Batch 2 KnowledgeCard precedent): EditTests
+        // has no named canEditX flag, and getPrioritizedEditPermission's own EditAll
+        // fallback only applies when the EditTests key is absent — keeping canEditAll as
+        // its own explicit OR-term avoids regressing the case where EditAll=true but
+        // EditTests is present and explicitly false.
+        const tableFlags = getDerivedPermissionFlags(tablePermissions);
+        const canCreate =
+          tableFlags.canEditAll || tableFlags.can(Operation.EditTests);
+        setCanCreatePipeline(canCreate);
+        if (!canCreate) {
+          return t('message.no-permission-for-create-test-case-on-table');
+        }
+
+        return true;
+      } catch {
+        return true;
+      } finally {
+        setIsCheckingPermissions(false);
+      }
+    },
+    [testCase?.Create, getEntityPermissionByFqn, t]
+  );
+
+  // Report the focused field to the doc panel. Rendered controls carry
+  // `root/<fieldName>` ids, so one capture handler covers every field the
+  // same way the legacy antd form's form-level onFocus did.
+  const handleFormFocusCapture = useCallback(
+    (event: React.FocusEvent<HTMLDivElement>) => {
+      const fieldId = (event.target as HTMLElement).closest?.(
+        '[id^="root/"]'
+      )?.id;
+      if (fieldId) {
+        handleActiveField(fieldId);
+      }
+    },
+    [handleActiveField]
+  );
+
+  const testLevelOptions: TestLevelOption[] = useMemo(
+    () => [
+      {
+        value: TestLevel.TABLE,
+        label: t('label.table-level'),
+        description: t('label.test-applied-on-entity', {
+          entity: t('label.table-lowercase'),
+        }),
+        icon: <TableIcon />,
+      },
+      {
+        value: TestLevel.COLUMN,
+        label: t('label.column-level'),
+        description: t('label.test-applied-on-entity', {
+          entity: t('label.column-lowercase'),
+        }),
+        icon: <ColumnIcon />,
+      },
+      {
+        value: TestLevel.COLUMN_DIMENSION,
+        label: t('label.dimension-level'),
+        description: t('label.column-with-dimension'),
+        icon: <DimensionIcon />,
+        isBeta: true,
+      },
+    ],
+    [t]
+  );
+
+  const selectedTestLevel = useMemo(() => {
+    let result = testLevelFieldValue;
+    if (testLevelFieldValue === TestLevel.COLUMN_DIMENSION) {
+      result = TestLevel.COLUMN;
+    }
+
+    return result;
+  }, [testLevelFieldValue]);
+
+  const hasTestSuite = getHasTestSuite(testSuite, selectedTableData);
+
+  const pipelineSchedules = config?.limits?.config.featureLimits.find(
+    (feature) => feature.name === 'dataQuality'
+  )?.pipelineSchedules;
+
+  const schedulerOptions = useMemo(() => {
+    let result: string[] | undefined;
+    if (pipelineSchedules && pipelineSchedules.length > 0) {
+      result = getScheduleOptionsFromSchedules(pipelineSchedules);
+    }
+
+    return result;
+  }, [pipelineSchedules]);
+
+  const columnOptions: FormSelectItem[] = useMemo(() => {
+    const result: FormSelectItem[] = (selectedTableData?.columns ?? []).map(
+      (column) => ({
+        id: column.name,
+        label: getEntityName(column),
+      })
+    );
+
+    // In edit mode the drawer is often opened without a `table` prop (incident
+    // manager, data-quality page, result tab), so the table's columns are
+    // fetched asynchronously. Keep the prefilled column selectable before that
+    // fetch resolves; otherwise the react-aria Select receives a selectedKey
+    // absent from its options and blanks the field.
+    if (
+      selectedColumn &&
+      !result.some((option) => option.id === selectedColumn)
+    ) {
+      result.push({ id: selectedColumn, label: selectedColumn });
+    }
+
+    return result;
+  }, [selectedTableData, selectedColumn]);
+
+  const dimensionColumnOptions: FormSelectItem[] = useMemo(() => {
+    const result = selectedColumn
+      ? columnOptions.filter((option) => option.id !== selectedColumn)
+      : [...columnOptions];
+
+    // Same async-prefill guard as `columnOptions`: preserve already-selected
+    // dimension columns whose metadata hasn't loaded yet so the multi-select
+    // does not drop them.
+    const knownIds = new Set(result.map((option) => option.id));
+    (unwrapSelectValues(dimensionColumnsValue) ?? []).forEach((id) => {
+      if (id !== selectedColumn && !knownIds.has(id)) {
+        knownIds.add(id);
+        result.push({ id, label: id });
+      }
+    });
+
+    return result;
+  }, [columnOptions, selectedColumn, dimensionColumnsValue]);
+
+  // The dimension already set on the test case — and the one the test definition defaults to —
+  // are kept as options even if they have since been removed, so opening the form does not
+  // silently clear the value.
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(
+    () =>
+      getDimensionSelectOptions(dataQualityDimensions, [
+        selectedTestDefinition?.dataQualityDimension,
+        fqnFromSelectItem(
+          dataQualityDimensionValue as FormSelectItem | string | null
+        ),
+      ]),
+    [dataQualityDimensions, selectedTestDefinition, dataQualityDimensionValue]
+  );
+
+  const fetchTables = useCallback(
+    async (searchValue = '') => {
+      if (table) {
+        setTableOptions([
+          {
+            id: table.fullyQualifiedName ?? table.name,
+            label: table.fullyQualifiedName ?? table.name,
+          },
+        ]);
+
+        return;
+      }
+
+      setIsTableLoading(true);
+      try {
+        const response = await searchQuery({
+          query: searchValue ? `*${searchValue}*` : '*',
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          searchIndex: SearchIndex.TABLE,
+          fetchSource: true,
+          trackTotalHits: true,
+        });
+
+        setTablesCache((prev) => {
+          const newCache = new Map(prev);
+          response.hits.hits.forEach((hit) => {
+            const source = hit._source as TableSearchSource;
+            newCache.set(source.fullyQualifiedName ?? source.name, source);
+            while (newCache.size > TABLES_CACHE_MAX_SIZE) {
+              const oldestKey = newCache.keys().next().value;
+              if (oldestKey === undefined) {
+                break;
+              }
+              newCache.delete(oldestKey);
+            }
+          });
+
+          return newCache;
+        });
+
+        setTableOptions(
+          response.hits.hits.map((hit) => {
+            const source = hit._source as TableSearchSource;
+
+            return {
+              id: source.fullyQualifiedName ?? source.name,
+              label: source.fullyQualifiedName ?? source.name,
+            };
+          })
+        );
+      } catch {
+        setTableOptions([]);
+      } finally {
+        setIsTableLoading(false);
+      }
+    },
+    [table]
+  );
+
+  // Legacy AsyncSelect fetched options on mount, so the table list (and the
+  // spec-observable search request) is ready before the field is focused.
+  useEffect(() => {
+    fetchTables();
+  }, [fetchTables]);
+
+  const debouncedFetchTables = useMemo(
+    () => debounce(fetchTables, 500),
+    [fetchTables]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedFetchTables.cancel();
+    },
+    [debouncedFetchTables]
+  );
+
+  const fetchSelectedTableData = useCallback(
+    async (tableFqn: string) => {
+      if (table) {
+        setSelectedTableData(table);
+
+        return;
+      }
+
+      try {
+        const tableData = await getTableDetailsByFQN(tableFqn, {
+          fields: 'columns,testSuite',
+        });
+        setSelectedTableData(tableData);
+      } catch {
+        setSelectedTableData(undefined);
+      }
+    },
+    [table]
+  );
+
+  const fetchTestDefinitions = useCallback(
+    async (columnType?: string) => {
+      try {
+        const serviceType = getServiceTypeForTestDefinition(
+          selectedTableData ?? table
+        );
+
+        const { data } = await getListTestDefinitions({
+          limit: AGGREGATE_PAGE_SIZE_LARGE,
+          entityType:
+            selectedTestLevel === TestLevel.COLUMN
+              ? EntityType.Column
+              : EntityType.Table,
+          testPlatform: TestPlatform.OpenMetadata,
+          supportedDataType: columnType,
+          supportedService: serviceType,
+        });
+        setTestDefinitions(data);
+      } catch {
+        setTestDefinitions([]);
+      }
+    },
+    [selectedTestLevel, selectedTableData, table]
+  );
+
+  useEffect(() => {
+    if (table?.fullyQualifiedName) {
+      form.setValue('selectedTable', {
+        id: table.fullyQualifiedName,
+        label: table.fullyQualifiedName,
+      } as never);
+    }
+  }, [table, form]);
+
+  useEffect(() => {
+    if (selectedTableFqn) {
+      const cachedTableData = tablesCache.get(selectedTableFqn);
+      if (cachedTableData) {
+        setSelectedTableData(convertSearchSourceToTable(cachedTableData));
+      } else {
+        fetchSelectedTableData(selectedTableFqn);
+      }
+    } else {
+      setSelectedTableData(table);
+    }
+    // Edit mode prefills selectedColumn/dimensionColumns/topDimensions via
+    // form.reset(buildEditDefaults(...)); the table field is disabled there,
+    // so this effect only fires from that prefill and must not wipe it.
+    if (!isEditMode) {
+      form.setValue('selectedColumn', undefined as never);
+      form.setValue('dimensionColumns', undefined);
+      form.setValue('topDimensions', undefined);
+    }
+  }, [
+    selectedTableFqn,
+    table,
+    tablesCache,
+    fetchSelectedTableData,
+    form,
+    isEditMode,
+  ]);
+
+  useEffect(() => {
+    // Edit mode prefills dimensionColumns/topDimensions via
+    // form.reset(buildEditDefaults(...)); the column field is disabled there,
+    // so this effect only fires from that prefill and must not wipe it.
+    if (!isEditMode) {
+      form.setValue('dimensionColumns', undefined);
+      form.setValue('topDimensions', undefined);
+    }
+  }, [selectedColumn, form, isEditMode]);
+
+  useEffect(() => {
+    if (selectedTestLevel) {
+      fetchTestDefinitions();
+      // Edit mode prefills testTypeId (and selectedColumn) via
+      // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
+      // this effect only fires from that prefill and must not wipe it.
+      // Clearing the derived definition/type here also unmounts the params
+      // section whenever fetchTestDefinitions' identity changes (it depends on
+      // selectedTableData, which loads async on edit open) — making the params
+      // flicker. In edit mode these stay as prefilled and are re-derived by the
+      // [selectedTestTypeFqn, testDefinitions] effect.
+      if (!isEditMode) {
+        form.setValue('testTypeId', undefined as never);
+        if (selectedTestLevel === TestLevel.TABLE) {
+          form.setValue('selectedColumn', undefined as never);
+        }
+        setSelectedTestDefinition(undefined);
+        setSelectedTestType(undefined);
+        setIsCustomQuery(false);
+      }
+    }
+  }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
+
+  useEffect(() => {
+    if (
+      selectedColumn &&
+      selectedTableData &&
+      selectedTestLevel === TestLevel.COLUMN
+    ) {
+      const selectedColumnData = selectedTableData.columns?.find(
+        (column) => column.name === selectedColumn
+      );
+
+      if (selectedColumnData?.dataType !== currentColumnType) {
+        fetchTestDefinitions(selectedColumnData?.dataType);
+        setCurrentColumnType(selectedColumnData?.dataType);
+      }
+    }
+  }, [
+    selectedColumn,
+    selectedTableData,
+    currentColumnType,
+    selectedTestLevel,
+    fetchTestDefinitions,
+  ]);
+
+  // Edit mode: render the parameter section from the definition the drawer
+  // already resolved, so it appears immediately on open rather than waiting on
+  // the async test-definition list.
+  useEffect(() => {
+    if (isEditMode && editDefinition) {
+      setSelectedTestDefinition(editDefinition);
+    }
+  }, [isEditMode, editDefinition]);
+
+  useEffect(() => {
+    setSelectedTestType(selectedTestTypeFqn);
+    const testDefinition = testDefinitions.find(
+      (definition) => definition.fullyQualifiedName === selectedTestTypeFqn
+    );
+    // Only clear the resolved definition in add mode. In edit mode the type is
+    // fixed and already seeded from `editDefinition`; clearing it here whenever
+    // the async list momentarily lacks a match unmounts the parameter section
+    // and makes it flicker.
+    if (testDefinition) {
+      setSelectedTestDefinition(testDefinition);
+    } else if (!isEditMode) {
+      setSelectedTestDefinition(undefined);
+    }
+  }, [selectedTestTypeFqn, testDefinitions, isEditMode]);
+
+  const testTypeOptions: FormSelectItem[] = useMemo(
+    () =>
+      testDefinitions.map((testDef) => ({
+        id: testDef.fullyQualifiedName ?? '',
+        label: getEntityName(testDef),
+        supportingText: testDef.description,
+      })),
+    [testDefinitions]
+  );
+
+  const handleCustomQueryToggle = useCallback(() => {
+    if (isCustomQuery) {
+      form.setValue('testTypeId', undefined as never);
+      setIsCustomQuery(false);
+    } else {
+      form.setValue('testTypeId', {
+        id: TABLE_CUSTOM_SQL_QUERY,
+        label: TABLE_CUSTOM_SQL_QUERY,
+      } as never);
+      setIsCustomQuery(true);
+    }
+  }, [isCustomQuery, form]);
+
+  const generateDynamicTestName = useCallback(() => {
+    const testType = selectedTestDefinition?.name ?? '';
+    let finalName = '';
+
+    if (testType) {
+      const randomString = cryptoRandomString({
+        length: 4,
+        type: 'alphanumeric',
+      });
+
+      let dynamicName = '';
+      if (selectedTestLevel === TestLevel.TABLE) {
+        const tableName =
+          selectedTableData?.name ?? selectedTableFqn ?? 'table';
+        dynamicName = `${tableName}_${testType}_${randomString}`;
+      } else if (selectedTestLevel === TestLevel.COLUMN && selectedColumn) {
+        dynamicName = `${selectedColumn}_${testType}_${randomString}`;
+      }
+
+      finalName = snakeCase(dynamicName);
+      if (finalName.length > MAX_NAME_LENGTH) {
+        finalName = snakeCase(`${testType}_${randomString}`);
+      }
+    }
+
+    return finalName;
+  }, [
+    selectedTableData,
+    selectedTableFqn,
+    selectedColumn,
+    selectedTestDefinition,
+    selectedTestLevel,
+  ]);
+
+  const fetchExistingTestCases = useCallback(async () => {
+    const entityFqn = selectedTableData?.fullyQualifiedName ?? selectedTableFqn;
+    if (!hasTestSuite || !entityFqn) {
+      setExistingTestCases([]);
+
+      return;
+    }
+
+    try {
+      const { data } = await getListTestCaseBySearch({
+        limit: PAGE_SIZE_LARGE,
+        entityLink: `<#E::table::${entityFqn}>`,
+      });
+      setExistingTestCases(data.map((testCase) => testCase.name));
+    } catch {
+      setExistingTestCases([]);
+    }
+  }, [selectedTableData, selectedTableFqn, hasTestSuite]);
+
+  const checkExistingPipelines = useCallback(async (testSuiteFqn: string) => {
+    try {
+      const { paging } = await getIngestionPipelines({
+        testSuite: testSuiteFqn,
+        pipelineType: [PipelineType.TestSuite],
+        arrQueryFields: ['id'],
+        limit: 0,
+      });
+      setCanCreatePipeline(paging.total === 0);
+    } catch {
+      setCanCreatePipeline(true);
+    }
+  }, []);
+
+  const isComputeRowCountFieldVisible = Boolean(
+    selectedTestDefinition?.supportsRowLevelPassedFailed
+  );
+  const showParameterFields = getShowParameterFields(
+    Boolean(selectedTestDefinition?.parameterDefinition),
+    useDynamicAssertionValue
+  );
+
+  useEffect(() => {
+    fetchExistingTestCases();
+  }, [fetchExistingTestCases]);
+
+  useEffect(() => {
+    if (!ingestionPipeline.Create || !selectedTableFqn) {
+      setCanCreatePipeline(false);
+
+      return;
+    }
+
+    const testSuiteFqn =
+      selectedTableData?.testSuite?.fullyQualifiedName ??
+      testSuite?.fullyQualifiedName;
+
+    if (testSuiteFqn) {
+      checkExistingPipelines(testSuiteFqn);
+    } else {
+      setCanCreatePipeline(true);
+    }
+  }, [
+    selectedTableData?.testSuite?.fullyQualifiedName,
+    testSuite?.fullyQualifiedName,
+    selectedTableFqn,
+    checkExistingPipelines,
+    ingestionPipeline,
+  ]);
+
+  useEffect(() => {
+    const hasRequiredTestSelection =
+      !isEditMode &&
+      selectedTableFqn &&
+      selectedTestDefinition &&
+      selectedTestLevel;
+    if (hasRequiredTestSelection && !isTestNameManuallyEdited) {
+      const dynamicName = generateDynamicTestName();
+      if (dynamicName) {
+        form.setValue('testName', dynamicName);
+      }
+    }
+  }, [
+    isEditMode,
+    selectedTableFqn,
+    selectedColumn,
+    selectedTestDefinition,
+    selectedTestLevel,
+    generateDynamicTestName,
+    isTestNameManuallyEdited,
+    form,
+  ]);
+
+  // The test definition carries the default dimension of its test cases. Keep
+  // following it while the user hasn't picked a dimension of their own, the
+  // same way the test name follows the selected test type.
+  useEffect(() => {
+    if (!isEditMode && !isDimensionManuallyEdited) {
+      form.setValue(
+        'dataQualityDimension',
+        toDataQualityDimensionItem(selectedTestDefinition?.dataQualityDimension)
+      );
+    }
+  }, [isEditMode, isDimensionManuallyEdited, selectedTestDefinition, form]);
+
+  useEffect(() => {
+    onContextChange?.({
+      selectedDefinition: selectedTestDefinition,
+      selectedTableData,
+      selectedColumn,
+      selectedTestLevel,
+      generateName: generateDynamicTestName,
+      canCreatePipeline,
+      isCheckingPermissions,
+    });
+  }, [
+    selectedTestDefinition,
+    selectedTableData,
+    selectedColumn,
+    selectedTestLevel,
+    generateDynamicTestName,
+    canCreatePipeline,
+    isCheckingPermissions,
+    onContextChange,
+  ]);
+
+  const selectedTableField = {
+    name: 'selectedTable',
+    label: t('label.select-entity', { entity: t('label.table') }),
+    type: FieldTypes.ASYNC_SELECT,
+    required: true,
+    rules: {
+      required: t('label.please-select-entity', { entity: t('label.table') }),
+      validate: (value: unknown) => {
+        const fqn = fqnFromSelectItem(value as FormSelectItem | string | null);
+        if (!fqn || table) {
+          return true;
+        }
+
+        return checkTablePermissions(fqn);
+      },
+    },
+    id: ROOT_TABLE_PATH,
+    doc: getFieldDoc(fieldDocs.table, t('message.doc-field-selected-table')),
+    placeholder: t('label.select-entity', { entity: t('label.table') }),
+    props: {
+      'data-testid': 'selectedTable',
+      isDisabled: isTableFieldDisabled(table, isEditMode),
+      isLoading: isTableLoading,
+      options: tableOptions,
+      onSearchChange: debouncedFetchTables,
+      onFocus: () => {
+        if (tableOptions.length === 0) {
+          fetchTables();
+        }
+        handleActiveField(ROOT_TABLE_PATH);
+        ensureComboboxMenuOpen(
+          () => document.getElementById(ROOT_TABLE_PATH) as HTMLInputElement
+        );
+      },
+      // Legacy antd validated on change: surface the table permission error
+      // (and gate the scheduler) at selection time, not first at submit. The
+      // doc panel switches to the selected table's entity summary, like the
+      // legacy option onclick did.
+      onItemInserted: () => {
+        form.trigger('selectedTable');
+        handleActiveField('root/selected-entity');
+      },
+      // Clearing an unauthorized table must clear the stale permission error
+      // and switch the doc panel back to the generic table section.
+      onItemCleared: () => {
+        form.trigger('selectedTable');
+        handleActiveField(ROOT_TABLE_PATH);
+      },
+    },
+  } as FieldProp;
+
+  const selectedColumnField: FieldProp = {
+    name: 'selectedColumn',
+    label: t('label.select-entity', { entity: t('label.column') }),
+    type: FieldTypes.SELECT,
+    required: true,
+    rules: {
+      required: t('label.please-select-entity', {
+        entity: t('label.column'),
+      }),
+    },
+    id: 'root/column',
+    doc: getFieldDoc(fieldDocs.column, t('message.doc-field-selected-column')),
+    placeholder: t('label.select-entity', { entity: t('label.column') }),
+    props: {
+      'data-testid': 'selectedColumn',
+      isDisabled: isColumnFieldDisabled(selectedTableFqn, isEditMode),
+      options: columnOptions,
+    },
+  };
+
+  const dimensionColumnsField: FieldProp = {
+    name: 'dimensionColumns',
+    label: t('label.select-entity', { entity: t('label.dimension-plural') }),
+    type: FieldTypes.MULTI_SELECT,
+    id: 'root/dimensionColumns',
+    doc: getFieldDoc(
+      fieldDocs.dimensionColumns,
+      t('message.doc-field-dimension-columns')
+    ),
+    placeholder: t('label.select-entity', {
+      entity: t('label.dimension-plural'),
+    }),
+    props: {
+      'data-testid': 'dimensionColumns',
+      isDisabled: !selectedTableFqn,
+      options: dimensionColumnOptions,
+    },
+  };
+
+  const topDimensionsField = {
+    name: 'topDimensions',
+    label: t('label.top-dimension-plural'),
+    type: FieldTypes.NUMBER,
+    id: 'root/topDimensions',
+    doc: getFieldDoc(
+      fieldDocs.topDimensions,
+      t('message.doc-field-top-dimensions')
+    ),
+    placeholder: '5',
+    props: {
+      'data-testid': 'topDimensions',
+      min: 1,
+      max: 50,
+    },
+  } as FieldProp;
+
+  const testTypeField: FieldProp = {
+    name: 'testTypeId',
+    label: t('label.select-test-type'),
+    // AUTOCOMPLETE (searchable combobox) rather than a plain SELECT: the test
+    // definitions load async, and an already-open react-aria Select never
+    // refreshes its collection when `items` arrive late — leaving the dropdown
+    // permanently empty if opened too early. Autocomplete re-derives its list on
+    // every render (and filters as you type), so late options show up.
+    type: FieldTypes.AUTOCOMPLETE,
+    required: true,
+    rules: {
+      required: t('label.select-test-type'),
+    },
+    id: getTestTypeFieldId(selectedTestType),
+    doc: getTestTypeFieldDoc(
+      selectedTestDefinition,
+      fieldDocs,
+      t('message.doc-field-test-type')
+    ),
+    placeholder: t('label.select-test-type'),
+    props: {
+      'data-testid': 'test-type',
+      isDisabled: isEditMode,
+      options: testTypeOptions,
+      onItemInserted: (key?: string | number | null) =>
+        handleActiveField(key ? `root/${key}` : ROOT_TEST_TYPE_PATH),
+    },
+  };
+
+  const dataQualityDimensionField: FieldProp = {
+    name: 'dataQualityDimension',
+    label: t('label.data-quality-dimension'),
+    // AUTOCOMPLETE, not SELECT, for the same reason as the test type field above: the registered
+    // dimensions load async and an already-open react-aria Select never refreshes its collection,
+    // so a dropdown opened before the fetch lands would only ever show the seeded value.
+    type: FieldTypes.AUTOCOMPLETE,
+    required: false,
+    id: 'root/dataQualityDimension',
+    doc:
+      fieldDocs.dataQualityDimension ??
+      t('message.doc-field-data-quality-dimension'),
+    placeholder: t('label.select-field', {
+      field: t('label.data-quality-dimension'),
+    }),
+    props: {
+      'data-testid': 'data-quality-dimension',
+      isLoading: isDimensionsLoading,
+      options: dataQualityDimensionOptions,
+      onItemInserted: () => setIsDimensionManuallyEdited(true),
+      onItemCleared: () => setIsDimensionManuallyEdited(true),
+    },
+  };
+
+  const computeRowCountField = {
+    name: 'computePassedFailedRowCount',
+    label: t('label.compute-row-count'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    helperText: t('message.compute-row-count-helper-text'),
+    helperTextType: HelperTextType.TOOLTIP,
+    id: 'root/computePassedFailedRowCount',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    props: {
+      'data-testid': 'compute-passed-failed-row-count',
+    },
+  } as FieldProp;
+
+  // Schema capabilities are shared for API and import compatibility, so
+  // distribution-only controls must be supplied through the class-base hook.
+  const additionalFields = testCaseClassBase.createFormAdditionalFields(
+    selectedTestDefinition?.supportsDynamicAssertion ?? false
+  );
+
+  const testNameField: FieldProp = {
+    name: 'testName',
+    label: t('label.name'),
+    type: FieldTypes.TEXT,
+    required: false,
+    id: 'root/name',
+    doc: getFieldDoc(fieldDocs.name, t('message.doc-field-test-case-name')),
+    placeholder: t('message.enter-test-case-name'),
+    rules: {
+      pattern: {
+        value: TEST_CASE_NAME_REGEX,
+        message: t('message.test-case-name-validation'),
+      },
+      maxLength: {
+        value: MAX_NAME_LENGTH,
+        message: t('message.entity-maximum-size', {
+          entity: t('label.name'),
+          max: MAX_NAME_LENGTH,
+        }),
+      },
+      validate: (value: string) => {
+        let result: string | boolean = true;
+        // Name is immutable in edit mode, so the uniqueness check must be
+        // skipped — the test case's own name would otherwise flag a false
+        // "already exists" error and silently block the update submit.
+        if (!isEditMode && value && existingTestCases.includes(value)) {
+          result = t('message.entity-already-exists', {
+            entity: t('label.name'),
+          });
+        }
+
+        return result;
+      },
+    },
+    props: {
+      'data-testid': 'test-case-name',
+      isDisabled: isEditMode,
+      onChange: () => setIsTestNameManuallyEdited(true),
+    },
+  };
+
+  const displayNameField: FieldProp = {
+    name: 'displayName',
+    label: t('label.display-name'),
+    type: FieldTypes.TEXT,
+    required: false,
+    id: 'root/displayName',
+    props: {
+      'data-testid': 'display-name',
+    },
+  };
+
+  const testLevelDoc = useFieldDoc({
+    name: 'testLevel',
+    label: t('message.select-test-level'),
+    doc: getFieldDoc(fieldDocs.testLevel, t('message.doc-field-test-level')),
+  });
+
+  const tagsDoc = useFieldDoc({
+    name: 'tags',
+    label: t('label.tag-plural'),
+    doc: getFieldDoc(fieldDocs.tags, t('message.doc-field-tags')),
+  });
+
+  const glossaryTermsDoc = useFieldDoc({
+    name: 'glossaryTerms',
+    label: t('label.glossary-term-plural'),
+    doc: getFieldDoc(
+      fieldDocs.glossaryTerms,
+      t('message.doc-field-glossary-terms')
+    ),
+  });
+
+  const pipelineDoc = useFieldDoc({
+    name: 'pipeline',
+    label: t('label.pipeline'),
+    doc: getFieldDoc(fieldDocs.createPipeline, t('message.doc-field-pipeline')),
+  });
+  const descriptionDoc = useFieldDoc({
+    name: 'description',
+    label: t('label.description'),
+    doc: getFieldDoc(fieldDocs.description, t('message.doc-field-description')),
+  });
+
+  // Seed the hint panel with the first field actually on screen so it isn't
+  // empty on open and never points at a field the current mode hides (edit
+  // hides the test-level card; params-only edit hides the table/column
+  // selectors). A field's doc registers even when the field is not rendered
+  // (the useFieldDoc hooks are called unconditionally), so query the DOM for
+  // the first rendered `data-field-doc` anchor rather than the registry.
+  // Focusing any field replaces it as usual.
+  const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
+    useFieldDocRegistry();
+  const formBodyRef = useRef<HTMLDivElement>(null);
+  const hasSeededFieldDocRef = useRef(false);
+  useEffect(() => {
+    if (hasSeededFieldDocRef.current) {
+      return;
+    }
+    const firstFieldName = formBodyRef.current
+      ?.querySelector('[data-field-doc]')
+      ?.getAttribute('data-field-doc');
+    if (firstFieldName) {
+      setActiveFieldDoc(firstFieldName);
+      hasSeededFieldDocRef.current = true;
+    }
+  }, [fieldDocEntries, setActiveFieldDoc]);
+
+  const canShowSchedulerSection = getCanShowSchedulerSection(
+    showOnlyParameter,
+    isEditMode,
+    selectedTableFqn
+  );
+
+  return (
+    <div
+      className="test-case-form-v1 drawer-mode test-case-form-body"
+      data-testid="test-case-form-v1"
+      ref={formBodyRef}
+      onFocusCapture={handleFormFocusCapture}>
+      {errorMessage && (
+        <div className="floating-error-alert">
+          <Alert
+            closable
+            title={t('label.error')}
+            variant="error"
+            onClose={onErrorDismiss}>
+            {errorMessage}
+          </Alert>
+        </div>
+      )}
+
+      {!showOnlyParameter && (
+        <TestLevelAndTableCard
+          dimensionColumnsField={dimensionColumnsField}
+          form={form}
+          handleActiveField={handleActiveField}
+          isEditMode={isEditMode}
+          selectedColumnField={selectedColumnField}
+          selectedTableField={selectedTableField}
+          selectedTestLevel={selectedTestLevel}
+          t={t}
+          testLevelDoc={testLevelDoc}
+          testLevelFieldValue={testLevelFieldValue}
+          testLevelOptions={testLevelOptions}
+          topDimensionsField={topDimensionsField}
+        />
+      )}
+
+      <TestTypeCard
+        additionalFields={additionalFields}
+        computeRowCountField={computeRowCountField}
+        dataQualityDimensionField={dataQualityDimensionField}
+        fieldDocs={fieldDocs}
+        form={form}
+        handleActiveField={handleActiveField}
+        handleCustomQueryToggle={handleCustomQueryToggle}
+        isComputeRowCountFieldVisible={isComputeRowCountFieldVisible}
+        isCustomQuery={isCustomQuery}
+        isEditMode={isEditMode}
+        selectedTableData={selectedTableData}
+        selectedTestDefinition={selectedTestDefinition}
+        selectedTestLevel={selectedTestLevel}
+        selectedTestType={selectedTestType}
+        showParameterFields={showParameterFields}
+        t={t}
+        testTypeField={testTypeField}
+      />
+
+      {!showOnlyParameter && (
+        <TestDetailsCard
+          descriptionDoc={descriptionDoc}
+          displayNameField={displayNameField}
+          form={form}
+          glossaryTermsDoc={glossaryTermsDoc}
+          handleActiveField={handleActiveField}
+          isEditMode={isEditMode}
+          t={t}
+          tagsDoc={tagsDoc}
+          testNameField={testNameField}
+        />
+      )}
+
+      {canShowSchedulerSection && canCreatePipeline && (
+        <div {...pipelineDoc}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TestCaseFormBody;

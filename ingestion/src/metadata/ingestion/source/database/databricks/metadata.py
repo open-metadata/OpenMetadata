@@ -13,8 +13,9 @@
 import json
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -42,13 +43,13 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
     DescribeJsonPayload,
@@ -61,6 +62,7 @@ from metadata.ingestion.source.database.databricks.ownership import (
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
+    DATABRICKS_GET_ALL_SCHEMAS,
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
@@ -90,6 +92,12 @@ from metadata.utils.sqlalchemy_utils import (
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksConnection as DatabricksConnectionHandler,
+    )
+
+
 logger = ingestion_logger()
 
 DATABRICKS_TAG = "DATABRICKS TAG"
@@ -104,6 +112,22 @@ DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION = "Databricks tags ingested as k
 _DESCRIBE_JSON_CACHE_KEY = "databricks_describe_json"
 _DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
 _TABLE_TYPES_CACHE_KEY = "databricks_table_types"
+
+
+def _quote_identifier(identifier: str) -> str:
+    """Quote one Databricks identifier without interpreting dots as separators."""
+    escaped_identifier = identifier.replace("`", "``")
+    return f"`{escaped_identifier}`"
+
+
+def _qualified_identifier(*identifiers: str | None) -> str:
+    """Build a safely quoted Databricks identifier from individual name parts."""
+    return ".".join(_quote_identifier(identifier) for identifier in identifiers if identifier is not None)
+
+
+def _format_identifier_query(query: str, **identifiers: str) -> str:
+    """Format a query using only dialect-quoted identifier substitutions."""
+    return query.format(**{name: _quote_identifier(value) for name, value in identifiers.items()})
 
 
 class STRUCT(String):
@@ -171,7 +195,12 @@ def _fetch_nested_descriptions_via_describe_json(
     """
     if not db_name or not schema:
         return {}
-    query = DATABRICKS_GET_TABLE_DESCRIBE_JSON.format(database_name=db_name, schema_name=schema, table_name=table_name)
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
     try:
         result = connection.execute(text(query)).fetchone()
         if not result or not result[0]:
@@ -333,7 +362,12 @@ def _fetch_table_describe_json(
     cached = info.get(_DESCRIBE_JSON_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
         return cached[cache_key]
-    query = DATABRICKS_GET_TABLE_DESCRIBE_JSON.format(database_name=db_name, schema_name=schema, table_name=table_name)
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
     try:
         result = connection.execute(text(query)).fetchone()
     except Exception as err:  # pylint: disable=broad-except
@@ -365,7 +399,12 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
     # Using DESCRIBE works but is uglier.
     try:
         # This needs the table name to be unescaped (no backticks).
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=db_name, schema_name=schema, table_name=table_name)
+        query = _format_identifier_query(
+            DATABRICKS_GET_TABLE_COMMENTS,
+            database_name=db_name,
+            schema_name=schema,
+            table_name=table_name,
+        )
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -611,7 +650,8 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table
     """
-    query = DATABRICKS_GET_TABLE_COMMENTS.format(
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_COMMENTS,
         database_name=self.context.get().database,
         schema_name=schema_name,
         table_name=table_name,
@@ -709,7 +749,7 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = _qualified_identifier(schema, table_name)
     cursor = connection.execute(text(DATABRICKS_DDL.format(table_name=table_name)))
     try:
         result = cursor.fetchone()
@@ -774,7 +814,12 @@ def _get_schema_table_types(
     if database:
         try:
             rows = connection.execute(
-                text(DATABRICKS_GET_TABLE_TYPES.format(database_name=database)).bindparams(schema_name=schema)
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TYPES,
+                        database_name=database,
+                    )
+                ).bindparams(schema_name=schema)
             )
             table_types = {row[0]: row[1] for row in rows}
         except Exception as err:  # pylint: disable=broad-except
@@ -793,9 +838,14 @@ def get_table_type(self, connection, database, schema, table):
         if table in table_types:
             return table_types[table]
         if database:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=database, schema_name=schema, table_name=table)
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
+                database_name=database,
+                schema_name=schema,
+                table_name=table,
+            )
         else:
-            query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
+            query = f"DESCRIBE TABLE EXTENDED {_qualified_identifier(schema, table)}"
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -846,7 +896,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.table_tags = {}
         self.external_location_map = {}
         self.column_tags = {}
-        self.api_client = DatabricksClient(self.service_connection)
+        self.api_client = cast("DatabricksConnectionHandler", self._connection).api.client
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=self.api_client,
             metadata=self.metadata,
@@ -869,7 +919,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         return om_column
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
@@ -892,7 +942,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.session = create_and_bind_thread_safe_session(self.engine)
         self.connection_obj = self.engine
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -962,7 +1012,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags.clear()
         self.column_tags.clear()
 
-    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str | None]):  # noqa: UP006, UP007
+    def _add_to_tag_cache(self, tag_dict: dict, key: str | tuple, value: tuple[str, str | None]):
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
@@ -995,7 +1045,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         if self.source_config.includeTags is False:
             return
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_CATALOGS_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
 
             for tag in tags:
                 self._add_to_tag_cache(
@@ -1007,7 +1064,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch catalog tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_SCHEMA_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.schema_tags,
@@ -1018,7 +1082,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch schema tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.table_tags,
@@ -1029,7 +1100,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(f"Failed to fetch table tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_COLUMN_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
                 if self.column_tags.get(tag_table_id):
@@ -1144,7 +1222,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
@@ -1212,7 +1290,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     def get_schema_description(self, schema_name: str) -> str:
         description = None
         try:
-            query = DATABRICKS_GET_SCHEMA_COMMENTS.format(
+            query = _format_identifier_query(
+                DATABRICKS_GET_SCHEMA_COMMENTS,
                 database_name=self.context.get().database,
                 schema_name=schema_name,
             )
@@ -1234,7 +1313,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")
         return description
 
-    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> Optional[str]:  # noqa: UP045
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
         database = self.context.get().database
         payload = _fetch_table_describe_json(inspector.dialect, self.connection, database, schema_name, table_name)
         if payload is not None:
@@ -1247,7 +1326,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         # Legacy path (Databricks Runtime < 16.2): parse the text DESCRIBE output.
         description = None
         try:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
                 database_name=database,
                 schema_name=schema_name,
                 table_name=table_name,
@@ -1274,7 +1354,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -1286,7 +1366,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         filtered_name = re.sub(pattern, "", owner_name).strip()
         return filtered_name  # noqa: RET504
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
         """
         Method to process the table owners
         """
@@ -1300,7 +1380,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 owner = payload.owner
             else:
                 # Legacy path (Databricks Runtime < 16.2).
-                query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                query = _format_identifier_query(
+                    DATABRICKS_GET_TABLE_COMMENTS,
                     database_name=database,
                     schema_name=schema_name,
                     table_name=table_name,
@@ -1327,3 +1408,60 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return  # noqa: RET502
+
+    def _filtered_database_names_for_totals(self) -> list[str]:
+        """Filtered database names for the progress denominator. Single configured
+        catalog when one is set on the connection, else the filtered result of the
+        catalog enumeration. Emits no status side effects."""
+        configured_db = self.get_configured_database()
+        if configured_db:
+            result = [configured_db]
+        else:
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+        return result
+
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
+        """``{database: [schema_names]}`` for every visible catalog from a single
+        cross-catalog ``system.information_schema.schemata`` query — one round-trip,
+        no per-catalog reconnect. Returns ``None`` when the view is unavailable
+        (missing permissions or the system schema not enabled) so the caller falls
+        back to reconcile-only."""
+        try:
+            rows = self.connection.execute(text(DATABRICKS_GET_ALL_SCHEMAS)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "system.information_schema.schemata unavailable (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        by_database: dict[str, list[str]] = {}
+        for row in rows:
+            database_name = row[0]
+            schema_name = row[1]
+            if database_name is not None and schema_name is not None:
+                by_database.setdefault(str(database_name), []).append(str(schema_name))
+        return by_database
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` counters upfront.
+        ``Database`` is the filtered DB count; ``DatabaseSchema`` is the post-filter
+        schema count per database from the cross-catalog
+        ``system.information_schema.schemata``. When that view is unavailable the
+        schema counter is marked reconcilable so the walk fills its total instead."""
+        database_names = self._filtered_database_names_for_totals()
+        totals.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            # Catalog identifiers are case-insensitive: the walk's scope key keeps the
+            # configured/SHOW CATALOGS casing while the view returns catalog_name in its
+            # own casing, so match case-insensitively to avoid seeding a spurious 0.
+            schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_lower.get(database_name.lower(), [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))

@@ -204,13 +204,16 @@ const EmbeddedConnectionConfigForm = forwardRef<
     );
 
     const shouldShowIPAlert = useMemo(() => {
+      const isRunnerAllowed =
+        platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER;
+
       return (
         !isEmpty(connSch.schema) &&
         isAirflowAvailable &&
         hostIp &&
-        (platform !== AIRFLOW_HYBRID ||
-          ingestionRunner === COLLATE_SAAS ||
-          ingestionRunner === COLLATE_SAAS_RUNNER)
+        isRunnerAllowed
       );
     }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 
@@ -317,6 +320,29 @@ const EmbeddedConnectionConfigForm = forwardRef<
       authSelect: AuthSelectField,
     };
 
+    // Custom fields (arrays, toggles) and section headers emit focus through
+    // formContext.handleFocus instead of RJSF's form-level onFocus, so the
+    // same enriched handler must be wired to both paths.
+    const handleFieldFocus = useCallback(
+      (id: string) => {
+        const schemaMeta = getFieldSchemaForId(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        const section = getConnectionFieldSection(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        onFocus(id, { ...schemaMeta, section });
+      },
+      [onFocus, schemaWithoutDefaultFilterPatternFields]
+    );
+
+    const formContext = useMemo(
+      () => ({ handleFocus: handleFieldFocus }),
+      [handleFieldFocus]
+    );
+
     if (isSchemaLoading) {
       return (
         <>
@@ -336,6 +362,7 @@ const EmbeddedConnectionConfigForm = forwardRef<
         <FormBuilderV1
           cancelText={cancelText ?? ''}
           fields={customFields}
+          formContext={formContext}
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
@@ -350,17 +377,7 @@ const EmbeddedConnectionConfigForm = forwardRef<
           onBlur={() => onBlur?.()}
           onCancel={onCancel}
           onChange={handleFormChange}
-          onFocus={(id: string) => {
-            const schemaMeta = getFieldSchemaForId(
-              schemaWithoutDefaultFilterPatternFields,
-              id
-            );
-            const section = getConnectionFieldSection(
-              schemaWithoutDefaultFilterPatternFields,
-              id
-            );
-            onFocus(id, { ...schemaMeta, section });
-          }}
+          onFocus={handleFieldFocus}
           onSubmit={handleSave}>
           <>
             {isEmpty(connSch.schema) && (

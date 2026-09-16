@@ -13,6 +13,7 @@
 Test Postgres using the topology
 """
 
+import re
 import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -37,12 +38,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
 )
 from metadata.ingestion.source.database.postgres.metadata import PostgresSource
+from metadata.ingestion.source.database.postgres.queries import POSTGRES_GET_TABLE_NAMES
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
@@ -848,6 +851,112 @@ class PostgresUnitTest(TestCase):
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
+    def test_get_stored_procedures_skips_unparseable_row(self):
+        """
+        An unparseable row must be skipped and reported, not abort the whole schema
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = None
+        self.postgres_source.status = MagicMock()
+
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
+
+        # definition is NULL: pg_proc.prosrc is nullable, the model requires a str
+        bad_row = MagicMock()
+        bad_row._mapping = {
+            "procedure_name": "null_prosrc_func",
+            "schema_name": "test_schema",
+            "definition": None,
+            "procedure_type": "Function",
+        }
+        bad_row._asdict.return_value = dict(bad_row._mapping)
+        good_row = MagicMock()
+        good_row._mapping = {
+            "procedure_name": "healthy_proc",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "procedure_type": "StoredProcedure",
+        }
+        good_row._asdict.return_value = dict(good_row._mapping)
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [bad_row, good_row]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.postgres_source._get_stored_procedures_internal("query"))
+
+        self.assertEqual([result.name for result in results], ["healthy_proc"])
+        self.postgres_source.status.failed.assert_called_once()
+        # the failure must name the offending procedure, not "UNKNOWN"
+        reported_error = self.postgres_source.status.failed.call_args.kwargs["error"]
+        self.assertEqual(reported_error.name, "null_prosrc_func")
+
+    def test_query_view_names_and_types_includes_materialized_views(self):
+        """
+        includeViews=True: materialized views are emitted as MaterializedView
+        alongside regular views (#31515).
+        """
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.return_value = ["my_matview"]
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual(
+            {result.name: result.type_ for result in results},
+            {
+                "regular_view": TableType.View,
+                "my_matview": TableType.MaterializedView,
+            },
+        )
+
+    def test_matview_survives_when_view_list_and_matview_list_disagree(self):
+        """A failing get_materialized_view_names() must not drop regular views."""
+        mock_inspector = MagicMock()
+        mock_inspector.get_view_names.return_value = ["regular_view"]
+        mock_inspector.get_materialized_view_names.side_effect = Exception("unsupported")
+
+        with patch.object(PostgresSource, "inspector", mock_inspector):
+            results = list(self.postgres_source.query_view_names_and_types("public"))
+
+        self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+
+    def test_view_path_is_skipped_when_include_views_false(self):
+        """includeViews=False must not consult the view path at all."""
+        self.postgres_source.source_config.includeTables = True
+        self.postgres_source.source_config.includeViews = False
+
+        with (
+            patch.object(PostgresSource, "query_view_names_and_types") as mock_view_query,
+            patch.object(
+                PostgresSource,
+                "query_table_names_and_types",
+                return_value=[TableNameAndType(name="base_table", type_=TableType.Regular)],
+            ),
+        ):
+            emitted = [name for name, _ in self.postgres_source.get_tables_name_and_type()]
+
+        self.assertEqual(emitted, ["base_table"])
+        mock_view_query.assert_not_called()
+
+    def test_table_query_cannot_return_materialized_views(self):
+        """
+        Matviews must stay off the table path, otherwise includeTables — not
+        includeViews — would govern them (#31515).
+
+        Parses the relkind filter rather than substring-matching the SQL, so a stray
+        'm' in a comment cannot mask a real regression.
+        """
+        relkinds = re.search(r"relkind\s+in\s*\(([^)]*)\)", POSTGRES_GET_TABLE_NAMES, re.IGNORECASE)
+        self.assertIsNotNone(relkinds, "POSTGRES_GET_TABLE_NAMES must filter on relkind")
+        self.assertNotIn("m", {kind.strip().strip("'") for kind in relkinds.group(1).split(",")})
+
 
 class TestPostgresCommonMappings(TestCase):
     """Verify extended type entries in the shared PostgreSQL ischema_names map."""
@@ -874,3 +983,31 @@ class TestPostgresCommonMappings(TestCase):
 
         tid_type = pg_ischema_names["tid"]
         self.assertIs(tid_type, SqlAlchemyString)
+
+    def test_citext_maps_to_string(self):
+        """'citext' must map to a String type so it is not reflected as CITEXT/UNKNOWN."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIs(pg_ischema_names["citext"], SqlAlchemyString)
+
+    def test_citext_resolves_to_string_datatype(self):
+        """A citext column must resolve to a known OM dataType, not UNKNOWN (#19467)."""
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+        from metadata.ingestion.source.database.column_type_parser import (
+            ColumnTypeParser,
+        )
+
+        citext_type = pg_ischema_names["citext"]
+        # Resolve an instantiated type, matching how the dialect passes column
+        # types into the parser during reflection.
+        data_type = ColumnTypeParser.get_column_type(citext_type())
+        self.assertEqual(data_type, "STRING")

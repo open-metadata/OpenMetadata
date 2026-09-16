@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
@@ -21,14 +22,16 @@ import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
+import { handleKeyboardActivation } from '../../../utils/KeyboardUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
-import { getServiceIcon } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -85,7 +88,9 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
+            <Owner
+              owners={toOwnerRefs((source.owners as EntityReference[]) ?? [])}
+            />
           ),
         },
       ];
@@ -94,13 +99,12 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         source.entityType !== EntityType.GLOSSARY_TERM &&
         source.entityType !== EntityType.TAG
       ) {
+        const tierName = isString(source.tier)
+          ? source.tier
+          : getEntityName(source.tier);
         _otherDetails.push({
           key: 'Tier',
-          value: source.tier
-            ? isString(source.tier)
-              ? source.tier
-              : getEntityName(source.tier)
-            : '',
+          value: source.tier ? tierName : '',
         });
       }
 
@@ -133,6 +137,21 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       [source]
     );
 
+    const entityUrl = useMemo(() => {
+      if (!source.fullyQualifiedName) {
+        return undefined;
+      }
+      const entityPath = getEntityLinkFromType(
+        source.fullyQualifiedName,
+        source.entityType as EntityType,
+        source
+      );
+
+      return entityPath
+        ? `${globalThis.location.origin}${entityPath}`
+        : undefined;
+    }, [source]);
+
     return (
       <div
         className={classNames(
@@ -143,9 +162,16 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
         ref={ref}
+        role="button"
+        tabIndex={0}
         onClick={() => {
           handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab);
-        }}>
+        }}
+        onKeyDown={handleKeyboardActivation(
+          () =>
+            handleSummaryPanelDisplay && handleSummaryPanelDisplay(source, tab),
+          true
+        )}>
         <Row className="data-asset-info-row" wrap={false}>
           {showCheckboxes && (
             <Col className="flex-center" flex="20px">
@@ -160,6 +186,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               displayNameClassName={displayNameClassName}
               entityData={source}
               entityType={source.entityType as EntityType}
+              entityUrl={entityUrl}
               icon={serviceIcon}
               nameClassName={nameClassName}
               openEntityInNewPage={openEntityInNewPage}
@@ -182,7 +209,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-t-xs" key={i}>
+              <span className="m-t-xs" key={data.key}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i !== matches.length - 1 ? ',' : ''}`}
               </span>

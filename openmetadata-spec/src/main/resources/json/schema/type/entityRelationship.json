@@ -38,7 +38,7 @@
         "inputPort",
         "outputPort",
         "assignedTo",
-        "derivedFrom"
+        "mappedTo"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -67,7 +67,7 @@
         { "name": "INPUT_PORT" },
         { "name": "OUTPUT_PORT" },
         { "name": "ASSIGNED_TO" },
-        { "name": "DERIVED_FROM" }
+        { "name": "MAPPED_TO" }
       ]
     }
   },

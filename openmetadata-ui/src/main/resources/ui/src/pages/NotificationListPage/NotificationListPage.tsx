@@ -18,10 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
+import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -54,8 +54,10 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
+import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -70,6 +72,7 @@ const NotificationListPage = () => {
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     pageSize,
     currentPage,
@@ -99,7 +102,8 @@ const NotificationListPage = () => {
       alertDetails.fullyQualifiedName ?? ''
     );
 
-    const editPermission = permission.EditAll;
+    // Pure rename — old raw read never referenced `deleted` here (ungated).
+    const editPermission = getDerivedPermissionFlags(permission).canEditAll;
     const deletePermission = permission.Delete;
 
     return {
@@ -203,6 +207,21 @@ const NotificationListPage = () => {
       showErrorToast(error as AxiosError);
     }
   }, [fetchAlerts]);
+
+  const handleAlertHardDelete = useCallback(async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(selectedAlert),
+      selectedAlert?.id ?? '',
+      EntityType.SUBSCRIPTION
+    );
+    if (isSuccess) {
+      await handleAlertDelete();
+    } else {
+      setSelectedAlert(undefined);
+    }
+    setIsDeleting(false);
+  }, [selectedAlert, handleAlertDelete]);
 
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -387,16 +406,17 @@ const NotificationListPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteWidgetModal
-            afterDeleteAction={handleAlertDelete}
-            allowSoftDelete={false}
-            entityId={selectedAlert?.id ?? ''}
-            entityName={getEntityName(selectedAlert)}
-            entityType={EntityType.SUBSCRIPTION}
-            visible={Boolean(selectedAlert)}
+          <DeleteModal
+            entityTitle={getEntityName(selectedAlert)}
+            isDeleting={isDeleting}
+            message={t('message.permanently-delete-common-message', {
+              entity: getEntityName(selectedAlert)?.toLowerCase?.() ?? '',
+            })}
+            open={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);
             }}
+            onDelete={handleAlertHardDelete}
           />
         </Col>
       </Row>

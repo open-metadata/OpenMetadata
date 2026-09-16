@@ -22,13 +22,18 @@ def test_rest_connection_is_base_connection():
     assert issubclass(RestConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = RestConnection(MagicMock())
-        client = conn.client
+def test_get_client_reads_file_schema():
+    from metadata.generated.schema.entity.services.connections.api.openAPISchemaFilePath import (
+        OpenAPISchemaFilePath,
+    )
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    config = MagicMock()
+    config.openAPISchemaConnection = OpenAPISchemaFilePath(openAPISchemaFilePath="/tmp/schema.json")
+    with patch(f"{CONNECTION_MODULE}.parse_openapi_schema_from_file") as mock_parse:
+        client = RestConnection(config).client
+
+    assert client is mock_parse.return_value
+    mock_parse.assert_called_once_with("/tmp/schema.json")
 
 
 def test_test_connection_runs_steps():

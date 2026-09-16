@@ -21,11 +21,13 @@ import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
 
@@ -44,49 +46,37 @@ export const CustomizablePageHeader = ({
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
+  const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false);
-
-  const [confirmationModalType, setConfirmationModalType] = useState<
-    'reset' | 'close'
-  >('close');
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   const showWidgetActions =
     currentPageType === PageType.LandingPage ||
     currentPageType === PageType.DataMarketplace;
 
-  const isLandingPage = currentPageType === PageType.LandingPage;
+  const isLandingPage =
+    currentPageType === PageType.LandingPage ||
+    currentPageType === PersonaCustomizePageFqn.Homepage;
+  const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
+  const isAppModePage = pageFqn === PersonaCustomizePageFqn.AppMode;
 
-  const handleCancel = () => {
-    // Go back in history
-    navigate(-1);
-  };
-
-  const { modalTitle, modalDescription, okText, cancelText } = useMemo(() => {
-    if (confirmationModalType === 'reset') {
-      return {
-        modalTitle: t('label.reset-default-layout'),
-        modalDescription: t('message.reset-layout-confirmation'),
-        okText: t('label.reset'),
-        cancelText: t('label.cancel'),
-      };
-    }
-
-    return {
-      modalTitle: undefined,
-      modalDescription: undefined,
-    };
-  }, [confirmationModalType]);
+  // Navigate to an explicit URL (not navigate(-1)) so the parent's
+  // NavigationBlocker can intercept the pushState and reliably land on the
+  // persona page on Discard. navigate(-1) goes through popstate, whose
+  // history.go(-N) discard path stalls on the same URL when extra guard
+  // entries pile up from re-renders.
+  const handleClose = useCallback(() => {
+    navigate(getPersonaDetailsPath(personaFqn));
+  }, [navigate, personaFqn]);
 
   const handleOpenResetModal = useCallback(() => {
-    setConfirmationModalType('reset');
-    setConfirmationModalOpen(true);
+    setResetModalOpen(true);
   }, []);
 
   const handleCloseResetModal = useCallback(() => {
-    setConfirmationModalOpen(false);
+    setResetModalOpen(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -95,23 +85,10 @@ export const CustomizablePageHeader = ({
     setSaving(false);
   }, [onSave]);
 
-  const handleModalSave = useCallback(async () => {
-    if (confirmationModalType === 'reset') {
-      onReset();
-    } else {
-      await handleSave();
-    }
-    setConfirmationModalOpen(false);
-  }, [confirmationModalType, onReset, handleSave]);
-
-  const handleModalDiscard = useCallback(() => {
-    if (confirmationModalType === 'reset') {
-      handleCloseResetModal();
-    } else {
-      handleCancel();
-    }
-    setConfirmationModalOpen(false);
-  }, [confirmationModalType, handleCancel, onReset]);
+  const handleResetConfirm = useCallback(() => {
+    onReset();
+    setResetModalOpen(false);
+  }, [onReset]);
 
   const i18Values = useMemo(
     () => ({
@@ -123,14 +100,17 @@ export const CustomizablePageHeader = ({
     [personaName, isLandingPage]
   );
 
-  const handleClose = useCallback(() => {
-    if (!disableSave) {
-      setConfirmationModalType('close');
-      setConfirmationModalOpen(true);
-    } else {
-      handleCancel();
+  const subTitle = useMemo(() => {
+    if (isNavigationPage) {
+      return 'message.customize-your-navigation-subheader';
+    } else if (isAppModePage) {
+      return 'message.customize-your-app-mode-subheader';
+    } else if (isLandingPage) {
+      return 'message.customize-home-page-page-header-for-persona';
     }
-  }, [disableSave, handleCancel]);
+
+    return 'message.customize-entity-landing-page-header-for-persona';
+  }, [isNavigationPage, isAppModePage, isLandingPage]);
 
   return (
     <Card
@@ -150,11 +130,7 @@ export const CustomizablePageHeader = ({
           </Typography.Title>
           <Typography.Paragraph className="m-0">
             <Transi18next
-              i18nKey={
-                isLandingPage
-                  ? 'message.customize-home-page-page-header-for-persona'
-                  : 'message.customize-entity-landing-page-header-for-persona'
-              }
+              i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
@@ -197,15 +173,15 @@ export const CustomizablePageHeader = ({
       </div>
 
       <UnsavedChangesModal
-        description={modalDescription}
-        discardText={cancelText}
+        description={t('message.reset-layout-confirmation')}
+        discardText={t('label.cancel')}
         loading={saving}
-        open={confirmationModalOpen}
-        saveText={okText}
-        title={modalTitle}
+        open={resetModalOpen}
+        saveText={t('label.reset')}
+        title={t('label.reset-default-layout')}
         onCancel={handleCloseResetModal}
-        onDiscard={handleModalDiscard}
-        onSave={handleModalSave}
+        onDiscard={handleCloseResetModal}
+        onSave={handleResetConfirm}
       />
     </Card>
   );

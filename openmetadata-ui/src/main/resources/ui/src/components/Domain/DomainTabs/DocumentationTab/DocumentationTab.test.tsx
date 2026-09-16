@@ -27,12 +27,12 @@ const defaultProps = {
   permissions: MOCK_PERMISSIONS,
 };
 
-const mockDescriptionV1 = jest
+const mockDescription = jest
   .fn()
-  .mockImplementation(() => <div>DescriptionV1</div>);
+  .mockImplementation(() => <div>Description</div>);
 jest.mock(
-  '../../../common/EntityDescription/DescriptionV1',
-  () => mockDescriptionV1
+  '../../../common/EntityDescription/Description',
+  () => mockDescription
 );
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
@@ -51,6 +51,10 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
       EditAll: true,
       ViewCustomFields: true,
     },
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
   }),
 }));
 
@@ -68,9 +72,66 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
-jest.mock('../../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: jest.fn().mockImplementation(() => <div>OwnerComponent</div>),
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
 }));
+
+jest.mock('../../../../hooks/useOwnerDisplayProps', () => ({
+  useOwnerDisplayProps: () => ({
+    toOwnersWithHref: (refs: unknown[]) => refs ?? [],
+    renderOwnerContent: (_owner: unknown, chip: unknown) => chip,
+  }),
+}));
+
+jest.mock('../../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 jest.mock('../../../Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
@@ -109,23 +170,23 @@ describe('DocumentationTab', () => {
     render(<DocumentationTab {...defaultProps} />, {
       wrapper: MemoryRouter,
     });
-    const description = screen.getByText('DescriptionV1');
+    const description = screen.getByText('Description');
 
     expect(description).toBeInTheDocument();
 
-    expect(screen.getByText('OwnerLabelV2')).toBeInTheDocument();
+    expect(screen.getByText('OwnerComponent')).toBeInTheDocument();
 
     expect(screen.getByText('DomainExpertWidget')).toBeInTheDocument();
 
     expect(screen.getByText('DomainTypeWidget')).toBeInTheDocument();
   });
 
-  it('should pass DOMAIN entityType to DescriptionV1 when type is DOMAIN', () => {
+  it('should pass DOMAIN entityType to Description when type is DOMAIN', () => {
     render(<DocumentationTab type={DocumentationEntity.DOMAIN} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DOMAIN,
       }),
@@ -133,12 +194,12 @@ describe('DocumentationTab', () => {
     );
   });
 
-  it('should pass DATA_PRODUCT entityType to DescriptionV1 when type is DATA_PRODUCT', () => {
+  it('should pass DATA_PRODUCT entityType to Description when type is DATA_PRODUCT', () => {
     render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DATA_PRODUCT,
       }),
@@ -151,7 +212,7 @@ describe('DocumentationTab', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(mockDescriptionV1).toHaveBeenCalledWith(
+    expect(mockDescription).toHaveBeenCalledWith(
       expect.objectContaining({
         entityType: EntityType.DOMAIN,
       }),
@@ -180,6 +241,10 @@ describe('DocumentationTab', () => {
           EditAll: true,
           ViewCustomFields: true,
         },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
+        },
       });
 
       render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
@@ -206,6 +271,10 @@ describe('DocumentationTab', () => {
           EditAll: true,
           ViewCustomFields: false,
         },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
+        },
       });
 
       render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
@@ -230,6 +299,10 @@ describe('DocumentationTab', () => {
         permissions: {
           ViewBasic: true,
           EditAll: true,
+        },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
         },
       });
 
@@ -256,6 +329,10 @@ describe('DocumentationTab', () => {
           ViewAll: true,
           EditAll: true,
           ViewCustomFields: true,
+        },
+        entityRules: {
+          canAddMultipleUserOwners: true,
+          canAddMultipleTeamOwner: true,
         },
       });
 

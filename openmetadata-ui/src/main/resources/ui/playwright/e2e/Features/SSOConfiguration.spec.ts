@@ -121,6 +121,7 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
 
       for (const field of OIDC_COMMON_FIELDS) {
         const fieldElement = page.getByLabel(field);
@@ -147,6 +148,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -174,6 +177,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -780,8 +785,11 @@ test.describe('SSO Configuration Tests', () => {
 
       // Typing filters the visible options
       await field.click();
+      const dataRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('Data');
-      await page.waitForResponse('/api/v1/roles/search?*');
+      await dataRoleSearchResponse;
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'

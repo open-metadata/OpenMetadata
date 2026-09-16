@@ -21,11 +21,16 @@ import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
+import { DataProductDescriptionField } from './DataProductDescriptionField';
 import {
+  CARD_NAME_CLIP_CLASS,
+  CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
   renderDomainTypeCell,
@@ -33,13 +38,24 @@ import {
 
 export const useDomainCardTemplates = () => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
       <Box direction="col" gap={4}>
-        <Box align="center" direction="row" gap={3}>
+        <Box
+          align="center"
+          className={CARD_NAME_CLIP_CLASS}
+          direction="row"
+          gap={3}>
           <Avatar size="md" {...getEntityAvatarProps(entity)} />
-          <Typography size="text-sm" weight="medium">
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{
+              tooltip: renderBreakableTooltip(getEntityName(entity)),
+            }}
+            size="text-sm"
+            weight="medium">
             {getEntityName(entity)}
           </Typography>
         </Box>
@@ -48,7 +64,11 @@ export const useDomainCardTemplates = () => {
           <Grid.Item span={12}>
             <Box direction="col" gap={1}>
               <Typography size="text-xs">{t('label.owner')}</Typography>
-              {renderDomainOwnersCell(entity)}
+              {renderDomainOwnersCell(
+                entity,
+                toOwnersWithHref,
+                renderOwnerContent
+              )}
             </Box>
           </Grid.Item>
           <Grid.Item span={12}>
@@ -77,7 +97,7 @@ export const useDomainCardTemplates = () => {
         </Grid>
       </Box>
     ),
-    [t]
+    [t, toOwnersWithHref, renderOwnerContent]
   );
 
   const renderDataProductCard = useCallback(
@@ -88,38 +108,41 @@ export const useDomainCardTemplates = () => {
 
       return (
         <Box direction="col" gap={4}>
-          <Box align="center" direction="row" gap={3}>
+          <Box
+            align="center"
+            className={CARD_NAME_CLIP_CLASS}
+            direction="row"
+            gap={3}>
             <Avatar size="md" {...getEntityAvatarProps(entity)} />
-            <Box direction="col">
-              <Typography size="text-sm" weight="medium">
+            <Box className="tw:min-w-0" direction="col">
+              <Typography
+                className={CLIPPED_NAME_CLASS}
+                ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+                size="text-sm"
+                weight="medium">
                 {entityName}
               </Typography>
               {showName && (
-                <Typography size="text-xs">{entity.name}</Typography>
+                <Typography
+                  className={CLIPPED_NAME_CLASS}
+                  ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+                  size="text-xs">
+                  {entity.name}
+                </Typography>
               )}
             </Box>
           </Box>
 
           <Grid gap="4">
-            <Grid.Item span={12}>
+            <Grid.Item span={24}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.owner-plural')}
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.description')}
                 </Typography>
-                {renderDomainOwnersCell(entity)}
-              </Box>
-            </Grid.Item>
-            <Grid.Item span={12}>
-              <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.expert-plural')}
-                </Typography>
-                <OwnerLabel
-                  isCompactView={false}
-                  maxVisibleOwners={4}
-                  owners={entity.experts}
-                  showLabel={false}
-                />
+                <DataProductDescriptionField description={entity.description} />
               </Box>
             </Grid.Item>
           </Grid>
@@ -127,7 +150,45 @@ export const useDomainCardTemplates = () => {
           <Grid gap="4">
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.owner-plural')}
+                </Typography>
+                {renderDomainOwnersCell(
+                  entity,
+                  toOwnersWithHref,
+                  renderOwnerContent,
+                  { showDashPlaceholder: true }
+                )}
+              </Box>
+            </Grid.Item>
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.expert-plural')}
+                </Typography>
+                {renderDomainExpertsCell(
+                  entity,
+                  toOwnersWithHref,
+                  renderOwnerContent,
+                  { showDashPlaceholder: true }
+                )}
+              </Box>
+            </Grid.Item>
+          </Grid>
+
+          <Grid gap="4">
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
                 {renderDomainGlossaryTagsCell(entity)}
@@ -135,7 +196,12 @@ export const useDomainCardTemplates = () => {
             </Grid.Item>
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">{t('label.tag-plural')}</Typography>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tag-plural')}
+                </Typography>
                 {renderDomainClassificationTagsCell(entity)}
               </Box>
             </Grid.Item>
@@ -143,7 +209,7 @@ export const useDomainCardTemplates = () => {
         </Box>
       );
     },
-    [t]
+    [t, toOwnersWithHref, renderOwnerContent]
   );
 
   return {

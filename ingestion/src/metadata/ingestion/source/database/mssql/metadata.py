@@ -11,7 +11,7 @@
 """MSSQL source module"""
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -48,6 +49,10 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_SCHEMA_COMMENTS,
     MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
+)
+from metadata.ingestion.source.database.mssql.synonyms import (
+    SynonymMap,
+    build_synonym_map,
 )
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
@@ -110,9 +115,10 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.database_desc_map = {}
         self.stored_procedure_desc_map = {}
         self.encrypted_procedures_cache: dict[tuple[str, str], set[str]] = {}
+        self.synonym_map = SynonymMap()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MssqlConnection = config.serviceConnection.root.config
@@ -120,7 +126,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             raise InvalidSourceException(f"Expected MssqlConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -145,13 +151,13 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
         return self.schema_desc_map.get((self.context.get().database, schema_name))
 
-    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
+    def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         """
@@ -169,11 +175,15 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     ).all()
                 self.encrypted_procedures_cache[cache_key] = {row.procedure_name for row in results}
             except Exception as exc:
-                logger.debug(f"Could not fetch encrypted procedures for {database_name}.{schema_name}: {exc}")
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not detect encrypted stored procedures for {database_name}.{schema_name}; "
+                    f"any encrypted procedures may be treated as non-encrypted: {exc}"
+                )
                 self.encrypted_procedures_cache[cache_key] = set()
         return self.encrypted_procedures_cache[cache_key]
 
-    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:  # noqa: UP045
+    def get_stored_procedure_description(self, stored_procedure: str) -> str | None:
         """
         Method to fetch the stored procedure description
         """
@@ -189,12 +199,29 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
+    def _load_description_maps(self) -> None:
+        """
+        Reset the per-database encrypted-procedure cache and load the description
+        maps. Descriptions are optional metadata, so a failure here must not
+        abort the run: it is logged and ingestion continues without them.
+        """
+        self.encrypted_procedures_cache.clear()
+        description_loaders = {
+            "schema": self.set_schema_description_map,
+            "database": self.set_database_description_map,
+            "stored procedure": self.set_stored_procedure_description_map,
+        }
+        for description_type, load_description_map in description_loaders.items():
+            try:
+                load_description_map()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self.set_schema_description_map()
-            self.set_database_description_map()
-            self.set_stored_procedure_description_map()
+            self._load_description_maps()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -214,14 +241,89 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
-                    self.set_schema_description_map()
-                    self.set_database_description_map()
-                    self.set_stored_procedure_description_map()
+                    self._load_description_maps()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=new_database,
+                            error=f"Error trying to connect to database {new_database}: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+    def _in_scope_database_names(self) -> list[str]:
+        """
+        In-scope databases for the synonym sweep, resolved without touching the
+        topology. prepare() runs before get_database_names(), so the filter has
+        to be reapplied here rather than reused from it.
+        """
+        if not self.service_connection.ingestAllDatabases:
+            return [self.service_connection.database]
+
+        database_names = []
+        for database_name in self.get_database_names_raw():
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.config.serviceName,
+                database_name=database_name,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                (database_fqn if self.source_config.useFqnForFiltering else database_name),  # pyright: ignore[reportArgumentType]
+            ):
+                continue
+            database_names.append(database_name)
+        return database_names
+
+    def _build_table_fqn(self, database_name: str, schema_name: str, table_name: str) -> str:
+        return fqn.build(  # pyright: ignore[reportReturnType]
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            skip_es_search=True,
+        )
+
+    def prepare(self):
+        """
+        Sweep synonyms before the topology runs.
+
+        Synonym discovery is optional metadata: a failure here must not abort the
+        run, so it is logged and ingestion continues with an empty map.
+        """
+        super().prepare()
+        if not self.service_connection.includeSynonyms:
+            logger.info("includeSynonyms is disabled; skipping MSSQL synonym discovery")
+
+            return
+        try:
+            self.synonym_map = build_synonym_map(
+                engine=self.engine,
+                database_names=self._in_scope_database_names(),
+                fqn_builder=self._build_table_fqn,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not discover MSSQL synonyms, continuing without aliases: %s", exc)
+
+    def get_table_aliases(self, table_name: str, schema_name: str) -> list[str] | None:
+        """Aliases from sys.synonyms whose target is the table being produced"""
+        if self.synonym_map.is_empty():
+            return None
+        return self.synonym_map.aliases_for(
+            self._build_table_fqn(
+                self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name,
+                table_name,
+            )
+        )
 
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""
@@ -292,3 +394,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def close(self):
+        """Report synonyms that never resolved to an ingested table"""
+        for alias_fqn, reason in self.synonym_map.unresolved():
+            self.status.warning(alias_fqn, f"Synonym target unresolved: {reason}")
+        super().close()

@@ -14,28 +14,12 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { Link } from 'react-router-dom';
-import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
-import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
-import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
-import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
-import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
-import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
+import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
   Option,
   SearchSuggestions,
 } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { FqnPart } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
@@ -43,143 +27,122 @@ import i18n from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
+type SearchIndexGroupConfig = {
+  labelKey: string;
+  entityType?: EntityType;
+};
+
+const SEARCH_INDEX_GROUP_CONFIG: Record<string, SearchIndexGroupConfig> = {
+  [SearchIndex.TOPIC]: {
+    labelKey: 'label.topic-plural',
+    entityType: EntityType.TOPIC,
+  },
+  [SearchIndex.DATABASE]: {
+    labelKey: 'label.database-plural',
+    entityType: EntityType.DATABASE,
+  },
+  [SearchIndex.DATABASE_SCHEMA]: {
+    labelKey: 'label.database-schema-plural',
+    entityType: EntityType.DATABASE_SCHEMA,
+  },
+  [SearchIndex.DASHBOARD]: {
+    labelKey: 'label.dashboard-plural',
+    entityType: EntityType.DASHBOARD,
+  },
+  [SearchIndex.PIPELINE]: {
+    labelKey: 'label.pipeline-plural',
+    entityType: EntityType.PIPELINE,
+  },
+  [SearchIndex.MLMODEL]: {
+    labelKey: 'label.ml-model-plural',
+    entityType: EntityType.MLMODEL,
+  },
+  [SearchIndex.GLOSSARY_TERM]: {
+    labelKey: 'label.glossary-term-plural',
+    entityType: EntityType.GLOSSARY_TERM,
+  },
+  [SearchIndex.TAG]: {
+    labelKey: 'label.tag-plural',
+    entityType: EntityType.TAG,
+  },
+  [SearchIndex.CONTAINER]: {
+    labelKey: 'label.container-plural',
+    entityType: EntityType.CONTAINER,
+  },
+  [SearchIndex.STORED_PROCEDURE]: {
+    labelKey: 'label.stored-procedure-plural',
+    entityType: EntityType.STORED_PROCEDURE,
+  },
+  [SearchIndex.DASHBOARD_DATA_MODEL]: {
+    labelKey: 'label.data-model-plural',
+    entityType: EntityType.DASHBOARD_DATA_MODEL,
+  },
+  [SearchIndex.SEARCH_INDEX]: {
+    labelKey: 'label.search-index-plural',
+  },
+  [SearchIndex.DATA_PRODUCT]: {
+    labelKey: 'label.data-product-plural',
+    entityType: EntityType.DATA_PRODUCT,
+  },
+  [SearchIndex.CHART]: {
+    labelKey: 'label.chart-plural',
+    entityType: EntityType.CHART,
+  },
+  [SearchIndex.API_COLLECTION]: {
+    labelKey: 'label.api-collection-plural',
+    entityType: EntityType.API_COLLECTION,
+  },
+  [SearchIndex.API_ENDPOINT]: {
+    labelKey: 'label.api-endpoint-plural',
+    entityType: EntityType.API_ENDPOINT,
+  },
+  [SearchIndex.METRIC]: {
+    labelKey: 'label.metric-plural',
+    entityType: EntityType.METRIC,
+  },
+  [SearchIndex.DIRECTORY]: {
+    labelKey: 'label.directory-plural',
+    entityType: EntityType.DIRECTORY,
+  },
+  [SearchIndex.FILE]: {
+    labelKey: 'label.file-plural',
+    entityType: EntityType.FILE,
+  },
+  [SearchIndex.SPREADSHEET]: {
+    labelKey: 'label.spreadsheet-plural',
+    entityType: EntityType.SPREADSHEET,
+  },
+  [SearchIndex.WORKSHEET]: {
+    labelKey: 'label.worksheet-plural',
+    entityType: EntityType.WORKSHEET,
+  },
+  [SearchIndex.COLUMN]: {
+    labelKey: 'label.column-plural',
+    entityType: EntityType.TABLE_COLUMN,
+  },
+  [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
+    labelKey: 'label.context-center',
+    entityType: EntityType.KNOWLEDGE_CENTER,
+  },
+};
+
 export const getGroupLabel = (index: string) => {
-  let label = '';
+  const config = SEARCH_INDEX_GROUP_CONFIG[index];
+
+  let label: string;
   let GroupIcon;
-  switch (index) {
-    case SearchIndex.TOPIC:
-      label = i18n.t('label.topic-plural');
-      GroupIcon = IconTopic;
 
-      break;
-    case SearchIndex.DATABASE:
-      label = i18n.t('label.database-plural');
-      GroupIcon = IconDatabase;
+  if (config) {
+    label = i18n.t(config.labelKey);
+    GroupIcon = config.entityType
+      ? ENTITY_ICON_MAPPER[config.entityType].icon
+      : SearchOutlined;
+  } else {
+    const { label: indexLabel, GroupIcon: IndexIcon } =
+      searchClassBase.getIndexGroupLabel(index);
 
-      break;
-    case SearchIndex.DATABASE_SCHEMA:
-      label = i18n.t('label.database-schema-plural');
-      GroupIcon = IconDatabaseSchema;
-
-      break;
-    case SearchIndex.DASHBOARD:
-      label = i18n.t('label.dashboard-plural');
-      GroupIcon = IconDashboard;
-
-      break;
-    case SearchIndex.PIPELINE:
-      label = i18n.t('label.pipeline-plural');
-      GroupIcon = IconPipeline;
-
-      break;
-    case SearchIndex.MLMODEL:
-      label = i18n.t('label.ml-model-plural');
-      GroupIcon = IconMlModal;
-
-      break;
-    case SearchIndex.GLOSSARY_TERM:
-      label = i18n.t('label.glossary-term-plural');
-      GroupIcon = GlossaryTermIcon;
-
-      break;
-    case SearchIndex.TAG:
-      label = i18n.t('label.tag-plural');
-      GroupIcon = IconTag;
-
-      break;
-    case SearchIndex.CONTAINER:
-      label = i18n.t('label.container-plural');
-      GroupIcon = IconContainer;
-
-      break;
-
-    case SearchIndex.STORED_PROCEDURE:
-      label = i18n.t('label.stored-procedure-plural');
-      GroupIcon = IconStoredProcedure;
-
-      break;
-
-    case SearchIndex.DASHBOARD_DATA_MODEL:
-      label = i18n.t('label.data-model-plural');
-      GroupIcon = IconDashboard;
-
-      break;
-
-    case SearchIndex.SEARCH_INDEX:
-      label = i18n.t('label.search-index-plural');
-      GroupIcon = SearchOutlined;
-
-      break;
-
-    case SearchIndex.DATA_PRODUCT:
-      label = i18n.t('label.data-product-plural');
-      GroupIcon = DataProductIcon;
-
-      break;
-
-    case SearchIndex.CHART:
-      label = i18n.t('label.chart-plural');
-      GroupIcon = IconChart;
-
-      break;
-    case SearchIndex.API_COLLECTION:
-      label = i18n.t('label.api-collection-plural');
-      GroupIcon = IconApiCollection;
-
-      break;
-
-    case SearchIndex.API_ENDPOINT:
-      label = i18n.t('label.api-endpoint-plural');
-      GroupIcon = IconApiEndpoint;
-
-      break;
-    case SearchIndex.METRIC:
-      label = i18n.t('label.metric-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.DIRECTORY:
-      label = i18n.t('label.directory-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.FILE:
-      label = i18n.t('label.file-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.SPREADSHEET:
-      label = i18n.t('label.spreadsheet-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-    case SearchIndex.WORKSHEET:
-      label = i18n.t('label.worksheet-plural');
-      GroupIcon = MetricIcon;
-
-      break;
-
-    case SearchIndex.COLUMN:
-      label = i18n.t('label.column-plural');
-      GroupIcon = ColumnIcon;
-
-      break;
-
-    case SearchIndex.KNOWLEDGE_PAGE_INDEX:
-      label = i18n.t('label.knowledge-center');
-      GroupIcon = KnowledgeCenterIconComponent;
-
-      break;
-
-    default: {
-      const { label: indexLabel, GroupIcon: IndexIcon } =
-        searchClassBase.getIndexGroupLabel(index);
-
-      label = indexLabel;
-      GroupIcon = IndexIcon;
-
-      break;
-    }
+    label = indexLabel;
+    GroupIcon = IndexIcon;
   }
 
   const groupLabel = (

@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
-import ExploreTree from './ExploreTree';
+import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -26,6 +32,17 @@ const buildAggregationResponse = (
   ({
     aggregations: { entityType: { buckets } },
     hits: { hits: [], total: { value: 0 } },
+  } as never);
+
+const buildFieldAggregationResponse = (
+  field: string,
+  buckets: { key: string; doc_count: number; [key: string]: unknown }[]
+) =>
+  ({
+    data: {
+      aggregations: { [`sterms#${field}`]: { buckets } },
+      hits: { hits: [], total: { value: 0 } },
+    },
   } as never);
 
 const mustLength = (arg: { queryFilter?: unknown }): number =>
@@ -58,6 +75,56 @@ describe('ExploreTree', () => {
     expect(getByText('label.search-index-plural')).toBeInTheDocument();
     expect(getByText('label.ml-model-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
+  });
+
+  it('does not fetch entity counts while the product tour is open', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const { queryByTestId } = render(
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen: true,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+  });
+
+  it('fetches entity counts when the product tour closes', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const renderWithTour = (isTourOpen: boolean) => (
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    const { rerender } = render(renderWithTour(true));
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+
+    rerender(renderWithTour(false));
+
+    await waitFor(() => {
+      expect(searchQuerySpy).toHaveBeenCalled();
+    });
   });
 
   it('grays out categories that cannot contain the selected asset type', async () => {
@@ -466,6 +533,54 @@ describe('ExploreTree', () => {
     expect(getByText('label.governance')).toBeInTheDocument();
   });
 
+  it('includes style top hits and search text for service name buckets', async () => {
+    const postAggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          {
+            key: 'custom_bigquery',
+            doc_count: 10,
+            'top_hits#top': {
+              hits: {
+                hits: [
+                  {
+                    _source: {
+                      service: {
+                        style: {
+                          iconURL: '/custom.svg',
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ])
+      );
+
+    const response = await getExploreTreeAggregationResponse({
+      bucketToFind: EntityFields.SERVICE,
+      countQueryFilter: { query: { bool: {} } },
+      searchQueryParam: 'customer',
+    });
+
+    expect(postAggregateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fieldName: 'service.displayName.keyword',
+        queryText: 'customer',
+        sourceFields: ['service.style'],
+        topHits: {
+          size: 1,
+        },
+      })
+    );
+    expect(
+      response.aggregations['sterms#service.displayName.keyword'].buckets
+    ).toHaveLength(1);
+  });
+
   const treeWithServiceMock = () =>
     ({
       aggregations: {
@@ -486,6 +601,16 @@ describe('ExploreTree', () => {
   const drillToServiceNode = async (
     findByText: (text: string) => Promise<HTMLElement>
   ) => {
+    // The service level loads via the service-style field-options aggregation
+    // (top hits), not searchQuery, so stub it to return the service bucket.
+    jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          { key: 'bigquery_prod', doc_count: 900 },
+        ])
+      );
+
     // Databases is expanded by default and lazy-loads its service types; drill
     // one level deeper into the service so a nested level is mounted.
     const bigQueryNode = await findByText('BigQuery');

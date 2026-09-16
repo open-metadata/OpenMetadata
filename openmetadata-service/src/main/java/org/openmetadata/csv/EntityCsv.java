@@ -108,6 +108,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -128,6 +129,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+  private static final String NAME_PATTERN_VALIDATION_PREFIX = "name must match ";
+  private static final String EMAIL_FORMAT_VALIDATION = "email must be a well-formed email address";
 
   // Additional fields for export/import with multiple entity types
   public static final String FIELD_ENTITY_TYPE = "entityType";
@@ -420,6 +423,53 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return refs;
+  }
+
+  /**
+   * An empty domain column clears direct domains (unchanged behavior) but must not wipe the
+   * entity's inherited domains: they are never exported to the CSV, and rules such as "Data Product
+   * Domain Validation" need them to evaluate the entity's effective domain. So on an empty column
+   * only the inherited references from the already-loaded entity are carried over; they are dropped
+   * again after rule evaluation (see {@link #dropInheritedDomains}), so they are never persisted as
+   * a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      List<EntityReference> existingDomains) {
+    List<EntityReference> result = null;
+    if (processRecord) {
+      List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
+      result = parsedFromCsv;
+      if (parsedFromCsv == null) {
+        List<EntityReference> inheritedDomains =
+            listOrEmpty(existingDomains).stream()
+                .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
+                .toList();
+        result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Inherited domains are supplied to an updated entity only so platform rules evaluate against its
+   * effective domain. The import persistence path stores whatever domains the entity carries as
+   * direct relationships, so the inherited ones must be removed once the rules have run; the entity
+   * keeps re-inheriting from its parent on read.
+   */
+  private void dropInheritedDomains(EntityInterface entity) {
+    List<EntityReference> domains = entity.getDomains();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> directDomains = new ArrayList<>();
+      for (EntityReference domain : domains) {
+        if (!Boolean.TRUE.equals(domain.getInherited())) {
+          directDomains.add(domain);
+        }
+      }
+      entity.setDomains(directDomains.isEmpty() ? null : directDomains);
+    }
   }
 
   /** Owner field is in entityName format */
@@ -1079,6 +1129,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
@@ -1172,6 +1223,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
@@ -1238,9 +1290,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
@@ -1280,9 +1330,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
@@ -1317,10 +1365,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return;
     }
     List<String> eventsToInsert = new ArrayList<>(pendingChangeEvents);
-    pendingChangeEvents.clear(); // Clear immediately to avoid race condition
+    pendingChangeEvents.clear();
     AsyncService.getInstance()
-        .getExecutorService()
-        .submit(
+        .executeDatabaseTask(
+            DatabaseOperation.CSV_CHANGE_EVENT,
+            entityType + ":" + eventsToInsert.size(),
             () -> {
               try {
                 Entity.getCollectionDAO().changeEventDAO().insertBatch(eventsToInsert);
@@ -1502,10 +1551,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String userNameEmailViolation = "";
 
-    if (violations == null || violations.isEmpty()) {
-      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    } else if (!violations.contains("name must match \"^((?!::).)*$\"")
-        && !violations.contains("email must be a well-formed email address")) {
+    if (shouldValidateUserNameWithEmailPrefix(violationList)) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
     }
 
@@ -1526,9 +1572,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
+        createChangeEventForUserAndUpdateInES(response, importedBy);
       } catch (Exception ex) {
         pendingCsvResults.put(csvRecord, ex.getMessage());
         importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
@@ -1550,6 +1594,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
     }
+  }
+
+  private static boolean shouldValidateUserNameWithEmailPrefix(List<String> violationList) {
+    return violationList.stream()
+        .noneMatch(
+            violation ->
+                violation.startsWith(NAME_PATTERN_VALIDATION_PREFIX)
+                    || EMAIL_FORMAT_VALIDATION.equals(violation));
   }
 
   protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
@@ -1583,7 +1635,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       schema =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE_SCHEMA, schemaFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+              DATABASE_SCHEMA, schemaFqn, "owners,tags,extension", Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1615,7 +1667,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1677,7 +1729,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         table =
             Entity.getEntityByNameWithExcludedFields(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE, tableFqn, "owners,tags,extension", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Simulate a table for validation without persisting it
         table =
@@ -1691,11 +1743,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withId(UUID.randomUUID());
       }
     } else {
-      // Dry Run = false, True Run: Use dependency resolution helper
+      // Dry Run = false, True Run: Use dependency resolution helper.
+      // Fetch tableConstraints/tablePartition too: the recursive CSV has no column for them, so
+      // they must be carried through the createOrUpdate below or they would be dropped.
       try {
         table =
             getEntityWithDependencyResolution(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE,
+                tableFqn,
+                "owners,tags,domains,extension,tableConstraints,tablePartition",
+                Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Table not found, create a new one
         LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
@@ -1731,7 +1788,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1798,7 +1855,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             Entity.getEntityByName(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         // Simulate a stored procedure for validation without persisting it
@@ -1817,7 +1874,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             getEntityWithDependencyResolution(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
@@ -1859,7 +1916,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, sp.getDomains()))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 

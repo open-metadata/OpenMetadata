@@ -20,5 +20,5 @@ export interface AttachmentItem {
 }
 
 export interface AttachmentWidgetProps {
-  hasPermission: boolean;
+  entityFqn?: string;
 }

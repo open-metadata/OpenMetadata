@@ -14,8 +14,9 @@ Atlas source to extract metadata
 """
 
 import traceback
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -43,7 +44,11 @@ from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
@@ -51,6 +56,9 @@ from metadata.utils.helpers import get_database_name_for_lineage, retry_with_doc
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -64,8 +72,8 @@ class AtlasSource(Source):
 
     config: WorkflowSource
     atlas_client: AtlasClient
-    tables: Dict[str, Any]  # noqa: UP006
-    topics: Dict[str, Any]  # noqa: UP006
+    tables: dict[str, Any]
+    topics: dict[str, Any]
 
     @retry_with_docker_host()
     def __init__(
@@ -78,10 +86,11 @@ class AtlasSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
 
-        self.atlas_client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.atlas_client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.atlas_client
-        self.tables: Dict[str, Any] = {}  # noqa: UP006
-        self.topics: Dict[str, Any] = {}  # noqa: UP006
+        self.tables: dict[str, Any] = {}
+        self.topics: dict[str, Any] = {}
 
         self.service = None
         self.message_service = None
@@ -89,10 +98,11 @@ class AtlasSource(Source):
             "Table": {self.service_connection.entity_type: {"db": "db", "column": "columns"}},
             "Topic": {"Topic": {"schema": "schema"}},
         }
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AtlasConnection = config.serviceConnection.root.config
         if not isinstance(connection, AtlasConnection):
@@ -140,7 +150,8 @@ class AtlasSource(Source):
                 )
 
     def close(self):
-        """Not required to implement"""
+        if self._connection is not None:
+            self._connection.close()
 
     def _parse_topic_entity(self, name):
         for key in self.topics:
@@ -300,7 +311,7 @@ class AtlasSource(Source):
             tag_labels=tag_labels,
         )
 
-    def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:  # noqa: UP006
+    def _parse_table_columns(self, table_response, tbl_entity, name) -> list[Column]:
         om_cols = []
         col_entities = tbl_entity["relationshipAttributes"][self.entity_types["Table"][name]["column"]]
         referred_entities = table_response["referredEntities"]
@@ -381,7 +392,7 @@ class AtlasSource(Source):
                 )
             )
 
-    def get_database_service(self) -> Optional[DatabaseService]:  # noqa: UP045
+    def get_database_service(self) -> DatabaseService | None:
         service = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("hive")["service_name"],
@@ -395,7 +406,7 @@ class AtlasSource(Source):
         logger.error("Failed to create a service with name detlaLake")
         return None
 
-    def get_message_service(self) -> Optional[MessagingService]:  # noqa: UP045
+    def get_message_service(self) -> MessagingService | None:
         service = self.metadata.create_or_update(
             CreateMessagingServiceRequest(
                 name=SERVICE_TYPE_MAPPER.get("kafka")["service_name"],
@@ -414,7 +425,7 @@ class AtlasSource(Source):
             lineage = AddLineageRequest(edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref))
             yield Either(right=lineage)
 
-    def get_lineage_entity_ref(self, to_fqn: str, entity_type: str) -> Optional[EntityReference]:  # noqa: UP045
+    def get_lineage_entity_ref(self, to_fqn: str, entity_type: str) -> EntityReference | None:
         if entity_type == "table":
             table: Table = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
             if table:
@@ -426,4 +437,4 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

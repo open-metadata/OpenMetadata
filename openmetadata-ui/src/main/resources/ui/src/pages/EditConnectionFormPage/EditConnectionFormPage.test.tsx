@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
 
@@ -41,9 +42,10 @@ const ERROR = 'Error';
 
 const mockNavigate = jest.fn();
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn(() => <div>ErrorPlaceHolder</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest.fn(() => <div>ErrorPlaceHolder</div>),
+}));
 
 jest.mock('../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
@@ -94,6 +96,7 @@ jest.mock(
         return (
           <div>
             <div>ConnectionConfigForm</div>
+            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
               data-testid="connection-field"
               type="text"
@@ -106,6 +109,10 @@ jest.mock(
   }
 );
 
+// Mutable so a test can submit an unchanged payload and reach the
+// nothing-to-patch branch.
+let mockFiltersSavePayload: Record<string, unknown> = { testData: 'test' };
+
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
   () =>
@@ -114,7 +121,7 @@ jest.mock(
         <div>FiltersConfigForm</div>
         <button
           data-testid="filters-save-button"
-          onClick={() => onSave({ formData: { testData: 'test' } })}>
+          onClick={() => onSave({ formData: mockFiltersSavePayload })}>
           label.save
         </button>
       </div>
@@ -206,6 +213,28 @@ const mockProps = {
 describe('EditConnectionFormPage component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFiltersSavePayload = { testData: 'test' };
+  });
+
+  it('should leave the form when saving with nothing changed', async () => {
+    const mockPatchService = patchService as jest.Mock;
+    // Submitting the config unchanged makes the JSON patch empty.
+    mockFiltersSavePayload = {};
+
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next-button'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filters-save-button'));
+    });
+
+    expect(mockPatchService).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should render all necessary elements', async () => {
@@ -351,6 +380,18 @@ describe('EditConnectionFormPage component', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it('should hand the scroll to the full-width panel, not the centred form body', async () => {
+    // Otherwise the blank margins beside the form belong to an overflow:hidden ancestor and the
+    // wheel does nothing there.
+    await act(async () => {
+      render(<EditConnectionFormPage {...mockProps} />);
+    });
+
+    const { firstPanel } = (ResizablePanels as jest.Mock).mock.calls[0][0];
+
+    expect(firstPanel.allowScroll).toBe(true);
   });
 
   it('should show loader while fetching service details', async () => {

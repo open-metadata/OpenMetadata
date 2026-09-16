@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -110,7 +117,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
   }>) => {
-    const value = { sortDescriptor, onSortChange };
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
 
     return (
       <SortContext.Provider value={value}>
@@ -229,17 +239,52 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
     />
   );
 
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
     Box: MockBox,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
+    Owner: jest.fn().mockReturnValue(<div data-testid="owner-label" />),
+    Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
     Tabs: MockTabs,
     Table: MockTable,
+    toOwnerRef: jest.fn().mockReturnValue({}),
+    toOwnerRefs: jest.fn().mockReturnValue([]),
   };
 });
 
@@ -298,7 +343,22 @@ jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   },
 }));
 
-const mockDataQualityContext = {
+const mockOnAddBundleSuite = jest.fn();
+
+const mockDataQualityContext: {
+  isTestCaseSummaryLoading: boolean;
+  testCaseSummary: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+  };
+  activeTab: DataQualityPageTabs;
+  createActions?: {
+    canCreateBundleSuite?: boolean;
+    onAddBundleSuite?: () => void;
+  };
+} = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
     total: 0,
@@ -358,12 +418,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label" />),
-}));
-
 jest.mock(
   '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget',
   () =>
@@ -375,8 +429,13 @@ jest.mock(
 describe('TestSuites component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    testSuitePermission.ViewAll = true;
+    testSuitePermission[Operation.ViewAll] = true;
     mockLocation.search = '';
+    mockDataQualityContext.createActions = undefined;
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    });
   });
 
   it('component should render', async () => {
@@ -437,7 +496,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
@@ -454,6 +513,46 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('should land on the page from a shared URL without rewriting it', async () => {
+    mockLocation.search = '?currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should keep the shared page when the shared URL also carries a search', async () => {
+    mockLocation.search = '?searchValue=sales&currentPage=2&pageSize=15';
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+
+    render(<TestSuites />);
+
+    await waitFor(() => {
+      expect(mockGetListTestSuites).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'sales', limit: 15, offset: 15 })
+      );
+    });
+
+    const mockNavigate = (useNavigate as jest.Mock).mock.results[0].value;
+
+    expect(mockGetListTestSuites).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0 })
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('should render the sub-tab toggle with table and bundle suite options', async () => {
@@ -520,7 +619,7 @@ describe('TestSuites component', () => {
   });
 
   it('should render no data placeholder, if there is no permission', async () => {
-    testSuitePermission.ViewAll = false;
+    testSuitePermission[Operation.ViewAll] = false;
 
     render(<TestSuites />, { wrapper: MemoryRouter });
 
@@ -551,9 +650,50 @@ describe('TestSuites component', () => {
 
     render(<TestSuites />);
 
+    expect(await screen.findByTestId('empty-placeholder')).toBeInTheDocument();
+  });
+
+  it('should wire the New Bundle Suite empty-state action from DataQualityContext', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'bundle-suites',
+    });
+    mockDataQualityContext.createActions = {
+      canCreateBundleSuite: true,
+      onAddBundleSuite: mockOnAddBundleSuite,
+    };
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    render(<TestSuites />);
+
+    const actionButton = await screen.findByTestId(
+      'empty-placeholder-action-new-bundle-suite'
+    );
+
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    fireEvent.click(actionButton);
+
+    expect(mockOnAddBundleSuite).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not render the New Bundle Suite CTA when canCreateBundleSuite is false', async () => {
+    mockDataQualityContext.createActions = {
+      canCreateBundleSuite: false,
+      onAddBundleSuite: mockOnAddBundleSuite,
+    };
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    render(<TestSuites />);
+
+    expect(await screen.findByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
-      await screen.findByTestId('filter-table-placeholder')
-    ).toBeInTheDocument();
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
   });
 
   it('should not render pagination when showPagination is false', async () => {
@@ -573,7 +713,7 @@ describe('TestSuites component', () => {
   describe('observabilityRouterClassBase migration', () => {
     it('logical test suite name link should use observabilityRouterClassBase.getTestSuitePath', async () => {
       // Restore permission for this test
-      testSuitePermission.ViewAll = true;
+      testSuitePermission[Operation.ViewAll] = true;
       mockLocation.search = '';
 
       const logicalSuiteName = 'svc.suite';

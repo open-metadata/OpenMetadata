@@ -24,6 +24,8 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
+  getFieldSchemaForId,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -45,6 +47,7 @@ type MockFormData = typeof formData & { ingestionRunner?: string };
 
 type MockFormBuilderProps = {
   children?: ReactNode;
+  formContext?: { handleFocus?: (id: string) => void };
   isSubmitDisabled?: boolean;
   noValidate?: boolean;
   onCancel: () => void;
@@ -157,6 +160,7 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
   return React.forwardRef(function MockFormBuilderV1(
     {
       children,
+      formContext,
       isSubmitDisabled,
       noValidate,
       onCancel,
@@ -174,6 +178,11 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
         data-no-validate={String(Boolean(noValidate))}
         data-testid="form-builder-v1">
         {children}
+        <button
+          data-testid="focus-via-form-context"
+          onClick={() => formContext?.handleFocus?.('root/taxonomyProjectID')}>
+          Focus via formContext
+        </button>
         <button
           data-testid="change-valid-form"
           onClick={() => onChange({ formData })}>
@@ -283,6 +292,24 @@ describe('EmbeddedConnectionConfigForm', () => {
       await screen.findByTestId('airflowMessageBanner')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('form-builder-v1')).toBeInTheDocument();
+  });
+
+  it('enriches focus events emitted through formContext.handleFocus', async () => {
+    (getFieldSchemaForId as jest.Mock).mockReturnValueOnce({
+      title: 'Taxonomy Project IDs',
+    });
+    (getConnectionFieldSection as jest.Mock).mockReturnValueOnce('scope');
+
+    await act(async () => {
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-form-context'));
+
+    expect(mockOnFocus).toHaveBeenCalledWith('root/taxonomyProjectID', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
   });
 
   it('does not show no-config message when schema has content', async () => {

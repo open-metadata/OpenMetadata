@@ -258,11 +258,13 @@ test.describe('Impact Analysis', () => {
       patchData: [
         {
           op: 'add',
-          value: {
-            type: 'domain',
-            id: EntityDataClass.domain1.responseData.id,
-          },
-          path: '/domains/0',
+          value: [
+            {
+              type: 'domain',
+              id: EntityDataClass.domain1.responseData.id,
+            },
+          ],
+          path: '/domains',
         },
       ],
     });
@@ -300,14 +302,12 @@ test.describe('Impact Analysis', () => {
 
   test('validate upstream/ downstream counts', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 1' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 1' })).toBeVisible();
   });
 
   test('Verify impact analysis requests include entityType and explicit depth bounds', async ({
@@ -363,7 +363,7 @@ test.describe('Impact Analysis', () => {
     }
 
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -400,7 +400,7 @@ test.describe('Impact Analysis', () => {
 
   test('Verify Upstream connections', async ({ page }) => {
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -422,7 +422,7 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Verify Table is visible in Impact Analysis for Upstream of Topic
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -441,10 +441,15 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Owners').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.user1.responseData.name)
+      page
+        .getByTestId('drop-down-menu')
+        .getByLabel(EntityDataClass.user1.responseData.name)
     ).toBeVisible();
 
-    await page.getByTitle(EntityDataClass.user1.responseData.name).click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByLabel(EntityDataClass.user1.responseData.name)
+      .click();
     const filterResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
@@ -468,11 +473,14 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Domains').click();
 
     await expect(
-      page.getByTitle(EntityDataClass.domain1.responseData.displayName)
+      page
+        .getByTestId('drop-down-menu')
+        .getByLabel(EntityDataClass.domain1.responseData.displayName)
     ).toBeVisible();
 
     await page
-      .getByTitle(EntityDataClass.domain1.responseData.displayName)
+      .getByTestId('drop-down-menu')
+      .getByLabel(EntityDataClass.domain1.responseData.displayName)
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -496,12 +504,21 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Tier').click();
 
+    // Match the option row's data-testid (the lowercased tag FQN); it is stable
+    // across the Tooltip migration and the option's name-vs-FQN label.
     await expect(
-      page.getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      page
+        .getByTestId('drop-down-menu')
+        .getByTestId(
+          EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
+        )
     ).toBeVisible();
 
     await page
-      .getByTitle(EntityDataClass.tierTag1.responseData.fullyQualifiedName)
+      .getByTestId('drop-down-menu')
+      .getByTestId(
+        EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
+      )
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -543,14 +560,12 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 0' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 0' })).toBeVisible();
     await expect
       .poll(() => paginationRequests.length, { timeout: 5000 })
       .toBe(paginationRequestCountBeforeColumnMode);
@@ -584,13 +599,11 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 0' })
+      page.getByRole('radio', { name: 'Downstream 0' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
-    await expect(
-      page.getByRole('button', { name: 'Upstream 5' })
-    ).toBeVisible();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
+    await expect(page.getByRole('radio', { name: 'Upstream 5' })).toBeVisible();
   });
 
   test('Verify column mode switches direction with directional lineage requests', async ({
@@ -635,7 +648,7 @@ test.describe('Impact Analysis', () => {
         downstreamDepth: 0,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -699,14 +712,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -740,7 +753,7 @@ test.describe('Impact Analysis', () => {
         fqn: table2.entityResponseData.fullyQualifiedName,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -789,14 +802,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -812,7 +825,7 @@ test.describe('Impact Analysis', () => {
     const firstAssetLink = lineageCardTable
       .locator('tbody tr')
       .first()
-      .getByRole('cell')
+      .locator('td')
       .first()
       .getByRole('link');
 
@@ -885,7 +898,12 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('filters-button').click();
     await page.getByTestId('search-dropdown-Service Type').click();
 
-    const serviceTypeOption = page.getByTitle('mlflow', { exact: true });
+    // The option row's data-testid is the lowercased service-type key
+    // ('mlflow'); the visible label is source-cased ('Mlflow'), so match the
+    // stable testid rather than the label.
+    const serviceTypeOption = page
+      .getByTestId('drop-down-menu')
+      .getByTestId('mlflow');
     await expect(serviceTypeOption).toBeVisible();
 
     await serviceTypeOption.click();
@@ -990,7 +1008,8 @@ test.describe('Impact Analysis', () => {
     await page.getByTestId('search-dropdown-Tier').click();
 
     await page
-      .getByTitle(
+      .getByTestId('drop-down-menu')
+      .getByTestId(
         EntityDataClass.tierTag1.responseData.fullyQualifiedName.toLowerCase()
       )
       .click();
@@ -1117,10 +1136,9 @@ test.describe('Impact Analysis', () => {
     ];
 
     for (const columnName of expectedColumns) {
-      const columnHeader = page.getByRole('columnheader', {
-        name: columnName,
-        exact: true,
-      });
+      const columnHeader = page
+        .locator('thead th')
+        .filter({ hasText: new RegExp(`^${columnName}$`) });
       await expect(columnHeader).toBeVisible();
     }
   });
@@ -1136,10 +1154,10 @@ test.describe('Impact Analysis', () => {
 
     const downstreamCount = await page.locator('[data-row-key]').count();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByRole('button', { name: 'Downstream' }).click();
+    await page.getByRole('radio', { name: 'Downstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
     const finalCount = await page.locator('[data-row-key]').count();

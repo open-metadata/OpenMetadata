@@ -61,14 +61,15 @@ import org.openmetadata.service.security.Authorizer;
 @Tag(
     name = "IntakeForms",
     description =
-        "An IntakeForm declares additional required fields for a governance entity. Required fields "
-            + "are enforced at the API layer, layered on top of the entity's schema-required fields.")
+        "An IntakeForm declares fields shown for a governance entity and which are required. "
+            + "Required fields are enforced at the API layer, layered on top of the entity's "
+            + "schema-required fields.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "intakeForms", order = 5)
 public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRepository> {
   public static final String COLLECTION_PATH = "/v1/governance/intakeForms/";
-  static final String FIELDS = "owners,requiredFields";
+  static final String FIELDS = "owners,formFields,requiredFields";
   private final IntakeFormMapper mapper = new IntakeFormMapper();
 
   public IntakeFormResource(Authorizer authorizer, Limits limits) {

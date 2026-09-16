@@ -14,7 +14,8 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -47,7 +48,11 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -90,9 +95,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.ssl_manager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
-        self.connection_obj = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection_obj = self._connection.client if self._connection else get_connection(self.service_connection)
 
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     def prepare(self):
         """
@@ -128,7 +135,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -191,7 +198,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources if views are supported by the database.
         """
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Handle table and views.
 
@@ -235,7 +242,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict] | dict:
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -246,21 +253,21 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         db_name: str,
         schema_name: str,
         table_name: str,
-    ) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
+    ) -> list[TableConstraint] | None:
         # pylint: disable=unused-argument
         return None
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:  # noqa: UP006
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         """
         Method to return all columns of a table
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
         column_parser = DataFrameColumnParser.create(df)
         return column_parser.get_columns()
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -322,16 +329,15 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         By default the source url is not supported for
         """
 
     def close(self):
-        """
-        By default there is nothing to close
-        """
+        if self._connection is not None:
+            self._connection.close()

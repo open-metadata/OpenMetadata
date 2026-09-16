@@ -25,6 +25,18 @@ export const SYSTEM_POLICY_NAMES = {
   taskAuthorPolicy: 'TaskAuthorPolicy',
 };
 
+/**
+ * Policy resource names, mirrored for Playwright so tests never import app code
+ * from `src/`. The backend is the source of truth (`GET /v1/policies/resources`);
+ * add members here as tests need them.
+ */
+export enum ResourceEntity {
+  ALL = 'all',
+  TABLE = 'table',
+  TEST_CASE = 'testCase',
+  TEST_SUITE = 'testSuite',
+}
+
 export const RULE_DETAILS = {
   resources: 'All',
   operations: 'All',
@@ -88,6 +100,14 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
     description:
       'Allow authenticated users to create tasks (data access requests, suggestions, etc.).',
     resources: ['task'],
+    operations: ['Create'],
+    effect: 'allow',
+  },
+  {
+    name: 'DataConsumerPolicy-CreateConversation-Rule',
+    description:
+      'Allow authenticated users to create conversations and replies.',
+    resources: ['conversation'],
     operations: ['Create'],
     effect: 'allow',
   },
@@ -348,6 +368,17 @@ export const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
     operations: ['All'],
     effect: 'allow',
     condition: 'isOwner()',
+  },
+  // Creating a service surfaces the ingestion-runner picker, which lists
+  // runners from the permission-gated `ingestionRunner` resource. Without a
+  // view grant the dropdown never populates for this restricted user, so the
+  // Collate SaaS Runner option can't be selected. (Inert where the resource
+  // isn't registered — the rule only matches a registered resource.)
+  {
+    name: 'IngestionRunner-View-Rule',
+    resources: ['ingestionRunner'],
+    operations: ['ViewAll'],
+    effect: 'allow',
   },
 ];
 

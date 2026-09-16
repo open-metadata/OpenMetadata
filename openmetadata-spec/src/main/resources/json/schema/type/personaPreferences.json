@@ -28,6 +28,12 @@
         }
       },
       "additionalProperties": false
+    },
+    "appMode": {
+      "description": "App experience this persona forces on login. Classic keeps the standard OpenMetadata UI; AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to be installed.",
+      "type": "string",
+      "enum": ["classic", "AI"],
+      "default": "classic"
     }
   },
   "required": ["personaId", "personaName"],

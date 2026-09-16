@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -31,22 +29,15 @@ from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MetabaseConnectionConfig) -> MetabaseClient:
-    """
-    Create connection
-    """
-    return MetabaseClient(connection)
-
-
 class MetabaseConnection(BaseConnection[MetabaseConnectionConfig, MetabaseClient]):
     def _get_client(self) -> MetabaseClient:
-        return get_connection(self.service_connection)
+        return MetabaseClient(self.service_connection)
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

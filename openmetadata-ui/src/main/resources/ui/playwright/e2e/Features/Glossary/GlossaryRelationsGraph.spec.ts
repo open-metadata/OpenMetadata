@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
@@ -23,7 +23,7 @@ import {
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
-} from '../../../utils/ontologyExplorer';
+} from '../../../utils/ontologyStudio';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -331,10 +331,12 @@ test.describe('Glossary — Relations Graph tab', () => {
       .locator('input');
     await searchInput.fill('__nonexistent_pw_term_xyz__');
 
-    await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+    await expect(page.getByTestId('ontology-graph-search-empty')).toBeVisible();
 
     await searchInput.clear();
-    await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
+    await expect(
+      page.getByTestId('ontology-graph-search-empty')
+    ).not.toBeVisible();
   });
 
   test('global filter toolbar is NOT shown in glossary scope', async ({

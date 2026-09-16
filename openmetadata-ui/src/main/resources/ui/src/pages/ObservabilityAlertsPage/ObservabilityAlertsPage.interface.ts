@@ -32,6 +32,8 @@ export interface UseObservabilityAlertsOptions {
 export interface UseObservabilityAlertsReturn {
   alertPermissions?: AlertPermission[];
   alertResourcePermission?: OperationPermission;
+  hasResourcePermissionError: boolean;
+  refetchResourcePermission: () => Promise<void>;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
@@ -40,6 +42,7 @@ export interface UseObservabilityAlertsReturn {
   handleAlertDelete: () => Promise<void>;
   handlePageSizeChange: (page: number) => void;
   handleSelectAlert: (alert?: EventSubscription) => void;
+  fetchAlerts: (params?: Partial<Paging>) => Promise<void>;
   loading: boolean;
   loadingCount: number;
   onPageChange: (params: PagingHandlerParams) => void;
@@ -59,11 +62,14 @@ export interface ObservabilityAlertActionsProps {
   alertPermission?: AlertPermission;
   loading: boolean;
   record: EventSubscription;
+  onEditAlert?: (alert: EventSubscription) => void;
   onSelectAlert: (alert: EventSubscription) => void;
 }
 
 export interface ObservabilityAlertsTableProps {
   alertPermissions?: AlertPermission[];
+  alertResourcePermission?: OperationPermission;
+  hasResourcePermissionError?: boolean;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
@@ -71,6 +77,8 @@ export interface ObservabilityAlertsTableProps {
   loadingCount: number;
   getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
+  onRetryPermission?: () => void;
+  onEditAlert?: (alert: EventSubscription) => void;
   onPageChange: (params: PagingHandlerParams) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSelectAlert: (alert: EventSubscription) => void;

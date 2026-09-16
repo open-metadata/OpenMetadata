@@ -15,9 +15,10 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { AnnotationQuestion, Plus } from '@untitledui/icons';
-import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as ListConversationIcon } from '../../../assets/svg/action-icons/list-conversation.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/action-icons/plus.svg';
+import { ReactComponent as RequestUpdateIcon } from '../../../assets/svg/action-icons/request-update.svg';
 import { WidgetActionButtonProps } from './WidgetActionButton.interface';
 
 export const WidgetEditButton = ({
@@ -31,7 +32,7 @@ export const WidgetEditButton = ({
         <ButtonUtility
           className="tw:p-1"
           color="tertiary"
-          icon={<EditIcon height={15} width={15} />}
+          icon={<EditIcon height={16} width={16} />}
           size="xs"
           onClick={onClick}
           {...props}
@@ -51,8 +52,8 @@ export const WidgetPlusButton = ({
       <TooltipTrigger>
         <ButtonUtility
           className="tw:p-1"
-          color="secondary"
-          icon={<Plus size={13} />}
+          color="tertiary"
+          icon={<PlusIcon height={15} width={15} />}
           size="xs"
           onClick={onClick}
           {...props}
@@ -72,8 +73,8 @@ export const WidgetCommentButton = ({
       <TooltipTrigger>
         <ButtonUtility
           className="tw:p-1"
-          color="secondary"
-          icon={<CommentIcon height={13} width={13} />}
+          color="tertiary"
+          icon={<ListConversationIcon height={16} width={16} />}
           size="xs"
           onClick={onClick}
           {...props}
@@ -93,8 +94,8 @@ export const WidgetRequestButton = ({
       <TooltipTrigger>
         <ButtonUtility
           className="tw:p-1"
-          color="secondary"
-          icon={<AnnotationQuestion size={13} />}
+          color="tertiary"
+          icon={<RequestUpdateIcon height={16} width={16} />}
           size="xs"
           onClick={onClick}
           {...props}

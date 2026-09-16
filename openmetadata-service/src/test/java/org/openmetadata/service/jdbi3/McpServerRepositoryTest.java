@@ -66,6 +66,7 @@ class McpServerRepositoryTest {
                     "deploymentUrl",
                     "documentation",
                     "owners",
+                    "reviewers",
                     "followers",
                     "domain",
                     "dataProducts",

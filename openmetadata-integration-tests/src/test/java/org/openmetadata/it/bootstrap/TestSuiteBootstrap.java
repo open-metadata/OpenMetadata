@@ -28,10 +28,14 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.ServerSocket;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -46,9 +50,6 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.schema.configuration.LLMConfiguration;
-import org.openmetadata.schema.configuration.LLMOpenAIConfig;
-import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
@@ -83,6 +84,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -121,14 +123,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
-  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
-  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
-  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
-  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
-  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
-  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
-  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
+  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
+  private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
+  // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
+  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -153,7 +151,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
   private static Jdbi jdbi;
-  private static LlmStubServer LLM_STUB_SERVER;
 
   private static String searchHost;
   private static int searchPort;
@@ -189,6 +186,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     System.setProperty("OM_TEST_SUPPORT_SEARCH_ENABLED", "true");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
+    System.setProperty("user.timezone", "UTC");
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    LOG.info("Test JVM timezone set to {}", TimeZone.getDefault().getID());
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
@@ -209,7 +209,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       if (k8sEnabled) {
         startK3s();
       }
-      startLlmStub();
       startApplication();
 
       long duration = System.currentTimeMillis() - startTime;
@@ -285,7 +284,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
-      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      }
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -339,7 +340,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // under load.
           "-c",
           "work_mem=32MB");
-      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+        postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      }
+      postgres.withCreateContainerCmdModifier(
+          cmd -> {
+            final long memory = Long.getLong("dbContainerMemoryBytes", 0L);
+            final long nanoCpus = Long.getLong("dbContainerNanoCpus", 0L);
+            if (memory > 0) cmd.getHostConfig().withMemory(memory);
+            if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+          });
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -474,23 +484,32 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         cacheConfig.redis.keyspace);
   }
 
+  private static String fusekiTmpfsSize() {
+    return System.getProperty(RDF_CONTAINER_TMPFS_SIZE_PROPERTY, DEFAULT_FUSEKI_TMPFS_SIZE);
+  }
+
   private void startFuseki() {
-    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
-    LOG.info("Starting Fuseki SPARQL container...");
-    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
-    // pre-create a dataset at container start. The maintained image we use
-    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
-    // the dataset via the /$/datasets admin endpoint on first connection
-    // instead, so the test path is fine without it.
-    FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(image))
+    LOG.info("Starting the configured OpenMetadata Fuseki image...");
+    FUSEKI_CONTAINER = createFusekiContainer();
+    FUSEKI_CONTAINER.start();
+
+    fusekiEndpoint =
+        String.format(
+            "http://%s:%d/%s",
+            FUSEKI_CONTAINER.getHost(),
+            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
+            FUSEKI_DATASET);
+    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  }
+
+  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  public static GenericContainer<?> createFusekiContainer() {
+    final GenericContainer<?> container =
+        fusekiContainer()
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            // tmpfs the TDB2 dataset dir so each container start gets a clean
-            // store and a long IT run doesn't grow the container's writable
-            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
-            // by default — mounting tmpfs there keeps writes off-disk entirely.
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -504,15 +523,49 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                             java.util.List.of(
                                 new com.github.dockerjava.api.model.Ulimit(
                                     "nofile", 65536L, 65536L))));
-    FUSEKI_CONTAINER.start();
+    if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
+      // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
+      container.withTmpFs(
+          Map.of(
+              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+    }
+    if (Boolean.getBoolean("rdfContainerStablePort")) {
+      // Docker can allocate a different ephemeral host port on restart.
+      try (ServerSocket socket = new ServerSocket(Integer.getInteger("rdfContainerHostPort", 0))) {
+        container.setPortBindings(List.of(socket.getLocalPort() + ":" + FUSEKI_PORT));
+      } catch (IOException exception) {
+        throw new IllegalStateException("Cannot reserve a stable Fuseki test port", exception);
+      }
+    }
+    final long memoryBytes = Long.getLong("rdfContainerMemoryBytes", 0L);
+    final long nanoCpus = Long.getLong("rdfContainerNanoCpus", 0L);
+    container.withCreateContainerCmdModifier(
+        cmd -> {
+          if (memoryBytes > 0) cmd.getHostConfig().withMemory(memoryBytes);
+          if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+        });
+    return container;
+  }
 
-    fusekiEndpoint =
-        String.format(
-            "http://%s:%d/%s",
-            FUSEKI_CONTAINER.getHost(),
-            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
-            FUSEKI_DATASET);
-    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  /** The isolated test container, for scale sampling and restart verification. */
+  public static GenericContainer<?> getFusekiContainer() {
+    return FUSEKI_CONTAINER;
+  }
+
+  /** The isolated metadata database, for scale resource sampling. */
+  public static GenericContainer<?> getDatabaseContainer() {
+    return DATABASE_CONTAINER;
+  }
+
+  private static GenericContainer<?> fusekiContainer() {
+    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
+    if (image != null && !image.isBlank()) {
+      return new GenericContainer<>(DockerImageName.parse(image));
+    }
+    return new GenericContainer<>(
+        new ImageFromDockerfile()
+            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -548,10 +601,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   public static boolean isK8sTestsRequested() {
     return "true".equalsIgnoreCase(System.getProperty("ENABLE_K8S_TESTS"))
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
-  }
-
-  private void startLlmStub() {
-    LLM_STUB_SERVER = LlmStubServer.start();
   }
 
   private void startApplication() throws Exception {
@@ -614,11 +663,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void registerMcpServerIfAvailable() {
     try {
-      // Pick up entities (bots, settings) created during seed data loading.
+      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
+      // Reinitialize to pick up apps created by seed data loading.
       ApplicationContext.reinitialize();
 
-      // registerMCPServer self-gates on mcpConfiguration.enabled (seeded enabled by default).
-      // It is protected, so we use reflection from the test bootstrap
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      // registerMCPServer is protected, so we use reflection from the test bootstrap
       OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
       java.lang.reflect.Method method =
           OpenMetadataApplication.class.getDeclaredMethod(
@@ -673,6 +727,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
+    Entity.setJdbi(jdbi);
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows(false);
@@ -774,35 +829,21 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
+    rdfConfig.setMaterializedInferenceEnabled(true);
+    final Integer lineageBatchSize = Integer.getInteger("rdfLineageEdgeBatchSize");
+    if (lineageBatchSize != null) {
+      rdfConfig.setBulkLineageEdgeBatchSize(lineageBatchSize);
+    }
+    final Integer appendPayloadBytes = Integer.getInteger("rdfAppendPayloadBytes");
+    if (appendPayloadBytes != null) {
+      rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
+    }
+    final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
+    if (appendEntityBatchSize != null) {
+      rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);
+    }
 
     LOG.info("RDF configuration complete");
-  }
-
-  /**
-   * Points the embedded server at the in-JVM {@link LlmStubServer} via an OpenAI-compatible
-   * provider, so the Company Context pill-extraction pipeline runs deterministically end to end.
-   */
-  private static void configureLlm(OpenMetadataApplicationConfig config) {
-    LLMConfiguration llm =
-        new LLMConfiguration()
-            .withEmbeddings(
-                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
-                    .withProvider(
-                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
-                    .withDjl(
-                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
-                            .withEmbeddingModel(
-                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
-    if (LLM_STUB_SERVER != null) {
-      LLMOpenAIConfig openai =
-          new LLMOpenAIConfig()
-              .withApiKey("integration-test")
-              .withModelId("stub-model")
-              .withEndpoint(LLM_STUB_SERVER.baseUrl());
-      llm.withEnabled(true).withProvider(LLMProvider.OPENAI).withOpenai(openai);
-      LOG.info("LLM completion configured against stub endpoint {}", LLM_STUB_SERVER.baseUrl());
-    }
-    config.setLlmConfiguration(llm);
   }
 
   private void cleanup() {
@@ -812,11 +853,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
-    }
-
-    if (LLM_STUB_SERVER != null) {
-      LLM_STUB_SERVER.stop();
-      LLM_STUB_SERVER = null;
     }
 
     try {
@@ -867,6 +903,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     try {
       if (FUSEKI_CONTAINER != null) {
+        if (!FUSEKI_CONTAINER.isRunning()) {
+          LOG.error("Fuseki exited during the test run:\n{}", FUSEKI_CONTAINER.getLogs());
+        }
         FUSEKI_CONTAINER.stop();
       }
     } catch (Exception e) {
@@ -915,9 +954,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
     LOG.info("Starting MinIO Testcontainer on-demand...");
     // Pin the MinIO image to a known-good release so a newly-published :latest tag
-    // cannot break integration tests without a code change.
+    // cannot break integration tests without a code change. Pull from quay.io: MinIO
+    // deleted the minio/minio repository from Docker Hub, and Docker Hub reports a
+    // removed repository as "pull access denied ... may require 'docker login'".
     MINIO_CONTAINER =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+        new GenericContainer<>("quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z")
             .withExposedPorts(9000)
             .withEnv("MINIO_ROOT_USER", "minio")
             .withEnv("MINIO_ROOT_PASSWORD", "minio123")
@@ -1115,8 +1156,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     Rest5ClientBuilder builder =
         Rest5Client.builder(httpHost)
             .setHttpClientConfigCallback(
-                httpClientBuilder ->
-                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+                httpClientBuilder -> {
+                  httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                  // httpclient5 5.6.0 enables automatic gzip decompression by default; the
+                  // elasticsearch-java client also decompresses the response body, so leaving
+                  // both on runs the second pass over already-inflated bytes and throws
+                  // "java.util.zip.ZipException: Not in GZIP format". Let the ES client own
+                  // decompression. Mirrors the production ElasticSearchClient fix.
+                  httpClientBuilder.disableContentCompression();
+                });
     return builder.build();
   }
 
@@ -1147,6 +1195,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static String getBaseUrl() {
     return "http://localhost:" + getApplicationPort();
+  }
+
+  public static RdfConfiguration getRdfConfiguration() {
+    return APP.getConfiguration().getRdfConfiguration();
   }
 
   /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */
@@ -1182,6 +1234,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "JDBI is not initialized. Ensure TestSuiteBootstrap has initialized.");
     }
     return jdbi;
+  }
+
+  /** The dialect the suite is running against, for tests that exercise dual-dialect SQL. */
+  public static ConnectionType getConnectionType() {
+    if (DATABASE_CONTAINER == null) {
+      throw new IllegalStateException(
+          "Database is not initialized. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return ConnectionType.from(DATABASE_CONTAINER.getDriverClassName());
   }
 
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {
@@ -1237,14 +1298,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureCache(config);
     configureRdf(config);
-    configureLlm(config);
     return config;
   }
 
   private static String getProjectRoot() {
     String projectRoot = System.getProperty("user.dir");
-    if (projectRoot.endsWith("openmetadata-integration-tests")) {
-      projectRoot = projectRoot.substring(0, projectRoot.lastIndexOf("/"));
+    Path projectRootPath = Paths.get(projectRoot);
+    if (projectRootPath.endsWith("openmetadata-integration-tests")
+        && projectRootPath.getParent() != null) {
+      projectRoot = projectRootPath.getParent().toString();
     }
     return projectRoot;
   }
@@ -1273,11 +1335,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static boolean isFusekiEnabled() {
     return fusekiEndpoint != null;
-  }
-
-  /** True when the embedded suite booted the in-JVM LLM stub (deterministic pill extraction). */
-  public static boolean isLlmStubEnabled() {
-    return LLM_STUB_SERVER != null;
   }
 
   /**

@@ -59,7 +59,8 @@ public class PatchTableEmbeddingIT {
     searchRepo.initializeVectorSearchService();
 
     Assumptions.assumeTrue(
-        searchRepo.isVectorEmbeddingEnabled(), "Vector embedding could not be initialized");
+        searchRepo.getVectorIndexService() != null,
+        "Vector embedding could not be initialized: " + searchRepo.getVectorServiceInitError());
 
     try {
       runEmbeddingTest(ns, searchRepo);

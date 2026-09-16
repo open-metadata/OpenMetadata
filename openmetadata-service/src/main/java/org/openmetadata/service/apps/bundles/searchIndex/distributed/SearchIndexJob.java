@@ -113,6 +113,15 @@ public class SearchIndexJob {
     return status == IndexJobStatus.RUNNING;
   }
 
+  /**
+   * Whether all partitions have finished processing, i.e. the job is either promoting its staged
+   * indexes or already terminal. Waiters that only care that processing is done (not that promotion
+   * has finished) stop once the job reaches this point.
+   */
+  public boolean isProcessingComplete() {
+    return isTerminal() || status == IndexJobStatus.PROMOTING;
+  }
+
   /** Statistics for a specific entity type */
   @Data
   @Builder

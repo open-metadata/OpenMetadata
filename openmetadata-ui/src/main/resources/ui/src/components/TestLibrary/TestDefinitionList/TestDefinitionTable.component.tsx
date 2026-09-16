@@ -11,19 +11,24 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Table } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
+import { FileShield02 } from '@untitledui/icons';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -43,6 +48,8 @@ const TestDefinitionTable = ({
   onEnableToggle,
   onEdit,
   onDelete,
+  hasActiveFilters = false,
+  onClearFilters,
 }: TestDefinitionTableProps) => {
   const { t } = useTranslation();
 
@@ -77,8 +84,16 @@ const TestDefinitionTable = ({
   const loadingSkeletons = useMemo(
     () => (
       <div className="tw:p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
+        {Array.from(
+          { length: 5 },
+          (_, i) => `test-definition-skeleton-${i}`
+        ).map((skeletonKey) => (
+          <Skeleton
+            className="tw:mb-2"
+            height={40}
+            key={skeletonKey}
+            width="100%"
+          />
         ))}
       </div>
     ),
@@ -127,12 +142,14 @@ const TestDefinitionTable = ({
     }
 
     let editTooltip;
-    if (isSystemProvider) {
-      editTooltip = t('message.system-test-definition-edit-warning');
-    } else if (hasEditPermission) {
-      editTooltip = t('label.edit');
-    } else {
+    if (!hasEditPermission) {
       editTooltip = t('message.no-permission-for-action');
+    } else if (isSystemProvider) {
+      // Everything else about a shipped test definition is fixed, so say what the form will
+      // actually let them change rather than presenting a plain "Edit".
+      editTooltip = t('message.system-test-definition-dimension-edit-only');
+    } else {
+      editTooltip = t('label.edit');
     }
 
     let deleteTooltip;
@@ -149,7 +166,7 @@ const TestDefinitionTable = ({
         <Tooltip title={editTooltip}>
           <Button
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasEditPermission}
+            disabled={!hasEditPermission}
             icon={<IconEdit height={16} width={16} />}
             type="text"
             onClick={() => onEdit(record)}
@@ -203,6 +220,7 @@ const TestDefinitionTable = ({
             <Table.Head
               className={col.className}
               id={col.id}
+              isRowHeader={col.id === 'name'}
               key={col.id}
               label={col.label}
             />
@@ -219,10 +237,40 @@ const TestDefinitionTable = ({
             isLoading ? (
               loadingSkeletons
             ) : (
-              <ErrorPlaceHolder
-                className="p-y-lg"
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
+              <Box className="tw:relative tw:min-h-80 tw:w-full">
+                <EmptyPlaceholder
+                  actions={
+                    hasActiveFilters && onClearFilters
+                      ? [
+                          {
+                            key: 'clear-filters',
+                            label: t('label.clear-filter-plural'),
+                            color: 'primary' as const,
+                            onPress: onClearFilters,
+                          },
+                        ]
+                      : undefined
+                  }
+                  description={t(
+                    hasActiveFilters
+                      ? 'message.no-results-for-filters-description'
+                      : 'message.no-test-definitions-yet-description'
+                  )}
+                  icon={
+                    hasActiveFilters ? (
+                      <FilterOffIcon className="tw:text-fg-quaternary" />
+                    ) : (
+                      <FileShield02 className="tw:text-fg-brand-primary" />
+                    )
+                  }
+                  title={t(
+                    hasActiveFilters
+                      ? 'message.no-results-for-filters'
+                      : 'message.no-test-definitions-yet'
+                  )}
+                  variant="blank"
+                />
+              </Box>
             )
           }>
           {(record) => renderRow(record)}

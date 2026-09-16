@@ -34,7 +34,9 @@ import {
 import {
   closeFirstPopupAlert,
   descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
@@ -97,8 +99,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      test.slow(true);
-
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
       await waitForAllLoadersToDisappear(page);
@@ -137,7 +137,7 @@ test.describe(
         });
 
         // Enter description
-        await page.locator(descriptionBox).nth(0).fill(DESCRIPTION);
+        await getDescriptionBox(page).nth(0).fill(DESCRIPTION);
 
         // Enter rule name
         await addRule(page, RULE_NAME, RULE_DESCRIPTION, 1);
@@ -191,9 +191,7 @@ test.describe(
         // Click on edit description
         await page.locator('[data-testid="edit-description"]').click();
 
-        await page
-          .locator(descriptionBox)
-          .fill(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
+        await fillDescriptionBox(page, `${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
 
         // Click on save
         await page.locator('[data-testid="save"]').click();
@@ -320,14 +318,8 @@ test.describe(
         await deleteButton.waitFor({ state: 'visible' });
         await deleteButton.click();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        // Type 'DELETE' in the confirmation text input
-        await page
-          .locator('[data-testid="confirmation-text-input"]')
-          .fill('DELETE');
-
-        // Click on confirm button
         await page.locator('[data-testid="confirm-button"]').click();
 
         // Validate deleted policy
@@ -412,9 +404,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill('DELETE');
       await page.locator('[data-testid="confirm-button"]').click();
 
       await expect(policyLocator).not.toBeVisible();

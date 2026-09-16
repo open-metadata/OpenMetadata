@@ -27,16 +27,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  CHART_BLUE_1,
-  COLOR_GREY_300,
-  COLOR_GREY_400,
-  GRAY_600,
-  GREY_100,
-  GREY_200,
-} from '../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { ColumnProfile } from '../../../generated/entity/data/table';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   axisTickFormatter,
   createHorizontalGridLineRenderer,
@@ -53,11 +45,75 @@ export interface CardinalityDistributionChartProps {
   noDataPlaceholderText?: string | React.ReactNode;
 }
 
+const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
+  <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
+    <ErrorPlaceHolder placeholderText={placeholderText} />
+  </div>
+);
+
+interface CustomYAxisTickProps {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  selectedCategory: string | null;
+  onCategoryClick: (categoryName: string) => void;
+  axisColor: string;
+  highlightedColor: string;
+  selectedColor: string;
+}
+
+const CustomYAxisTick = ({
+  x,
+  y,
+  payload,
+  selectedCategory,
+  onCategoryClick,
+  axisColor,
+  highlightedColor,
+  selectedColor,
+}: CustomYAxisTickProps) => {
+  if (!payload) {
+    return null;
+  }
+
+  const categoryName = payload.value;
+  const isSelected = selectedCategory === categoryName;
+  const isHighlighted = selectedCategory && selectedCategory !== categoryName;
+  let textColor = axisColor;
+
+  if (isSelected) {
+    textColor = selectedColor;
+  } else if (isHighlighted) {
+    textColor = highlightedColor;
+  }
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        cursor="pointer"
+        dy={4}
+        fill={textColor}
+        fontSize={12}
+        fontWeight={isSelected ? 600 : 400}
+        opacity={isHighlighted ? 0.5 : 1}
+        textAnchor="end"
+        x={-8}
+        onClick={() => onCategoryClick(categoryName)}>
+        {categoryName.length > 15
+          ? `${categoryName.slice(0, 15)}...`
+          : categoryName}
+      </text>
+    </g>
+  );
+};
+
 const CardinalityDistributionChart = ({
   data,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
+  const { axis, cursorFill, emptyFill, grid, inactive, primary } =
+    useChartColors();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const firstDayAllUnique =
@@ -71,16 +127,6 @@ const CardinalityDistributionChart = ({
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
-    []
-  );
-
-  const renderPlaceholder = useMemo(
-    () => (placeholderText: string | React.ReactNode) =>
-      (
-        <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
-          <ErrorPlaceHolder placeholderText={placeholderText} />
-        </div>
-      ),
     []
   );
 
@@ -139,46 +185,6 @@ const CardinalityDistributionChart = ({
   const handleCategoryClick = (categoryName: string) => {
     setSelectedCategory((prev) =>
       prev === categoryName ? null : categoryName
-    );
-  };
-
-  const CustomYAxisTick = (props: {
-    x?: number;
-    y?: number;
-    payload?: { value: string };
-  }) => {
-    const { x, y, payload } = props;
-    if (!payload) {
-      return null;
-    }
-
-    const categoryName = payload.value;
-    const isSelected = selectedCategory === categoryName;
-    const isHighlighted = selectedCategory && selectedCategory !== categoryName;
-
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text
-          cursor="pointer"
-          dy={4}
-          fill={
-            isSelected
-              ? CHART_BLUE_1
-              : isHighlighted
-              ? COLOR_GREY_400
-              : GRAY_600
-          }
-          fontSize={12}
-          fontWeight={isSelected ? 600 : 400}
-          opacity={isHighlighted ? 0.5 : 1}
-          textAnchor="end"
-          x={-8}
-          onClick={() => handleCategoryClick(categoryName)}>
-          {categoryName.length > 15
-            ? `${categoryName.slice(0, 15)}...`
-            : categoryName}
-        </text>
-      </g>
     );
   };
 
@@ -260,7 +266,7 @@ const CardinalityDistributionChart = ({
                           layout="vertical">
                           <CartesianGrid
                             horizontal={renderHorizontalGridLine}
-                            stroke={GRAPH_BACKGROUND_COLOR}
+                            stroke={grid}
                             strokeDasharray="3 3"
                             vertical={false}
                           />
@@ -279,7 +285,15 @@ const CardinalityDistributionChart = ({
                             axisLine={false}
                             dataKey="name"
                             padding={{ top: 16, bottom: 16 }}
-                            tick={<CustomYAxisTick />}
+                            tick={
+                              <CustomYAxisTick
+                                axisColor={axis}
+                                highlightedColor={inactive}
+                                selectedCategory={selectedCategory}
+                                selectedColor={primary}
+                                onCategoryClick={handleCategoryClick}
+                              />
+                            }
                             tickLine={false}
                             type="category"
                             width={120}
@@ -287,8 +301,8 @@ const CardinalityDistributionChart = ({
                           <Tooltip
                             content={renderTooltip}
                             cursor={{
-                              fill: GREY_100,
-                              stroke: GREY_200,
+                              fill: cursorFill,
+                              stroke: grid,
                               strokeDasharray: '3 3',
                             }}
                           />
@@ -297,8 +311,6 @@ const CardinalityDistributionChart = ({
                             dataKey="percentage"
                             radius={[0, 8, 8, 0]}>
                             {graphData.map((entry) => {
-                              const isSelected =
-                                selectedCategory === entry.name;
                               const isHighlighted =
                                 selectedCategory &&
                                 selectedCategory !== entry.name;
@@ -306,13 +318,7 @@ const CardinalityDistributionChart = ({
                               return (
                                 <Cell
                                   cursor="pointer"
-                                  fill={
-                                    isSelected
-                                      ? CHART_BLUE_1
-                                      : isHighlighted
-                                      ? COLOR_GREY_300
-                                      : CHART_BLUE_1
-                                  }
+                                  fill={isHighlighted ? emptyFill : primary}
                                   key={`cell-${entry.name}`}
                                   opacity={isHighlighted ? 0.3 : 1}
                                   onClick={() =>

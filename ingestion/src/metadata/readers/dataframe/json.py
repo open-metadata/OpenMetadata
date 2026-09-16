@@ -16,10 +16,10 @@ JSON DataFrame reader - streams JSON Lines in batches to avoid OOM
 import gzip
 import json
 import zipfile
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from functools import singledispatchmethod
-from typing import Any, Iterator, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -73,7 +73,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_lines(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream JSON Lines in batches. Memory efficient."""
-        from pandas import DataFrame  # noqa: PLC0415
+        from pandas import DataFrame
 
         batch = []
         while True:
@@ -99,8 +99,8 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_array(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream large JSON arrays using ijson. Memory efficient."""
-        import ijson  # noqa: PLC0415
-        from pandas import DataFrame  # noqa: PLC0415
+        import ijson
+        from pandas import DataFrame
 
         batch = []
         for record in ijson.items(file_obj, "item"):
@@ -122,9 +122,9 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _read_json_object(
         content: bytes,
-    ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:  # noqa: F821, UP045
+    ) -> tuple[Generator["DataFrame", Any, None], str | None]:  # noqa: F821
         """Load entire JSON object/array. Non-streaming fallback for small files."""
-        from pandas import DataFrame  # noqa: PLC0415
+        from pandas import DataFrame
 
         content = content.decode(UTF_8, errors="ignore") if isinstance(content, bytes) else content
         data = json.loads(content)
@@ -153,7 +153,7 @@ class JSONDataFrameReader(DataFrameReader):
                 return False
             if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
                 return False
-            return True  # noqa:TRY300
+            return True  # noqa: TRY300
         except json.JSONDecodeError:
             return False
 
@@ -162,7 +162,7 @@ class JSONDataFrameReader(DataFrameReader):
         file_obj_getter,
         key: str,
         bucket_name: str,
-        file_size: Optional[int] = None,  # noqa: UP045
+        file_size: int | None = None,
     ) -> DatalakeColumnWrapper:
         """
         Smart JSON reading with automatic format detection and streaming.
@@ -219,7 +219,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from gcsfs import GCSFileSystem  # noqa: PLC0415
+        from gcsfs import GCSFileSystem
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -233,7 +233,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
+        from adlfs import AzureBlobFileSystem
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(
@@ -263,6 +263,6 @@ class JSONDataFrameReader(DataFrameReader):
 
         return self._read_json_smart(get_stream, key, bucket_name)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
+    def _read(self, *, key: str, bucket_name: str, file_size: int | None = None, **__) -> DatalakeColumnWrapper:
         self._file_size = file_size
         return self._read_json_dispatch(self.config_source, key=key, bucket_name=bucket_name)

@@ -14,6 +14,7 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -24,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -41,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -51,12 +53,12 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -66,7 +68,6 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -91,21 +92,20 @@ import org.openmetadata.service.attachments.NoOpAssetService;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
-import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexMappingsSeeder;
-import org.openmetadata.service.search.SearchIndexSettings;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -115,6 +115,7 @@ import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.TokenValidityResolver;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
@@ -124,8 +125,12 @@ import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.seeding.RequiredSeedRows;
+import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
+import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidationErrorBuilder;
@@ -135,6 +140,10 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 @Repository
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
+  private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
+      "Glossary term relation settings changed while the JSON Patch was being applied";
+  private static final String INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH =
+      "Invalid JSON Patch for glossary term relation settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
@@ -194,31 +203,66 @@ public class SystemRepository {
       if (fetchedSettings == null) {
         return null;
       }
-
-      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
-        if (!nullOrEmpty(emailConfig.getPassword())) {
-          emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
-        }
-        fetchedSettings.setConfigValue(emailConfig);
-      }
-
-      // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
-      // previously null
-      if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
-        AuthenticationConfiguration authConfig =
-            (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-        if (authConfig != null && authConfig.getLdapConfiguration() != null) {
-          ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
-          fetchedSettings.setConfigValue(authConfig);
-        }
-      }
-
-      return fetchedSettings;
+      return prepareFetchedSettings(fetchedSettings);
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  public boolean hasRequiredSeedRows(RequiredSeedRows requiredSeedRows) {
+    if (requiredSeedRows.expectedCount() == 0) {
+      return false;
+    }
+    long actualCount =
+        dao.countRequiredSeedData(
+            requiredSeedRows.bindableIdentities(SeedTable.TYPE),
+            requiredSeedRows.bindableIdentities(SeedTable.POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.ROLE),
+            requiredSeedRows.bindableIdentities(SeedTable.TASK_FORM_SCHEMA),
+            requiredSeedRows.bindableIdentities(SeedTable.DOCUMENT),
+            requiredSeedRows.bindableIdentities(SeedTable.WORKFLOW_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.EVENT_SUBSCRIPTION),
+            requiredSeedRows.bindableIdentities(SeedTable.NOTIFICATION_TEMPLATE),
+            requiredSeedRows.bindableIdentities(SeedTable.LEARNING_RESOURCE),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_CONNECTION_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.WEB_ANALYTIC_EVENT),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CUSTOM_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.BOT),
+            requiredSeedRows.bindableIdentities(SeedTable.CLASSIFICATION),
+            requiredSeedRows.bindableIdentities(SeedTable.TAG),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY_TERM),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_FRAMEWORK),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL));
+    return actualCount == requiredSeedRows.expectedCount();
+  }
+
+  private Settings prepareFetchedSettings(Settings fetchedSettings) {
+    if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(fetchedSettings.getConfigValue(), SmtpSettings.class);
+      if (!nullOrEmpty(emailConfig.getPassword())) {
+        emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+      }
+      fetchedSettings.setConfigValue(emailConfig);
+    }
+
+    // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
+    // previously null
+    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration authConfig =
+          (AuthenticationConfiguration) fetchedSettings.getConfigValue();
+      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+        ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
+        fetchedSettings.setConfigValue(authConfig);
+      }
+    }
+
+    return fetchedSettings;
   }
 
   public AssetCertificationSettings getAssetCertificationSettings() {
@@ -305,28 +349,19 @@ public class SystemRepository {
 
   @Transaction
   public Response createOrUpdate(Settings setting) {
-    Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
-
-    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
-      SmtpSettings configValue =
-          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
-      if (configValue != null) {
-        SmtpSettings.Templates templates = configValue.getTemplates();
-        SmtpSettings newConfigValue =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (newConfigValue != null) {
-          newConfigValue.setTemplates(templates);
-          setting.setConfigValue(newConfigValue);
-        }
-      }
-    }
+    OpenMetadataBaseUrlValidator.validate(setting);
+    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    preserveEmailSettings(setting, oldValue);
 
     try {
       updateSetting(setting);
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
+    prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
           .toResponse();
@@ -338,6 +373,8 @@ public class SystemRepository {
   public Response createNewSetting(Settings setting) {
     try {
       updateSetting(setting);
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
@@ -353,100 +390,88 @@ public class SystemRepository {
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
-  public SearchIndexMappings getSearchIndexMappings() {
-    SearchIndexMappings result = null;
-    Settings stored = getConfigWithKey(SettingsType.SEARCH_INDEX_MAPPINGS.toString());
-    if (stored != null) {
-      result = JsonUtils.convertValue(stored.getConfigValue(), SearchIndexMappings.class);
-    }
-    return result;
-  }
-
-  /**
-   * The stored mapping for a (language, entityType); when {@code fallbackToDefault} and no stored
-   * slice exists, the hardened resource default is returned instead.
-   */
-  public Map<String, Object> getSearchIndexMapping(
-      String language, String entityType, boolean fallbackToDefault) {
-    Map<String, Object> result = storedSearchIndexMapping(language, entityType);
-    if (result == null && fallbackToDefault) {
-      result = SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
-    }
-    return result;
-  }
-
-  public Settings upsertSearchIndexMapping(
-      String language, String entityType, Map<String, Object> mapping) {
-    return spliceSearchIndexMapping(language, entityType, hardenMapping(mapping));
-  }
-
-  public Settings resetSearchIndexMapping(String language, String entityType) {
-    Settings result = null;
-    Map<String, Object> defaultMapping =
-        SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
-    if (defaultMapping != null) {
-      result = spliceSearchIndexMapping(language, entityType, defaultMapping);
-    }
-    return result;
-  }
-
-  private Settings spliceSearchIndexMapping(
-      String language, String entityType, Map<String, Object> mapping) {
-    SearchIndexMappings blob = getOrBuildSearchIndexMappings();
-    blob.getLanguages()
-        .computeIfAbsent(language, key -> new LinkedHashMap<>())
-        .put(entityType, mapping);
-    Settings setting =
-        new Settings().withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS).withConfigValue(blob);
-    createOrUpdate(setting);
-    return setting;
-  }
-
-  private SearchIndexMappings getOrBuildSearchIndexMappings() {
-    SearchIndexMappings blob = getSearchIndexMappings();
-    if (blob == null) {
-      blob = new SearchIndexMappings();
-    }
-    if (blob.getLanguages() == null) {
-      blob.setLanguages(new LinkedHashMap<>());
-    }
-    return blob;
-  }
-
-  private Map<String, Object> storedSearchIndexMapping(String language, String entityType) {
-    Map<String, Object> result = null;
-    SearchIndexMappings blob = getSearchIndexMappings();
-    if (blob != null && blob.getLanguages() != null) {
-      Map<String, Object> byEntity = blob.getLanguages().get(language);
-      if (byEntity != null && byEntity.get(entityType) != null) {
-        result = JsonUtils.getMap(byEntity.get(entityType));
-      }
-    }
-    return result;
-  }
-
-  private Map<String, Object> hardenMapping(Map<String, Object> mapping) {
-    String hardened =
-        SearchIndexSettings.harden(JsonUtils.pojoToJson(mapping), SearchFieldLimits.active());
-    return JsonUtils.getMapFromJson(hardened);
-  }
-
   public Response patchSetting(String settingName, JsonPatch patch) {
-    Settings original = getConfigWithKey(settingName);
-    // Apply JSON patch to the original entity to get the updated entity
+    if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
+      return patchGlossaryTermRelationSettings(patch, UnaryOperator.identity());
+    }
+
+    String expectedJson = dao.getConfigJsonWithKey(settingName);
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(settingName);
+    }
+    Settings stored =
+        CollectionDAO.SettingsRowMapper.getSettings(
+            SettingsType.fromValue(settingName), expectedJson);
+    Settings original =
+        prepareFetchedSettings(
+            CollectionDAO.SettingsRowMapper.getSettings(
+                SettingsType.fromValue(settingName), expectedJson));
     JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
-    // Convert JsonValue back to a regular Java object
-    // JsonValue is from Jakarta JSON API, we need to convert it to a Jackson-compatible object
     String jsonString = updated.toString();
     Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
     original.setConfigValue(updatedConfigValue);
-    try {
-      updateSetting(original);
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    preserveEmailSettings(original, stored);
+    OpenMetadataBaseUrlValidator.validate(original);
+    updateSettingIfCurrent(original, expectedJson);
+    prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  private void preserveEmailSettings(Settings updated, Settings stored) {
+    if (hasStoredEmailSettings(updated, stored)) {
+      SmtpSettings original =
+          decryptEmailSetting(JsonUtils.convertValue(stored.getConfigValue(), SmtpSettings.class));
+      SmtpSettings replacement =
+          JsonUtils.convertValue(updated.getConfigValue(), SmtpSettings.class);
+      replacement.setTemplates(original.getTemplates());
+      if (replacement.getPassword() == null
+          || PasswordEntityMasker.PASSWORD_MASK.equals(replacement.getPassword())) {
+        replacement.setPassword(original.getPassword());
+      }
+      updated.setConfigValue(replacement);
+    }
+  }
+
+  private boolean hasStoredEmailSettings(Settings updated, Settings stored) {
+    return stored != null
+        && stored.getConfigValue() != null
+        && updated.getConfigType() == SettingsType.EMAIL_CONFIGURATION
+        && updated.getConfigValue() != null;
+  }
+
+  public Response patchGlossaryTermRelationSettings(
+      JsonPatch patch, UnaryOperator<GlossaryTermRelationSettings> prepareUpdate) {
+    String expectedJson = dao.getGlossaryTermRelationSettingsJson();
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    }
+
+    GlossaryTermRelationSettings current =
+        JsonUtils.readValue(expectedJson, GlossaryTermRelationSettings.class);
+    JsonValue patched;
+    try {
+      patched = JsonUtils.applyPatch(current, patch);
+    } catch (JsonException exception) {
+      throw new BadRequestException(INVALID_GLOSSARY_TERM_RELATION_SETTINGS_PATCH, exception);
+    }
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    updated = prepareUpdate.apply(updated);
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+    GlossaryTermRelationSettingsUtil.normalize(updated);
+    GlossaryTermRelationSettingsUtil.validateUniqueNames(updated);
+    String updatedJson = JsonUtils.pojoToJson(updated);
+    int updatedRows = dao.updateGlossaryTermRelationSettingsIfCurrent(expectedJson, updatedJson);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED);
+    }
+
+    SettingsCache.invalidateSettings(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    Settings response =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, response, ENTITY_UPDATED)).toResponse();
   }
 
   private void postUpdate(SettingsType settingsType) {
@@ -462,54 +487,11 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (!nullOrEmpty(emailConfig.getPassword())) {
-          setting.setConfigValue(encryptEmailSetting(emailConfig));
-        }
-      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
-        OpenMetadataBaseUrlConfiguration omBaseUrl =
-            JsonUtils.convertValue(
-                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
-        setting.setConfigValue(omBaseUrl);
-      } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
-        SlackAppConfiguration appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
-        setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
-        String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackStateSetting(slackState));
-      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
-      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
-      } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
-        ScimConfiguration scimConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
-        setting.setConfigValue(scimConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
-        AuthenticationConfiguration authConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-        setting.setConfigValue(authConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
-        AuthorizerConfiguration authorizerConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
-        JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
-        setting.setConfigValue(authorizerConfig);
-      }
-      dao.insertSettings(
-          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
-      // Invalidate Cache
-      SettingsCache.invalidateSettings(setting.getConfigType().value());
-      postUpdate(setting.getConfigType());
+      String updatedJson = prepareSettingForUpdate(setting);
+      dao.insertSettings(setting.getConfigType().toString(), updatedJson);
+      settingUpdated(setting.getConfigType());
+    } catch (BadRequestException ex) {
+      throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(
@@ -517,6 +499,98 @@ public class SystemRepository {
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
     }
+  }
+
+  private void updateSettingIfCurrent(Settings setting, String expectedJson) {
+    try {
+      String updatedJson = prepareSettingForUpdate(setting);
+      int updated =
+          dao.updateSettingsIfCurrent(
+              setting.getConfigType().toString(), expectedJson, updatedJson);
+      if (updated == 0) {
+        throw new PreconditionFailedException(
+            "Setting changed while the JSON Patch was being applied");
+      }
+      settingUpdated(setting.getConfigType());
+    } catch (BadRequestException | PreconditionFailedException ex) {
+      throw ex;
+    } catch (Exception ex) {
+      LOG.error("Failing in Updating Setting.", ex);
+      throw new CustomExceptionMessage(
+          Response.Status.INTERNAL_SERVER_ERROR,
+          "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
+          ex.getMessage());
+    }
+  }
+
+  private String prepareSettingForUpdate(Settings setting) {
+    if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+      if (!nullOrEmpty(emailConfig.getPassword())) {
+        setting.setConfigValue(encryptEmailSetting(emailConfig));
+      }
+    } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+      OpenMetadataBaseUrlConfiguration omBaseUrl =
+          JsonUtils.convertValue(setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+      setting.setConfigValue(omBaseUrl);
+    } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
+      SlackAppConfiguration appConfiguration =
+          JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+      setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
+      String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackStateSetting(slackState));
+    } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+    } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+    } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
+      ScimConfiguration scimConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
+      setting.setConfigValue(scimConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration authConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+      rejectInvalidTokenValidity(authConfig);
+      setting.setConfigValue(authConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
+      AuthorizerConfiguration authorizerConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
+      JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
+      setting.setConfigValue(authorizerConfig);
+    }
+    return JsonUtils.pojoToJson(setting.getConfigValue());
+  }
+
+  /**
+   * OpenMetadata signs its own JWT after both OIDC and SAML logins, so a non-positive validity on
+   * either path mints tokens that expire the instant they are issued and locks every user out.
+   */
+  private void rejectInvalidTokenValidity(AuthenticationConfiguration authConfig) {
+    OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+    if (oidcConfig != null
+        && TokenValidityResolver.isConfiguredInvalid(oidcConfig.getTokenValidity())) {
+      throw new BadRequestException(TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+    SamlSSOClientConfig samlConfig = authConfig.getSamlConfiguration();
+    SamlSecurityConfig samlSecurity = samlConfig == null ? null : samlConfig.getSecurity();
+    if (samlSecurity != null
+        && TokenValidityResolver.isConfiguredInvalid(samlSecurity.getTokenValidity())) {
+      throw new BadRequestException(TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+  }
+
+  private void settingUpdated(SettingsType settingsType) {
+    SettingsCache.invalidateSettings(settingsType.value());
+    postUpdate(settingsType);
   }
 
   public Settings getSlackbotConfigInternal() {
@@ -727,6 +801,7 @@ public class SystemRepository {
     probe.setContentType("text/plain");
     byte[] payload =
         "OpenMetadata object storage validation probe".getBytes(StandardCharsets.UTF_8);
+    probe.setSize(payload.length);
     StepValidation result;
     try {
       assetService
@@ -804,14 +879,6 @@ public class SystemRepository {
     StepValidation embeddingsValidation = new StepValidation();
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
-
-    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
-          .withPassed(false);
-    }
 
     String configMessage = getEmbeddingConfigurationMessage();
 
@@ -1118,6 +1185,10 @@ public class SystemRepository {
     boolean reindexNeeded() {
       return !stalePending.isEmpty() || !missingIndexes.isEmpty();
     }
+
+    boolean passed() {
+      return driftComputed && !reindexNeeded() && clusterHealthy;
+    }
   }
 
   static ReindexStatus classifyReindexStatus(
@@ -1246,19 +1317,25 @@ public class SystemRepository {
   }
 
   private StepValidation getReindexStatusValidation() {
-    StepValidation step =
-        new StepValidation().withDescription(ValidationStepDescription.SEARCH_REINDEX.key);
     SearchRepository searchRepository = Entity.getSearchRepository();
     StepValidation result;
     if (searchRepository.getSearchClient().isClientAvailable()) {
-      SearchReindexStatus status = computeSearchReindexStatus(searchRepository);
-      boolean healthy = status.driftComputed() && !status.reindexNeeded();
-      result = step.withPassed(healthy).withMessage(buildReindexStatusMessage(status));
+      result = buildReindexStepValidation(computeSearchReindexStatus(searchRepository));
     } else {
       result =
-          step.withPassed(Boolean.TRUE).withMessage("Skipped: search instance is not reachable.");
+          new StepValidation()
+              .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+              .withPassed(Boolean.TRUE)
+              .withMessage("Skipped: search instance is not reachable.");
     }
     return result;
+  }
+
+  static StepValidation buildReindexStepValidation(SearchReindexStatus status) {
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.SEARCH_REINDEX.key)
+        .withPassed(status.passed())
+        .withMessage(buildReindexStatusMessage(status));
   }
 
   private SearchReindexStatus computeSearchReindexStatus(SearchRepository searchRepository) {
@@ -1504,6 +1581,10 @@ public class SystemRepository {
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
 
+        // publicKeyUrls is derived from discoveryUri for confidential clients, so refresh it first
+        // or an updated discoveryUri gets rejected against the previously stored JWKS URL.
+        syncPublicKeyUrlsFromDiscovery(authConfig);
+
         // First validate all required fields from AuthenticationConfiguration schema
         FieldError baseError = validateAuthenticationConfigurationBaseFields(authConfig);
         if (baseError != null) {
@@ -1588,10 +1669,14 @@ public class SystemRepository {
             "authenticationConfiguration.providerName", "Provider name is required");
       }
 
-      if (authConfig.getJwtPrincipalClaims() == null
-          || authConfig.getJwtPrincipalClaims().isEmpty()) {
+      boolean hasEmailClaim = !nullOrEmpty(authConfig.getEmailClaim());
+      boolean hasJwtPrincipalClaims =
+          authConfig.getJwtPrincipalClaims() != null
+              && !authConfig.getJwtPrincipalClaims().isEmpty();
+      if (!hasEmailClaim && !hasJwtPrincipalClaims) {
         return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_JWT_PRINCIPAL_CLAIMS, "JWT principal claims are required");
+            FieldPaths.AUTH_EMAIL_CLAIM,
+            "Either 'emailClaim' or 'jwtPrincipalClaims' must be configured for identity resolution");
       }
 
       boolean isLdapOrSaml =
@@ -1647,13 +1732,18 @@ public class SystemRepository {
   private FieldError validateOidcConfiguration(
       AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
     try {
+      OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
+      FieldError tokenValidityError = validateOidcTokenValidity(oidcConfig);
+      if (tokenValidityError != null) {
+        return tokenValidityError;
+      }
+
       String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
       if ("confidential".equals(clientType)) {
-        if (authConfig.getOidcConfiguration() == null) {
+        if (oidcConfig == null) {
           return ValidationErrorBuilder.createFieldError(
               FieldPaths.OIDC_CLIENT_ID, "OIDC configuration is required");
         }
-        OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
 
         if (nullOrEmpty(oidcConfig.getId())) {
           return ValidationErrorBuilder.createFieldError(
@@ -1767,11 +1857,34 @@ public class SystemRepository {
     }
   }
 
+  @VisibleForTesting
+  static FieldError validateOidcTokenValidity(OidcClientConfig oidcConfig) {
+    if (oidcConfig != null
+        && TokenValidityResolver.isConfiguredInvalid(oidcConfig.getTokenValidity())) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.OIDC_TOKEN_VALIDITY, TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+    return null;
+  }
+
+  @VisibleForTesting
+  static FieldError validateSamlTokenValidity(SamlSSOClientConfig samlConfig) {
+    SamlSecurityConfig samlSecurity = samlConfig == null ? null : samlConfig.getSecurity();
+    if (samlSecurity != null
+        && TokenValidityResolver.isConfiguredInvalid(samlSecurity.getTokenValidity())) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.SAML_SECURITY_TOKEN_VALIDITY, TokenValidityResolver.VALIDATION_MESSAGE);
+    }
+    return null;
+  }
+
   /**
-   * Auto-populates publicKeyUrls from OIDC discovery document for confidential clients
-   * This is called during save operation to ensure publicKeyUrls is populated before persisting
+   * Re-derives publicKeyUrls from the OIDC discovery document for confidential clients, where the
+   * field is not user-editable. Runs on every save and validate so that changing discoveryUri does
+   * not leave a stale JWKS URL behind. A discovery failure is logged and leaves the current value
+   * untouched, so a transient outage never wipes a working configuration.
    */
-  public void autoPopulatePublicKeyUrlsIfNeeded(AuthenticationConfiguration authConfig) {
+  public void syncPublicKeyUrlsFromDiscovery(AuthenticationConfiguration authConfig) {
     if (authConfig == null) {
       return;
     }
@@ -1788,30 +1901,24 @@ public class SystemRepository {
     boolean isConfidentialClient = authConfig.getClientType() == ClientType.CONFIDENTIAL;
 
     if (!isOidcProvider || !isConfidentialClient) {
-      LOG.debug("Skipping publicKeyUrls auto-population - not OIDC confidential client");
-      return;
-    }
-
-    // Skip if already populated
-    if (authConfig.getPublicKeyUrls() != null && !authConfig.getPublicKeyUrls().isEmpty()) {
-      LOG.debug("publicKeyUrls already populated, skipping auto-population");
+      LOG.debug("Skipping publicKeyUrls resolution - not OIDC confidential client");
       return;
     }
 
     OidcClientConfig oidcConfig = authConfig.getOidcConfiguration();
     if (oidcConfig == null || nullOrEmpty(oidcConfig.getDiscoveryUri())) {
-      LOG.warn("Cannot auto-populate publicKeyUrls - missing oidcConfiguration or discoveryUri");
+      LOG.warn("Cannot resolve publicKeyUrls - missing oidcConfiguration or discoveryUri");
       return;
     }
 
     try {
       OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
-      discoveryValidator.autoPopulatePublicKeyUrls(oidcConfig.getDiscoveryUri(), authConfig);
+      discoveryValidator.syncPublicKeyUrlsFromDiscovery(oidcConfig.getDiscoveryUri(), authConfig);
       LOG.info(
-          "Auto-populated publicKeyUrls from discovery document for provider: {}",
+          "Resolved publicKeyUrls from discovery document for provider: {}",
           authConfig.getProvider());
     } catch (Exception e) {
-      LOG.error("Failed to auto-populate publicKeyUrls: {}", e.getMessage(), e);
+      LOG.error("Failed to resolve publicKeyUrls from discovery: {}", e.getMessage(), e);
     }
   }
 
@@ -2192,6 +2299,10 @@ public class SystemRepository {
   private FieldError validateSamlConfiguration(
       SamlSSOClientConfig samlConfig, OpenMetadataApplicationConfig applicationConfig) {
     try {
+      FieldError tokenValidityError = validateSamlTokenValidity(samlConfig);
+      if (tokenValidityError != null) {
+        return tokenValidityError;
+      }
       // Use enhanced SAML validator - this performs comprehensive validation
       // without affecting production settings
       SamlValidator samlValidator = new SamlValidator();
@@ -2213,17 +2324,19 @@ public class SystemRepository {
             "authorizerConfiguration.className", "Class name is required");
       }
 
-      // Validate admin principals
-      if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
+      boolean hasAdminEmails =
+          authzConfig.getAdminEmails() != null && !authzConfig.getAdminEmails().isEmpty();
+      boolean hasAdminPrincipals =
+          authzConfig.getAdminPrincipals() != null && !authzConfig.getAdminPrincipals().isEmpty();
+      if (!hasAdminEmails && !hasAdminPrincipals) {
         return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
+            FieldPaths.AUTHZ_ADMIN_EMAILS,
+            "Either 'adminEmails' or 'adminPrincipals' must be configured");
       }
 
-      // Validate principal domain (required field)
-      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
-        return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
-      }
+      // Neither domain field is required: an empty allowedEmailDomains means "allow every
+      // domain", and principalDomain falls back to SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN, so
+      // requiring one of them here would reject configurations that rely on those defaults.
 
       // Try to instantiate the authorizer class
       try {

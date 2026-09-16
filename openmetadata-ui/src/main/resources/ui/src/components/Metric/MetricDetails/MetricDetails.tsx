@@ -15,14 +15,13 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
-import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -42,10 +41,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -215,39 +211,26 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     []
   );
 
-  const {
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewSampleDataPermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          metricPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: metricPermissions.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          metricPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewSampleDataPermission:
-        getPrioritizedViewPermission(
-          metricPermissions,
-          Operation.ViewSampleData
-        ) && !deleted,
-      viewAllPermission: metricPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        metricPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+  // Named-flag derivation (Task 8 Batch 9), collapsing the 6-field block below into one
+  // deleted-gated getDerivedPermissionFlags call (DocumentationTab.component.tsx /
+  // TopicDetails.component.tsx precedent) — with one deliberate exception:
+  // viewSampleDataPermission ANDed `!deleted` in the OLD code (unlike its view-flag siblings
+  // viewAllPermission/viewCustomPropertiesPermission, which never did), so it can't just
+  // become the bare `canViewSampleData` flag (which — like every named view flag — is never
+  // deleted-gated) without silently regressing that one field. Applying `!deleted` explicitly
+  // at this one call site preserves the old asymmetric behavior exactly.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(metricPermissions, deleted),
     [metricPermissions, deleted]
   );
+  const {
+    canEditCustomFields: editCustomAttributePermission,
+    canEditAll: editAllPermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = flags;
+  const viewSampleDataPermission = flags.canViewSampleData && !deleted;
 
   useEffect(() => {
     fetchTaskCounts();
@@ -305,7 +288,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(metricDetails)}>
+    <PageLayoutV1
+      className="metric-details-page"
+      pageTitle={getEntityName(metricDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
@@ -328,22 +313,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             onVersionClick={onVersionChange}
           />
         </Col>
-        {metricDetails.derivedFrom && (
-          <Col data-testid="derived-from-link" span={24}>
-            <span className="tw:text-xs tw:text-tertiary">
-              {`${t('label.derived-from-memory')}: `}
-            </span>
-            <Link
-              className="tw:text-xs tw:text-brand-secondary hover:tw:underline"
-              to={`${
-                ROUTES.CONTEXT_CENTER_MEMORIES
-              }?memory=${encodeURIComponent(
-                metricDetails.derivedFrom.name ?? ''
-              )}`}>
-              {getEntityName(metricDetails.derivedFrom)}
-            </Link>
-          </Col>
-        )}
         <GenericProvider<Metric>
           customizedPage={customizedPage}
           data={metricDetails}

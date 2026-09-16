@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Fields } from '@react-awesome-query-builder/antd';
+import { Fields } from '@react-awesome-query-builder/ui';
 import { EntityType } from '../enums/entity.enum';
 import {
   QueryFieldInterface,
@@ -18,7 +18,6 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   addEntityTypeFilter,
-  buildExploreUrlParams,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
@@ -254,6 +253,53 @@ describe('getEntityTypeAggregationFilter', () => {
     },
   };
 
+  it('should return the original filter unchanged when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    expect(result).toEqual(baseQueryFilter);
+  });
+
+  it('should not inject entityType.keyword term into the filter when entityType is ALL', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.ALL
+    );
+
+    const firstMustBlock = (
+      result.query?.bool?.must as QueryFieldInterface[]
+    )?.[0];
+    const innerMust = firstMustBlock?.bool?.must as QueryFieldInterface[];
+
+    const hasEntityTypeKeyword = innerMust?.some(
+      (item) => item.term?.['entityType.keyword'] !== undefined
+    );
+
+    expect(hasEntityTypeKeyword).toBe(false);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and must array is empty', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(queryFilter, EntityType.ALL);
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should return the original filter unchanged when entityType is ALL and query is empty', () => {
+    const emptyFilter = {} as QueryFilterInterface;
+    const result = getEntityTypeAggregationFilter(emptyFilter, EntityType.ALL);
+
+    expect(result).toEqual(emptyFilter);
+  });
+
   it('should add entity type to the first must block', () => {
     const result = getEntityTypeAggregationFilter(
       { ...baseQueryFilter },
@@ -441,109 +487,5 @@ describe('jsonLogicToElasticsearch', () => {
         ],
       },
     });
-  });
-});
-
-describe('buildExploreUrlParams', () => {
-  const mockTree = { id: 'root', type: 'group', children1: {} };
-  const mockQFilter: QueryFilterInterface = {
-    query: {
-      bool: {
-        must: [{ term: { 'owner.displayName.keyword': 'admin' } }],
-      },
-    },
-  };
-
-  it('should return empty object when both tree and qFilter are empty', () => {
-    const result = buildExploreUrlParams({}, undefined);
-
-    expect(result).toEqual({});
-  });
-
-  it('should return only queryFilter when tree is provided but qFilter is empty', () => {
-    const result = buildExploreUrlParams(mockTree, undefined);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-    });
-    expect(result.quickFilter).toBeUndefined();
-  });
-
-  it('should return only quickFilter when qFilter has query but tree is empty', () => {
-    const result = buildExploreUrlParams({}, mockQFilter);
-
-    expect(result).toEqual({
-      quickFilter: JSON.stringify(mockQFilter),
-    });
-    expect(result.queryFilter).toBeUndefined();
-  });
-
-  it('should return both queryFilter and quickFilter when both are provided', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-      quickFilter: JSON.stringify(mockQFilter),
-    });
-  });
-
-  it('should not include quickFilter when qFilter exists but has no query property', () => {
-    const qFilterWithoutQuery = {
-      someOtherProp: 'value',
-    } as unknown as QueryFilterInterface;
-    const result = buildExploreUrlParams(mockTree, qFilterWithoutQuery);
-
-    expect(result).toEqual({
-      queryFilter: JSON.stringify(mockTree),
-    });
-    expect(result.quickFilter).toBeUndefined();
-  });
-
-  it('should handle null tree gracefully', () => {
-    const result = buildExploreUrlParams(null, mockQFilter);
-
-    expect(result).toEqual({
-      quickFilter: JSON.stringify(mockQFilter),
-    });
-  });
-
-  it('should return valid JSON strings', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
-
-    expect(() => JSON.parse(result.queryFilter!)).not.toThrow();
-    expect(() => JSON.parse(result.quickFilter!)).not.toThrow();
-  });
-
-  it('should produce params that can be URL encoded with proper separators', () => {
-    const result = buildExploreUrlParams(mockTree, mockQFilter);
-
-    const allParams = { mode: 'edit', ...result };
-    const queryString = new URLSearchParams(allParams).toString();
-
-    expect(queryString).toContain('mode=edit');
-    expect(queryString).toContain('&');
-    expect(queryString).toContain('queryFilter=');
-    expect(queryString).toContain('quickFilter=');
-
-    const decoded = new URLSearchParams(queryString);
-
-    expect(decoded.get('mode')).toBe('edit');
-    expect(JSON.parse(decoded.get('queryFilter')!)).toEqual(mockTree);
-    expect(JSON.parse(decoded.get('quickFilter')!)).toEqual(mockQFilter);
-  });
-
-  it('should work correctly when only queryFilter is present with other params', () => {
-    const result = buildExploreUrlParams(mockTree, undefined);
-
-    const allParams = { mode: 'view', ...result };
-    const queryString = new URLSearchParams(allParams).toString();
-
-    expect(queryString).toContain('mode=view');
-    expect(queryString).toContain('queryFilter=');
-    expect(queryString).not.toContain('quickFilter=');
-
-    const ampersandCount = (queryString.match(/&/g) || []).length;
-
-    expect(ampersandCount).toBe(1);
   });
 });

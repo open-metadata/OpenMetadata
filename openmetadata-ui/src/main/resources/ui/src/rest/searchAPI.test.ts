@@ -121,6 +121,35 @@ describe('searchAPI tests', () => {
     expect(res.hits.hits[0]._source.type).toBe('table');
   });
 
+  it('searchQuery should serialize AI governance asset indexes', async () => {
+    const mockGet = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: mockTableSearchResponse })
+      );
+
+    jest.mock('./index', () => ({
+      get: mockGet,
+    }));
+
+    const { searchQuery } = require('./searchAPI');
+
+    await searchQuery({
+      searchIndex: [
+        SearchIndex.AI_APPLICATION,
+        SearchIndex.LLM_MODEL,
+        SearchIndex.MCP_SERVER,
+      ],
+      query: '**',
+      fetchSource: true,
+    });
+
+    const [, config] = mockGet.mock.calls[0];
+
+    expect(config.params.index).toBe('aiApplication,llmModel,mcpServer');
+    expect(config.params.fetch_source).toBe(true);
+  });
+
   it('nlqSearch should forward query_filter', async () => {
     const mockGet = jest
       .fn()

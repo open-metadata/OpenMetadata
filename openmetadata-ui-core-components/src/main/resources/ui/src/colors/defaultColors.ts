@@ -12,28 +12,15 @@
  */
 
 /**
- * @fileoverview RESTRICTED: This file should only be imported by createMuiTheme.ts
- * @internal Use theme.palette.allShades for accessing colors in components
- *
  * This file contains default static colors that are used as fallbacks when
- * no custom colors are provided. These should not be used directly in components.
- * Instead, use the MUI theme system:
- *
- * ✅ Correct usage:
- * const theme = useTheme();
- * theme.palette.allShades.brand[600]
- *
- * ❌ Incorrect usage:
- * import { defaultColors } from './defaultColors';
- * defaultColors.brand[600]
+ * no custom colors are provided.
  */
 
 import type { ThemeColors } from '../types';
 
 /**
- * Default static colors for theme system
+ * Default static colors for the color system
  * Used as fallback when no custom colors are provided
- * @internal Only for use by createMuiTheme.ts
  */
 export const defaultColors: ThemeColors = {
   white: '#ffffff',

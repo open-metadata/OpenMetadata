@@ -28,8 +28,9 @@ export interface ConnectionStepPhases {
  * Splits the ordered test-connection steps into the connection "gate" (the step
  * that establishes connectivity) and the capability checks that only run once
  * the gate passes. The gate is the first step flagged `category: ConnectionGate`;
- * when no step is tagged we fall back to the first step, since connectors
- * conventionally lead with the connection/auth check (e.g. `CheckAccess`).
+ * when no step is tagged we fall back to the conventional `CheckAccess`
+ * connection/auth step. When neither exists every step is a capability check,
+ * so connectors without a gate step still render all their step accordions.
  */
 export const partitionConnectionSteps = (
   steps: TestConnectionStep[]
@@ -42,10 +43,15 @@ export const partitionConnectionSteps = (
     const taggedGateIndex = steps.findIndex(
       (step) => (step as StepWithCategory).category === CONNECTION_GATE_CATEGORY
     );
-    const gateIndex = taggedGateIndex >= 0 ? taggedGateIndex : 0;
     result = {
-      gateStep: steps[gateIndex],
-      capabilitySteps: steps.filter((_, index) => index !== gateIndex),
+      gateStep:
+        taggedGateIndex === -1
+          ? steps.find((step) => step.name === 'CheckAccess')
+          : steps[taggedGateIndex],
+      capabilitySteps:
+        taggedGateIndex === -1
+          ? steps.filter((step) => step.name !== 'CheckAccess')
+          : steps.filter((_, index) => index !== taggedGateIndex),
     };
   }
 

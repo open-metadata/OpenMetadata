@@ -22,6 +22,8 @@ import { CustomNodeData } from '../../../interface/WorkflowBuilder.interface';
 import { getCanvasNodeIcon } from '../../../utils/NodeIconUtils';
 import { getDisplayLabelFromSubType } from '../../../utils/NodeUtils';
 
+const TRANSLATE_Y_CENTER = 'translateY(-50%)';
+
 const HANDLE_CLASS_NAME =
   'tw:!w-2.5 tw:!h-2.5 tw:!border-2 tw:!border-brand-solid tw:!bg-primary';
 
@@ -52,7 +54,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -73,7 +75,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -99,9 +101,12 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   data,
   selected,
 }) => {
+  // Outline, not a ring: WebKit does not pixel-snap box-shadow. This ring had no
+  // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
+  // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:ring-2 tw:hover:ring-brand-solid',
-    { 'tw:ring-2 tw:ring-brand-solid': selected }
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
   return (
@@ -117,7 +122,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -150,7 +155,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -162,9 +167,12 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
   data,
   selected,
 }) => {
+  // Outline, not a ring: WebKit does not pixel-snap box-shadow. This ring had no
+  // `ring-inset`, so it drew outward from the border box — outline-offset 0 (the default)
+  // reproduces that exactly.
   const nodeClassName = classNames(
-    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:ring-2 tw:hover:ring-brand-solid',
-    { 'tw:ring-2 tw:ring-brand-solid': selected }
+    'tw:min-w-66 tw:relative tw:overflow-visible tw:transition-all tw:duration-200 tw:hover:outline-2 tw:hover:outline-brand-solid',
+    { 'tw:outline-2 tw:outline-brand-solid': selected }
   );
 
   return (
@@ -180,7 +188,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -213,7 +221,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />

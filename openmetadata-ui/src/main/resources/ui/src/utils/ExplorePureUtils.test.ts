@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import {
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   buildTreeCountQueryFilter,
+  findActiveSearchIndex,
   findTreeNodeKeyByBrowsePath,
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
@@ -822,6 +829,73 @@ describe('reconcilePresentRoots', () => {
     expect(result.map((node) => node.key)).toEqual(['Database', 'Dashboard']);
     expect(result[0]).toBe(liveDatabases);
     expect(result[1]).toBe(staticDashboards);
+  });
+});
+
+describe('findActiveSearchIndex', () => {
+  const tabsInTabOrder = (
+    indexes: ExploreSearchIndex[]
+  ): Record<ExploreSearchIndex, TabsInfoData> =>
+    indexes.reduce(
+      (acc, index) => ({ ...acc, [index]: {} as TabsInfoData }),
+      {} as Record<ExploreSearchIndex, TabsInfoData>
+    );
+
+  it('prefers the top relevance-ranked hit over the largest bucket', () => {
+    const counts = {
+      [SearchIndex.DASHBOARD]: 4,
+      [SearchIndex.CHART]: 1,
+    } as SearchHitCounts;
+
+    const result = findActiveSearchIndex(
+      counts,
+      tabsInTabOrder([SearchIndex.DASHBOARD, SearchIndex.CHART]),
+      SearchIndex.CHART
+    );
+
+    expect(result).toBe(SearchIndex.CHART);
+  });
+
+  it('falls back to the index with the most hits', () => {
+    const counts = {
+      [SearchIndex.DASHBOARD]: 1,
+      [SearchIndex.CHART]: 4,
+    } as SearchHitCounts;
+
+    const result = findActiveSearchIndex(
+      counts,
+      tabsInTabOrder([SearchIndex.DASHBOARD, SearchIndex.CHART])
+    );
+
+    expect(result).toBe(SearchIndex.CHART);
+  });
+
+  it('keeps the original tab order when counts tie', () => {
+    const counts = {
+      [SearchIndex.DASHBOARD]: 2,
+      [SearchIndex.CHART]: 2,
+    } as SearchHitCounts;
+
+    const result = findActiveSearchIndex(
+      counts,
+      tabsInTabOrder([SearchIndex.DASHBOARD, SearchIndex.CHART])
+    );
+
+    expect(result).toBe(SearchIndex.DASHBOARD);
+  });
+
+  it('returns null when no tab has any hits', () => {
+    const counts = {
+      [SearchIndex.DASHBOARD]: 0,
+      [SearchIndex.CHART]: 0,
+    } as SearchHitCounts;
+
+    const result = findActiveSearchIndex(
+      counts,
+      tabsInTabOrder([SearchIndex.DASHBOARD, SearchIndex.CHART])
+    );
+
+    expect(result).toBeNull();
   });
 });
 

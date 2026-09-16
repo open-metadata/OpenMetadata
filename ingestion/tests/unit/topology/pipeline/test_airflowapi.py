@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.utils.common.accessTokenConfig import Acce
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.airflow.api.client import AirflowApiClient
+from metadata.ingestion.source.pipeline.airflow.api.exceptions import AirflowApiResponseError
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
     AirflowApiDagRun,
@@ -204,6 +205,17 @@ class TestClientApiVersionDetection:
         assert client.api_version == "v1"
 
 
+# ── Client: Retry Configuration ──────────────────────────────────────────
+
+
+class TestClientRetryCodes:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_503_and_504_are_retried(self, mock_rest_cls):
+        _make_client(mock_rest_cls)
+        client_config = mock_rest_cls.call_args.args[0]
+        assert client_config.retry_codes == [503, 504]
+
+
 # ── Client: Build DAG Details ────────────────────────────────────────────
 
 
@@ -252,6 +264,94 @@ class TestClientBuildDagDetails:
         assert result.tasks[0].task_id == "extract"
         assert result.tasks[0].downstream_task_ids == ["transform"]
         assert result.tasks[0].class_ref["class_name"] == "PythonOperator"
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_task_fetch_error_is_not_converted_to_empty_tasks(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = TimeoutError("timed out")
+
+        with pytest.raises(TimeoutError, match="timed out"):
+            client.build_dag_details({"dag_id": "etl_pipeline"})
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_invalid_task_response_is_not_converted_to_empty_tasks(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {}
+
+        with pytest.raises(AirflowApiResponseError, match="Invalid tasks response"):
+            client.build_dag_details({"dag_id": "etl_pipeline"})
+
+
+# ── Client: DAG Count ────────────────────────────────────────────────────
+
+
+class TestClientGetDagsCount:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_total_entries(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": [{"dag_id": "d1"}], "total_entries": 42}
+
+        assert client.get_dags_count() == 42
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_when_total_entries_absent(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": []}
+
+        assert client.get_dags_count() is None
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_on_request_error(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = RequestsConnectionError("boom")
+
+        assert client.get_dags_count() is None
+
+
+# ── Source: Progress Totals ──────────────────────────────────────────────
+
+
+class TestDeclareProgressTotals:
+    def test_sets_pipeline_total_when_count_positive(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_called_once_with("Pipeline", 7)
+
+    def test_does_not_declare_when_count_none(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = None
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_count_zero(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 0
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_pipeline_filter_configured(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = True
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+        source.connection.get_dags_count.assert_not_called()
 
 
 # ── Client: Date Field ───────────────────────────────────────────────────
@@ -346,18 +446,81 @@ class TestPaginateGetAllDags:
         assert mock_rest.get.call_count == 3
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_server_capped_pages_advance_by_returned_page_size(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = [
+            {
+                "dags": [{"dag_id": f"dag_{i}"} for i in range(50)],
+                "total_entries": 150,
+            },
+            {
+                "dags": [{"dag_id": f"dag_{i}"} for i in range(50, 100)],
+                "total_entries": 150,
+            },
+            {
+                "dags": [{"dag_id": f"dag_{i}"} for i in range(100, 150)],
+                "total_entries": 150,
+            },
+        ]
+
+        result = client.get_all_dags()
+
+        assert [dag["dag_id"] for dag in result] == [f"dag_{i}" for i in range(150)]
+        assert [call.args[0] for call in mock_rest.get.call_args_list] == [
+            "/v1/dags?limit=100&offset=0",
+            "/v1/dags?limit=100&offset=50",
+            "/v1/dags?limit=100&offset=100",
+        ]
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_server_cap_without_total_entries_still_paginates(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = [
+            {"dags": [{"dag_id": f"dag_{i}"} for i in range(50)]},
+            {"dags": [{"dag_id": f"dag_{i}"} for i in range(50, 100)]},
+            {"dags": []},
+        ]
+
+        result = client.get_all_dags()
+
+        assert [dag["dag_id"] for dag in result] == [f"dag_{i}" for i in range(100)]
+        assert mock_rest.get.call_count == 3
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_unreadable_page_does_not_truncate_the_dag_list(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = [
+            {
+                "dags": [{"dag_id": f"dag_{i}"} for i in range(50)],
+                "total_entries": 150,
+            },
+            {},
+        ]
+
+        with pytest.raises(AirflowApiResponseError, match="offset=50"):
+            client.get_all_dags()
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_empty_page_before_total_entries_is_rejected(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": [], "total_entries": 1}
+
+        with pytest.raises(AirflowApiResponseError, match="offset=0"):
+            client.get_all_dags()
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
     def test_multiple_pages_without_total_entries(self, mock_rest_cls):
         client, mock_rest = _make_client(mock_rest_cls)
 
         page1 = {"dags": [{"dag_id": f"dag_{i}"} for i in range(100)]}
         page2 = {"dags": [{"dag_id": f"dag_{i}"} for i in range(100, 120)]}
-        mock_rest.get.side_effect = [page1, page2]
+        mock_rest.get.side_effect = [page1, page2, {"dags": []}]
 
         result = client.get_all_dags()
 
         assert len(result) == 120
         assert result[-1]["dag_id"] == "dag_119"
-        assert mock_rest.get.call_count == 2
+        assert mock_rest.get.call_count == 3
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
     def test_empty_response(self, mock_rest_cls):
@@ -865,3 +1028,74 @@ class TestClientGetDagRuns:
 
         runs = client.get_dag_runs("my_dag")
         assert runs == []
+
+
+class TestIncludeUnDeployedPipelines:
+    """REST path must honor includeUnDeployedPipelines like the DB path does."""
+
+    def _run(self, include_undeployed):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = include_undeployed
+        source.connection.get_all_dags.return_value = [
+            {"dag_id": "active_1", "is_paused": False},
+            {"dag_id": "paused_1", "is_paused": True},
+            {"dag_id": "active_2", "is_paused": False},
+        ]
+        source.connection.build_dag_details.side_effect = lambda dag: dag["dag_id"]
+
+        return list(AirflowApiSource.get_pipelines_list(source))
+
+    def test_excludes_paused_when_disabled(self):
+        assert self._run(False) == ["active_1", "active_2"]
+
+    def test_keeps_paused_when_enabled(self):
+        assert self._run(True) == ["active_1", "paused_1", "active_2"]
+
+
+class TestDagDetailFailureSafety:
+    def test_failed_dag_is_preserved_without_emitting_an_update(self):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = True
+        source.context.get.return_value.pipeline_service = "airflow_service"
+        source.connection.get_all_dags.return_value = [{"dag_id": "existing_dag"}]
+        source.connection.build_dag_details.side_effect = TimeoutError("tasks unavailable")
+        source._preserve_failed_dag = lambda dag_id: AirflowApiSource._preserve_failed_dag(source, dag_id)
+
+        result = list(AirflowApiSource.get_pipelines_list(source))
+
+        assert result == []
+        source.pipeline_source_state.add.assert_called_once_with("airflow_service.existing_dag")
+        source.status.failed.assert_called_once()
+        assert source._dag_listing_complete is True
+
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.api.source.fqn.build",
+        side_effect=ValueError("invalid FQN"),
+    )
+    def test_failed_state_registration_disables_stale_deletion(self, _mock_fqn):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = True
+        source.connection.get_all_dags.return_value = [{"dag_id": "existing_dag"}]
+        source.connection.build_dag_details.side_effect = TimeoutError("tasks unavailable")
+        source._preserve_failed_dag = lambda dag_id: AirflowApiSource._preserve_failed_dag(source, dag_id)
+
+        assert list(AirflowApiSource.get_pipelines_list(source)) == []
+        assert source._dag_listing_complete is False
+
+
+class TestDagListingFailureSafety:
+    def test_listing_failure_marks_the_listing_incomplete(self):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = True
+        source.connection.get_all_dags.side_effect = AirflowApiResponseError("invalid page")
+
+        with pytest.raises(AirflowApiResponseError, match="invalid page"):
+            list(AirflowApiSource.get_pipelines_list(source))
+
+        assert source._dag_listing_complete is False
+
+    def test_incomplete_listing_skips_stale_deletion(self):
+        source = MagicMock()
+        source._dag_listing_complete = False
+
+        assert list(AirflowApiSource.mark_pipelines_as_deleted(source)) == []

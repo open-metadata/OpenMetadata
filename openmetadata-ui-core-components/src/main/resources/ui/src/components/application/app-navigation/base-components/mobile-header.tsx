@@ -7,16 +7,22 @@ import {
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
 } from 'react-aria-components';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 
 export const MobileNavigationHeader = ({ children }: PropsWithChildren) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaDialogTrigger>
       <header className="tw:flex tw:h-16 tw:items-center tw:justify-between tw:border-b tw:border-secondary tw:bg-primary tw:py-3 tw:pr-2 tw:pl-4 tw:lg:hidden">
         <Home01 className="tw:size-8 tw:text-fg-primary" />
 
         <AriaButton
-          aria-label="Expand navigation menu"
+          aria-label={t(
+            'label.expand-navigation-menu',
+            'Expand navigation menu'
+          )}
           className="tw:group tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:bg-primary tw:p-2 tw:text-fg-secondary tw:outline-focus-ring tw:hover:bg-primary_hover tw:hover:text-fg-secondary_hover tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2">
           <Menu02 className="tw:size-6 tw:transition tw:duration-200 tw:ease-in-out tw:group-aria-expanded:opacity-0" />
           <CloseIcon className="tw:absolute tw:size-6 tw:opacity-0 tw:transition tw:duration-200 tw:ease-in-out tw:group-aria-expanded:opacity-100" />
@@ -37,7 +43,10 @@ export const MobileNavigationHeader = ({ children }: PropsWithChildren) => {
         {({ state }) => (
           <>
             <AriaButton
-              aria-label="Close navigation menu"
+              aria-label={t(
+                'label.close-navigation-menu',
+                'Close navigation menu'
+              )}
               className="tw:fixed tw:top-3 tw:right-2 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:p-2 tw:text-fg-white/70 tw:outline-focus-ring tw:hover:bg-white/10 tw:hover:text-fg-white tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
               onPress={() => state.close()}>
               <CloseIcon className="tw:size-6" />

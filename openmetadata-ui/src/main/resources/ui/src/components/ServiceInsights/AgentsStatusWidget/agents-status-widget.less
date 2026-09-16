@@ -20,8 +20,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: var(--om-space-8);
+      padding: var(--om-space-8) var(--om-space-12);
 
       &::before,
       &::after {
@@ -34,7 +34,7 @@
         justify-content: center;
         border: none;
         border-radius: 50%;
-        padding: 10px;
+        padding: var(--om-space-10);
         background-color: @grey-50;
         color: @grey-600;
       }
@@ -58,7 +58,7 @@
     border-width: 1px;
     border-style: solid;
     border-radius: 50%;
-    padding: 4px;
+    padding: var(--om-space-4);
 
     &.Running {
       border-color: @blue-39;
@@ -101,23 +101,23 @@
   .ant-collapse-arrow.expand-icon-container {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--om-space-12);
 
     .agent-status-summary-container {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
 
       .agent-status-summary-item {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: var(--om-space-6);
         border-width: 1px;
         border-style: solid;
         border-radius: 50vh;
-        padding: 2px 12px;
-        font-size: 14px;
-        font-weight: 500;
+        padding: var(--om-space-2) var(--om-space-12);
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-medium);
 
         &.Running {
           background-color: @blue-22;

@@ -13,6 +13,7 @@
 import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification-colored-new.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -48,7 +49,9 @@ export type CustomizeIconKeys =
   | PageType
   | 'govern'
   | 'dataAssets'
-  | 'navigation';
+  | 'navigation'
+  | 'app-mode'
+  | 'askCollateSidebar';
 
 const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
@@ -69,6 +72,8 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   ['dataAssets']: DataAssetsIcon,
   [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
+  ['app-mode']: AppModeIcon,
+  ['askCollateSidebar']: NavigationIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
@@ -98,6 +103,20 @@ class PersonaClassBase {
         isBeta: false,
         description: 'Customize left sidebar ',
         icon: entityIcons['navigation'],
+      },
+      {
+        key: 'app-mode',
+        label: i18n.t('label.app-mode'),
+        isBeta: false,
+        description: i18n.t('message.app-mode-description'),
+        icon: entityIcons['app-mode'],
+      },
+      {
+        key: 'askCollateSidebar',
+        label: i18n.t('label.app-mode-sidebar'),
+        isBeta: false,
+        description: i18n.t('message.customize-app-mode-sidebar-description'),
+        icon: entityIcons['askCollateSidebar'],
       },
       {
         key: PageType.LandingPage,

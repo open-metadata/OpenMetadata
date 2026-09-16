@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
@@ -26,6 +27,10 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-article' })),
+}));
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -44,11 +49,14 @@ jest.mock('../../../hooks/useClipBoard', () => ({
   useClipboard: jest.fn(() => ({ onCopyToClipBoard: mockCopyToClipBoard })),
 }));
 
-jest.mock('../../../utils/KnowledgePageUtils', () => ({
+jest.mock('../../../utils/KnowledgePagePureUtils', () => ({
   getKnowledgePageName: jest.fn(
     (entity?: { displayName?: string; name?: string }) =>
       entity?.displayName || entity?.name || 'label.untitled'
   ),
+}));
+
+jest.mock('../../../utils/KnowledgePageUtils', () => ({
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
@@ -95,6 +103,15 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock(
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest.fn(
+      ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+    ),
+  })
+);
+
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
@@ -102,12 +119,6 @@ jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
 jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn(({ name }: { name: string }) => <span>{name}</span>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
-    <span>{owners.map((o) => o.name).join(', ')}</span>
-  )),
-}));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn(() => <div data-testid="delete-modal" />)
@@ -130,14 +141,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Button: jest.fn(
     ({
       children,
       onClick,
+      'data-testid': testId,
     }: {
       children: React.ReactNode;
       onClick?: () => void;
-    }) => <button onClick={onClick}>{children}</button>
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )
   ),
   ButtonUtility: jest.fn(
     ({
@@ -197,6 +217,38 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        badge,
+        breadcrumb,
+        footer,
+        meta,
+        title,
+        variant,
+        'data-testid': dataTestId,
+      }: {
+        actions?: React.ReactNode;
+        badge?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        footer?: React.ReactNode;
+        meta?: React.ReactNode;
+        title: React.ReactNode;
+        variant?: string;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={dataTestId} data-variant={variant}>
+          {breadcrumb}
+          {title}
+          {badge}
+          {meta}
+          {actions}
+          {footer}
+        </div>
+      )
+    ),
+  },
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tabs: Object.assign(
     jest.fn(
@@ -219,6 +271,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  Owner: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners?.map((o) => o.name).join(', ')}</span>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
@@ -282,6 +340,7 @@ const defaultProps = {
 describe('ArticleDetailHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('renders the header with data-testid', () => {
@@ -294,6 +353,19 @@ describe('ArticleDetailHeader', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+  });
+
+  it('uses the embedded header presentation in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toHaveAttribute('data-variant', 'gradient');
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toContainElement(screen.getByTestId('breadcrumb'));
   });
 
   it('renders the article display name', () => {
@@ -338,6 +410,36 @@ describe('ArticleDetailHeader', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('manage-button')).toBeInTheDocument();
+  });
+
+  it('renders the edit-domain and edit-owner buttons when EditAll is granted', () => {
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-owner-btn')).toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit EditOwners: false must win over a bare EditAll: true grant (explicit-deny-wins)
+  // — the old raw `permissions.EditAll || permissions.EditOwners` OR let EditAll grant
+  // unconditionally, hiding this regression.
+  it('hides the edit-owner button when EditOwners is explicitly false, even with EditAll true', () => {
+    render(
+      <ArticleDetailHeader
+        {...defaultProps}
+        permissions={
+          {
+            ...mockPermissions,
+            EditAll: true,
+            EditOwners: false,
+          } as OperationPermission
+        }
+      />
+    );
+
+    // EditAll alone still grants the (non-field-specific) domain edit control.
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-owner-btn')).not.toBeInTheDocument();
   });
 
   it('shows the skeleton when knowledgePage and tabs are both undefined', () => {
@@ -386,33 +488,6 @@ describe('ArticleDetailHeader', () => {
     );
 
     expect(screen.getByText(/unsaved/i)).toBeInTheDocument();
-  });
-
-  it('shows the save button when contentChangeState is UN_SAVED and onSave is provided', () => {
-    render(
-      <ArticleDetailHeader
-        {...defaultProps}
-        contentChangeState={ContentChangeState.UN_SAVED}
-        onSave={jest.fn()}
-      />
-    );
-
-    expect(screen.getByText(/label\.save/i)).toBeInTheDocument();
-  });
-
-  it('calls onSave when the save button is clicked', () => {
-    const onSave = jest.fn();
-    render(
-      <ArticleDetailHeader
-        {...defaultProps}
-        contentChangeState={ContentChangeState.UN_SAVED}
-        onSave={onSave}
-      />
-    );
-
-    fireEvent.click(screen.getByText(/label\.save/i));
-
-    expect(onSave).toHaveBeenCalled();
   });
 
   it('calls onVoteChange when the up-vote button is clicked', async () => {
@@ -472,7 +547,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('share-btn'));
+    fireEvent.click(screen.getByTestId('copy-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });

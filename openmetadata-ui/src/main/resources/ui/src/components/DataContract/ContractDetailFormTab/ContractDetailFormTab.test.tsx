@@ -12,18 +12,35 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../../../generated/entity/data/dataContract';
 import { EntityReference } from '../../../generated/entity/type';
+import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { ContractDetailFormTab } from './ContractDetailFormTab';
 
 jest.mock('../../../utils/formUtils', () => ({
   generateFormFields: jest.fn((fields) =>
-    fields.map((field: any) => (
-      <div data-testid={field.props?.['data-testid']} key={field.name}>
-        <label>{field.label}</label>
-        <input data-testid={field.props?.['data-testid']} name={field.name} />
-      </div>
-    ))
+    fields.map(
+      (field: {
+        name: string;
+        label: string;
+        props?: Record<string, string>;
+      }) => (
+        <div data-testid={field.props?.['data-testid']} key={field.name}>
+          <label htmlFor={field.props?.['data-testid']}>
+            {field.label}
+            <input
+              aria-label={field.name}
+              data-testid={field.props?.['data-testid']}
+              id={field.props?.['data-testid']}
+              name={field.name}
+            />
+          </label>
+        </div>
+      )
+    )
   ),
 }));
 
@@ -34,6 +51,10 @@ jest.mock('react-i18next', () => ({
       const translations: Record<string, string> = {
         'label.contract-title': 'Contract Title',
         'label.owner-plural': 'Owners',
+        'label.status': 'Status',
+        'label.draft': 'Draft label',
+        'label.in-review': 'In Review label',
+        'label.approved': 'Approved label',
         'label.description': 'Description',
         'label.contract-detail-plural': 'Contract Details',
         'message.contract-detail-plural-description': 'Enter contract details',
@@ -86,6 +107,7 @@ describe('ContractDetailFormTab', () => {
 
       expect(screen.getByText('Enter contract details')).toBeInTheDocument();
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
     });
@@ -114,6 +136,7 @@ describe('ContractDetailFormTab', () => {
       render(<ContractDetailFormTab {...commonProps} />);
 
       expect(screen.getByText('Contract Title')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Description')).toBeInTheDocument();
       expect(screen.getByText('Owners')).toBeInTheDocument();
     });
@@ -247,6 +270,21 @@ describe('ContractDetailFormTab', () => {
           expect.objectContaining({
             name: 'owners',
             label: 'Owners',
+          }),
+          expect.objectContaining({
+            formItemProps: {
+              initialValue: EntityStatus.Draft,
+            },
+            name: 'entityStatus',
+            label: 'Status',
+            props: expect.objectContaining({
+              options: [
+                { label: 'Draft label', value: EntityStatus.Draft },
+                { label: 'In Review label', value: EntityStatus.InReview },
+                { label: 'Approved label', value: EntityStatus.Approved },
+              ],
+            }),
+            type: FieldTypes.SELECT,
           }),
           expect.objectContaining({
             name: 'description',

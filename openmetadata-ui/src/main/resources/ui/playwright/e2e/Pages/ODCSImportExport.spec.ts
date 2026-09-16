@@ -50,8 +50,7 @@ import {
 } from '../../utils/odcsImportExport';
 import { test } from '../fixtures/pages';
 
-test.describe('ODCS Import/Export', () => {
-  test.slow(true);
+test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

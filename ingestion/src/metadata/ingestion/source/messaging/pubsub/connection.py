@@ -14,7 +14,6 @@ Source connection handler for Google Cloud Pub/Sub
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from google.api_core.exceptions import GoogleAPIError
 from google.cloud import pubsub_v1
@@ -49,11 +48,11 @@ PUBSUB_EMULATOR_HOST = "PUBSUB_EMULATOR_HOST"
 class PubSubClient:
     publisher: pubsub_v1.PublisherClient
     subscriber: pubsub_v1.SubscriberClient
-    schema_client: Optional[SchemaServiceClient]  # noqa: UP045
+    schema_client: SchemaServiceClient | None
     project_id: str
 
 
-def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noqa: UP045
+def _get_project_id(connection: PubSubConnectionConfig) -> str | None:
     """
     Get project ID from connection config or from credentials.
     Returns None if project ID cannot be determined.
@@ -83,60 +82,57 @@ def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noq
     return None
 
 
-def get_connection(connection: PubSubConnectionConfig) -> PubSubClient:
-    """
-    Create Pub/Sub client connection.
-
-    Raises:
-        ValueError: If project_id cannot be determined from connection config.
-    """
-    try:
-        if connection.useEmulator and connection.hostPort:
-            if connection.hostPort == "pubsub.googleapis.com":
-                raise ValueError(
-                    "When using the Pub/Sub emulator, 'hostPort' must be set "
-                    "to the emulator address (e.g. 'localhost:8085'), "
-                    "not the production endpoint."
-                )
-            os.environ[PUBSUB_EMULATOR_HOST] = connection.hostPort
-        else:
-            if not connection.gcpConfig:
-                raise ValueError("gcpConfig is required when not using the emulator.")
-            set_google_credentials(connection.gcpConfig)
-            if PUBSUB_EMULATOR_HOST in os.environ:
-                del os.environ[PUBSUB_EMULATOR_HOST]
-
-        publisher = pubsub_v1.PublisherClient()
-        subscriber = pubsub_v1.SubscriberClient()
-
-        schema_client = None
-        if connection.schemaRegistryEnabled and not connection.useEmulator:
-            schema_client = SchemaServiceClient()
-
-        project_id = _get_project_id(connection)
-        if not project_id:
-            raise ValueError("Project ID is required. Provide it via 'projectId' config or in GCP credentials.")
-
-        return PubSubClient(
-            publisher=publisher,
-            subscriber=subscriber,
-            schema_client=schema_client,
-            project_id=project_id,
-        )
-    finally:
-        if connection.useEmulator and PUBSUB_EMULATOR_HOST in os.environ:
-            del os.environ[PUBSUB_EMULATOR_HOST]
-
-
 class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
     def _get_client(self) -> PubSubClient:
-        return get_connection(self.service_connection)
+        """
+        Create Pub/Sub client connection.
+
+        Raises:
+            ValueError: If project_id cannot be determined from connection config.
+        """
+        connection = self.service_connection
+        try:
+            if connection.useEmulator and connection.hostPort:
+                if connection.hostPort == "pubsub.googleapis.com":
+                    raise ValueError(
+                        "When using the Pub/Sub emulator, 'hostPort' must be set "
+                        "to the emulator address (e.g. 'localhost:8085'), "
+                        "not the production endpoint."
+                    )
+                os.environ[PUBSUB_EMULATOR_HOST] = connection.hostPort
+            else:
+                if not connection.gcpConfig:
+                    raise ValueError("gcpConfig is required when not using the emulator.")
+                set_google_credentials(connection.gcpConfig)
+                if PUBSUB_EMULATOR_HOST in os.environ:
+                    del os.environ[PUBSUB_EMULATOR_HOST]
+
+            publisher = pubsub_v1.PublisherClient()
+            subscriber = pubsub_v1.SubscriberClient()
+
+            schema_client = None
+            if connection.schemaRegistryEnabled and not connection.useEmulator:
+                schema_client = SchemaServiceClient()
+
+            project_id = _get_project_id(connection)
+            if not project_id:
+                raise ValueError("Project ID is required. Provide it via 'projectId' config or in GCP credentials.")
+
+            return PubSubClient(
+                publisher=publisher,
+                subscriber=subscriber,
+                schema_client=schema_client,
+                project_id=project_id,
+            )
+        finally:
+            if connection.useEmulator and PUBSUB_EMULATOR_HOST in os.environ:
+                del os.environ[PUBSUB_EMULATOR_HOST]
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

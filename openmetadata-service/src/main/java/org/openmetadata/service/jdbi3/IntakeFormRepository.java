@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INTAKE_FORM;
 
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +25,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.IntakeFormResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.IntakeFormUtil;
 
 @Slf4j
 @Repository
 public class IntakeFormRepository extends EntityRepository<IntakeForm> {
-  private static final String UPDATE_FIELDS = "owners,requiredFields,enabled,entityType";
+  private static final String UPDATE_FIELDS = "owners,formFields,requiredFields,enabled,entityType";
 
   public IntakeFormRepository() {
     super(
@@ -42,7 +45,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
 
   @Override
   public void setFields(IntakeForm entity, Fields fields, RelationIncludes relationIncludes) {
-    // No inherited or lazy fields — all state lives on the entity JSON
+    IntakeFormUtil.synchronizeFields(entity);
   }
 
   @Override
@@ -55,17 +58,24 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     if (entity.getEntityType() == null) {
       throw new IllegalArgumentException("IntakeForm requires entityType");
     }
+    IntakeFormUtil.synchronizeFields(entity);
     ensureUniquePerEntityType(entity, update);
   }
 
   @Override
   public void storeEntity(IntakeForm entity, boolean update) {
+    IntakeFormUtil.synchronizeFields(entity);
     store(entity, update);
   }
 
   @Override
   public void storeRelationships(IntakeForm entity) {
     // No cross-entity relationships for IntakeForm
+  }
+
+  @Override
+  protected boolean shouldCleanupFqnDependents() {
+    return false;
   }
 
   /**
@@ -79,10 +89,36 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
     if (json == null) return null;
     IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
+    IntakeFormUtil.synchronizeFields(form);
     if (Boolean.FALSE.equals(form.getEnabled())) {
       return null;
     }
     return form;
+  }
+
+  /**
+   * Drops a deleted custom property from this entityType's IntakeForm. Routed through the standard
+   * EntityUpdater so the cascade increments the version and produces a changeDescription and change
+   * event — storing directly would leave the version untouched, letting a client PUT a stale copy
+   * past the optimistic-lock check.
+   */
+  public void removeCustomPropertyField(String entityType, String propertyName, String updatedBy) {
+    String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
+    if (!nullOrEmpty(json)) {
+      IntakeForm original = JsonUtils.readValue(json, IntakeForm.class);
+      IntakeFormUtil.synchronizeFields(original);
+      IntakeForm updated = JsonUtils.deepCopy(original, IntakeForm.class);
+      if (IntakeFormUtil.removeCustomPropertyField(updated, propertyName)) {
+        updated.setUpdatedBy(updatedBy);
+        getUpdater(original, updated, Operation.PATCH, null).update();
+        // Change events are normally emitted by ChangeEventHandler, a REST
+        // response filter. This cascade runs inside the Type update request, so
+        // that filter only ever sees the Type — without this the IntakeForm
+        // silently changes version with no event for subscribers to consume.
+        createAndInsertChangeEvent(
+            original, updated, updated.getChangeDescription(), ENTITY_UPDATED);
+      }
+    }
   }
 
   private void ensureUniquePerEntityType(IntakeForm entity, boolean update) {
@@ -117,6 +153,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("entityType", original.getEntityType(), updated.getEntityType());
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
+      recordChange("formFields", original.getFormFields(), updated.getFormFields());
       recordChange("requiredFields", original.getRequiredFields(), updated.getRequiredFields());
     }
   }

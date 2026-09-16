@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
@@ -40,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -77,6 +79,11 @@ public abstract class ServiceEntityRepository<
             FIELD_DISPLAY_NAME,
             PropagationDescriptor.PropagationType.NESTED_FIELD,
             "service.displayName"));
+    if (supportsStyle) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    }
     return descriptors;
   }
 
@@ -161,6 +168,21 @@ public abstract class ServiceEntityRepository<
   }
 
   @Override
+  protected T restorePatchSecrets(T original, T updated) {
+    if (original.getConnection() != null && updated.getConnection() != null) {
+      Object restoredConfig =
+          EntityMaskerFactory.getEntityMasker()
+              .unmaskServiceConnectionConfig(
+                  updated.getConnection().getConfig(),
+                  original.getConnection().getConfig(),
+                  updated.getServiceType().value(),
+                  serviceType);
+      updated.getConnection().setConfig(restoredConfig);
+    }
+    return updated;
+  }
+
+  @Override
   public void storeEntity(T service, boolean update) {
     store(service, update);
   }
@@ -187,7 +209,8 @@ public abstract class ServiceEntityRepository<
     dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
     // Direct dao.update skips invalidateCachesAfterStore, so the next read would serve the
     // pre-test-connection JSON from cache. Drop every cached variant for this service.
-    invalidateCacheForEntity(entityType, serviceId, service.getFullyQualifiedName());
+    EntityRepository.invalidateCacheForEntity(
+        entityType, serviceId, service.getFullyQualifiedName());
     return service;
   }
 

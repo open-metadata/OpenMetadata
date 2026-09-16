@@ -49,10 +49,20 @@ const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
   FieldTypes.DOMAIN_SELECT,
 ]);
 
+const MULTIPLE_SELECTION_FIELD_TYPES = new Set<FieldTypes>([
+  FieldTypes.MULTI_SELECT,
+  FieldTypes.USER_MULTI_SELECT,
+]);
+
 const isMultipleSelection = (
+  type: FieldTypes,
   value: string | string[],
   props: FieldPropsMap
 ) => {
+  if (MULTIPLE_SELECTION_FIELD_TYPES.has(type)) {
+    return true;
+  }
+
   if (typeof props.multiple === 'boolean') {
     return props.multiple;
   }
@@ -119,7 +129,7 @@ export const renderFieldElement = (
   const selectItems = getItems(props);
 
   if (AUTOCOMPLETE_FIELD_TYPES.has(type)) {
-    const multiple = isMultipleSelection(field.value, props);
+    const multiple = isMultipleSelection(type, field.value, props);
     const selectedAutocompleteItems = getSelectedItems(field.value);
 
     const handleInsert = (key: Key) => {
@@ -188,6 +198,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -212,6 +230,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -235,6 +261,14 @@ export const renderFieldElement = (
           value={field.value ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}
@@ -259,6 +293,14 @@ export const renderFieldElement = (
           value={field.value ?? props.initialValue ?? ''}
           {...rest}
           onBlur={() => {
+            // Trim on blur (not on every keystroke) so leading/trailing
+            // whitespace is stripped from the submitted RHF value without
+            // stopping the user from typing internal spaces mid-word.
+            const trimmed = ((field.value ?? '') as string).trim();
+            if (trimmed !== field.value) {
+              field.onChange(trimmed);
+              onChange?.(trimmed);
+            }
             field.onBlur();
             onBlur?.();
           }}

@@ -18,7 +18,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AIFrameworkControl;
+import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpExecution;
 import org.openmetadata.schema.entity.ai.McpServer;
@@ -43,6 +46,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
@@ -78,7 +82,10 @@ import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.APIServiceIndex;
 import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.AiApplicationIndex;
+import org.openmetadata.service.search.indexes.AiFrameworkControlIndex;
+import org.openmetadata.service.search.indexes.AiGovernanceFrameworkIndex;
 import org.openmetadata.service.search.indexes.AiGovernancePolicyIndex;
+import org.openmetadata.service.search.indexes.AuditReportIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -114,6 +121,7 @@ import org.openmetadata.service.search.indexes.PromptTemplateIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
+import org.openmetadata.service.search.indexes.RelationshipTypeIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
@@ -226,6 +234,16 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void storedProcedureReindexFieldsIncludeService() {
+    // service is stripped from storage JSON (StoredProcedureRepository
+    // .getFieldsStrippedFromStorageJson returns ["service"]) and re-derived from the parent schema
+    // by setFieldsInBulk only when requested. Without it in the reindex field set the
+    // ServiceBackedIndex mixin sees a null service and the stored_procedure_search_index doc loses
+    // its service, breaking service-scoped Explore filters and aggregations for stored procedures.
+    assertReindexFields(Entity.STORED_PROCEDURE, Entity.FIELD_SERVICE);
+  }
+
+  @Test
   void glossaryTermReindexFieldsIncludeRelatedTerms() {
     assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms");
   }
@@ -267,16 +285,15 @@ class SearchIndexFactoryTest {
 
   @Test
   void testCaseReindexFieldsIncludeSuiteDefinitionAndResult() {
-    // testCaseResult/incidentId are stripped from storage JSON and only fetched by setFieldsInBulk
-    // when requested. Reindex without them produces docs missing testCaseStatus, blanking statuses
-    // in the UI.
+    // testCaseResult is stripped from storage JSON and only fetched by setFieldsInBulk when
+    // requested. Reindex without it produces docs missing testCaseStatus, blanking statuses in
+    // the UI. incidentId is no longer required here: it is derived at index time.
     assertReindexFields(
         Entity.TEST_CASE,
         TestCaseRepository.TEST_SUITE_FIELD,
         Entity.FIELD_TEST_SUITES,
         TestCaseRepository.TEST_DEFINITION_FIELD,
-        Entity.TEST_CASE_RESULT,
-        TestCaseRepository.INCIDENTS_FIELD);
+        Entity.TEST_CASE_RESULT);
   }
 
   @Test
@@ -379,6 +396,10 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),
+        Arguments.of(
+            Entity.RELATIONSHIP_TYPE,
+            (Supplier<Object>) RelationshipType::new,
+            RelationshipTypeIndex.class),
         Arguments.of(Entity.MLMODEL, (Supplier<Object>) MlModel::new, MlModelIndex.class),
         Arguments.of(Entity.LLM_MODEL, (Supplier<Object>) LLMModel::new, LlmModelIndex.class),
         Arguments.of(
@@ -391,6 +412,16 @@ class SearchIndexFactoryTest {
             Entity.AI_GOVERNANCE_POLICY,
             (Supplier<Object>) AIGovernancePolicy::new,
             AiGovernancePolicyIndex.class),
+        Arguments.of(
+            Entity.AI_GOVERNANCE_FRAMEWORK,
+            (Supplier<Object>) AIGovernanceFramework::new,
+            AiGovernanceFrameworkIndex.class),
+        Arguments.of(
+            Entity.AI_FRAMEWORK_CONTROL,
+            (Supplier<Object>) AIFrameworkControl::new,
+            AiFrameworkControlIndex.class),
+        Arguments.of(
+            Entity.AUDIT_REPORT, (Supplier<Object>) AuditReport::new, AuditReportIndex.class),
         Arguments.of(Entity.TAG, (Supplier<Object>) Tag::new, TagIndex.class),
         Arguments.of(
             Entity.CLASSIFICATION,

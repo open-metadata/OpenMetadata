@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -19,6 +18,7 @@ import { SubDomain } from '../../support/domain/SubDomain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   runDrawerQuickFilterMatrix,
@@ -35,15 +35,16 @@ import {
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Product Comprehensive Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -67,8 +68,8 @@ test.describe('Data Product Comprehensive Tests', () => {
 
         const domainPatch = {
           op: 'add' as const,
-          path: '/domains/0',
-          value: { id: domain.responseData.id, type: 'domain' },
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
         };
 
         await tieredTable.create(apiContext);
@@ -153,7 +154,7 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Fill the form - use locator for MUI TextField input
+      // Fill the form - use locator for the text field input
       const dpName = `PW-DataProduct-${uuid()}`;
       await page.getByTestId('name').locator('input').fill(dpName);
 
@@ -248,10 +249,9 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
       const maxRetries = 5;
 
       for (let retry = 0; retry < maxRetries; retry++) {
@@ -323,10 +323,11 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Search for a tag
       await page.getByTestId('tag-selector').click();
+      const tagSearchResponse = page.waitForResponse('/api/v1/search/query*');
       await page.keyboard.type('Personal');
 
       // Wait for search results
-      await page.waitForResponse('/api/v1/search/query*');
+      await tagSearchResponse;
 
       // Select the tag (use first() to handle duplicates)
       await page.getByTestId('tag-PersonalData.Personal').first().click();
@@ -348,6 +349,7 @@ test.describe('Data Product Comprehensive Tests', () => {
   });
 
   test('Add assets to data product and verify count', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -364,8 +366,8 @@ test.describe('Data Product Comprehensive Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -386,30 +388,27 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Search for table
-      const searchRes = page.waitForResponse('/api/v1/search/query*');
-      await page
-        .getByTestId('asset-selection-modal')
-        .getByTestId('searchbar')
-        .fill(table.entityResponseData.name);
-      await searchRes;
-
-      // Select the table by clicking the checkbox in the card
-      const tableCheckbox = page
-        .getByTestId('asset-selection-modal')
-        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
+      const assetModal = page.getByTestId('asset-selection-modal');
+      const assetName = table.entityResponseData.name;
+      // The card exposes the name either through a data-testid or as plain
+      // text, so match both rather than probing one and falling back.
+      const assetCard = assetModal
+        .locator(`[data-testid*="${assetName}"]`)
+        .or(assetModal.getByText(assetName))
         .first();
 
-      if (await tableCheckbox.isVisible()) {
-        await tableCheckbox.click();
-      } else {
-        // Try clicking the text directly
-        await page
-          .getByTestId('asset-selection-modal')
-          .getByText(table.entityResponseData.name)
-          .first()
-          .click();
-      }
+      // The modal re-queries only when the search text changes, and a table
+      // created moments ago may not be in the search index yet -- so a single
+      // fill can settle on an empty result set that never refreshes. Re-type
+      // to re-issue the query until the asset actually shows up.
+      await expect(async () => {
+        await assetModal.getByTestId('searchbar').fill('');
+        await assetModal.getByTestId('searchbar').fill(assetName);
+
+        await expect(assetCard).toBeVisible({ timeout: 5_000 });
+      }).toPass({ timeout: 60_000 });
+
+      await assetCard.click();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
@@ -477,8 +476,6 @@ test.describe('Data Product Comprehensive Tests', () => {
 });
 
 test.describe('Multiple Subdomains Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -631,8 +628,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain1.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain1.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -643,8 +640,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain2.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain2.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -746,8 +743,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -799,9 +796,8 @@ test.describe('Multiple Subdomains Tests', () => {
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -830,8 +826,6 @@ test.describe('Multiple Subdomains Tests', () => {
 });
 
 test.describe('Data Product Search and Filter', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -852,9 +846,12 @@ test.describe('Data Product Search and Filter', () => {
       const searchBox = page
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
+      const dataProductSearchResponse = page.waitForResponse(
+        '/api/v1/search/query*'
+      );
       await searchBox.fill(uniqueName);
 
-      await page.waitForResponse('/api/v1/search/query*');
+      await dataProductSearchResponse;
 
       // Verify the data product appears in results
       await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();
@@ -931,8 +928,6 @@ test.describe('Data Product Search and Filter', () => {
 });
 
 test.describe('Data Product Name in Entity Name Cell', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

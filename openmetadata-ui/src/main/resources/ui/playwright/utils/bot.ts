@@ -13,13 +13,14 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -94,7 +95,7 @@ export const createBot = async (page: Page) => {
   await page.click('[data-testid="token-expiry"]');
   await page.locator('[title="1 hour"] div').click();
 
-  await page.locator(descriptionBox).fill(BOT_DETAILS.description);
+  await fillDescriptionBox(page, BOT_DETAILS.description);
 
   const saveResponse = page.waitForResponse(
     (response) =>
@@ -111,9 +112,7 @@ export const createBot = async (page: Page) => {
     page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
   ).toBeVisible();
 
-  await expect(
-    page.getByRole('cell', { name: BOT_DETAILS.description })
-  ).toBeVisible();
+  await expect(getCellByName(page, BOT_DETAILS.description)).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
@@ -135,9 +134,7 @@ export const deleteBot = async (page: Page) => {
   // Click on delete button
   await page.getByTestId(`bot-delete-${botName}`).click();
 
-  await page.getByTestId('hard-delete-option').click();
-
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  await page.getByTestId('hard-delete').click();
 
   const deleteResponse = page.waitForResponse(`/api/v1/bots/*`);
 
@@ -168,7 +165,7 @@ export const updateBotDetails = async (page: Page) => {
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();
-  await page.locator(descriptionBox).fill(BOT_DETAILS.updatedDescription);
+  await fillDescriptionBox(page, BOT_DETAILS.updatedDescription);
 
   const updateDescriptionResponse = page.waitForResponse(`api/v1/bots/*`);
   await page.getByTestId('save').click();
@@ -341,26 +338,27 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
   await waitForAllLoadersToDisappear(page);
 
-  const isRevokeButtonVisible = await page
-    .getByTestId('revoke-button')
-    .isVisible();
-  const isAuthMechanismVisible = await page
-    .getByTestId('auth-mechanism')
-    .isVisible();
+  await expect(page.getByTestId('left-panel')).toBeVisible();
 
-  if (isRevokeButtonVisible) {
-    await page.getByTestId('revoke-button').click();
+  const revokeButton = page.getByTestId('revoke-button');
+  const authMechanism = page.getByTestId('auth-mechanism');
+
+  // Button render can lag the page loader; wait instead of a one-shot isVisible() check.
+  await expect(revokeButton.or(authMechanism)).toBeVisible({ timeout: 15000 });
+
+  if (await revokeButton.isVisible()) {
+    await revokeButton.click();
 
     await expect(page.getByTestId('save-button')).toBeVisible();
 
     await page.getByTestId('save-button').click();
 
     await waitForAllLoadersToDisappear(page);
-  } else if (isAuthMechanismVisible) {
-    await page.getByTestId('auth-mechanism').click();
+  } else if (await authMechanism.isVisible()) {
+    await authMechanism.click();
   }
 
-  await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
+  await expect(page.getByTestId('token-expiry')).toBeVisible();
 
   await page.getByTestId('token-expiry').click();
   await page.getByText('Unlimited').click();

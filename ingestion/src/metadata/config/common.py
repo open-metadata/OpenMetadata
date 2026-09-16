@@ -17,7 +17,7 @@ import json
 import os
 import pathlib
 from abc import ABC, abstractmethod
-from typing import IO, Any, Optional
+from typing import IO, Any
 
 import yaml
 from pydantic import ConfigDict
@@ -35,7 +35,7 @@ class DynamicTypedConfig(ConfigModel):
     """Class definition for Dynamic Typed Config"""
 
     type: str
-    config: Optional[Any] = None  # noqa: UP045
+    config: Any | None = None
 
 
 class WorkflowExecutionError(Exception):

@@ -18,7 +18,6 @@ import {
   getAddServicePath,
   getEditConnectionPath,
   getEditIngestionPath,
-  getLogsViewerPath,
   getPathByServiceFQN,
   getServiceDetailsPath,
   getSettingPath,
@@ -31,6 +30,18 @@ class ConnectionsRouterClassBase {
   }
 
   public isEmbeddedMode(): boolean {
+    return false;
+  }
+
+  /**
+   * True only when another surface *permanently* owns the service listing, so the settings route
+   * is dead weight rather than a second way in.
+   *
+   * Deliberately not `isEmbeddedMode()`: that is also true while Classic is merely showing an
+   * embedded experience, and Classic's own Settings > Services must keep working throughout.
+   * Overridden where an app mode replaces the listing outright.
+   */
+  public isServicesSettingsRouteDisabled(): boolean {
     return false;
   }
 
@@ -80,14 +91,6 @@ class ConnectionsRouterClassBase {
       ingestionFqn,
       ingestionType
     );
-  }
-
-  public getLogsViewerPath(
-    logEntityType: string,
-    logEntityName: string,
-    ingestionName: string
-  ): string {
-    return getLogsViewerPath(logEntityType, logEntityName, ingestionName);
   }
 }
 

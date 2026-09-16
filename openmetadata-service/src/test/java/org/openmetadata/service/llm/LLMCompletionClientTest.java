@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 
 class LLMCompletionClientTest {
 
+  record PillLike(
+      String title, String question, String answer, String summary, String memoryType) {}
+
   private static final class StubClient extends LLMCompletionClient {
     private final String response;
 
@@ -49,8 +52,7 @@ class LLMCompletionClientTest {
   void completeStructuredParsesPillArray() {
     String json =
         "[{\"title\":\"T\",\"question\":\"Q\",\"answer\":\"A\",\"summary\":\"S\",\"memoryType\":\"Faq\"}]";
-    List<KnowledgePill> pills =
-        new StubClient(json).completeStructured("sys", "user", KnowledgePill.class);
+    List<PillLike> pills = new StubClient(json).completeStructured("sys", "user", PillLike.class);
     assertEquals(1, pills.size());
     assertEquals("Q", pills.get(0).question());
   }
@@ -58,8 +60,7 @@ class LLMCompletionClientTest {
   @Test
   void completeStructuredStripsCodeFence() {
     String json = "```json\n[{\"question\":\"Q\",\"answer\":\"A\"}]\n```";
-    List<KnowledgePill> pills =
-        new StubClient(json).completeStructured("sys", "user", KnowledgePill.class);
+    List<PillLike> pills = new StubClient(json).completeStructured("sys", "user", PillLike.class);
     assertEquals(1, pills.size());
     assertEquals("A", pills.get(0).answer());
   }

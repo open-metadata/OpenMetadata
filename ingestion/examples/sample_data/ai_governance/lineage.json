@@ -1,0 +1,79 @@
+[
+  {
+    "fromType": "llmModel",
+    "fromFqn": "ai_governance_llm.gpt_4o_claims_prod",
+    "toType": "aiApplication",
+    "toFqn": "claims-triage-copilot",
+    "description": "Primary model used to classify claim urgency, summarize claim notes, and draft adjuster next steps."
+  },
+  {
+    "fromType": "mcpServer",
+    "fromFqn": "ai_governance_mcp.customer_profile_tools",
+    "toType": "aiApplication",
+    "toFqn": "claims-triage-copilot",
+    "description": "MCP tools provide policy, customer profile, and claim history context to the copilot."
+  },
+  {
+    "fromType": "llmModel",
+    "fromFqn": "ai_governance_llm.gemini_finance_forecast",
+    "toType": "aiApplication",
+    "toFqn": "finance-forecast-agent",
+    "description": "Reasoning model used to synthesize variance explanations and forecast narrative summaries."
+  },
+  {
+    "fromType": "mcpServer",
+    "fromFqn": "ai_governance_mcp.warehouse_sql_query",
+    "toType": "aiApplication",
+    "toFqn": "finance-forecast-agent",
+    "description": "Warehouse query MCP server retrieves governed finance metrics and budget variance slices."
+  },
+  {
+    "fromType": "llmModel",
+    "fromFqn": "ai_governance_llm.claude_3_hr_screening",
+    "toType": "aiApplication",
+    "toFqn": "hr-screening-assistant",
+    "description": "Screening review model summarizes candidate packets and produces recruiter review notes."
+  },
+  {
+    "fromType": "llmModel",
+    "fromFqn": "ai_governance_llm.mistral_support_answering",
+    "toType": "aiApplication",
+    "toFqn": "support-answer-assistant",
+    "description": "Primary support response model drafts customer answers from approved knowledge context."
+  },
+  {
+    "fromType": "llmModel",
+    "fromFqn": "ai_governance_llm.text_embedding_3_large",
+    "toType": "aiApplication",
+    "toFqn": "support-answer-assistant",
+    "description": "Embedding model powers retrieval over support knowledge articles before response generation."
+  },
+  {
+    "fromType": "mcpServer",
+    "fromFqn": "ai_governance_mcp.slack_workflow_actions",
+    "toType": "aiApplication",
+    "toFqn": "support-answer-assistant",
+    "description": "Slack workflow MCP server routes approved answer drafts and escalation notices to support channels."
+  },
+  {
+    "fromType": "mcpServer",
+    "fromFqn": "ai_governance_mcp.security_ticket_triage",
+    "toType": "aiApplication",
+    "toFqn": "support-answer-assistant",
+    "description": "Security ticket MCP server flags support cases that require incident handling or access review."
+  },
+  {
+    "fromType": "mcpServer",
+    "fromFqn": "ai_governance_mcp.code_repo_assistant",
+    "toType": "aiApplication",
+    "toFqn": "support-answer-assistant",
+    "description": "Code repository MCP server retrieves release notes and defect references for technical support answers."
+  },
+  {
+    "fromType": "aiApplication",
+    "fromFqn": "support-answer-assistant",
+    "toType": "aiApplication",
+    "toFqn": "claims-triage-copilot",
+    "description": "Approved support answer drafts are reused by the claims copilot when claim escalations require customer communication."
+  }
+]

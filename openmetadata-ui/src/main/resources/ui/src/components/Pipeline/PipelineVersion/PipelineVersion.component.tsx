@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,9 +38,11 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -191,7 +192,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.PIPELINE}
                     showActions={false}

@@ -27,7 +27,10 @@ import { Card, Col, Row, Skeleton, Space } from 'antd';
  */
 export const TableDetailsPageSkeleton = () => {
   return (
-    <Row className="entity-details-page-container" gutter={[0, 12]}>
+    <Row
+      className="entity-details-page-container"
+      data-testid="loader"
+      gutter={[0, 12]}>
       <Col className="p-x-lg p-t-md" span={24}>
         <Skeleton
           active

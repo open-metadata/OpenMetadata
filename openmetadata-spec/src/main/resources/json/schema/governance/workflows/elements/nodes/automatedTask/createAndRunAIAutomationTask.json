@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/createAndRunAIAutomationTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAndRunAIAutomationTask",
+  "description": "Creates (or updates) a service-scoped AI Automation from a seed template and runs it.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunAIAutomationTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "config": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "title": "Automation Template",
+          "description": "Name of the seed AI Automation template to instantiate per service (e.g. DescriptionAutomation).",
+          "type": "string"
+        },
+        "shouldRun": {
+          "title": "Run the Automation",
+          "description": "If True, it will be created/updated and run. Otherwise it will only be created/updated.",
+          "type": "boolean",
+          "default": true
+        },
+        "waitForCompletion": {
+          "title": "Wait for Completion",
+          "description": "Set if this step should wait until the Automation run finishes.",
+          "type": "boolean",
+          "default": true
+        },
+        "timeoutSeconds": {
+          "title": "Timeout Seconds",
+          "description": "Seconds to wait before treating the run as timed out.",
+          "type": "integer",
+          "default": 3600
+        }
+      },
+      "additionalProperties": false,
+      "required": ["template", "waitForCompletion", "timeoutSeconds"]
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "createAndRunAIAutomationTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/config"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["success", "failure"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

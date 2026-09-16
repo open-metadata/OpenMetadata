@@ -14,13 +14,13 @@
 
 .data-quality-stats-container {
   display: flex;
-  margin-bottom: 10px;
-  margin-right: 16px;
-  border-radius: 8px;
+  margin-bottom: var(--om-space-10);
+  margin-right: var(--om-space-16);
+  border-radius: var(--om-radius-lg);
   border: 1px solid @grey-15;
   position: static;
   top: 48px; // stick below the sticky tabs header
-  z-index: 2;
+  z-index: var(--om-z-2);
   background: var(--tw-color-bg-primary);
   .data-quality-stat-card {
     flex: 1;
@@ -28,10 +28,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin: 8px;
+    margin: var(--om-space-8);
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--om-duration-200) ease;
     outline: none;
 
     // Button reset styles for accessibility
@@ -44,15 +44,15 @@
     appearance: none;
 
     .stat-count {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: var(--om-font-size-13);
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-600;
       display: block;
     }
 
     .stat-label {
-      font-size: 13px;
-      font-weight: 400;
+      font-size: var(--om-font-size-13);
+      font-weight: var(--om-font-weight-regular);
       display: block;
       color: @grey-600;
     }
@@ -61,7 +61,7 @@
       &:hover {
         .stat-count.success {
           color: @green-10;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.success {
@@ -70,10 +70,10 @@
       }
       &.active {
         background-color: @green-9;
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
         .stat-count.success {
           color: @green-10;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.success {
@@ -86,7 +86,7 @@
       &:hover {
         .stat-count.aborted {
           color: @yellow-11;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.aborted {
@@ -95,10 +95,10 @@
       }
       &.active {
         background-color: @yellow-10;
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
         .stat-count.aborted {
           color: @yellow-11;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.aborted {
@@ -111,7 +111,7 @@
       &:hover {
         .stat-count.failed {
           color: @red-10;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.failed {
@@ -120,10 +120,10 @@
       }
       &.active {
         background-color: @red-9;
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
         .stat-count.failed {
           color: @red-10;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
 
         .stat-label.failed {
@@ -134,11 +134,11 @@
   }
   .no-data-placeholder {
     color: @grey-500;
-    font-size: 12px !important;
+    font-size: var(--om-font-size-xs) !important;
   }
 }
 .tab-header-container {
-  gap: 4px;
+  gap: var(--om-space-4);
   display: flex;
   align-items: center;
   color: @grey-700;
@@ -149,10 +149,10 @@
 .data-quality-tab-count {
   background-color: @grey-9;
   border: 1px solid @grey-15;
-  padding: 0px 5px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 500;
+  padding: 0 var(--om-space-5);
+  border-radius: var(--om-radius-sm);
+  font-size: var(--om-font-size-10);
+  font-weight: var(--om-font-weight-medium);
   &.active {
     background-color: @primary-6 !important;
     border-color: @primary-6 !important;
@@ -161,12 +161,12 @@
 }
 
 .data-quality-badge {
-  border-radius: 6px;
-  padding: 0px;
+  border-radius: var(--om-radius-md);
+  padding: 0;
   width: 20px;
   display: flex;
   text-align: center;
-  margin-left: 8px;
+  margin-left: var(--om-space-8);
   justify-content: center;
   align-items: center;
   border: 1px solid @grey-38;
@@ -174,8 +174,8 @@
 }
 .data-quality-badge-text {
   color: @grey-700;
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--om-font-size-10);
+  font-weight: var(--om-font-weight-medium);
 }
 .divider-color {
   &.success {
@@ -195,17 +195,17 @@
   }
 
   .data-quality-progress {
-    margin-bottom: 12px;
+    margin-bottom: var(--om-space-12);
 
     .data-quality-progress-segments {
       display: flex;
       height: 12px;
       overflow: hidden;
       background-color: @light-border-color;
-      border-radius: 2px;
+      border-radius: var(--om-radius-xs);
       .progress-segment {
         height: 100%;
-        transition: width 0.3s ease;
+        transition: width var(--om-duration-300) ease;
 
         &.success {
           background-color: @green-500;
@@ -213,8 +213,8 @@
 
         &.aborted {
           background-color: @orange-8;
-          margin-left: 1px;
-          margin-right: 1px;
+          margin-left: var(--om-space-1);
+          margin-right: var(--om-space-1);
         }
 
         &.failed {
@@ -227,12 +227,12 @@
   .data-quality-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: var(--om-space-14);
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--om-space-4);
 
       .legend-dot {
         width: 8px;
@@ -254,16 +254,16 @@
       }
 
       .legend-text {
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
       }
       .legend-text-label {
         color: @grey-700;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
       }
       .legend-text-value {
         color: @grey-900;
-        font-size: 13px;
-        margin-left: 2px;
+        font-size: var(--om-font-size-13);
+        margin-left: var(--om-space-2);
       }
     }
   }

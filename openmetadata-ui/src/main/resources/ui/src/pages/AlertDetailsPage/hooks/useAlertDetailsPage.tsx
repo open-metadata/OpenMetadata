@@ -323,6 +323,7 @@ export function useAlertDetailsPage({
     editOwnersPermission,
     editPermission,
     extraInfo,
+    fetchAlertDetails,
     handleAlertDelete,
     handleAlertEdit,
     handleAlertSync,

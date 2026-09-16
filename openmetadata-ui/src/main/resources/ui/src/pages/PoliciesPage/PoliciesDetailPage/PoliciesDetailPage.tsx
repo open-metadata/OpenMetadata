@@ -34,7 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PolicyIcon } from '../../../assets/svg/policies-colored.svg';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -47,15 +47,12 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getPolicyByName,
@@ -79,7 +76,6 @@ const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -88,8 +84,27 @@ const PoliciesDetailPage = () => {
     attribute: Attribute;
     record: EntityReference;
   }>();
-  const [policyPermission, setPolicyPermission] =
-    useState<OperationPermission | null>(null);
+
+  // Fetch-owner, by fqn. Ungated: Policy carries a `deleted` field per its generated type, but
+  // the old raw expressions here never referenced it (policies aren't soft-deleted through
+  // this page) — matching the ungated-site rule (TagPage.tsx/StoredProcedurePage.tsx
+  // precedent, RolesDetailPage.tsx sibling), not passing `deleted` here.
+  // canEditDisplayName is also an explicit-deny-wins fix, same precedent as canViewBasic
+  // (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll grant.
+  const {
+    error: permissionsError,
+    canEditDisplayName: editDisplayNamePermission,
+    canDelete: hasDeletePermission,
+    hasViewAccess: viewBasicPermission,
+  } = useEntityPermissions(ResourceEntity.POLICY, fqn, {
+    enabled: Boolean(fqn),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const policiesPath = getSettingPath(
     GlobalSettingsMenuCategory.ACCESS,
@@ -112,39 +127,6 @@ const PoliciesDetailPage = () => {
     [policyName, policiesPath]
   );
 
-  const {
-    editDisplayNamePermission,
-    hasDeletePermission,
-    viewBasicPermission,
-  } = useMemo(() => {
-    const editDisplayNamePermission =
-      policyPermission?.EditAll || policyPermission?.EditDisplayName;
-    const hasDeletePermission = policyPermission?.Delete;
-    const viewBasicPermission =
-      policyPermission?.ViewAll || policyPermission?.ViewBasic;
-
-    return {
-      editDisplayNamePermission,
-      hasDeletePermission,
-      viewBasicPermission,
-    };
-  }, [policyPermission]);
-
-  const fetchPolicyPermission = useCallback(
-    async (fqn: string) => {
-      try {
-        const response = await getEntityPermissionByFqn(
-          ResourceEntity.POLICY,
-          fqn
-        );
-        setPolicyPermission(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [getEntityPermissionByFqn, setPolicyPermission]
-  );
-
   const fetchPolicy = async () => {
     setLoading(true);
     try {
@@ -164,7 +146,7 @@ const PoliciesDetailPage = () => {
     const patch = compare(policy, { ...policy, description });
     try {
       const data = await patchPolicy(patch, policy.id);
-      setPolicy({ ...policy, description: data.description });
+      setPolicy((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -360,16 +342,6 @@ const PoliciesDetailPage = () => {
     [policy]
   );
 
-  const init = async () => {
-    if (!fqn) {
-      return;
-    }
-    await fetchPolicyPermission(fqn);
-    if (viewBasicPermission) {
-      fetchPolicy();
-    }
-  };
-
   const rulesTab = useMemo(() => {
     return (
       <Card>
@@ -514,9 +486,16 @@ const PoliciesDetailPage = () => {
     ];
   }, [rulesTab, policy]);
 
+  // Permission fetching now lives in useEntityPermissions (above); this effect keeps the
+  // old init()'s "only fetch the policy once view access is known" gate, reactive to the
+  // hook's resolved viewBasicPermission instead of a same-tick local variable (which also
+  // drops the old code's redundant re-fetch-permission-on-every-effect-run side effect —
+  // same shape as RolesDetailPage.tsx's sibling conversion).
   useEffect(() => {
-    init();
-  }, [fqn, policyPermission]);
+    if (fqn && viewBasicPermission) {
+      fetchPolicy();
+    }
+  }, [fqn, viewBasicPermission]);
 
   if (isLoading) {
     return <Loader />;
@@ -524,9 +503,12 @@ const PoliciesDetailPage = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.policy'),
-      })}>
+      pageTitle={
+        policyName ||
+        t('label.entity-detail-plural', {
+          entity: t('label.policy'),
+        })
+      }>
       <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
@@ -582,7 +564,7 @@ const PoliciesDetailPage = () => {
                   />
                 </Col>
               </Row>
-              <DescriptionV1
+              <Description
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}

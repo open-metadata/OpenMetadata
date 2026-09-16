@@ -45,6 +45,19 @@ GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
 ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
+# Redshift Spectrum external tables (backed by the Glue/Hive catalog) report
+# Hive-style column types via svv_external_columns. These have no PostgreSQL
+# equivalent in ischema_names, so they resolved to UNKNOWN and broke
+# column-level test type selection (issue #29589). Map the common scalar Hive
+# types to concrete types (dataTypeDisplay still shows the raw Hive type).
+ischema_names.update(
+    {
+        "string": sqltypes.VARCHAR,
+        "char": sqltypes.CHAR,
+        "tinyint": create_sqlalchemy_type("TINYINT"),
+        "double": sqltypes.DOUBLE_PRECISION,
+    }
+)
 
 
 logger = ingestion_logger()
@@ -56,7 +69,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
+    from sqlalchemy.engine.default import DefaultDialect
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False
@@ -188,9 +201,11 @@ def _get_schema_column_info(self, connection, schema=None, **kw):  # pylint: dis
     if cached is not None and cached[0] == schema:
         return cached[1]
 
-    schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
-    result = connection.execute(sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)))
+    result = connection.execute(
+        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO),
+        {"schema": schema or ""},
+    )
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
         all_columns[key].append(col)

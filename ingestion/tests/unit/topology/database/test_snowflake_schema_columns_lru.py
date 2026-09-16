@@ -206,17 +206,21 @@ def test_none_result_from_90030_is_cached():
 
 def test_env_var_overrides_cache_size(monkeypatch):
     """Operators can tune the cache size via OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE.
-    The value is read at module import, so this exercises the parsing branch
-    by reloading the module."""
+    The value is read when the settings module is imported, so reload both the
+    settings module and utils to exercise the override."""
     import importlib
 
+    from metadata.ingestion.source.database.snowflake import settings as snowflake_settings_mod
+
     monkeypatch.setenv("OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE", "5")
+    importlib.reload(snowflake_settings_mod)
     reloaded = importlib.reload(snowflake_utils)
     try:
         assert reloaded.SCHEMA_COLUMNS_CACHE_SIZE == 5
     finally:
         # Reset to default for the rest of the test session
         monkeypatch.delenv("OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE")
+        importlib.reload(snowflake_settings_mod)
         importlib.reload(snowflake_utils)
 
 

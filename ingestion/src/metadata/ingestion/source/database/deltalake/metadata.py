@@ -13,7 +13,8 @@ Deltalake source methods.
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -43,12 +44,19 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -77,14 +85,15 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = metadata
 
         self.service_connection = self.config.serviceConnection.root.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = cast("BaseConnection", self._connection).client
         self.client = self.connection.client
 
-        self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DeltaLakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, DeltaLakeConnection):
@@ -155,7 +164,7 @@ class DeltalakeSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -204,7 +213,7 @@ class DeltalakeSource(DatabaseServiceSource):
                 logger.warning(f"Unexpected exception for table [{table_info}]: {exc}")
                 self.status.warnings.append(f"{self.config.serviceName}.{table_info.name}")
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -262,6 +271,3 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def close(self):
-        """No client to close"""

@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NifiConnection",
+  "description": "Nifi Metadata Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiConnection",
+  "definitions": {
+    "NifiType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Nifi"
+      ],
+      "default": "Nifi"
+    },
+    "basicAuthentication": {
+      "title": "Username/Password Authentication",
+      "description": "username/password auth",
+      "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiBasicAuth",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Nifi user to authenticate to the API.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Nifi password to authenticate to the API.",
+          "type": "string",
+          "format": "password"
+        },
+        "verifySSL": {
+          "title": "Verify SSL",
+          "description": "Boolean marking if we need to verify the SSL certs for Nifi. False by default.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "clientCertificateAuthentication": {
+      "title": "Client Certificate Authentication",
+      "description": "client certificate auth",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.pipeline.NifiClientAuth",
+      "properties": {
+        "certificateAuthorityPath": {
+          "title": "Certificate Authority Path",
+          "description": "Path to the root CA certificate",
+          "type": "string"
+        },
+        "clientCertificatePath": {
+          "title": "Client Certificate",
+          "description": "Path to the client certificate",
+          "type": "string"
+        },
+        "clientkeyPath": {
+          "title": "Client Key",
+          "description": "Path to the client key",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Nifi",
+      "type": "string",
+      "enum": [
+        "Nifi"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host And Port",
+      "description": "Pipeline Service Management/UI URI.",
+      "type": "string",
+      "format": "uri"
+    },
+    "nifiConfig": {
+      "title": "Nifi Credentials Configuration",
+      "description": "We support username/password or client certificate authentication",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Nifi Basic Auth",
+          "description": "Configuration for connecting to Nifi Basic Auth.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.BasicAuth",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Nifi user to authenticate to the API.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Nifi password to authenticate to the API.",
+              "type": "string",
+              "format": "password"
+            },
+            "verifySSL": {
+              "title": "Verify SSL",
+              "description": "Boolean marking if we need to verify the SSL certs for Nifi. False by default.",
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Nifi Client Certificate Auth",
+          "description": "Configuration for connecting to Nifi Client Certificate Auth.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.ClientCertificateAuth",
+          "type": "object",
+          "properties": {
+            "certificateAuthorityPath": {
+              "title": "Certificate Authority Path",
+              "description": "Path to the root CA certificate",
+              "type": "string"
+            },
+            "clientCertificatePath": {
+              "title": "Client Certificate",
+              "description": "Path to the client certificate",
+              "type": "string"
+            },
+            "clientkeyPath": {
+              "title": "Client Key",
+              "description": "Path to the client key",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "nifiConfig"
+  ]
+}

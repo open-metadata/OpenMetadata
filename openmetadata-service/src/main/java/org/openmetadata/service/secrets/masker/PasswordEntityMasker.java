@@ -108,7 +108,7 @@ public class PasswordEntityMasker extends EntityMasker {
         Object toUnmaskConfig =
             SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
         Object originalConvertedConfig =
-            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+            SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);

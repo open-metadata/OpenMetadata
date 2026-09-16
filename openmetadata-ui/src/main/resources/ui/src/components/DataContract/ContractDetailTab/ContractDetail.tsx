@@ -19,6 +19,7 @@ import {
   Card,
   Divider,
   Dropdown,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -26,7 +27,6 @@ import {
 import {
   ChevronDown,
   Download02,
-  Flag04,
   PlayCircle,
   Plus,
   Trash01,
@@ -53,6 +53,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   exportContractToODCSYaml,
   getContractResultByResultId,
@@ -67,12 +68,13 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
@@ -107,7 +109,7 @@ const ContractDetail: React.FC<{
   hasEditPermission?: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onContractUpdated?: () => void;
+  onContractUpdated?: () => void | Promise<void>;
 }> = ({
   contract,
   entityId,
@@ -119,6 +121,7 @@ const ContractDetail: React.FC<{
   onContractUpdated,
 }) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [validateLoading, setValidateLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
@@ -227,6 +230,7 @@ const ContractDetail: React.FC<{
       } else if (contract.id) {
         await validateContractById(contract.id);
       }
+      await onContractUpdated?.();
       showSuccessToast(t('message.contract-validation-trigger-successfully'));
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -290,6 +294,20 @@ const ContractDetail: React.FC<{
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
     setMode(e.target.value);
   }, []);
+
+  const statusBadge = useMemo(() => {
+    const { color, icon } = getEntityStatusBadgeConfig(contract?.entityStatus);
+
+    return (
+      <BadgeWithIcon
+        color={color}
+        iconLeading={icon}
+        size="sm"
+        type="pill-color">
+        {contract?.entityStatus ?? t('label.approved')}
+      </BadgeWithIcon>
+    );
+  }, [contract?.entityStatus, t]);
 
   const renderDataContractHeader = useMemo(() => {
     if (!contract) {
@@ -451,10 +469,10 @@ const ContractDetail: React.FC<{
                     {`${t('label.created-by')} : `}
                   </Typography>
 
-                  <OwnerLabel
-                    owners={[
+                  <Owner
+                    owners={toOwnerRefs([
                       { name: contract.createdBy, type: 'user', id: '' },
-                    ]}
+                    ])}
                   />
                 </Box>
 
@@ -504,13 +522,7 @@ const ContractDetail: React.FC<{
                 {`${t('label.status')} : `}
               </Typography>
 
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Flag04}
-                size="sm"
-                type="pill-color">
-                {contract.entityStatus ?? t('label.approved')}
-              </BadgeWithIcon>
+              {statusBadge}
             </Box>
 
             <Divider
@@ -523,11 +535,12 @@ const ContractDetail: React.FC<{
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
-              <OwnerLabel
+              <Owner
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={contract.owners}
+                owners={toOwnersWithHref(contract.owners ?? [])}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </Box>
@@ -544,6 +557,7 @@ const ContractDetail: React.FC<{
     hasEditPermission,
     isInheritedContract,
     handleContractAction,
+    statusBadge,
     t,
   ]);
 
@@ -650,6 +664,75 @@ const ContractDetail: React.FC<{
     );
   }
 
+  const renderDescriptionSection = (contractData: DataContract) =>
+    !isDescriptionContentEmpty(contractData.description ?? '') && (
+      <div className="contract-card-items">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.description')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <RichTextEditorPreviewerV1
+          enableSeeMoreVariant
+          markdown={contractData.description ?? ''}
+        />
+      </div>
+    );
+
+  const renderSchemaSection = () =>
+    !isEmpty(schemaDetail) && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.schema')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSchemaTable
+          contractStatus={constraintStatus['schema']}
+          latestSchemaValidationResult={latestContractResults?.schemaValidation}
+          schemaDetail={schemaDetail}
+        />
+      </div>
+    );
+
+  const renderSemanticsSection = (contractData: DataContract) =>
+    contractData?.semantics &&
+    contractData?.semantics.length > 0 && (
+      <div className="contract-card-items" data-testid="semantics-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.semantic-plural')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractSemantics
+          contractStatus={constraintStatus['semantic']}
+          latestContractResults={latestContractResults}
+          semantics={contractData?.semantics}
+        />
+      </div>
+    );
+
+  const renderExecutionHistorySection = (contractData: DataContract) =>
+    contractData.id &&
+    contractData.latestResult?.resultId && (
+      <div className="contract-card-items" data-testid="schema-table-card">
+        <div className="contract-card-header-container">
+          <Typography as="span" className="contract-card-header">
+            {t('label.execution-history')}
+          </Typography>
+          <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
+        </div>
+
+        <ContractExecutionChart contract={contractData} />
+      </div>
+    );
+
   return (
     <>
       <ContractImportModal
@@ -680,21 +763,7 @@ const ContractDetail: React.FC<{
                 </div>
               )}
 
-              {!isDescriptionContentEmpty(contract.description ?? '') && (
-                <div className="contract-card-items">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.description')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <RichTextEditorPreviewerV1
-                    enableSeeMoreVariant
-                    markdown={contract.description ?? ''}
-                  />
-                </div>
-              )}
+              {renderDescriptionSection(contract)}
 
               {(() => {
                 const contractWithInheritance =
@@ -753,26 +822,7 @@ const ContractDetail: React.FC<{
 
               <ContractSLA contract={contract} />
 
-              {!isEmpty(schemaDetail) && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.schema')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSchemaTable
-                    contractStatus={constraintStatus['schema']}
-                    latestSchemaValidationResult={
-                      latestContractResults?.schemaValidation
-                    }
-                    schemaDetail={schemaDetail}
-                  />
-                </div>
-              )}
+              {renderSchemaSection()}
 
               {!isEmpty(contract.security) &&
                 (() => {
@@ -817,24 +867,7 @@ const ContractDetail: React.FC<{
                   );
                 })()}
 
-              {contract?.semantics && contract?.semantics.length > 0 && (
-                <div
-                  className="contract-card-items"
-                  data-testid="semantics-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.semantic-plural')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractSemantics
-                    contractStatus={constraintStatus['semantic']}
-                    latestContractResults={latestContractResults}
-                    semantics={contract?.semantics}
-                  />
-                </div>
-              )}
+              {renderSemanticsSection(contract)}
 
               {contract?.testSuite?.id && (
                 <div
@@ -854,20 +887,7 @@ const ContractDetail: React.FC<{
                 </div>
               )}
 
-              {contract.id && contract.latestResult?.resultId && (
-                <div
-                  className="contract-card-items"
-                  data-testid="schema-table-card">
-                  <div className="contract-card-header-container">
-                    <Typography as="span" className="contract-card-header">
-                      {t('label.execution-history')}
-                    </Typography>
-                    <Divider className="tw:border-b-2 tw:border-dotted tw:border-gray-200 tw:bg-transparent" />
-                  </div>
-
-                  <ContractExecutionChart contract={contract} />
-                </div>
-              )}
+              {renderExecutionHistorySection(contract)}
             </div>
           )}
         </Card.Content>

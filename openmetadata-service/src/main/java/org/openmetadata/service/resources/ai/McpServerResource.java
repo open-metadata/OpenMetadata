@@ -75,7 +75,7 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
   public static final String COLLECTION_PATH = "/v1/mcpServers/";
   private final McpServerMapper mapper = new McpServerMapper();
   static final String FIELDS =
-      "owners,followers,tags,extension,domains,tools,resources,prompts,service";
+      "owners,followers,tags,extension,domains,reviewers,tools,resources,prompts,service";
 
   @Override
   public McpServer addHref(UriInfo uriInfo, McpServer mcpServer) {
@@ -379,9 +379,7 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -410,9 +408,7 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @GET

@@ -1,0 +1,32 @@
+{
+  "$id": "McpApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Server",
+  "description": "MCP Server app installs an embedded Model Context Protocol(MCP) server within OpenMetadata. Clients supporting MCP Protocol can connect using SSE or Streamable-Http transports.\n \n   1. SSE : http[s]://openmetadata-host/mcp/sse\n \n    - This endpoint can be used by client if Streamable-Http transport is used.\n \n   2. Streamable-Http : http[s]://openmetadata-host/mcp\n \n    - This endpoint can be used by client if Streamable-Http transport is used.",
+  "type": "object",
+  "properties": {
+    "baseUrl": {
+      "title": "Base URL",
+      "description": "External-facing base URL advertised in the MCP OAuth metadata (issuer and endpoint URLs). Leave empty to fall back to the OpenMetadata base URL from system settings. Set this explicitly for clustered deployments where the service is reached through a load balancer or ingress.\nExample: `https://openmetadata.example.com`",
+      "type": "string",
+      "format": "uri"
+    },
+    "allowedOrigins": {
+      "title": "Allowed Origins",
+      "description": "Origins allowed to call the MCP OAuth endpoints from a browser (CORS allowlist). An empty list rejects every cross-origin request, which stops browser-based MCP clients from connecting. Use exact origins in production; `*` is accepted but not recommended.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": [
+        "http://localhost:3000",
+        "http://localhost:8585",
+        "http://localhost:9090"
+      ]
+    }
+  },
+  "required": ["allowedOrigins"],
+  "additionalProperties": false
+}

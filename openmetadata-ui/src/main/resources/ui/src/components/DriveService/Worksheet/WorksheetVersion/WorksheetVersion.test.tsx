@@ -63,7 +63,7 @@ jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     <div data-testid="custom-property-table">Custom Property Table</div>
   )),
 }));
-jest.mock('../../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../common/EntityDescription/Description', () =>
   jest.fn(() => <div data-testid="description">Description Component</div>)
 );
 jest.mock('../../../common/Loader/Loader', () =>
@@ -652,7 +652,9 @@ describe('WorksheetVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Record<string, unknown>
+      ).ViewCustomFields;
 
       renderWorksheetVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

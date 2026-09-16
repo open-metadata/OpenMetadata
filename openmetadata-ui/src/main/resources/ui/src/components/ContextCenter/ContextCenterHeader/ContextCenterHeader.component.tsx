@@ -11,17 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
-import classNames from 'classnames';
+import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
+import { Plus, SearchMd } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
@@ -39,9 +36,9 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   onSearch,
 }) => {
   const { t } = useTranslation();
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   const resolvedBreadcrumbs = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
@@ -62,7 +59,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
       {onUploadFile && (
         <Button
           color="primary"
-          iconLeading={UploadCloud02}
+          iconLeading={UploadIcon}
           size="sm"
           onClick={onUploadFile}>
           {t('label.upload-file')}
@@ -72,44 +69,40 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={resolvedBreadcrumbs} showHome={!isEmbedded} />
+    <HeaderBreadcrumb
+      noMargin
+      items={resolvedBreadcrumbs}
+      showHome={!isEmbedded}
+    />
+  );
+
+  const actionsEl = (
+    <div className="tw:flex tw:items-center tw:gap-3">
+      {onSearch && (
+        <Input
+          data-testid="search-input"
+          icon={SearchMd}
+          inputClassName="tw:w-75"
+          placeholder={searchPlaceholder}
+          value={searchQuery ?? ''}
+          onChange={onSearch}
+        />
+      )}
+      {hasPermission ? actionsSlot ?? defaultActions : null}
+    </div>
   );
 
   return (
-    <div className="tw:flex tw:flex-col" data-testid="context-center-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
-
-      <Card
-        className={classNames(
-          'tw:mb-5 tw:p-5',
-          className,
-          headerCardClassName
-        )}>
-        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
-        <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
-          <div>
-            <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
-              <Typography as="h3">{title}</Typography>
-            </div>
-            {subtitle && (
-              <Typography className="tw:text-secondary">{subtitle}</Typography>
-            )}
-          </div>
-          <div className="tw:flex tw:items-center tw:gap-3 tw:ml-auto tw:shrink-0">
-            {onSearch && (
-              <Input
-                data-testid="search-input"
-                icon={SearchMd}
-                inputClassName="tw:w-75"
-                placeholder={searchPlaceholder}
-                value={searchQuery ?? ''}
-                onChange={onSearch}
-              />
-            )}
-            {hasPermission ? actionsSlot ?? defaultActions : null}
-          </div>
-        </div>
-      </Card>
+    <div className="tw:mb-5" data-testid="context-center-header">
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
+      <PageLayout.PageHeader
+        actions={actionsEl}
+        breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
+        className={className}
+        subtitle={subtitle}
+        title={title}
+        variant={isEmbedded ? 'gradient' : 'flat'}
+      />
     </div>
   );
 };

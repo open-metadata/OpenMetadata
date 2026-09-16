@@ -24,29 +24,36 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
-import { getMcpChatEnabled } from '../../../../rest/mcpClientAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
-import Loader from '../../../common/Loader/Loader';
-import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
-import { McpChatPlugin } from '../plugins/McpChatPlugin';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
-  const [mcpChatEnabled, setMcpChatEnabled] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [installedPluginInstances, setInstalledPluginInstances] = useState<
+    AppPlugin[]
+  >([]);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
+  const hasPermissions = !isEmpty(permissions);
 
   // Create extension registry (singleton for the app lifecycle)
   const [extensionRegistry] = useState(() => new ExtensionPointRegistry());
+  // `extensionRegistry` keeps one identity for the whole app lifecycle —
+  // `contribute()` mutates its internal Map in place, which triggers no
+  // re-render by itself. A consumer that memoizes on `extensionRegistry`
+  // (e.g. `AppModeRoutes`'s route table) would recompute once, before any
+  // plugin's `contributeExtensions` has run (see the effect below), then
+  // NEVER again, permanently missing every contribution. Bumping this after
+  // registration gives those consumers a dependency that actually changes,
+  // so they recompute exactly once with contributions in place.
+  const [contributionsVersion, setContributionsVersion] = useState(0);
 
   const fetchApplicationList = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await getInstalledApplicationList();
 
       setApplications(data);
@@ -54,57 +61,56 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         (app) => app.name ?? app.fullyQualifiedName ?? ''
       );
       setApplicationsName(applicationsNameList);
+      setInstalledPluginInstances([]);
+
+      // Only pay for the ApplicationsClassBase chunk when there is a name that could resolve a
+      // plugin — apps missing both name and FQN map to '' and never match the registry.
+      const pluginNames = applicationsNameList.filter(Boolean);
+
+      if (pluginNames.length > 0) {
+        const { default: applicationsClassBase } = await import(
+          '../AppDetails/ApplicationsClassBase'
+        );
+        const plugins = pluginNames
+          .map((applicationName) => {
+            const PluginClass =
+              applicationsClassBase.appPluginRegistry[applicationName];
+
+            return PluginClass ? new PluginClass(applicationName, true) : null;
+          })
+          .filter((plugin): plugin is AppPlugin => plugin !== null);
+
+        setInstalledPluginInstances(plugins);
+      }
     } catch {
       // do not handle error
     } finally {
-      setLoading(false);
+      setIsLoading(false);
       // Signal to downstream consumers (plugins, mode-aware code) that
       // `applications` reflects server state. Set unconditionally —
       // even on fetch error the list is "as loaded as it's going to
       // be" and consumers should stop waiting.
       setApplicationsLoaded(true);
     }
-  }, []);
+  }, [setApplicationsLoaded, setApplicationsName]);
 
   useEffect(() => {
-    if (!isEmpty(permissions)) {
+    if (hasPermissions) {
       fetchApplicationList();
     } else {
-      setLoading(false);
+      setIsLoading(false);
       // No permissions to fetch — applications stays `[]` but the
       // "loaded" signal still needs to flip so downstream consumers
       // gating on it don't wait forever.
       setApplicationsLoaded(true);
     }
-  }, [permissions]);
+  }, [fetchApplicationList, hasPermissions, setApplicationsLoaded]);
 
-  useEffect(() => {
-    getMcpChatEnabled()
-      .then(setMcpChatEnabled)
-      .catch(() => setMcpChatEnabled(false));
-  }, []);
-
-  const installedPluginInstances: AppPlugin[] = useMemo(() => {
-    const plugins = applications
-      .map((app) => {
-        if (!app.name) {
-          return null;
-        }
-
-        const PluginClass = applicationsClassBase.appPluginRegistry[app.name];
-
-        return PluginClass ? new PluginClass(app.name, true) : null;
-      })
-      .filter(Boolean) as AppPlugin[];
-
-    if (mcpChatEnabled) {
-      plugins.push(new McpChatPlugin('McpChatApplication', true));
-    }
-
-    return plugins;
-  }, [applications, mcpChatEnabled]);
-
-  // Let plugins contribute to extension points
+  // Let plugins contribute to extension points. Runs after commit, so a
+  // memoized consumer keyed on `extensionRegistry`'s identity alone would
+  // recompute using its render-time (pre-contribution) state — bump
+  // `contributionsVersion` so such consumers have a deps entry that changes
+  // once contributions are actually in.
   useEffect(() => {
     installedPluginInstances.forEach((plugin) => {
       try {
@@ -113,19 +119,28 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         // Silently ignore errors during plugin contribution
       }
     });
+    setContributionsVersion((version) => version + 1);
   }, [installedPluginInstances, extensionRegistry]);
 
   const appContext = useMemo(() => {
     return {
       applications,
+      isLoading,
       plugins: installedPluginInstances,
       extensionRegistry,
+      contributionsVersion,
     };
-  }, [applications, installedPluginInstances, extensionRegistry]);
+  }, [
+    applications,
+    isLoading,
+    installedPluginInstances,
+    extensionRegistry,
+    contributionsVersion,
+  ]);
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {loading ? <Loader /> : children}
+      {children}
     </ApplicationsContext.Provider>
   );
 };

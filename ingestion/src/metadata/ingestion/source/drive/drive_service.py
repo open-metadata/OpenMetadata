@@ -14,10 +14,10 @@ Base class for ingesting drive services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -48,6 +48,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -55,7 +56,10 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     TopologyNode,
 )
-from metadata.ingestion.source.connections import test_connection_common
+from metadata.ingestion.source.connections import (
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_directory, filter_by_spreadsheet
 from metadata.utils.logger import ingestion_logger
@@ -163,10 +167,11 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     source_config: DriveServiceMetadataPipeline
     config: WorkflowSource
-    directory_source_state: Set = set()  # noqa: RUF012, UP006
-    file_source_state: Set = set()  # noqa: RUF012, UP006
-    spreadsheet_source_state: Set = set()  # noqa: RUF012, UP006
-    worksheet_source_state: Set = set()  # noqa: RUF012, UP006
+    _connection: BaseConnection | None = None
+    directory_source_state: set = set()  # noqa: RUF012
+    file_source_state: set = set()  # noqa: RUF012
+    spreadsheet_source_state: set = set()  # noqa: RUF012
+    worksheet_source_state: set = set()  # noqa: RUF012
 
     # Big union of types we want to fetch dynamically
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
@@ -327,7 +332,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     # Utility methods for tags and FQN handling
 
-    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
         """
         Pick up the tags registered in the context
         searching by entity FQN
@@ -344,7 +349,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
                     tag_labels.append(tag_label)
         return tag_labels or None
 
-    def get_directory_tag_labels(self, directory_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_directory_tag_labels(self, directory_name: str) -> list[TagLabel] | None:
         """
         Method to get directory tags
         This will only get executed if the tags context
@@ -358,7 +363,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=directory_fqn)
 
-    def get_file_tag_labels(self, file_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_file_tag_labels(self, file_name: str) -> list[TagLabel] | None:
         """
         Method to get file tags
         This will only get executed if the tags context
@@ -373,7 +378,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=file_fqn)
 
-    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_spreadsheet_tag_labels(self, spreadsheet_name: str) -> list[TagLabel] | None:
         """
         Method to get spreadsheet tags
         This will only get executed if the tags context
@@ -387,7 +392,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         )
         return self.get_tag_by_fqn(entity_fqn=spreadsheet_fqn)
 
-    def get_worksheet_tag_labels(self, worksheet_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_worksheet_tag_labels(self, worksheet_name: str) -> list[TagLabel] | None:
         """
         Method to get worksheet tags
         This will only get executed if the tags context
@@ -479,7 +484,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
 
     # Owner reference methods
 
-    def get_owner_ref(self, entity_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, entity_name: str) -> EntityReferenceList | None:
         """
         Method to process the entity owners
         """
@@ -577,4 +582,7 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
             )
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

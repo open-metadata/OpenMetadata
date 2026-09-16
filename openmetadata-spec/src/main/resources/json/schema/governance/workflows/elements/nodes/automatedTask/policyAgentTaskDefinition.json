@@ -22,7 +22,8 @@
           "title": "Timeout Seconds",
           "description": "Maximum seconds to wait for the Policy Agent pipeline to complete.",
           "type": "integer",
-          "default": 600
+          "default": 600,
+          "minimum": 1
         },
         "accessType": {
           "title": "Access Type Override",

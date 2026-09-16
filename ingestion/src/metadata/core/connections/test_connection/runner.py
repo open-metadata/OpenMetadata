@@ -11,12 +11,9 @@
 """
 The orchestrator behind ``BaseConnection.test_connection``.
 
-It fetches the definition (which owns step order, category and mandatory flags),
-resolves each step to a ``@check`` method on the provider, runs them in that
-order, and maps every outcome to a result. A missing check becomes a visible
-``Skipped`` - never a crash. Once a gate step fails, every subsequent step is
-skipped as ``ConnectionNotEstablished``. The workflow is patched after each step
-so the UI sees honest progress.
+Runs each definition step in order against the provider's ``@check`` methods. A
+missing check is a visible ``Skipped``, never a crash; once a gate fails the rest
+are skipped. The workflow is patched after each step so the UI sees progress.
 """
 
 from __future__ import annotations

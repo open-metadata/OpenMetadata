@@ -12,7 +12,10 @@
 Validate the logic and status handling of the base workflow
 """
 
-from typing import Iterable, Tuple  # noqa: UP035
+import json
+import uuid
+from collections.abc import Iterable
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -121,7 +124,7 @@ class SimpleWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -132,7 +135,7 @@ class BrokenWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = BrokenSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
 # Pass only the required details so that the workflow can be initialized
@@ -201,6 +204,81 @@ class TestBaseWorkflow(TestCase):
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
 
 
+def _self_registration_workflow(source_config: SourceConfig) -> SimpleWorkflow:
+    workflow_config = config.model_copy(
+        update={"source": config.source.model_copy(update={"type": "mysql", "sourceConfig": source_config})},
+        deep=True,
+    )
+
+    metadata = MagicMock()
+    metadata.config.forceEntityOverwriting = True
+    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
+        workflow = SimpleWorkflow(config=workflow_config)
+
+    workflow.config = workflow_config.model_copy(
+        update={"ingestionPipelineFQN": "test-service.self-registered-pipeline"}
+    )
+    workflow.metadata.get_by_name.return_value = None
+    return workflow
+
+
+def _self_registration_request(source_config):
+    workflow = _self_registration_workflow(SourceConfig(config=source_config))
+    with patch.object(
+        workflow,
+        "_get_ingestion_pipeline_service",
+        return_value=SimpleNamespace(id=uuid.uuid4()),
+    ):
+        workflow.get_or_create_ingestion_pipeline()
+
+    return workflow.metadata.create_or_update.call_args.args[0]
+
+
+def test_self_registration_serializes_default_source_config_type():
+    source_config = DatabaseServiceMetadataPipeline()
+
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+    request = _self_registration_request(source_config)
+    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True, exclude_unset=True))
+
+    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+
+def test_self_registration_marks_default_type_on_a_copy():
+    source_config = SourceConfig(config=DatabaseServiceMetadataPipeline())
+    workflow = _self_registration_workflow(source_config)
+
+    copied_source_config = workflow._source_config_with_explicit_type()
+
+    assert copied_source_config is not source_config
+    assert copied_source_config.config is not source_config.config
+    assert "type" in copied_source_config.config.model_fields_set
+    assert "type" not in source_config.config.model_fields_set
+
+
+def test_self_registration_preserves_raw_source_config_without_copying_or_mutating_it():
+    raw_config = {"type": "DatabaseMetadata", "markDeletedTables": True}
+    source_config = SourceConfig.model_construct(config=raw_config)
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config is raw_config
+
+
+def test_self_registration_does_not_invent_a_missing_model_type():
+    source_config = SourceConfig.model_construct(config=DatabaseServiceMetadataPipeline(type=None))
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config.type is None
+
+
 class TestWorkflowExecuteTeardown:
     """
     Validates the execute() teardown contract:
@@ -249,10 +327,13 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        # `close_steps` is recorded twice: once from execute() before
-        # print_status, and once from inside stop() to keep the public
-        # cleanup contract. The second call is a no-op via _steps_closed.
+        # An initial `send_progress_update` fires at the very start so short
+        # runs (shorter than the reporting interval) still emit a "run started"
+        # event. `close_steps` is recorded twice: once from execute() before
+        # print_status, and once from inside stop() to keep the public cleanup
+        # contract. The second call is a no-op via _steps_closed.
         assert ordered_names == [
+            "send_progress_update",
             "close_steps",
             "build_ingestion_status",
             "set_ingestion_pipeline_status",
@@ -261,7 +342,8 @@ class TestWorkflowExecuteTeardown:
             "stop",
             "close_steps",
         ]
-        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
 
     def test_success_states_map_to_pipeline_complete_progress(self):
         workflow = SimpleWorkflow(config=config)
@@ -281,7 +363,40 @@ class TestWorkflowExecuteTeardown:
         ) as mock_send_progress_update:
             workflow.execute()
 
-        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
+
+    def test_execute_emits_initial_progress_before_work(self):
+        """A run shorter than the reporting interval still emits events: an
+        initial DISCOVERY at start (so the run is registered/visible live) and
+        a terminal update at the end — never zero events."""
+        workflow = SimpleWorkflow(config=config)
+
+        emitted = []
+        original = workflow.send_progress_update
+
+        def record(update_type=ProgressUpdateType.PROCESSING):
+            emitted.append((update_type, workflow.execute_internal_started))
+            return original(update_type)
+
+        workflow.execute_internal_started = False
+        real_execute_internal = workflow.execute_internal
+
+        def flag_execute_internal():
+            workflow.execute_internal_started = True
+            return real_execute_internal()
+
+        with (
+            patch.object(workflow, "send_progress_update", side_effect=record),
+            patch.object(workflow, "execute_internal", side_effect=flag_execute_internal),
+        ):
+            workflow.execute()
+
+        # First emit is DISCOVERY and happens before execute_internal runs.
+        assert emitted[0][0] is ProgressUpdateType.DISCOVERY
+        assert emitted[0][1] is False
+        # At least the initial + a terminal event, so never zero.
+        assert len(emitted) >= 2
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toast, Typography } from '@openmetadata/ui-core-components';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
@@ -18,6 +18,7 @@ import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClas
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { getIsErrorMatch } from './APIUtils';
+import { showErrorToast } from './ToastUtils';
 
 /**
  * Position offset for cover image using CSS percentage values
@@ -133,6 +134,11 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
   patchEntity: (entityId: string, patch: Operation[]) => Promise<TEntity>;
   onSuccess: (entity: TEntity) => void | Promise<void>;
   t: (key: string, options?: Record<string, unknown>) => string;
+  /**
+   * When true, the create-error toast is skipped so the caller can surface the
+   * failure itself (e.g. as an inline field error). The error is still rethrown.
+   */
+  suppressErrorToast?: boolean;
 }
 
 /**
@@ -177,6 +183,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     patchEntity,
     onSuccess,
     t,
+    suppressErrorToast = false,
   } = options;
 
   try {
@@ -240,19 +247,13 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
       toast.warning(
-        <Typography className="tw:font-bold">
-          {t('message.entity-created-but-cover-image-failed', {
-            entity: entityLabel,
-          })}
-        </Typography>,
+        t('message.entity-created-but-cover-image-failed', {
+          entity: entityLabel,
+        }),
         { autoDismiss: false }
       );
     } else {
-      toast.success(
-        <Typography className="tw:font-bold">
-          {t('server.create-entity-success', { entity: entityLabel })}
-        </Typography>
-      );
+      toast.success(t('server.create-entity-success', { entity: entityLabel }));
     }
 
     // Step 6: Call success callback
@@ -260,23 +261,20 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     return finalEntity;
   } catch (error) {
-    // Error handling
-    showNotistackError(
-      getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-        <Typography className="tw:font-bold">
-          {t('server.entity-already-exist', {
-            entity: entityLabel,
-            entityPlural: entityPluralLabel,
-            name: (formData as { name?: string }).name,
-          })}
-        </Typography>
-      ) : (
-        (error as AxiosError)
-      ),
-      t('server.add-entity-error', {
-        entity: entityLabel.toLowerCase(),
-      })
-    );
+    if (!suppressErrorToast) {
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: entityLabel,
+              entityPlural: entityPluralLabel,
+              name: (formData as { name?: string }).name,
+            })
+          : (error as AxiosError),
+        t('server.add-entity-error', {
+          entity: entityLabel.toLowerCase(),
+        })
+      );
+    }
 
     throw error;
   }

@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
@@ -42,7 +41,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -137,14 +135,6 @@ export const domainTypeTooltipDataRender = () => (
       </Fragment>
     ))}
   </Space>
-);
-
-export const iconTooltipDataRender = () => (
-  <Tooltip placement="top" title={t('message.icon-aspect-ratio')}>
-    <TooltipTrigger>
-      <InfoCircle data-testid="helper-icon" size={14} />
-    </TooltipTrigger>
-  </Tooltip>
 );
 
 export const renderDomainLink = (
@@ -279,7 +269,7 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.Domain} />,
+      children: <GenericTab type={PageType.Domain} variant="flat" />,
     },
     ...(isVersionsView
       ? []
@@ -457,18 +447,11 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const getDomainIcon = (iconURL?: string) => {
-  // Try to render the icon using the utility (handles both URLs and icon names)
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6',
-  });
-
-  // If we got an icon element, return it
-  if (iconElement) {
-    return iconElement;
-  }
-
-  // Otherwise return the default domain icon
-  return <DomainIcon className="domain-default-icon" />;
-};
+export const getDomainIcon = (iconURL?: string) => (
+  <Icon
+    fallback={<DomainIcon className="tw:text-quaternary" />}
+    iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
+    size={24}
+  />
+);

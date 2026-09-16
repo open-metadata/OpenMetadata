@@ -1,0 +1,60 @@
+{
+  "framework": {
+    "name": "us_bill_of_rights",
+    "displayName": "US AI Bill of Rights",
+    "description": "White House OSTP Blueprint for an AI Bill of Rights — five principles for safe and effective automated systems.",
+    "reference": "OSTP Blueprint",
+    "region": "United States",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Annual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel"],
+      "regions": ["US"],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "bor-safe",
+      "name": "bor-safe",
+      "displayName": "Safe & Effective Systems",
+      "category": "Quality",
+      "description": "Systems should be developed with consultation, tested, and monitored for safety.",
+      "evidenceRequirements": ["Pre-deployment testing report"]
+    },
+    {
+      "code": "bor-discrimination",
+      "name": "bor-discrimination",
+      "displayName": "Algorithmic Discrimination Protections",
+      "category": "Risk",
+      "description": "Systems should not contribute to unjustified differential treatment.",
+      "evidenceRequirements": ["Disparity assessment"]
+    },
+    {
+      "code": "bor-privacy",
+      "name": "bor-privacy",
+      "displayName": "Data Privacy",
+      "category": "Data",
+      "description": "Built-in protections against abusive data practices and agency over data.",
+      "evidenceRequirements": ["Privacy impact assessment"]
+    },
+    {
+      "code": "bor-notice",
+      "name": "bor-notice",
+      "displayName": "Notice & Explanation",
+      "category": "Transparency",
+      "description": "Notice that an automated system is being used and explanations of how it contributes to outcomes.",
+      "evidenceRequirements": ["User notice copy"]
+    },
+    {
+      "code": "bor-fallback",
+      "name": "bor-fallback",
+      "displayName": "Human Alternatives & Fallback",
+      "category": "Process",
+      "description": "Ability to opt out and access a human alternative when appropriate.",
+      "evidenceRequirements": ["Opt-out workflow"]
+    }
+  ]
+}

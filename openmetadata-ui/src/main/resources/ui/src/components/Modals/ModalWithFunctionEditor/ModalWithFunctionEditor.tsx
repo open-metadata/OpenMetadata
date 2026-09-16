@@ -25,6 +25,7 @@ export const ModalWithFunctionEditor = ({
   onSave,
   onCancel,
   visible,
+  getContainer,
 }: ModalWithFunctionEditorProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -73,6 +74,7 @@ export const ModalWithFunctionEditor = ({
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,
       ]}
+      getContainer={getContainer}
       maskClosable={false}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
