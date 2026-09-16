@@ -93,6 +93,10 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "reviewers": True,
     # Table Entity Fields
     "tableType": True,
+    # Source-managed: the connector recomputes it every run, so the patch has to be
+    # able to add, replace and remove it. Omitting it here silently drops synonyms
+    # on every table that already exists in OpenMetadata.
+    "aliases": True,
     "columns": {"__all__": ALLOWED_COLUMN_FIELDS},
     "tableConstraints": True,
     "tablePartition": True,
