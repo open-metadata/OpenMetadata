@@ -41,6 +41,9 @@ class MySqlContainerConfigs:
 class MinioContainerConfigs:
     """MinIO Configurations"""
 
+    # testcontainers defaults to minio/minio on Docker Hub, which MinIO has deleted.
+    # The same release is still published on quay.io.
+    image: str = "quay.io/minio/minio:RELEASE.2022-12-02T19-19-22Z"
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000

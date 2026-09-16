@@ -163,7 +163,11 @@ export interface Connection {
      *
      * Regex to only include/exclude Process Chains that match the pattern.
      */
-    pipelineFilterPattern?:      FilterPattern;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type

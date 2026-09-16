@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
+import { SelectOption } from '../../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 
 export interface TeamAndUserSelectItemProps {
   entityType: string;
-  onSearch: (value: string) => Promise<SelectOption[]>;
-  fieldName: (string | number)[];
   destinationNumber: number;
-  isDisabled?: boolean;
+  onSearch: (value: string) => Promise<Array<SelectOption>>;
+  fieldName: Array<string | number>;
 }

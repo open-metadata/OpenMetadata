@@ -524,7 +524,7 @@ describe('TestCases component', () => {
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({
-          search: 'testCaseStatus%5B%5D=Success',
+          search: 'testCaseStatus%5B%5D=Success&currentPage=1',
         });
       });
 
@@ -535,7 +535,8 @@ describe('TestCases component', () => {
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenLastCalledWith({
-          search: 'testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued',
+          search:
+            'testCaseStatus%5B%5D=Success&testCaseStatus%5B%5D=Queued&currentPage=1',
         });
       });
     });
@@ -619,6 +620,42 @@ describe('TestCases component', () => {
           })
         );
       });
+    });
+
+    it('should land on the page from a shared URL without rewriting it', async () => {
+      mockLocation.search = '?currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should keep the shared page when the shared URL also carries a search', async () => {
+      mockLocation.search = '?searchValue=orders&currentPage=2&pageSize=15';
+      const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(mockGetListTestCase).toHaveBeenCalledWith(
+          expect.objectContaining({ q: '*orders*', limit: 15, offset: 15 })
+        );
+      });
+
+      expect(mockGetListTestCase).not.toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 0 })
+      );
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 

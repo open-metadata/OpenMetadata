@@ -1476,6 +1476,52 @@ test.describe(
           ).toContainText('1 of');
         });
 
+        await test.step('Searching from a later page resets to the first page', async () => {
+          const testCaseName = paginationTable.testCasesResponseData[0].name;
+          const searchBar = page.getByTestId('searchbar');
+          const isListResponse = (url: URL) =>
+            url.pathname.endsWith('/dataQuality/testCases/search/list');
+
+          const nextPageResponse = page.waitForResponse(
+            '/api/v1/dataQuality/testCases/search/list?*'
+          );
+          await page.getByTestId('next').click();
+          await nextPageResponse;
+
+          await expect(page.getByTestId('page-indicator')).toContainText(
+            '2 of'
+          );
+
+          const searchResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              isListResponse(url) &&
+              url.searchParams.get('q') === `*${testCaseName}*`
+            );
+          });
+          await searchBar.fill(testCaseName);
+          expect((await searchResponse).status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
+
+          // Keeping the page-2 offset for this single-result search rendered the
+          // "No matching test cases" empty state instead (issue #33322).
+          await expect(page.getByTestId(testCaseName)).toBeVisible();
+
+          const clearSearchResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return isListResponse(url) && !url.searchParams.has('q');
+          });
+          await searchBar.clear();
+          await clearSearchResponse;
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(page.getByTestId('page-indicator')).toContainText(
+            '1 of'
+          );
+        });
+
         await test.step('Test page size dropdown', async () => {
           const pageSizeDropdown = page.getByTestId(
             'page-size-selection-dropdown'

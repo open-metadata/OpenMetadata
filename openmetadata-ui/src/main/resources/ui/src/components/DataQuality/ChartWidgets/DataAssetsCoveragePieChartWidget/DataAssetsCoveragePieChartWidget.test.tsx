@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { act } from 'react';
 import {
   fetchEntityCoveredWithDQ,
   fetchTotalEntityCount,
 } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import DataAssetsCoveragePieChartWidget from './DataAssetsCoveragePieChartWidget.component';
 
@@ -73,7 +74,7 @@ describe('DataAssetsCoveragePieChartWidget', () => {
   });
 
   it('should render the component', async () => {
-    render(<DataAssetsCoveragePieChartWidget />);
+    renderWithQueryClient(<DataAssetsCoveragePieChartWidget />);
 
     expect(
       await screen.findByText('label.data-asset-plural-coverage')
@@ -84,7 +85,7 @@ describe('DataAssetsCoveragePieChartWidget', () => {
   });
 
   it('fetchEntityCoveredWithDQ & fetchTotalEntityCount should be called', async () => {
-    render(<DataAssetsCoveragePieChartWidget />);
+    renderWithQueryClient(<DataAssetsCoveragePieChartWidget />);
 
     await act(async () => {
       await Promise.resolve();
@@ -100,7 +101,9 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       tags: ['tag1', 'tag2'],
       ownerFqn: 'ownerFqn',
     };
-    render(<DataAssetsCoveragePieChartWidget chartFilter={filters} />);
+    renderWithQueryClient(
+      <DataAssetsCoveragePieChartWidget chartFilter={filters} />
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -117,11 +120,9 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       }
     ).__getMockNavigate();
 
-    render(<DataAssetsCoveragePieChartWidget />);
+    renderWithQueryClient(<DataAssetsCoveragePieChartWidget />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await screen.findByText('CustomPieChart.component');
 
     expect(CustomPieChart).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -152,7 +153,7 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       }
     ).__getMockNavigate();
 
-    render(<DataAssetsCoveragePieChartWidget />);
+    renderWithQueryClient(<DataAssetsCoveragePieChartWidget />);
 
     await act(async () => {
       await Promise.resolve();
@@ -169,7 +170,7 @@ describe('DataAssetsCoveragePieChartWidget', () => {
   it('should use the supplied navigate function and test suites path', async () => {
     const navigate = jest.fn();
 
-    render(
+    renderWithQueryClient(
       <DataAssetsCoveragePieChartWidget
         navigate={navigate}
         redirectPath="/observability/data-quality/test-suites"
@@ -197,5 +198,59 @@ describe('DataAssetsCoveragePieChartWidget', () => {
     });
 
     expect(navigate).toHaveBeenCalledWith('/explore');
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchEntityCoveredWithDQ as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return { data: [{ originEntityFQN: String(filters.startTs) }] };
+      }
+    );
+    (fetchTotalEntityCount as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return { data: [{ fullyQualifiedName: '1000' }] };
+      }
+    );
+
+    const { rerender } = renderWithQueryClient(
+      <DataAssetsCoveragePieChartWidget
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <DataAssetsCoveragePieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await screen.findByText('CustomPieChart.component');
+    await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 100 }),
+          expect.objectContaining({ value: 900 }),
+        ],
+      }),
+      expect.anything()
+    );
   });
 });

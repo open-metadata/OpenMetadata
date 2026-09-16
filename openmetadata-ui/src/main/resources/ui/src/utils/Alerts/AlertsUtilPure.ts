@@ -224,27 +224,17 @@ export const getDestinationsWithTestStatus = <T extends Destination>(
   }));
 
 /**
- * @description Normalizes API objects and form arrays to the same destination config shape for comparison.
+ * @description Normalizes destination config for comparison by converting headers and queryParams to array format
  */
-export const normalizeDestinationConfig = (
-  config?: Destination['config'] | ModifiedDestination['config']
-) => {
-  const headers = Array.isArray(config?.headers)
-    ? config.headers
-    : getConfigHeaderArrayFromObject(config?.headers);
-  const queryParams = Array.isArray(config?.queryParams)
-    ? config.queryParams
-    : getConfigQueryParamsArrayFromObject(config?.queryParams);
-
-  return omitBy(
+export const normalizeDestinationConfig = (config?: Destination['config']) =>
+  omitBy(
     {
       ...config,
-      headers: isEmpty(headers) ? undefined : headers,
-      queryParams: isEmpty(queryParams) ? undefined : queryParams,
+      headers: getConfigHeaderArrayFromObject(config?.headers),
+      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
     },
     isUndefined
   );
-};
 
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]

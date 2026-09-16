@@ -380,12 +380,18 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
       {!isEmpty(advancedProperties) && (
         <Collapse
-          destroyInactivePanel
           className={classNames('sso-advanced-properties-collapse', {
             'm-t-sm': shouldApplyGrouping,
           })}
           expandIconPosition="end">
-          <Collapse.Panel header={t('label.advanced-config')} key="1">
+          {/* Advanced fields must stay mounted: transformErrors discards any error whose
+              field is absent from the DOM, so destroying the collapsed panel silently
+              swallowed both client and server validation errors for fields like
+              tokenValidity instead of surfacing them. */}
+          <Collapse.Panel
+            forceRender
+            header={t('label.advanced-config')}
+            key="1">
             <div
               className={classNames({
                 'sso-field-group-box': shouldApplyGrouping,

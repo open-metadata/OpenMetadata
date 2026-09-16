@@ -1318,7 +1318,7 @@
   },
   "playwright/utils/observabilityAlert.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 3
     }
   },
   "playwright/utils/permission.ts": {

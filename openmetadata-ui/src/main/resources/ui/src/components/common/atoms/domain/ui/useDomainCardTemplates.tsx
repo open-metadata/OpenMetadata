@@ -19,16 +19,18 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
+import { DataProductDescriptionField } from './DataProductDescriptionField';
 import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
   renderDomainTypeCell,
@@ -127,25 +129,15 @@ export const useDomainCardTemplates = () => {
           </Box>
 
           <Grid gap="4">
-            <Grid.Item span={12}>
+            <Grid.Item span={24}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.owner-plural')}
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.description')}
                 </Typography>
-                {renderDomainOwnersCell(entity)}
-              </Box>
-            </Grid.Item>
-            <Grid.Item span={12}>
-              <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.expert-plural')}
-                </Typography>
-                <OwnerLabel
-                  isCompactView={false}
-                  maxVisibleOwners={4}
-                  owners={entity.experts}
-                  showLabel={false}
-                />
+                <DataProductDescriptionField description={entity.description} />
               </Box>
             </Grid.Item>
           </Grid>
@@ -153,16 +145,55 @@ export const useDomainCardTemplates = () => {
           <Grid gap="4">
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">
-                  {t('label.glossary-term-plural')}
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.owner-plural')}
                 </Typography>
-                {renderDomainGlossaryTagsCell(entity)}
+                {renderDomainOwnersCell(entity, { showDashPlaceholder: true })}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
               <Box direction="col" gap={1}>
-                <Typography size="text-xs">{t('label.tag-plural')}</Typography>
-                {renderDomainClassificationTagsCell(entity)}
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.expert-plural')}
+                </Typography>
+                {renderDomainExpertsCell(entity, {
+                  showDashPlaceholder: true,
+                })}
+              </Box>
+            </Grid.Item>
+          </Grid>
+
+          <Grid gap="4">
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.glossary-term-plural')}
+                </Typography>
+                {renderDomainGlossaryTagsCell(entity, {
+                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
+                })}
+              </Box>
+            </Grid.Item>
+            <Grid.Item span={12}>
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.tag-plural')}
+                </Typography>
+                {renderDomainClassificationTagsCell(entity, {
+                  emptyPlaceholder: NO_DATA_PLACEHOLDER,
+                })}
               </Box>
             </Grid.Item>
           </Grid>
