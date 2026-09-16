@@ -1089,20 +1089,43 @@ test.describe(
           .getByRole('textbox')
           .fill(newRuleName);
 
-        const resourcesAutocomplete = page.getByTestId('resources');
-        await resourcesAutocomplete.click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: 'All', exact: true })
-          .click();
+         await expect
+          .poll(async () => {
+            const resourcesAutocomplete = page.getByTestId('resources');
 
-        const operationsAutocomplete = page.getByTestId('operations');
-        await operationsAutocomplete.click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: 'All', exact: true })
-          .click();
-        await page.keyboard.press('Escape');
+            await resourcesAutocomplete.click();
+
+            const option = page
+              .getByRole('listbox')
+              .getByRole('option', { name: 'All', exact: true });
+
+            if (await option.isVisible()) {
+              await option.click();
+              return true;
+            }
+
+            return false;
+          })
+          .toBe(true);
+
+        await expect
+          .poll(async () => {
+            const operationsAutocomplete = page.getByTestId('operations');
+
+            await operationsAutocomplete.click();
+
+            const option = page
+              .getByRole('listbox')
+              .getByRole('option', { name: 'All', exact: true });
+
+            if (await option.isVisible()) {
+              await option.click();
+              return true;
+            }
+
+            return false;
+          })
+          .toBe(true);
       });
 
       await test.step('Save rule and verify new card appears', async () => {
