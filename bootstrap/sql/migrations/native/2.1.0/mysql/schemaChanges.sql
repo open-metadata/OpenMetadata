@@ -1,9 +1,6 @@
--- Perf: UsageDAO.computePercentile runs four correlated COUNT(*) subqueries that each
--- filter entity_usage on (entityType, usageDate). The only existing index is
--- UNIQUE (id, usageDate), which is unusable for that predicate, so every run full-scans
--- the table once per subquery. A composite (entityType, usageDate) index turns the
--- percentile subqueries into range scans.
-CREATE INDEX idx_entity_usage_entitytype_usagedate ON entity_usage (entityType, usageDate);
+-- Support UsageDAO.computePercentile filters by entity type and usage date.
+ALTER TABLE entity_usage ADD INDEX idx_entity_usage_entitytype_usagedate (entityType, usageDate);
+
 -- Incident Manager grouped incidents - OpenMetadata 2.1.0
 
 -- Index the stateId partition used by the incident grouping endpoint (/testCaseIncidentStatus/incidentGroups)
@@ -260,6 +257,32 @@ UPDATE dbservice_entity
 SET json = JSON_SET(json, '$.connection.config.scheme', 'oracle+oracledb')
 WHERE serviceType = 'Oracle'
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.scheme')) = 'oracle+cx_oracle';
+
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, MySQL rejected every insert with "Field 'id'
+-- doesn't have a default value". The table is dropped unconditionally rather than patched: it is
+-- new in this unreleased version, so any existing copy is either empty (the broken shape could not
+-- be inserted into) or holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+    json json NOT NULL,
+    fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+    provider varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.provider'))) STORED,
+    updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+    deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_data_quality_dimension_fqn_hash (fqnHash),
+    KEY idx_data_quality_dimension_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name varchar(64) NOT NULL,

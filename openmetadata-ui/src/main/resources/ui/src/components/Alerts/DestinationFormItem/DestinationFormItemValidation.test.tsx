@@ -185,6 +185,33 @@ describe('DestinationFormItem validation', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 
+  it('clears a timeout error when the corrected value is blurred', async () => {
+    const onFinish = jest.fn();
+    render(
+      <ValidationHarness
+        initialValues={{
+          ...OAUTH_DESTINATION_VALUES,
+          readTimeout: 12,
+          timeout: 10,
+        }}
+        onFinish={onFinish}
+      />
+    );
+    const readTimeoutInput = screen.getByTestId('read-timeout-input');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText('label.field-invalid');
+
+    fireEvent.change(readTimeoutInput, { target: { value: '12' } });
+    fireEvent.blur(readTimeoutInput);
+
+    await waitFor(() =>
+      expect(screen.queryByText('label.field-invalid')).not.toBeInTheDocument()
+    );
+  });
+
   it('keeps a destination input focused when the parent form echoes its value', async () => {
     render(<ParentFormFocusHarness />);
 

@@ -257,7 +257,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
-    this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    Integer configuredTokenValidity =
+        authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+      LOG.warn(
+          "OIDC token validity must be positive; using the {} second default",
+          TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+    }
+    this.tokenValidity = TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
@@ -427,7 +434,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           pendingLoginContext.nonce(),
           pendingLoginContext.pkceVerifier());
 
-      if (!nullOrEmpty(promptType)) {
+      // prompt=none asks the IdP to authenticate only if it can do so with no user interaction.
+      // That is a web-SSO optimization, and it is self-defeating on the MCP path: an MCP client
+      // has just opened a fresh browser context precisely so the user can log in, so forcing
+      // silent auth there can only come back as login_required (#32671). Every other prompt value
+      // (login, consent, select_account) is deliberate admin policy and still applies to MCP.
+      boolean forcesSilentAuth = "none".equalsIgnoreCase(promptType);
+      if (!nullOrEmpty(promptType) && !(isMcpFlow && forcesSilentAuth)) {
         params.put(OidcConfiguration.PROMPT, promptType);
       }
 

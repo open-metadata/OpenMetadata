@@ -592,7 +592,8 @@ test.describe('Quick filter options - proper casing from top_hits', () => {
       const optionEl = page.getByTestId(tierFqn.toLowerCase());
 
       await expect(optionEl).toBeVisible();
-      await expect(optionEl).toContainText(tierFqn);
+      // The option renders the tier name (FQN leaf) with its original casing
+      await expect(optionEl).toContainText(tier.responseData.name as string);
     });
 
     await clickOutside(page);
