@@ -989,9 +989,7 @@ const testFilterWithSpecificOption = async (
 
   if (searchText) {
     const aggregateResponse = waitForAggregation(page, { value: searchText });
-    await page
-      .getByRole('textbox', { name: 'Search Service Type...' })
-      .fill(searchText);
+    await page.getByTestId('search-input').fill(searchText);
     await aggregateResponse;
   }
 

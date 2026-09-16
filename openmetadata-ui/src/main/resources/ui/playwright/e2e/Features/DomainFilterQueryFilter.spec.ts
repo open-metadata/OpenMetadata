@@ -881,7 +881,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.getByRole('menuitem', { name: tagPattern }).click();
+      await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
       const filterRes = page.waitForResponse(
         '/api/v1/search/query?*index=all*'
       );
