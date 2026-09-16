@@ -64,6 +64,10 @@ import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
  */
 final class AgentSparqlQueryInspector extends ElementVisitorBase {
 
+  private static final String ARQ_FUNCTION_LIBRARY = "http://jena.apache.org/ARQ/function#";
+  private static final String ARQ_FUNCTION_LIBRARY_LEGACY = "http://jena.hpl.hp.com/ARQ/function#";
+  private static final String JAVA_SCHEME = "java:";
+
   private AgentSparqlQueryInspector() {}
 
   static void inspect(final Query query) {
@@ -185,14 +189,11 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
   }
 
   private static void rejectJavaScheme(final String iri) {
-    if (iri != null && iri.toLowerCase(Locale.ROOT).startsWith("java:")) {
+    if (iri != null && iri.toLowerCase(Locale.ROOT).startsWith(JAVA_SCHEME)) {
       throw new AgentSparqlException(
           AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, "java: extension calls are not allowed");
     }
   }
-
-  private static final String ARQ_FUNCTION_LIBRARY = "http://jena.apache.org/ARQ/function#";
-  private static final String ARQ_FUNCTION_LIBRARY_LEGACY = "http://jena.hpl.hp.com/ARQ/function#";
 
   private static void rejectEval(final String iri) {
     if (iri != null
