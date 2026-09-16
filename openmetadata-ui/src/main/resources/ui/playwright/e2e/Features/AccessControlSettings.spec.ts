@@ -800,12 +800,13 @@ test.describe(
               .getByRole('listbox')
               .getByRole('option', { name: 'All', exact: true });
 
-            if (await option.isVisible()) {
-              await option.click();
-              return true;
-            }
+            try {
+              await option.click({ timeout: 1000 });
 
-            return false;
+              return true;
+            } catch {
+              return false;
+            }
           })
           .toBe(true);
 
@@ -819,12 +820,13 @@ test.describe(
               .getByRole('listbox')
               .getByRole('option', { name: 'All', exact: true });
 
-            if (await option.isVisible()) {
-              await option.click();
-              return true;
-            }
+            try {
+              await option.click({ timeout: 1000 });
 
-            return false;
+              return true;
+            } catch {
+              return false;
+            }
           })
           .toBe(true);
       });
@@ -1099,12 +1101,13 @@ test.describe(
               .getByRole('listbox')
               .getByRole('option', { name: 'All', exact: true });
 
-            if (await option.isVisible()) {
-              await option.click();
-              return true;
-            }
+            try {
+              await option.click({ timeout: 1000 });
 
-            return false;
+              return true;
+            } catch {
+              return false;
+            }
           })
           .toBe(true);
 
@@ -1118,12 +1121,13 @@ test.describe(
               .getByRole('listbox')
               .getByRole('option', { name: 'All', exact: true });
 
-            if (await option.isVisible()) {
-              await option.click();
-              return true;
-            }
+            try {
+              await option.click({ timeout: 1000 });
 
-            return false;
+              return true;
+            } catch {
+              return false;
+            }
           })
           .toBe(true);
       });

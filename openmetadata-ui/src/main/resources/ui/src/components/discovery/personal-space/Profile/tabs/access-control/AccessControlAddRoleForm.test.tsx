@@ -110,6 +110,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ))}
     </>
   ),
+  FormField: ({
+    children,
+  }: {
+    children: (props: {
+      field: { value: unknown; onChange: jest.Mock };
+    }) => React.ReactNode;
+  }) => <>{children({ field: { value: [], onChange: jest.fn() } })}</>,
 }));
 
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
