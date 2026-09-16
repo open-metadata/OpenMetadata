@@ -1533,7 +1533,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Other user editing is visible in the article header editor list', async ({
+  test('Article body edit by other user is tracked in version history', async ({
     page,
     dataConsumerPage,
   }) => {
@@ -1551,10 +1551,44 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
     await updateBody(dataConsumerPage, `Edited by data consumer ${uuid()}`);
 
+    const { apiContext: dcApiContext, afterAction: dcAfterAction } =
+      await getApiContext(dataConsumerPage);
+    await expect
+      .poll(
+        async () => {
+          const res = await dcApiContext.get(
+            `/api/v1/contextCenter/pages/name/${article.fullyQualifiedName}?fields=editors`
+          );
+          const data = await res.json();
+
+          return (data.editors ?? []).some((e: { name: string }) =>
+            e.name.startsWith('pw-data-consumer')
+          );
+        },
+        { timeout: 15_000, intervals: [1000, 2000, 3000] }
+      )
+      .toBe(true);
+    await dcAfterAction();
+
     await navigateToArticle(page, article.fullyQualifiedName);
+
+    const versionsListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/versions') &&
+        !response.url().match(/\/versions\/[\d.]+$/) &&
+        response.request().method() === 'GET'
+    );
+    await page.getByTestId('version-btn').click();
+    const versionsListRes = await versionsListResponse;
+    expect(versionsListRes.ok()).toBeTruthy();
+    await waitForAllLoadersToDisappear(page);
+
     await expect(
-      page.locator('a[href*="/users/pw-data-consumer"]')
+      page
+        .getByTestId('versions-list-container')
+        .getByRole('link', { name: /PW DataConsumer/i })
     ).toBeVisible();
+
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
     await afterAction();

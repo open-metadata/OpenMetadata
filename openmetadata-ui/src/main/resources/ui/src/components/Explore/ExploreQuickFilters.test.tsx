@@ -854,11 +854,19 @@ describe('ExploreQuickFilters component', () => {
       sourceFields: 'tier.tagFQN',
     };
 
+    const tierBucketsResponse = {
+      data: {
+        aggregations: {
+          'sterms#tier.tagFQN': {
+            buckets: [{ key: 'tier.tier1', doc_count: 3 }],
+          },
+        },
+      },
+    };
+
     it('answers a reopen from the cache instead of re-fetching', async () => {
       mockUseCustomLocation.mockReturnValue({ search: '' });
-      mockGetAggregationOptions.mockResolvedValue(
-        mockAdvancedFieldDefaultOptions
-      );
+      mockGetAggregationOptions.mockResolvedValue(tierBucketsResponse);
 
       render(<ExploreQuickFilters {...mockProps} fields={[tierField]} />);
 
@@ -872,11 +880,31 @@ describe('ExploreQuickFilters component', () => {
       expect(getAggregationOptions).toHaveBeenCalledTimes(1);
     });
 
+    it('does not cache an empty response, so a late-indexed value appears on reopen', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions
+        .mockResolvedValueOnce({
+          data: { aggregations: { 'sterms#tier.tagFQN': { buckets: [] } } },
+        })
+        .mockResolvedValue(tierBucketsResponse);
+
+      render(<ExploreQuickFilters {...mockProps} fields={[tierField]} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      // The empty first answer is not cached — the reopen fetches again and
+      // sees the now-indexed values.
+      expect(getAggregationOptions).toHaveBeenCalledTimes(2);
+    });
+
     it('re-fetches when the facet context changes', async () => {
       mockUseCustomLocation.mockReturnValue({ search: '' });
-      mockGetAggregationOptions.mockResolvedValue(
-        mockAdvancedFieldDefaultOptions
-      );
+      mockGetAggregationOptions.mockResolvedValue(tierBucketsResponse);
 
       const { rerender } = render(
         <ExploreQuickFilters {...mockProps} fields={[tierField]} />

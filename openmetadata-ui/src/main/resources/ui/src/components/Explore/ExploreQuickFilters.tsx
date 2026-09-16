@@ -256,10 +256,16 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       key,
       sourceFields
     );
-    if (initialOptionsCacheRef.current.size >= INITIAL_OPTIONS_CACHE_MAX) {
-      initialOptionsCacheRef.current.clear();
+    // Never cache an empty list: several flows assign a tag or tier and open
+    // the filter before the search index has caught up, so an empty response
+    // is often just eventual consistency. Caching it would pin the facet
+    // empty for the rest of the page; refetching an empty facet is cheap.
+    if (options.length > 0) {
+      if (initialOptionsCacheRef.current.size >= INITIAL_OPTIONS_CACHE_MAX) {
+        initialOptionsCacheRef.current.clear();
+      }
+      initialOptionsCacheRef.current.set(cacheKey, options);
     }
-    initialOptionsCacheRef.current.set(cacheKey, options);
 
     return options;
   };
