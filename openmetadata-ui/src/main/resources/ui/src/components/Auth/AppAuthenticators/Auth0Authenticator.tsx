@@ -21,7 +21,6 @@ import {
   useImperativeHandle,
 } from 'react';
 import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
-import { isPlaywrightBuild } from '../../../utils/isPlaywrightBuild';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -30,54 +29,15 @@ interface Props {
   children: ReactNode;
 }
 
-// Test-only escape hatch. Playwright's `auth0-mock` fixture pre-populates
-// `window.__omTestAuth0` via `page.addInitScript` with a shim exposing the
-// same surface `useAuth0()` returns — `loginWithRedirect`,
-// `getAccessTokenSilently`, `getIdTokenClaims`, and `logout`. When present,
-// we use that instead of the real auth0-react context so the Playwright
-// suite can exercise this component's login / renew branches without a live
-// Auth0 tenant.
-//
-// Activation is a runtime-only opt-in — see MsalAuthenticator for the full
-// rationale. Vite inlines NODE_ENV as 'production' for `vite build`
-// (including the CI SSO leg), which previously tree-shook the shim entirely
-// and made every auth0-mock scenario time out. Keep the branch reachable in
-// prod; the `window.__omTestAuth0` runtime check is what actually enforces
-// test-only activation (only Playwright's addInitScript sets it, pre-app).
-// `useAuth0()` is still always called to satisfy the Rules of Hooks; only
-// its return value is swapped.
-type Auth0ContextShape = ReturnType<typeof useAuth0>;
-
-const readTestAuth0Override = (): Auth0ContextShape | undefined => {
-  // Second gate on top of the runtime `window.__omTestAuth0` presence check.
-  // `isPlaywrightBuild()` reads Vite's build-time `PW_E2E_BUILD` flag (set
-  // exclusively by the Playwright build pipelines) — in any other bundle,
-  // including prod, the constant folds to `false` and this whole function
-  // tree-shakes to `undefined`, so the shim can't be turned on even if an
-  // attacker manages to set the window global. Isolated in its own module
-  // so ts-jest doesn't have to parse `import.meta`.
-  if (!isPlaywrightBuild()) {
-    return undefined;
-  }
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-
-  return (window as unknown as { __omTestAuth0?: Auth0ContextShape })
-    .__omTestAuth0;
-};
-
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
     const { handleSuccessfulLogout } = useAuthProvider();
-    const realAuth0 = useAuth0();
-    const testAuth0 = readTestAuth0Override();
     const {
       loginWithRedirect,
       getAccessTokenSilently,
       getIdTokenClaims,
       logout,
-    } = testAuth0 ?? realAuth0;
+    } = useAuth0();
 
     // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
     // Task 11). Kept alongside renewIdToken until every authenticator is
