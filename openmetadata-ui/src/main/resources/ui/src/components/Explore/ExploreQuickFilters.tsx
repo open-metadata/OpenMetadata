@@ -14,8 +14,8 @@
 import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
-import Qs from 'qs';
 import type { Bucket } from 'Models';
+import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';

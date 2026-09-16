@@ -581,6 +581,61 @@ describe('FilterSelect', () => {
     expect(hostKeyDown).not.toHaveBeenCalled();
   });
 
+  it('pins the menu scroll while a mouse press is held on an option row', () => {
+    renderFilter({ searchable: true, onSearch: vi.fn() });
+
+    const menu = screen.getByRole('menu');
+    const row = screen.getByTestId('redshift');
+    menu.scrollTop = 845;
+
+    const press = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(press, 'pointerType', { value: 'mouse' });
+    row.dispatchEvent(press);
+
+    // React Aria resets the scroll position when focus enters the menu
+    // mid-press; the pin must undo it within the same focusin dispatch.
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(845);
+
+    const release = new Event('pointerup', { bubbles: true });
+    row.dispatchEvent(release);
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(0);
+  });
+
+  it('does not pin the menu scroll for a touch press', () => {
+    renderFilter({ searchable: true, onSearch: vi.fn() });
+
+    const menu = screen.getByRole('menu');
+    menu.scrollTop = 845;
+
+    const press = new Event('pointerdown', { bubbles: true });
+    Object.defineProperty(press, 'pointerType', { value: 'touch' });
+    screen.getByTestId('redshift').dispatchEvent(press);
+
+    menu.scrollTop = 0;
+    fireEvent.focusIn(menu);
+
+    expect(menu.scrollTop).toBe(0);
+  });
+
+  it('shows the empty state alongside the null row when no options match', () => {
+    renderFilter({
+      emptyState: 'No data available.',
+      nullOption: { value: 'null-key', label: 'No Tier' },
+      options: [],
+      searchable: true,
+      onSearch: vi.fn(),
+    });
+
+    expect(screen.getByText('No Tier')).toBeInTheDocument();
+    expect(screen.getByText('No data available.')).toBeInTheDocument();
+  });
+
   it('shows the placeholder on an empty input trigger', () => {
     renderFilter({
       isOpen: false,

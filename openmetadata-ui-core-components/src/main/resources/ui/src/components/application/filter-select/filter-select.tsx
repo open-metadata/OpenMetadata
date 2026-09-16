@@ -454,7 +454,15 @@ export const FilterSelect = ({
     setQuery('');
   };
 
+  // A closing popover's subtree survives until its exit transition ends, so
+  // keystrokes can land in the *previous* filter's search box after a sibling
+  // swap — its onSearch would then repaint the consumer's (often shared)
+  // options with the wrong facet's results. Ignore input once closed; the
+  // box is also disabled below so automation waits for the live one instead.
   const handleSearch = (search: string) => {
+    if (!isOpen) {
+      return;
+    }
     setQuery(search);
     onSearch?.(search);
   };
@@ -555,14 +563,77 @@ export const FilterSelect = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  // React Aria yanks the option list back to the top when focus enters the
+  // menu mid-press (it focuses the first item / restores a stale scroll
+  // position), and menus commit selection on pointer *release* — so a click
+  // on a scrolled-down row can land on whichever row slides under the cursor,
+  // toggling the wrong option. Pin the scroll position for the duration of a
+  // mouse/pen press on an option row. Touch is exempt so swipe-scrolling a
+  // press started on a row keeps working.
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    let scroller: HTMLElement | null = null;
+    let pinnedTop = 0;
+    const holdScroll = (event: Event) => {
+      if (
+        scroller &&
+        event.target === scroller &&
+        scroller.scrollTop !== pinnedTop
+      ) {
+        scroller.scrollTop = pinnedTop;
+      }
+    };
+    const releasePress = () => {
+      scroller = null;
+    };
+    const pinOnRowPress = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') {
+        return;
+      }
+      const row = (event.target as HTMLElement).closest?.('[role^="menuitem"]');
+      if (!row || !popoverContentRef.current?.contains(row)) {
+        return;
+      }
+      scroller = row.closest('[role="menu"]');
+      pinnedTop = scroller?.scrollTop ?? 0;
+    };
+    // The reset happens synchronously inside React Aria's focus handler, so
+    // undo it in the same focusin dispatch (document bubble runs after the
+    // React root's delegated handlers) — a later async 'scroll' correction
+    // could lose the race against the pointerup hit-test.
+    const holdScrollOnFocus = () => {
+      if (scroller && scroller.scrollTop !== pinnedTop) {
+        scroller.scrollTop = pinnedTop;
+      }
+    };
+    document.addEventListener('pointerdown', pinOnRowPress, true);
+    document.addEventListener('focusin', holdScrollOnFocus);
+    document.addEventListener('scroll', holdScroll, true);
+    document.addEventListener('pointerup', releasePress, true);
+    document.addEventListener('pointercancel', releasePress, true);
+
+    return () => {
+      document.removeEventListener('pointerdown', pinOnRowPress, true);
+      document.removeEventListener('focusin', holdScrollOnFocus);
+      document.removeEventListener('scroll', holdScroll, true);
+      document.removeEventListener('pointerup', releasePress, true);
+      document.removeEventListener('pointercancel', releasePress, true);
+    };
+  }, [isOpen]);
+
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
   const showStatusFooter = isMulti && !isStaged;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
-  const isEmpty =
-    !isLoading && displayedOptions.length === 0 && !displayedNullOption;
+  // The null row is a synthetic filter, not a search result: an unmatched
+  // search shows the empty state even while "No <entity>" stays available
+  // (legacy SearchDropdown stacked exactly these two).
+  const isEmpty = !isLoading && displayedOptions.length === 0;
+  const showMenu = !isLoading && (!isEmpty || Boolean(displayedNullOption));
 
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
@@ -613,6 +684,7 @@ export const FilterSelect = ({
               <Input
                 icon={SearchInputIcon}
                 inputDataTestId="search-input"
+                isDisabled={!isOpen}
                 placeholder={t('label.search')}
                 size="sm"
                 value={query}
@@ -646,13 +718,7 @@ export const FilterSelect = ({
             </div>
           )}
 
-          {isEmpty && (
-            <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-              {emptyState ?? t('label.no-data-found')}
-            </div>
-          )}
-
-          {!isLoading && !isEmpty && (
+          {showMenu && (
             <Dropdown.Menu
               aria-label={label}
               // A search box owns focus while it is there: the menu remounts
@@ -683,6 +749,12 @@ export const FilterSelect = ({
                 />
               ))}
             </Dropdown.Menu>
+          )}
+
+          {isEmpty && (
+            <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
+              {emptyState ?? t('label.no-data-found')}
+            </div>
           )}
 
           {helperText !== undefined && (
