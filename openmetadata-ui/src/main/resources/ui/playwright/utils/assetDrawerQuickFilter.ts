@@ -106,9 +106,13 @@ const assertCloseDiscardsSelection = async (
   await optionByValue(page, 'dashboard').click();
   await closeQuickFilterPopover(page);
 
+  // FilterSelect echoes the applied selection as a count badge on the
+  // trigger, not as label text — no badge means nothing was committed.
   await expect(
-    page.getByTestId(`search-dropdown-${entityTypeKey}`)
-  ).not.toContainText('dashboard');
+    page
+      .getByTestId(`search-dropdown-${entityTypeKey}`)
+      .getByTestId('filter-count-badge')
+  ).toBeHidden();
 };
 
 const assertApplyNarrowsList = async (
@@ -121,8 +125,10 @@ const assertApplyNarrowsList = async (
   await applyQuickFilter(page);
 
   await expect(
-    page.getByTestId(`search-dropdown-${entityTypeKey}`)
-  ).toContainText('table');
+    page
+      .getByTestId(`search-dropdown-${entityTypeKey}`)
+      .getByTestId('filter-count-badge')
+  ).toHaveText('1');
 
   await scopeDrawerSearch(page, ctx.topic.name);
   await expectAssetHidden(page, ctx.topic.fqn);
