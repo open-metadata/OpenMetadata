@@ -646,14 +646,15 @@ public class SearchMetadataTool implements McpTool {
     // the clause is checked where it actually sits. Validating only the outer node lets
     // {"query": null} straight through - the very payload the engine rejects.
     JsonNode clause = parsed.has(QUERY_KEY) ? parsed.get(QUERY_KEY) : parsed;
-    if (!carriesNoClause(clause) && !clause.isObject()) {
+    boolean absent = carriesNoClause(clause);
+    if (!absent && !clause.isObject()) {
       throw new IllegalArgumentException(
           "queryFilter must be a JSON object holding an OpenSearch query clause, e.g. "
               + QUERY_FILTER_EXAMPLE
               + " - got: "
               + rawFilter);
     }
-    return carriesNoClause(clause) ? null : parsed;
+    return absent ? null : parsed;
   }
 
   private static JsonNode readQueryFilter(String rawFilter) {

@@ -375,7 +375,9 @@ class SearchMetadataToolTest {
         "{}",
         "{\"query\":null}",
         "{\"query\":{}}",
-        "{\"query\":\"\"}"
+        "{\"query\":\"\"}",
+        "\"\"",
+        "\"   \""
       })
   void testBlankQueryFilterIsTreatedAsAbsent(String blankFilter) throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
@@ -453,6 +455,73 @@ class SearchMetadataToolTest {
           thrown.getMessage().contains("queryFilter"),
           "the message must name the parameter the model has to fix, got: " + thrown.getMessage());
       verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+    }
+  }
+
+  /**
+   * The guard unwraps the DSL wrapper key once and no further. A clause that is a real object
+   * carrying wrong DSL is malformed, not absent, so it stays the engine's rejection to report -
+   * swallowing it would leave the model believing a filter applied when it never did.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":{\"query\":null}}", "{\"query\":{\"bool\":null}}"})
+  void testMalformedClauseIsLeftForTheEngine(String malformedFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", malformedFilter);
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(malformedFilter, captor.getValue().getQueryFilter());
+    }
+  }
+
+  @Test
+  void testSiblingKeysSurviveAlongsideARealClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":{\"match_all\":{}},\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(5, JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/size").asInt());
+    }
+  }
+
+  /** Siblings follow the clause: with nothing to qualify, the whole filter goes rather than half. */
+  @Test
+  void testSiblingKeysGoWithAnAbsentClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":null,\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertNull(captor.getValue().getQueryFilter());
     }
   }
 
