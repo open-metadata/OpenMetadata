@@ -50,11 +50,14 @@ const optionText = (option: FilterSelectOption): string =>
   (typeof option.label === 'string' ? option.label : option.value);
 
 const TriggerCountBadge = ({ count }: { count: number }) => (
-  <span
-    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:tabular-nums"
-    data-testid="filter-count-badge">
+  <Typography
+    inline
+    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
+    data-testid="filter-count-badge"
+    size="text-xs"
+    weight="medium">
     {count}
-  </span>
+  </Typography>
 );
 
 const TriggerButton = ({
@@ -105,7 +108,7 @@ const TriggerButton = ({
         iconTrailing={ChevronDown}
         size={bordered ? 'md' : 'sm'}>
         <span data-testid={`search-dropdown-${label}`}>
-          <span>{text}</span>
+          <Typography inline>{text}</Typography>
         </span>
         {countBadge}
       </Button>
@@ -128,7 +131,9 @@ const TriggerButton = ({
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
           data-testid={`search-dropdown-${label}`}>
-          <span>{hasSelection ? text : placeholder ?? text}</span>
+          <Typography inline>
+            {hasSelection ? text : placeholder ?? text}
+          </Typography>
         </span>
         {countBadge}
         <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
@@ -146,7 +151,7 @@ const TriggerButton = ({
       )}
       data-testid={testId}>
       <span data-testid={`search-dropdown-${label}`}>
-        <span>{text}</span>
+        <Typography inline>{text}</Typography>
       </span>
       {countBadge}
       <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
@@ -193,7 +198,9 @@ const ChipsField = ({
           className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
           data-testid="filter-chip"
           key={chip.value}>
-          <span className="tw:truncate">{chip.label}</span>
+          <Typography inline className="tw:truncate">
+            {chip.label}
+          </Typography>
           <button
             aria-label={t('label.remove-filter')}
             className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
@@ -211,9 +218,13 @@ const ChipsField = ({
         className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
         data-testid={testId}>
         {chips.length === 0 ? (
-          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
+          <Typography
+            inline
+            className="tw:truncate tw:text-placeholder"
+            size="text-sm"
+            weight="regular">
             {placeholder}
-          </span>
+          </Typography>
         ) : (
           <span />
         )}
@@ -273,11 +284,15 @@ const OptionRow = ({
               {iconNode}
             </span>
           )}
-          <span className="tw:grow tw:truncate" title={optionText(option)}>
+          <Typography
+            inline
+            className="tw:grow tw:truncate"
+            title={optionText(option)}>
             {option.label}
-          </span>
+          </Typography>
           {!hideCounts && option.count !== undefined && (
-            <span
+            <Typography
+              inline
               className={cx(
                 'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
                 !showCheckbox && state.isSelected
@@ -288,7 +303,7 @@ const OptionRow = ({
               )}
               data-testid="filter-count">
               {option.count.toLocaleString()}
-            </span>
+            </Typography>
           )}
         </span>
       )}
@@ -749,8 +764,8 @@ export const FilterSelect = ({
           )}
 
           {isEmpty && (
-            <div className="tw:px-4 tw:py-2">
-              <Typography className="tw:text-tertiary" size="text-sm">
+            <div className="tw:px-4 tw:py-2 tw:text-center">
+              <Typography className="tw:text-tertiary" size="text-xs">
                 {emptyState ?? t('label.no-data-found')}
               </Typography>
             </div>
