@@ -20,6 +20,9 @@ const DISPLAY_NAME_KEYWORD_FIELD = 'displayName.keyword';
 
 export const INITIAL_SORT_FIELD = 'totalVotes';
 export const TAGS_INITIAL_SORT_FIELD = DISPLAY_NAME_KEYWORD_FIELD;
+// The Columns tab does not sort by popularity (totalVotes), so its default must be
+// a member of columnSortingFields to keep the sort dropdown label from rendering blank.
+export const COLUMN_INITIAL_SORT_FIELD = DISPLAY_NAME_KEYWORD_FIELD;
 export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
 export const TIER_FQN_KEY = 'tier.tagFQN';
 export const TAG_FQN_KEY = 'tags.tagFQN';

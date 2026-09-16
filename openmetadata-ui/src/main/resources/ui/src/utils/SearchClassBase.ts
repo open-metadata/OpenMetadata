@@ -36,6 +36,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
+  COLUMN_INITIAL_SORT_FIELD,
   columnSortingFields,
   entitySortingFields,
   INITIAL_SORT_FIELD,
@@ -489,7 +490,7 @@ class SearchClassBase {
       [SearchIndex.COLUMN]: {
         label: t('label.column-plural'),
         sortingFields: columnSortingFields,
-        sortField: INITIAL_SORT_FIELD,
+        sortField: COLUMN_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.COLUMNS,
         icon: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
         iconClassName: TEXT_QUATERNARY_CLASS,
