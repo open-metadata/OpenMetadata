@@ -11,7 +11,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.FlattenColumn;
 
 public record FileIndex(File file) implements ColumnIndex, DataAssetIndex {
-  final Set<String> excludeFileFields = Set.of("changeDescription", "incrementalChangeDescription");
+  private static final Set<String> excludeFields =
+      Set.of("changeDescription", "incrementalChangeDescription");
 
   @Override
   public Object getEntity() {
@@ -25,7 +26,7 @@ public record FileIndex(File file) implements ColumnIndex, DataAssetIndex {
 
   @Override
   public Set<String> getExcludedFields() {
-    return excludeFileFields;
+    return excludeFields;
   }
 
   @Override
