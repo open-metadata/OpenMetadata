@@ -32,7 +32,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {
@@ -40,6 +39,7 @@ import {
   updateType,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
@@ -109,7 +109,8 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   const tableColumns = useMemo(() => getTableColumns(t), [t]);
 
-  const hasEditPermission = permission[Operation.EditAll];
+  const { canCreate, canDelete, canEditAll } =
+    getDerivedPermissionFlags(permission);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!propertyToDelete || !typeDetail) {
@@ -235,32 +236,36 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
             />
           </Table.Cell>
           <Table.Cell>
-            {hasEditPermission && (
+            {(canEditAll || canDelete) && (
               <Box direction="row" gap={1}>
-                <Button
-                  aria-label={t('label.edit')}
-                  color="tertiary"
-                  iconLeading={Edit}
-                  size="xs"
-                  onPress={() => onEditProperty(property)}
-                />
-                <Button
-                  aria-label={t('label.delete')}
-                  color="tertiary-destructive"
-                  iconLeading={Delete}
-                  size="xs"
-                  onPress={() => setPropertyToDelete(property)}
-                />
+                {canEditAll && (
+                  <Button
+                    aria-label={t('label.edit')}
+                    color="tertiary"
+                    iconLeading={Edit}
+                    size="xs"
+                    onPress={() => onEditProperty(property)}
+                  />
+                )}
+                {canDelete && (
+                  <Button
+                    aria-label={t('label.delete')}
+                    color="tertiary-destructive"
+                    iconLeading={Delete}
+                    size="xs"
+                    onPress={() => setPropertyToDelete(property)}
+                  />
+                )}
               </Box>
             )}
           </Table.Cell>
         </Table.Row>
       );
     },
-    [hasEditPermission, onEditProperty, t]
+    [canEditAll, canDelete, onEditProperty, t]
   );
 
-  const addButton = hasEditPermission ? (
+  const addButton = canCreate ? (
     <Button
       color="primary"
       data-testid="add-custom-property-btn"
@@ -311,7 +316,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                   <div className="tw:min-h-[250px] tw:relative">
                     <EmptyPlaceholder
                       actions={
-                        hasEditPermission
+                        canCreate
                           ? [
                               {
                                 key: 'add',

@@ -124,8 +124,8 @@ const withPillTypes = {
       'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
-        root: 'tw:bg-primary tw:text-secondary tw:outline-primary',
-        addon: 'tw:text-gray-500',
+        root: 'tw:bg-surface tw:text-secondary tw:outline-subtle',
+        addon: 'tw:text-utility-gray-500',
         addonButton:
           'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
       },
@@ -146,7 +146,7 @@ const withBadgeTypes = {
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:outline-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-surface tw:text-secondary tw:outline-subtle tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };

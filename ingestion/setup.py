@@ -257,6 +257,10 @@ plugins: dict[str, set[str]] = {
         "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
+    "clickzetta": {
+        "clickzetta-sqlalchemy==0.8.65.4",
+        "clickzetta-connector==1.0.30",
+    },
     "dagster": {
         # No croniter ceiling here: dagster 1.13 declares no croniter dependency at all,
         # nothing under ingestion/ imports it, and apache-airflow-core 3.3.1 raised its
@@ -311,12 +315,12 @@ plugins: dict[str, set[str]] = {
     "deltalake": {
         "delta-spark>=3.0.0,<4.0.0",
         "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.6",
+        "pyspark==3.5.9",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
