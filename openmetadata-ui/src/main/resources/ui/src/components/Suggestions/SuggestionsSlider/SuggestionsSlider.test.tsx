@@ -60,8 +60,17 @@ const mockContextValue = {
   dataSuggestionType: undefined,
 };
 
+// A real EditAll grant resolves to per-field Allow in the backend payload, so
+// the derived flags see EditDescription/EditTags as true. getDerivedPermissionFlags
+// applies explicit-deny-wins: a bare EditAll with the field keys still false would
+// deny, matching frontend-permissions.md — so the fixture mirrors a real admin.
 const mockGenericContextValue = {
-  permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
+  permissions: {
+    ...DEFAULT_ENTITY_PERMISSION,
+    EditAll: true,
+    EditDescription: true,
+    EditTags: true,
+  },
 };
 
 describe('SuggestionsSlider', () => {

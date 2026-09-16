@@ -18,6 +18,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import { SuggestionType } from '../../../types/taskSuggestion';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
@@ -43,14 +44,12 @@ const SuggestionsSlider = () => {
   // the user may apply each kind of suggestion present, otherwise the API rejects the
   // call and the entity silently reverts to its original state on the next fetch.
   const hasSuggestionEditAccess = useMemo(() => {
-    if (permissions?.EditAll) {
-      return true;
-    }
+    const { canEditDescription, canEditTags } =
+      getDerivedPermissionFlags(permissions);
 
     return (
-      (isEmpty(selectedUserSuggestions?.description) ||
-        Boolean(permissions?.EditDescription)) &&
-      (isEmpty(selectedUserSuggestions?.tags) || Boolean(permissions?.EditTags))
+      (isEmpty(selectedUserSuggestions?.description) || canEditDescription) &&
+      (isEmpty(selectedUserSuggestions?.tags) || canEditTags)
     );
   }, [permissions, selectedUserSuggestions]);
 
@@ -65,7 +64,7 @@ const SuggestionsSlider = () => {
       default:
         return t('label.suggested-description-tag-plural');
     }
-  }, [dataSuggestionType]);
+  }, [dataSuggestionType, t]);
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">
