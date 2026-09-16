@@ -17,6 +17,7 @@ import {
   getApiContext,
   getAuthContext,
   getSavedAdminToken,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -90,8 +91,10 @@ const fillInput = async (page: Page, testId: string, value: string) => {
 };
 
 const selectOption = async (page: Page, testId: string, option: string) => {
-  await page.getByTestId(testId).click();
-  await page.getByRole('option', { name: option, exact: true }).click();
+  await selectOptionWithRetry(
+    page.getByTestId(testId),
+    page.getByRole('option', { name: option, exact: true })
+  );
 };
 
 const submitRelationForm = async (

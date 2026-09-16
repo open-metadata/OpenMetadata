@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import {
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
@@ -18,27 +22,24 @@ import {
   Select,
   SelectProps,
   Space,
-  TagProps,
-  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined, pick } from 'lodash';
+import { debounce, isEmpty, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { LabelType } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import { tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {
@@ -57,7 +58,6 @@ const AsyncSelectList: FC<
   initialOptions,
   filterOptions = [],
   optionClassName,
-  tagType,
   onCancel,
   isSubmitLoading,
   newLook = false,
@@ -211,12 +211,7 @@ const AsyncSelectList: FC<
       (tag) => tag.value === data.label
     );
 
-    if (isUndefined(selectedTag?.data)) {
-      return tagRender(data);
-    }
-
     const { label, onClose } = data;
-    const tagLabel = getTagDisplay(label as string);
     const tag = {
       tagFQN: (selectedTag?.data as Tag)?.fullyQualifiedName,
       ...pick(
@@ -228,44 +223,40 @@ const AsyncSelectList: FC<
         'tagFQN'
       ),
     } as TagLabel;
+    const tagDisplayName = getTagDisplay(label as string);
+    const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
-    const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    // A propagated label is inherited from a parent, so it cannot be removed here — allowing the
-    // × would delete nothing server-side and the label would reappear on the next read.
-    const labelType = (selectedTag?.data as TagLabel).labelType;
-    const isDerived =
-      labelType === LabelType.Derived || labelType === LabelType.Propagated;
-
-    const tagProps = {
-      closable: !isDerived,
-      closeIcon: !isDerived && (
-        <CloseOutlined
-          className="p-r-xs"
-          data-testid="remove-tags"
-          height={8}
-          width={8}
-        />
-      ),
-      'data-testid': `selected-tag-${tagLabel}`,
-      onClose: !isDerived ? onClose : null,
-      onMouseDown: onPreventMouseDown,
-    } as TagProps;
+    // Neither a derived nor a propagated label is the user's own: a propagated one is inherited
+    // from a parent asset, so offering the delete here would remove nothing server-side and the
+    // label would return on the next read.
+    const labelType = (selectedTag?.data as TagLabel)?.labelType;
+    const isDerived = labelType === LabelType.Derived;
+    const isSystemApplied = isDerived || labelType === LabelType.Propagated;
+    const systemTagTooltipKey = isDerived
+      ? 'message.derived-tag-warning'
+      : 'message.propagated-tag-warning';
+    const isGlossaryTerm =
+      (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
+      (selectedTag?.data as { entityType?: EntityType })?.entityType ===
+        EntityType.GLOSSARY_TERM;
+    const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
     return (
-      <TagsV1
-        isEditTags
-        newLook={newLook}
-        size={props.size}
-        startWith={TAG_START_WITH.SOURCE_ICON}
-        tag={tag}
-        tagProps={tagProps}
-        tagType={tagType}
-        tooltipOverride={
-          isDerived ? t('message.derived-tag-warning') : undefined
+      <TagComponent
+        closeButtonTestId="remove-tags"
+        color={tag.style?.color}
+        data-testid={`selected-tag-${tagDisplayName}`}
+        icon={tag.style?.iconURL}
+        label={tagLabel}
+        size="sm"
+        tooltip={isSystemApplied ? t(systemTagTooltipKey) : undefined}
+        onDelete={
+          isSystemApplied
+            ? undefined
+            : (e) => {
+                e.stopPropagation();
+                onClose?.();
+              }
         }
       />
     );
@@ -350,9 +341,8 @@ const AsyncSelectList: FC<
           key={label}
           value={value}>
           <Tooltip
-            destroyTooltipOnHide
-            mouseEnterDelay={1.5}
-            placement="leftTop"
+            delay={1.5}
+            placement="top left"
             title={label}
             trigger="hover">
             {displayName}

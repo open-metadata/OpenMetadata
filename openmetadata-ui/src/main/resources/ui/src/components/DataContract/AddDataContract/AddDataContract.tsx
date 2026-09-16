@@ -289,7 +289,7 @@ const AddDataContract: React.FC<{
           semantics: validSemantics,
           security: validSecurity,
           termsOfUse: termsOfUseContent,
-          entityStatus: EntityStatus.Approved,
+          entityStatus: formValues.entityStatus ?? EntityStatus.Draft,
         });
       }
 

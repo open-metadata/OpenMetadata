@@ -55,6 +55,42 @@ describe('PageHeader', () => {
     expect(screen.getByText('A subtitle')).toBeInTheDocument();
   });
 
+  it.each([
+    ['comfortable', 'tw:py-4'],
+    ['compact', 'tw:py-3'],
+  ] as const)('applies %s vertical padding', (density, expectedClass) => {
+    render(<PageHeader density={density} title="Titled" />);
+
+    expect(screen.getByTestId('page-header')).toHaveClass(expectedClass);
+  });
+
+  it('uses comfortable density by default', () => {
+    render(<PageHeader title="Titled" />);
+
+    expect(screen.getByTestId('page-header')).toHaveClass('tw:py-4');
+  });
+
+  it.each([
+    ['comfortable', 'tw:pt-4'],
+    ['compact', 'tw:pt-3'],
+  ] as const)(
+    'removes bottom padding from the %s density when a footer is present',
+    (density, expectedClass) => {
+      render(
+        <PageHeader
+          density={density}
+          footer={<div data-testid="footer" />}
+          title="Titled"
+        />
+      );
+
+      expect(screen.getByTestId('page-header')).toHaveClass(
+        expectedClass,
+        'tw:pb-0'
+      );
+    }
+  );
+
   it('renders a default FeaturedIcon tile when icon is a component', () => {
     const Icon = ({ className }: { className?: string }) => (
       <svg className={className} data-testid="header-icon" />

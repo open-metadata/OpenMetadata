@@ -53,6 +53,7 @@ import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/Tes
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -131,6 +132,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+  // Resource-level permission (usePermissionProvider().permissions.ingestionPipeline) —
+  // itself OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly
+  // like an entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent).
+  const ingestionPipelineFlags = useMemo(
+    () => getDerivedPermissionFlags(ingestionPipeline),
+    [ingestionPipeline]
+  );
 
   const isEditMode = !!testCase;
 
@@ -221,11 +229,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       });
 
       const ingestion = await addIngestionPipeline(pipeline);
-      if (isAirflowAvailable && ingestionPipeline.EditAll) {
+      if (isAirflowAvailable && ingestionPipelineFlags.canEditAll) {
         await deployIngestionPipelineById(ingestion.id ?? '');
       }
     },
-    [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
+    [formContext, testSuite, table, isAirflowAvailable, ingestionPipelineFlags]
   );
 
   const handleEditSubmit = useCallback(
@@ -262,6 +270,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         ),
         showOnlyParameter,
         isComputeRowCountFieldVisible,
+        // The dimension field is prefilled with the definition's dimension when
+        // the test case has none of its own, so the patch needs it to tell that
+        // prefill apart from a dimension the user actually picked.
+        inheritedDimension: resolvedDefinition?.dataQualityDimension,
       });
 
       if (!jsonPatch.length) {

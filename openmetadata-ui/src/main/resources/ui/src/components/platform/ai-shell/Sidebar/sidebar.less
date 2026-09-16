@@ -67,27 +67,24 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Colors reference Tailwind v4 theme tokens emitted at `:root` by
-// `@openmetadata/ui-core-components/globals.css`. The `--tw-` prefix
-// comes from this app's `tailwind.css` (`prefix(tw)`).
-// `@ask-bg-hover` stays literal — overlay convention, no semantic token.
+// Use shared roles already defined by Gate 0. The palette-backed page,
+// selected, brand, and badge roles remain pending #6564.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
-@ask-bg-card: var(--tw-color-bg-primary);
+@ask-bg-card: var(--om-color-bg-surface);
 @ask-bg-active: var(--tw-color-gray-blue-100);
-@ask-bg-hover: rgba(0, 0, 0, 0.04);
-@ask-text-primary: var(--tw-color-text-primary);
-@ask-text-secondary: var(--tw-color-text-secondary);
-@ask-text-tertiary: var(--tw-color-text-tertiary);
-@ask-text-quaternary: var(--tw-color-text-quaternary);
+@ask-bg-hover: var(--om-color-bg-secondary-hover);
+@ask-text-primary: var(--om-color-text-primary);
+@ask-text-secondary: var(--om-color-text-secondary);
+@ask-text-tertiary: var(--om-color-text-tertiary);
+@ask-text-quaternary: var(--om-color-text-quaternary);
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--tw-color-brand-800);
 @ask-brand-50: var(--tw-color-brand-50);
-@ask-border-secondary: var(--tw-color-border-secondary);
+@ask-border-secondary: var(--om-color-border-secondary);
 
 // Utility palette — used by the count badges on nav items.
 @ask-util-gray-50: var(--tw-color-gray-50);
 @ask-util-gray-200: var(--tw-color-gray-200);
-@ask-util-gray-600: var(--tw-color-gray-600);
 @ask-util-gray-700: var(--tw-color-gray-700);
 
 @ask-transition-duration: 200ms;
@@ -261,7 +258,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    flex-shrink: 0;
+    // Shrink and scroll before the bottom-pinned footer clips when there is no
+    // recent-chats region to absorb the overflow on a short viewport.
+    min-height: 0;
+    overflow-y: auto;
   }
 
   &__chats {
@@ -276,13 +276,16 @@
     flex-shrink: 0;
   }
 
-  // Footer (user card) sticks to the bottom of the panel. When a plugin
-  // contributes the recent-chats slot (`&__chats`), it fills the space
-  // between the nav and the footer; otherwise the footer sits directly
-  // under the nav via this auto margin.
+  &__domain {
+    flex-shrink: 0;
+  }
+
   &__footer {
     margin-top: auto;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 }
 
@@ -895,7 +898,10 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    // Shrink and scroll before the bottom-pinned profile footer clips on a
+    // short viewport with no recent-chats region to absorb the overflow.
+    min-height: 0;
+    overflow-y: auto;
   }
 
   // Collapsed-rail recent-activity region (e.g. the recent-chats popover
@@ -927,14 +933,14 @@
 
     &:not(&--active):not(&--interactive-icon):not(&--recent-chats):hover {
       background: @ask-bg-hover;
-      color: @ask-util-gray-600;
+      color: @ask-text-tertiary;
 
       svg {
         width: 22px;
         height: 22px;
 
         * {
-          stroke: @ask-util-gray-600;
+          stroke: @ask-text-tertiary;
         }
       }
     }
@@ -982,6 +988,50 @@
       height: @ask-nav-item-icon-size;
       transition: width 150ms @ask-transition-ease,
         height 150ms @ask-transition-ease;
+    }
+  }
+
+  // Rail trigger reuses `.ask-rail__item` sizing so it lines up with the nav
+  // icons above it; ButtonUtility ships no matching size preset.
+  &__domain {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+
+    .ask-domain-scope__rail-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: @ask-rail-item-size;
+      height: @ask-rail-item-size;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: @ask-nav-item-radius;
+      color: @ask-text-quaternary;
+      cursor: pointer;
+      transition: background-color 150ms @ask-transition-ease,
+        color 150ms @ask-transition-ease;
+
+      svg {
+        width: @ask-nav-item-icon-size;
+        height: @ask-nav-item-icon-size;
+      }
+
+      &:not(:disabled):hover {
+        background: @ask-bg-hover;
+        color: @ask-text-tertiary;
+      }
+
+      &--active {
+        color: @ask-brand-active;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
     }
   }
 
@@ -1292,14 +1342,14 @@
 
     &:not(&--active):hover {
       background: @ask-bg-hover;
-      color: @ask-util-gray-600;
+      color: @ask-text-tertiary;
 
       svg {
         width: 22px;
         height: 22px;
 
         * {
-          stroke: @ask-util-gray-600;
+          stroke: @ask-text-tertiary;
         }
       }
     }

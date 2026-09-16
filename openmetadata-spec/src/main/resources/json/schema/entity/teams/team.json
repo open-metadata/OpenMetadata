@@ -84,6 +84,10 @@
       "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
       "$ref" : "../../type/entityReferenceList.json"
     },
+    "descendantTeams" : {
+      "description" : "All teams nested under this team, resolved recursively (the full subtree, excluding this team itself). Computed on read; not stored.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
     "users": {
       "description": "Users that are part of the team.",
       "$ref": "../../type/entityReferenceList.json",

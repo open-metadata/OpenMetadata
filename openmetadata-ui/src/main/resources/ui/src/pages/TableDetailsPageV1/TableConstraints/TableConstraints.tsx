@@ -26,6 +26,7 @@ import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
@@ -42,8 +43,10 @@ const TableConstraints = ({
 
   const { deleted } = data ?? {};
 
+  // useGenericContext consumer (rule 2) — raw OperationPermission contract kept. Pure rename:
+  // canEditAll's internal `!deleted` gating matches the old manual `&& !deleted`.
   const hasPermission = useMemo(
-    () => permissions?.EditAll && !deleted,
+    () => getDerivedPermissionFlags(permissions, deleted).canEditAll,
     [permissions, deleted]
   );
 

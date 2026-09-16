@@ -87,6 +87,7 @@ class DSColumns(BaseModel):
     id: int | None = None
     type: str | None = None
     description: str | None = None
+    expression: str | None = None
 
 
 class DSDatabase(BaseModel):
@@ -167,3 +168,4 @@ class FetchColumn(BaseModel):
     table_id: int | None = None
     table_name: str | None = None
     description: str | None = None
+    expression: str | None = None

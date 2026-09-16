@@ -34,6 +34,8 @@ public class ValidationErrorBuilder {
     public static final String OIDC_SERVER_URL =
         "authenticationConfiguration.oidcConfiguration.serverUrl";
     public static final String OIDC_SCOPE = "authenticationConfiguration.oidcConfiguration.scope";
+    public static final String OIDC_TOKEN_VALIDITY =
+        "authenticationConfiguration.oidcConfiguration.tokenValidity";
     public static final String OIDC_CALLBACK_URL =
         "authenticationConfiguration.oidcConfiguration.callbackUrl";
     public static final String OIDC_TENANT = "authenticationConfiguration.oidcConfiguration.tenant";
@@ -90,6 +92,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.samlConfiguration.sp.spPrivateKey";
     public static final String SAML_SP_CALLBACK =
         "authenticationConfiguration.samlConfiguration.sp.callback";
+    public static final String SAML_SECURITY_TOKEN_VALIDITY =
+        "authenticationConfiguration.samlConfiguration.security.tokenValidity";
     public static final String SAML_SECURITY_AUTHN_SIGNED =
         "authenticationConfiguration.samlConfiguration.security.wantAuthnRequestsSigned";
     public static final String SAML_SECURITY_ASSERTIONS_SIGNED =
@@ -105,9 +109,15 @@ public class ValidationErrorBuilder {
     public static final String SAML_SECURITY_VALIDATE_RESPONSE_SIGNATURE =
         "authenticationConfiguration.samlConfiguration.security.validateResponseSignature";
 
+    // Identity Configuration
+    public static final String AUTH_EMAIL_CLAIM = "authenticationConfiguration.emailClaim";
+
     // Authorizer Configuration
     public static final String AUTHZ_PRINCIPAL_DOMAIN = "authorizerConfiguration.principalDomain";
     public static final String AUTHZ_ADMIN_PRINCIPALS = "authorizerConfiguration.adminPrincipals";
+    public static final String AUTHZ_ADMIN_EMAILS = "authorizerConfiguration.adminEmails";
+    public static final String AUTHZ_ALLOWED_EMAIL_DOMAINS =
+        "authorizerConfiguration.allowedEmailDomains";
     public static final String AUTHZ_ALLOWED_REGISTRATION_DOMAINS =
         "authorizerConfiguration.allowedRegistrationDomains";
     public static final String AUTHZ_CONTAINER_REQUEST_FILTER =
