@@ -62,7 +62,11 @@ const MetricTag: FC<BaseTagProps> = ({
       size={ICON_PX[size]}
     />
   ) : (
-    <Chart className="tag-color-text" height={ICON_PX[size]} width={ICON_PX[size]} />
+    <Chart
+      className="tag-color-text"
+      height={ICON_PX[size]}
+      width={ICON_PX[size]}
+    />
   );
 
   const labelNode = (

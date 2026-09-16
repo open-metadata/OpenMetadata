@@ -390,9 +390,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('metric-header-info')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('metric-header-info')).not.toBeInTheDocument();
   });
 
   it('should render an explicitly supplied breadcrumb trail', () => {

@@ -75,7 +75,6 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
     import(
