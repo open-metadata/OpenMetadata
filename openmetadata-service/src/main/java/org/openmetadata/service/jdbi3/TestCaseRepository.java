@@ -1052,6 +1052,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
           validateParameterRule(parameter, values);
         }
+        TestCaseThresholdValidator.validate(testDefinition, values).forEach(LOG::warn);
       }
     }
   }
