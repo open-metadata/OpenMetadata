@@ -61,7 +61,7 @@ class DatabendSource(CommonDbSourceService):
     def set_inspector(self, database_name: str) -> None:
         """Create a fresh Catalog-scoped engine and reflection cache."""
         self._release_engine()
-        logger.info(f"Ingesting from catalog: {database_name}")
+        logger.info("Ingesting from catalog: %s", database_name)
 
         service_connection = deepcopy(self.service_connection)
         service_connection.catalog = database_name
@@ -114,7 +114,7 @@ class DatabendSource(CommonDbSourceService):
             except Exception as exc:  # pylint: disable=broad-except
                 self.database_entity_source_state.add(database_fqn)
                 stack_trace = traceback.format_exc()
-                logger.warning(f"Error trying to ingest catalog {catalog_name}: {exc}")
+                logger.warning("Error trying to ingest catalog %s: %s", catalog_name, exc)
                 logger.debug(stack_trace)
                 self.status.failed(
                     StackTraceError(
