@@ -173,9 +173,15 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     if (transactionIsolation != null) {
       config.setTransactionIsolation(transactionIsolation);
     }
-    if (workload != PoolWorkload.SHORT_STATEMENTS) {
+    // Only a default, never an override — same precedence the socketTimeout relaxation follows.
+    // An operator who deliberately tuned leakDetectionThreshold for these pools keeps their value.
+    if (workload != PoolWorkload.SHORT_STATEMENTS && !hasExplicitLeakDetectionThreshold()) {
       config.setLeakDetectionThreshold(0);
     }
+    // The request pool gets Dropwizard's MetricRegistry in build(); these pools have no registry
+    // to attach to, so wire them to the global Micrometer registry instead. Without this a
+    // subsystem pool running dry is invisible — it surfaces only as unexplained slow workflows.
+    attachMicrometerMetrics(config);
     // Defer the first physical connect to first getConnection() rather than to pool construction.
     // These pools are built during startup, after the request pool has already proven the database
     // reachable, and every subsystem issues its own query immediately — so fast-fail survives to
@@ -189,6 +195,22 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
         workload,
         transactionIsolation != null ? transactionIsolation : "driver default");
     return new HikariDataSource(config);
+  }
+
+  private boolean hasExplicitLeakDetectionThreshold() {
+    Map<String, String> properties = getProperties();
+    return leakDetectionThreshold != null
+        || (properties != null && properties.containsKey("leakDetectionThreshold"));
+  }
+
+  private static void attachMicrometerMetrics(HikariConfig config) {
+    try {
+      config.setMetricsTrackerFactory(
+          new com.zaxxer.hikari.metrics.micrometer.MicrometerMetricsTrackerFactory(
+              io.micrometer.core.instrument.Metrics.globalRegistry));
+    } catch (Exception e) {
+      LOG.debug("Could not set Micrometer metrics tracker: {}", e.getMessage());
+    }
   }
 
   private HikariConfig buildHikariConfig(String poolNameToUse) {

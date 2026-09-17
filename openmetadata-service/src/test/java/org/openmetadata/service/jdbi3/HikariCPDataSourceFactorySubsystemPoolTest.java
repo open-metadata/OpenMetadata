@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -172,6 +173,40 @@ class HikariCPDataSourceFactorySubsystemPoolTest {
     try (HikariDataSource pool =
         factory.buildSubsystemPool("migration-pool", 10, null, PoolWorkload.LONG_STATEMENTS)) {
       assertEquals("900", pool.getDataSourceProperties().getProperty("socketTimeout"));
+    }
+  }
+
+  @Test
+  void operatorLeakDetectionThresholdSurvivesTheLongWorkloadRelaxation() {
+    // Disabling leak detection for long workloads is a default, not an override — the same
+    // precedence socketTimeout follows. An operator who tuned this deliberately keeps their value.
+    HikariCPDataSourceFactory factory = factory();
+    factory.setLeakDetectionThreshold(120_000L);
+
+    try (HikariDataSource pool =
+        factory.buildSubsystemPool("runtime-pool", 24, null, PoolWorkload.LONG_CHECKOUTS)) {
+      assertEquals(120_000L, pool.getLeakDetectionThreshold());
+    }
+  }
+
+  @Test
+  void operatorLeakDetectionThresholdFromNestedPropertiesAlsoWins() {
+    HikariCPDataSourceFactory factory = factory();
+    factory.setProperties(Map.of("leakDetectionThreshold", "120000"));
+
+    try (HikariDataSource pool =
+        factory.buildSubsystemPool("migration-pool", 10, null, PoolWorkload.LONG_STATEMENTS)) {
+      assertEquals(120_000L, pool.getLeakDetectionThreshold());
+    }
+  }
+
+  @Test
+  void subsystemPoolsReportMetrics() {
+    // Without a metrics tracker a subsystem pool running dry is invisible — it shows up only as
+    // unexplained slow workflows, with nothing to alert on.
+    try (HikariDataSource pool =
+        factory().buildSubsystemPool("metered-pool", 8, null, PoolWorkload.SHORT_STATEMENTS)) {
+      assertNotNull(pool.getMetricsTrackerFactory(), "subsystem pools must be instrumented");
     }
   }
 }

@@ -44,6 +44,7 @@ import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
+import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -198,13 +199,26 @@ public class WorkflowHandler {
    * run.
    */
   private DataSource runtimeDataSource(String databaseType, int asyncExecutorMaxPoolSize) {
-    closeRuntimePool();
-    runtimePool =
-        dataSourceFactory.buildSubsystemPool(
-            RUNTIME_POOL_NAME,
-            asyncExecutorMaxPoolSize + RUNTIME_POOL_HEADROOM,
-            mysqlIsolationLevel(databaseType),
-            PoolWorkload.LONG_CHECKOUTS);
+    int maxPoolSize = asyncExecutorMaxPoolSize + RUNTIME_POOL_HEADROOM;
+    if (runtimePool == null || runtimePool.isClosed()) {
+      runtimePool =
+          dataSourceFactory.buildSubsystemPool(
+              RUNTIME_POOL_NAME,
+              maxPoolSize,
+              mysqlIsolationLevel(databaseType),
+              PoolWorkload.LONG_CHECKOUTS);
+    } else if (runtimePool.getHikariConfigMXBean().getMaximumPoolSize() != maxPoolSize) {
+      // Resized rather than rebuilt. A settings save rebuilds the engine, and closing the pool
+      // underneath it would abort connections the outgoing engine is still using — and strand the
+      // new engine if the rebuild then failed. Size is the only thing a settings change can move;
+      // the isolation level follows the database type, which cannot change at runtime.
+      LOG.info(
+          "Resizing '{}' from {} to {}",
+          RUNTIME_POOL_NAME,
+          runtimePool.getHikariConfigMXBean().getMaximumPoolSize(),
+          maxPoolSize);
+      runtimePool.getHikariConfigMXBean().setMaximumPoolSize(maxPoolSize);
+    }
     return runtimePool;
   }
 
@@ -251,6 +265,27 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Close the engine being replaced, once its successor is live.
+   *
+   * <p>Re-registering afterwards is not optional: {@code ProcessEngineImpl.close()} calls {@code
+   * ProcessEngines.unregister(this)}, which removes by {@code getName()}. Both engines are named
+   * {@code default}, so closing the old one evicts the entry the new one just claimed, and {@link
+   * WorkflowFailureListener} — which resolves the engine via {@code
+   * ProcessEngines.getDefaultProcessEngine()} — would get null from then on.
+   */
+  private void retireEngine(ProcessEngine previousEngine, ProcessEngine newEngine) {
+    if (previousEngine == null || previousEngine == newEngine) {
+      return;
+    }
+    try {
+      previousEngine.close();
+    } catch (Exception e) {
+      LOG.warn("Failed to close the previous Flowable process engine cleanly", e);
+    }
+    ProcessEngines.registerProcessEngine(newEngine);
+  }
+
   private void closeMigrationPool() {
     migrationPool = closePool(migrationPool);
   }
@@ -266,9 +301,9 @@ public class WorkflowHandler {
     return null;
   }
 
-  public void initializeNewProcessEngine(
+  public synchronized void initializeNewProcessEngine(
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
-    closeProcessEngine();
+    ProcessEngine previousEngine = processEngine;
     SystemRepository systemRepository = Entity.getSystemRepository();
     WorkflowSettings workflowSettings = systemRepository.getWorkflowSettingsOrDefault();
 
@@ -321,8 +356,14 @@ public class WorkflowHandler {
 
     boolean engineBuilt = false;
     try {
-      this.processEngine = processEngineConfiguration.buildProcessEngine();
+      // Into a local, published only once it is actually usable. Assigning the field up front
+      // meant a failed rebuild (a brief database failover is enough) left processEngine null, and
+      // since getProcessEngineConfiguration() then returns null, every later save failed too —
+      // the pod stayed broken until restart where previously the old engine had kept serving.
+      ProcessEngine newEngine = processEngineConfiguration.buildProcessEngine();
+      this.processEngine = newEngine;
       engineBuilt = true;
+      retireEngine(previousEngine, newEngine);
     } catch (FlowableWrongDbException e) {
       String hint =
           isMigrationContext
@@ -342,7 +383,11 @@ public class WorkflowHandler {
       // propagates so a failed migrate CLI does not linger with open sessions.
       if (!engineBuilt) {
         closeMigrationPool();
-        closeRuntimePool();
+        // Only when nothing is left serving. On a rebuild the outgoing engine is still running
+        // and still borrowing from this pool.
+        if (previousEngine == null) {
+          closeRuntimePool();
+        }
       }
     }
 

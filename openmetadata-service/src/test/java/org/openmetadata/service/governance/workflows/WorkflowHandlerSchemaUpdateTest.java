@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,6 +40,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.engine.ManagementService;
@@ -479,6 +482,132 @@ class WorkflowHandlerSchemaUpdateTest {
       HikariDataSource pool = assertInstanceOf(HikariDataSource.class, dsCaptor.getValue());
       assertEquals("TRANSACTION_READ_COMMITTED", pool.getTransactionIsolation());
       verify(engineConfig, never()).setJdbcDefaultTransactionIsolationLevel(anyInt());
+    }
+  }
+
+  @Test
+  void aFailedRebuildLeavesThePreviousEngineServing() {
+    ProcessEngine firstEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    AtomicInteger builds = new AtomicInteger();
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  stubWrapperGetters(mock);
+                  // First build succeeds (startup); the rebuild fails, as a brief database
+                  // failover during a settings save would.
+                  when(mock.buildProcessEngine())
+                      .thenAnswer(
+                          inv -> {
+                            if (builds.incrementAndGet() == 1) {
+                              return firstEngine;
+                            }
+                            throw new IllegalStateException("database failover mid-rebuild");
+                          });
+                });
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+      WorkflowHandler handler = WorkflowHandler.getInstance();
+      assertNotNull(handler.getProcessEngineConfiguration());
+
+      // An admin saves workflow settings and the rebuild blows up.
+      assertThrows(
+          IllegalStateException.class,
+          () -> handler.initializeNewProcessEngine(handler.getProcessEngineConfiguration()));
+
+      // The pod must still have a working engine. Previously the field was nulled before the
+      // rebuild, so this returned null and every later save failed too — broken until restart.
+      assertNotNull(
+          handler.getProcessEngineConfiguration(),
+          "a failed rebuild must leave the previous engine in place");
+      verify(firstEngine, never()).close();
+    }
+  }
+
+  @Test
+  void aSuccessfulRebuildRetiresTheOldEngineAndKeepsTheRegistryPointingAtTheNewOne() {
+    ProcessEngine oldEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    ProcessEngine newEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    AtomicInteger builds = new AtomicInteger();
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  stubWrapperGetters(mock);
+                  when(mock.buildProcessEngine())
+                      .thenAnswer(inv -> builds.incrementAndGet() == 1 ? oldEngine : newEngine);
+                });
+        MockedStatic<ProcessEngines> engines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+      WorkflowHandler handler = WorkflowHandler.getInstance();
+      handler.initializeNewProcessEngine(handler.getProcessEngineConfiguration());
+
+      // The outgoing engine is closed only after its replacement is live...
+      verify(oldEngine).close();
+      verify(newEngine, never()).close();
+      // ...and re-registered after, because ProcessEngineImpl.close() unregisters by name and
+      // both engines are named "default", so closing the old one evicts the new one's entry.
+      // WorkflowFailureListener resolves via ProcessEngines.getDefaultProcessEngine().
+      engines.verify(() -> ProcessEngines.registerProcessEngine(newEngine));
+    }
+  }
+
+  @Test
+  void aRebuildResizesTheRuntimePoolRatherThanReplacingIt() {
+    ProcessEngine engine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(engine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock, 20);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+      WorkflowHandler handler = WorkflowHandler.getInstance();
+      ArgumentCaptor<DataSource> first = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineMock.constructed().getLast()).setDataSource(first.capture());
+      HikariDataSource pool = assertInstanceOf(HikariDataSource.class, first.getValue());
+      assertEquals(24, pool.getMaximumPoolSize());
+
+      setupEntityMock(entityMock, 40);
+      handler.initializeNewProcessEngine(handler.getProcessEngineConfiguration());
+
+      // Same pool object, resized. Closing and rebuilding it would abort connections the
+      // outgoing engine is still using, and strand the new engine if the rebuild then failed.
+      ArgumentCaptor<DataSource> second = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineMock.constructed().getLast()).setDataSource(second.capture());
+      assertSame(pool, second.getValue(), "the runtime pool must be resized, not replaced");
+      assertFalse(pool.isClosed());
+      assertEquals(44, pool.getHikariConfigMXBean().getMaximumPoolSize());
     }
   }
 
