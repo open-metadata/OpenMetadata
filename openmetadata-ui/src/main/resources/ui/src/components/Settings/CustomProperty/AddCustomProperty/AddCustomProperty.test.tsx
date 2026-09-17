@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import AddCustomProperty from './AddCustomProperty';
+
+const NAME_VALIDATION_ERROR = 'message.custom-property-name-validation';
+const NAME_LENGTH_ERROR = 'message.entity-size-in-between';
 
 const mockNavigate = jest.fn();
 
@@ -195,38 +203,6 @@ jest.mock('../../../../rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('../../../../utils/formUtils', () => ({
-  generateFormFields: jest.fn((fields) =>
-    fields.map(
-      (field: {
-        type?: string;
-        name: string;
-        label?: string;
-        props?: Record<string, string>;
-      }) => {
-        const testId =
-          field.type === 'description'
-            ? 'editor'
-            : field.props?.['data-testid'];
-
-        return (
-          <div key={field.name}>
-            <label htmlFor={field.name}>
-              {field.label}
-              <input
-                aria-label={field.label}
-                data-testid={testId}
-                id={field.name}
-                name={field.name}
-              />
-            </label>
-          </div>
-        );
-      }
-    )
-  ),
-}));
-
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -284,5 +260,72 @@ describe('Test Add Custom Property Component', () => {
     fireEvent.click(backButton);
 
     expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+});
+
+describe('Custom property name validation', () => {
+  // These assertions previously lived as 15 Playwright browser tests
+  // (Pages/CustomProperties.spec.ts). The rules are the real antd Form rules
+  // wired in AddCustomProperty (pattern: CUSTOM_PROPERTY_NAME_REGEX + max: 256),
+  // so they are exercised here against the real generated form fields.
+  it.each([
+    ['starts with a non-alphanumeric character', '_invalidName'],
+    ['contains a colon', 'name:with:colon'],
+    ['contains a dollar sign', 'name$invalid'],
+    ['contains a caret', 'name^invalid'],
+    ['contains a double quote', 'name"invalid'],
+    ['contains a backslash', String.raw`name\invalid`],
+    ['contains a less-than sign', 'name<<invalid'],
+    ['contains a greater-than sign', 'name>>invalid'],
+    ['contains an ampersand', 'name&invalid'],
+    ['contains an asterisk', 'name*invalid'],
+    ['contains a forward slash', 'name/invalid'],
+    ['contains a tilde', 'name~invalid'],
+  ])('should show the name error when the name %s', async (_, value) => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), { target: { value } });
+
+    expect(await screen.findByText(NAME_VALIDATION_ERROR)).toBeInTheDocument();
+  });
+
+  it('should show the length error when the name exceeds 256 characters', async () => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), {
+      target: { value: 'a'.repeat(257) },
+    });
+
+    expect(await screen.findByText(NAME_LENGTH_ERROR)).toBeInTheDocument();
+  });
+
+  it('should not show the name error for a valid name', async () => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), {
+      target: { value: 'validName_123' },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(NAME_VALIDATION_ERROR)
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.queryByText(NAME_LENGTH_ERROR)).not.toBeInTheDocument();
+  });
+
+  it('should not show the name error for a valid name with allowed special characters', async () => {
+    render(<AddCustomProperty />);
+
+    fireEvent.change(screen.getByTestId('name'), {
+      target: { value: "valid Name.!@#%`()_-=+{}[]|;',.?" },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(NAME_VALIDATION_ERROR)
+      ).not.toBeInTheDocument()
+    );
   });
 });
