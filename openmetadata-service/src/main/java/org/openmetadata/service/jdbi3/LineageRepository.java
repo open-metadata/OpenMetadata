@@ -69,8 +69,6 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.data.MetricDimension;
-import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -81,7 +79,6 @@ import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
-import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -1200,8 +1197,13 @@ public class LineageRepository {
         return result;
       }
       case METRIC -> {
-        Metric metric = Entity.getEntity(METRIC, entityReference.getId(), "", Include.NON_DELETED);
-        return metricChildNames(metric);
+        // A metric has no columns of its own -- it *is* the leaf a column feeds, e.g.
+        // Total Sales = sum(Sales.Amount). So the metric's own FQN is its single valid
+        // column endpoint. Names here are relative to the parent FQN, and stripping
+        // "<metricFqn>." off "<metricFqn>" is a no-op, hence the full FQN.
+        // singleton, not Set.of: tolerates a null FQN instead of throwing, and a
+        // singleton{null} rejects every toColumn, which is the behaviour we want there.
+        return Collections.singleton(entityReference.getFullyQualifiedName());
       }
       case PIPELINE -> {
         LOG.info("Pipeline column level lineage is not supported");
@@ -1211,24 +1213,6 @@ public class LineageRepository {
         LOG.error("Unsupported Entity Type {} for column lineage", entityReference.getType());
         return new HashSet<>();
       }
-    }
-  }
-
-  static Set<String> metricChildNames(Metric metric) {
-    Set<String> result = new HashSet<>();
-    String prefix = metric.getFullyQualifiedName() + ".";
-    for (MetricDimension dimension : listOrEmpty(metric.getDimensions())) {
-      addMetricChildName(result, dimension.getFullyQualifiedName(), prefix);
-    }
-    for (MetricMeasure measure : listOrEmpty(metric.getMeasures())) {
-      addMetricChildName(result, measure.getFullyQualifiedName(), prefix);
-    }
-    return result;
-  }
-
-  private static void addMetricChildName(Set<String> names, String childFqn, String parentPrefix) {
-    if (childFqn != null && childFqn.startsWith(parentPrefix)) {
-      names.add(childFqn.substring(parentPrefix.length()));
     }
   }
 
