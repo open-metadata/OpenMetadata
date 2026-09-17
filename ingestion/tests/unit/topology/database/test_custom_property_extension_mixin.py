@@ -38,12 +38,26 @@ from metadata.utils.lru_cache import LRUCache
 SOURCE_LABEL = "test properties"
 
 
+def _disambiguated(base: str, raw: str) -> str:
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 class _FakeSource(CustomPropertyExtensionMixin):
     """Minimal host for the mixin: it only needs source_config and metadata."""
 
-    def __init__(self, capacity: int | None = None, enabled: bool = True):
+    def __init__(
+        self,
+        capacity: int | None = None,
+        enabled: bool = True,
+        existing: dict[str, str] | None = None,
+    ):
         self.source_config = DatabaseServiceMetadataPipeline(includeCustomProperties=enabled)
         self.metadata = MagicMock()
+        self.metadata.get_entity_custom_properties.return_value = [
+            {"name": name, "propertyType": {"name": data_type}} for name, data_type in (existing or {}).items()
+        ]
         self._init_custom_properties()
         if capacity is not None:
             self._processed_prop = LRUCache(capacity)
@@ -170,18 +184,53 @@ class TestValueFiltering:
 
 
 class TestSanitizedNameCollision:
-    """Two distinct source keys can sanitize to one name; the second value overwrites the first."""
+    """Distinct source keys that reduce to one base name must both keep their value."""
 
-    def test_colliding_keys_are_reported_at_warning(self, source, caplog):
+    def test_colliding_keys_both_survive(self, source, caplog):
         with caplog.at_level(logging.WARNING):
             result = source.build_entity_extension({"a/b": "first", "a@b": "second"}, source_label=SOURCE_LABEL)
 
-        assert result == {"a__b": "second"}
-        assert len(caplog.records) == 1
+        assert result == {
+            _disambiguated("a__b", "a/b"): "first",
+            _disambiguated("a__b", "a@b"): "second",
+        }
+        assert caplog.records == []
+
+    def test_a_rewritten_name_cannot_collide_with_a_verbatim_one(self, source):
+        """`_x` is prefixed to `p__x`, which a source is free to send as-is."""
+        result = source.build_entity_extension({"_x": "prefixed", "p__x": "verbatim"}, source_label=SOURCE_LABEL)
+
+        assert result == {_disambiguated("p__x", "_x"): "prefixed", "p__x": "verbatim"}
+
+    def test_the_name_does_not_depend_on_iteration_order(self):
+        first = _FakeSource().build_entity_extension({"a/b": "1", "a@b": "2"}, source_label=SOURCE_LABEL)
+        reordered = _FakeSource().build_entity_extension({"a@b": "2", "a/b": "1"}, source_label=SOURCE_LABEL)
+
+        assert first == reordered
+
+    def test_the_name_does_not_depend_on_cache_state(self, source):
+        """The registration cache evicts, so a name derived from it would drift mid-run."""
+        before = source.build_entity_extension({"a/b": "v"}, source_label=SOURCE_LABEL)
+        source._processed_prop.clear()
+        after = source.build_entity_extension({"a/b": "v"}, source_label=SOURCE_LABEL)
+
+        assert before == after
+
+    def test_a_digest_collision_drops_the_value_rather_than_mislabelling_it(self, source, caplog):
+        """Out of reach short of an md5 collision, but the fallback must not overwrite: the
+        definition's displayName belongs to whichever source key registered it."""
+        source.build_entity_extension({"first": "v1"}, source_label=SOURCE_LABEL)
+
+        with (
+            patch.object(CustomPropertyExtensionMixin, "_sanitize_property_name", return_value="first"),
+            caplog.at_level(logging.WARNING),
+        ):
+            result = source.build_entity_extension({"second": "v2"}, source_label=SOURCE_LABEL)
+
+        assert result is None
         message = caplog.records[0].getMessage()
-        assert "a/b" in message
-        assert "a@b" in message
-        assert "a__b" in message
+        assert "first" in message
+        assert "second" in message
 
     def test_the_same_key_seen_again_is_not_reported(self, source, caplog):
         """The common case - one key across many tables - must stay quiet."""
@@ -244,12 +293,12 @@ class TestSanitizePropertyName:
             ("skip.header.line.count", "skip.header.line.count"),
             ("a-b", "a-b"),
             ("a_b", "a_b"),
-            ("owner/team", "owner__team"),
-            ("dag id@prod", "dag__id__prod"),
-            ("_internal", "p__internal"),
-            (".hidden", "p_.hidden"),
-            ("-lead", "p_-lead"),
-            ("/foo", "p___foo"),
+            ("owner/team", _disambiguated("owner__team", "owner/team")),
+            ("dag id@prod", _disambiguated("dag__id__prod", "dag id@prod")),
+            ("_internal", _disambiguated("p__internal", "_internal")),
+            (".hidden", _disambiguated("p_.hidden", ".hidden")),
+            ("-lead", _disambiguated("p_-lead", "-lead")),
+            ("/foo", _disambiguated("p___foo", "/foo")),
         ],
     )
     def test_sanitized_names(self, source, raw, expected):
@@ -278,3 +327,60 @@ class TestSanitizePropertyName:
     def test_every_sanitized_name_starts_alphanumeric(self, source):
         for raw in ["_x", ".x", "-x", "/x", "@x", "  x", "__x", "1x", "x"]:
             assert source._sanitize_property_name(raw)[0].isalnum()
+
+
+class TestExistingDefinitionsAreNotOverwritten:
+    """A custom property definition is global to the entity type. Registering over one retypes a
+    property every other table shares, invalidating the values they already hold for it."""
+
+    def test_an_incompatible_existing_definition_is_skipped(self, caplog):
+        source = _FakeSource(existing={"retention": "integer"})
+
+        with caplog.at_level(logging.WARNING):
+            result = source.build_entity_extension({"retention": "30"}, source_label=SOURCE_LABEL)
+
+        assert result is None
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+        assert "retention" in caplog.records[0].getMessage()
+
+    def test_an_incompatible_name_does_not_block_its_siblings(self):
+        source = _FakeSource(existing={"retention": "integer"})
+
+        result = source.build_entity_extension({"retention": "30", "owner": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {"owner": "data-eng"}
+
+    def test_a_compatible_existing_definition_is_reused_without_a_put(self):
+        """Re-registering would replace a curated displayName and description with the raw key."""
+        source = _FakeSource(existing={"owner": "string"})
+
+        result = source.build_entity_extension({"owner": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {"owner": "data-eng"}
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+
+    def test_an_unclaimed_name_is_registered(self):
+        source = _FakeSource(existing={"other": "integer"})
+
+        result = source.build_entity_extension({"owner": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {"owner": "data-eng"}
+        assert source.metadata.create_or_update_custom_property.call_count == 1
+
+    def test_definitions_are_listed_once_per_entity_type(self):
+        source = _FakeSource()
+
+        for name in ["a", "b", "c"]:
+            source.build_entity_extension({name: "v"}, source_label=SOURCE_LABEL)
+
+        assert source.metadata.get_entity_custom_properties.call_count == 1
+
+    def test_a_failed_listing_falls_back_to_registering(self):
+        """Losing the guard beats losing the feature; the registration call reports its own failure."""
+        source = _FakeSource()
+        source.metadata.get_entity_custom_properties.side_effect = RuntimeError("boom")
+
+        result = source.build_entity_extension({"owner": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {"owner": "data-eng"}
+        assert source.metadata.create_or_update_custom_property.call_count == 1

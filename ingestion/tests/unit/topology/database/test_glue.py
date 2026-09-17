@@ -13,6 +13,7 @@
 Test Glue using the topology
 """
 
+import hashlib
 import json
 import logging
 from copy import deepcopy
@@ -52,6 +53,14 @@ from metadata.ingestion.source.database.glue.models import (
 )
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
+
+
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
@@ -688,7 +697,9 @@ class TestGlueCustomPropertyValues:
         table = _glue_table_with_params({"owner/team": "data-eng"})
 
         with patch.object(custom_property_source, "metadata") as mock_metadata:
-            assert custom_property_source.get_table_extensions(table) == {"owner__team": "data-eng"}
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("owner__team", "owner/team"): "data-eng"
+            }
 
         request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
         assert request.createCustomPropertyRequest.displayName == "owner/team"
@@ -724,7 +735,9 @@ class TestGlueCustomPropertyValues:
         table = _glue_table_with_params({"_internal_owner": "data-eng"})
 
         with patch.object(custom_property_source, "metadata") as mock_metadata:
-            assert custom_property_source.get_table_extensions(table) == {"p__internal_owner": "data-eng"}
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("p__internal_owner", "_internal_owner"): "data-eng"
+            }
 
         request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
         assert request.createCustomPropertyRequest.displayName == "_internal_owner"

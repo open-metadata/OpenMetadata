@@ -427,6 +427,12 @@ def _get_request(mock_metadata, call_index=0):
     return mock_metadata.create_or_update_custom_property.call_args_list[call_index].args[0].createCustomPropertyRequest
 
 
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 class TestGetTableExtensionsEarlyExits:
     """Cover the early-return branches of get_table_extensions."""
 
@@ -514,7 +520,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop__airflow__dag__id__prod": "v"}
+        assert result == {_disambiguated("myprop__airflow__dag__id__prod", "myprop/airflow:dag id@prod"): "v"}
         request = _get_request(mock_metadata)
         assert request.displayName == "myprop/airflow:dag id@prod"
 
@@ -527,7 +533,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop.data__type-v1__beta": "v"}
+        assert result == {_disambiguated("myprop.data__type-v1__beta", "myprop.data/type-v1 beta"): "v"}
 
     def test_already_valid_name_unchanged(self, athena_source):
         props = {"simple_key": "value"}
@@ -608,7 +614,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"p__internal": "value"}
+        assert result == {_disambiguated("p__internal", "_internal"): "value"}
         assert _get_request(mock_metadata).displayName == "_internal"
 
     def test_leading_dot_is_prefixed(self, athena_source):
@@ -619,7 +625,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"p_.hidden": "value"}
+        assert result == {_disambiguated("p_.hidden", ".hidden"): "value"}
 
     def test_leading_invalid_char_is_prefixed_after_substitution(self, athena_source):
         """`/` maps to `__`, which would still leave a non-alphanumeric first character."""
@@ -630,7 +636,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"p___foo": "value"}
+        assert result == {_disambiguated("p___foo", "/foo"): "value"}
 
     def test_alphanumeric_leading_name_is_untouched(self, athena_source):
         """Names that already satisfy the server pattern must keep the name they have today."""
