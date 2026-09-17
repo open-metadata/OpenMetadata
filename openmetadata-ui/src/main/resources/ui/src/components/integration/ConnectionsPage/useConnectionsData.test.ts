@@ -17,7 +17,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { queryClient } from '../../../queryClient';
-import { LIST_PAGE_SIZE_OPTIONS } from './ConnectionsPage.constants';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from './ConnectionsPage.constants';
 import { ConnectionsCategory, useConnectionsData } from './useConnectionsData';
 
 const mockGetServicesOverview = jest.fn();
@@ -352,23 +355,31 @@ describe('useConnectionsData', () => {
       mockUseRealPaging = false;
     });
 
+    // The grid view, whose 12/24/48 differs from the app-wide scale the list view and every other
+    // page use — so a size reaching it from the shared param is one its picker cannot offer.
+    const renderGridAt = (entry: string) =>
+      renderHook(
+        () =>
+          useConnectionsData({
+            ...defaultArgs,
+            pageSizeOptions: GRID_PAGE_SIZE_OPTIONS,
+          }),
+        { wrapper: withProvidersAt(entry) }
+      );
+
     it('pages by a size its picker offers, not one another page left in the URL', async () => {
-      const { result } = renderHook(() => useConnectionsData(defaultArgs), {
-        wrapper: withProvidersAt('/connections?pageSize=15'),
-      });
+      const { result } = renderGridAt('/connections?pageSize=15');
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 
       // 15 belongs to the app-wide scale. Adopted here it reaches the rows-per-page Select as a
       // selectedKey matching no item, which renders as the placeholder.
-      expect(result.current.pageSize).toBe(LIST_PAGE_SIZE_OPTIONS[0]);
-      expect(result.current.rows).toHaveLength(LIST_PAGE_SIZE_OPTIONS[0]);
+      expect(result.current.pageSize).toBe(GRID_PAGE_SIZE_OPTIONS[0]);
+      expect(result.current.rows).toHaveLength(GRID_PAGE_SIZE_OPTIONS[0]);
     });
 
     it('keeps a size the URL carries when its picker does offer it', async () => {
-      const { result } = renderHook(() => useConnectionsData(defaultArgs), {
-        wrapper: withProvidersAt('/connections?pageSize=24'),
-      });
+      const { result } = renderGridAt('/connections?pageSize=24');
 
       await waitFor(() => expect(result.current.isLoading).toBe(false));
 

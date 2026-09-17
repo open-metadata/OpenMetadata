@@ -58,6 +58,30 @@ describe('usePaging (integration)', () => {
     expect(result.current.handlePageSizeChange).toBe(firstHandlePageSizeChange);
   });
 
+  it('keeps a size off the app-wide scale out of the shared preference', () => {
+    const { result } = renderHook(() => usePaging(12, GRID_SIZES), {
+      wrapper: wrapperAt('/connections'),
+    });
+
+    act(() => result.current.handlePageSizeChange(24));
+
+    // Persisting 24 would hand it to every page that reads the preference rather than declaring
+    // options — landing in a picker with no entry for it, and discarding the size chosen there.
+    expect(
+      usePersistentStorage.getState().preferences['paging-user']
+    ).toBeUndefined();
+  });
+
+  it('still records a size the app-wide scale offers', () => {
+    const { result } = renderHook(() => usePaging(), { wrapper });
+
+    act(() => result.current.handlePageSizeChange(50));
+
+    expect(
+      usePersistentStorage.getState().preferences['paging-user'].globalPageSize
+    ).toBe(50);
+  });
+
   it('ignores a page size from the URL that the caller has no option for', () => {
     const { result } = renderHook(() => usePaging(12, GRID_SIZES), {
       wrapper: wrapperAt('/connections?pageSize=15'),

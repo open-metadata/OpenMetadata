@@ -13,6 +13,11 @@
 
 import { SearchLg } from '@untitledui/icons';
 import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
 } from '../../../constants/ServiceEmptyState.constant';
@@ -119,9 +124,16 @@ export const CATEGORY_TO_ENTITY_TYPE = Object.fromEntries(
 // The mode is derived from the response's own `total`, never guessed.
 export const SERVICES_ESTATE_LIMIT = 500;
 
+// Multiples of 12 fill the card grid's responsive 2-5 columns without a short final row.
 export const GRID_PAGE_SIZE_OPTIONS = [12, 24, 48];
-// Same steps as the grid so switching layout keeps the page you were on rather than resizing it.
-export const LIST_PAGE_SIZE_OPTIONS = [12, 24, 48];
+// Table rows have no column count to divide by, so the list view pages on the app-wide scale like
+// every other table. Switching layout therefore resizes the page — the trade for each view paging
+// at a density that suits it.
+export const LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
 export const VIEW_MODE_PARAM = 'viewMode';
 export const CATEGORY_PARAM = 'category';
 // Health filter, set either by this page's own dropdown or by the landing Platform Health
