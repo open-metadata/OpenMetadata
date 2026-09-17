@@ -28,7 +28,7 @@
     "pagination-navigation": "ناوبری صفحه‌بندی",
     "previous-page": "رفتن به صفحه قبل",
     "records": "رکوردها",
-    "remove-entity": "Remove {{entity}}",
+    "remove-entity": "حذف {{entity}}",
     "remove-filter": "حذف فیلتر",
     "search": "جستجو",
     "select-all": "انتخاب همه",
@@ -36,6 +36,6 @@
     "select-only-one-row": "یک ردیف را انتخاب کنید",
     "show-hidden-breadcrumbs": "نمایش مسیرهای پنهان",
     "today": "امروز",
-    "tree-select": "Tree select"
+    "tree-select": "انتخاب درختی"
   }
 }
