@@ -1275,10 +1275,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolvedPayload,
             comment,
             userName);
-    // Change-event header so resolve fires task alerts.
-    return Response.ok(resolvedTask)
-        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
-        .build();
+    return Response.ok(resolvedTask).build();
   }
 
   private ListFilter buildTaskListFilter(
@@ -1452,10 +1449,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     validateTaskCanBeClosed(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    // Change-event header so close fires task alerts.
-    return Response.ok(closedTask)
-        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
-        .build();
+    return Response.ok(closedTask).build();
   }
 
   @DELETE
@@ -1557,10 +1551,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             comment,
             userName);
-    // Change-event header so resolve fires task alerts.
-    return Response.ok(resolvedTask)
-        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
-        .build();
+    return Response.ok(resolvedTask).build();
   }
 
   // ========================= Bulk Operations Endpoint =========================
@@ -1688,7 +1679,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         task.setAssignees(newAssignees);
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());
-        repository.createOrUpdate(uriInfo, task, userName);
+        updateTaskInBulk(uriInfo, task, userName);
       }
       case UpdatePriority -> {
         if (params == null || params.getPriority() == null) {
@@ -1699,7 +1690,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());
-        repository.createOrUpdate(uriInfo, task, userName);
+        updateTaskInBulk(uriInfo, task, userName);
       }
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
@@ -1707,6 +1698,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.closeTask(task, userName, comment);
       }
     }
+  }
+
+  /**
+   * A bulk response carries no single task for the REST response filter to record, so each
+   * updated task records its own change event, as an async delete does.
+   */
+  private void updateTaskInBulk(UriInfo uriInfo, Task task, String userName) {
+    RestUtil.PutResponse<Task> response = repository.createOrUpdate(uriInfo, task, userName);
+    repository.storeChangeEventForAsyncOperation(
+        response.getEntity(), response.getChangeType(), false, userName);
   }
 
   /**

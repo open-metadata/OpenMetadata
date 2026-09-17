@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTag } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -22,7 +23,6 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import { GlossaryTermSelectableList } from '../GlossaryTermSelectableList/GlossaryTermSelectableList.component';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';

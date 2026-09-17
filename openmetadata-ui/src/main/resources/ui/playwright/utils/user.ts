@@ -617,13 +617,14 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     .fill('table');
   await dataAssetDropdownRequest;
 
-  await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
+  const tableRow = page.getByTestId('drop-down-menu').getByTestId('table');
+  await tableRow.scrollIntoViewIfNeeded();
 
   // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="table-checkbox"]');
+  await tableRow.click();
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
