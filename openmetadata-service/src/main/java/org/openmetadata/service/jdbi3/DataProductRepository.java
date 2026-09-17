@@ -48,11 +48,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
-import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -70,7 +68,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -1066,7 +1063,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // domain no longer matches — leaving the asset permanently failing "Data Product Domain
       // Validation" on every later edit. Detach those, mirroring the Domain page cleanup. Only when
       // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
-      if (!assetRecords.isEmpty() && isDataProductDomainValidationRuleEnabled()) {
+      if (!assetRecords.isEmpty()
+          && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
         detachConflictingDataProductsAfterDomainChange(assetRecords, updatedDomains);
       }
     }
@@ -1197,25 +1195,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       Entity.getConversationRepository()
           .updateEntityReference(updated.getEntityReference(), oldFqn);
-    }
-  }
-
-  private boolean isDataProductDomainValidationRuleEnabled() {
-    try {
-      EntityRulesSettings settings =
-          SettingsCache.getSetting(SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class);
-      if (settings == null || nullOrEmpty(settings.getEntitySemantics())) {
-        return false;
-      }
-      return settings.getEntitySemantics().stream()
-          .anyMatch(
-              rule ->
-                  DATA_PRODUCT_DOMAIN_VALIDATION_RULE.equals(rule.getName())
-                      && Boolean.TRUE.equals(rule.getEnabled()));
-    } catch (EntityNotFoundException e) {
-      LOG.debug(
-          "Entity rules settings unavailable, skipping data product detach: {}", e.getMessage());
-      return false;
     }
   }
 
