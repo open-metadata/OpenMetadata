@@ -249,6 +249,10 @@ const getSupportedLanguage = (language: string): SupportedLocales => {
   return languageMap[language.split('-')[0]] ?? SupportedLocales.English;
 };
 
+/** Folder the docs tree files a service type under — `Api` lives at `ApiEntity`. */
+const getDocsServiceType = (serviceType: string) =>
+  serviceType === 'Api' ? 'ApiEntity' : serviceType;
+
 const isUsableMarkdown = (content: string) => {
   const trimmedContent = content.trimStart().toLowerCase();
 
@@ -420,7 +424,10 @@ const getConnectorDocsUrl = (markdownContent: string, serviceName: string) => {
       (path) =>
         normalizeConnectorSlug(path.split('/').pop() ?? '') ===
         normalizedServiceName
-    ) ?? paths[0];
+    ) ??
+    // `connectors/ingestion/**` documents a workflow, not a connector, so it
+    // must never stand in for the connector's own page.
+    paths.find((path) => !path.startsWith('ingestion/'));
 
   return docsPath ? `${CONNECTORS_DOCS}/${docsPath}` : CONNECTORS_DOCS;
 };
@@ -589,6 +596,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [connectorMarkdown, setConnectorMarkdown] = useState<string>('');
   const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
 
   const getActiveFieldName = useCallback(
@@ -634,8 +642,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const fetchRequirement = async () => {
     setIsLoading(true);
     try {
-      const supportedServiceType =
-        serviceType === 'Api' ? 'ApiEntity' : serviceType;
+      const supportedServiceType = getDocsServiceType(serviceType);
       let response = '';
       const language = getSupportedLanguage(i18n.language);
       const isEnglishLanguage = language === SupportedLocales.English;
@@ -683,6 +690,29 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   useEffect(() => {
     fetchRequirement();
   }, [serviceName, serviceType]);
+
+  /**
+   * Workflow markdown is shared by every connector of a service type, so it can
+   * never carry the connector's own docs link. Read the connector file for that
+   * link alone — locale-independent, since we only take a URL out of it.
+   */
+  useEffect(() => {
+    if (!isWorkflow) {
+      return;
+    }
+
+    // A missing file resolves as the SPA's index.html rather than rejecting,
+    // so the content is validated before it is kept.
+    const connectorFile = `${SupportedLocales.English}/${getDocsServiceType(
+      serviceType
+    )}/${serviceName}.md`;
+
+    fetchMarkdownFile(connectorFile)
+      .then((content) =>
+        setConnectorMarkdown(isUsableMarkdown(content) ? content : '')
+      )
+      .catch(() => setConnectorMarkdown(''));
+  }, [isWorkflow, serviceName, serviceType]);
 
   const activeFieldName = useMemo(
     () =>
@@ -799,8 +829,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const connectorDocsUrl = useMemo(
-    () => getConnectorDocsUrl(markdownContent, serviceName),
-    [markdownContent, serviceName]
+    () =>
+      getConnectorDocsUrl(
+        isWorkflow ? connectorMarkdown : markdownContent,
+        serviceName
+      ),
+    [connectorMarkdown, isWorkflow, markdownContent, serviceName]
   );
 
   const docsPanel = useMemo(() => {

@@ -803,6 +803,74 @@ describe('ServiceDocPanel Component', () => {
         );
       });
     });
+
+    it('should fall back to the field schema metadata when the workflow markdown documents no such field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Metadata Workflow',
+          '$$section',
+          '### Enable Debug Log $(id="enableDebugLog")',
+          'Debug log guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          activeField="root/ownerConfig/database"
+          activeFieldMeta={{
+            title: 'Database',
+            description: 'Owner for database entities.',
+          }}
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Database')).toBeInTheDocument();
+        expect(
+          screen.getByText('Owner for database entities.')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should prefer the curated workflow markdown over the field schema metadata', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Metadata Workflow',
+          '$$section',
+          '### Database Filter Pattern $(id="databaseFilterPattern")',
+          'Include and exclude regex guidance with examples.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          activeField="root/databaseFilterPattern"
+          activeFieldMeta={{
+            title: 'Database Filter Pattern',
+            description: 'Regex to only include/exclude databases.',
+          }}
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Include and exclude regex guidance')
+        );
+        expect(
+          screen.queryByText('Regex to only include/exclude databases.')
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('Focused Doc Eyebrow', () => {
@@ -1201,7 +1269,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should fall back to the first connectors link when no link matches the service name', async () => {
+    it('should fall back to the connectors overview page rather than a connectors/ingestion workflow page', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MockConnector',
@@ -1219,10 +1287,60 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
+      });
+    });
+
+    it('should resolve the connector docs from the connector markdown, not the workflow markdown', async () => {
+      mockFetchMarkdownFile.mockImplementation((filePath: string) =>
+        Promise.resolve(
+          filePath.includes('/workflows/')
+            ? 'Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database">this</a>.'
+            : 'See the <a href="https://docs.open-metadata.org/connectors/database/bigquery">docs</a>.'
+        )
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
         expect(getDocsLink(container)).toHaveAttribute(
           'href',
-          `${CONNECTORS_DOCS}/ingestion/workflows/usage`
+          `${CONNECTORS_DOCS}/database/bigquery`
         );
+      });
+    });
+
+    // A connector file that does not exist is served as the SPA's index.html
+    // with a 200, so the guard is on the content and not on a rejection.
+    it('should fall back to the connectors overview page when the connector markdown is unavailable in workflow mode', async () => {
+      mockFetchMarkdownFile.mockImplementation((filePath: string) =>
+        Promise.resolve(
+          filePath.includes('/workflows/')
+            ? 'Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database">this</a>.'
+            : '<!doctype html><html><body><div id="root"></div></body></html>'
+        )
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
       });
     });
   });
