@@ -395,8 +395,39 @@ class JsonPatchUtilsTest {
     assertEquals(List.of(), JsonPatchUtils.getPatchedDomains(resourceContextMock, patch));
   }
 
+  /**
+   * The exact patch the UI sends when a domain is reassigned: fast-json-patch diffs the client's
+   * copy of the entity, which carries server-added read-only fields the stored projection does not.
+   * Applying it strictly threw and turned every UI domain change into a 400.
+   */
+  @Test
+  void testGetPatchedDomainsAppliesTheDiffTheUiSends() {
+    UUID source = UUID.randomUUID();
+    UUID target = UUID.randomUUID();
+    originalTable.setDomains(listOf(domainRef(source)));
+
+    JsonPatch patch =
+        toPatch(
+            "["
+                + "{\"op\": \"remove\", \"path\": \"/domains/0/href\"},"
+                + "{\"op\": \"remove\", \"path\": \"/domains/0/deleted\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/displayName\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/fullyQualifiedName\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/name\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/id\", \"value\": \""
+                + target
+                + "\"}]");
+
+    List<EntityReference> patched = JsonPatchUtils.getPatchedDomains(resourceContextMock, patch);
+
+    assertEquals(1, patched.size());
+    assertEquals(target, patched.get(0).getId());
+    assertEquals("Marketing", patched.get(0).getFullyQualifiedName());
+  }
+
+  /** Mirrors a stored domain reference: {@code deleted} is persisted, {@code href} is not. */
   private static EntityReference domainRef(UUID id) {
-    return new EntityReference().withId(id).withType(Entity.DOMAIN);
+    return new EntityReference().withId(id).withType(Entity.DOMAIN).withDeleted(false);
   }
 
   private static JsonPatch toPatch(String patchString) {

@@ -13,10 +13,7 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
@@ -47,8 +44,6 @@ public class JsonPatchUtils {
   private static final String PATH_KEY = "path";
   private static final String DOMAINS_PATH = "/" + Entity.FIELD_DOMAINS;
   private static final String DOMAINS_PATH_PREFIX = DOMAINS_PATH + "/";
-  private static final TypeReference<List<EntityReference>> DOMAIN_REFERENCES =
-      new TypeReference<>() {};
 
   private JsonPatchUtils() {}
 
@@ -70,15 +65,7 @@ public class JsonPatchUtils {
     if (entity == null) {
       return null;
     }
-    try {
-      return readDomains(applyPatch(JsonUtils.pojoToJsonNode(entity), patch));
-    } catch (JsonPatchException | IOException e) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Failed to apply JSON Patch to resolve the domain change on '%s'",
-              entity.getFullyQualifiedName()),
-          e);
-    }
+    return readDomains(JsonUtils.applyPatch(entity, patch));
   }
 
   private static boolean patchTouchesDomains(JsonPatch patch) {
@@ -99,9 +86,11 @@ public class JsonPatchUtils {
     return path != null && (path.equals(DOMAINS_PATH) || path.startsWith(DOMAINS_PATH_PREFIX));
   }
 
-  private static List<EntityReference> readDomains(JsonNode patchedEntity) {
-    JsonNode domains = patchedEntity.get(Entity.FIELD_DOMAINS);
-    return nullOrEmpty(domains) ? List.of() : JsonUtils.convertValue(domains, DOMAIN_REFERENCES);
+  private static List<EntityReference> readDomains(JsonValue patchedEntity) {
+    JsonValue domains = patchedEntity.asJsonObject().get(Entity.FIELD_DOMAINS);
+    return domains == null || domains.getValueType() == JsonValue.ValueType.NULL
+        ? List.of()
+        : JsonUtils.readObjects(domains.toString(), EntityReference.class);
   }
 
   public static Set<MetadataOperation> getMetadataOperations(
