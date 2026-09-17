@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlError.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentSparqlError",
+  "description": "Stable machine-readable failure for the agent SPARQL endpoint. Messages never include credentials or backend internals.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlError",
+  "properties": {
+    "code": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlErrorCode",
+      "enum": [
+        "QUERY_INVALID",
+        "QUERY_FORM_NOT_ALLOWED",
+        "GRAPH_SELECTION_NOT_ALLOWED",
+        "QUERY_LIMIT_EXCEEDED",
+        "AUTHENTICATION_REQUIRED",
+        "RDF_QUERY_FORBIDDEN",
+        "IMPERSONATION_NOT_ALLOWED",
+        "FEDERATION_NOT_ALLOWED",
+        "EXECUTION_CAPACITY_EXHAUSTED",
+        "RESULT_OUTPUT_LIMIT_EXCEEDED",
+        "EXECUTION_TIMEOUT",
+        "RDF_REPOSITORY_UNAVAILABLE",
+        "PROJECTION_NOT_READY",
+        "RDF_BACKEND_FAILURE"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "requestId": {
+      "description": "Server-generated identifier correlating this response with server logs.",
+      "type": "string"
+    }
+  },
+  "required": ["code", "message", "requestId"],
+  "additionalProperties": false
+}
