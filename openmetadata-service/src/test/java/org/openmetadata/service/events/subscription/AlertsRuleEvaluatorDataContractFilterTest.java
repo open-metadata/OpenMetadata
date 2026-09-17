@@ -47,15 +47,12 @@ class AlertsRuleEvaluatorDataContractFilterTest {
 
   @Test
   void dataContractEvent_coveringListedEntity_matches() {
-    AlertsRuleEvaluator evaluator =
-        new AlertsRuleEvaluator(contractEvent(contractOn(COVERED_TABLE)));
-    assertTrue(evaluator.filterByEntityNameDataContractBelongsTo(List.of(COVERED_TABLE)));
+    assertTrue(matchesEntity(contractOn(COVERED_TABLE), COVERED_TABLE));
   }
 
   @Test
   void dataContractEvent_coveringAnotherEntity_doesNotMatch() {
-    AlertsRuleEvaluator evaluator = new AlertsRuleEvaluator(contractEvent(contractOn(OTHER_TABLE)));
-    assertFalse(evaluator.filterByEntityNameDataContractBelongsTo(List.of(COVERED_TABLE)));
+    assertFalse(matchesEntity(contractOn(OTHER_TABLE), COVERED_TABLE));
   }
 
   @Test
@@ -125,6 +122,17 @@ class AlertsRuleEvaluatorDataContractFilterTest {
                 .withId(UUID.randomUUID())
                 .withType(Entity.TABLE)
                 .withFullyQualifiedName(tableFqn));
+  }
+
+  /** The evaluator resolves the payload class through the registry the runtime populates at boot. */
+  private static boolean matchesEntity(DataContract dataContract, String listedEntityFqn) {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock
+          .when(() -> Entity.getEntityClassFromType(Entity.DATA_CONTRACT))
+          .thenReturn(DataContract.class);
+      return new AlertsRuleEvaluator(contractEvent(dataContract))
+          .filterByEntityNameDataContractBelongsTo(List.of(listedEntityFqn));
+    }
   }
 
   /** The non-feed path parses the serialized payload, which is how it arrives on the wire. */

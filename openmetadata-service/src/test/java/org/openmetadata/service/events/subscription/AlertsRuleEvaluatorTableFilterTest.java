@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.events.subscription;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -73,19 +72,17 @@ class AlertsRuleEvaluatorTableFilterTest {
     assertFalse(matchesTable(testCase, "service.db.schema.customer"));
   }
 
-  @Test
-  void unparseableEntityLink_fallsBackToEntityFqnInsteadOfThrowing() {
-    TestCase testCase =
-        new TestCase()
-            .withId(TEST_CASE_ID)
-            .withName("tc")
-            .withEntityLink("not-an-entity-link")
-            .withEntityFQN(TABLE_A);
-    assertDoesNotThrow(() -> matchesTable(testCase, TABLE_A));
-    assertTrue(matchesTable(testCase, TABLE_A));
-  }
-
   // ---------- #31330: an event the filter cannot evaluate must not mean "deliver" ----------
+
+  @Test
+  void eventWithoutEntityType_doesNotMatch() {
+    ChangeEvent event =
+        new ChangeEvent()
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntity(tableTestCase(TABLE_A));
+    assertFalse(
+        new AlertsRuleEvaluator(event).filterByTableNameTestCaseBelongsTo(List.of(TABLE_A)));
+  }
 
   @Test
   void nonTestCaseEntityEvent_doesNotMatch() {

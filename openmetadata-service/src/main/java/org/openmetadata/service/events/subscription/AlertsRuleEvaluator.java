@@ -320,54 +320,11 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean filterByTableNameTestCaseBelongsTo(List<String> tableFqns) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
-      return false;
-    }
-    if (isFeedEvent()) {
-      return feedSubjectTestCaseBelongsTo(tableFqns);
-    }
-    if (!TEST_CASE.equals(changeEvent.getEntityType())) {
-      return false;
-    }
-    return testCaseBelongsTo((TestCase) getEntity(changeEvent), tableFqns);
-  }
-
-  // A feed event is scoped by the table its subject test case belongs to: feed -> test case ->
-  // table.
-  private boolean feedSubjectTestCaseBelongsTo(List<String> tableFqns) {
-    EntityReference subject = feedSubject();
-    if (subject == null || !TEST_CASE.equals(subject.getType())) {
-      return false;
-    }
-    TestCase testCase = Entity.getEntityOrNull(subject, "", Include.NON_DELETED);
-    return testCase != null && testCaseBelongsTo(testCase, tableFqns);
-  }
-
-  private boolean testCaseBelongsTo(TestCase testCase, List<String> tableFqns) {
-    String parentFqn = resolveParentTableFqn(testCase);
-    return parentFqn != null && tableFqns.contains(parentFqn);
-  }
-
-  /**
-   * A test case's {@code entityFQN} is the subject it is attached to, which is the table for a
-   * table-level test but {@code <table>.<column>} for a column-level one. The parent table is the
-   * entity of its {@code entityLink}, so that is the authoritative source here.
-   */
-  private String resolveParentTableFqn(TestCase testCase) {
-    String tableFqn = parentTableFqnFromLink(testCase.getEntityLink());
-    return tableFqn != null ? tableFqn : testCase.getEntityFQN();
-  }
-
-  private static String parentTableFqnFromLink(String entityLink) {
-    if (entityLink == null) {
-      return null;
-    }
-    try {
-      return MessageParser.EntityLink.parse(entityLink).getEntityFQN();
-    } catch (IllegalArgumentException e) {
-      LOG.debug("Unparseable test case entityLink '{}'", entityLink, e);
-      return null;
-    }
+    TestCase testCase = (TestCase) eventEntityOfType(TEST_CASE);
+    // The link's entity, not entityFQN, which is <table>.<column> for a column-level test.
+    return testCase != null
+        && tableFqns.contains(
+            MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
   }
 
   @Function(
@@ -811,6 +768,25 @@ public class AlertsRuleEvaluator {
         || CONVERSATION.equals(changeEvent.getEntityType());
   }
 
+  // The event's entity of entityType: the entity itself, or for a comment, the entity it is on.
+  private EntityInterface eventEntityOfType(String entityType) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
+      return null;
+    }
+    return switch (changeEvent.getEntityType()) {
+      case null -> null;
+      case THREAD, CONVERSATION -> feedSubjectOfType(entityType);
+      default -> entityType.equals(changeEvent.getEntityType()) ? getEntity(changeEvent) : null;
+    };
+  }
+
+  private EntityInterface feedSubjectOfType(String entityType) {
+    EntityReference subject = feedSubject();
+    return subject != null && entityType.equals(subject.getType())
+        ? Entity.getEntityOrNull(subject, "", Include.NON_DELETED)
+        : null;
+  }
+
   private boolean feedSubjectMatchesType(List<String> entityTypes) {
     EntityReference subject = feedSubject();
     return subject != null && entityTypes.contains(subject.getType());
@@ -929,37 +905,7 @@ public class AlertsRuleEvaluator {
       examples = {"filterByEntityNameDataContractBelongsTo({'service.database.schema.table1'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityFqns) {
-    if (changeEvent == null || changeEvent.getEntity() == null) {
-      return false;
-    }
-    if (isFeedEvent()) {
-      return dataContractCovers(feedSubjectDataContract(), entityFqns);
-    }
-    if (!DATA_CONTRACT.equals(changeEvent.getEntityType())) {
-      return false;
-    }
-    return dataContractCovers(parseDataContract(), entityFqns);
-  }
-
-  // A feed event is scoped by the entity its subject contract covers: feed -> contract -> entity.
-  private DataContract feedSubjectDataContract() {
-    EntityReference subject = feedSubject();
-    if (subject == null || !DATA_CONTRACT.equals(subject.getType())) {
-      return null;
-    }
-    return Entity.getEntityOrNull(subject, "", Include.NON_DELETED);
-  }
-
-  private DataContract parseDataContract() {
-    try {
-      return JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
-    } catch (Exception e) {
-      LOG.warn("Failed to parse DataContract from change event", e);
-      return null;
-    }
-  }
-
-  private static boolean dataContractCovers(DataContract dataContract, List<String> entityFqns) {
+    DataContract dataContract = (DataContract) eventEntityOfType(DATA_CONTRACT);
     return dataContract != null
         && dataContract.getEntity() != null
         && entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());

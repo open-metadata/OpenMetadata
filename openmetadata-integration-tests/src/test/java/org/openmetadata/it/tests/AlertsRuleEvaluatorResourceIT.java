@@ -314,7 +314,7 @@ public class AlertsRuleEvaluatorResourceIT {
   @Test
   void test_filterByTableNameTestCaseBelongsTo_happyPath() {
     String tableFqn = "service.db.schema.orders";
-    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+    TestCase testCase = tableTestCase(tableFqn);
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -336,8 +336,7 @@ public class AlertsRuleEvaluatorResourceIT {
 
   @Test
   void test_filterByTableNameTestCaseBelongsTo_rejectsPrefixCollision() {
-    TestCase testCase =
-        new TestCase().withName("tc").withEntityFQN("service.db.schema.customer_archive");
+    TestCase testCase = tableTestCase("service.db.schema.customer_archive");
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -366,7 +365,7 @@ public class AlertsRuleEvaluatorResourceIT {
         "service.db.schema.t(paren)",
       })
   void test_filterByTableNameTestCaseBelongsTo_treatsRegexMetacharsAsLiteral(String tableFqn) {
-    TestCase testCase = new TestCase().withName("tc").withEntityFQN(tableFqn);
+    TestCase testCase = tableTestCase(tableFqn);
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -387,10 +386,13 @@ public class AlertsRuleEvaluatorResourceIT {
   }
 
   @Test
-  void test_filterByTableNameTestCaseBelongsTo_fallbackToEntityLink() {
-    String tableFqn = "service.db.schema.fallback";
+  void test_filterByTableNameTestCaseBelongsTo_columnLevelTestMatchesItsTable() {
+    String tableFqn = "service.db.schema.orders";
     TestCase testCase =
-        new TestCase().withName("tc").withEntityLink("<#E::table::" + tableFqn + ">");
+        new TestCase()
+            .withName("tc")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::id>")
+            .withEntityFQN(tableFqn + ".id");
 
     ChangeEvent changeEvent = new ChangeEvent();
     changeEvent.setEntityType(Entity.TEST_CASE);
@@ -405,6 +407,16 @@ public class AlertsRuleEvaluatorResourceIT {
     assertTrue(
         evaluateExpression(
             "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'" + tableFqn + ".id'})", evaluationContext));
+  }
+
+  private TestCase tableTestCase(String tableFqn) {
+    return new TestCase()
+        .withName("tc")
+        .withEntityLink("<#E::table::" + tableFqn + ">")
+        .withEntityFQN(tableFqn);
   }
 
   // #31330: a filter that cannot evaluate an event must answer "does not match", never "deliver".
