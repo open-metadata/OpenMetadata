@@ -16,7 +16,6 @@ Postgres SQLAlchemy util methods
 
 import re
 import traceback
-from typing import Optional
 
 from packaging import version
 from sqlalchemy import sql, text, util
@@ -531,7 +530,7 @@ DEFAULT_QUERY_STATEMENT_SOURCE = "pg_stat_statements"
 QUERY_STATEMENT_SOURCE_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*(\.[A-Za-z_][A-Za-z0-9_$]*)?")
 
 
-def validate_query_statement_source(query_statement_source: Optional[str]) -> str:
+def validate_query_statement_source(query_statement_source: str | None) -> str:
     """Return a relation name that is safe to interpolate into the query-history SQL.
 
     queryStatementSource names a relation, so it is interpolated into the FROM
