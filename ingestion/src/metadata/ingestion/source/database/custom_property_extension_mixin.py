@@ -78,7 +78,7 @@ class CustomPropertyExtensionMixin:
         try:
             self._string_property_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
         except Exception as exc:
-            logger.warning(f"Failed to fetch string property type ref: {exc}")
+            logger.warning("Failed to fetch string property type ref: %s", exc)
             logger.debug(traceback.format_exc())
 
     def build_entity_extension(
@@ -94,7 +94,9 @@ class CustomPropertyExtensionMixin:
             return None
         registered_properties: dict[str, str] = {}
         for prop_name, prop_value in properties.items():
-            if not prop_value:
+            # Only absent and empty values are dropped. Glue extras are not coerced by the model,
+            # so a parameter can arrive as 0 or False, and those are real values.
+            if prop_value is None or prop_value == "":
                 continue
             sanitized_name = self._sanitize_property_name(prop_name)
             if sanitized_name in self._processed_prop:
@@ -144,11 +146,11 @@ class CustomPropertyExtensionMixin:
         except Exception as exc:
             # Not cached, so the next table retries. Emitting a value for a name the server never
             # registered fails the whole entity, so the caller must drop this property.
-            logger.warning(f"Failed to register custom property [{prop_name}] for {source_label}: {exc}")
+            logger.warning("Failed to register custom property [%s] for %s: %s", prop_name, source_label, exc)
             logger.debug(traceback.format_exc())
             return False
         # Valued by the raw name that produced it so _log_name_collision can spot two source
-        # keys that sanitize alike and silently share one definition.
+        # keys that sanitize alike and share one definition.
         self._processed_prop.put(sanitized_name, prop_name)
         return True
 
@@ -160,4 +162,12 @@ class CustomPropertyExtensionMixin:
             # property is already registered either way, so there is nothing to report.
             return
         if previous != prop_name:
-            logger.debug(f"Custom property [{sanitized_name}] is shared by source keys [{previous}] and [{prop_name}]")
+            # Both keys write to the same extension entry, so one value is lost. Rare enough to
+            # warrant the operator's attention, and silent otherwise.
+            logger.warning(
+                "Source keys [%s] and [%s] both sanitize to custom property [%s]; only the value from [%s] is kept",
+                previous,
+                prop_name,
+                sanitized_name,
+                prop_name,
+            )

@@ -17,6 +17,7 @@ connector: Athena runs the table node multi threaded, so the cache is shared sta
 """
 
 import hashlib
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -137,6 +138,59 @@ class TestProcessedPropertyCacheConcurrency:
             result = source.build_entity_extension({"dup": "v2"}, source_label=SOURCE_LABEL)
 
         assert result == {"dup": "v2"}
+
+
+class TestValueFiltering:
+    """Glue extras are not coerced by the model, so a parameter can arrive as a real falsy value."""
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [
+            (0, "0"),
+            (False, "False"),
+            (0.0, "0.0"),
+            ("0", "0"),
+            (" ", " "),
+            ("value", "value"),
+        ],
+    )
+    def test_falsy_but_valid_values_are_kept(self, source, value, expected):
+        assert source.build_entity_extension({"k": value}, source_label=SOURCE_LABEL) == {"k": expected}
+
+    @pytest.mark.parametrize("value", [None, ""])
+    def test_absent_and_empty_values_are_dropped(self, source, value):
+        assert source.build_entity_extension({"k": value}, source_label=SOURCE_LABEL) is None
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+
+    def test_absent_table_type_is_dropped_but_a_zero_sibling_is_kept(self, source):
+        """The shape a non-Iceberg Glue table dumps: table_type=None alongside real parameters."""
+        result = source.build_entity_extension({"table_type": None, "retention": 0}, source_label=SOURCE_LABEL)
+
+        assert result == {"retention": "0"}
+
+
+class TestSanitizedNameCollision:
+    """Two distinct source keys can sanitize to one name; the second value overwrites the first."""
+
+    def test_colliding_keys_are_reported_at_warning(self, source, caplog):
+        with caplog.at_level(logging.WARNING):
+            result = source.build_entity_extension({"a/b": "first", "a@b": "second"}, source_label=SOURCE_LABEL)
+
+        assert result == {"a__b": "second"}
+        assert len(caplog.records) == 1
+        message = caplog.records[0].getMessage()
+        assert "a/b" in message
+        assert "a@b" in message
+        assert "a__b" in message
+
+    def test_the_same_key_seen_again_is_not_reported(self, source, caplog):
+        """The common case - one key across many tables - must stay quiet."""
+        source.build_entity_extension({"shared": "v"}, source_label=SOURCE_LABEL)
+
+        with caplog.at_level(logging.WARNING):
+            source.build_entity_extension({"shared": "v"}, source_label=SOURCE_LABEL)
+
+        assert caplog.records == []
 
 
 class TestLoadStringPropertyTypeRef:
