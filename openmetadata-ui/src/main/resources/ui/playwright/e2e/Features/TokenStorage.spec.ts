@@ -78,6 +78,49 @@ test.describe('token storage', () => {
     expect(await getToken(page)).toBe('tok-abc-123');
   });
 
+  test('a stubbed blank document is storage origin enough to seed a session', async ({
+    baseURL,
+    browser,
+  }) => {
+    // `utils/apiSignIn.ts` seeds the token into a route-stubbed blank document
+    // rather than booting the app just to obtain an origin — worth ~1700 app
+    // boots a run. That only holds if storage on such a document is the same
+    // storage the app reads afterwards, so pin it rather than comment it.
+    //
+    // A cold context on purpose: the describe-level `beforeEach` navigates, and
+    // seeding from an already-navigated page would prove nothing. This starts
+    // where `signInViaApi` starts, on a page that has never left about:blank.
+    const primerPath = '/__playwright_auth_primer__';
+    const cold = await browser.newContext({ baseURL });
+
+    try {
+      const page = await cold.newPage();
+      await page.route(`**${primerPath}`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<!doctype html><title>auth primer</title>',
+        })
+      );
+      await page.goto(primerPath, { waitUntil: 'domcontentloaded' });
+
+      expect(await page.evaluate(() => 'serviceWorker' in navigator)).toBe(
+        true
+      );
+
+      await setToken(page, 'tok-from-primer');
+      await page.unroute(`**${primerPath}`);
+
+      // Now stand the app up in place of the primer and read the token back.
+      await stubEverything(cold);
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+      expect(await getToken(page)).toBe('tok-from-primer');
+    } finally {
+      await cold.close();
+    }
+  });
+
   test('the token survives storageState({ indexedDB: true }) into a new context', async ({
     baseURL,
     browser,
