@@ -230,6 +230,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
         while (page < newPage && currentPaging.after) {
           page++;
+          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
           const data = await getPolicies(
             'roles',
             currentPaging.after,

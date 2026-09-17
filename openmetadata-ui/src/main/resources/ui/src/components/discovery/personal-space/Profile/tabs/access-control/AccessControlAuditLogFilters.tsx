@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, FilterSelect, FilterSelectOption } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  FilterSelect,
+  FilterSelectOption,
+} from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -54,7 +58,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
           },
         ])
       ),
-    [t]
+    []
   );
 
   const [userOptions, setUserOptions] = useState<FilterSelectOption[]>([]);
@@ -145,9 +149,9 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 
   const makeChangeHandler = useCallback(
     (
-      category: AuditLogFilterCategoryType,
-      currentOptions: FilterSelectOption[]
-    ) =>
+        category: AuditLogFilterCategoryType,
+        currentOptions: FilterSelectOption[]
+      ) =>
       (values: string[]) => {
         const optionMap = new Map(
           currentOptions.map((o) => [o.value, o.label as string])
@@ -306,9 +310,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         onSearch={(text) => {
           const filtered = text
             ? ENTITY_TYPE_SEARCH_OPTIONS.filter((option) =>
-                String(option.label)
-                  .toLowerCase()
-                  .includes(text.toLowerCase())
+                String(option.label).toLowerCase().includes(text.toLowerCase())
               )
             : ENTITY_TYPE_SEARCH_OPTIONS;
           setFilteredEntityTypeOptions(filtered);

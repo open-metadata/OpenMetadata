@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { FC, useCallback, useRef, useState } from 'react';
+import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
@@ -57,43 +57,44 @@ const AccessControlDebuggerPanel: FC = () => {
   const [formResourceId, setFormResourceId] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const searchUsers = useCallback(
-    debounce(async (searchText: string) => {
-      if (!searchText) {
-        setUserOptions([]);
+  const searchUsers = useMemo(
+    () =>
+      debounce(async (searchText: string) => {
+        if (!searchText) {
+          setUserOptions([]);
 
-        return;
-      }
+          return;
+        }
 
-      try {
-        const response = await searchQuery({
-          query: searchText,
-          pageNumber: 1,
-          pageSize: 10,
-          filters: '',
-          sortField: '',
-          sortOrder: '',
-          searchIndex: SearchIndex.USER,
-          includeDeleted: false,
-          trackTotalHits: false,
-          fetchSource: true,
-          includeFields: ['name', 'displayName'],
-        });
+        try {
+          const response = await searchQuery({
+            query: searchText,
+            pageNumber: 1,
+            pageSize: 10,
+            filters: '',
+            sortField: '',
+            sortOrder: '',
+            searchIndex: SearchIndex.USER,
+            includeDeleted: false,
+            trackTotalHits: false,
+            fetchSource: true,
+            includeFields: ['name', 'displayName'],
+          });
 
-        const options = response.hits.hits.map(
-          (hit: { _source: { name: string; displayName?: string } }) => ({
-            id: hit._source.name,
-            label: `${hit._source.displayName || hit._source.name} (${
-              hit._source.name
-            })`,
-          })
-        );
+          const options = response.hits.hits.map(
+            (hit: { _source: { name: string; displayName?: string } }) => ({
+              id: hit._source.name,
+              label: `${hit._source.displayName || hit._source.name} (${
+                hit._source.name
+              })`,
+            })
+          );
 
-        setUserOptions(options);
-      } catch {
-        setUserOptions([]);
-      }
-    }, 300),
+          setUserOptions(options);
+        } catch {
+          setUserOptions([]);
+        }
+      }, 300),
     []
   );
 

@@ -602,6 +602,7 @@ const usePolicyDetail = (fqn: string) => {
           (p) => p.id !== policy.id
         );
         const patch = compare(role, { ...role, policies: updatedPolicies });
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
         await patchRole(patch, role.id);
         setPolicy((prev) =>
           prev
@@ -640,6 +641,7 @@ const usePolicyDetail = (fqn: string) => {
           (p) => p.id !== policy.id
         );
         const patch = compare(team, { ...team, policies: updatedPolicies });
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
         await patchTeamDetail(team.id ?? '', patch);
         setPolicy((prev) =>
           prev
@@ -805,7 +807,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     } finally {
       setIsSavingRename(false);
     }
-  }, [policy, renameValue, fetchPolicy, t]);
+  }, [policy, renameValue, fetchPolicy, t, onRename]);
 
   useEffect(() => {
     if (!policy) {

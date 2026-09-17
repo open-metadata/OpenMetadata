@@ -108,6 +108,7 @@ async function walkToPageCursor(
   const discoveredCursors: Record<number, string> = {};
 
   while (p < targetPage - 1 && cursor) {
+    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
     const response: AuditLogListResponse = await getAuditLogs({
       limit: pageSize,
       after: cursor,
