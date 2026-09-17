@@ -74,12 +74,11 @@ export class TeamClass {
       return;
     }
 
-    const fetchOrganizationResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes('/api/v1/teams/name/Organization') &&
-      response.url().includes('include=all') &&
-      response.url().includes('defaultPersona')
+    const fetchOrganizationResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/teams/name/Organization') &&
+        response.url().includes('include=all') &&
+        response.url().includes('defaultPersona')
     );
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.TEAMS);
