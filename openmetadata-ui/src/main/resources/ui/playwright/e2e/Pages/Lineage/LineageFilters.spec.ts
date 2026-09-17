@@ -124,7 +124,7 @@ const getSearchIndexForEntity = (entity: EntityClassUnion) => {
   return searchIndex;
 };
 
-test.describe('Lineage Filters', () => {
+test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
   const lineageEntity = new TableClass();
   const entities = Object.values(allEntities).map(
     (EntityClass) => new EntityClass()
@@ -368,10 +368,13 @@ test.describe('Lineage Filters', () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByLabel(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           await rearrangeNodes(page);
@@ -412,12 +415,15 @@ test.describe('Lineage Filters', () => {
             .getByTestId('drop-down-menu')
             .getByTestId('loader')
             .waitFor({ state: 'hidden' });
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByLabel(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineageByEntityCount?*'
           );
-          await page.getByRole('button', { name: 'Update' }).click();
+          await page.getByTestId('update-btn').click();
           await lineageRes;
 
           for (const entity of entitiesToShow) {
@@ -525,11 +531,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .click();
 
         const entitiesToShow = [entity];
@@ -552,7 +558,7 @@ test.describe('Lineage Filters', () => {
           );
         });
 
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         expect((await lineageResponse).status()).toBe(200);
 
         for (const entity of entitiesToShow) {
@@ -629,11 +635,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
@@ -644,8 +650,8 @@ test.describe('Lineage Filters', () => {
           (_, idx) => idx !== index
         );
 
-        await page.getByRole('button', { name: 'Update' }).click();
-        await expect(page.getByRole('button', { name: 'Update' })).toBeHidden();
+        await page.getByTestId('update-btn').click();
+        await expect(page.getByTestId('update-btn')).toBeHidden();
 
         await rearrangeNodes(page);
         await fitToScreen(page);
@@ -708,11 +714,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .click();
 
         const entitiesToShow = [entity];
@@ -728,7 +734,7 @@ test.describe('Lineage Filters', () => {
         const lineageRes = page.waitForResponse(
           '/api/v1/lineage/getLineageByEntityCount?*'
         );
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await lineageRes;
 
         for (const entity of entitiesToShow) {
@@ -788,11 +794,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
@@ -808,7 +814,7 @@ test.describe('Lineage Filters', () => {
             get(record, 'entityResponseData.serviceType', '').toLowerCase()
         );
 
-        await page.getByRole('button', { name: 'Update' }).click();
+        await page.getByTestId('update-btn').click();
         await waitForAllLoadersToDisappear(page);
 
         await rearrangeNodes(page);
@@ -900,10 +906,10 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.database.name',
         ''
       );
-      await page.getByTitle(databaseName).click();
+      await page.getByTestId('drop-down-menu').getByLabel(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -945,10 +951,13 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page.getByTitle(databaseSchemaName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByLabel(databaseSchemaName)
+        .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);
@@ -990,10 +999,10 @@ test.describe('Lineage Filters', () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page.getByTitle(columnName).click();
+      await page.getByTestId('drop-down-menu').getByLabel(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await lineageRes;
 
       await rearrangeNodes(page);

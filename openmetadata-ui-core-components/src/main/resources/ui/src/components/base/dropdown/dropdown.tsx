@@ -148,7 +148,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       {...rest}
       className={(state) =>
         cx(
-          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-raised tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -168,7 +168,7 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
     <AriaSeparator
       {...props}
       className={cx(
-        'tw:my-1 tw:h-px tw:w-full tw:bg-border-secondary',
+        'tw:my-1 tw:w-full tw:border-t tw:border-subtle',
         props.className
       )}
     />

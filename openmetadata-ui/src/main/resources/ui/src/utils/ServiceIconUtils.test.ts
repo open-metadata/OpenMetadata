@@ -11,10 +11,20 @@
  *  limitations under the License.
  */
 
+jest.mock(
+  '../assets/img/service-icon-clickzetta.svg',
+  () => 'clickzetta-icon',
+  { virtual: true }
+);
+
 import rill from '../assets/svg/service-icon-rill.svg';
 import { getServiceIcon } from './ServiceIconUtils';
 
 describe('ServiceIconUtils', () => {
+  it('resolves the Clickzetta service icon case-insensitively', () => {
+    expect(getServiceIcon('Clickzetta')).toBe('clickzetta-icon');
+  });
+
   it('should return the Rill service icon', () => {
     expect(getServiceIcon('Rill')).toBe(rill);
   });

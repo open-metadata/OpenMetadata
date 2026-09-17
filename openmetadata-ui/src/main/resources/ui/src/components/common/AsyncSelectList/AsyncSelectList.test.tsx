@@ -34,13 +34,15 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../atoms/Tag/ClassificationTag', () =>
-  jest.fn().mockImplementation(({ label }) => <div title={label}>{label}</div>)
-);
-
-jest.mock('../atoms/Tag/GlossaryTag', () =>
-  jest.fn().mockImplementation(({ label }) => <div title={label}>{label}</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label }) => <div title={label}>{label}</div>),
+}));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
