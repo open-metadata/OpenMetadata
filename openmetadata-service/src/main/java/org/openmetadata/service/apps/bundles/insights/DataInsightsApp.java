@@ -161,15 +161,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
               language,
               dataAssetsConfig.getRetention());
         } else {
+          boolean templateChanged;
           try {
-            searchInterface.updateDataAssetsDataStream(
-                dataStreamName, dataAssetType, dataAssetIndex, language);
-            // Rollover so the next write targets a fresh backing index created from the
-            // updated template. PUT _mapping can add properties but cannot apply new
-            // dynamic_templates or settings to an existing index — the rollover guarantees
-            // the write index carries the full template (e.g. completeness fact mappings
-            // added after the original index was created).
-            searchInterface.rolloverDataStream(dataStreamName);
+            templateChanged =
+                searchInterface.updateDataAssetsDataStream(
+                    dataStreamName, dataAssetType, dataAssetIndex, language);
           } catch (IOException updateEx) {
             LOG.warn(
                 "Mapping update failed for data stream {}; recreating to apply the full template.",
@@ -182,6 +178,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
                 dataAssetIndex,
                 language,
                 dataAssetsConfig.getRetention());
+            templateChanged = false;
+          }
+          if (templateChanged) {
+            try {
+              searchInterface.rolloverDataStream(dataStreamName);
+            } catch (IOException rolloverEx) {
+              LOG.warn(
+                  "Rollover failed for data stream {}; will retry on the next run.",
+                  dataStreamName,
+                  rolloverEx);
+            }
           }
         }
       } catch (IOException ex) {

@@ -43,6 +43,19 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
+  public String getComponentTemplate(String name) throws IOException {
+    try {
+      Response response = performRequest("GET", "/_component_template/" + name);
+      return new String(response.getEntity().getContent().readAllBytes());
+    } catch (IOException e) {
+      if (e.getMessage() != null && e.getMessage().contains("404")) {
+        return null;
+      }
+      throw e;
+    }
+  }
+
+  @Override
   public void createIndexTemplate(String name, String template) throws IOException {
     performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
@@ -71,14 +84,14 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public void updateDataAssetsDataStream(
+  public boolean updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException {
-    var mappings =
-        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath)
-            .getTemplate()
-            .getMappings();
-    performRequest("PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(mappings));
+    TemplateUpdateResult result =
+        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
+    performRequest(
+        "PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
+    return result.changed();
   }
 
   @Override

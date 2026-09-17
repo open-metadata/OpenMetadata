@@ -52,6 +52,17 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
+  public String getComponentTemplate(String name) throws IOException {
+    var request = Requests.builder().method("GET").endpoint("/_component_template/" + name).build();
+    try (var response = client.generic().execute(request)) {
+      if (response.getStatus() == 404) {
+        return null;
+      }
+      return response.getBody().map(b -> b.bodyAsString()).orElse(null);
+    }
+  }
+
+  @Override
   public void createIndexTemplate(String name, String template) throws IOException {
     performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
@@ -79,14 +90,14 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public void updateDataAssetsDataStream(
+  public boolean updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException {
-    var mappings =
-        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath)
-            .getTemplate()
-            .getMappings();
-    performRequest("PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(mappings));
+    TemplateUpdateResult result =
+        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
+    performRequest(
+        "PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
+    return result.changed();
   }
 
   @Override

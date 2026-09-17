@@ -14,11 +14,15 @@ public interface DataInsightsSearchInterface {
 
   void createComponentTemplate(String name, String template) throws IOException;
 
+  String getComponentTemplate(String name) throws IOException;
+
   void createIndexTemplate(String name, String template) throws IOException;
 
   void createDataStream(String name) throws IOException;
 
-  default IndexMappingTemplate prepareDataAssetTemplates(
+  record TemplateUpdateResult(IndexMappingTemplate template, boolean changed) {}
+
+  default TemplateUpdateResult prepareDataAssetTemplates(
       String name, String entityType, IndexMapping mapping, String language, String resourcePath)
       throws IOException {
     String built =
@@ -27,11 +31,16 @@ public interface DataInsightsSearchInterface {
             mapping,
             language,
             readResource(resourcePath + "/indexMappingsTemplate.json"));
-    createComponentTemplate(name + "-mapping", built);
+
+    String componentName = name + "-mapping";
+    String existing = getComponentTemplate(componentName);
+    boolean changed = !built.equals(existing);
+
+    createComponentTemplate(componentName, built);
     createIndexTemplate(
         name,
         IndexTemplate.forDataStream(name, readResource(resourcePath + "/indexTemplate.json")));
-    return JsonUtils.readValue(built, IndexMappingTemplate.class);
+    return new TemplateUpdateResult(JsonUtils.readValue(built, IndexMappingTemplate.class), changed);
   }
 
   default String readResource(String resourceFile) {
@@ -115,8 +124,13 @@ public interface DataInsightsSearchInterface {
 
   void deleteDataAssetDataStream(String name) throws IOException;
 
-  /** Updates existing backing indexes and the template used when the data stream rolls over. */
-  void updateDataAssetsDataStream(
+  /**
+   * Updates existing backing indexes and the template used when the data stream rolls over.
+   *
+   * @return {@code true} when the component template was changed (i.e. the new mapping differs from
+   *     what was already registered), {@code false} when no change was needed.
+   */
+  boolean updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException;
 
