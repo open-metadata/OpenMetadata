@@ -165,10 +165,7 @@ const ChangeParentHierarchy = ({
           const data: MoveGlossaryTermWebsocketResponse =
             JSON.parse(moveResponse);
 
-          if (
-            submittedJobId.current &&
-            data.jobId === submittedJobId.current
-          ) {
+          if (submittedJobId.current && data.jobId === submittedJobId.current) {
             handleMoveJobUpdate(data);
           } else if (awaitingResponse.current && data.jobId) {
             bufferedEvents.current.set(data.jobId, data);
