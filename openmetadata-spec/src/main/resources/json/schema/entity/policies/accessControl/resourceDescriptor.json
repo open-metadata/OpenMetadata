@@ -67,6 +67,7 @@
         "DeleteScim",
         "ViewScim",
         "Impersonate",
+        "ExecuteSparqlQuery",
         "AuditLogs",
         "ViewTestDefinitionLibrary",
         "EditTestDefinitionLibrary",
