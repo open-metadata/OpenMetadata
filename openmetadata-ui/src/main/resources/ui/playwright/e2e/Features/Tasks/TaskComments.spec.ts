@@ -353,10 +353,10 @@ test.describe('Task Comments - @Mention', () => {
       '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
     );
 
-    await mentionDropdown
-      .first()
-      .waitFor({ state: 'visible', timeout: 2000 })
-      .catch(() => undefined);
+    // The suggestion list is populated asynchronously, so this needs a wait - but
+    // it must actually arrive. A swallowed waitFor left this test asserting
+    // nothing, so it passed whether or not the dropdown ever rendered.
+    await expect(mentionDropdown.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('selecting user from @ dropdown should add mention', async ({
