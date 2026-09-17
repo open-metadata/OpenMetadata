@@ -108,6 +108,32 @@ public class EventSubscriptionResourceIT
         .withDestinations(getWebhookDestination(ns));
   }
 
+  @Test
+  void test_webhookEndpointOnThisMachine_400(TestNamespace ns) {
+    Webhook webhook =
+        new Webhook().withEndpoint(URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked"));
+
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("sub_loopback"))
+            .withDescription("Endpoint that resolves back to the server")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(
+                List.of(
+                    new SubscriptionDestination()
+                        .withId(UUID.randomUUID())
+                        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+                        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                        .withConfig(webhook)));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "A webhook endpoint on the server's own machine should be rejected");
+  }
+
   private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {
     Webhook webhook =
         new Webhook()

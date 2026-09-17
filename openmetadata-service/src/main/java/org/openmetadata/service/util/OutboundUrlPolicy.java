@@ -89,6 +89,23 @@ public class OutboundUrlPolicy {
     }
   }
 
+  /**
+   * True when the URL leads somewhere only this network can reach. Used to decide what may be
+   * reflected back to the caller, not whether to send: an internal receiver is still delivered to.
+   */
+  public boolean isInternalTarget(String urlString) {
+    URL url = urlString == null ? null : parse(urlString);
+    if (url == null || url.getHost() == null || url.getHost().trim().isEmpty()) {
+      return false;
+    }
+    try {
+      return Arrays.stream(resolver.resolve(url.getHost().toLowerCase()))
+          .anyMatch(address -> isLocalAddress(address) || isPrivateAddress(address));
+    } catch (UnknownHostException e) {
+      return false;
+    }
+  }
+
   private String evaluate(String urlString, boolean rejectUnresolvable) {
     if (urlString == null || urlString.trim().isEmpty()) {
       return "URL cannot be empty";
