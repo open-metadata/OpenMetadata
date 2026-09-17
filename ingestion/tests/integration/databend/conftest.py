@@ -30,10 +30,11 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-DATABEND_IMAGE = "datafuselabs/databend:nightly"
+DATABEND_IMAGE = "datafuselabs/databend:v1.2.945-nightly"
 DATABEND_HTTP_PORT = 8000
 DATABEND_USERNAME = "databend"
 DATABEND_PASSWORD = "databend"
+DATABEND_READY_TIMEOUT = int(os.getenv("DATABEND_READY_TIMEOUT", "300"))
 
 
 def _connection_url(container: DockerContainer) -> str:
@@ -44,14 +45,39 @@ def _connection_url(container: DockerContainer) -> str:
     )
 
 
-@retry(wait=wait_fixed(2), stop=stop_after_delay(120), reraise=True)
-def _wait_until_ready(container: DockerContainer) -> None:
+@retry(wait=wait_fixed(2), stop=stop_after_delay(DATABEND_READY_TIMEOUT), reraise=True)
+def _connect_until_ready(container: DockerContainer) -> None:
     engine = create_engine(_connection_url(container))
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
     finally:
         engine.dispose()
+
+
+def _container_diagnostics(container: DockerContainer) -> str:
+    """Collect the server-side logs a bare connection error never shows."""
+    try:
+        wrapped = container.get_wrapped_container()
+        docker_logs = wrapped.logs(tail=50).decode("utf-8", errors="replace")
+        # bootstrap.sh runs meta and query as background processes and keeps the
+        # container alive by tailing their logs, so a dead query process still
+        # looks "Up" from the outside. Its own log is the only real evidence.
+        exit_code, query_log = wrapped.exec_run(["tail", "-n", "50", "/tmp/std-query.log"])
+        query_tail = query_log.decode("utf-8", errors="replace") if exit_code == 0 else "<unavailable>"
+    except Exception as exc:  # pylint: disable=broad-except
+        return f"<failed to collect container diagnostics: {exc}>"
+    return f"container status={wrapped.status}\ndocker logs:\n{docker_logs}\nstd-query.log:\n{query_tail}"
+
+
+def _wait_until_ready(container: DockerContainer) -> None:
+    try:
+        _connect_until_ready(container)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Databend container did not become ready within {DATABEND_READY_TIMEOUT}s: {exc}\n"
+            f"{_container_diagnostics(container)}"
+        ) from exc
 
 
 def _prepare_test_data(container: DockerContainer) -> None:
