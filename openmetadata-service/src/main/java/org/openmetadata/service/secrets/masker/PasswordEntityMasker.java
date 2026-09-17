@@ -251,7 +251,10 @@ public class PasswordEntityMasker extends EntityMasker {
     int index = 0;
     for (Object element : collection) {
       if (isTraversable(element)) {
-        walkPasswordFields(element, createKey(key, String.valueOf(index)), visitor);
+        walkPasswordFields(
+            element,
+            createKey(key, ReflectionUtil.getCollectionElementKey(element, index)),
+            visitor);
       }
       index++;
     }

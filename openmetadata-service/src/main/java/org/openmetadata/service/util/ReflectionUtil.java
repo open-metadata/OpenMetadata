@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -81,6 +83,37 @@ public class ReflectionUtil {
     return method.getName().startsWith("get")
         && !method.getReturnType().equals(Void.TYPE)
         && !method.getReturnType().isPrimitive();
+  }
+
+  /**
+   * Identifies an element of a collection for secret bookkeeping.
+   *
+   * <p>Position is not a stable identity. Secrets are stored against the original configuration and
+   * restored onto the updated one, so if an element were keyed by index, removing or reordering an
+   * entry would restore a secret onto a different element - deleting the first of two MCP servers
+   * would hand its API key to the second. Elements that expose a non-empty {@code getName()} are
+   * keyed by it; only those without one fall back to position.
+   */
+  public static String getCollectionElementKey(Object element, int index) {
+    try {
+      Method getName = element.getClass().getMethod("getName");
+      if (String.class.equals(getName.getReturnType())) {
+        String name = (String) getName.invoke(element);
+        if (!nullOrEmpty(name)) {
+          return name;
+        }
+      }
+    } catch (NoSuchMethodException e) {
+      LOG.debug(
+          "{} exposes no getName(); keying collection element by position",
+          element.getClass().getName());
+    } catch (IllegalAccessException | InvocationTargetException e) {
+      LOG.debug(
+          "Could not read getName() from {}; keying collection element by position",
+          element.getClass().getName(),
+          e);
+    }
+    return String.valueOf(index);
   }
 
   /**

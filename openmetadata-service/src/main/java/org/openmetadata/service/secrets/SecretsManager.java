@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.ObjIntConsumer;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -447,14 +447,14 @@ public abstract class SecretsManager {
    * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
    * for the same element - otherwise deleting a service would strand its secrets in the store.
    */
-  private static void forEachTraversableElement(Object obj, ObjIntConsumer<Object> action) {
+  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
     if (!(obj instanceof Collection<?> collection)) {
       return;
     }
     int index = 0;
     for (Object element : collection) {
       if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
-        action.accept(element, index);
+        action.accept(element, ReflectionUtil.getCollectionElementKey(element, index));
       }
       index++;
     }
@@ -495,14 +495,14 @@ public abstract class SecretsManager {
                   } else {
                     forEachTraversableElement(
                         obj,
-                        (element, index) ->
+                        (element, elementKey) ->
                             encryptPasswordFields(
                                 element,
                                 buildSecretId(
                                     false,
                                     secretId,
                                     fieldName.toLowerCase(Locale.ROOT),
-                                    String.valueOf(index)),
+                                    elementKey),
                                 store));
                   }
                 });
@@ -544,7 +544,7 @@ public abstract class SecretsManager {
                       toSet);
                 } else {
                   forEachTraversableElement(
-                      obj, (element, index) -> decryptPasswordFields(element));
+                      obj, (element, elementKey) -> decryptPasswordFields(element));
                 }
               });
       return toDecryptObject;
@@ -586,7 +586,7 @@ public abstract class SecretsManager {
                           : fieldValue,
                       toSet);
                 } else {
-                  forEachTraversableElement(obj, (element, index) -> getSecretFields(element));
+                  forEachTraversableElement(obj, (element, elementKey) -> getSecretFields(element));
                 }
               });
       return toDecryptObject;
@@ -712,14 +712,14 @@ public abstract class SecretsManager {
                 } else {
                   forEachTraversableElement(
                       obj,
-                      (element, index) ->
+                      (element, elementKey) ->
                           deleteSecrets(
                               element,
                               buildSecretId(
                                   false,
                                   secretId,
                                   fieldName.toLowerCase(Locale.ROOT),
-                                  String.valueOf(index))));
+                                  elementKey)));
                 }
               });
     }
