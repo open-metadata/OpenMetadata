@@ -29,7 +29,6 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -56,7 +55,6 @@ const DocumentationTab = ({
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const resourceType =
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
@@ -216,9 +214,7 @@ const DocumentationTab = ({
               title={t('label.owner-plural')}>
               <Owner
                 isCompactView={false}
-                owners={toOwnersWithHref(
-                  (domain as Domain | DataProduct).owners ?? []
-                )}
+                owners={(domain as Domain | DataProduct).owners ?? []}
                 showLabel={false}
               />
             </WidgetCard>

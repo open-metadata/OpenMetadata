@@ -16,7 +16,6 @@ import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
@@ -34,7 +33,6 @@ const DomainSummary = ({
   highlights,
 }: DomainSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -62,7 +60,7 @@ const DomainSummary = ({
           <Col span={24}>
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(entityDetails.owners ?? [])}
+              owners={entityDetails.owners ?? []}
               showLabel={false}
             />
           </Col>
@@ -80,11 +78,7 @@ const DomainSummary = ({
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Owner
-                isCompactView={false}
-                owners={toOwnersWithHref(experts)}
-                showLabel={false}
-              />
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
               <Typography.Text
                 className="text-grey-body"

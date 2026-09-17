@@ -85,12 +85,6 @@ jest.mock('../../hooks/useEntityRules', () => ({
   }),
 }));
 
-jest.mock('../../hooks/useOwnerDisplayProps', () => ({
-  useOwnerDisplayProps: () => ({
-    toOwnersWithHref: (owners: unknown[]) => owners,
-  }),
-}));
-
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));

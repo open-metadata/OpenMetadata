@@ -95,12 +95,6 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
   DomainLabel: () => <div data-testid="domain-label">domain-label</div>,
 }));
 
-jest.mock('hooks/useOwnerDisplayProps', () => ({
-  useOwnerDisplayProps: () => ({
-    toOwnersWithHref: (owners: unknown[]) => owners,
-  }),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
   const TabsCtx = React.createContext<((key: string) => void) | undefined>(

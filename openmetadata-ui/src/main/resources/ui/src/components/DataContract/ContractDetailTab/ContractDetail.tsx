@@ -53,7 +53,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   exportContractToODCSYaml,
   getContractResultByResultId,
@@ -69,7 +68,6 @@ import {
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityStatusBadgeConfig } from '../../../utils/EntityStatusUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -121,7 +119,6 @@ const ContractDetail: React.FC<{
   onContractUpdated,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [validateLoading, setValidateLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
@@ -470,9 +467,9 @@ const ContractDetail: React.FC<{
                   </Typography>
 
                   <Owner
-                    owners={toOwnerRefs([
+                    owners={[
                       { name: contract.createdBy, type: 'user', id: '' },
-                    ])}
+                    ]}
                   />
                 </Box>
 
@@ -539,7 +536,7 @@ const ContractDetail: React.FC<{
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={toOwnersWithHref(contract.owners ?? [])}
+                owners={contract.owners ?? []}
                 showLabel={false}
               />
             </Box>

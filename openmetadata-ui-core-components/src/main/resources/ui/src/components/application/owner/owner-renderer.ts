@@ -10,24 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { OwnerRef } from '../../../types';
 import type { RenderOwnerContent } from './owner.types';
 
 /**
- * App-wide owner chip renderer.
+ * App-wide owner display registration.
  *
- * The library cannot import the consuming app's owner hover card
- * (`UserPopOverCard` fetches user/team data and uses app routing), so the app
- * registers how an owner chip should be wrapped — once, at bootstrap — and
- * every `OwnerChip` (compact, stack, overflow) picks it up automatically. This
- * keeps hover behaviour identical everywhere without threading a
- * `renderOwnerContent` prop through every call site.
+ * The library cannot compute two things itself — the owner hover card
+ * (`UserPopOverCard` fetches user/team data) and the in-app profile href
+ * (built from the app's routing). The app registers both once at bootstrap and
+ * every `OwnerChip` (compact, stack, overflow) picks them up automatically, so
+ * call sites just pass the owner array — no `renderOwnerContent` prop and no
+ * `toOwnersWithHref` wrapping.
  *
- * When nothing is registered (Storybook, library unit tests) chips render
- * bare, which is the correct standalone default.
+ * When nothing is registered (Storybook, library unit tests) chips render bare
+ * with no link, which is the correct standalone default.
  */
 let ownerRenderer: RenderOwnerContent | undefined;
+let ownerHrefResolver: ((owner: OwnerRef) => string | undefined) | undefined;
 
-/** Register the owner chip wrapper. Call once at app startup. */
+/** Register the owner chip hover-card wrapper. Call once at app startup. */
 export const setOwnerRenderer = (
   renderer: RenderOwnerContent | undefined
 ): void => {
@@ -36,3 +38,16 @@ export const setOwnerRenderer = (
 
 export const getOwnerRenderer = (): RenderOwnerContent | undefined =>
   ownerRenderer;
+
+/** Register how an owner's in-app profile href is resolved. Call once at
+ * startup. Owner chips use it to make the owner name a link. */
+export const setOwnerHrefResolver = (
+  resolver: ((owner: OwnerRef) => string | undefined) | undefined
+): void => {
+  ownerHrefResolver = resolver;
+};
+
+/** An explicit `href` on the ref wins; otherwise fall back to the registered
+ * resolver. Returns undefined when neither is available (name renders as text). */
+export const resolveOwnerHref = (owner: OwnerRef): string | undefined =>
+  owner.href ?? ownerHrefResolver?.(owner);

@@ -32,7 +32,6 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
@@ -85,8 +84,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
@@ -543,20 +540,6 @@ export const DataAssetsHeader = ({
     [dataAsset]
   );
 
-  const toOwnersWithHref = useCallback(
-    (refs: typeof dataAsset.owners) =>
-      toOwnerRefs(refs ?? []).map((o) => ({
-        ...o,
-        href: getOwnerPath({
-          id: o.id,
-          name: o.name,
-          type: o.type,
-        } as EntityReference),
-        icon: o.type === 'team' ? IconTeams : undefined,
-      })),
-    []
-  );
-
   const handleStyleUpdate = useCallback(
     async (style: Style) => {
       const updatedStyle: Style = {
@@ -1002,7 +985,7 @@ export const DataAssetsHeader = ({
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        owners={toOwnersWithHref(dataAsset?.owners)}
+        owners={dataAsset?.owners}
         placeHolder={t('label.owners')}
         selectorContent={
           <UserTeamSelectableList

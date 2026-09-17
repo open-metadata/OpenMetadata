@@ -41,7 +41,6 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
@@ -426,7 +425,7 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               isCompactView
               showDashPlaceholder
               maxVisibleOwners={1}
-              owners={toOwnerRefs(service.owners ?? [])}
+              owners={service.owners ?? []}
             />
           </div>
         </Table.Cell>

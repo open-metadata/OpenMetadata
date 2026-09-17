@@ -40,7 +40,6 @@ import {
   EntityReference,
 } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -209,7 +208,6 @@ export const CommonWidgets = ({
   } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const updatedData = useMemo(() => {
     const updatedDescription = isVersionView
       ? getEntityVersionByField(
@@ -540,7 +538,7 @@ export const CommonWidgets = ({
         ) : (
           <Owner
             isCompactView={false}
-            owners={toOwnersWithHref(owners ?? [])}
+            owners={owners ?? []}
             showLabel={false}
           />
         )}
@@ -555,7 +553,6 @@ export const CommonWidgets = ({
     editOwnerPermission,
     entityRules,
     t,
-    toOwnersWithHref,
   ]);
 
   const widget = useMemo(() => {

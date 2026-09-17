@@ -30,7 +30,6 @@ import { TagLabel, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { useEntityRules } from '../../hooks/useEntityRules';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { ChangeSummaryEntry } from '../../rest/changeSummaryAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
@@ -252,7 +251,6 @@ export const DataAssetSummaryPanelV1 = ({
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(entityType);
   const { getEntityPermission } = usePermissionProvider();
 
@@ -669,7 +667,7 @@ export const DataAssetSummaryPanelV1 = ({
             <Owner
               hasPermission={editOwnerPermission}
               isCompactView={false}
-              owners={toOwnersWithHref(dataAsset.owners as EntityReference[])}
+              owners={dataAsset.owners as EntityReference[]}
               placeHolder={t('label.no-entity-assigned', {
                 entity: t('label.owner-lowercase-plural'),
               })}
@@ -778,7 +776,7 @@ export const DataAssetSummaryPanelV1 = ({
           <Owner
             hasPermission={editOwnerPermission}
             isCompactView={false}
-            owners={toOwnersWithHref(dataAsset.owners as EntityReference[])}
+            owners={dataAsset.owners as EntityReference[]}
             placeHolder={t('label.no-entity-assigned', {
               entity: t('label.owner-lowercase-plural'),
             })}
@@ -846,7 +844,7 @@ export const DataAssetSummaryPanelV1 = ({
           <Owner
             hasPermission={editOwnerPermission}
             isCompactView={false}
-            owners={toOwnersWithHref(dataAsset.owners as EntityReference[])}
+            owners={dataAsset.owners as EntityReference[]}
             placeHolder={t('label.no-entity-assigned', {
               entity: t('label.owner-lowercase-plural'),
             })}
@@ -936,7 +934,7 @@ export const DataAssetSummaryPanelV1 = ({
             <Owner
               hasPermission={editOwnerPermission}
               isCompactView={false}
-              owners={toOwnersWithHref(dataAsset.owners as EntityReference[])}
+              owners={dataAsset.owners as EntityReference[]}
               placeHolder={t('label.no-entity-assigned', {
                 entity: t('label.owner-lowercase-plural'),
               })}

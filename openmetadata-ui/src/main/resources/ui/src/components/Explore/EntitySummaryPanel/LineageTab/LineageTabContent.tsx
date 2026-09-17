@@ -23,7 +23,6 @@ import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-u
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
@@ -44,7 +43,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
@@ -169,7 +167,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           avatarSize={16}
           className="item-owner-label-text"
           isCompactView={false}
-          owners={toOwnersWithHref(owners)}
+          owners={owners}
           showLabel={false}
         />
       );

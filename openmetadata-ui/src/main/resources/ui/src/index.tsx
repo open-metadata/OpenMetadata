@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { initCoreI18n, setOwnerRenderer } from '@openmetadata/ui-core-components';
+import {
+  initCoreI18n,
+  setOwnerHrefResolver,
+  setOwnerRenderer,
+} from '@openmetadata/ui-core-components';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
@@ -19,6 +23,7 @@ import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
 import i18next from './utils/i18next/LocalUtil';
 import { renderOwnerPopover } from './utils/ownerRenderUtils';
+import { getOwnerHref } from './utils/ownerUtils';
 import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 
 // Register the library's `core` i18next namespace. `addResourceBundle` is safe
@@ -27,10 +32,11 @@ import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 // import doesn't leak into files that Playwright's `--list` walks.
 initCoreI18n(i18next);
 
-// Register the app's owner hover card once, so every OwnerChip the library
-// renders (compact chips, avatar stacks, the overflow popover) shows the
-// user/team pop-over on hover — uniformly, with no per-call-site prop.
+// Register the app's owner display concerns once, so every OwnerChip the
+// library renders shows the user/team hover pop-over and links the owner name
+// to its in-app profile — uniformly, with no per-call-site wrapping.
 setOwnerRenderer(renderOwnerPopover);
+setOwnerHrefResolver(getOwnerHref);
 
 const recordPlaywrightAppBoot = () => {
   if (!import.meta.env.PW_E2E_BUILD) {

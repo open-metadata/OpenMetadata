@@ -53,7 +53,6 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -115,7 +114,6 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -766,11 +764,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner
-            isCompactView={false}
-            owners={toOwnersWithHref(owners)}
-            showLabel={false}
-          />
+          <Owner isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {

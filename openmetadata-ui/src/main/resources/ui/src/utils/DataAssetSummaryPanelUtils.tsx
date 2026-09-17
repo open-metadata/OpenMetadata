@@ -60,8 +60,6 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
-import { toOwnerRefs } from './Owner/ownerConversionUtils';
-import { getOwnersWithHref } from './ownerUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
@@ -104,7 +102,7 @@ const getCommonOverview = (
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={getOwnersWithHref(owners ?? [])}
+                owners={owners ?? []}
                 showLabel={false}
               />
             ),
@@ -762,7 +760,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -803,7 +801,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -852,7 +850,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),

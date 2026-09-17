@@ -12,6 +12,7 @@
  */
 import type { ReactNode } from 'react';
 import type { AvatarSize, OwnerRef } from '../../../types';
+import type { OwnerLike } from './owner-utils';
 
 export type RenderOwnerContent = (
   owner: OwnerRef,
@@ -39,7 +40,12 @@ export interface OwnerAvatarStackProps {
 }
 
 export interface OwnerProps {
-  owners?: OwnerRef[];
+  /**
+   * Owner refs to display. Accepts raw refs (the app's EntityReference shape) —
+   * `Owner` normalises them to `OwnerRef` internally, so call sites pass the
+   * array as-is with no `toOwnerRefs`/`toOwnersWithHref` wrapping.
+   */
+  owners?: OwnerLike[];
   /**
    * When true, renders owners as a horizontal row of chips (default).
    * When false, renders a column with a header label row and avatar stack.

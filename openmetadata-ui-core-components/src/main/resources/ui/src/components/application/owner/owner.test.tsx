@@ -14,7 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Owner } from './owner';
-import { setOwnerRenderer } from './owner-renderer';
+import { setOwnerHrefResolver, setOwnerRenderer } from './owner-renderer';
 
 describe('Owner empty placeholder', () => {
   it('renders the no-owner-icon for the compact empty placeholder', () => {
@@ -128,5 +128,36 @@ describe('Owner registered renderer (uniform hover card)', () => {
 
     expect(screen.queryByTestId('hover-user1')).not.toBeInTheDocument();
     expect(screen.getByTestId('User One')).toBeInTheDocument();
+  });
+});
+
+describe('Owner href resolver (in-app profile link)', () => {
+  const owner = {
+    id: 'u1',
+    name: 'user1',
+    displayName: 'User One',
+    type: 'user' as const,
+  };
+
+  afterEach(() => {
+    setOwnerHrefResolver(undefined);
+  });
+
+  it('links the owner name using the registered resolver', () => {
+    setOwnerHrefResolver((o) => `/users/${o.name}`);
+
+    render(<Owner isCompactView={false} owners={[owner]} showLabel={false} />);
+
+    expect(screen.getByTestId('owner-link')).toHaveAttribute(
+      'href',
+      '/users/user1'
+    );
+  });
+
+  it('renders the name as plain text when no resolver is registered', () => {
+    render(<Owner isCompactView={false} owners={[owner]} showLabel={false} />);
+
+    // owner-link wrapper still present, but it is a span (no href).
+    expect(screen.getByTestId('owner-link')).not.toHaveAttribute('href');
   });
 });

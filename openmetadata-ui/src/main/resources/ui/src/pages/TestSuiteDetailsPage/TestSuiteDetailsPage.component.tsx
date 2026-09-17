@@ -55,7 +55,6 @@ import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.int
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { getOwnersWithHref } from '../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 import './test-suite-details-page.less';
@@ -507,7 +506,7 @@ const TestSuiteDetailsPage = () => {
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}
-              owners={getOwnersWithHref(testOwners)}
+              owners={testOwners}
               selectorContent={
                 <UserTeamSelectableList
                   hasPermission={Boolean(permissions.hasEditOwnerPermission)}

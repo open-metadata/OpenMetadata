@@ -16,7 +16,7 @@ import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
 import type { AvatarProps } from '../../base/avatar/avatar';
-import { getOwnerRenderer } from './owner-renderer';
+import { getOwnerRenderer, resolveOwnerHref } from './owner-renderer';
 import type { OwnerChipProps } from './owner.types';
 
 /** Hash a display name to a stable hue in [0, 360). */
@@ -105,6 +105,7 @@ export const OwnerChip = ({
     // Lineage/Impact-analysis owner-filter tests. The accessible name is carried
     // by the avatar's `alt` and the surrounding owner hover card.
     const nameNode = <span data-testid={nameStr}>{displayName}</span>;
+    const href = resolveOwnerHref(owner);
 
     return withRenderer(
       <span
@@ -113,11 +114,11 @@ export const OwnerChip = ({
           className
         )}>
         {avatar}
-        {owner.href ? (
+        {href ? (
           <a
             className="tw:truncate tw:text-sm tw:text-primary hover:tw:underline"
             data-testid="owner-link"
-            href={owner.href}>
+            href={href}>
             {nameNode}
           </a>
         ) : (

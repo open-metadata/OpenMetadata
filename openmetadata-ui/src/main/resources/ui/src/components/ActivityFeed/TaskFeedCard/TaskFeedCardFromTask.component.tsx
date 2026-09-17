@@ -29,7 +29,6 @@ import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskFromTask from '../../../pages/TasksPage/shared/DescriptionTaskFromTask';
 import TagsTaskFromTask from '../../../pages/TasksPage/shared/TagsTaskFromTask';
@@ -124,7 +123,6 @@ const TaskFeedCardFromTask = ({
 }: TaskFeedCardFromTaskProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -359,7 +357,7 @@ const TaskFeedCardFromTask = ({
           }`}>
           <Owner
             isCompactView={false}
-            owners={toOwnersWithHref(task.assignees ?? [])}
+            owners={task.assignees ?? []}
             showLabel={false}
           />
         </Col>

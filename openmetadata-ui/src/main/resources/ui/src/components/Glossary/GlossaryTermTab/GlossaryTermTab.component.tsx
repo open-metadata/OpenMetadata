@@ -78,7 +78,6 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
@@ -401,7 +400,6 @@ const GlossaryTermNameCell = ({
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1147,7 +1145,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return (
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(reviewers ?? [])}
+              owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}

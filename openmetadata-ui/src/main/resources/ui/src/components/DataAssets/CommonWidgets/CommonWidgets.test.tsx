@@ -96,11 +96,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       })
     ),
 }));
-jest.mock('../../../hooks/useOwnerDisplayProps', () => ({
-  useOwnerDisplayProps: () => ({
-    toOwnersWithHref: (refs: unknown[]) => refs ?? [],
-  }),
-}));
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
     <div data-testid="reviewer-label-widget">Reviewer Label Widget</div>

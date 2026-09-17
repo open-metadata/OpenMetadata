@@ -36,7 +36,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -67,7 +66,6 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
@@ -149,7 +147,7 @@ function FollowingWidget({
         value: (
           <Owner
             isCompactView={false}
-            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
+            owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
           />
         ),

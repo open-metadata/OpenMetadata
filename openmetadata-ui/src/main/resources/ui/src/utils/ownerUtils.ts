@@ -13,7 +13,6 @@
 import type { OwnerRef } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
-import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
 
 /**
@@ -29,19 +28,14 @@ export const getOwnerPath = (owner: EntityReference): string => {
 };
 
 /**
- * Converts owner EntityReferences into core-component OwnerRefs whose `href`
- * points to the in-app profile route (getOwnerPath). `toOwnerRefs` alone copies
- * EntityReference.href, which is the backend API self-link (/api/v1/users/<id>);
- * <Owner> renders the owner name as `<a href>`, so a non-compact owner built
- * from plain `toOwnerRefs` links to the API and returns 401 on click. Use this
- * for any non-compact <Owner> whose names are rendered as links.
+ * In-app profile href for a single owner. Registered once at app startup via
+ * `setOwnerHrefResolver` so every <Owner> links owner names to the profile
+ * route without call sites wrapping the array. Kept distinct from the backend
+ * EntityReference.href (the API self-link that would 401 on click).
  */
-export const getOwnersWithHref = (owners?: EntityReference[]): OwnerRef[] =>
-  toOwnerRefs(owners ?? []).map((owner) => ({
-    ...owner,
-    href: getOwnerPath({
-      id: owner.id,
-      name: owner.name,
-      type: owner.type,
-    } as EntityReference),
-  }));
+export const getOwnerHref = (owner: OwnerRef): string =>
+  getOwnerPath({
+    id: owner.id,
+    name: owner.name,
+    type: owner.type,
+  } as EntityReference);

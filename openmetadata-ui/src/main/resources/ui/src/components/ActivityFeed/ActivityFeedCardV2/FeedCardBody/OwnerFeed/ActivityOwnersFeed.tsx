@@ -26,7 +26,6 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
@@ -43,7 +42,6 @@ function ActivityOwnersFeed({
   showThread,
 }: Readonly<ActivityOwnersFeedProps>) {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const { previousOwner, updatedOwner } = useMemo(() => {
     let oldOwners: EntityReference[] = [];
@@ -137,7 +135,7 @@ function ActivityOwnersFeed({
           avatarSize={24}
           isCompactView={false}
           maxVisibleOwners={maxVisibleOwners}
-          owners={toOwnersWithHref(ownerList)}
+          owners={ownerList}
           showLabel={false}
         />
       );

@@ -36,7 +36,6 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -65,7 +64,6 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -111,7 +109,7 @@ const MyDataWidgetInternal = ({
         value: (
           <Owner
             isCompactView={false}
-            owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
+            owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
           />
         ),

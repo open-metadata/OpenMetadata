@@ -80,7 +80,6 @@ import {
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import {
   Option,
@@ -438,7 +437,6 @@ export const TaskTabNew = ({
   );
 
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [form] = Form.useForm();
   const editablePayload = Form.useWatch('payload', form) as
     | TaskPayload
@@ -1741,7 +1739,7 @@ export const TaskTabNew = ({
                     <Owner
                       hasPermission={shouldEditAssignee}
                       isCompactView={false}
-                      owners={toOwnersWithHref(task?.assignees)}
+                      owners={task?.assignees}
                       selectorContent={editAssigneeButton}
                       showLabel={false}
                     />

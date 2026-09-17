@@ -25,7 +25,6 @@ import { Database01, Globe01, User03 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
 import TierCard from '../../../common/TierCard/TierCard';
@@ -50,7 +49,6 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
 }) => {
   /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
-  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [tierPopoverOpen, setTierPopoverOpen] = useState(false);
   const tier = getTierTags(tags ?? []);
   const firstDomain = domains?.[0];
@@ -149,7 +147,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
           <Owner
             hasPermission={false}
             isCompactView={false}
-            owners={toOwnersWithHref(owners)}
+            owners={owners}
             showLabel={false}
           />
         ) : (
