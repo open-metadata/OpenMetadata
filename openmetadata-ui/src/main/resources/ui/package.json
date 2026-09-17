@@ -305,6 +305,7 @@
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
     "markdown-it": ">=14.2.0",
+    "moment": "2.31.0",
     "nanoid": "3.3.17",
     "uuid": "^14.0.0",
     "esbuild": "^0.28.1",
