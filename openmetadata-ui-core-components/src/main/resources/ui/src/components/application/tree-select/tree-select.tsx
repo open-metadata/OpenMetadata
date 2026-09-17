@@ -13,6 +13,7 @@
 import { ChevronDown, RefreshCw01, XClose } from '@untitledui/icons';
 import {
   SearchInputIcon,
+  TriggerButton,
   TriggerCountBadge,
 } from '../filter-select/filter-select';
 import {
@@ -496,7 +497,7 @@ export const TreeSelect = <T = unknown,>({
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {isButtonVariant && searchable && (
-        <div className="tw:py-2">
+        <div className="tw:p-2">
           <Input
             icon={SearchInputIcon}
             placeholder={searchPlaceholder ?? t('label.search')}
@@ -508,7 +509,7 @@ export const TreeSelect = <T = unknown,>({
       )}
       {showSelectAllRow && (
         <div
-          className="tw:pl-[10px] tw:py-2"
+          className="tw:px-4 tw:py-2"
           onMouseDown={(event) => event.preventDefault()}>
           <Checkbox
             isIndeterminate={allSelectedCount > 0 && !allSelected}
@@ -559,25 +560,13 @@ export const TreeSelect = <T = unknown,>({
       </div>
       {showStatusFooter && (
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-          <button
-            className={cx(
-              'tw:cursor-pointer tw:outline-brand',
-              displayedSelectedCount > 0
-                ? 'tw:inline-flex tw:items-center tw:rounded-full tw:bg-utility-brand-50 tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:transition-colors tw:hover:bg-utility-brand-100'
-                : 'tw:text-xs tw:font-normal tw:text-tertiary tw:cursor-default'
-            )}
-            data-testid="selected-count"
-            disabled={displayedSelectedCount === 0}
-            type="button"
-            onClick={() => {
-              if (displayedSelectedCount > 0) {
-                setShowSelectedOnly((prev) => !prev);
-              }
-            }}>
+          <span
+            className="tw:text-xs tw:font-normal tw:text-tertiary"
+            data-testid="selected-count">
             {displayedSelectedCount === 0
               ? t('label.none-selected')
               : t('label.count-selected', { count: displayedSelectedCount })}
-          </button>
+          </span>
           <Button
             color="tertiary"
             data-testid="clear-filter-btn"
@@ -600,26 +589,18 @@ export const TreeSelect = <T = unknown,>({
 
     return (
       <div className={cx('tw:relative tw:inline-block', className)}>
-        <div ref={triggerRef}>
-          <Button
-            className={cx(
-              'tw:whitespace-nowrap',
-              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
-              hasSelection &&
-                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
-              hasSelection && bordered && 'tw:after:outline-brand'
-            )}
-            color={bordered ? 'secondary' : 'tertiary'}
-            data-testid={dataTestId}
-            iconTrailing={ChevronDown}
-            isDisabled={disabled}
-            size={bordered ? 'md' : 'sm'}
-            onPress={() => setIsOpen((prev) => !prev)}>
-            {triggerText}
-            {multiple && hasSelection && (
-              <TriggerCountBadge count={displayedSelectedCount} />
-            )}
-          </Button>
+        <div
+          ref={triggerRef}
+          onClick={() => setIsOpen((prev) => !prev)}>
+          <TriggerButton
+            bordered={bordered}
+            count={multiple && hasSelection ? displayedSelectedCount : undefined}
+            hasSelection={hasSelection}
+            label={triggerText}
+            testId={dataTestId}
+            text={triggerText}
+            variant="button"
+          />
         </div>
         {isOpen && treeDropdown}
       </div>

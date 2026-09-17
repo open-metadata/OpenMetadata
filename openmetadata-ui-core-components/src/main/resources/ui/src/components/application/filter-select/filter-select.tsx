@@ -61,7 +61,7 @@ export const TriggerCountBadge = ({ count }: { count: number }) => (
   </Typography>
 );
 
-const TriggerButton = ({
+export const TriggerButton = ({
   hasSelection,
   text,
   label,

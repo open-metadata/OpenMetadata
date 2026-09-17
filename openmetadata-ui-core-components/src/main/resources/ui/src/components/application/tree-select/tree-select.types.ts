@@ -21,6 +21,8 @@ export interface TreeSelectNode<T = unknown> {
   isLeaf?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
+  /** Additional class name for the icon wrapper. */
+  iconClassName?: string;
   allowSelection?: boolean;
   lazyLoad?: boolean;
   isParentMutuallyExclusive?: boolean;
