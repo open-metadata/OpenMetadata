@@ -1844,8 +1844,6 @@ class DbtUnitTest(TestCase):
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
-    # Test Data Product processing functionality
-
     def test_process_dbt_meta_extracts_data_products(self):
         """meta.openmetadata.dataProducts is stored per table FQN"""
         manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
@@ -1930,12 +1928,13 @@ class DbtUnitTest(TestCase):
 
         self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
 
-        # Must not raise
-        self.dbt_source_obj.process_dbt_data_products(data_model_link)
+        with self.assertLogs(level="WARNING") as captured:
+            self.dbt_source_obj.process_dbt_data_products(data_model_link)
 
         mock_add_assets.assert_called_once()
-
-    # Test Custom Properties processing functionality
+        warnings = " ".join(captured.output)
+        assert "Marketing" in warnings
+        assert "domain" in warnings.lower()
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
     def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):

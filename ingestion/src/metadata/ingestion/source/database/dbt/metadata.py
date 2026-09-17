@@ -425,7 +425,7 @@ class DbtSource(DbtServiceSource):
         if not table_entity:
             return
 
-        table_fqn = table_entity.fullyQualifiedName.root
+        table_fqn = model_str(table_entity.fullyQualifiedName)
         product_names = self.extracted_data_products.get(table_fqn)
 
         if not product_names:
