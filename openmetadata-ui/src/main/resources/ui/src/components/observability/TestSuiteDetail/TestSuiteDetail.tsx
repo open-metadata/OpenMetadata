@@ -171,7 +171,7 @@ const getTabBadge = (count?: number) => toString(count) || undefined;
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -445,7 +445,6 @@ const TestSuiteDetail = () => {
                 isCompactView={false}
                 maxVisibleOwners={3}
                 owners={toOwnersWithHref(testOwners ?? [])}
-                renderOwnerContent={renderOwnerContent}
                 selectorContent={
                   <UserTeamSelectableList
                     hasPermission={Boolean(permissions.hasEditOwnerPermission)}

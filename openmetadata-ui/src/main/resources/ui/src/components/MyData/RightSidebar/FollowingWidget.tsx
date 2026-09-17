@@ -67,7 +67,7 @@ function FollowingWidget({
   currentLayout,
 }: Readonly<WidgetCommonProps>) {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [selectedEntityFilter, setSelectedEntityFilter] = useState<string>(
@@ -150,7 +150,6 @@ function FollowingWidget({
           <Owner
             isCompactView={false}
             owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),

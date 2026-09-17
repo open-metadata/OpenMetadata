@@ -38,7 +38,7 @@ import {
 
 export const useDomainCardTemplates = () => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
@@ -64,11 +64,7 @@ export const useDomainCardTemplates = () => {
           <Grid.Item span={12}>
             <Box direction="col" gap={1}>
               <Typography size="text-xs">{t('label.owner')}</Typography>
-              {renderDomainOwnersCell(
-                entity,
-                toOwnersWithHref,
-                renderOwnerContent
-              )}
+              {renderDomainOwnersCell(entity, toOwnersWithHref)}
             </Box>
           </Grid.Item>
           <Grid.Item span={12}>
@@ -97,7 +93,7 @@ export const useDomainCardTemplates = () => {
         </Grid>
       </Box>
     ),
-    [t, toOwnersWithHref, renderOwnerContent]
+    [t, toOwnersWithHref]
   );
 
   const renderDataProductCard = useCallback(
@@ -156,12 +152,9 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.owner-plural')}
                 </Typography>
-                {renderDomainOwnersCell(
-                  entity,
-                  toOwnersWithHref,
-                  renderOwnerContent,
-                  { showDashPlaceholder: true }
-                )}
+                {renderDomainOwnersCell(entity, toOwnersWithHref, {
+                  showDashPlaceholder: true,
+                })}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -172,12 +165,9 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.expert-plural')}
                 </Typography>
-                {renderDomainExpertsCell(
-                  entity,
-                  toOwnersWithHref,
-                  renderOwnerContent,
-                  { showDashPlaceholder: true }
-                )}
+                {renderDomainExpertsCell(entity, toOwnersWithHref, {
+                  showDashPlaceholder: true,
+                })}
               </Box>
             </Grid.Item>
           </Grid>
@@ -209,7 +199,7 @@ export const useDomainCardTemplates = () => {
         </Box>
       );
     },
-    [t, toOwnersWithHref, renderOwnerContent]
+    [t, toOwnersWithHref]
   );
 
   return {

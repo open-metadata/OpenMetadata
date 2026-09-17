@@ -12,8 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { Owner } from './owner';
+import { setOwnerRenderer } from './owner-renderer';
 
 describe('Owner empty placeholder', () => {
   it('renders the no-owner-icon for the compact empty placeholder', () => {
@@ -70,5 +71,62 @@ describe('Owner inline editable mode (non-compact, no label, with selector)', ()
     expect(screen.getByTestId('no-owner-icon')).toBeInTheDocument();
     expect(screen.getByText('No Assignee')).toBeInTheDocument();
     expect(screen.getByTestId('edit-selector')).toBeInTheDocument();
+  });
+});
+
+describe('Owner registered renderer (uniform hover card)', () => {
+  const owner = {
+    id: 'u1',
+    name: 'user1',
+    displayName: 'User One',
+    type: 'user' as const,
+  };
+
+  afterEach(() => {
+    setOwnerRenderer(undefined);
+  });
+
+  it('wraps compact avatars with the registered renderer', () => {
+    setOwnerRenderer((o, chip) => (
+      <div data-testid={`hover-${o.name}`}>{chip}</div>
+    ));
+
+    render(<Owner owners={[owner]} />);
+
+    // Compact previously rendered a bare avatar with no hover card — it must now
+    // be wrapped like every other owner chip.
+    expect(screen.getByTestId('hover-user1')).toBeInTheDocument();
+  });
+
+  it('wraps every visible chip in a compact multi-owner row', () => {
+    setOwnerRenderer((o, chip) => (
+      <div data-testid={`hover-${o.name}`}>{chip}</div>
+    ));
+
+    render(
+      <Owner
+        owners={[owner, { id: 'u2', name: 'user2', type: 'user' as const }]}
+      />
+    );
+
+    expect(screen.getByTestId('hover-user1')).toBeInTheDocument();
+    expect(screen.getByTestId('hover-user2')).toBeInTheDocument();
+  });
+
+  it('wraps the non-compact single owner with the registered renderer', () => {
+    setOwnerRenderer((o, chip) => (
+      <div data-testid={`hover-${o.name}`}>{chip}</div>
+    ));
+
+    render(<Owner isCompactView={false} owners={[owner]} showLabel={false} />);
+
+    expect(screen.getByTestId('hover-user1')).toBeInTheDocument();
+  });
+
+  it('renders bare chips when no renderer is registered', () => {
+    render(<Owner owners={[owner]} />);
+
+    expect(screen.queryByTestId('hover-user1')).not.toBeInTheDocument();
+    expect(screen.getByTestId('User One')).toBeInTheDocument();
   });
 });

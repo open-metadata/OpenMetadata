@@ -115,7 +115,7 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -769,7 +769,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <Owner
             isCompactView={false}
             owners={toOwnersWithHref(owners)}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),

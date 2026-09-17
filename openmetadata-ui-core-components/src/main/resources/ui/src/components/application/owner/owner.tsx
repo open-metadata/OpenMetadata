@@ -12,7 +12,6 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { Edit } from '../../../icons/Edit';
 import { Owners } from '../../../icons/Owners';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
@@ -34,16 +33,10 @@ export const Owner = ({
   showLabel = true,
   showDashPlaceholder = false,
   placeHolder,
-  placement,
   ownerDisplayName,
-  renderOwnerContent,
   className,
-  ownerLabelClassName,
-  isAssignee = false,
   hasPermission,
   selectorContent,
-  onEditClick,
-  showOverflowHeadings,
   'data-testid': dataTestId = 'owner-label',
 }: OwnerProps) => {
   const { t } = useCoreTranslation();
@@ -148,13 +141,9 @@ export const Owner = ({
         data-testid={dataTestId}>
         <OwnerAvatarStack
           avatarSize={avatarSize}
-          className={ownerLabelClassName}
           maxVisibleOwners={maxVisibleOwners}
           ownerDisplayName={ownerDisplayName}
           owners={owners}
-          placement={placement}
-          renderOwnerContent={renderOwnerContent}
-          showOverflowHeadings={showOverflowHeadings}
         />
         {selectorContent}
       </div>
@@ -180,23 +169,10 @@ export const Owner = ({
         <div className="tw:flex tw:items-center tw:gap-2">
           <OwnerAvatarStack
             avatarSize={avatarSize}
-            className={ownerLabelClassName}
             maxVisibleOwners={maxVisibleOwners}
             ownerDisplayName={ownerDisplayName}
             owners={owners}
-            placement={placement}
-            renderOwnerContent={renderOwnerContent}
-            showOverflowHeadings={showOverflowHeadings}
           />
-          {isAssignee && hasPermission && onEditClick && (
-            <button
-              aria-label={t('label.edit-assignees')}
-              className="tw:flex tw:items-center tw:text-secondary hover:tw:text-primary"
-              type="button"
-              onClick={onEditClick}>
-              <Edit className="tw:size-3.5" />
-            </button>
-          )}
         </div>
       </div>
     );
@@ -218,7 +194,6 @@ export const Owner = ({
           <OwnerChip
             isCompactView
             avatarSize={avatarSize}
-            className={ownerLabelClassName}
             key={owner.id || owner.name || String(i)}
             owner={owner}
             ownerDisplayName={ownerDisplayName}

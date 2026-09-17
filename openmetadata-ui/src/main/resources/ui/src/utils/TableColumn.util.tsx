@@ -27,7 +27,6 @@ import { AssetCertification } from '../generated/entity/data/database';
 import { EntityReference } from '../generated/type/entityReference';
 import { TagLabel } from '../generated/type/tagLabel';
 import i18n from './i18next/LocalUtil';
-import { renderOwnerPopover } from './ownerRenderUtils';
 import { getOwnersWithHref } from './ownerUtils';
 import {
   getCertificationTag,
@@ -87,7 +86,6 @@ export const ownerTableObject = <
         isCompactView={false}
         maxVisibleOwners={4}
         owners={getOwnersWithHref(owners ?? [])}
-        renderOwnerContent={renderOwnerPopover}
         showLabel={false}
       />
     ),

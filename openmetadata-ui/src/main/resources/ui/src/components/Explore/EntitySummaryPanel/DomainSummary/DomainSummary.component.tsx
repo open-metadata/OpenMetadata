@@ -34,7 +34,7 @@ const DomainSummary = ({
   highlights,
 }: DomainSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -63,7 +63,6 @@ const DomainSummary = ({
             <Owner
               isCompactView={false}
               owners={toOwnersWithHref(entityDetails.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </Col>
@@ -84,7 +83,6 @@ const DomainSummary = ({
               <Owner
                 isCompactView={false}
                 owners={toOwnersWithHref(experts)}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ) : (

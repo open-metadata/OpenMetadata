@@ -34,7 +34,7 @@ export const useDomainTableColumns = ({
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const columns: ColumnDef[] = useMemo(
     () => [
@@ -58,12 +58,9 @@ export const useDomainTableColumns = ({
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainOwnersCell(entity, toOwnersWithHref, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'tags':
@@ -72,7 +69,7 @@ export const useDomainTableColumns = ({
           return null;
       }
     },
-    [onEntityClick, toOwnersWithHref, renderOwnerContent]
+    [onEntityClick, toOwnersWithHref]
   );
 
   return { columns, renderCell };

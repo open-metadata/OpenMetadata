@@ -44,7 +44,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
@@ -170,7 +170,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className="item-owner-label-text"
           isCompactView={false}
           owners={toOwnersWithHref(owners)}
-          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       );

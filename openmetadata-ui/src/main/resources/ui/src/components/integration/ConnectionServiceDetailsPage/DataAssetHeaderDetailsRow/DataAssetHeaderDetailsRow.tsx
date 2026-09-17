@@ -50,7 +50,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
 }) => {
   /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [tierPopoverOpen, setTierPopoverOpen] = useState(false);
   const tier = getTierTags(tags ?? []);
   const firstDomain = domains?.[0];
@@ -150,7 +150,6 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             hasPermission={false}
             isCompactView={false}
             owners={toOwnersWithHref(owners)}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ) : (

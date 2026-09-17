@@ -65,7 +65,7 @@ const MyDataWidgetInternal = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState(true);
@@ -112,7 +112,6 @@ const MyDataWidgetInternal = ({
           <Owner
             isCompactView={false}
             owners={toOwnersWithHref((item.owners as EntityReference[]) ?? [])}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         ),

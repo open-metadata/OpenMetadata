@@ -98,7 +98,6 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
 jest.mock('hooks/useOwnerDisplayProps', () => ({
   useOwnerDisplayProps: () => ({
     toOwnersWithHref: (owners: unknown[]) => owners,
-    renderOwnerContent: undefined,
   }),
 }));
 

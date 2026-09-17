@@ -209,7 +209,7 @@ export const CommonWidgets = ({
   } = useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const updatedData = useMemo(() => {
     const updatedDescription = isVersionView
       ? getEntityVersionByField(
@@ -541,7 +541,6 @@ export const CommonWidgets = ({
           <Owner
             isCompactView={false}
             owners={toOwnersWithHref(owners ?? [])}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         )}
@@ -557,7 +556,6 @@ export const CommonWidgets = ({
     entityRules,
     t,
     toOwnersWithHref,
-    renderOwnerContent,
   ]);
 
   const widget = useMemo(() => {

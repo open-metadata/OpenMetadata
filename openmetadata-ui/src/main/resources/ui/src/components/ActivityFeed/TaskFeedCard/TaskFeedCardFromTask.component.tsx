@@ -124,7 +124,7 @@ const TaskFeedCardFromTask = ({
 }: TaskFeedCardFromTaskProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -360,7 +360,6 @@ const TaskFeedCardFromTask = ({
           <Owner
             isCompactView={false}
             owners={toOwnersWithHref(task.assignees ?? [])}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         </Col>

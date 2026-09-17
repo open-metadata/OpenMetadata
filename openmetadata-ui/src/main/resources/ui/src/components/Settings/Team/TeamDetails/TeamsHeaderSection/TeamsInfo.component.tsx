@@ -61,7 +61,7 @@ const TeamsInfo = ({
   isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -414,7 +414,6 @@ const TeamsInfo = ({
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         owners={toOwnersWithHref(owners ?? [])}
-        renderOwnerContent={renderOwnerContent}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}

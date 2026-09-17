@@ -104,7 +104,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
@@ -404,7 +404,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 hasPermission={false}
                 isCompactView={false}
                 owners={toOwnersWithHref(owners)}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </div>
@@ -456,7 +455,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   hasPermission={false}
                   isCompactView={false}
                   owners={toOwnersWithHref(editors)}
-                  renderOwnerContent={renderOwnerContent}
                   showLabel={false}
                 />
               </div>

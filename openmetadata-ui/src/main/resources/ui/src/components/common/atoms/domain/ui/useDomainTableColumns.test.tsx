@@ -98,7 +98,6 @@ describe('useDomainTableColumns', () => {
     expect(renderDomainOwnersCell).toHaveBeenCalledWith(
       DOMAIN,
       expect.any(Function),
-      expect.any(Function),
       { showDashPlaceholder: true }
     );
   });

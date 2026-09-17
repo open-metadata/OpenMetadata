@@ -88,7 +88,7 @@ export const TestSuitesTable = ({
   emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
@@ -164,7 +164,6 @@ export const TestSuitesTable = ({
           isCompactView={false}
           maxVisibleOwners={4}
           owners={toOwnersWithHref(record.owners)}
-          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       </Table.Cell>

@@ -43,7 +43,7 @@ function ActivityOwnersFeed({
   showThread,
 }: Readonly<ActivityOwnersFeedProps>) {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const { previousOwner, updatedOwner } = useMemo(() => {
     let oldOwners: EntityReference[] = [];
@@ -138,7 +138,6 @@ function ActivityOwnersFeed({
           isCompactView={false}
           maxVisibleOwners={maxVisibleOwners}
           owners={toOwnersWithHref(ownerList)}
-          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       );

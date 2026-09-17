@@ -16,14 +16,13 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import { forwardRef, ReactNode, useCallback, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -51,7 +50,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ClassificationTag } from '../../common/atoms/Tag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -701,17 +699,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       []
     );
 
-    const renderOwnerContent = useCallback(
-      (owner: { name?: string; type?: string }, chip: ReactNode) => (
-        <UserPopOverCard
-          type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owner.name ?? ''}>
-          {chip}
-        </UserPopOverCard>
-      ),
-      []
-    );
-
     const otherDetails = useMemo(() => {
       const buildColumnDetails = (): ExtraInfo[] => {
         const columnSource = source as TableColumnSearchSource;
@@ -746,7 +733,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               placeHolder={t('label.no-entity', {
                 entity: t('label.owner-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           ),
@@ -819,7 +805,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 placeHolder={t('label.no-entity', {
                   entity: t('label.owner-plural'),
                 })}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ),

@@ -99,7 +99,7 @@ const GlossaryTermOwnerWidget = () => {
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const hasPermission = permissions?.EditOwners || permissions?.EditAll;
 
@@ -154,7 +154,6 @@ const GlossaryTermOwnerWidget = () => {
         <Owner
           isCompactView={false}
           owners={toOwnersWithHref(data.owners ?? [])}
-          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       )}

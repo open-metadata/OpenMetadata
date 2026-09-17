@@ -14,13 +14,13 @@ import type { OwnerRef } from '@openmetadata/ui-core-components';
 import { useCallback } from 'react';
 import { ReactComponent as IconTeams } from '../assets/svg/common/teams.svg';
 import type { EntityReference } from '../generated/type/entityReference';
-import { renderOwnerPopover } from '../utils/ownerRenderUtils';
 import { getOwnersWithHref } from '../utils/ownerUtils';
 
 /**
- * Stable callbacks for rendering owners with hover pop-over cards and
- * correct UI-path hrefs. Use in any component that renders <Owner> or
- * <OwnerAvatarStack> with isCompactView={false}.
+ * Stable callback that maps owner refs to core-component `OwnerRef`s with the
+ * correct in-app profile href and a team icon. The owner hover card itself is
+ * registered app-wide via `setOwnerRenderer` (see index.tsx), so consumers no
+ * longer pass a `renderOwnerContent` prop.
  */
 export const useOwnerDisplayProps = () => {
   const toOwnersWithHref = useCallback(
@@ -32,5 +32,5 @@ export const useOwnerDisplayProps = () => {
     []
   );
 
-  return { toOwnersWithHref, renderOwnerContent: renderOwnerPopover };
+  return { toOwnersWithHref };
 };

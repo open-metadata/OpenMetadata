@@ -29,7 +29,6 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +53,6 @@ import {
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import {
   ContractExecutionStatus,
@@ -107,7 +105,6 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
@@ -560,17 +557,6 @@ export const DataAssetsHeader = ({
     []
   );
 
-  const renderOwnerContent = useCallback(
-    (owner: { name?: string; type?: string }, chip: ReactNode) => (
-      <UserPopOverCard
-        type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-        userName={owner.name ?? ''}>
-        {chip}
-      </UserPopOverCard>
-    ),
-    []
-  );
-
   const handleStyleUpdate = useCallback(
     async (style: Style) => {
       const updatedStyle: Style = {
@@ -1018,7 +1004,6 @@ export const DataAssetsHeader = ({
         maxVisibleOwners={3}
         owners={toOwnersWithHref(dataAsset?.owners)}
         placeHolder={t('label.owners')}
-        renderOwnerContent={renderOwnerContent}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(editOwnerPermission)}

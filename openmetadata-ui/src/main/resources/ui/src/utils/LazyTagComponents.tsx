@@ -64,7 +64,7 @@ const OwnerWidgetFromContext = ({
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const hasPermission =
     permissionProp ?? (permissions?.EditOwners || permissions?.EditAll);
@@ -112,7 +112,6 @@ const OwnerWidgetFromContext = ({
       <Owner
         isCompactView={false}
         owners={toOwnersWithHref(data.owners ?? [])}
-        renderOwnerContent={renderOwnerContent}
         showLabel={false}
       />
     </WidgetCard>

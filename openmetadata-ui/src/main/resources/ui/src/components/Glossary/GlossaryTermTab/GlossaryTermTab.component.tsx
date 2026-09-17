@@ -401,7 +401,7 @@ const GlossaryTermNameCell = ({
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1151,7 +1151,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );

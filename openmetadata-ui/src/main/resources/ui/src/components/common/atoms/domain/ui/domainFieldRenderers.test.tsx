@@ -156,12 +156,9 @@ describe('renderDomainOwnersCell', () => {
   it('forwards showDashPlaceholder to Owner', () => {
     render(
       <>
-        {renderDomainOwnersCell(
-          { owners: [] },
-          () => [],
-          (_owner, chip) => chip,
-          { showDashPlaceholder: true }
-        )}
+        {renderDomainOwnersCell({ owners: [] }, () => [], {
+          showDashPlaceholder: true,
+        })}
       </>
     );
 
@@ -172,15 +169,7 @@ describe('renderDomainOwnersCell', () => {
   });
 
   it('defaults showDashPlaceholder to undefined when no options are passed', () => {
-    render(
-      <>
-        {renderDomainOwnersCell(
-          { owners: [] },
-          () => [],
-          (_owner, chip) => chip
-        )}
-      </>
-    );
+    render(<>{renderDomainOwnersCell({ owners: [] }, () => [])}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -206,8 +195,7 @@ describe('nested control clicks inside a clickable row', () => {
     const rowClick = renderInRow(
       renderDomainOwnersCell(
         { owners: [{ name: 'alice' } as EntityReference] },
-        (refs) => (refs ?? []) as never,
-        (_owner, chip) => chip
+        (refs) => (refs ?? []) as never
       )
     );
     fireEvent.click(screen.getByTestId('owner-link'));
@@ -228,14 +216,9 @@ describe('nested control clicks inside a clickable row', () => {
 
   it('lets a click on the cell itself reach the row', () => {
     const rowClick = renderInRow(
-      renderDomainOwnersCell(
-        { owners: [] },
-        () => [],
-        (_owner, chip) => chip,
-        {
-          showDashPlaceholder: true,
-        }
-      )
+      renderDomainOwnersCell({ owners: [] }, () => [], {
+        showDashPlaceholder: true,
+      })
     );
     fireEvent.click(screen.getByTestId('owner-label'));
 
@@ -250,7 +233,6 @@ describe('renderDomainExpertsCell', () => {
         {renderDomainExpertsCell(
           { experts: [{ name: 'bob' } as EntityReference] },
           (refs) => (refs ?? []) as never,
-          (_owner, chip) => chip,
           { showDashPlaceholder: true }
         )}
       </>

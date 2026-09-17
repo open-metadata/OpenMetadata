@@ -121,7 +121,7 @@ const ContractDetail: React.FC<{
   onContractUpdated,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [validateLoading, setValidateLoading] = useState(false);
   const [latestContractResults, setLatestContractResults] =
     useState<DataContractResult>();
@@ -540,7 +540,6 @@ const ContractDetail: React.FC<{
                 isCompactView={false}
                 maxVisibleOwners={5}
                 owners={toOwnersWithHref(contract.owners ?? [])}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </Box>

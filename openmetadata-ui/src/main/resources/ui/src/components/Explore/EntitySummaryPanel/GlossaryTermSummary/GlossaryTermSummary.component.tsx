@@ -33,7 +33,7 @@ function GlossaryTermSummary({
   isLoading,
 }: GlossaryTermSummaryProps) {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(() => {
@@ -99,7 +99,6 @@ function GlossaryTermSummary({
               <Owner
                 isCompactView={false}
                 owners={toOwnersWithHref(reviewers)}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ) : (

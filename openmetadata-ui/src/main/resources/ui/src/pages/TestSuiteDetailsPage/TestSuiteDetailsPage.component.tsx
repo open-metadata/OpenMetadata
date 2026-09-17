@@ -55,7 +55,6 @@ import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.int
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { renderOwnerPopover } from '../../utils/ownerRenderUtils';
 import { getOwnersWithHref } from '../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
@@ -509,7 +508,6 @@ const TestSuiteDetailsPage = () => {
               isCompactView={false}
               maxVisibleOwners={3}
               owners={getOwnersWithHref(testOwners)}
-              renderOwnerContent={renderOwnerPopover}
               selectorContent={
                 <UserTeamSelectableList
                   hasPermission={Boolean(permissions.hasEditOwnerPermission)}

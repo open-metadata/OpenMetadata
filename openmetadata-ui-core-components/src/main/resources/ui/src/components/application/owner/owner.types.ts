@@ -31,7 +31,6 @@ export interface OwnerAvatarStackProps {
   avatarSize?: AvatarSize;
   maxVisibleOwners?: number;
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
   placement?: 'vertical' | 'horizontal';
   className?: string;
   /** Show the "N Owners" title and per-group labels in the overflow popover
@@ -54,24 +53,14 @@ export interface OwnerProps {
   showDashPlaceholder?: boolean;
   /** Label text for the owners section; defaults to no label. */
   placeHolder?: string;
-  placement?: 'vertical' | 'horizontal';
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
   className?: string;
-  ownerLabelClassName?: string;
-  /** When true and hasPermission is true, shows an edit button for assignee flow. */
-  isAssignee?: boolean;
   hasPermission?: boolean;
   /**
    * Pre-configured selector element (e.g. UserTeamSelectableList from the main UI).
    * Rendered as the edit/add trigger when hasPermission is true.
    */
   selectorContent?: ReactNode;
-  /** Called when the assignee edit button is clicked (isAssignee mode only). */
-  onEditClick?: () => void;
-  /** Show the "N Owners" title and per-group labels in the overflow popover
-   * (default true). Set false for a bare list of avatars + names. */
-  showOverflowHeadings?: boolean;
   'data-testid'?: string;
 }

@@ -112,10 +112,6 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
 
 type OwnerRenderers = {
   toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[];
-  renderOwnerContent: (
-    owner: { name?: string; type?: string },
-    chip: ReactNode
-  ) => ReactNode;
 };
 
 // Owner links and tag chips navigate to their own entity, while the row or card underneath
@@ -130,7 +126,6 @@ const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
   toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
-  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
   options?: { showDashPlaceholder?: boolean }
 ): ReactNode =>
   withNestedLinkGuard(
@@ -138,7 +133,6 @@ export const renderDomainOwnersCell = (
       isCompactView={false}
       maxVisibleOwners={4}
       owners={toOwnersWithHref(entity.owners)}
-      renderOwnerContent={renderOwnerContent}
       showDashPlaceholder={options?.showDashPlaceholder}
       showLabel={false}
     />
@@ -147,15 +141,9 @@ export const renderDomainOwnersCell = (
 export const renderDomainExpertsCell = (
   entity: { experts?: EntityReference[] },
   toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
-  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
   options?: { showDashPlaceholder?: boolean }
 ): ReactNode =>
-  renderDomainOwnersCell(
-    { owners: entity.experts },
-    toOwnersWithHref,
-    renderOwnerContent,
-    options
-  );
+  renderDomainOwnersCell({ owners: entity.experts }, toOwnersWithHref, options);
 
 export const renderDomainGlossaryTagsCell = (entity: TaggedEntity): ReactNode =>
   withNestedLinkGuard(

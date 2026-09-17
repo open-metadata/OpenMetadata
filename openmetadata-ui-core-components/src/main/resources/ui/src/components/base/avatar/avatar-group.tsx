@@ -17,8 +17,8 @@ import {
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
+import { getOwnerRenderer } from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
-import type { RenderOwnerContent } from '../../application/owner/owner.types';
 import type { AvatarSize, OwnerRef } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
 import { getAvatarColorTokens, getFirstAlphanumeric } from './utils';
@@ -48,7 +48,6 @@ export interface AvatarGroupProps {
   avatarSize?: AvatarSize;
   className?: string;
   ownerDisplayName?: Map<string, ReactNode>;
-  renderOwnerContent?: RenderOwnerContent;
   overflowTitleLabel?: string;
   overflowTeamsLabel?: string;
   overflowUsersLabel?: string;
@@ -62,7 +61,6 @@ export const AvatarGroup = ({
   avatarSize = 24,
   className,
   ownerDisplayName,
-  renderOwnerContent,
   overflowTitleLabel,
   overflowTeamsLabel,
   overflowUsersLabel,
@@ -120,7 +118,11 @@ export const AvatarGroup = ({
       </span>
     );
 
-    return renderOwnerContent ? renderOwnerContent(owner, chip) : chip;
+    // Wrap with the app-registered owner hover card so stacked avatars behave
+    // like every other owner chip on hover.
+    const render = getOwnerRenderer();
+
+    return render ? render(owner, chip) : chip;
   };
 
   return (

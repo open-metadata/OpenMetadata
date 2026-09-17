@@ -42,7 +42,6 @@ import { getEntityName } from './EntityNameUtils';
 import * as Pure from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { toOwnerRefs } from './Owner/ownerConversionUtils';
-import { renderOwnerPopover } from './ownerRenderUtils';
 import { isValidJSONString } from './StringUtils';
 
 const BulkImportVersionSummary = withSuspenseFallback(
@@ -322,7 +321,6 @@ export const getOwnerVersionLabel = (
           isCompactView={false}
           ownerDisplayName={ownerDisplayName}
           owners={toOwnerRefs(owners)}
-          renderOwnerContent={renderOwnerPopover}
           showLabel={false}
         />
       );
@@ -347,7 +345,6 @@ export const getOwnerVersionLabel = (
         isCompactView={false}
         ownerDisplayName={ownerDisplayName}
         owners={toOwnerRefs(defaultItems)}
-        renderOwnerContent={renderOwnerPopover}
         showLabel={false}
       />
     );

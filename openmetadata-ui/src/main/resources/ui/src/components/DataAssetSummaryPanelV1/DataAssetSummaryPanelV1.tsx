@@ -252,7 +252,7 @@ export const DataAssetSummaryPanelV1 = ({
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(entityType);
   const { getEntityPermission } = usePermissionProvider();
 
@@ -673,7 +673,6 @@ export const DataAssetSummaryPanelV1 = ({
               placeHolder={t('label.no-entity-assigned', {
                 entity: t('label.owner-lowercase-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </div>
@@ -783,7 +782,6 @@ export const DataAssetSummaryPanelV1 = ({
             placeHolder={t('label.no-entity-assigned', {
               entity: t('label.owner-lowercase-plural'),
             })}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         </div>
@@ -852,7 +850,6 @@ export const DataAssetSummaryPanelV1 = ({
             placeHolder={t('label.no-entity-assigned', {
               entity: t('label.owner-lowercase-plural'),
             })}
-            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         </div>
@@ -943,7 +940,6 @@ export const DataAssetSummaryPanelV1 = ({
               placeHolder={t('label.no-entity-assigned', {
                 entity: t('label.owner-lowercase-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </div>

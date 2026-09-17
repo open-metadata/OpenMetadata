@@ -36,7 +36,7 @@ const DataProductSummary = ({
   highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -83,7 +83,6 @@ const DataProductSummary = ({
             <Owner
               isCompactView={false}
               owners={toOwnersWithHref(entityDetails.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           </Col>
@@ -102,7 +101,6 @@ const DataProductSummary = ({
               <Owner
                 isCompactView={false}
                 owners={toOwnersWithHref(experts)}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ) : (

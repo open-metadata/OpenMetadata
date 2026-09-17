@@ -42,7 +42,7 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
   // off `permission` — canEditOwners/canEditDescription/canEditTags already
@@ -127,7 +127,6 @@ const TableQueryRightPanel = ({
                 hasPermission={false}
                 isCompactView={false}
                 owners={toOwnersWithHref(query.owners)}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </ExpandableCard>

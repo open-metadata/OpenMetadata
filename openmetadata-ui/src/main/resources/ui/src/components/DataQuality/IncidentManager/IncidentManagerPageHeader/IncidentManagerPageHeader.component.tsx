@@ -78,7 +78,7 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const {
     testCaseData,
     testCaseStatusData,
@@ -154,7 +154,6 @@ const IncidentManagerPageHeader = ({
               details?.assignee ? [details.assignee] : []
             )}
             placeHolder={t('label.assignee')}
-            renderOwnerContent={renderOwnerContent}
             selectorContent={
               <UserTeamSelectableList
                 hasPermission={Boolean(hasEditStatusPermission)}
@@ -224,7 +223,6 @@ const IncidentManagerPageHeader = ({
         maxVisibleOwners={3}
         ownerDisplayName={ownerDisplayName}
         owners={toOwnersWithHref(testCaseData?.owners ?? ownerRef)}
-        renderOwnerContent={renderOwnerContent}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}

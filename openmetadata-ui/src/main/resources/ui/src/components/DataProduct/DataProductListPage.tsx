@@ -143,7 +143,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -243,12 +243,9 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return renderDomainOwnersCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainOwnersCell(entity, toOwnersWithHref, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
@@ -256,21 +253,14 @@ const DataProductListPage = ({
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return renderDomainExpertsCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainExpertsCell(entity, toOwnersWithHref, {
+            showDashPlaceholder: true,
+          });
         default:
           return null;
       }
     },
-    [
-      dataProductListing.actionHandlers.onEntityClick,
-      toOwnersWithHref,
-      renderOwnerContent,
-    ]
+    [dataProductListing.actionHandlers.onEntityClick, toOwnersWithHref]
   );
 
   const selectedDataProductEntities = useMemo(

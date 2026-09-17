@@ -43,7 +43,6 @@ import {
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { renderOwnerPopover } from '../../../utils/ownerRenderUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -134,7 +133,6 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                         owners={toOwnerRefs(
                           knowledgePage?.owners ?? ownerRef ?? []
                         )}
-                        renderOwnerContent={renderOwnerPopover}
                         showLabel={false}
                       />
                       <span

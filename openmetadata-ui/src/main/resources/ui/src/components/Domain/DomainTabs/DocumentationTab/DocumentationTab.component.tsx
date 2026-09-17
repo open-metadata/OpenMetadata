@@ -56,7 +56,7 @@ const DocumentationTab = ({
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
+  const { toOwnersWithHref } = useOwnerDisplayProps();
   const resourceType =
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
@@ -219,7 +219,6 @@ const DocumentationTab = ({
                 owners={toOwnersWithHref(
                   (domain as Domain | DataProduct).owners ?? []
                 )}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </WidgetCard>
