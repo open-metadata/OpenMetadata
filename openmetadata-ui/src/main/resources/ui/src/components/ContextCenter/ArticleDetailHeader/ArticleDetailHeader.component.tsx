@@ -64,7 +64,6 @@ import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
@@ -104,7 +103,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
@@ -403,8 +401,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={toOwnersWithHref(owners)}
-                renderOwnerContent={renderOwnerContent}
+                owners={owners}
                 showLabel={false}
               />
             </div>
@@ -455,8 +452,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <Owner
                   hasPermission={false}
                   isCompactView={false}
-                  owners={toOwnersWithHref(editors)}
-                  renderOwnerContent={renderOwnerContent}
+                  owners={editors}
                   showLabel={false}
                 />
               </div>
