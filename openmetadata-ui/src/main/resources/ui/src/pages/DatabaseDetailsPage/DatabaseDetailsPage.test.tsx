@@ -92,18 +92,24 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
-const mockNavigate = jest.fn();
-const mockGetServiceDataAssetsTabPath = jest
-  .fn()
-  .mockReturnValue('/service/databaseServices/bigquery/databases');
-
-jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
-  __esModule: true,
-  default: {
-    getServiceDataAssetsTabPath: (...args: unknown[]) =>
-      mockGetServiceDataAssetsTabPath(...args),
-  },
+// The asset-tab segment is the lowercased count label, which `t` resolves to its
+// key under the global react-i18next mock. Pin the label the way ServiceDetailsPage's
+// own suite does so the assertions below can name the real URL; everything else in
+// the routing path — ConnectionsRouterClassBase and RouterUtils — runs unmocked.
+jest.mock('../../utils/ServicePureUtils', () => ({
+  ...jest.requireActual('../../utils/ServicePureUtils'),
+  getCountLabel: jest.fn().mockReturnValue('Databases'),
 }));
+
+// `useLocation` is mocked below for the page's own consumers, so the probe reads the
+// live router location from the unmocked module (AddServicePage.test.tsx precedent).
+const LocationProbe = () => {
+  const { pathname } = jest.requireActual('react-router-dom').useLocation();
+
+  return <p data-testid="location-display">{pathname}</p>;
+};
+
+const DATABASE_ROUTE = '/database/bigquery.shopify';
 
 const mockFeedCount = {
   totalCount: 6,
@@ -166,7 +172,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
@@ -429,40 +434,35 @@ describe('Test DatabaseDetails page', () => {
     );
   });
 
-  it('should navigate to the parent service asset tab after a hard delete', async () => {
-    mockNavigate.mockClear();
-    mockGetServiceDataAssetsTabPath.mockClear();
-
+  it('should land on the parent service asset tab after a hard delete', async () => {
     const { container } = renderWithQueryClient(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[DATABASE_ROUTE]}>
         <DatabaseDetailsPage />
+        <LocationProbe />
       </MemoryRouter>
     );
 
     const hardDeleteButton = await findByTestId(container, 'hard-delete');
     fireEvent.click(hardDeleteButton);
 
-    expect(mockGetServiceDataAssetsTabPath).toHaveBeenCalledWith(
-      'databaseServices',
-      'bigquery'
-    );
-    expect(mockNavigate).toHaveBeenCalledWith(
+    expect(await findByTestId(container, 'location-display')).toHaveTextContent(
       '/service/databaseServices/bigquery/databases'
     );
   });
 
-  it('should not navigate away after a soft delete', async () => {
-    mockNavigate.mockClear();
-
+  it('should stay on the database page after a soft delete', async () => {
     const { container } = renderWithQueryClient(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[DATABASE_ROUTE]}>
         <DatabaseDetailsPage />
+        <LocationProbe />
       </MemoryRouter>
     );
 
     const softDeleteButton = await findByTestId(container, 'soft-delete');
     fireEvent.click(softDeleteButton);
 
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(await findByTestId(container, 'location-display')).toHaveTextContent(
+      DATABASE_ROUTE
+    );
   });
 });

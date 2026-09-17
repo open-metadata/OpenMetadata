@@ -20,6 +20,7 @@ import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -31,6 +32,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -42,6 +44,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -61,9 +64,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { ChartDetailsProps } from './ChartDetails.interface';
-import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
-import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import { ServiceCategory } from '../../../enums/service.enum';
 const ChartDetails = ({
   updateChartDetailsState,
   chartDetails,

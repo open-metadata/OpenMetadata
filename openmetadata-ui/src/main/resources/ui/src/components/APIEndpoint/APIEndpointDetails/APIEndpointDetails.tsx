@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -40,6 +41,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
@@ -57,8 +59,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
-import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,

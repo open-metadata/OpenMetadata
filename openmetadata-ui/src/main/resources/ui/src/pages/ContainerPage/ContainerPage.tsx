@@ -45,6 +45,7 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Column } from '../../generated/entity/data/table';
@@ -69,6 +70,7 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
@@ -83,6 +85,7 @@ import {
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -97,9 +100,6 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
-import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
-import { ServiceCategory } from '../../enums/service.enum';
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

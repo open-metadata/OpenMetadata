@@ -27,6 +27,7 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -71,6 +72,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -88,8 +90,6 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
 import type { Topic } from '../../../generated/entity/data/topic';
 import type { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -33,6 +34,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -45,6 +47,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -73,9 +76,6 @@ import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.in
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import type { SourceType } from '../../SearchedData/SearchedData.interface';
 import type { TopicDetailsProps } from './TopicDetails.interface';
-import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
-import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import { ServiceCategory } from '../../../enums/service.enum';
 
 type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
