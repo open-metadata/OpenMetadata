@@ -65,15 +65,19 @@ export const useMainCollapse = (
   // Transient main-nav expand *inside* a sub-context — never persisted.
   const [subExpanded, setSubExpanded] = useState(false);
 
-  // Re-rail synchronously (during render) whenever the sub-context changes, so a
-  // transient expand does not leak into the next context. Only ever sets
-  // `false`, so it can never leave the main nav un-railed in a sub-context.
-  const prevContextRef = useRef({ inSubMode, contextKey });
+  // Re-rail the main nav (drop any transient expand) whenever the sub-context
+  // changes, synchronously during render so it lands in the same commit the new
+  // context does. The "previous context" marker MUST be state, not a ref: a ref
+  // mutation persists across a discarded/interrupted render while the paired
+  // `setSubExpanded(false)` is dropped, which would skip the reset and leave the
+  // main nav un-railed with the sub-panel open (both expanded → main hidden).
+  // This is React's documented "adjust state when a prop changes" pattern.
+  const [prevContext, setPrevContext] = useState({ inSubMode, contextKey });
   if (
-    prevContextRef.current.inSubMode !== inSubMode ||
-    prevContextRef.current.contextKey !== contextKey
+    prevContext.inSubMode !== inSubMode ||
+    prevContext.contextKey !== contextKey
   ) {
-    prevContextRef.current = { inSubMode, contextKey };
+    setPrevContext({ inSubMode, contextKey });
     setSubExpanded(false);
   }
 
