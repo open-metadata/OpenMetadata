@@ -98,40 +98,36 @@ test.describe('Task Comments - Add Comment', () => {
 
     // Click on task to open detail drawer
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      // Find comment input in drawer
-      const drawer = page.locator('.ant-drawer-content');
+    // Find comment input in drawer
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
+    await expect(drawer).toBeVisible();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
 
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('This is a test comment from assignee');
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill('This is a test comment from assignee');
 
-          // Submit comment
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            const commentResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/tasks/') &&
-                response.url().includes('/comments')
-            );
-            await sendBtn.click();
-            await commentResponse;
+    // Submit comment
+    const sendBtn = drawer.getByTestId('send-comment');
+    await expect(sendBtn).toBeVisible();
+    const commentResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments')
+    );
+    await sendBtn.click();
+    await commentResponse;
 
-            // Verify comment appears
-            await expect(
-              drawer.getByText('This is a test comment from assignee')
-            ).toBeVisible();
-          }
-        }
-      }
-    }
+    // Verify comment appears
+    await expect(
+      drawer.getByText('This is a test comment from assignee')
+    ).toBeVisible();
   });
 
   // Replaces a Jest assertion that could only check Tailwind class names: jsdom has
@@ -153,8 +149,11 @@ test.describe('Task Comments - Add Comment', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    await expect(taskCard).toBeVisible();
+    // This describe seeds exactly one task against a fresh table, so the card can
+    // be addressed directly rather than by position - a positional locator would
+    // silently pick up a different task if the fixture ever grows.
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
+    await expect(taskCard).toHaveCount(1);
     await taskCard.click();
     await waitForPageLoaded(page);
 
@@ -209,31 +208,27 @@ test.describe('Task Comments - Add Comment', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
+    await expect(drawer).toBeVisible();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
 
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('Comment from non-assignee user');
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill('Comment from non-assignee user');
 
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            await sendBtn.click();
-            await waitForPageLoaded(page);
+    const sendBtn = drawer.getByTestId('send-comment');
+    await expect(sendBtn).toBeVisible();
+    await sendBtn.click();
+    await waitForPageLoaded(page);
 
-            // Comment should be added or access denied
-            // (depends on permission model)
-          }
-        }
-      }
-    }
+    // Comment should be added or access denied
+    // (depends on permission model)
   });
 
   test('admin should be able to add comment to any task', async ({ page }) => {
@@ -250,32 +245,28 @@ test.describe('Task Comments - Add Comment', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
+    await expect(drawer).toBeVisible();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
 
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('Admin comment on task');
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill('Admin comment on task');
 
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            await sendBtn.click();
-            await waitForPageLoaded(page);
+    const sendBtn = drawer.getByTestId('send-comment');
+    await expect(sendBtn).toBeVisible();
+    await sendBtn.click();
+    await waitForPageLoaded(page);
 
-            await expect(
-              drawer.getByText('Admin comment on task')
-            ).toBeVisible();
-          }
-        }
-      }
-    }
+    await expect(
+      drawer.getByText('Admin comment on task')
+    ).toBeVisible();
   });
 });
 
@@ -341,34 +332,31 @@ test.describe('Task Comments - @Mention', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
-        );
+    await expect(drawer).toBeVisible();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
+    );
 
-        if (await commentInput.isVisible()) {
-          await commentInput.click();
-          await page.keyboard.type('@');
-          await waitForPageLoaded(page);
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+    await page.keyboard.type('@');
+    await waitForPageLoaded(page);
 
-          // Should show mention dropdown
-          const mentionDropdown = page.locator(
-            '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
-          );
+    // Should show mention dropdown
+    const mentionDropdown = page.locator(
+      '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
+    );
 
-          await mentionDropdown
-            .first()
-            .waitFor({ state: 'visible', timeout: 2000 })
-            .catch(() => undefined);
-        }
-      }
-    }
+    await mentionDropdown
+      .first()
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .catch(() => undefined);
   });
 
   test('selecting user from @ dropdown should add mention', async ({
@@ -387,47 +375,41 @@ test.describe('Task Comments - @Mention', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
-        );
+    await expect(drawer).toBeVisible();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
+    );
 
-        if (await commentInput.isVisible()) {
-          await commentInput.click();
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
 
-          // Type @ and part of username
-          await page.keyboard.type(`@${mentionedUser.responseData.name}`);
+    // Type @ and part of username
+    await page.keyboard.type(`@${mentionedUser.responseData.name}`);
 
-          // Select from dropdown if visible
-          const mentionItem = page.locator(
-            `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
-          );
-          await mentionItem
-            .first()
-            .waitFor({ state: 'visible', timeout: 2000 })
-            .catch(() => undefined);
+    // The suggestion list is populated from an async lookup, so it needs a wait -
+    // but it must actually arrive. Previously a swallowed waitFor plus a boolean
+    // check let the whole mention flow no-op without failing.
+    const mentionItem = page.locator(
+      `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
+    );
+    const firstMention = mentionItem.first();
+    await expect(firstMention).toBeVisible({ timeout: 10_000 });
 
-          if (await mentionItem.isVisible()) {
-            await mentionItem.click();
+    await firstMention.click();
 
-            // Continue typing and submit
-            await page.keyboard.type(' please review this task');
+    // Continue typing and submit
+    await page.keyboard.type(' please review this task');
 
-            const sendBtn = drawer.getByTestId('send-comment');
-            if (await sendBtn.isVisible()) {
-              await sendBtn.click();
-              await waitForPageLoaded(page);
-            }
-          }
-        }
-      }
-    }
+    const sendBtn = drawer.getByTestId('send-comment');
+    await expect(sendBtn).toBeVisible();
+    await sendBtn.click();
+    await waitForPageLoaded(page);
   });
 });
 
@@ -501,31 +483,28 @@ test.describe('Task Comments - Edit/Delete', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        // Find comment
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
+    await expect(drawer).toBeVisible();
+    // Find comment
+    const comment = drawer.locator(
+      '[data-testid="comment-item"], .task-comment'
+    );
 
-        if (await comment.first().isVisible()) {
-          // Hover to show actions
-          await comment.first().hover();
+    await expect(comment.first()).toBeVisible();
+    // Hover to show actions
+    await comment.first().hover();
 
-          // Look for edit/delete buttons
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
+    // Look for edit/delete buttons
+    const editBtn = comment.first().getByTestId('edit-comment');
+    const deleteBtn = comment.first().getByTestId('delete-comment');
 
-          // Author should see these buttons
-          // (depends on UI implementation)
-        }
-      }
-    }
+    // Author should see these buttons
+    // (depends on UI implementation)
   });
 
   test('should be able to edit own comment', async ({ page }) => {
@@ -542,44 +521,39 @@ test.describe('Task Comments - Edit/Delete', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
 
-      if (await drawer.isVisible()) {
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
+    await expect(drawer).toBeVisible();
+    const comment = drawer.locator(
+      '[data-testid="comment-item"], .task-comment'
+    );
 
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
+    await expect(comment.first()).toBeVisible();
+    await comment.first().hover();
 
-          const editBtn = comment.first().getByTestId('edit-comment');
+    const editBtn = comment.first().getByTestId('edit-comment');
 
-          if (await editBtn.isVisible()) {
-            await editBtn.click();
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
 
-            // Edit comment text
-            const editInput = drawer.locator(
-              '[data-testid="edit-comment-input"]'
-            );
-            if (await editInput.isVisible()) {
-              await editInput.fill('Updated comment text');
+    // Edit comment text
+    const editInput = drawer.locator(
+      '[data-testid="edit-comment-input"]'
+    );
+    await expect(editInput).toBeVisible();
+    await editInput.fill('Updated comment text');
 
-              const saveBtn = drawer.getByTestId('save-comment');
-              await saveBtn.click();
-              await waitForPageLoaded(page);
+    const saveBtn = drawer.getByTestId('save-comment');
+    await saveBtn.click();
+    await waitForPageLoaded(page);
 
-              await expect(
-                drawer.getByText('Updated comment text')
-              ).toBeVisible();
-            }
-          }
-        }
-      }
-    }
+    await expect(
+      drawer.getByText('Updated comment text')
+    ).toBeVisible();
   });
 
   /**

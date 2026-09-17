@@ -1022,6 +1022,73 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   /**
+   * Delete a comment from an incident's task tab
+   * @description #33112 was reported on the Incident Manager page, but the rest of
+   * the task-comment coverage exercises the activity-feed drawer only. This runs
+   * the same post-then-delete flow through TestCaseIncidentTab, which renders the
+   * task tab (and so TaskCommentCard) rather than the drawer.
+   */
+  test('Delete a task comment from the incident task tab', async ({ page }) => {
+    const testCase = table1.testCasesResponseData[0];
+    const testCaseName = testCase?.['name'] as string;
+
+    await visitProfilerTab(page, table1);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId(testCaseName).getByText(testCaseName).click();
+    await expect(page.getByTestId('entity-page-header')).toBeVisible();
+
+    await openIncidentTaskTab(page, true);
+
+    const taskTab = page.getByTestId('task-tab');
+    await expect(taskTab).toBeVisible();
+
+    // Post a comment to delete. Unique per run so the card can be matched by
+    // text rather than by position.
+    const message = `Incident tab comment ${Date.now()}`;
+    const commentInput = taskTab.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(message);
+
+    const postResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await taskTab.getByTestId('send-comment').click();
+    const postedTask = await (await postResponse).json();
+    const comments = postedTask.comments ?? [];
+    const commentId = comments[comments.length - 1]?.id as string;
+
+    const card = taskTab
+      .locator('[data-testid="task-comment-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    // The affordance is revealed on hover but stays mounted, so it is present
+    // for the keyboard too - hovering here mirrors what a mouse user does.
+    await card.hover();
+
+    const deleteResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/comments/${commentId}`) &&
+        response.request().method() === 'DELETE'
+    );
+    await card.getByTestId('delete-task-comment').click();
+    await page.getByTestId('confirm-button').click();
+    await deleteResponse;
+
+    await expect(
+      taskTab
+        .locator('[data-testid="task-comment-card"]')
+        .filter({ hasText: message })
+    ).toHaveCount(0);
+  });
+
+  /**
    * Verify filters in Incident Manager page
    * @description Tests Assignee, Status, Test Case, and Date filters and confirms list updates accordingly.
    */
