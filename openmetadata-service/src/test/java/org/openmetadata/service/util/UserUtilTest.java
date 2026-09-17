@@ -34,6 +34,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -74,8 +75,7 @@ class UserUtilTest {
         AuthenticationMechanism.AuthType.BASIC, user.getAuthenticationMechanism().getAuthType());
     String hashedPassword =
         JsonUtils.convertValue(
-                user.getAuthenticationMechanism().getConfig(),
-                org.openmetadata.schema.auth.BasicAuthMechanism.class)
+                user.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class)
             .getPassword();
     assertTrue(BCrypt.verifyer().verify("Sup3rSecret!".toCharArray(), hashedPassword).verified);
   }
@@ -1045,5 +1045,95 @@ class UserUtilTest {
   void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
     assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
     assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
+  }
+
+  /**
+   * The SSO/LDAP login path loads the account with {@code getAuthUpdateFields()} so the PUT does
+   * not wipe {@code authenticationMechanism}, then hands that same object to the change-event
+   * writer. Change events are replayed to every subscription and are readable through
+   * {@code /v1/events}, so the stored credential must not travel with them -- while the user that
+   * gets persisted and returned to the login flow must still carry it.
+   */
+  @Test
+  void addOrUpdateUserKeepsAuthenticationMechanismOutOfTheChangeEvent() {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withFullyQualifiedName("alice")
+            .withUpdatedAt(1234L)
+            .withVersion(2.0)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.BASIC)
+                    .withConfig(
+                        new BasicAuthMechanism()
+                            .withPassword("$2a$12$storedBcryptHashOfThePassword")));
+
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(user);
+    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
+        .thenReturn(new PutResponse<>(Response.Status.OK, user, EventType.ENTITY_UPDATED));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      User returnedUser = UserUtil.addOrUpdateUser(user);
+
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(jsonCaptor.capture());
+      String changeEventJson = jsonCaptor.getValue();
+      assertFalse(
+          changeEventJson.contains("storedBcryptHashOfThePassword"),
+          "change event leaked the stored credential: " + changeEventJson);
+      assertFalse(
+          changeEventJson.contains("authType"),
+          "change event still carries the authenticationMechanism: " + changeEventJson);
+
+      // The saved and returned user keeps the mechanism -- dropping it here is what wiped it.
+      assertNotNull(returnedUser.getAuthenticationMechanism());
+      assertEquals(
+          "$2a$12$storedBcryptHashOfThePassword",
+          JsonUtils.convertValue(
+                  returnedUser.getAuthenticationMechanism().getConfig(), BasicAuthMechanism.class)
+              .getPassword());
+    }
+  }
+
+  @Test
+  void addOrUpdateUserEmitsTheUserItselfWhenThereIsNoAuthenticationMechanism() {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withFullyQualifiedName("alice")
+            .withUpdatedAt(1234L)
+            .withVersion(2.0);
+
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(user);
+    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
+        .thenReturn(new PutResponse<>(Response.Status.OK, user, EventType.ENTITY_UPDATED));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      UserUtil.addOrUpdateUser(user);
+
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(jsonCaptor.capture());
+      ChangeEvent changeEvent = JsonUtils.readValue(jsonCaptor.getValue(), ChangeEvent.class);
+      assertEquals(
+          user.getId().toString(),
+          JsonUtils.convertValue(changeEvent.getEntity(), User.class).getId().toString());
+    }
   }
 }

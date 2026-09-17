@@ -425,6 +425,21 @@ public final class UserUtil {
   }
 
   /**
+   * A change event is replayed to every subscription (webhooks, Slack, the activity feed) and is
+   * readable through {@code /v1/events}, so it must not carry the stored credential. The SSO/LDAP
+   * login path loads the account with {@link UserRepository#getAuthUpdateFields()} -- which
+   * includes {@code authenticationMechanism} so the PUT does not wipe it -- and then hands that
+   * same object here, unlike the REST path where {@code setFields} leaves the field null. Copy
+   * rather than clear in place: the caller returns this user to the login flow.
+   */
+  private static User withoutAuthenticationMechanism(User user) {
+    if (user.getAuthenticationMechanism() == null) {
+      return user;
+    }
+    return JsonUtils.deepCopy(user, User.class).withAuthenticationMechanism(null);
+  }
+
+  /**
    * Create and persist a ChangeEvent for SSO/LDAP user operations.
    * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
@@ -444,7 +459,7 @@ public final class UserUtil {
                   user.getChangeDescription() != null
                       ? user.getChangeDescription().getPreviousVersion()
                       : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
-              .withEntity(user);
+              .withEntity(withoutAuthenticationMechanism(user));
 
       // Include changeDescription if present (for updates)
       if (user.getChangeDescription() != null) {

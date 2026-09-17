@@ -5,15 +5,26 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Execution(ExecutionMode.CONCURRENT)
 class EmailFirstUserProvisionerTest {
@@ -484,5 +495,42 @@ class EmailFirstUserProvisionerTest {
 
     assertSame(existingUser, resolved);
     assertEquals(0, saveCount.get());
+  }
+
+  /**
+   * Regression guard for the LDAP/SSO team wipe: {@code UserUpdater.entitySpecificUpdate} reconciles
+   * teams, roles, personas and domains unconditionally on a PUT, so an account loaded with a sparse
+   * field set arrives here with those fields null and the subsequent save deletes every
+   * relationship. The lookup must therefore go through the repository's auth-update field set, not
+   * a hand-rolled projection.
+   */
+  @Test
+  void testExistingUserIsLoadedWithTheRepositoryAuthUpdateFieldSet() {
+    UserRepository userRepository = mock(UserRepository.class);
+    Fields authUpdateFields = new Fields(new HashSet<>(Set.of("teams", "roles", "personas")));
+    User existingUser =
+        new User().withName("john").withEmail("john@company.com").withDisplayName("John");
+
+    when(userRepository.getAuthUpdateFields()).thenReturn(authUpdateFields);
+    when(userRepository.getActiveUserByEmailForAuth(eq("john@company.com"), any()))
+        .thenReturn(existingUser);
+
+    EmailFirstUserProvisioner provisioner =
+        EmailFirstUserProvisioner.forProvider(
+            "LDAP", newAuthorizerConfiguration(), userRepository, user -> false, user -> {});
+
+    assertSame(existingUser, provisioner.getOrCreate("john@company.com", "John", null, false));
+
+    ArgumentCaptor<Fields> fieldsCaptor = ArgumentCaptor.forClass(Fields.class);
+    verify(userRepository)
+        .getActiveUserByEmailForAuth(eq("john@company.com"), fieldsCaptor.capture());
+    assertSame(authUpdateFields, fieldsCaptor.getValue());
+  }
+
+  private static AuthorizerConfiguration newAuthorizerConfiguration() {
+    return new AuthorizerConfiguration()
+        .withAdminPrincipals(Set.of())
+        .withAdminEmails(Set.of())
+        .withAllowedEmailRegistrationDomains(Set.of("all"));
   }
 }
