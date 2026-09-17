@@ -34,7 +34,6 @@ import type { EntityReference } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/tests/testCase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
-import { toOwnerRefs } from '../Owner/ownerConversionUtils';
 import tableClassBase from '../TableClassBase';
 
 const PropertyValue = withSuspenseFallback(
@@ -284,7 +283,7 @@ export const WIDGET_COMPONENTS = {
     <Owner
       hasPermission={false}
       isCompactView={false}
-      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      owners={DUMMY_OWNER_LIST}
       showLabel={false}
     />
   ),
@@ -321,7 +320,7 @@ export const WIDGET_COMPONENTS = {
     <Owner
       hasPermission={false}
       isCompactView={false}
-      owners={toOwnerRefs(DUMMY_OWNER_LIST)}
+      owners={DUMMY_OWNER_LIST}
       showLabel={false}
     />
   ),
@@ -357,7 +356,7 @@ export const WIDGET_COMPONENTS = {
     <Owner
       hasPermission={false}
       isCompactView={false}
-      owners={toOwnerRefs(domainClassBase.getDummyData().experts ?? [])}
+      owners={domainClassBase.getDummyData().experts ?? []}
       showLabel={false}
     />
   ),
