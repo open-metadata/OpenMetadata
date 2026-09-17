@@ -563,11 +563,16 @@ test.describe('Task Comments - Edit/Delete', () => {
     );
     await sendBtn.click();
     const commentResponse = await commentResponsePromise;
-    const comment = await commentResponse.json();
+    // POST /tasks/{id}/comments returns the updated Task, not the new comment, so
+    // the comment's own id has to come from the task's comments array. The server
+    // appends, so the new comment is the last entry.
+    const task = await commentResponse.json();
+    const comments = task.comments ?? [];
+    const taskCommentId = comments[comments.length - 1]?.id as string;
 
     await expect(drawer.getByText(message)).toBeVisible();
 
-    return { drawer, taskCommentId: comment.id as string };
+    return { drawer, taskCommentId };
   };
 
   /**
