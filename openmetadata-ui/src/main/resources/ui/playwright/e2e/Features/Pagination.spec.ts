@@ -1470,7 +1470,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('filters-button').click();
       await page.getByTestId('search-dropdown-Service Type').click();
 
-      const mysqlOption = page.getByTitle('mysql', { exact: true });
+      // The option row's data-testid is the lowercased service-type key
+      // ('mysql'); the visible label is source-cased ('Mysql'), so match the
+      // stable testid rather than the label.
+      const mysqlOption = page
+        .getByTestId('drop-down-menu')
+        .getByTestId('mysql');
       await expect(mysqlOption).toBeVisible();
       await mysqlOption.click();
 
@@ -1479,7 +1484,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
           response.request().method() === 'GET'
       );
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await filterResetResponse;
       await waitForAllLoadersToDisappear(page);
 

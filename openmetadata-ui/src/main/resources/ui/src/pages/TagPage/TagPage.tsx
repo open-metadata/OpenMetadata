@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -47,7 +48,6 @@ import { EntityDetailTab } from '../../components/common/EntityDetailHeader/Enti
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import { Icon } from '../../components/common/Icon/Icon';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -73,8 +73,10 @@ import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
+  CERTIFICATION_CATEGORY,
   DE_ACTIVE_COLOR,
   ROUTES,
+  TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -138,10 +140,10 @@ const EntitySummaryPanel = withSuspenseFallback(
 const getDqFilterKey = (
   classificationName?: string
 ): 'tier' | 'certification' | 'tags' => {
-  if (classificationName === 'Tier') {
+  if (classificationName === TIER_CATEGORY) {
     return 'tier';
   }
-  if (classificationName === 'Certification') {
+  if (classificationName === CERTIFICATION_CATEGORY) {
     return 'certification';
   }
 
@@ -326,7 +328,8 @@ const TagPage = () => {
   );
 
   const classificationName = tagItem?.classification?.name;
-  const isCertificationClassification = classificationName === 'Certification';
+  const isCertificationClassification =
+    classificationName === CERTIFICATION_CATEGORY;
 
   // Tier and Certification are first-class entity fields (entity.tier,
   // entity.certification), not entries in entity.tags[]. When this page

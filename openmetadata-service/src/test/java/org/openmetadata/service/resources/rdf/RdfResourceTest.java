@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +25,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotAuthorizedException;
@@ -33,9 +38,11 @@ import java.net.URI;
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntologyClass;
@@ -44,6 +51,9 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
+import org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus;
+import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
@@ -51,20 +61,29 @@ import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
+import org.openmetadata.service.rdf.agent.AgentSparqlException;
 import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 class RdfResourceTest {
 
   private Authorizer authorizer;
   private SecurityContext securityContext;
   private RdfResource rdfResource;
+  private static final String AGENT_QUERY_BODY = "{\"query\":\"SELECT ?s WHERE { ?s ?p ?o }\"}";
 
   @BeforeEach
   void setUp() {
@@ -133,6 +152,102 @@ class RdfResourceTest {
   void sparqlQueryTemplatesRequireAnAuthenticatedUser() {
     assertThrows(
         NotAuthorizedException.class, () -> rdfResource.listSparqlQueryTemplates(securityContext));
+  }
+
+  @Test
+  void agentSparqlRequiresAnAuthenticatedUser() {
+    assertThrows(
+        NotAuthorizedException.class,
+        () -> rdfResource.queryAgentSparql(securityContext, AGENT_QUERY_BODY));
+  }
+
+  @Test
+  void agentSparqlChecksTheDedicatedOperationBeforeExecuting() {
+    RdfRepository repository = enabledRepository();
+    Principal alice = () -> "alice";
+    when(securityContext.getUserPrincipal()).thenReturn(alice);
+    Mockito.doThrow(new AuthorizationException("not allowed"))
+        .when(authorizer)
+        .authorize(eq(securityContext), any(OperationContext.class), any());
+
+    AgentSparqlException denied =
+        assertThrows(
+            AgentSparqlException.class,
+            () -> rdfResource.queryAgentSparql(securityContext, AGENT_QUERY_BODY));
+
+    ArgumentCaptor<OperationContext> operation = ArgumentCaptor.forClass(OperationContext.class);
+    ArgumentCaptor<ResourceContextInterface> resource =
+        ArgumentCaptor.forClass(ResourceContextInterface.class);
+    verify(authorizer).authorize(eq(securityContext), operation.capture(), resource.capture());
+    assertEquals(AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN, denied.getCode());
+    assertNotNull(denied.getRequestId());
+    assertEquals(Entity.RDF, resource.getValue().getResource());
+    assertEquals(
+        List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), operation.getValue().getOperations(null));
+    verify(repository, never()).executeSparqlQueryDirect(any(), any());
+  }
+
+  @Test
+  void agentSparqlReturnsTheTypedResultForAPermittedCaller() {
+    RdfRepository repository = enabledRepository();
+    Principal alice = () -> "alice";
+    when(securityContext.getUserPrincipal()).thenReturn(alice);
+    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+        .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
+
+    Response response = rdfResource.queryAgentSparql(securityContext, AGENT_QUERY_BODY);
+
+    AgentSparqlResponse body =
+        JsonUtils.readValue(new String((byte[]) response.getEntity()), AgentSparqlResponse.class);
+    assertEquals(200, response.getStatus());
+    assertEquals(List.of("s"), body.getHead().getVars());
+    assertEquals(
+        AgentSparqlCompletenessStatus.COMPLETE, body.getMetadata().getCompleteness().getStatus());
+  }
+
+  @Test
+  void agentSparqlAuditKeepsTheImpersonatingBotAsServiceActor() {
+    RdfRepository repository = enabledRepository();
+    Principal alice = () -> "alice";
+    CatalogSecurityContext impersonated =
+        new CatalogSecurityContext(
+            alice, "http", SecurityContext.DIGEST_AUTH, Set.of(), false, "bot", null);
+    when(repository.executeSparqlQueryDirect(any(), eq("application/sparql-results+json")))
+        .thenReturn("{\"head\":{\"vars\":[\"s\"]},\"results\":{\"bindings\":[]}}");
+    Logger auditLogger = (Logger) org.slf4j.LoggerFactory.getLogger(AgentSparqlAudit.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    auditLogger.addAppender(appender);
+    try {
+      Response response = rdfResource.queryAgentSparql(impersonated, AGENT_QUERY_BODY);
+
+      assertEquals(200, response.getStatus());
+      String event =
+          appender.list.stream()
+              .map(ILoggingEvent::getFormattedMessage)
+              .filter(message -> message.contains("effectiveUser=alice"))
+              .findFirst()
+              .orElseThrow();
+      assertTrue(event.contains("serviceActor=bot"), event);
+    } finally {
+      auditLogger.detachAppender(appender);
+    }
+  }
+
+  @Test
+  void rdfQueryResourceContextCarriesNoOwnersTagsDomainsOrEntity() {
+    assertEquals(Entity.RDF, RdfQueryResourceContext.INSTANCE.getResource());
+    assertTrue(RdfQueryResourceContext.INSTANCE.getOwners().isEmpty());
+    assertTrue(RdfQueryResourceContext.INSTANCE.getTags().isEmpty());
+    assertTrue(RdfQueryResourceContext.INSTANCE.getDomains().isEmpty());
+    assertNull(RdfQueryResourceContext.INSTANCE.getEntity());
+  }
+
+  private RdfRepository enabledRepository() {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    rdfResource = new RdfResource(authorizer, () -> repository);
+    return repository;
   }
 
   @Test

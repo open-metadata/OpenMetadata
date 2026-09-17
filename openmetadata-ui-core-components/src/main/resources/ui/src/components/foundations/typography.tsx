@@ -82,6 +82,12 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
   tooltip?: ReactNode;
+  /**
+   * Render the element directly, without the block-level `prose` wrapper —
+   * for text inside buttons, flex rows, or other inline/phrasing contexts
+   * where a wrapping <div> is invalid or breaks the layout.
+   */
+  inline?: boolean;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
@@ -132,6 +138,7 @@ export const Typography = (props: TypographyProps) => {
     color,
     ellipsis,
     tooltip,
+    inline,
     style,
     ...otherProps
   } = props;
@@ -169,11 +176,17 @@ export const Typography = (props: TypographyProps) => {
     ellipsisClassName
   );
 
-  const content = (
+  const element = (
+    <Component {...otherProps} className={innerClassName} style={style}>
+      {children}
+    </Component>
+  );
+
+  const content = inline ? (
+    element
+  ) : (
     <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
-      <Component {...otherProps} className={innerClassName} style={style}>
-        {children}
-      </Component>
+      {element}
     </div>
   );
 

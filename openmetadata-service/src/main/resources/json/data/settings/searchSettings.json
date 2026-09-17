@@ -828,7 +828,7 @@
         {
           "name": "fieldNames",
           "type": "terms",
-          "field": "fieldsNames"
+          "field": "fieldNames"
         }
       ],
       "scoreMode": "sum",
@@ -1509,9 +1509,14 @@
           "field": "requestSchema.schemaFields.name.keyword"
         },
         {
-          "name": "fieldNames",
+          "name": "requestFieldNames",
           "type": "terms",
-          "field": "fieldsNames"
+          "field": "requestFieldNames"
+        },
+        {
+          "name": "responseFieldNames",
+          "type": "terms",
+          "field": "responseFieldNames"
         }
       ],
       "scoreMode": "sum",
