@@ -61,7 +61,6 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     setView(nextView);
   }, []);
 
-  // Precompute view type flags to avoid duplicate string literals in render.
   const isAuditLogsView = view.type === 'audit-logs';
 
   // Extra actions injected by sub-panels (e.g. audit-logs export button).
@@ -104,7 +103,6 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       return;
     }
 
-    // Precompute labels to avoid duplicate string rule violations.
     const settingsLabel = t('label.setting-plural');
     const acLabel = t('label.access-control');
     const rolesLabel = t('label.role-plural');
@@ -138,7 +136,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     };
     const base = [settingsItem, acItem];
 
-    const crumbsByType: Record<string, BreadcrumbItemType[]> = {
+    const crumbsByType: Record<
+      AccessControlView['type'],
+      BreadcrumbItemType[]
+    > = {
       landing: [settingsItem, { id: 'current', label: acLabel }],
       roles: [...base, { id: 'current', label: rolesLabel }],
       'roles-add': [...base, rolesItem, { id: 'current', label: addRole }],
@@ -158,7 +159,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'audit-logs': [...base, { id: 'current', label: auditLogsLabel }],
     };
 
-    const iconByType: Record<string, FC<{ className?: string }>> = {
+    const iconByType: Record<
+      AccessControlView['type'],
+      FC<{ className?: string }>
+    > = {
       landing: AccessControlIcon,
       roles: RolesIcon,
       'roles-add': RolesIcon,
@@ -170,7 +174,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'audit-logs': AuditLogsIcon,
     };
 
-    const titleByType: Record<string, string> = {
+    const titleByType: Record<AccessControlView['type'], string> = {
       landing: acLabel,
       roles: rolesLabel,
       'roles-add': addRole,
@@ -182,7 +186,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'audit-logs': auditLogsLabel,
     };
 
-    const descByType: Record<string, string> = {
+    const descByType: Record<AccessControlView['type'], string> = {
       landing: t('message.access-control-description'),
       roles: t('message.page-sub-header-for-roles'),
       'roles-add': t('message.page-sub-header-for-roles'),
@@ -250,10 +254,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       : undefined;
 
     onHeaderChange({
-      breadcrumbs: crumbsByType[view.type] ?? base,
-      title: titleByType[view.type] ?? acLabel,
-      description: descByType[view.type] ?? '',
-      icon: iconByType[view.type] ?? AccessControlIcon,
+      breadcrumbs: crumbsByType[view.type],
+      title: titleByType[view.type],
+      description: descByType[view.type],
+      icon: iconByType[view.type],
       onBreadcrumbAction,
       actions: actionsForView,
       titleInput: titleInputForView,

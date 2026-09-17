@@ -139,9 +139,7 @@ const renderEntityCell = (
         icon={Delete}
         isDisabled={!canEditAll || isLoadingOnSave}
         size="xs"
-        tooltip={String(
-          canEditAll ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
-        )}
+        tooltip={t('label.remove')}
         tooltipPlacement="left"
         onPress={() => onRemove(item)}
       />

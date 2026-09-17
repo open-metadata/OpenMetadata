@@ -302,7 +302,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
               color="secondary"
               data-testid="plus-more-count"
               size="xs">
-              {`+${listLength - LIST_CAP} more`}
+              {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
             <Popover className="tw:max-h-80! tw:overflow-scroll">
               <Box className="tw:p-3" direction="col" gap={1}>

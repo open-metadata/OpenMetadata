@@ -392,9 +392,7 @@ const renderRoleOrTeamCell = (
         icon={Delete}
         isDisabled={isLoadingOnSave}
         size="xs"
-        tooltip={String(
-          canEditAll ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
-        )}
+        tooltip={t('label.remove')}
         tooltipPlacement="left"
         onPress={() => onRemove(item, kind)}
       />
@@ -948,7 +946,10 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                 ? t('label.edit-entity', { entity: t('label.rule') })
                 : t('label.add-entity', { entity: t('label.rule') })}
             </Typography>
-            <AccessControlRuleForm form={ruleForm} />
+            <AccessControlRuleForm
+              form={ruleForm}
+              key={editingRule?.name ?? 'new-rule'}
+            />
             <Box direction="row" gap={3} justify="end">
               <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
                 {t('label.cancel')}
@@ -968,7 +969,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
           policy.rules.map((rule) => (
             <RuleCard
               canEditAll={canEditAll}
-              isLoadingOnSave={isLoadingOnSave}
+              isLoadingOnSave={isLoadingOnSave || isAddingRule || !!editingRule}
               key={rule.name ?? ''}
               rule={rule}
               t={t}

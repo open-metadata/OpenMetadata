@@ -27,7 +27,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -282,7 +282,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   }, [pageSize]);
 
   const renderRoleItem = (role: EntityReference) => {
-    const key = uniqueId();
+    const key = role.id ?? role.fullyQualifiedName ?? role.name;
 
     if (!viewRolePermission) {
       return (
@@ -340,7 +340,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               color="secondary"
               data-testid="plus-more-count"
               size="xs">
-              {`+${listLength - LIST_CAP} more`}
+              {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
             <Popover className="tw:max-h-80! tw:overflow-scroll">
               <Box className="tw:p-3" direction="col" gap={1}>

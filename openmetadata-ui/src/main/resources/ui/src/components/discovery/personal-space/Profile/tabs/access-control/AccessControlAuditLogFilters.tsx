@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
+import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import {
   Box,
+  DateRangePicker,
   FilterSelect,
   FilterSelectOption,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
+import type { DateValue } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { AuditLogFiltersProps } from '../../../../../../components/AuditLog/AuditLogFilters.interface';
-import DatePickerMenu from '../../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
-import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../../../../../constants/auditLog.constant';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { searchQuery } from '../../../../../../rest/searchAPI';
@@ -37,9 +38,8 @@ import {
 } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { translateWithNestedKeys } from '../../../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
-import { ENTITY_TYPE_SEARCH_OPTIONS } from './AccessControl.constants';
+import { getEntityTypeSearchOptions } from './AccessControl.constants';
 
 const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,
@@ -47,27 +47,49 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const auditTimeFilterRange = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(AUDIT_LOG_TIME_FILTER_RANGE).map(([key, value]) => [
-          key,
-          {
-            ...value,
-            title: translateWithNestedKeys(value.title, value.titleData),
-          },
-        ])
-      ),
-    []
-  );
-
   const [userOptions, setUserOptions] = useState<FilterSelectOption[]>([]);
   const [botOptions, setBotOptions] = useState<FilterSelectOption[]>([]);
+  const allEntityTypeOptions = useMemo(getEntityTypeSearchOptions, [t]);
   const [filteredEntityTypeOptions, setFilteredEntityTypeOptions] = useState<
     FilterSelectOption[]
-  >(ENTITY_TYPE_SEARCH_OPTIONS);
+  >(getEntityTypeSearchOptions);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingBots, setIsLoadingBots] = useState(false);
+  const [pendingDateRange, setPendingDateRange] = useState<{
+    start: DateValue;
+    end: DateValue;
+  } | null>(null);
+
+  const timeFilter = useMemo(
+    () => activeFilters.find((f) => f.category === 'time'),
+    [activeFilters]
+  );
+
+  const currentTimeRange = useMemo(() => {
+    const value = timeFilter?.value as
+      | { startTs?: number; endTs?: number }
+      | undefined;
+
+    if (!value?.startTs || !value?.endTs) {
+      return null;
+    }
+
+    const startDate = new Date(value.startTs);
+    const endDate = new Date(value.endTs);
+
+    return {
+      start: new CalendarDate(
+        startDate.getFullYear(),
+        startDate.getMonth() + 1,
+        startDate.getDate()
+      ) as unknown as DateValue,
+      end: new CalendarDate(
+        endDate.getFullYear(),
+        endDate.getMonth() + 1,
+        endDate.getDate()
+      ) as unknown as DateValue,
+    };
+  }, [timeFilter]);
 
   const getSelectedValues = useCallback(
     (category: AuditLogFilterCategoryType): string[] => {
@@ -77,31 +99,6 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     },
     [activeFilters]
   );
-
-  const timeFilter = useMemo(
-    () => activeFilters.find((f) => f.category === 'time'),
-    [activeFilters]
-  );
-
-  const timeDefaultDateRange = useMemo(() => {
-    if (!timeFilter) {
-      return undefined;
-    }
-
-    const timeValue = timeFilter.value as {
-      key: string;
-      label: string;
-      startTs?: number;
-      endTs?: number;
-    };
-
-    return {
-      key: timeValue.key,
-      title: timeValue.label,
-      startTs: timeValue.startTs,
-      endTs: timeValue.endTs,
-    };
-  }, [timeFilter]);
 
   const handleTimeFilterChange = useCallback(
     (dateRange: {
@@ -146,6 +143,22 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     },
     [activeFilters, onFiltersChange, t]
   );
+
+  const handleDateRangeApply = useCallback(() => {
+    if (!pendingDateRange) {
+      return;
+    }
+
+    const tz = getLocalTimeZone();
+    const startTs = pendingDateRange.start.toDate(tz).setHours(0, 0, 0, 0);
+    const endTs = pendingDateRange.end.toDate(tz).setHours(23, 59, 59, 999);
+
+    handleTimeFilterChange({
+      key: CUSTOM_DATE_RANGE_KEY,
+      startTs,
+      endTs,
+    });
+  }, [pendingDateRange, handleTimeFilterChange]);
 
   const makeChangeHandler = useCallback(
     (
@@ -251,12 +264,24 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
       direction="row"
       gap={2}
       wrap="wrap">
-      <DatePickerMenu
-        showSelectedCustomRange
-        defaultDateRange={timeDefaultDateRange}
-        handleDateRangeChange={handleTimeFilterChange}
-        key={timeFilter?.value.key ?? 'no-time-filter'}
-        options={auditTimeFilterRange}
+      <DateRangePicker
+        value={
+          (pendingDateRange ?? currentTimeRange) as unknown as Parameters<
+            typeof DateRangePicker
+          >[0]['value']
+        }
+        onApply={handleDateRangeApply}
+        onCancel={() => setPendingDateRange(null)}
+        onChange={(range) =>
+          setPendingDateRange(
+            range
+              ? {
+                  start: range.start as unknown as DateValue,
+                  end: range.end as unknown as DateValue,
+                }
+              : null
+          )
+        }
       />
       <FilterSelect
         hideCounts
@@ -304,15 +329,15 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         onChange={makeChangeHandler('entityType', filteredEntityTypeOptions)}
         onOpenChange={(open) => {
           if (open) {
-            setFilteredEntityTypeOptions(ENTITY_TYPE_SEARCH_OPTIONS);
+            setFilteredEntityTypeOptions(allEntityTypeOptions);
           }
         }}
         onSearch={(text) => {
           const filtered = text
-            ? ENTITY_TYPE_SEARCH_OPTIONS.filter((option) =>
+            ? allEntityTypeOptions.filter((option) =>
                 String(option.label).toLowerCase().includes(text.toLowerCase())
               )
-            : ENTITY_TYPE_SEARCH_OPTIONS;
+            : allEntityTypeOptions;
           setFilteredEntityTypeOptions(filtered);
         }}
       />

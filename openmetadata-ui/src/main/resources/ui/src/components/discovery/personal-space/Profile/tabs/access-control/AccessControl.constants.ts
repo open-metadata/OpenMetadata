@@ -29,7 +29,6 @@ import {
   PERMISSION_OPERATIONS,
   PERMISSION_RESOURCES,
 } from '../../../../../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.constants';
-import { EntityTypeOption } from './AccessControl.types';
 
 export const INITIAL_RULE: Rule = {
   condition: '',
@@ -93,23 +92,17 @@ const POLICY_ENTITY_TYPES = [
   EntityType.KPI,
 ] as const;
 
-export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = POLICY_ENTITY_TYPES.map(
-  (et) => ({
-    value: et,
-    label: getEntityNameLabel(et),
-  })
-);
-
-export const ENTITY_TYPE_SEARCH_OPTIONS: FilterSelectOption[] =
-  ENTITY_TYPE_OPTIONS.map((o) => ({
+export function getEntityTypeSearchOptions(): FilterSelectOption[] {
+  return POLICY_ENTITY_TYPES.map((et) => ({
     icon:
       searchClassBase.getEntityIconWithBg(
-        getCanonicalEntityType(o.value),
+        getCanonicalEntityType(et),
         EntityIconSize.Size14
       ) ?? undefined,
-    label: o.label,
-    value: o.value,
+    label: getEntityNameLabel(et),
+    value: et,
   }));
+}
 
 export const RESOURCE_ITEMS: SelectItemType[] = PERMISSION_RESOURCES.map(
   (r) => ({ id: r, label: r })

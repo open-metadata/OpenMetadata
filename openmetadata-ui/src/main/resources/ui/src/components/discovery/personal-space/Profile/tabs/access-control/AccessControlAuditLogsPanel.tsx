@@ -572,7 +572,7 @@ const AccessControlAuditLogsPanel: React.FC<
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
-      setExportDateRange(null as null);
+      setExportDateRange(null);
       setExportJob(null);
       exportJobRef.current = null;
     }
