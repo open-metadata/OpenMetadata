@@ -30,7 +30,9 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 980 * 1024;
+// 990 KiB keeps ~14 KB over the current build: a dependency bump cannot block
+// the queue, while a lazy route landing on the entry graph still fails here.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 990 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
