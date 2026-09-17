@@ -28,12 +28,14 @@
     "pagination-navigation": "تنقل ترقيم الصفحات",
     "previous-page": "الانتقال إلى الصفحة السابقة",
     "records": "السجلات",
+    "remove-entity": "إزالة {{entity}}",
     "remove-filter": "إزالة التصفية",
     "search": "بحث",
     "select-all": "تحديد الكل",
     "select-dates": "اختر التواريخ",
     "select-only-one-row": "حدد صفًا واحدًا",
     "show-hidden-breadcrumbs": "إظهار مسارات التنقل المخفية",
-    "today": "اليوم"
+    "today": "اليوم",
+    "tree-select": "تحديد شجري"
   }
 }
