@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Input, Tabs } from '@openmetadata/ui-core-components';
+import { Box, SanitizedInput, Tabs } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -107,7 +107,7 @@ export const TestSuiteListPanel = ({
           </Tabs.List>
         </Tabs>
         <div className="tw:w-75" data-testid="searchbar-component">
-          <Input
+          <SanitizedInput
             icon={SearchLg}
             inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {

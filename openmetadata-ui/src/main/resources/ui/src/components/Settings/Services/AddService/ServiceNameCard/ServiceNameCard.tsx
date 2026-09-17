@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from '@openmetadata/ui-core-components';
+import { Button, SanitizedInput } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +56,7 @@ const ServiceNameCard = ({
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
 
-      <Input
+      <SanitizedInput
         // eslint-disable-next-line jsx-a11y/no-autofocus -- primary input, focus on mount
         autoFocus
         isRequired

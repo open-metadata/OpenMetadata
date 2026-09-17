@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
+import { SanitizedInput } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
@@ -107,7 +107,7 @@ const Searchbar = ({
       })}
       data-testid="search-bar-container">
       {label !== '' && <span>{label}</span>}
-      <Input
+      <SanitizedInput
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         icon={SearchMd as any}
         inputClassName={inputClassName}

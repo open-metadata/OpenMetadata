@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from '@openmetadata/ui-core-components';
+import { Button, SanitizedInput } from '@openmetadata/ui-core-components';
 import {
   ADDITIONAL_PROPERTY_FLAG,
   WrapIfAdditionalTemplateProps,
@@ -44,7 +44,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
     <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
       <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
-          <Input
+          <SanitizedInput
             id={`${id}-key`}
             placeholder={t('label.option').toLowerCase()}
             value={keyValue}

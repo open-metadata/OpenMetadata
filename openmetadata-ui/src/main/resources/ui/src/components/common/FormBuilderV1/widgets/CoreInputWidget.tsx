@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
+import { SanitizedInput } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { getWidgetLabel } from './coreWidgetUtils';
 
@@ -71,7 +71,7 @@ const CoreInputWidget = ({
 
   return (
     <div>
-      <Input
+      <SanitizedInput
         // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is driven by the JSON schema widget config
         autoFocus={autofocus}
         hint={hint}

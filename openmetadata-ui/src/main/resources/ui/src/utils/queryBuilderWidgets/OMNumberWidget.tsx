@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input } from '@openmetadata/ui-core-components';
+import { SanitizedInput } from '@openmetadata/ui-core-components';
 import type { NumberWidgetProps } from '@react-awesome-query-builder/ui';
 import { useEffect, useRef, useState, type FC } from 'react';
 
@@ -34,7 +34,7 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
 
   return (
     // `qb-number-input` is the id Playwright locates by exact attribute match.
-    <Input
+    <SanitizedInput
       inputDataTestId="qb-number-input"
       isDisabled={readonly}
       placeholder={placeholder}

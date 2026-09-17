@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Input, Select } from '@openmetadata/ui-core-components';
+import { Button, SanitizedInput, Select } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { KeyboardEvent, useCallback, useState } from 'react';
@@ -82,7 +82,7 @@ export function ConditionComposer({
   return (
     <div className="tw:flex tw:items-center tw:gap-2">
       <OperatorSelect value={operator} onChange={setOperator} />
-      <Input
+      <SanitizedInput
         className={classNames(
           'tw:flex-1 tw:min-w-0',
           isRegex && 'tw:font-mono'

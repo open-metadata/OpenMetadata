@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Input } from '@openmetadata/ui-core-components';
+import { Badge, Button, SanitizedInput } from '@openmetadata/ui-core-components';
 import { Edit03, Plus, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -410,7 +410,7 @@ const OntologyAuthoringInspector = ({
       </span>
       {selectedRelationType ? (
         <>
-          <Input
+          <SanitizedInput
             aria-label={t('label.search')}
             icon={SearchInputIcon}
             inputClassName="tw:text-xs"
@@ -502,7 +502,7 @@ const OntologyAuthoringInspector = ({
         <span className="tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
           {t('label.map-to-external-scheme')}
         </span>
-        <Input
+        <SanitizedInput
           aria-label={t('label.concept-iri')}
           data-testid="authoring-mapping-iri"
           placeholder={t('label.concept-iri')}
