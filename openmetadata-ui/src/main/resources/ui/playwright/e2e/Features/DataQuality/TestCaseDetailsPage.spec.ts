@@ -16,6 +16,7 @@ import { escapeRegExp } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   openTestCaseDetailsPage,
   verifyTestCaseLastRunBanner,
@@ -281,6 +282,56 @@ test.describe(
       expect(Math.round(Number(banner?.x) + Number(banner?.width))).toBe(
         Math.round(Number(grid?.x) + Number(grid?.width))
       );
+    });
+
+    test('opens the app mode details page from the Data Quality test cases tab', async ({
+      page,
+    }) => {
+      const testCaseName = table.testCasesResponseData[0].name as string;
+      const isTestCaseListResponse = (url: URL) =>
+        url.pathname.endsWith('/dataQuality/testCases/search/list');
+
+      await test.step('Open the Test Cases tab in app mode', async () => {
+        await enableAiAppMode(page);
+        await page.goto('/observability/data-quality', {
+          waitUntil: 'domcontentloaded',
+        });
+        await waitForAllLoadersToDisappear(page);
+
+        const listResponse = page.waitForResponse((response) =>
+          isTestCaseListResponse(new URL(response.url()))
+        );
+        await page.getByRole('tab', { name: 'Test Cases' }).click();
+        await listResponse;
+
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/test-cases/
+        );
+      });
+
+      await test.step('Search for the test case', async () => {
+        const searchResponse = page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            isTestCaseListResponse(url) &&
+            url.searchParams.get('q') === testCaseName
+          );
+        });
+        await page.getByTestId('searchbar').fill(testCaseName);
+        await searchResponse;
+
+        await expect(page.getByTestId(testCaseName)).toBeVisible();
+      });
+
+      await test.step('Test case link stays inside app mode', async () => {
+        await page.getByTestId(testCaseName).getByRole('link').click();
+
+        await expect(page).toHaveURL(
+          /\/observability\/test-case\/[^/]+\/test-case-results/
+        );
+        await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+      });
     });
   }
 );
