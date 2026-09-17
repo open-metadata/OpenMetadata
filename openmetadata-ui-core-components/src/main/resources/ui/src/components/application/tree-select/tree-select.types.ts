@@ -55,11 +55,7 @@ export type TreeSelectDataFetcher<T = unknown> = (
 
 export type TreeSelectTriggerVariant = 'input' | 'button';
 
-/**
- * 'immediate' reports every toggle through `onChange`; 'staged' collects them
- * and reports once on Apply (Cancel restores `value`). Staged single-select
- * also keeps the dropdown open until Apply.
- */
+/** 'staged' buffers toggles and reports once on Apply; any other close discards. */
 export type TreeSelectCommitMode = 'immediate' | 'staged';
 
 /** Arguments handed to `renderTrigger` for a consumer-owned trigger. */
@@ -68,7 +64,7 @@ export interface TreeSelectTriggerRenderProps {
   toggle: () => void;
   open: () => void;
   close: () => void;
-  /** Number of currently selected nodes — the draft count while staged. */
+  /** Selected node count — the draft count while staged. */
   selectedCount: number;
 }
 
@@ -135,18 +131,10 @@ export interface TreeSelectProps<T = unknown> {
   showSelectAll?: boolean;
   /** @default 'immediate' */
   commitMode?: TreeSelectCommitMode;
-  /**
-   * Controls the dropdown from the outside. Leave undefined to let the
-   * component own its open state.
-   */
+  /** Controls the dropdown; omit to let the component own its open state. */
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /**
-   * Render a consumer-owned trigger instead of the built-in input/button.
-   * The node is rendered inside the component's positioning wrapper, so the
-   * dropdown still anchors to it and outside-click dismissal still works.
-   * Takes precedence over `triggerVariant`.
-   */
+  /** Consumer-owned trigger, rendered in place of the built-in one. */
   renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
 
   onNodeExpand?: (nodeId: string) => void;

@@ -175,9 +175,7 @@ export const TreeSelect = <T = unknown,>({
 
   const isCustomTrigger = Boolean(renderTrigger);
   const isButtonVariant = !isCustomTrigger && triggerVariant === 'button';
-  // Both the button and the consumer-owned trigger put the search box, the
-  // fixed width and the footer inside the dropdown; the input variant hosts
-  // its search in the trigger field instead.
+  // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
 
@@ -205,8 +203,7 @@ export const TreeSelect = <T = unknown,>({
     [visibleNodeIds]
   );
 
-  // Staged mode keeps the draft in the selection hook and reports it once on
-  // Apply, so the hook must not notify the parent on each toggle.
+  // Staged mode reports once on Apply, not per toggle.
   const commit = isStaged ? undefined : onChange;
 
   const { selectedData, isNodeSelected, toggleNodeSelection, setSelection } =
@@ -224,9 +221,7 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft whenever the dropdown transitions open — including a
-  // programmatic open through the controlled `isOpen` prop, which never goes
-  // through setOpen.
+  // Resync the draft on open, including a programmatic one via `isOpen`.
   useEffect(() => {
     if (isOpen && isStaged) {
       setSelection(toArray(value));
@@ -422,6 +417,15 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
+  // Every close but Apply drops the draft, else the trigger shows stale state.
+  const dismiss = useCallback(() => {
+    if (isStaged) {
+      setSelection(toArray(value));
+    }
+    setOpen(false);
+    setShowSelectedOnly(false);
+  }, [isStaged, setSelection, value, setOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -434,15 +438,12 @@ export const TreeSelect = <T = unknown,>({
       ) {
         return;
       }
-      setOpen(false);
-      setShowSelectedOnly(false);
+      dismiss();
     };
-    // Listening on the document rather than the dropdown covers Escape from
-    // the search box, the tree, and a consumer-owned trigger alike.
+    // On the document so Escape works from the search box, tree or trigger.
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setOpen(false);
-        setShowSelectedOnly(false);
+        dismiss();
       }
     };
     document.addEventListener('pointerdown', handlePointerDown);
@@ -452,7 +453,7 @@ export const TreeSelect = <T = unknown,>({
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, setOpen]);
+  }, [isOpen, dismiss]);
 
   const resolvedNoDataMessage = noDataMessage ?? t('label.no-data-found');
   const resolvedLoadingMessage = loadingMessage ?? t('label.loading');
@@ -473,9 +474,7 @@ export const TreeSelect = <T = unknown,>({
   const allSelected =
     selectableNodes.length > 0 && allSelectedCount === selectableNodes.length;
 
-  // Bulk actions replace the whole selection, so they write the local state
-  // directly rather than waiting for the parent to echo `value` back — which
-  // an uncontrolled or staged consumer never does.
+  // Write local state: an uncontrolled or staged parent never echoes `value`.
   const replaceSelection = useCallback(
     (nodes: TreeSelectNode<T>[]) => {
       setSelection(nodes);
@@ -540,8 +539,7 @@ export const TreeSelect = <T = unknown,>({
     return keys;
   }, [showSelectedOnly, expandedKeys, filteredTreeData]);
   const showFooter = isStaged;
-  // Immediate mode has nothing to apply, so it gets a quiet footer instead:
-  // what is selected, and a way to drop it all without closing the menu.
+  // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
 
   const handleClearAll = useCallback(() => {
@@ -553,12 +551,6 @@ export const TreeSelect = <T = unknown,>({
     setOpen(false);
     setShowSelectedOnly(false);
   }, [onChange, multiple, selectedData, setOpen]);
-
-  const handleCancel = useCallback(() => {
-    setSelection(toArray(value));
-    setOpen(false);
-    setShowSelectedOnly(false);
-  }, [setSelection, value, setOpen]);
 
   const treeDropdownContent = (
     <div
@@ -642,7 +634,7 @@ export const TreeSelect = <T = unknown,>({
               color="secondary"
               data-testid="close-btn"
               size="sm"
-              onPress={handleCancel}>
+              onPress={dismiss}>
               {t('label.cancel')}
             </Button>
             <Button
@@ -683,21 +675,18 @@ export const TreeSelect = <T = unknown,>({
     </div>
   );
 
-  // Portaled rather than absolutely positioned: the dropdown routinely lives
-  // inside a card or drawer that clips overflow, which would cut it off.
+  // Portaled: an absolute dropdown gets clipped by a card or drawer.
   const treeDropdown = (
     <AriaPopover
       isNonModal
       className={cx(
         'tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
-        // `w-full` would size against the portal root, so the input variant
-        // uses react-aria's measured trigger width instead.
+        // `w-full` would size against the portal root.
         usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
         popoverClassName
       )}
       containerPadding={0}
-      // Without this a dismissable ancestor (drawer, modal) treats a click in
-      // the portaled dropdown as an outside interaction and closes itself.
+      // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={4}
@@ -716,7 +705,7 @@ export const TreeSelect = <T = unknown,>({
             isOpen,
             toggle: () => !disabled && setOpen(!isOpen),
             open: openTrigger,
-            close: () => setOpen(false),
+            close: dismiss,
             selectedCount: selectedData.length,
           })}
         </div>
@@ -827,7 +816,7 @@ export const TreeSelect = <T = unknown,>({
               onFocus={openTrigger}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
-                  setOpen(false);
+                  dismiss();
 
                   return;
                 }
