@@ -906,8 +906,11 @@ public class AlertsRuleEvaluator {
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityFqns) {
     DataContract dataContract = (DataContract) eventEntityOfType(DATA_CONTRACT);
-    return dataContract != null
-        && dataContract.getEntity() != null
-        && entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());
+    // The UI creates contracts with an id-only entity reference, so the FQN can be absent.
+    String coveredFqn =
+        dataContract == null || dataContract.getEntity() == null
+            ? null
+            : dataContract.getEntity().getFullyQualifiedName();
+    return coveredFqn != null && entityFqns.contains(coveredFqn);
   }
 }

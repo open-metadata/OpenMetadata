@@ -56,6 +56,13 @@ class AlertsRuleEvaluatorDataContractFilterTest {
   }
 
   @Test
+  void dataContractEvent_withIdOnlyEntityReference_doesNotMatch() {
+    DataContract createdFromUi = contractOn(COVERED_TABLE);
+    createdFromUi.getEntity().setFullyQualifiedName(null);
+    assertFalse(matchesEntity(createdFromUi, COVERED_TABLE));
+  }
+
+  @Test
   void nonDataContractEntityEvent_doesNotMatch() {
     ChangeEvent event =
         new ChangeEvent()
