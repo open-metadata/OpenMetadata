@@ -719,7 +719,6 @@ test.describe(
             }
           })
           .toBe(true);
-
         await expect
           .poll(async () => {
             const operationsAutocomplete = page.getByTestId('operations');
@@ -740,7 +739,6 @@ test.describe(
           })
           .toBe(true);
       });
-
       await test.step('Submit and verify via toast', async () => {
         const responsePromise = page.waitForResponse(
           (r) =>
@@ -1025,7 +1023,7 @@ test.describe(
             }
           })
           .toBe(true);
-
+        await page.keyboard.press('Escape');
         await expect
           .poll(async () => {
             const operationsAutocomplete = page.getByTestId('operations');
@@ -1045,6 +1043,7 @@ test.describe(
             }
           })
           .toBe(true);
+         await page.keyboard.press('Escape');
       });
 
       await test.step('Save rule and verify new card appears', async () => {
@@ -1572,8 +1571,7 @@ test.describe(
         await filterContainer
           .getByRole('button', { name: /entity.type/i })
           .click();
-        await page.getByTestId('Table-checkbox').getByText('Table').click();
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('table').getByText('Table').click();
         await entityTypeFilterPromise;
 
         // Filter chip for entity type should now be visible
@@ -1638,12 +1636,7 @@ test.describe(
 
       await test.step('Selecting a date range enables the export button and triggers export API', async () => {
         // Open the calendar
-        await page.getByTestId('export-date-range-picker').click();
-        const dropdown = page.getByRole('button', {
-          name: 'Calendar Date range picker',
-        });
-        await dropdown.waitFor({ state: 'visible' });
-        await dropdown.click();
+        await page.getByTestId('export-date-range-picker').getByRole('button', { name: 'Calendar Date range picker' }).click();
 
         // Pick Sep 1 (start) and Sep 5 (end) — both are in the past relative to
         // the test run date of 2026-09-11 so they will never be disabled.
