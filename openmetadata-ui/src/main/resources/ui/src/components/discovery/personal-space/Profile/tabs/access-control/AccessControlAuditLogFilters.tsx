@@ -158,6 +158,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
       startTs,
       endTs,
     });
+    setPendingDateRange(null);
   }, [pendingDateRange, handleTimeFilterChange]);
 
   const makeChangeHandler = useCallback(

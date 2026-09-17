@@ -66,7 +66,6 @@ import {
   AuditLogListResponse,
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
-import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -669,10 +668,7 @@ const AccessControlAuditLogsPanel: React.FC<
                           className="tw:text-brand-600"
                           title={filter.value.label}
                           weight="medium">
-                          {filter.category === 'time' &&
-                          filter.value.key === CUSTOM_DATE_RANGE_KEY
-                            ? t('label.custom-range')
-                            : filter.value.label}
+                          {filter.value.label}
                         </Typography>
                       </Box>
                     </Box>
