@@ -172,66 +172,66 @@ Sources: #32946 pains 1–6, the platform review's additions (caching, deletion,
 `Sub-issue of #32946.` and carrying three sections: **what hurts / root cause / how we know it is
 fixed**. Pains 7–9 are largely discharged by the salvage PRs above; the rest are the epic.
 
-**Five sub-issues already exist** (filed 2026-09-15): #33353 for the P1 read-path N+1, #33358 for the
-atomicity pin, and #33359/#33360/#33361 for the three `main` bugs its port uncovered. The
-**Existing issue** column below records that, so the remaining rows are exactly what still has to be
-opened. Nothing in this plan re-files them.
+Five sub-issues already existed when this plan was written (filed 2026-09-15): #33353 for the P1
+read-path N+1, #33358 for the atomicity pin, and #33359/#33360/#33361 for the three `main` bugs its
+port uncovered. The rest were opened on 2026-09-17 as #33517–#33527, with #33528 tracking the salvage
+PRs. The **Issue** column below is the map.
 
-| # | Pain | Root cause on `main` | Done when | Existing issue |
+| # | Pain | Root cause on `main` | Done when | Issue |
 |---|---|---|---|---|
-| **0** | No behaviour recording — and the base class grows ~110 lines/week | Nothing pins stored JSON, versions, `ChangeDescription`, or `change_event` | Ratchet test + golden master merged (Step 0 / RFC-0) | partly #33358 |
-| **1** | Diff and apply are fused; versioning and consolidation cannot be tested without a database | `EntityUpdater.updateX` records the change and writes it in one breath; consolidation runs three write passes (~L9017–9500, `updateOwners` L9607, `updateDomains` L9902) | A pure `EntityDiff` + `UpdatePolicy`; `EntityDiffTest` with no mocks; the 13 `*ForImport` names gone (Step 1) | — |
-| **2** | The write lifecycle is implicit, so the import and bulk copies drifted | `createManyEntities` skips column extensions and the write-through cache; `updateManyEntitiesForImport` bypasses the updater entirely; Table CSV import is a PATCH path while glossary/testCase import use `*ForImport`. Ten methods, three modes expressed as booleans. | `WriteContext` + ordered `WriteStage` lists; bulk create writes exactly what single create writes (Step 4) | — |
-| **3** | Adding one capability touches ~8 places | 17 `supports*` flags plus a hand-wired `fieldSupportMap` | Aspects, Owners first (Step 3) | — |
-| **4** | The declared contract is 5 abstract methods; the real coupling surface is 140 protected method names | Template-method base with everything `protected`; `EntityUpdater` is a non-static inner class, so 56 files spell `EntityRepository<X>.EntityUpdater` | Hook budget ratcheted down per PR; the static-updater decision recorded (Step 6) | — |
-| **5** | ThreadLocals used as parameters; five post-commit collectors in four classes juggled by `DeferralScope` | `storedEntityJson`, `parentCacheForPrepare`, `DEFERRED_CACHE_INVALIDATIONS`, plus RDF/lineage/search/cache/post-commit collectors | One `UnitOfWork` and one outbox; `RdfIndexHandler` (Step 5) | — |
-| **6** | Construction is a service-locator call **with a side effect** | `Entity.registerEntity` runs in the constructor and `Entity.getX()` is called from constructors, so 146 test files `mockStatic(Entity.class)`; constructor failures are swallowed as `LOG.warn` | `RepositoryDependencies` injected through `Entity.initializeRepositories`; registration after construction; constructor failures propagate (Step 2) | — |
+| **0** | No behaviour recording — and the base class grows ~110 lines/week | Nothing pins stored JSON, versions, `ChangeDescription`, or `change_event` | Ratchet test + golden master merged (Step 0 / RFC-0) | #33517 · partly #33358 |
+| **1** | Diff and apply are fused; versioning and consolidation cannot be tested without a database | `EntityUpdater.updateX` records the change and writes it in one breath; consolidation runs three write passes (~L9017–9500, `updateOwners` L9607, `updateDomains` L9902) | A pure `EntityDiff` + `UpdatePolicy`; `EntityDiffTest` with no mocks; the 13 `*ForImport` names gone (Step 1) | #33518 |
+| **2** | The write lifecycle is implicit, so the import and bulk copies drifted | `createManyEntities` skips column extensions and the write-through cache; `updateManyEntitiesForImport` bypasses the updater entirely; Table CSV import is a PATCH path while glossary/testCase import use `*ForImport`. Ten methods, three modes expressed as booleans. | `WriteContext` + ordered `WriteStage` lists; bulk create writes exactly what single create writes (Step 4) | #33519 |
+| **3** | Adding one capability touches ~8 places | 17 `supports*` flags plus a hand-wired `fieldSupportMap` | Aspects, Owners first (Step 3) | #33520 |
+| **4** | The declared contract is 5 abstract methods; the real coupling surface is 140 protected method names | Template-method base with everything `protected`; `EntityUpdater` is a non-static inner class, so 56 files spell `EntityRepository<X>.EntityUpdater` | Hook budget ratcheted down per PR; the static-updater decision recorded (Step 6) | #33521 |
+| **5** | ThreadLocals used as parameters; five post-commit collectors in four classes juggled by `DeferralScope` | `storedEntityJson`, `parentCacheForPrepare`, `DEFERRED_CACHE_INVALIDATIONS`, plus RDF/lineage/search/cache/post-commit collectors | One `UnitOfWork` and one outbox; `RdfIndexHandler` (Step 5) | #33522 |
+| **6** | Construction is a service-locator call **with a side effect** | `Entity.registerEntity` runs in the constructor and `Entity.getX()` is called from constructors, so 146 test files `mockStatic(Entity.class)`; constructor failures are swallowed as `LOG.warn` | `RepositoryDependencies` injected through `Entity.initializeRepositories`; registration after construction; constructor failures propagate (Step 2) | #33523 |
 | **7** | Transaction ownership gaps | Callers open their own transactions and there is no written "join the enclosing transaction" rule for extensions: metadata cleanup ran outside the owning transaction on unchanged bulk updates; Collate's dashboard-chart delete is two autocommits; per-chunk bulk hard delete is not atomic (#29378) | T2/T3 ITs green on `main`; #29378 closed; the rule written into the extension contract | #33358 (pin) · #33359 · #33360 · #33361 · #29378 |
-| **8** | Read-path N+1s | Per-column loops in `TableRepository`; `enrichEntitiesForAuth` as two round trips; per-descendant deletes. Measured: per-column metrics/extensions 505 → 5, column pages 20 → 0, an expanded 100-column read = 207 queries, a 100-column hard delete = 470. | P1/P2/P4 merged **with the SQL-count ITs as permanent guards**; delete counts measured and budgeted | #33353 (P1) |
-| **9** | Caching | `fillReadBundle` is all-or-nothing with a blind `put`; `CachedEntityDao` publishes one key at a time; `RequestEntityCache` serialises twice per alias | P5/P6/P7 merged with their ITs | — |
+| **8** | Read-path N+1s | Per-column loops in `TableRepository`; `enrichEntitiesForAuth` as two round trips; per-descendant deletes. Measured: per-column metrics/extensions 505 → 5, column pages 20 → 0, an expanded 100-column read = 207 queries, a 100-column hard delete = 470. | P1/P2/P4 merged **with the SQL-count ITs as permanent guards**; delete counts measured and budgeted | #33353 (P1) · #33524 (P2/P4) |
+| **9** | Caching | `fillReadBundle` is all-or-nothing with a blind `put`; `CachedEntityDao` publishes one key at a time; `RequestEntityCache` serialises twice per alias | P5/P6/P7 merged with their ITs | #33525 |
 | **10** | Deletion | Cascade loads the entity twice; the lock gate is dormant (`LockManagerInitializer` is never called); no stale-lock reaper; deletion races ingestion (#20891). See `docs/plans/2026-06-22-bulk-deletion-redesign.md` gaps 2–3. | Per-chunk transaction (#29378), lock gate wired, race IT | #29378 · #20891 |
-| **11** | Bulk / import | The `sourceHash` fast path has no benchmark baseline; 13 `*ForImport` shadows | Folded into pains 1–2 **after** a benchmark baseline exists | — |
-| **12** | The extension API surface leaks internals | No declared extension contract — Collate subclasses reach protected hooks, and #33248 would have made `storeEntity`/`prepare` public | A written extension contract plus a compile check in Collate CI | — |
+| **11** | Bulk / import | The `sourceHash` fast path has no benchmark baseline; 13 `*ForImport` shadows | Folded into pains 1–2 **after** a benchmark baseline exists | #33526 |
+| **12** | The extension API surface leaks internals | No declared extension contract — Collate subclasses reach protected hooks, and #33248 would have made `storeEntity`/`prepare` public | A written extension contract plus a compile check in Collate CI | #33527 |
 
 ### Sub-issue drafts
 
 Each sub-issue is opened with `gh issue create`, body starting `Sub-issue of #32946.`, and these
-three headings. Pains 7 and 8 are **not re-filed** — #33353, #33358, #33359, #33360 and #33361
-already cover them, and #33358's scope is the T2/T3 pin. What follows is the full set for
-completeness; the ones still to open are pains **0–6, 9, 11 and 12** (pain 10 is carried by #29378
-and #20891). Drafts condensed — the issue body expands each with the line references above:
+three headings. Pain 7 was **not re-filed** — #33358, #33359, #33360, #33361 and #29378 already
+cover it, and #33358's scope is the T2/T3 pin; pain 10 is carried by #29378 and #20891. All the
+others are open as of 2026-09-17. Drafts condensed — each issue body expands these with the line
+references above:
 
-- **Pain 0 — Pin today's behaviour before changing it.** *What hurts:* every refactor PR is reviewed
+- **Pain 0 (#33517) — Pin today's behaviour before changing it.** *What hurts:* every refactor PR is reviewed
   by reading, because nothing fails when stored JSON, a version bump, a `ChangeDescription` or a
   `change_event` changes shape. *Root cause:* no golden master, no size/coupling ratchet. *Fixed
   when:* `EntityRepositorySizeBudgetTest` and `EntityRepositoryGoldenMaster*IT` are merged and green
   on both dialects and both search engines.
-- **Pain 1 — Separate deciding from writing.** *Fixed when:* `EntityDiff` + `UpdatePolicy` are pure
+- **Pain 1 (#33518) — Separate deciding from writing.** *Fixed when:* `EntityDiff` + `UpdatePolicy` are pure
   and `EntityDiffTest` runs with no mocks and no database; consolidation is one decision, not three
   write passes.
-- **Pain 2 — One write lifecycle.** *Fixed when:* bulk create and single create run the same ordered
+- **Pain 2 (#33519) — One write lifecycle.** *Fixed when:* bulk create and single create run the same ordered
   stage list, proven by a golden-master cell that compares a bulk-created table to a
   singly-created one.
-- **Pain 3 — Capabilities as aspects.** *Fixed when:* adding an Owners-like capability is one
+- **Pain 3 (#33520) — Capabilities as aspects.** *Fixed when:* adding an Owners-like capability is one
   registration, and the `supports*` flag count in the ratchet has dropped.
-- **Pain 4 — Shrink the coupling surface.** *Fixed when:* the protected-name budget ratchets down
+- **Pain 4 (#33521) — Shrink the coupling surface.** *Fixed when:* the protected-name budget ratchets down
   every PR and the static-`EntityUpdater` decision is recorded with its Collate cost.
-- **Pain 5 — One unit of work.** *Fixed when:* the `ThreadLocal` budget is 0 and post-commit work
+- **Pain 5 (#33522) — One unit of work.** *Fixed when:* the `ThreadLocal` budget is 0 and post-commit work
   goes through a single outbox.
-- **Pain 6 — Inject dependencies, register afterwards.** *Fixed when:* a repository can be
+- **Pain 6 (#33523) — Inject dependencies, register afterwards.** *Fixed when:* a repository can be
   constructed in a unit test without `mockStatic(Entity.class)`, and a constructor failure fails
   startup instead of logging a warning.
-- **Pain 7 — Write the transaction rule down.** *Fixed when:* T2/T3 are green, #29378 is closed, and
+- **Pain 7 (#33358, #33359, #33360, #33361) — Write the transaction rule down.** *Fixed when:* T2/T3 are green, #29378 is closed, and
   the extension contract states that an extension joins the enclosing transaction.
-- **Pain 8 — Read-path N+1s.** *Fixed when:* P1/P2/P4 are merged and their SQL-count ITs guard the
+- **Pain 8 (#33353, #33524) — Read-path N+1s.** *Fixed when:* P1/P2/P4 are merged and their SQL-count ITs guard the
   counts; delete-path counts are measured and budgeted.
-- **Pain 9 — Caching correctness and batching.** *Fixed when:* P5/P6/P7 are merged with their ITs,
+- **Pain 9 (#33525) — Caching correctness and batching.** *Fixed when:* P5/P6/P7 are merged with their ITs,
   including the concurrent-invalidation case.
-- **Pain 10 — Deletion.** *Fixed when:* #29378 is closed, the lock gate is wired, and a
+- **Pain 10 (#29378, #20891) — Deletion.** *Fixed when:* #29378 is closed, the lock gate is wired, and a
   deletion-vs-ingestion race IT exists (#20891).
-- **Pain 11 — Bulk/import baseline.** *Fixed when:* a `sourceHash` benchmark baseline exists; then
+- **Pain 11 (#33526) — Bulk/import baseline.** *Fixed when:* a `sourceHash` benchmark baseline exists; then
   this folds into pains 1–2.
-- **Pain 12 — Declare the extension contract.** *Fixed when:* the contract is written and Collate CI
+- **Pain 12 (#33527) — Declare the extension contract.** *Fixed when:* the contract is written and Collate CI
   fails on a reach into a non-contract hook.
 
 ## Step 0 — the behaviour recording (RFC-0)
@@ -339,14 +339,14 @@ static-`EntityUpdater` decision (Step 6) is taken.
 1. **This document** ships as the first docs-only PR, with one row in `docs/index.md`. The pain list
    is mirrored to the Notion platform folder by hand.
 2. **One GitHub sub-issue per pain** under #32946 (`Sub-issue of #32946.` + the three sections) for
-   the pains that do not have one yet — 0–6, 9, 11, 12 — plus one tracking issue
-   *"Salvage from #33248"* holding the PR checklist above. #33353 and #33358–#33361 are reused as
-   they are. A comment on #32946 links the whole set.
+   the pains that do not have one yet. **Done 2026-09-17:** #33517–#33527, plus #33528 *"Salvage
+   from #33248"* holding the PR checklist above. #33353 and #33358–#33361 are reused as they are, and
+   a comment on #32946 links the whole set.
 3. **One RFC per pain before its code**, in `docs/plans/`, following the
    `2026-06-22-bulk-deletion-redesign.md` format: Context / Problem on `main` with line references /
    Proposal / Alternatives considered / Migration + Collate impact / Verification naming the
    golden-master cells that must stay byte-equal / Rollout. Mirrored to Notion for the platform
    review. **RFC-0 comes first and gates every refactor PR.**
-4. **#33248 and #6639 are closed** with one comment each: the verdict, a link to this document, the
-   sub-issues, and the salvage PR list. Both branches are kept for reference — they are the source
-   of every hunk in the inventory above.
+4. **#33248 and #6639 are closed** (2026-09-17) with one comment each: the verdict, a link to this
+   document, the sub-issues, and the salvage PR list. Both branches are kept for reference — they
+   are the source of every hunk in the inventory above.
