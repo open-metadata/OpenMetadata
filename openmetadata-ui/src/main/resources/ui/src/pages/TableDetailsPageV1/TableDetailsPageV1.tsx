@@ -35,6 +35,7 @@ import {
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -44,6 +45,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -88,6 +90,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
@@ -799,8 +802,19 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          getPartialNameFromTableFQN(
+            tableFqn,
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [tableFqn]
   );
 
   const updateTableDetailsState = useCallback(

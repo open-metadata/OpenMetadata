@@ -20,7 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { MlHyperParameter } from '../../../generated/api/data/createMlModel';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
@@ -32,6 +33,7 @@ import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEnt
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -43,6 +45,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
@@ -326,8 +329,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.ML_MODEL_SERVICES,
+          getPartialNameFromTableFQN(decodedMlModelFqn, [FqnPart.Service])
+        )
+      ),
+    [decodedMlModelFqn]
   );
 
   const tabs = useMemo(() => {
