@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.cmd import metadata as metadata_cli
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -485,3 +486,33 @@ def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
     payload = json.loads(status_file.read_text())
 
     assert payload["ingestion_pipeline_fqn"] == "test_service.test_pipeline"
+
+
+@pytest.mark.parametrize("workflow_class,success", [(OkWorkflow, True), (SimpleWorkflow, False)])
+def test_ingest_dbt_cli_writes_status_after_success_or_failure(tmp_path, workflow_class, success):
+    project = tmp_path / "my_dbt_project"
+    target = project / "target"
+    target.mkdir(parents=True)
+    (target / "manifest.json").write_text("{}")
+    (project / "dbt_project.yml").write_text(
+        "name: my_project\nvars:\n"
+        "  openmetadata_host_port: http://localhost:8585/api\n"
+        "  openmetadata_jwt_token: placeholder\n"
+        "  openmetadata_service_name: my_service\n"
+    )
+    status_path = tmp_path / "status.json"
+    workflow = workflow_class(config=config)
+
+    with patch("metadata.cli.ingest_dbt.MetadataWorkflow.create", return_value=workflow):
+        args = ["ingest-dbt", "-c", str(project), "--status-file", str(status_path)]
+        if success:
+            metadata_cli(args)
+        else:
+            with pytest.raises(SystemExit) as error:
+                metadata_cli(args)
+            assert error.value.code == 1
+
+    payload = json.loads(status_path.read_text())
+    assert payload["success"] is success
+    failures = [failure for step in payload["steps"] for failure in step["failures"] or []]
+    assert [failure["name"] for failure in failures] == ([] if success else ["bum"])

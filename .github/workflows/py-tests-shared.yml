@@ -64,6 +64,7 @@ jobs:
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+      e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -80,12 +81,25 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
+              - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
+            e2e:
+              - 'ingestion/tests/cli_e2e_v2/**'
+              - 'ingestion/pyproject.toml'
+              - 'ingestion/setup.py'
+              - 'ingestion/src/_openmetadata_testutils/pytest_openmetadata/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/py-tests.yml'
+              - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -217,6 +231,15 @@ jobs:
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
+
+      - name: Run offline E2E framework tests
+        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
+            python -m pytest tests/cli_e2e_v2/meta -q
+        shell: bash
 
       - name: Install and verify spaCy model
         run: |

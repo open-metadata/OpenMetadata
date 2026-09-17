@@ -8,7 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Import this test into a connector module providing workflow_case."""
 
-import pytest
+from ..runtime.case import run_and_check
 
-pytest.register_assert_rewrite(f"{__name__}.contracts", f"{__name__}.features")
+
+def test_workflow(workflow_case, cli):
+    run_and_check(cli, workflow_case)

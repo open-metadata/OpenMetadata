@@ -1,15 +1,24 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """Expected OM-side catalog for the MySQL baseline.
 
-Tables and columns are derived from ``MYSQL_BASELINE.metadata`` via ``MYSQL_TYPE_MAP``.
+Tables and columns are derived from declared baseline metadata via ``MYSQL_TYPE_MAP``.
 The view's ``ExpectedTable`` and stored procedures are appended manually since
 they are not in SQLAlchemy MetaData. ``TASK25``-flagged entries may need
 correction after a first live ingest.
 """
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean
 from sqlalchemy.dialects import mysql
@@ -19,15 +28,18 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
-from ..core.expected.derive import derive_expected_service
-from ..core.expected.type_map import CORE_TYPE_MAP, TypeMap
-from ..core.expected.types import (
+from ..features.database.catalog.derive import derive_expected_service
+from ..features.database.catalog.type_map import CORE_TYPE_MAP, TypeMap
+from ..features.database.catalog.types import (
     ExpectedColumn,
     ExpectedService,
     ExpectedStoredProcedure,
     ExpectedTable,
 )
-from .baseline import MYSQL_BASELINE
+from .baseline import build_mysql_baseline
+
+if TYPE_CHECKING:
+    from collections.abc import Collection
 
 # Extends CORE_TYPE_MAP with MySQL dialect classes + Boolean override.
 # Entries marked TASK25 may need correction after the first live ingest.
@@ -60,7 +72,8 @@ MYSQL_TYPE_MAP: TypeMap = {
 def mysql_expected(
     service_name: str,
     *,
-    tables: list[str] | None = None,
+    schema: str,
+    tables: Collection[str] | None = None,
 ) -> ExpectedService:
     """Return the expected MySQL catalog for ``service_name``.
 
@@ -70,7 +83,7 @@ def mysql_expected(
     expected = derive_expected_service(
         service_name=service_name,
         service_type=DatabaseServiceType.Mysql,
-        metadata=MYSQL_BASELINE.metadata,
+        metadata=build_mysql_baseline(schema).metadata,
         type_map=MYSQL_TYPE_MAP,
         database="default",
         views=[_expected_customer_txn_summary_view()],

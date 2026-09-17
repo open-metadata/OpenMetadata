@@ -98,6 +98,12 @@ def create_dbt_parser_args(parser: argparse.ArgumentParser):
         default=Path("."),  # noqa: PTH201
         required=False,
     )
+    parser.add_argument(
+        "--status-file",
+        help="path to write structured JSON status output (optional)",
+        type=Path,
+        default=None,
+    )
 
 
 def webhook_args(parser: argparse.ArgumentParser):

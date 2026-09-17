@@ -1,0 +1,139 @@
+#  Copyright 2026 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Freshness scenarios keep row counts independent and wait for complete profiles."""
+
+import sys
+from itertools import chain, repeat
+from types import SimpleNamespace
+
+import pytest
+from sqlalchemy import Column, Integer, MetaData, create_engine, select
+from sqlalchemy import Table as SqlTable
+
+from metadata.generated.schema.entity.data.table import Table
+
+from ..features.database.pipelines import ProfilerPipeline
+from ..mysql.test_mysql import test_profile_null_duplicates_and_freshness as freshness_scenario
+from ..runtime.cli import CliRunner, WorkflowInvocation
+from .test_cli import PROBE
+
+
+def _profile(*, updated=False, missing=None):
+    metrics = (
+        {
+            "valuesCount": 4,
+            "nullCount": 1,
+            "distinctCount": 3,
+            "uniqueCount": 2,
+            "min": 10,
+            "max": 40,
+            "sum": 90,
+            "mean": 22.5,
+        }
+        if updated
+        else {
+            "valuesCount": 3,
+            "nullCount": 1,
+            "distinctCount": 2,
+            "uniqueCount": 1,
+            "min": 10,
+            "max": 20,
+            "sum": 50,
+            "mean": 16.6667,
+        }
+    )
+    timestamp = 2 if updated else 1
+    return Table.model_validate(
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "profile_values",
+            "profile": None if missing == "table" else {"timestamp": timestamp, "rowCount": 5 if updated else 4},
+            "columns": [
+                {
+                    "name": "score",
+                    "dataType": "INT",
+                    "profile": None if missing == "column" else {"name": "score", "timestamp": timestamp, **metrics},
+                }
+            ],
+        }
+    )
+
+
+@pytest.fixture
+def run_scenario(tmp_path, polling_clock):
+    engine = create_engine("sqlite:///:memory:")
+    table = SqlTable("profile_values", MetaData(), Column("id", Integer, primary_key=True), Column("score", Integer))
+    table.metadata.create_all(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            table.insert(), [{"id": index, "score": score} for index, score in enumerate((10, 20, 20, None), 1)]
+        )
+    script = tmp_path / "probe.py"
+    script.write_text(PROBE)
+    cli = CliRunner(tmp_path / "cli", command=(sys.executable, str(script)))
+
+    def invocation(options, filters):
+        subcommand = "profile" if isinstance(options, ProfilerPipeline) else "ingest"
+        return WorkflowInvocation(subcommand, {"probe": {"subcommand": subcommand}})
+
+    def run(observation, snapshots):
+        responses = chain(snapshots, repeat(snapshots[-1]))
+        freshness_scenario(
+            observation=observation,
+            cli=cli,
+            om=SimpleNamespace(get_latest_table_profile=lambda fqn: next(responses)),
+            mysql_run=invocation,
+            mysql_source=SimpleNamespace(admin_engine=engine, schema="my_schema"),
+            service_name="my_service",
+            mysql_profile_table=table,
+        )
+        with engine.connect() as connection:
+            assert connection.execute(select(table.c.score).order_by(table.c.id)).scalars().all() == [
+                10,
+                20,
+                20,
+                None,
+                40,
+            ]
+
+    try:
+        yield run
+    finally:
+        engine.dispose()
+
+
+def test_row_freshness_does_not_require_column_profiles(run_scenario):
+    run_scenario("row-count-freshness", [_profile(missing="column"), _profile(updated=True, missing="column")])
+
+
+@pytest.mark.parametrize("missing", ["table", "column"])
+@pytest.mark.parametrize("phase", ["initial", "updated"])
+def test_column_freshness_waits_for_required_profiles(run_scenario, missing, phase):
+    snapshots = [_profile(), _profile(updated=True)]
+    index = 0 if phase == "initial" else 1
+    snapshots.insert(index, _profile(updated=phase == "updated", missing=missing))
+    run_scenario("column-freshness", snapshots)
+
+
+@pytest.mark.parametrize("stale", ["table", "column"])
+def test_column_freshness_rejects_stale_timestamps(run_scenario, stale):
+    updated = _profile(updated=True)
+    profile = updated.profile if stale == "table" else updated.columns[0].profile
+    profile.timestamp.root = 1
+    with pytest.raises(AssertionError, match="no match after"):
+        run_scenario("column-freshness", [_profile(), updated])
+
+
+def test_row_freshness_rejects_stale_row_count(run_scenario):
+    updated = _profile(updated=True, missing="column")
+    updated.profile.rowCount = 4
+    with pytest.raises(AssertionError, match="row count: expected 5, got 4"):
+        run_scenario("row-count-freshness", [_profile(missing="column"), updated])

@@ -1,16 +1,19 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL source baseline — common portable tables + MySQL-specific all_types.
-
-- Common tables (customers, transactions) and seed rows from `core/source/common_baseline.py`.
-- Dialect-specific `all_types` table covering MySQL native types for connector type-mapping coverage.
-- INSERT templates use `ON DUPLICATE KEY UPDATE` for idempotent seeding.
-- One view and two stored procedures for lineage and SP-ingestion coverage.
-"""
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""MySQL-native tables, seeds, views and procedures in an explicit schema."""
 
 from __future__ import annotations
 
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -28,12 +31,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import mysql
 
-from ..core.source.common_baseline import (
+from ..features.database.common_baseline import (
     COMMON_CUSTOMER_ROWS,
     COMMON_TRANSACTION_ROWS,
     build_common_metadata,
 )
-from ..core.source.sql import (
+from ..features.database.source import (
     SqlSourceBaseline,
     StoredProcedureDefinition,
     TableSeed,
@@ -82,143 +85,105 @@ def _declare_all_types(md: MetaData) -> Table:
     )
 
 
-# One row per id, all other columns NULL — tests assert row count and type mappings only.
-_ALL_TYPES_ROWS: list[dict[str, Any]] = [{"id": 1}, {"id": 2}, {"id": 3}]
+_NATIVE_VALUES: dict[str, Any] = {
+    "tiny_int_col": -12,
+    "small_int_col": 1234,
+    "medium_int_col": 70000,
+    "int_col": 123456,
+    "big_int_col": 9000000000,
+    "float_col": 1.5,
+    "double_col": 2.25,
+    "decimal_col": Decimal("1234.56"),
+    "char_col": "fixed",
+    "varchar_col": "variable",
+    "tinytext_col": "tiny text",
+    "text_col": "text value",
+    "mediumtext_col": "medium text",
+    "longtext_col": "long text",
+    "binary_col": b"0123456789abcdef",
+    "varbinary_col": b"variable bytes",
+    "tinyblob_col": b"tiny blob",
+    "blob_col": b"blob value",
+    "mediumblob_col": b"medium blob",
+    "longblob_col": b"long blob",
+    "date_col": date(2026, 1, 2),
+    "time_col": time(12, 34, 56),
+    "datetime_col": datetime(2026, 1, 2, 12, 34, 56),
+    "timestamp_col": datetime(2026, 1, 2, 12, 34, 56),
+    "year_col": 2026,
+    "bit_col": 5,
+    "json_col": {"kind": "fixture", "count": 2},
+    "enum_col": "beta",
+    "set_col": {"x", "z"},
+}
 
 
-# -----------------------------------------------------------------------------
-# Dialect-specific INSERT templates (MySQL `ON DUPLICATE KEY UPDATE` idempotency)
-# -----------------------------------------------------------------------------
+def build_mysql_baseline(schema: str) -> SqlSourceBaseline:
+    """Declare a fresh baseline for exactly one MySQL schema."""
+    quoted = mysql.dialect().identifier_preparer.quote_identifier(schema)
+    metadata = build_common_metadata(schema)
+    metadata.tables[f"{schema}.transactions"].c.customer_id.comment = f"FK referencing {schema}.customers.id."
+    _declare_all_types(metadata)
+    rows = [
+        {"id": 1, **_NATIVE_VALUES},
+        {"id": 2, **dict.fromkeys(_NATIVE_VALUES)},
+        {"id": 3, **dict.fromkeys(_NATIVE_VALUES)},
+    ]
+    seeds = []
+    for name, values in (
+        ("customers", COMMON_CUSTOMER_ROWS),
+        ("transactions", COMMON_TRANSACTION_ROWS),
+        ("all_types", rows),
+    ):
+        seeds.append(TableSeed(name, values))
 
-
-_MYSQL_CUSTOMERS_INSERT = """
-INSERT INTO e2e.customers
-    (id, first_name, last_name, full_name, email,
-     address, city, country, zipcode, date_of_birth, age,
-     credit_score, status, is_active, bio, joined_date)
-VALUES
-    (:id, :first_name, :last_name, :full_name, :email,
-     :address, :city, :country, :zipcode, :date_of_birth, :age,
-     :credit_score, :status, :is_active, :bio, :joined_date)
-ON DUPLICATE KEY UPDATE
-    first_name = VALUES(first_name), last_name = VALUES(last_name),
-    full_name = VALUES(full_name), email = VALUES(email),
-    address = VALUES(address), city = VALUES(city),
-    country = VALUES(country), zipcode = VALUES(zipcode),
-    date_of_birth = VALUES(date_of_birth), age = VALUES(age),
-    credit_score = VALUES(credit_score), status = VALUES(status),
-    is_active = VALUES(is_active), bio = VALUES(bio),
-    joined_date = VALUES(joined_date)
-"""
-
-_MYSQL_TRANSACTIONS_INSERT = """
-INSERT INTO e2e.transactions
-    (id, customer_id, amount, currency, exchange_rate, status,
-     txn_at, reference_number, ip_address, notes)
-VALUES
-    (:id, :customer_id, :amount, :currency, :exchange_rate, :status,
-     :txn_at, :reference_number, :ip_address, :notes)
-ON DUPLICATE KEY UPDATE
-    customer_id = VALUES(customer_id), amount = VALUES(amount),
-    currency = VALUES(currency), exchange_rate = VALUES(exchange_rate),
-    status = VALUES(status), txn_at = VALUES(txn_at),
-    reference_number = VALUES(reference_number),
-    ip_address = VALUES(ip_address), notes = VALUES(notes)
-"""
-
-_MYSQL_ALL_TYPES_INSERT = """
-INSERT INTO e2e.all_types (id) VALUES (:id)
-ON DUPLICATE KEY UPDATE id = VALUES(id)
-"""
-
-
-# -----------------------------------------------------------------------------
-# View + stored procedure (dialect-specific DDL)
-# -----------------------------------------------------------------------------
-
-
-_CUSTOMER_TXN_SUMMARY_VIEW = ViewDefinition(
-    schema="e2e",
-    name="customer_txn_summary",
-    definition_sql="""
-        CREATE OR REPLACE VIEW e2e.customer_txn_summary AS
+    view = ViewDefinition(
+        schema=schema,
+        name="customer_txn_summary",
+        definition_sql=f"""
+        CREATE VIEW {quoted}.customer_txn_summary AS
         SELECT
             c.id AS customer_id,
             c.full_name,
             c.status AS customer_status,
             COUNT(t.id) AS txn_count,
             COALESCE(SUM(t.amount), 0) AS total_amount
-        FROM e2e.customers c
-        LEFT JOIN e2e.transactions t ON c.id = t.customer_id
+        FROM {quoted}.customers c
+        LEFT JOIN {quoted}.transactions t ON c.id = t.customer_id
         GROUP BY c.id, c.full_name, c.status
     """,
-)
-
-
-_SP_ACTIVE_CUSTOMER_COUNT = StoredProcedureDefinition(
-    schema="e2e",
-    name="sp_active_customer_count",
-    definition_sql="""
-        CREATE PROCEDURE e2e.sp_active_customer_count()
+    )
+    active_count = StoredProcedureDefinition(
+        schema=schema,
+        name="sp_active_customer_count",
+        definition_sql=f"""
+        CREATE PROCEDURE {quoted}.sp_active_customer_count()
         BEGIN
             SELECT COUNT(*) AS active_count
-            FROM e2e.customers
+            FROM {quoted}.customers
             WHERE status = 'active';
         END
     """,
-)
-
-
-# Parameterized SP with DML body — exercises the UPDATE code path in stored-procedure ingestion.
-_SP_UPDATE_CUSTOMER_STATUS = StoredProcedureDefinition(
-    schema="e2e",
-    name="sp_update_customer_status",
-    definition_sql="""
-        CREATE PROCEDURE e2e.sp_update_customer_status(
+    )
+    update_status = StoredProcedureDefinition(
+        schema=schema,
+        name="sp_update_customer_status",
+        definition_sql=f"""
+        CREATE PROCEDURE {quoted}.sp_update_customer_status(
             IN p_customer_id INT,
             IN p_status VARCHAR(20)
         )
         BEGIN
-            UPDATE e2e.customers
+            UPDATE {quoted}.customers
             SET status = p_status
             WHERE id = p_customer_id;
         END
     """,
-)
-
-
-# -----------------------------------------------------------------------------
-# Top-level baseline
-# -----------------------------------------------------------------------------
-
-
-def _build_metadata() -> MetaData:
-    """Common portable tables + MySQL-specific all_types."""
-    md = build_common_metadata("e2e")
-    _declare_all_types(md)
-    return md
-
-
-MYSQL_BASELINE = SqlSourceBaseline(
-    schemas=["e2e"],
-    metadata=_build_metadata(),
-    seeds=[
-        TableSeed(
-            table_name="customers",
-            rows=COMMON_CUSTOMER_ROWS,
-            insert_sql=_MYSQL_CUSTOMERS_INSERT,
-        ),
-        TableSeed(
-            table_name="transactions",
-            rows=COMMON_TRANSACTION_ROWS,
-            insert_sql=_MYSQL_TRANSACTIONS_INSERT,
-        ),
-        TableSeed(
-            table_name="all_types",
-            rows=_ALL_TYPES_ROWS,
-            insert_sql=_MYSQL_ALL_TYPES_INSERT,
-        ),
-    ],
-    views=[_CUSTOMER_TXN_SUMMARY_VIEW],
-    stored_procedures=[_SP_ACTIVE_CUSTOMER_COUNT, _SP_UPDATE_CUSTOMER_STATUS],
-)
+    )
+    return SqlSourceBaseline(
+        schemas=[schema],
+        metadata=metadata,
+        seeds=seeds,
+        views=[view],
+        stored_procedures=[active_count, update_status],
+    )

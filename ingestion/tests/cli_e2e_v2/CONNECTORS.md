@@ -1,34 +1,227 @@
-# Adding a new connector
+# Authoring connector E2Es
 
-`mysql/` is the reference. Mirror its file layout.
+Own the source in fixtures, describe a complete workflow, and assert persisted behavior using ordinary functions. `mysql/` is the runnable SQL reference. The dashboard example below is illustrative, not shipped Metabase coverage.
 
-## Scaffold
+## Ownership and layout
 
-```
+```text
 <connector>/
-  __init__.py            # empty
-  baseline.py            # SQLAlchemy MetaData + seeds + views + SPs (declarative only)
-  connector.py           # service_name() + build_<connector>_config()
-  enforcer.py            # SqlBaselineEnforcer subclass
-  expected.py            # TYPE_MAP extension + <connector>_expected() helper
-  conftest.py            # <connector>_container fixture + thin wiring
-  test_<connector>.py    # tests
+  baseline.py          independently authored source schema and seeds
+  source.py            provision, validate, mutate, and tear down owned resources
+  connector.py         build complete WorkflowInvocation values
+  expected.py          independently authored expected OM entities and values
+  cases.py             WorkflowCase values and connector-specific checks
+  inventory.py         reviewed contract IDs and generated capability declarations
+  conftest.py          source, service_entity, workflow_case fixtures
+  test_<connector>.py  imported workflow test and ordinary custom tests
 ```
 
-## Per file
+This is a guide, not a required file count. Small connectors can combine declarations. Add the standard full ingestion CCL header to every new Python file, including package initializers.
 
-1. **`baseline.py`** — declare schema with SQLAlchemy Core. Reuse `core/source/common_baseline.py` for portable tables (customers, transactions). Put dialect-specific types on a wide `all_types` table keyed on `BigInteger id`.
-2. **`enforcer.py`** — subclass `SqlBaselineEnforcer`. Usually only override `_stored_procedure_query_sql` (returns `(schema, name)` rows). Other overrides are rare; see `mysql/enforcer.py`.
-3. **`expected.py`** — extend `CORE_TYPE_MAP` with dialect types. Export `<connector>_expected(service_name, tables=None)` calling `derive_expected_service(...)`.
-4. **`connector.py`** — `<connector>_service_name(session_uuid, variant="")` and `build_<connector>_config(service_name, server)`. The config emits `${E2E_<CONNECTOR>_*}` refs — never embed raw secrets.
-5. **`conftest.py`** — session-scoped `<connector>_container` boots the source via testcontainers, creates the scoped ingest user with OM-doc-minimum GRANTs, and populates `E2E_<CONNECTOR>_*` env vars (so `Env(key).ref()` in `connector.py` resolves). Then the thin wiring fixtures: session-scoped `_admin_engine` (admin engine, disposed on teardown) and `_policy` (`EnforcementPolicy` over the enforcer), plus `_source_ready`, `_service`, `_cfg`, `_expected_factory`, `_metadata_ingested`. Mirror `mysql/conftest.py`.
-6. **`test_<connector>.py`** — one `test_vanilla_ingest_structural`, one test per pipeline you ship (profiler / lineage / classification), and a parametrized filter matrix using `COMMON_FILTER_SCENARIOS` + a per-connector `_EXPECTED_TABLES_BY_VARIANT` dict. Mirror `mysql/test_mysql.py`.
+The source fixture must allocate a unique namespace, register cleanup before fallible setup, validate actual seeded values, and remove only its own resources. A failed test must not contaminate the next test. Mark credential-bearing dataclass fields `repr=False`; do not dump workflow configs, connection strings, passwords, or tokens. Register actual configured/generated secrets with the CI provider's native masking facility before commands can expose them. Do not silently skip missing setup or accept an unmanaged source for mutation tests.
 
-## Validate
+The root `service_name` fixture owns one unique OM service. A connector supplies `service_entity` (`DatabaseService` for SQL); cleanup uses that entity class for lookup and recursive hard deletion. Do not maintain a second service registry or swallow cleanup exceptions. The OM server itself is external and remains running.
+
+## A complete SQL case
+
+The following is a complete test module when placed under `mysql/`: existing MySQL fixtures supply an owned source and service class. It expands the reference `catalog_case` rather than hiding fixture/config wiring. Use this as a replacement/example, not an additional duplicate `catalog.metadata` contract in the same suite.
+
+```python
+import pytest
+
+from ingestion.tests.cli_e2e_v2.contracts.workflow import test_workflow  # noqa: F401
+from ingestion.tests.cli_e2e_v2.features.database.catalog.snapshot import read_catalog
+from ingestion.tests.cli_e2e_v2.features.database.pipelines import MetadataPipeline
+from ingestion.tests.cli_e2e_v2.mysql.cases import mysql_catalog_matches
+from ingestion.tests.cli_e2e_v2.mysql.connector import mysql_invocation
+from ingestion.tests.cli_e2e_v2.mysql.expected import mysql_expected
+from ingestion.tests.cli_e2e_v2.runtime.case import WorkflowCase
+from ingestion.tests.cli_e2e_v2.runtime.expect import Query
+
+
+@pytest.fixture(params=[pytest.param("catalog", marks=pytest.mark.e2e_contract("catalog.metadata"))])
+def workflow_case(request, mysql_source, service_name, om_server_config, om):
+    expected = mysql_expected(service_name, schema=mysql_source.schema)
+    return WorkflowCase(
+        invocation=mysql_invocation(
+            service_name=service_name,
+            sources=(mysql_source,),
+            options=MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
+            filters={},
+            server=om_server_config,
+        ),
+        persisted=Query(
+            f"catalog for {service_name}",
+            lambda: read_catalog(om, service_name),
+        ),
+        check=mysql_catalog_matches(expected),
+    )
+```
+
+The three fields are deliberately independent:
+
+- `invocation`: CLI subcommand plus the entire workflow config, including sink and server settings. Database helpers serialize generated pipeline models and own database-specific dispatch; the runtime does not infer connector family.
+- `persisted`: a labeled zero-argument read of actual OM state. Inventory queries must consume every page. Do not filter observations down to the expected result.
+- `check`: a callable that validates one fresh snapshot. Raise `AssertionError` for a mismatching observation, not for transport/authentication failures. Validate bad checker options before polling.
+
+The shared `cli` fixture supplies `CliRunner(work_dir: Path, *, command=("metadata",))`. Each invocation uses temporary `config.yaml` and `status.json` files and returns only `RunResult(exit_code, status)` after strict exit/status validation and an exact record-error count check (zero by default). Subprocess stdout/stderr flow into ordinary pytest file-descriptor capture. Persisted checks and the final polling mismatch remain ordinary assertions; they do not need a diagnostics recorder.
+
+Expected native types, values, inventory, and relationships come from authored seed declarations, not the connector's parsers/type maps or current OM output. `mysql_expected` uses the E2E declaration/type-map layer, independent of production ingestion parsing. Catalog equality alone does not prove profile values, samples, foreign keys, lineage, or dashboard memberships.
+
+## Feature checks and custom tests
+
+Import `contracts.workflow.test_workflow` to run a local `workflow_case`. For scenarios needing more than one action, write ordinary pytest tests. There is no scenario DSL or global connector auto-discovery.
+
+This custom MySQL module checks exact row count after metadata and profiling:
+
+```python
+from ingestion.tests.cli_e2e_v2.features.database.pipelines import ProfilerPipeline
+from ingestion.tests.cli_e2e_v2.features.database.profiles import profile_query, table_has_row_count
+from ingestion.tests.cli_e2e_v2.runtime import expect
+
+
+def test_customer_count(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    cli.run(mysql_run(ProfilerPipeline(useStatistics=False)))
+    query = profile_query(om, f"{service_name}.default.{mysql_source.schema}.customers")
+    expect.poll(query).satisfies(table_has_row_count(5))
+```
+
+`useStatistics=False` is an input, not permission to relax expected row count. This example can expose the same product behavior as the strict reference tests.
+
+Other reusable checks live in `features/database/entities.py`, `samples.py`, `profiles.py`, `lineage.py`, and `catalog/`. Compose related checks inside one checker when they must hold on the same observation. Keep independent feature scenarios in separate test items so one product failure cannot mask another.
+
+For multi-step scenarios, follow `test_mark_deleted_tables_on_reingest` and `test_repeat_ingest_preserves_ids_and_updates_metadata` in `mysql/test_mysql.py`:
+
+1. Ingest the fixture's source and assert initial persisted entities; retain UUIDs.
+2. Mutate only the owned source; verify the mutation directly against that source.
+3. Run the CLI again and poll fresh persisted observations.
+4. Assert the intended update/deletion, stable UUIDs, and an unaffected retained control.
+
+For filter scenarios, keep filter inputs and expected entity sets together in each parameter. Prove the baseline includes both the retained and excluded objects, use a fresh OM service for filtered ingestion, and compare complete inventory. A successful lookup of the retained table does not prove exclusion.
+
+## Expected failures
+
+An expected failure must declare the exact process exit, status success, and record-error count, then inspect the specific failure and surviving entities:
+
+```python
+result = cli.run(invocation, expected_exit=1, expected_success=False, expected_errors=1)
+assert result.status.total_errors == 1
+assert len(result.status.all_failures) == 1
+assert result.status.all_failures[0]["name"] == "_broken_view"
+```
+
+The reference containment test creates an invalid view in its owned schema and sets `workflowConfig.successThreshold=100` and `raiseOnError=True`. Ten successful records out of eleven exceed the default 90% threshold; requiring 100% makes that single failure determine the exit. Independently, the runner checks the total errors across all steps, including errors whose details were truncated. `run_and_check` accepts the same `expected_errors` policy. Missing/malformed status, an unrelated failure, an unexpected error count, or an unexpected exit must not pass merely because healthy entities exist.
+
+## Dashboard extension: illustrative only
+
+Offline design validation exercised generic case execution, generated models, SDK pagination, relationship checks, and `DashboardService` cleanup routing. It did **not** exercise a live Metabase server, actual connector ingestion, source provisioning, or live server cleanup. No Metabase fixture, dashboard feature module, or executable Metabase E2E is shipped here.
+
+The example below shows complete invocation/query/case wiring for a future connector. `seeded_source` and `dashboard_catalog_matches` are proposed connector/feature-local authoring, **not existing imports or fixtures**. Their required contracts follow the example.
+
+```python
+from dataclasses import dataclass
+import re
+
+import pytest
+
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    DashboardServiceMetadataPipeline,
+)
+from ingestion.tests.cli_e2e_v2.contracts.workflow import test_workflow  # noqa: F401
+from ingestion.tests.cli_e2e_v2.runtime.case import WorkflowCase
+from ingestion.tests.cli_e2e_v2.runtime.cli import WorkflowInvocation
+from ingestion.tests.cli_e2e_v2.runtime.expect import Query
+
+
+@dataclass(frozen=True)
+class DashboardSnapshot:
+    dashboards: tuple[Dashboard, ...]
+    charts: tuple[Chart, ...]
+
+
+@pytest.fixture
+def service_entity():
+    return DashboardService
+
+
+@pytest.fixture
+def workflow_case(om, service_name, om_server_config, seeded_source):
+    kept = seeded_source.kept_dashboard
+    assert kept.source_name and seeded_source.expected_dashboards
+    options = DashboardServiceMetadataPipeline(
+        dashboardFilterPattern={"includes": [f"^{re.escape(kept.source_name)}$"]},
+    )
+    invocation = WorkflowInvocation("ingest", {
+        "source": {
+            "type": "metabase",
+            "serviceName": service_name,
+            "serviceConnection": {
+                "config": seeded_source.connection.model_dump(mode="json", exclude_none=True),
+            },
+            "sourceConfig": {"config": options.model_dump(mode="json", exclude_none=True)},
+        },
+        "sink": om_server_config.to_sink_config_dict(),
+        "workflowConfig": om_server_config.to_workflow_config_dict(),
+    })
+
+    def read():
+        return DashboardSnapshot(
+            tuple(om.list_all_entities(
+                entity=Dashboard, params={"service": service_name}, fields=["charts"],
+            )),
+            tuple(om.list_all_entities(entity=Chart, params={"service": service_name})),
+        )
+
+    return WorkflowCase(
+        invocation,
+        Query(f"dashboard-service[{service_name}]", read),
+        dashboard_catalog_matches(
+            expected_dashboards=seeded_source.expected_dashboards,
+            expected_charts=seeded_source.expected_charts,
+            expected_links=seeded_source.expected_links,
+        ),
+    )
+```
+
+`seeded_source` must receive this run's `service_name`, create owned source objects, and return a generated `MetabaseConnection` plus independently declared expectations. Keep credentials out of fixture representations and logs, apply CI-native masks before setup, and retain environment references in the connection. IDs come from successful source creation, not from OM observations. Source names are filter inputs, while Metabase dashboard/card IDs become OM names: source `Revenue` / ID `42` and chart `Daily revenue` / ID `101` imply `{service_name}.42 → {service_name}.101`.
+
+The ordinary `dashboard_catalog_matches` checker must:
+
+- Validate declared link keys/targets before polling.
+- Compare the entire paginated dashboard and chart FQN inventories, rejecting missing/extra entities, duplicate FQNs, and missing FQNs. Never enable SDK `skip_on_failure` or filter unexpected objects out of the observation.
+- Unwrap each dashboard's generated `EntityReferenceList`, compare exact chart-FQN membership, and reject missing/duplicate links. `charts=None` fails when links are expected.
+- Compare each chart reference's type and UUID with the separately fetched Chart; correct inventory alone does not prove correct membership.
+
+Per fresh filtered service, `Revenue retained + Costs unexpectedly present on page 2` must fail, even when Revenue and its chart are correct. `{42,43}` dashboards and `{101,102}` charts with an incorrect `42→102` link must also fail. Account explicitly for default/synthetic dashboards and orphan charts, or bound source setup so they cannot exist; do not discard them in assertion code.
+
+Cost and limits: every polling attempt materializes both service inventories. A future live connector still needs source authentication/bootstrap, usable questions/data, source-name filtering verification, synthetic-dashboard behavior, persisted convergence/repeat UUID checks, and actual source/server cleanup evidence. None of that requires SQL policy in `runtime/`.
+
+## Coverage inventory and validation
+
+Declare `INVENTORY` in `<connector>/inventory.py`; `family` must match that directory's name. Author required atomic IDs independently of collected cases and place one `pytest.mark.e2e_contract("id")` on each supported case, including parameter-specific marks. MySQL's full declaration is in `mysql/inventory.py`. A future `dashboard_example/` suite could declare:
+
+```python
+from ingestion.tests.cli_e2e_v2.contracts.inventory import ContractInventory
+
+INVENTORY = ContractInventory(
+    family="dashboard_example",
+    required=frozenset({"dashboard.metadata", "chart.membership", "ingest.repeat"}),
+)
+```
+
+The shared collection validator loads only selected connectors' inventories. No runtime or central registry edit is needed, and missing inventories fail rather than inherit database requirements. Keep inventory modules declarative, use absolute imports, and never provision resources during import.
+
+Do not hide cases behind skip/xfail or downgrade known-supported capabilities. An `unsupported` entry needs a concrete reviewed reason; product bugs are strict failures, not unsupported features. Declare available generated support flags in `capabilities`, keyed by the contract ID's first segment (for example, `profile` → `MysqlConnection.model_fields["supportsProfiler"].get_default(call_default_factory=True)`). A true flag prevents waiving that capability's contracts; narrower features without a corresponding flag still require reviewed reasons.
 
 ```bash
-docker compose -f docker/development/docker-compose.yml up -d
-pytest tests/cli_e2e_v2/<connector> -v
+python -m pytest ingestion/tests/cli_e2e_v2/mysql --e2e-contract-check --collect-only -q
+python -m pytest ingestion/tests/cli_e2e_v2/meta -q
+python -m ruff check --config ingestion/pyproject.toml ingestion/tests/cli_e2e_v2
+python -m ruff format --config ingestion/pyproject.toml --check ingestion/tests/cli_e2e_v2
+git diff --check
 ```
 
-Failures: see `README.md`.
+Run full live connector coverage twice from fresh source stacks and mutation/filter/profile scenarios individually. Inspect persisted results, record genuine exit statuses, and verify cleanup. Offline tests and complete collection do not substitute for live evidence. See [README.md](README.md#debugging-and-reporting) for default failure capture, passing output with `-rP`/`-rA`, and live output with `-s`. Never dump temporary configs/status files into CI logs. Product redaction belongs in focused tests with synthetic secrets, not a sanitizer in this harness.

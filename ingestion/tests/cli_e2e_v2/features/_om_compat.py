@@ -8,7 +8,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""Feature-local shims for OM-version differences in generated schema shapes.
 
-import pytest
+Bridges list fields that may be `list[X] | None` or `RootModel[list[X]]`
+depending on the OM minor version (e.g. `owners` vs `tags`/`columns`).
+"""
 
-pytest.register_assert_rewrite(f"{__name__}.contracts", f"{__name__}.features")
+from __future__ import annotations
+
+from typing import Any
+
+
+def unwrap_root_list(field: Any) -> list:
+    """Return a plain list from `field` regardless of whether it is `None`, `list`, or `RootModel[list]`."""
+    if field is None:
+        return []
+    if hasattr(field, "root"):
+        return field.root
+    return field

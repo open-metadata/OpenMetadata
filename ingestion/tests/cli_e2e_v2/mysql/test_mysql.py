@@ -1,80 +1,54 @@
 #  Copyright 2026 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
-"""MySQL CLI E2E v2 tests.
-
-Covers metadata, profiler, auto-classification, view lineage, four filter
-scenarios, FK constraints, stored-procedure bodies, mark-deleted, and error
-containment. DQ is deferred to post-MVP.
-
-MySQL FK constraints produce ``tableConstraints``, not lineage edges. View-to-table
-lineage is derived from the view's DDL body via SQL parsing.
-"""
-
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""Real MySQL source → CLI → persisted OpenMetadata feature scenarios."""
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.utils import model_str
 
-from ..core.config.pipelines import (
+from ..contracts.workflow import test_workflow  # noqa: F401
+from ..features.database.catalog.snapshot import read_catalog
+from ..features.database.entities import (
+    column,
+    column_has_no_tag,
+    column_has_tag,
+    entity_exists,
+    table_has_schema_definition,
+    table_is_deleted,
+    table_query,
+)
+from ..features.database.lineage import lineage_has_columns, lineage_has_edge, lineage_query
+from ..features.database.pipelines import (
     AutoClassificationPipeline,
     LineagePipeline,
     MetadataPipeline,
     ProfilerPipeline,
 )
-from ..core.expected.differ import MatchMode, assert_service_matches
-from ..core.filter_scenarios import (
-    COMMON_FILTER_SCENARIOS,
-    FilterScenario,
-    expected_tables_for,
-)
-from .connector import build_mysql_config, mysql_service_name
+from ..features.database.profiles import column_has_metrics, profile_query, table_has_row_count
+from ..features.database.samples import sample_query
+from ..runtime import expect
+from ..runtime.case import WorkflowCase, run_and_check
+from ..runtime.expect import Query
+from .cases import mysql_catalog_matches, native_sample_rows, native_samples_match
+from .connector import mysql_invocation
 from .expected import mysql_expected
+from .source import fresh_mysql_source
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from sqlalchemy.engine import Engine
-
-    from ..core.config.builder import WorkflowConfig
-    from ..core.config.server import ServerConfig
-    from ..core.expected.types import ExpectedService
-    from ..core.fluent.om_client import OmClient
-    from ..core.runner.cli_runner import CliRunner
-    from ..core.source.orchestrator import EnforcementPolicy
-
-# ---------------------------------------------------------------------------
-# Structural (metadata pipeline) — full Expected* tree walk
-# ---------------------------------------------------------------------------
-
-
-def test_vanilla_ingest_structural(
-    om_client: OmClient,
-    mysql_expected_factory: Callable[..., ExpectedService],
-    # `mysql_metadata_ingested: None` triggers the fixture side-effect; value is always None.
-    mysql_metadata_ingested: None,
-) -> None:
-    """Metadata ingest produces the full declared catalog (SUPERSET match)."""
-    assert_service_matches(mysql_expected_factory(), om_client)
-
-
-# ---------------------------------------------------------------------------
-# Profiler — exhaustive metric coverage on representative columns
-# ---------------------------------------------------------------------------
-
-
-# Overrides the default metric set, which omits minLength/maxLength.
-# Excludes parameterized metrics (countInSet, *LikeCount, regexCount) that require user values.
-_ALL_PROFILER_METRICS: list[MetricType] = [
-    # Table-level
+_ALL_PROFILER_METRICS = [
     MetricType.rowCount,
     MetricType.columnCount,
     MetricType.columnNames,
-    # Column counts / proportions
     MetricType.valuesCount,
     MetricType.nullCount,
     MetricType.nullProportion,
@@ -83,7 +57,6 @@ _ALL_PROFILER_METRICS: list[MetricType] = [
     MetricType.uniqueCount,
     MetricType.uniqueProportion,
     MetricType.duplicateCount,
-    # Numeric stats
     MetricType.min,
     MetricType.max,
     MetricType.mean,
@@ -95,297 +68,330 @@ _ALL_PROFILER_METRICS: list[MetricType] = [
     MetricType.interQuartileRange,
     MetricType.nonParametricSkew,
     MetricType.histogram,
-    # String stats
     MetricType.minLength,
     MetricType.maxLength,
 ]
 
 
-def test_profiler_metrics(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
-    mysql_service: str,
-    mysql_metadata_ingested: None,
-) -> None:
-    """Profiler emits correct table-level row counts and per-column numeric/string metrics."""
-    status = cli_runner.run(
-        mysql_cfg.pipeline(ProfilerPipeline(metrics=_ALL_PROFILER_METRICS)).with_filter(schemas_include=["e2e"])
-    )
-    assert status.success, f"profiler failures: {status.all_failures}"
-
-    customers_fqn = f"{mysql_service}.default.e2e.customers"
-    transactions_fqn = f"{mysql_service}.default.e2e.transactions"
-    all_types_fqn = f"{mysql_service}.default.e2e.all_types"
-
-    om_client.table(customers_fqn).profile.eventually().row_count().equals(5)
-    om_client.table(transactions_fqn).profile.eventually().row_count().equals(5)
-    om_client.table(all_types_fqn).profile.eventually().row_count().equals(3)
-
-    om_client.table(customers_fqn).profile.eventually().column("credit_score").has_metrics(
-        valuesCount=5,
-        nullCount=0,
-        distinctCount=5,
-        uniqueCount=5,
-        min=600,
-        max=750,
-        mean=680,
-        sum=3400,
-        median=680,
-    )
-
-    om_client.table(customers_fqn).profile.eventually().column("first_name").has_metrics(
-        valuesCount=5,
-        nullCount=0,
-        minLength=3,
-        maxLength=7,
+def profiler_options():
+    return ProfilerPipeline(
+        metrics=_ALL_PROFILER_METRICS,
+        profileSampleConfig={
+            "sampleConfigType": "STATIC",
+            "config": {"profileSample": 100, "profileSampleType": "PERCENTAGE"},
+        },
+        randomizedSample=False,
+        useStatistics=False,
     )
 
 
-# ---------------------------------------------------------------------------
-# Stored procedures — body content (presence covered by structural walk)
-# ---------------------------------------------------------------------------
-
-
-def test_stored_procedure_bodies(
-    om_client: OmClient,
-    mysql_service: str,
-    mysql_metadata_ingested: None,
-) -> None:
-    """Both SP bodies are ingested intact (body content, not just existence)."""
-    base = f"{mysql_service}.default.e2e"
-
-    om_client.stored_procedure(f"{base}.sp_active_customer_count").has_code_containing("SELECT COUNT(*)")
-
-    sp_update = om_client.stored_procedure(f"{base}.sp_update_customer_status")
-    sp_update.has_code_containing("p_customer_id")
-    sp_update.has_code_containing("UPDATE")
-
-
-# ---------------------------------------------------------------------------
-# Lineage — table-level + column-level + schemaDefinition
-# ---------------------------------------------------------------------------
-
-
-def test_lineage_view_references_tables(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
-    mysql_service: str,
-    mysql_metadata_ingested: None,
-) -> None:
-    """View DDL is stored and SQL parsing produces table-level and column-level lineage edges."""
-    view_fqn = f"{mysql_service}.default.e2e.customer_txn_summary"
-    customers_fqn = f"{mysql_service}.default.e2e.customers"
-    transactions_fqn = f"{mysql_service}.default.e2e.transactions"
-
-    # Verify DDL landed before asserting parsed edges, so a missing-DDL regression is obvious.
-    om_client.table(view_fqn).has_schema_definition_containing("LEFT JOIN")
-
-    status = cli_runner.run(
-        mysql_cfg.pipeline(
-            # processQueryLineage=False: om_user lacks SELECT on mysql.general_log.
-            LineagePipeline(processQueryLineage=False)
-        ).with_filter(schemas_include=["e2e"])
-    )
-    assert status.success, f"lineage failures: {status.all_failures}"
-
-    om_client.table(view_fqn).lineage.eventually().has_upstream(customers_fqn)
-    om_client.table(view_fqn).lineage.eventually().has_upstream(transactions_fqn)
-
-    om_client.table(view_fqn).lineage.eventually().has_column_lineage(source="customers.id", target="customer_id")
-    om_client.table(view_fqn).lineage.eventually().has_column_lineage(
-        source="transactions.amount", target="total_amount"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Foreign key TableConstraint (no lineage edge for MySQL)
-# ---------------------------------------------------------------------------
-
-
-def test_transactions_foreign_key_constraint(
-    om_client: OmClient,
-    mysql_service: str,
-    mysql_metadata_ingested: None,
-) -> None:
-    """FK on transactions.customer_id → customers.id lands as a TableConstraint entry."""
-    transactions_fqn = f"{mysql_service}.default.e2e.transactions"
-    om_client.table(transactions_fqn).eventually(60).has_foreign_key_constraint(
-        column="customer_id",
-        referenced_table="customers",
-        referenced_column="id",
-    )
-
-
-# ---------------------------------------------------------------------------
-# Auto-classification (PII via column-name regex) + negative assertion
-# ---------------------------------------------------------------------------
-
-
-def test_auto_classification_tags_pii_columns(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    mysql_cfg: WorkflowConfig,
-    mysql_service: str,
-    mysql_metadata_ingested: None,
-) -> None:
-    """Auto-classification tags PII columns (email, date_of_birth) and leaves non-PII columns untagged."""
-    status = cli_runner.run(
-        mysql_cfg.pipeline(
-            AutoClassificationPipeline(
-                storeSampleData=True,
-                enableAutoClassification=True,
-                # 5 seed rows push the combined score near the 80% boundary; 60 aligns with PII minimumConfidence.
-                confidence=60,
-            )
-        ).with_filter(schemas_include=["e2e"])
-    )
-    assert status.success, f"auto-classification failures: {status.all_failures}"
-
-    customers_fqn = f"{mysql_service}.default.e2e.customers"
-
-    om_client.table(customers_fqn).column("email").has_tag("PII.Sensitive")
-    om_client.table(customers_fqn).column("date_of_birth").has_tag("PII.NonSensitive")
-
-    om_client.table(customers_fqn).column("id").has_no_tag("PII.Sensitive")
-    om_client.table(customers_fqn).column("id").has_no_tag("PII.NonSensitive")
-    om_client.table(customers_fqn).column("status").has_no_tag("PII.Sensitive")
-    om_client.table(customers_fqn).column("status").has_no_tag("PII.NonSensitive")
-
-
-# ---------------------------------------------------------------------------
-# Mark-deleted on re-ingest
-# ---------------------------------------------------------------------------
-
-
-def test_mark_deleted_tables_on_reingest(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_admin_engine: Engine,
-    mysql_policy: EnforcementPolicy,
-    mysql_source_ready: None,
-) -> None:
-    """Dropping a source table and re-ingesting with markDeletedTables=True soft-deletes the OM entity."""
-    service = mysql_service_name(session_uuid, variant="mark_deleted")
-    registered_services.append(service)
-    cfg = build_mysql_config(service, om_server_config)
-    pipeline_options = MetadataPipeline(
-        markDeletedTables=True,
-        includeStoredProcedures=False,  # not needed for this test; cuts run time
-    )
-
-    all_types_fqn = f"{service}.default.e2e.all_types"
-
-    status = cli_runner.run(cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"]))
-    assert status.success, f"initial ingest: {status.all_failures}"
-    om_client.table(all_types_fqn).is_not_deleted()
-
-    with mysql_admin_engine.begin() as conn:
-        conn.execute(text("DROP TABLE e2e.all_types"))
-
-    try:
-        status = cli_runner.run(cfg.pipeline(pipeline_options).with_filter(schemas_include=["e2e"]))
-        assert status.success, f"re-ingest after drop: {status.all_failures}"
-
-        om_client.table(all_types_fqn).eventually(30).is_soft_deleted()
-    finally:
-        # Restore source baseline so subsequent sessions start clean.
-        mysql_policy.enforcer.apply([])
-
-
-# ---------------------------------------------------------------------------
-# Error containment — one broken view doesn't tank the rest of ingest
-# ---------------------------------------------------------------------------
-
-
-def test_error_containment_one_broken_view(
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_admin_engine: Engine,
-    mysql_source_ready: None,
-) -> None:
-    """A broken view does not abort the metadata pipeline — baseline tables are ingested."""
-    service = mysql_service_name(session_uuid, variant="error_containment")
-    registered_services.append(service)
-    cfg = build_mysql_config(service, om_server_config)
-
-    with mysql_admin_engine.begin() as conn:
-        conn.execute(
-            text("CREATE TABLE IF NOT EXISTS e2e._helper_for_broken_view (id INT PRIMARY KEY, doomed_col INT)")
+@pytest.mark.e2e_contract("profile.metrics")
+def test_profiler_metrics(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    cli.run(mysql_run(profiler_options()))
+    base = f"{service_name}.default.{mysql_source.schema}"
+    for name, count in (("customers", 5), ("transactions", 5), ("all_types", 3)):
+        expect.poll(profile_query(om, f"{base}.{name}")).satisfies(table_has_row_count(count))
+    expect.poll(profile_query(om, f"{base}.customers")).satisfies(
+        column_has_metrics(
+            "credit_score",
+            valuesCount=5,
+            nullCount=0,
+            distinctCount=5,
+            uniqueCount=5,
+            min=600,
+            max=750,
+            mean=680,
+            sum=3400,
+            median=680,
         )
-        conn.execute(
-            text("CREATE OR REPLACE VIEW e2e._broken_view AS SELECT id, doomed_col FROM e2e._helper_for_broken_view")
+    )
+    expect.poll(profile_query(om, f"{base}.customers")).satisfies(
+        column_has_metrics("first_name", valuesCount=5, nullCount=0, minLength=3, maxLength=7)
+    )
+
+
+@pytest.mark.parametrize(
+    "observation",
+    [
+        pytest.param("column-freshness", marks=pytest.mark.e2e_contract("profile.freshness.columns")),
+        pytest.param("row-count-freshness", marks=pytest.mark.e2e_contract("profile.freshness.rows")),
+    ],
+)
+def test_profile_null_duplicates_and_freshness(
+    observation, cli, om, mysql_run, mysql_source, service_name, mysql_profile_table
+):
+    filters = {"tableFilterPattern": {"includes": ["profile_values"]}}
+    cli.run(mysql_run(MetadataPipeline(includeStoredProcedures=False), filters))
+    invocation = mysql_run(profiler_options(), filters)
+    cli.run(invocation)
+    query = profile_query(om, f"{service_name}.default.{mysql_source.schema}.profile_values")
+
+    def initial(table):
+        if observation == "row-count-freshness":
+            table_has_row_count(4)(table)
+        else:
+            assert table is not None and table.profile is not None, "table profile missing"
+            column_has_metrics(
+                "score",
+                valuesCount=3,
+                nullCount=1,
+                distinctCount=2,
+                uniqueCount=1,
+                min=10,
+                max=20,
+                sum=50,
+                # MySQL AVG(INT) retains four fractional digits.
+                mean=pytest.approx(50 / 3, abs=0.00005, rel=0),
+            )(table)
+
+    before = expect.poll(query).satisfies(initial)
+    if observation == "column-freshness":
+        table_timestamp = before.profile.timestamp.root
+        column_timestamp = column(before, "score").profile.timestamp.root
+    with mysql_source.admin_engine.begin() as connection:
+        connection.execute(mysql_profile_table.insert(), {"id": 5, "score": 40})
+    with mysql_source.admin_engine.connect() as connection:
+        assert connection.execute(
+            select(mysql_profile_table.c.score).order_by(mysql_profile_table.c.id)
+        ).scalars().all() == [10, 20, 20, None, 40]
+    cli.run(invocation)
+
+    def updated(table):
+        if observation == "row-count-freshness":
+            table_has_row_count(5)(table)
+        else:
+            assert table is not None and table.profile is not None, "table profile missing"
+            column_has_metrics(
+                "score", valuesCount=4, nullCount=1, distinctCount=3, uniqueCount=2, min=10, max=40, sum=90, mean=22.5
+            )(table)
+            assert table.profile.timestamp.root > table_timestamp
+            assert column(table, "score").profile.timestamp.root > column_timestamp
+
+    expect.poll(query).satisfies(updated)
+
+
+@pytest.mark.parametrize(
+    "int_value",
+    [
+        pytest.param(123456, id="original", marks=pytest.mark.e2e_contract("sample.values.original")),
+        pytest.param(654321, id="updated", marks=pytest.mark.e2e_contract("sample.values.updated")),
+    ],
+)
+def test_persisted_native_sample_values(int_value, cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    if int_value != 123456:
+        mysql_source.set_value("all_types", 1, "int_col", int_value)
+    table = expect.poll(table_query(om, f"{service_name}.default.{mysql_source.schema}.all_types")).satisfies(
+        entity_exists
+    )
+    cli.run(
+        mysql_run(
+            AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=False, sampleDataCount=10),
+            {"tableFilterPattern": {"includes": ["all_types"]}},
         )
-        conn.execute(text("ALTER TABLE e2e._helper_for_broken_view DROP COLUMN doomed_col"))
-        # _broken_view now references a non-existent column; DESCRIBE fails on it.
-
-    try:
-        try:
-            status = cli_runner.run(
-                cfg.pipeline(MetadataPipeline(includeStoredProcedures=False)).with_filter(schemas_include=["e2e"])
-            )
-        except Exception:
-            status = None
-
-        for table in ("customers", "transactions", "all_types"):
-            om_client.table(f"{service}.default.e2e.{table}").eventually(30).exists()
-
-        if status is not None and status.all_failures:
-            failure_text = " ".join(str(f.get("error", "")) for f in status.all_failures).lower()
-            assert "_broken_view" in failure_text or "doomed_col" in failure_text or "invalid" in failure_text, (
-                f"broken view didn't surface in failures: {status.all_failures}"
-            )
-    finally:
-        with mysql_admin_engine.begin() as conn:
-            conn.execute(text("DROP VIEW IF EXISTS e2e._broken_view"))
-            conn.execute(text("DROP TABLE IF EXISTS e2e._helper_for_broken_view"))
-
-
-# ---------------------------------------------------------------------------
-# Filter scenarios — isolated services, STRICT mode catches "extras"
-# ---------------------------------------------------------------------------
-
-
-# MySQL-specific per-variant table lists (common tables present in every variant unless excluded).
-_EXPECTED_TABLES_BY_VARIANT: dict[str, list[str] | None] = {
-    "inc_exact": ["customers"],
-    "exc_exact": ["customers", "all_types", "customer_txn_summary"],
-    "sch_inc": None,  # None = full baseline
-    "regex_prio": ["customers"],
-}
-
-
-@pytest.mark.parametrize("scenario", COMMON_FILTER_SCENARIOS, ids=lambda s: s.id)
-def test_filter(
-    scenario: FilterScenario,
-    cli_runner: CliRunner,
-    om_client: OmClient,
-    om_server_config: ServerConfig,
-    session_uuid: str,
-    registered_services: list[str],
-    mysql_source_ready: None,
-) -> None:
-    """Filter variants (include exact / exclude exact / schema include / regex with exclude priority) pass STRICT mode."""
-    expected_tables = expected_tables_for(scenario, _EXPECTED_TABLES_BY_VARIANT, connector="mysql")
-
-    service = mysql_service_name(session_uuid, variant=f"filter_{scenario.variant}")
-    registered_services.append(service)
-
-    cfg = build_mysql_config(service, om_server_config)
-    status = cli_runner.run(
-        cfg.pipeline(MetadataPipeline(includeStoredProcedures=True)).with_filter(**scenario.filter_kwargs)
     )
-    assert status.success, f"filter[{scenario.variant}] failures: {status.all_failures}"
+    expect.poll(sample_query(om, table)).satisfies(lambda sampled: native_samples_match(sampled, int_value=int_value))
 
-    assert_service_matches(
-        mysql_expected(service, tables=expected_tables),
-        om_client,
-        mode=MatchMode.STRICT,
+
+@pytest.mark.e2e_contract("sample.values.replacement")
+def test_reingest_replaces_persisted_samples(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    table = expect.poll(table_query(om, f"{service_name}.default.{mysql_source.schema}.all_types")).satisfies(
+        entity_exists
     )
+    invocation = mysql_run(
+        AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=False, sampleDataCount=10),
+        {"tableFilterPattern": {"includes": ["all_types"]}},
+    )
+    query = sample_query(om, table)
+
+    def values_match(sampled, expected):
+        assert sampled is not None, "sample data missing"
+        assert sampled.id == table.id, "samples belong to a different table"
+        actual = {key: row["int_col"] for key, row in native_sample_rows(sampled).items()}
+        assert actual == expected, f"int_col samples: expected {expected!r}, got {actual!r}"
+
+    cli.run(invocation)
+    expect.poll(query).satisfies(lambda sampled: values_match(sampled, {1: 123456, 2: None, 3: None}))
+    mysql_source.set_value("all_types", 1, "int_col", 654321)
+    cli.run(invocation)
+    expect.poll(query).satisfies(lambda sampled: values_match(sampled, {1: 654321, 2: None, 3: None}))
+
+
+@pytest.mark.e2e_contract("lineage.view")
+def test_lineage_view_references_tables(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    base = f"{service_name}.default.{mysql_source.schema}"
+    view = f"{base}.customer_txn_summary"
+    expect.poll(table_query(om, view)).satisfies(table_has_schema_definition("LEFT JOIN"))
+    cli.run(mysql_run(LineagePipeline(processQueryLineage=False)))
+
+    def check(graph):
+        lineage_has_edge(f"{base}.customers", view)(graph)
+        lineage_has_edge(f"{base}.transactions", view)(graph)
+        lineage_has_columns(
+            (f"{base}.customers.id", f"{base}.transactions.amount"), (f"{view}.customer_id", f"{view}.total_amount")
+        )(graph)
+
+    expect.poll(lineage_query(om, view)).satisfies(check)
+
+
+@pytest.mark.e2e_contract("classification.tags")
+def test_auto_classification_tags_pii_columns(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
+    cli.run(mysql_run(AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=True, confidence=60)))
+
+    def check(table):
+        column_has_tag("email", "PII.Sensitive")(table)
+        column_has_tag("date_of_birth", "PII.NonSensitive")(table)
+        for name in ("id", "status"):
+            for tag in ("PII.Sensitive", "PII.NonSensitive"):
+                column_has_no_tag(name, tag)(table)
+
+    expect.poll(table_query(om, f"{service_name}.default.{mysql_source.schema}.customers")).satisfies(check)
+
+
+@pytest.mark.e2e_contract("deletion.tables")
+def test_mark_deleted_tables_on_reingest(cli, om, mysql_run, mysql_source, service_name):
+    invocation = mysql_run(MetadataPipeline(markDeletedTables=True, includeStoredProcedures=False))
+    cli.run(invocation)
+    base = f"{service_name}.default.{mysql_source.schema}"
+    removed = table_query(om, f"{base}.all_types")
+    retained = table_query(om, f"{base}.customers")
+    before = expect.poll(removed).satisfies(table_is_deleted(deleted=False))
+    sibling = expect.poll(retained).satisfies(table_is_deleted(deleted=False))
+    mysql_source.drop_table("all_types")
+    cli.run(invocation)
+    after = expect.poll(removed).satisfies(table_is_deleted(deleted=True))
+    survivor = expect.poll(retained).satisfies(table_is_deleted(deleted=False))
+    assert after.id == before.id
+    assert survivor.id == sibling.id
+
+
+@pytest.mark.e2e_contract("ingest.repeat")
+def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, om, mysql_case, mysql_run, mysql_source, service_name):
+    run_and_check(cli, mysql_case)
+    before = mysql_case.persisted.read()
+    original_ids = {model_str(table.fullyQualifiedName): table.id for table in before.tables}
+    quoted = mysql_source.admin_engine.dialect.identifier_preparer.quote_identifier(mysql_source.schema)
+    with mysql_source.admin_engine.begin() as connection:
+        connection.execute(text(f"ALTER TABLE {quoted}.all_types COMMENT = 'Updated native values fixture'"))
+    mysql_source.set_value("all_types", 1, "int_col", 654321)
+    cli.run(mysql_run(MetadataPipeline(includeDDL=True, includeStoredProcedures=True, overrideMetadata=True)))
+    expected = mysql_expected(service_name, schema=mysql_source.schema)
+
+    def updated(snapshot):
+        mysql_catalog_matches(expected)(snapshot)
+        assert len(snapshot.tables) == len(original_ids)
+        assert {model_str(table.fullyQualifiedName): table.id for table in snapshot.tables} == original_ids
+        table = snapshot.find(Table, f"{service_name}.default.{mysql_source.schema}.all_types")
+        assert model_str(table.description) == "Updated native values fixture"
+
+    expect.poll(mysql_case.persisted).satisfies(updated)
+    table = expect.poll(table_query(om, f"{service_name}.default.{mysql_source.schema}.all_types")).satisfies(
+        entity_exists
+    )
+    cli.run(
+        mysql_run(
+            AutoClassificationPipeline(storeSampleData=True, enableAutoClassification=False, sampleDataCount=10),
+            {"tableFilterPattern": {"includes": ["all_types"]}},
+        )
+    )
+
+    def updated_values(sampled):
+        rows = native_sample_rows(sampled)
+        assert {key: row["int_col"] for key, row in rows.items()} == {1: 654321, 2: None, 3: None}
+
+    expect.poll(sample_query(om, table)).satisfies(updated_values)
+
+
+@pytest.mark.e2e_contract("error.containment")
+def test_error_containment_one_broken_view(cli, om, mysql_run, mysql_source, service_name):
+    quoted = mysql_source.admin_engine.dialect.identifier_preparer.quote_identifier(mysql_source.schema)
+    with mysql_source.admin_engine.begin() as connection:
+        connection.execute(text(f"CREATE TABLE {quoted}._helper_for_broken_view (id INT PRIMARY KEY, doomed_col INT)"))
+        connection.execute(
+            text(f"CREATE VIEW {quoted}._broken_view AS SELECT id, doomed_col FROM {quoted}._helper_for_broken_view")
+        )
+        connection.execute(text(f"ALTER TABLE {quoted}._helper_for_broken_view DROP COLUMN doomed_col"))
+    invocation = mysql_run(MetadataPipeline(includeStoredProcedures=False))
+    # Ten successes out of eleven pass the default 90%; require every record to succeed.
+    invocation.config["workflowConfig"].update(successThreshold=100, raiseOnError=True)
+    result = cli.run(invocation, expected_exit=1, expected_success=False, expected_errors=1)
+    assert result.status.total_errors == 1
+    assert len(result.status.all_failures) == 1
+    assert result.status.all_failures[0]["name"] == "_broken_view"
+    for name in ("customers", "transactions", "all_types"):
+        expect.poll(table_query(om, f"{service_name}.default.{mysql_source.schema}.{name}")).satisfies(
+            table_is_deleted(deleted=False)
+        )
+
+
+@pytest.mark.parametrize(
+    "filters, expected_tables",
+    [
+        pytest.param(
+            {"tableFilterPattern": {"includes": ["customers"]}},
+            {"customers"},
+            id="include-one",
+            marks=pytest.mark.e2e_contract("filter.table.include-one"),
+        ),
+        pytest.param(
+            {"tableFilterPattern": {"excludes": ["transactions"]}},
+            {"customers", "all_types", "customer_txn_summary"},
+            id="exclude-one",
+            marks=pytest.mark.e2e_contract("filter.table.exclude-one"),
+        ),
+        pytest.param(
+            {"tableFilterPattern": {"includes": ["customer.*"], "excludes": ["customer_txn.*"]}},
+            {"customers"},
+            id="regex-exclude-wins",
+            marks=pytest.mark.e2e_contract("filter.table.regex-exclude-wins"),
+        ),
+        pytest.param(
+            {
+                "tableFilterPattern": {
+                    "includes": [".*"],
+                    "excludes": ["transactions", "all_types", "customer_txn_summary"],
+                }
+            },
+            {"customers"},
+            id="exclude-wins",
+            marks=pytest.mark.e2e_contract("filter.table.exclude-wins"),
+        ),
+    ],
+)
+def test_table_filter(filters, expected_tables, mysql_filter_case, cli):
+    run_and_check(cli, mysql_filter_case(filters, expected_tables))
+
+
+@pytest.mark.parametrize(
+    "filter_kind",
+    [
+        pytest.param("include-one", marks=pytest.mark.e2e_contract("filter.schema.include-one")),
+        pytest.param("exclude-wins", marks=pytest.mark.e2e_contract("filter.schema.exclude-wins")),
+    ],
+)
+def test_schema_filter(
+    filter_kind, cli, om, mysql_source, mysql_admin_engine, mysql_ingestion_engine, service_name, om_server_config
+):
+    with fresh_mysql_source(mysql_admin_engine) as excluded:
+        for source in (mysql_source, excluded):
+            quoted = mysql_ingestion_engine.dialect.identifier_preparer.quote_identifier(source.schema)
+            with mysql_ingestion_engine.connect() as connection:
+                assert connection.execute(text(f"SELECT COUNT(*) FROM {quoted}.customers")).scalar_one() == 5
+        pattern = {"includes": [mysql_source.schema]}
+        if filter_kind == "exclude-wins":
+            pattern = {"includes": [mysql_source.schema, excluded.schema], "excludes": [excluded.schema]}
+        invocation = mysql_invocation(
+            service_name=service_name,
+            sources=(mysql_source, excluded),
+            options=MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
+            filters={"schemaFilterPattern": pattern},
+            server=om_server_config,
+        )
+        assert "databaseSchema" not in invocation.config["source"]["serviceConnection"]["config"]
+        run_and_check(
+            cli,
+            WorkflowCase(
+                invocation,
+                Query(f"two-schema catalog {service_name}", lambda: read_catalog(om, service_name)),
+                mysql_catalog_matches(mysql_expected(service_name, schema=mysql_source.schema)),
+            ),
+        )

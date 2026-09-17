@@ -80,6 +80,7 @@ jobs:
           cd ingestion
           mkdir -p junit
           pytest -v \
+            --e2e-contract-check \
             --junitxml=junit/test-results-v2-${{ matrix.connector }}.xml \
             tests/cli_e2e_v2/${{ matrix.connector }}
         shell: bash
