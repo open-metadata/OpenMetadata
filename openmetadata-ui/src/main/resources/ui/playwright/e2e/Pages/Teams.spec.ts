@@ -248,9 +248,9 @@ test.describe('Teams Page', () => {
 
       // Select the user to remove
       await page
-        .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-        )
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
         .click();
 
       const updateTeamResponse = page.waitForResponse('/api/v1/users*');
@@ -423,6 +423,11 @@ test.describe('Teams Page', () => {
   });
 
   test('Create a new public team', async ({ page }) => {
+    // Full UI create flow plus per-test admin login: nightly runs measured
+    // 66-84s under load against the 60s default budget (all three attempts of
+    // run 35066461002 timed out just past it).
+    test.slow();
+
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
     await openAddTeamModal(page);
@@ -876,15 +881,16 @@ test.describe('Teams Page', () => {
       .fill(user.getUserDisplayName());
 
     await page
-      .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      .locator('[data-testid="selectable-list"]')
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.getUserDisplayName() })
       .click();
 
     await expect(
-      page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      page
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
     ).toHaveClass(/active/);
 
     const updateTeamResponse = page.waitForResponse('/api/v1/users*');

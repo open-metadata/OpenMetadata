@@ -36,7 +36,10 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import {
+  connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+} from '../../utils/lineage';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -1388,6 +1391,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
       await expect(
@@ -1437,6 +1444,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
       await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
 
       await expect(page.getByTestId('previous')).toBeDisabled();
 
@@ -1459,7 +1470,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('filters-button').click();
       await page.getByTestId('search-dropdown-Service Type').click();
 
-      const mysqlOption = page.getByTitle('mysql', { exact: true });
+      // The option row's data-testid is the lowercased service-type key
+      // ('mysql'); the visible label is source-cased ('Mysql'), so match the
+      // stable testid rather than the label.
+      const mysqlOption = page
+        .getByTestId('drop-down-menu')
+        .getByTestId('mysql');
       await expect(mysqlOption).toBeVisible();
       await mysqlOption.click();
 

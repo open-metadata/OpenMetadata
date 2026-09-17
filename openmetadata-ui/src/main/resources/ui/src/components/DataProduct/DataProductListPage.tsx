@@ -33,28 +33,25 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  NO_DATA,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../constants/constants';
+import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
+  renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -67,8 +64,6 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
@@ -148,6 +143,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -247,48 +243,34 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return (
-            <OwnerLabel
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.owners}
-              showLabel={false}
-            />
+          return renderDomainOwnersCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
           );
         case 'glossaryTerms':
-          return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="lg"
-              tags={getGlossaryTags(entity.tags)}
-            />
-          );
+          return renderDomainGlossaryTagsCell(entity);
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
-          return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="sm"
-              tags={getClassificationTags(entity.tags)}
-            />
-          );
+          return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return (
-            <OwnerLabel
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.experts}
-              showLabel={false}
-            />
+          return renderDomainExpertsCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
           );
         default:
           return null;
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [
+      dataProductListing.actionHandlers.onEntityClick,
+      toOwnersWithHref,
+      renderOwnerContent,
+    ]
   );
 
   const selectedDataProductEntities = useMemo(

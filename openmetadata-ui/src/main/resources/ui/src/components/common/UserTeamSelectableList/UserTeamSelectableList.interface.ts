@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
 import { EntityReference } from '../../../generated/entity/teams/user';
 
@@ -19,17 +18,24 @@ type MultipleUserTeam = {
   team: boolean;
 };
 
+type PopoverControlProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
 export interface UserSelectDropdownProps {
   hasPermission: boolean;
   owner?: EntityReference[];
   onUpdate: (updatedUser?: EntityReference[]) => void | Promise<void>;
   onClose?: () => void;
   children?: ReactNode;
-  popoverProps?: PopoverProps;
+  popoverProps?: PopoverControlProps;
   multiple?: MultipleUserTeam;
   label?: string;
   previewSelected?: boolean;
   listHeight?: number;
   tooltipText?: string;
   overlayClassName?: string;
+  /** data-testid for the built-in edit trigger. Defaults to 'edit-owner'. */
+  triggerDataTestId?: string;
 }

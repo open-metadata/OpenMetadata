@@ -40,6 +40,7 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -91,12 +92,21 @@ const SampleDataTable: FC<SampleDataProps> = ({
     return owners?.some((owner) => owner.id === currentUser?.id);
   }, [owners, currentUser]);
 
+  // Consumer via the `permissions: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument: isTableDeleted is a separate prop gating a different
+  // concern (the fetch effect below) — the old `hasPermission` expression never referenced
+  // it. N-term raw OR containing a bare `EditAll` term (Task 8 Batch 2 KnowledgeCard
+  // precedent): naively dropping the EditAll term in favor of just canEditSampleData would
+  // regress the case where EditAll=true but EditSampleData is explicitly false (old code's
+  // bare `EditAll ||` wins unconditionally) — so canEditAll is kept as its own explicit
+  // OR-term alongside the prioritized canEditSampleData, restoring byte-for-byte equivalence.
+  const { canEditAll, canEditSampleData } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasPermission = useMemo(
-    () =>
-      permissions.EditAll ||
-      permissions.EditSampleData ||
-      isCurrentUserTableOwner,
-    [isCurrentUserTableOwner, permissions]
+    () => canEditAll || canEditSampleData || isCurrentUserTableOwner,
+    [canEditAll, canEditSampleData, isCurrentUserTableOwner]
   );
 
   const handleDeleteModal = useCallback(
