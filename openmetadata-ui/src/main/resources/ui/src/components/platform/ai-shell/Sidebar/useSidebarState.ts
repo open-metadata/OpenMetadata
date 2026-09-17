@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
 
@@ -62,12 +62,21 @@ export const useMainCollapse = (
     inSubMode ? true : readTopLevelDefault()
   );
 
-  // Re-derive when entering/leaving a sub-context or switching between
-  // sub-contexts: sub-contexts always rail the main nav, the top level restores
-  // the persisted preference.
-  useEffect(() => {
+  // Re-derive synchronously (during render, not in an effect) when entering/
+  // leaving a sub-context or switching between sub-contexts, so the main nav
+  // rails in the same commit the sub-panel appears — an effect would run after
+  // paint and briefly show both full panels. This is React's supported
+  // "adjust state when a prop changes" pattern; the ref-guarded setCollapsed
+  // fires only on an actual context change, so within a context an explicit
+  // toggle is preserved.
+  const prevContextRef = useRef({ inSubMode, contextKey });
+  if (
+    prevContextRef.current.inSubMode !== inSubMode ||
+    prevContextRef.current.contextKey !== contextKey
+  ) {
+    prevContextRef.current = { inSubMode, contextKey };
     setCollapsed(inSubMode ? true : readTopLevelDefault());
-  }, [inSubMode, contextKey]);
+  }
 
   // Persist only at the top level; a sub-context toggle stays transient.
   const toggle = useCallback(() => {
