@@ -35,7 +35,7 @@ import {
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
-import { EntityTabs } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
@@ -101,7 +101,10 @@ const AddIngestionPage = () => {
 
   const fetchServiceDetails = async () => {
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN);
+      // `owners` is needed to pre-fill the agent's Owners field.
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
       if (response) {
         setServiceData(response as DataObj);
       } else {
