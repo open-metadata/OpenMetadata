@@ -741,6 +741,8 @@ public interface SearchClient
 
   Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
 
+  String FIELDS_TO_REMOVE = "fieldsToRemove";
+
   boolean isClientAvailable();
 
   boolean isNewClientAvailable();
