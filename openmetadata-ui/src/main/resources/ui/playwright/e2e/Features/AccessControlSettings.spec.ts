@@ -1043,7 +1043,7 @@ test.describe(
             }
           })
           .toBe(true);
-         await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
       });
 
       await test.step('Save rule and verify new card appears', async () => {
@@ -1636,7 +1636,10 @@ test.describe(
 
       await test.step('Selecting a date range enables the export button and triggers export API', async () => {
         // Open the calendar
-        await page.getByTestId('export-date-range-picker').getByRole('button', { name: 'Calendar Date range picker' }).click();
+        await page
+          .getByTestId('export-date-range-picker')
+          .getByRole('button', { name: 'Calendar Date range picker' })
+          .click();
 
         // Pick Sep 1 (start) and Sep 5 (end) — both are in the past relative to
         // the test run date of 2026-09-11 so they will never be disabled.

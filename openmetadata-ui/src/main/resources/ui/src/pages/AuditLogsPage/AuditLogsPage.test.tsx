@@ -222,43 +222,42 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock(
-  '../../components/AuditLog/AuditLogFilters.component',
-  () => ({
-    __esModule: true,
-    default: jest.fn().mockImplementation(({ onFiltersChange }) => (
-      <div data-testid="audit-log-filters">
-        <button
-          data-testid="apply-filter"
-          onClick={() =>
-            onFiltersChange(
-              [
-                {
-                  category: 'entityType',
-                  value: { key: 'table', label: 'Table', value: 'table' },
-                },
-              ],
-              { entityType: 'table' }
-            )
-          }>
-          Apply Filter
-        </button>
-      </div>
-    )),
-  })
-);
+jest.mock('../../components/AuditLog/AuditLogFilters.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onFiltersChange }) => (
+    <div data-testid="audit-log-filters">
+      <button
+        data-testid="apply-filter"
+        onClick={() =>
+          onFiltersChange(
+            [
+              {
+                category: 'entityType',
+                value: { key: 'table', label: 'Table', value: 'table' },
+              },
+            ],
+            { entityType: 'table' }
+          )
+        }>
+        Apply Filter
+      </button>
+    </div>
+  )),
+}));
 
 jest.mock('../../components/AuditLog/AuditLogList.component', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(({ isLoading, logs }) => (
-    <div data-testid="audit-log-list">
-      {isLoading ? (
-        <div data-testid="loading">Loading...</div>
-      ) : (
-        <div data-testid="logs-count">Logs: {logs.length}</div>
-      )}
-    </div>
-  )),
+  default: jest
+    .fn()
+    .mockImplementation(({ isLoading, logs }) => (
+      <div data-testid="audit-log-list">
+        {isLoading ? (
+          <div data-testid="loading">Loading...</div>
+        ) : (
+          <div data-testid="logs-count">Logs: {logs.length}</div>
+        )}
+      </div>
+    )),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
