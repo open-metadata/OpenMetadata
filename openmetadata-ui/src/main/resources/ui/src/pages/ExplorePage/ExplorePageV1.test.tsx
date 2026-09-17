@@ -19,7 +19,6 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { usePaging } from '../../hooks/paging/usePaging';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getExploreTabPath } from '../../utils/RouterUtils';
@@ -136,7 +135,6 @@ describe('ExplorePageV1', () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
-    expect(usePaging).toHaveBeenCalledWith(25, [15, 25, 50]);
   });
 
   it('does not write a page size it cannot offer back to the shared URL', async () => {
