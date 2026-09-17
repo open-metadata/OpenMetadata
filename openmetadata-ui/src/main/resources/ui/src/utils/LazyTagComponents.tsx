@@ -25,7 +25,6 @@ import WidgetCard from '../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../components/Customization/GenericProvider/GenericContext';
 import { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/type';
-import { useOwnerDisplayProps } from '../hooks/useOwnerDisplayProps';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 const CommonWidgets = lazy(() =>
@@ -64,7 +63,6 @@ const OwnerWidgetFromContext = ({
   const { data, onUpdate, permissions, isVersionView, entityRules } =
     useGenericContext<{ owners?: EntityReference[]; id: string }>();
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const hasPermission =
     permissionProp ?? (permissions?.EditOwners || permissions?.EditAll);
@@ -111,8 +109,7 @@ const OwnerWidgetFromContext = ({
       title={t('label.owner-plural')}>
       <Owner
         isCompactView={false}
-        owners={toOwnersWithHref(data.owners ?? [])}
-        renderOwnerContent={renderOwnerContent}
+        owners={data.owners ?? []}
         showLabel={false}
       />
     </WidgetCard>
