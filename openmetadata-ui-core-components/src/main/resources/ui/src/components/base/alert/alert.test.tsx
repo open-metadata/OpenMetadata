@@ -75,6 +75,7 @@ describe('Alert', () => {
 
     expect(container.firstElementChild).toHaveClass('tw:items-center');
   });
+});
 
 describe('Alert theme semantics', () => {
   it.each<[AlertVariant, string, string]>([
