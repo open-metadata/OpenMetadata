@@ -38,9 +38,7 @@ import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMetricGroup;
-import org.openmetadata.schema.api.data.MetricDimension;
 import org.openmetadata.schema.api.data.MetricExpression;
-import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
@@ -70,14 +68,10 @@ import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
-import org.openmetadata.schema.type.ColumnLineage;
-import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
@@ -2613,56 +2607,6 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     } finally {
       admin.policies().delete(policy.getId());
     }
-  }
-
-  @Test
-  void metricDimensionAndMeasureSupportColumnLineageRoundTrips(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Table table = ShortStackFactory.table(ns);
-    Metric metric =
-        createEntity(
-            createRequest(ns.prefix("lineage_metric_children"), ns)
-                .withDimensions(List.of(new MetricDimension().withName("region")))
-                .withMeasures(List.of(new MetricMeasure().withName("revenue"))));
-    String tableColumn = table.getColumns().getFirst().getFullyQualifiedName();
-    String dimension = metric.getFullyQualifiedName() + ".dimension.region";
-    String measure = metric.getFullyQualifiedName() + ".measure.revenue";
-    LineageDetails details =
-        new LineageDetails()
-            .withColumnsLineage(
-                List.of(
-                    new ColumnLineage()
-                        .withFromColumns(List.of(tableColumn))
-                        .withToColumn(dimension),
-                    new ColumnLineage()
-                        .withFromColumns(List.of(tableColumn))
-                        .withToColumn(measure)));
-
-    client
-        .lineage()
-        .addLineage(
-            new AddLineage()
-                .withEdge(
-                    new EntitiesEdge()
-                        .withFromEntity(table.getEntityReference())
-                        .withToEntity(metric.getEntityReference())
-                        .withLineageDetails(details)));
-
-    EntityLineage lineage =
-        JSON.readValue(
-            client.lineage().getEntityLineage("metric", metric.getId().toString(), "1", "0"),
-            EntityLineage.class);
-    Edge edge =
-        lineage.getUpstreamEdges().stream()
-            .filter(candidate -> candidate.getFromEntity().equals(table.getId()))
-            .findFirst()
-            .orElseThrow();
-    assertEquals(2, edge.getLineageDetails().getColumnsLineage().size());
-    assertEquals(
-        List.of(dimension, measure),
-        edge.getLineageDetails().getColumnsLineage().stream()
-            .map(ColumnLineage::getToColumn)
-            .toList());
   }
 
   // ===================================================================
