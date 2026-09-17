@@ -26,7 +26,6 @@ export interface TreeSelectTreeItemContentProps<T> {
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
-  showConnectorLines?: boolean;
   onNodeClick: () => void;
 }
 
@@ -39,7 +38,6 @@ export const TreeSelectTreeItemContent = <T,>({
   multiple,
   disabled,
   hasChildItems,
-  showConnectorLines = false,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
@@ -47,13 +45,17 @@ export const TreeSelectTreeItemContent = <T,>({
 
   return (
     <Tree.ItemContent
-      className={cx(isSelected && 'tw:bg-utility-blue-50')}
+      className={cx(
+        'tw:!text-xs tw:!font-normal',
+        isSelected ? 'tw:!text-primary' : 'tw:!text-secondary'
+      )}
       hasChildItems={hasChildItems}
-      indentPerLevel={28}>
+      indentPerLevel={28}
+      maxIndentLevel={2}>
       {(renderProps) => (
         <div
           className={cx(
-            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:py-0.5',
+            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
           data-testid={`tree-node-${node.id}`}
@@ -64,13 +66,6 @@ export const TreeSelectTreeItemContent = <T,>({
               onNodeClick();
             }
           }}>
-          {showConnectorLines && renderProps.level >= 2 && (
-            <span
-              aria-hidden="true"
-              className="tw:pointer-events-none tw:absolute tw:w-3.5 tw:border-l-[1.5px] tw:border-b-[1.5px] tw:border-primary tw:rounded-bl-md tw:-top-[6px] tw:h-[calc(50%+6px)]"
-              style={{ left: '-48px' }}
-            />
-          )}
           {showCheckbox && multiple && isSelectable && (
             <span
               data-selected={isSelected}
@@ -86,29 +81,35 @@ export const TreeSelectTreeItemContent = <T,>({
                 <CheckboxBase
                   isDisabled={isRowDisabled}
                   isSelected={isSelected}
+                  size="xs"
                 />
               )}
             </span>
           )}
 
           {showIcon && node.icon && (
-            <span className="tw:flex tw:shrink-0 tw:items-center">
+            <span
+              aria-hidden="true"
+              className={cx('tw:flex tw:shrink-0', node.iconClassName)}>
               {node.icon}
             </span>
           )}
 
           <span
             className={cx(
-              'tw:min-w-0 tw:truncate tw:text-sm tw:text-secondary',
-              isSelected && 'tw:font-medium tw:text-primary',
+              'tw:grow tw:truncate',
               node.disabled && 'tw:text-disabled'
             )}>
             {node.label}
           </span>
 
           {node.count !== undefined && node.count > 0 && (
-            <span className="tw:ml-auto tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums tw:text-tertiary">
-              {node.count}
+            <span
+              className={cx(
+                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
+              )}>
+              {node.count.toLocaleString()}
             </span>
           )}
 

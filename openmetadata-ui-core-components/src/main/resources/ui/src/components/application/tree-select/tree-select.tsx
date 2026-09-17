@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, XClose } from '@untitledui/icons';
+import {
+  SearchInputIcon,
+  TriggerCountBadge,
+} from '../filter-select/filter-select';
 import {
   type ReactElement,
   useCallback,
@@ -116,16 +120,6 @@ const collectSelectableNodes = <T,>(
   return result;
 };
 
-const TriggerCountBadge = ({ count }: { count: number }) => (
-  <span className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:tabular-nums">
-    {count}
-  </span>
-);
-
-const SearchInputIcon = (props: React.HTMLAttributes<HTMLOrSVGElement>) => (
-  <SearchLg aria-hidden="true" {...props} />
-);
-
 export const TreeSelect = <T = unknown,>({
   label,
   placeholder,
@@ -155,7 +149,6 @@ export const TreeSelect = <T = unknown,>({
   searchPlaceholder,
   triggerVariant = 'input',
   bordered = false,
-  showConnectorLines = false,
   showSelectAll = false,
   onNodeExpand,
   onNodeCollapse,
@@ -346,7 +339,6 @@ export const TreeSelect = <T = unknown,>({
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !hasExclusiveChildren}
-              showConnectorLines={showConnectorLines}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!hasExclusiveChildren) {
@@ -367,7 +359,6 @@ export const TreeSelect = <T = unknown,>({
       multiple,
       showCheckbox,
       showIcon,
-      showConnectorLines,
       handleNodeAction,
     ]
   );

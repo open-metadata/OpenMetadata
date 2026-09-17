@@ -110,11 +110,6 @@ export interface TreeSelectProps<T = unknown> {
    */
   bordered?: boolean;
   /**
-   * Draw curved connector lines between parent and child nodes in the tree
-   * dropdown, visualising the hierarchy. @default false
-   */
-  showConnectorLines?: boolean;
-  /**
    * Show a "Select all" checkbox row at the top of the tree dropdown.
    * Only applies when `multiple` is `true`. @default false
    */

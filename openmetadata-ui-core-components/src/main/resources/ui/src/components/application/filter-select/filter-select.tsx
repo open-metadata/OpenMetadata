@@ -42,7 +42,7 @@ import { TreeSelect } from '../tree-select/tree-select';
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that
 // augment ReactNode globally (e.g. react-i18next).
-const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
+export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <SearchLg aria-hidden="true" {...props} />
 );
 
@@ -50,7 +50,7 @@ const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
 
-const TriggerCountBadge = ({ count }: { count: number }) => (
+export const TriggerCountBadge = ({ count }: { count: number }) => (
   <Typography
     inline
     className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
