@@ -1038,6 +1038,8 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
       await expect(reviewerGroup.getByText(reviewerLabel)).toBeVisible();
 
+      await page.getByTestId('form-heading').click();
+
       const createResponse = page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
