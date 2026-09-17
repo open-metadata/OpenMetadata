@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText } from '@testing-library/react';
+import { findByTestId, findByText, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -95,6 +95,19 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
+const mockNavigate = jest.fn();
+const mockGetServiceDataAssetsTabPath = jest
+  .fn()
+  .mockReturnValue('/service/databaseServices/bigquery/databases');
+
+jest.mock('../../utils/ConnectionsRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getServiceDataAssetsTabPath: (...args: unknown[]) =>
+      mockGetServiceDataAssetsTabPath(...args),
+  },
+}));
+
 // DatabaseDetailsPage now fetches its own permissions via useEntityPermissions (Task 8
 // batch-final, two-call split — DatabaseSchemaPage.test.tsx precedent) rather than an
 // imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
@@ -151,7 +164,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
@@ -257,7 +270,27 @@ jest.mock(
   () => ({
     DataAssetsHeader: jest
       .fn()
-      .mockImplementation(() => <p>DataAssetsHeader</p>),
+      .mockImplementation(
+        ({
+          afterDeleteAction,
+        }: {
+          afterDeleteAction: (isSoftDelete?: boolean) => void;
+        }) => (
+          <div>
+            <p>DataAssetsHeader</p>
+            <button
+              data-testid="hard-delete"
+              onClick={() => afterDeleteAction(false)}>
+              hardDelete
+            </button>
+            <button
+              data-testid="soft-delete"
+              onClick={() => afterDeleteAction(true)}>
+              softDelete
+            </button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -419,5 +452,42 @@ describe('Test DatabaseDetails page', () => {
 
     expect(errorPlaceholder).toBeInTheDocument();
     expect(getDatabaseDetailsByFQN).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to the parent service asset tab after a hard delete', async () => {
+    mockNavigate.mockClear();
+    mockGetServiceDataAssetsTabPath.mockClear();
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
+
+    const hardDeleteButton = await findByTestId(container, 'hard-delete');
+    fireEvent.click(hardDeleteButton);
+
+    expect(mockGetServiceDataAssetsTabPath).toHaveBeenCalledWith(
+      'databaseServices',
+      'bigquery'
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/service/databaseServices/bigquery/databases'
+    );
+  });
+
+  it('should not navigate away after a soft delete', async () => {
+    mockNavigate.mockClear();
+
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
+
+    const softDeleteButton = await findByTestId(container, 'soft-delete');
+    fireEvent.click(softDeleteButton);
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

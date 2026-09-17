@@ -585,7 +585,7 @@ class SearchMetadataToolTest {
     source.put("originEntityFQN", "svc.db.schema.users");
     source.put("testCaseStatus", "Failed");
     source.put("testCaseType", "column");
-    source.put("dataQualityDimension", "Uniqueness");
+    source.put("dataQualityDimensionName", "Uniqueness");
     source.put("testPlatforms", List.of("OpenMetadata"));
 
     Map<String, Object> result = SearchMetadataTool.cleanSearchResult(source, List.of());
@@ -594,7 +594,7 @@ class SearchMetadataToolTest {
     assertEquals("svc.db.schema.users", result.get("originEntityFQN"));
     assertEquals("Failed", result.get("testCaseStatus"));
     assertEquals("column", result.get("testCaseType"));
-    assertEquals("Uniqueness", result.get("dataQualityDimension"));
+    assertEquals("Uniqueness", result.get("dataQualityDimensionName"));
     assertEquals(List.of("OpenMetadata"), result.get("testPlatforms"));
   }
 

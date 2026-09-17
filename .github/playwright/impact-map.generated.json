@@ -5571,6 +5571,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
     },
@@ -8849,14 +8850,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilderWidgetV1/QueryBuilderWidgetV1.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/QueryViewer.component.tsx"
       ],
       "specs": [
@@ -11207,14 +11200,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/AdvancedSearchUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/AlertsUtil.tsx"
       ],
       "specs": [
@@ -11324,16 +11309,6 @@
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/QueryBuilderUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
