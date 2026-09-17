@@ -20,6 +20,7 @@ import static org.openmetadata.service.resources.dqtests.TestCaseResource.scoped
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -29,16 +30,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 class TestCaseRunScopeTest {
 
+  private static final String TEST_CASE_NAME = "table_row_count_to_equal";
+  private static final Consumer<IngestionPipeline> SECRETS_UNCHANGED = pipeline -> {};
+
   @Test
   void scopedCopyRunsOnlyTheRequestedTestCase() {
-    IngestionPipeline suitePipeline = testSuitePipeline();
+    IngestionPipeline scoped =
+        scopedToTestCase(testSuitePipeline(), TEST_CASE_NAME, SECRETS_UNCHANGED);
 
-    IngestionPipeline scoped = scopedToTestCase(suitePipeline, "table_row_count_to_equal");
-
-    assertEquals(
-        List.of("table_row_count_to_equal"),
-        JsonUtils.convertValue(scoped.getSourceConfig().getConfig(), TestSuitePipeline.class)
-            .getTestCases());
+    assertEquals(List.of(TEST_CASE_NAME), scopedTestCases(scoped));
   }
 
   /**
@@ -49,12 +49,43 @@ class TestCaseRunScopeTest {
   void scopingDoesNotMutateTheSourcePipeline() {
     IngestionPipeline suitePipeline = testSuitePipeline();
 
-    IngestionPipeline scoped = scopedToTestCase(suitePipeline, "table_row_count_to_equal");
+    IngestionPipeline scoped = scopedToTestCase(suitePipeline, TEST_CASE_NAME, SECRETS_UNCHANGED);
 
     assertNotSame(suitePipeline, scoped);
-    assertNull(
+    assertNull(scopedTestCases(suitePipeline));
+  }
+
+  /**
+   * Resolving secrets withholds the source config from a caller without ViewAll on the pipeline. A
+   * caller who may still trigger it must run the one test case, not the whole suite.
+   */
+  @Test
+  void theScopeSurvivesSecretsResolutionThatWithholdsTheSourceConfig() {
+    IngestionPipeline scoped =
+        scopedToTestCase(
+            testSuitePipeline(),
+            TEST_CASE_NAME,
+            pipeline -> pipeline.getSourceConfig().setConfig(null));
+
+    assertEquals(List.of(TEST_CASE_NAME), scopedTestCases(scoped));
+  }
+
+  @Test
+  void secretsAreResolvedOnTheCopyAndNotOnTheStoredPipeline() {
+    IngestionPipeline suitePipeline = testSuitePipeline();
+
+    scopedToTestCase(
+        suitePipeline, TEST_CASE_NAME, pipeline -> pipeline.getSourceConfig().setConfig(null));
+
+    assertEquals(
+        "red.dev.orders",
         JsonUtils.convertValue(suitePipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
-            .getTestCases());
+            .getEntityFullyQualifiedName());
+  }
+
+  private static List<String> scopedTestCases(IngestionPipeline pipeline) {
+    return JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
+        .getTestCases();
   }
 
   private static IngestionPipeline testSuitePipeline() {

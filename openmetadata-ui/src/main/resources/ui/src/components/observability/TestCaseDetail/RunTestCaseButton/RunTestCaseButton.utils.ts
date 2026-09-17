@@ -10,19 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   IngestionPipeline,
   PipelineState,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 
 // The server's default timeout for a run that never reports again; see
 // IngestionPipelineRepository.hasRunInProgress, whose rules these mirror so
 // the button and the endpoint agree on whether a run is still in progress.
 const DEFAULT_RUN_TIMEOUT_MS = 60 * 60 * 1000;
 
+const ACTIVE_RUN_LABEL_KEYS: Partial<Record<PipelineState, string>> = {
+  [PipelineState.Queued]: 'label.queued',
+  [PipelineState.Running]: 'label.running',
+};
+
 /** The pipeline the run endpoint executes: the suite's first enabled, deployed one. */
 export const getRunnablePipeline = (pipelines: IngestionPipeline[]) =>
   pipelines.find((pipeline) => pipeline.enabled && pipeline.deployed);
+
+/**
+ * The permissions to check Trigger against. Without a runnable pipeline there
+ * is nothing entity-level to check, so fall back to the resource-level grant:
+ * a user who could never trigger a pipeline should not see the button.
+ */
+export const getTriggerPermissions = (
+  pipeline: IngestionPipeline | undefined,
+  pipelinePermissions: OperationPermission,
+  resourcePermissions?: OperationPermission
+) =>
+  pipeline
+    ? pipelinePermissions
+    : resourcePermissions ?? DEFAULT_ENTITY_PERMISSION;
+
+/** The button label: the active run's state while one is in progress. */
+export const getRunButtonLabelKey = (activeRunState?: PipelineState) =>
+  (activeRunState && ACTIVE_RUN_LABEL_KEYS[activeRunState]) ?? 'label.run-now';
 
 /**
  * The state of the pipeline's active run, if one is queued or running. The
@@ -31,9 +56,12 @@ export const getRunnablePipeline = (pipelines: IngestionPipeline[]) =>
  * cannot disable the button for good. A running run wins over a queued one.
  */
 export const getActiveRunState = (
-  pipeline: IngestionPipeline,
+  pipeline: IngestionPipeline | undefined,
   now = Date.now()
 ) => {
+  if (!pipeline) {
+    return undefined;
+  }
   const runningTimeoutMs = pipeline.airflowConfig?.workflowTimeout
     ? pipeline.airflowConfig.workflowTimeout * 1000
     : DEFAULT_RUN_TIMEOUT_MS;
@@ -60,14 +88,16 @@ export const isRunInProgress = (
   now = Date.now()
 ) => getActiveRunState(pipeline, now) !== undefined;
 
-/** The translation key explaining why the run is unavailable, if it is. */
+/**
+ * The translation key explaining why a user who may run the test case cannot
+ * run it right now, if they cannot. Users without the permission never see
+ * the button, so a missing permission is not a reason here.
+ */
 export const getRunDisabledReasonKey = ({
   pipelines,
-  canTrigger,
   runInProgress,
 }: {
   pipelines: IngestionPipeline[];
-  canTrigger: boolean;
   runInProgress: boolean;
 }) => {
   if (pipelines.length === 0) {
@@ -75,9 +105,6 @@ export const getRunDisabledReasonKey = ({
   }
   if (!getRunnablePipeline(pipelines)) {
     return 'message.pipeline-not-deployed';
-  }
-  if (!canTrigger) {
-    return 'message.no-permission-for-action';
   }
 
   return runInProgress ? 'label.in-progress' : undefined;

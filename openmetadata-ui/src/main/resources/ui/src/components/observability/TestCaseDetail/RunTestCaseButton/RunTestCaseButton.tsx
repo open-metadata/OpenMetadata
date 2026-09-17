@@ -12,17 +12,15 @@
  */
 import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PlayCircle } from '@untitledui/icons';
+import { Play } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import {
-  PipelineState,
-  PipelineType,
-} from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { TEST_SUITE_PIPELINE_LIMIT } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
@@ -32,19 +30,16 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   getActiveRunState,
+  getRunButtonLabelKey,
   getRunDisabledReasonKey,
   getRunnablePipeline,
+  getTriggerPermissions,
   isRunInProgress,
 } from './RunTestCaseButton.utils';
 
 const RUN_PIPELINES_QUERY_KEY = 'test-case-run-pipelines';
 const RUN_STATUS_POLL_INTERVAL_MS = 5000;
 const PIPELINE_STATUS_FIELDS = ['pipelineStatuses'];
-const ACTIVE_RUN_LABEL_KEYS: Partial<Record<PipelineState, string>> = {
-  [PipelineState.Queued]: 'label.queued',
-  [PipelineState.Running]: 'label.running',
-};
-
 interface RunTestCaseButtonProps {
   testCase: TestCase;
 }
@@ -106,18 +101,23 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
   });
 
   const pipeline = getRunnablePipeline(pipelines);
-  const { permissions } = useEntityPermissions(
-    ResourceEntity.INGESTION_PIPELINE,
-    pipeline?.fullyQualifiedName ?? '',
-    { enabled: Boolean(pipeline?.fullyQualifiedName) }
-  );
-  const canTrigger = getDerivedPermissionFlags(permissions).can(
-    Operation.Trigger
-  );
-  const activeRunState = pipeline ? getActiveRunState(pipeline) : undefined;
+  const { permissions: resourcePermissions } = usePermissionProvider();
+  const { permissions: pipelinePermissions, isLoading: isPermissionLoading } =
+    useEntityPermissions(
+      ResourceEntity.INGESTION_PIPELINE,
+      pipeline?.fullyQualifiedName ?? '',
+      { enabled: Boolean(pipeline?.fullyQualifiedName) }
+    );
+  const canTrigger = getDerivedPermissionFlags(
+    getTriggerPermissions(
+      pipeline,
+      pipelinePermissions,
+      resourcePermissions[ResourceEntity.INGESTION_PIPELINE]
+    )
+  ).can(Operation.Trigger);
+  const activeRunState = getActiveRunState(pipeline);
   const runInProgress = activeRunState !== undefined;
   const disabledReasonKey = getRunDisabledReasonKey({
-    canTrigger,
     pipelines,
     runInProgress,
   });
@@ -146,20 +146,22 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
     }
   };
 
+  // Rendered only once the permission is known, so the button never flashes in and then vanishes.
+  if (isLoading || isPermissionLoading || !canTrigger) {
+    return null;
+  }
+
   const button = (
     <Button
       showTextWhileLoading
-      color="secondary"
+      color="primary"
       data-testid="run-test-case-button"
-      iconLeading={PlayCircle}
-      isDisabled={Boolean(disabledReasonKey) || isLoading}
+      iconLeading={Play}
+      isDisabled={Boolean(disabledReasonKey)}
       isLoading={isTriggering || runInProgress}
       size="sm"
       onClick={handleRun}>
-      {t(
-        (activeRunState && ACTIVE_RUN_LABEL_KEYS[activeRunState]) ??
-          'label.run-now'
-      )}
+      {t(getRunButtonLabelKey(activeRunState))}
     </Button>
   );
 

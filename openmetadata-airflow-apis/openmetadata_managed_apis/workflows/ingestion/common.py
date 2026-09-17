@@ -361,6 +361,21 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         logger.error(f"Failed to send failed status callback: {exc}", exc_info=True)
 
 
+def send_failed_run_status_callback(workflow_config: OpenMetadataWorkflowConfig, context) -> None:
+    """
+    DAG-level on_failure_callback. A task that fails before it starts - its runner killed, or
+    unable to reach the API server - never runs the task-level callback, so a run the server
+    recorded as queued would stay pending until the queued timeout, blocking on-demand runs of the
+    pipeline until then. Airflow still fails the DAG run and calls this, so report the failure
+    under the run id the trigger conf carried. Scheduled runs carry no run id and are left to the
+    task-level callback.
+    """
+    dag_run_conf = getattr(context.get("dag_run"), "conf", None) or {}
+    run_id = dag_run_conf.get(PIPELINE_RUN_ID_PARAM) or (context.get("params") or {}).get(PIPELINE_RUN_ID_PARAM)
+    if run_id:
+        send_failed_status_callback(workflow_config.model_copy(update={"pipelineRunId": Uuid(run_id)}))
+
+
 class CustomPythonOperator(PythonOperator):
     def execute(self, context):
         """
@@ -421,7 +436,10 @@ def build_dag(
     # DAG files are parsed concurrently in the same process and raises a KeyError on
     # __exit__ (see issue #28500). The DAG is registered into the module globals
     # explicitly by WorkflowFactory.register_dag, so autoregister is not needed here.
-    dag = DAG(**build_dag_configs(ingestion_pipeline))
+    dag = DAG(
+        **build_dag_configs(ingestion_pipeline),
+        on_failure_callback=partial(send_failed_run_status_callback, workflow_config),
+    )
 
     # Initialize with random UUID4. Will be used by the callback instead of
     # generating it inside the Workflow itself.

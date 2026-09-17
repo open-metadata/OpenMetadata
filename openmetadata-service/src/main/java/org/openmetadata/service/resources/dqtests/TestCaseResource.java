@@ -42,8 +42,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -791,26 +793,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   private IngestionPipeline scopePipelineToTestCase(
       IngestionPipeline pipeline, String testCaseName, SecurityContext securityContext) {
-    IngestionPipeline scopedPipeline = scopedToTestCase(pipeline, testCaseName);
-    IngestionPipelineSecrets.decryptOrNullify(
-        authorizer,
-        securityContext,
-        ingestionPipelineRepository().getOpenMetadataApplicationConfig(),
-        scopedPipeline,
-        true);
-    return scopedPipeline;
+    return scopedToTestCase(
+        pipeline,
+        testCaseName,
+        runPipeline ->
+            IngestionPipelineSecrets.decryptOrNullify(
+                authorizer,
+                securityContext,
+                ingestionPipelineRepository().getOpenMetadataApplicationConfig(),
+                runPipeline,
+                true));
   }
 
   /**
-   * Returns a copy of {@code pipeline} whose test-suite source config runs only {@code
-   * testCaseName}. The copy matters: scoping the stored entity would narrow every future scheduled
-   * run of the whole suite, silently and permanently.
+   * Returns a copy of {@code pipeline}, with its secrets resolved, whose test-suite source config
+   * runs only {@code testCaseName}. The copy matters: scoping the stored entity would narrow every
+   * future scheduled run of the whole suite, silently and permanently. The scope goes on after the
+   * secrets are resolved, because resolving them withholds the source config from a caller without
+   * ViewAll on the pipeline, and a scope set before that would be dropped with it - running the
+   * whole suite instead of one test case.
    */
-  static IngestionPipeline scopedToTestCase(IngestionPipeline pipeline, String testCaseName) {
+  static IngestionPipeline scopedToTestCase(
+      IngestionPipeline pipeline, String testCaseName, Consumer<IngestionPipeline> resolveSecrets) {
     IngestionPipeline scopedPipeline = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    resolveSecrets.accept(scopedPipeline);
     TestSuitePipeline sourceConfig =
-        JsonUtils.convertValue(
-            scopedPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class);
+        Optional.ofNullable(
+                JsonUtils.convertValue(
+                    scopedPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class))
+            .orElseGet(TestSuitePipeline::new);
     // The ingestion source filters on test case name, not FQN - an FQN here would run nothing.
     scopedPipeline.getSourceConfig().setConfig(sourceConfig.withTestCases(List.of(testCaseName)));
     return scopedPipeline;

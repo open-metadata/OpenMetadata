@@ -133,6 +133,82 @@ public class TestCaseRunIT {
   }
 
   @Test
+  void runWithOnlyADisabledPipelineIsNotFound(TestNamespace ns) {
+    TestCase testCase = createTestCase(ns);
+    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
+    patchPipeline(pipeline, "/enabled", false);
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
+
+    assertEquals(404, error.getStatusCode());
+  }
+
+  @Test
+  void runPicksTheDeployedPipelineWhenTheSuiteAlsoHasAnUndeployedOne(TestNamespace ns) {
+    TestCase testCase = createTestCase(ns);
+    createUndeployedTestSuitePipeline(ns, testCase.getTestSuite(), new AirflowConfig());
+    createTestSuitePipeline(ns, testCase.getTestSuite());
+
+    PipelineServiceClientResponse response =
+        JsonUtils.readValue(
+            run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
+
+    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+  }
+
+  @Test
+  void runIsRejectedWhileAnEarlierRunIsStillQueued(TestNamespace ns) {
+    TestCase testCase = createTestCase(ns);
+    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
+    reportStatus(
+        pipeline,
+        UUID.randomUUID().toString(),
+        PipelineStatusType.QUEUED,
+        System.currentTimeMillis());
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
+
+    assertEquals(409, error.getStatusCode());
+  }
+
+  /**
+   * A running run counts only until it outlives the pipeline's own workflow timeout, so a pipeline
+   * with a short timeout is not blocked by a run whose worker died minutes ago.
+   */
+  @Test
+  void runIgnoresARunningRunOlderThanThePipelineWorkflowTimeout(TestNamespace ns) {
+    TestCase testCase = createTestCase(ns);
+    IngestionPipeline pipeline =
+        createTestSuitePipeline(
+            ns, testCase.getTestSuite(), new AirflowConfig().withWorkflowTimeout(60));
+    long fiveMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
+    reportStatus(
+        pipeline, UUID.randomUUID().toString(), PipelineStatusType.RUNNING, fiveMinutesAgo);
+
+    PipelineServiceClientResponse response =
+        JsonUtils.readValue(
+            run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
+
+    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+  }
+
+  @Test
+  void runIsRejectedForARunningRunWithinTheDefaultTimeout(TestNamespace ns) {
+    TestCase testCase = createTestCase(ns);
+    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
+    long fiveMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
+    reportStatus(
+        pipeline, UUID.randomUUID().toString(), PipelineStatusType.RUNNING, fiveMinutesAgo);
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
+
+    assertEquals(409, error.getStatusCode());
+  }
+
+  @Test
   void runIsRejectedWhileTheSuitePipelineRunsAndAllowedOnceItFinishes(TestNamespace ns) {
     TestCase testCase = createTestCase(ns);
     IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
@@ -218,22 +294,37 @@ public class TestCaseRunIT {
   // The IT server has no pipeline client to deploy with, so the flag a deploy would set is patched.
   private static IngestionPipeline createTestSuitePipeline(
       TestNamespace ns, EntityReference testSuite) {
-    IngestionPipeline pipeline = createUndeployedTestSuitePipeline(ns, testSuite);
-    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
-    patch.addObject().put("op", "add").put("path", "/deployed").put("value", true);
-    return SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
+    return createTestSuitePipeline(ns, testSuite, new AirflowConfig());
+  }
+
+  private static IngestionPipeline createTestSuitePipeline(
+      TestNamespace ns, EntityReference testSuite, AirflowConfig airflowConfig) {
+    IngestionPipeline pipeline = createUndeployedTestSuitePipeline(ns, testSuite, airflowConfig);
+    return patchPipeline(pipeline, "/deployed", true);
   }
 
   private static IngestionPipeline createUndeployedTestSuitePipeline(
       TestNamespace ns, EntityReference testSuite) {
+    return createUndeployedTestSuitePipeline(ns, testSuite, new AirflowConfig());
+  }
+
+  private static IngestionPipeline createUndeployedTestSuitePipeline(
+      TestNamespace ns, EntityReference testSuite, AirflowConfig airflowConfig) {
     CreateIngestionPipeline request =
         new CreateIngestionPipeline()
             .withName("pl_" + ns.uniqueShortId())
             .withService(testSuite)
             .withPipelineType(PipelineType.TEST_SUITE)
             .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()))
-            .withAirflowConfig(new AirflowConfig().withStartDate(new Date()));
+            .withAirflowConfig(airflowConfig.withStartDate(new Date()));
     return SdkClients.adminClient().ingestionPipelines().create(request);
+  }
+
+  private static IngestionPipeline patchPipeline(
+      IngestionPipeline pipeline, String path, boolean value) {
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.addObject().put("op", "add").put("path", path).put("value", value);
+    return SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
   }
 
   private static void reportStatus(

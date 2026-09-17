@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   IngestionPipeline,
   PipelineState,
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import {
+  getActiveRunState,
+  getRunButtonLabelKey,
   getRunDisabledReasonKey,
   getRunnablePipeline,
+  getTriggerPermissions,
   isRunInProgress,
 } from './RunTestCaseButton.utils';
 
@@ -103,7 +108,6 @@ describe('getRunDisabledReasonKey', () => {
     expect(
       getRunDisabledReasonKey({
         pipelines: [],
-        canTrigger: true,
         runInProgress: false,
       })
     ).toBe('message.no-pipeline-linked');
@@ -113,27 +117,15 @@ describe('getRunDisabledReasonKey', () => {
     expect(
       getRunDisabledReasonKey({
         pipelines: [pipeline({ deployed: false })],
-        canTrigger: true,
         runInProgress: false,
       })
     ).toBe('message.pipeline-not-deployed');
-  });
-
-  it('explains a missing Trigger permission', () => {
-    expect(
-      getRunDisabledReasonKey({
-        pipelines: [pipeline()],
-        canTrigger: false,
-        runInProgress: false,
-      })
-    ).toBe('message.no-permission-for-action');
   });
 
   it('explains a run that is already in progress', () => {
     expect(
       getRunDisabledReasonKey({
         pipelines: [pipeline()],
-        canTrigger: true,
         runInProgress: true,
       })
     ).toBe('label.in-progress');
@@ -143,9 +135,67 @@ describe('getRunDisabledReasonKey', () => {
     expect(
       getRunDisabledReasonKey({
         pipelines: [pipeline()],
-        canTrigger: true,
         runInProgress: false,
       })
     ).toBeUndefined();
+  });
+});
+
+describe('getTriggerPermissions', () => {
+  const pipelinePermissions = {
+    Trigger: true,
+  } as unknown as OperationPermission;
+  const resourcePermissions = {
+    Trigger: false,
+  } as unknown as OperationPermission;
+
+  it('checks the runnable pipeline itself when there is one', () => {
+    expect(
+      getTriggerPermissions(
+        pipeline(),
+        pipelinePermissions,
+        resourcePermissions
+      )
+    ).toBe(pipelinePermissions);
+  });
+
+  it('falls back to the resource-level grant without a runnable pipeline', () => {
+    expect(
+      getTriggerPermissions(undefined, pipelinePermissions, resourcePermissions)
+    ).toBe(resourcePermissions);
+  });
+
+  it('denies by default when the resource-level grant is not loaded', () => {
+    expect(getTriggerPermissions(undefined, pipelinePermissions)).toBe(
+      DEFAULT_ENTITY_PERMISSION
+    );
+  });
+});
+
+describe('getRunButtonLabelKey', () => {
+  it('names the active run state while a run is in progress', () => {
+    expect(getRunButtonLabelKey(PipelineState.Queued)).toBe('label.queued');
+    expect(getRunButtonLabelKey(PipelineState.Running)).toBe('label.running');
+  });
+
+  it('offers to run otherwise', () => {
+    expect(getRunButtonLabelKey()).toBe('label.run-now');
+  });
+});
+
+describe('getActiveRunState', () => {
+  it('prefers a running run over a queued one', () => {
+    const both = pipeline({
+      pipelineStatuses: [
+        { pipelineState: PipelineState.Queued, timestamp: NOW },
+        { pipelineState: PipelineState.Running, timestamp: NOW },
+      ],
+    });
+
+    expect(getActiveRunState(both, NOW)).toBe(PipelineState.Running);
+  });
+
+  it('has no active run without a pipeline', () => {
+    expect(getActiveRunState(undefined, NOW)).toBeUndefined();
   });
 });
