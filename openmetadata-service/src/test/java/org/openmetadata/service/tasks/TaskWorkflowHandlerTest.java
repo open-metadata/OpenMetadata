@@ -203,7 +203,8 @@ class TaskWorkflowHandlerTest {
               .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
       verify(workflowHandler).isAwaitingAdditionalVotes(taskId);
     }
   }
@@ -240,7 +241,8 @@ class TaskWorkflowHandlerTest {
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains(taskId.toString()));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
     }
   }
 
@@ -408,7 +410,8 @@ class TaskWorkflowHandlerTest {
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains("already in status"));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
     }
   }
 
@@ -486,7 +489,7 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice")))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
@@ -503,7 +506,8 @@ class TaskWorkflowHandlerTest {
                   "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository).resolveTask(eq(task), any(TaskResolution.class), eq("alice"));
+      verify(taskRepository)
+          .resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice"));
       verify(workflowHandler).hasActiveRuntimeTask(taskId);
     }
   }
@@ -533,7 +537,7 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice")))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(storedTask);
@@ -549,6 +553,7 @@ class TaskWorkflowHandlerTest {
                       resolution.getType() == TaskResolutionType.Approved
                           && resolution.getResolvedBy() == resolvedBy
                           && resolution.getResolvedAt() != null),
+              isNull(),
               eq("alice"));
     }
   }
