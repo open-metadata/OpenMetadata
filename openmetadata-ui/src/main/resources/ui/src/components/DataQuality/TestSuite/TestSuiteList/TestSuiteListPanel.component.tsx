@@ -72,6 +72,10 @@ export const TestSuiteListPanel = ({
     []
   );
 
+  // Opening a suite unmounts this panel. A search still pending then would
+  // navigate({ search }) against the list route and pull the user back to it.
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
   useEffect(() => {
     setLocalSearch(searchValue ?? '');
   }, [searchValue]);
