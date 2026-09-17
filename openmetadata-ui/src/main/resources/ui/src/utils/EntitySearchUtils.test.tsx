@@ -15,6 +15,7 @@ import {
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from './EntitySearchUtils';
 import {
   entityWithoutNameAndDescHighlight,
@@ -232,5 +233,74 @@ describe('EntitySearchUtils unit tests', () => {
         expect(result).toBe(expected);
       }
     );
+  });
+
+  describe('renderHighlightedText method', () => {
+    it('returns the raw string when there is no highlight wrapper', () => {
+      expect(renderHighlightedText('plain text')).toBe('plain text');
+    });
+
+    it('returns the input as-is for null / undefined / empty', () => {
+      expect(renderHighlightedText(undefined)).toBe('');
+      expect(renderHighlightedText(null)).toBe('');
+      expect(renderHighlightedText('')).toBe('');
+    });
+
+    it('wraps the matched segment in a real span.text-highlighter node', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            'foo <span class="text-highlighter">bar</span> baz'
+          )}
+        </>
+      );
+
+      const span = container.querySelector('span.text-highlighter');
+
+      expect(span).not.toBeNull();
+      expect(span?.textContent).toBe('bar');
+      expect(container.textContent).toBe('foo bar baz');
+    });
+
+    it('renders injected script / img / attribute payloads as literal text', () => {
+      const payload =
+        '<script>alert(1)</script><img src=x onerror=alert(1)>' +
+        '<a href="javascript:alert(1)">click</a>';
+      const { container } = render(<>{renderHighlightedText(payload)}</>);
+
+      // Nothing was interpreted as HTML — the payload appears verbatim.
+      expect(container.textContent).toBe(payload);
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.querySelector('img')).toBeNull();
+      expect(container.querySelector('a')).toBeNull();
+    });
+
+    it('tolerates the client-side data-highlight attribute on the wrapper', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            '<span data-highlight="true" class="text-highlighter">hit</span>'
+          )}
+        </>
+      );
+
+      expect(container.querySelector('span.text-highlighter')?.textContent).toBe(
+        'hit'
+      );
+    });
+
+    it('escapes content inside the wrapper (no nested HTML interpretation)', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            '<span class="text-highlighter"><img src=x onerror=alert(1)></span>'
+          )}
+        </>
+      );
+      const span = container.querySelector('span.text-highlighter');
+
+      expect(span?.textContent).toBe('<img src=x onerror=alert(1)>');
+      expect(container.querySelector('img')).toBeNull();
+    });
   });
 });

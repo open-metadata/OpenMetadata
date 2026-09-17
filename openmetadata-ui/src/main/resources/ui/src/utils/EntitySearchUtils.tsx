@@ -12,6 +12,7 @@
  */
 
 import { escapeRegExp, isUndefined, lowerCase } from 'lodash';
+import { ReactNode } from 'react';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
@@ -137,4 +138,67 @@ export const highlightSearchArrayElement = (
       part
     )
   );
+};
+
+// Matches ONLY the search-highlight wrapper the backend Elastic profile emits
+// (EntityBuilderConstant.PRE_TAG) and that the client-side `highlightSearchText`
+// helper injects. `[^>]*` inside the opening tag tolerates the client-side
+// helper's extra `data-highlight="true"` attribute without accepting anything
+// interesting from a security standpoint — the outer tag never reaches the DOM,
+// only the captured inner text does.
+const HIGHLIGHT_TAG_RE =
+  /<span\b[^>]*\bclass="text-highlighter"[^>]*>([\s\S]*?)<\/span>/gi;
+
+/**
+ * Render a name/displayName that may carry search-highlight wrappers as a
+ * ReactNode. ONLY `<span class="text-highlighter">…</span>` (the wrapper both
+ * the backend Elastic profile and the client-side highlighter emit) is
+ * recognized — its inner text becomes a real `<span class="text-highlighter">`
+ * React node. **Every other character in the input renders as literal text**:
+ * no HTML parsing, no DOMPurify allowlist, no `dangerouslySetInnerHTML`.
+ *
+ * Use this instead of `stringToHTML` when all a caller ever needs from the
+ * input is the highlight wrapper (entity name, displayName, tag values, ...).
+ * `stringToHTML` runs DOMPurify's default profile, which keeps a wide set of
+ * benign tags (<a>, <b>, <i>, <img>, ...) — a broader surface than a name
+ * ever needs, and the exact class of sink flagged by GHSA-59gm-6h39-397f.
+ *
+ * Fast path: if the input contains no highlight wrapper the plain string is
+ * returned as-is (memo-friendly, avoids allocating an array).
+ */
+export const renderHighlightedText = (input?: string | null): ReactNode => {
+  if (!input) {
+    return input ?? '';
+  }
+
+  HIGHLIGHT_TAG_RE.lastIndex = 0;
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = HIGHLIGHT_TAG_RE.exec(input)) !== null) {
+    if (match.index > cursor) {
+      parts.push(input.slice(cursor, match.index));
+    }
+    parts.push(
+      // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
+      <span className="text-highlighter" key={`hl-${key++}`}>
+        {match[1]}
+      </span>
+    );
+    cursor = match.index + match[0].length;
+  }
+
+  // No wrapper found — return the raw string so callers get a plain-string
+  // type rather than a single-element array.
+  if (cursor === 0) {
+    return input;
+  }
+
+  if (cursor < input.length) {
+    parts.push(input.slice(cursor));
+  }
+
+  return parts;
 };
