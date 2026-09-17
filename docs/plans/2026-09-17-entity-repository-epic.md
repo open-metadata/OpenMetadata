@@ -84,11 +84,29 @@ prerequisite for every SQL-count or commit-count assertion in Groups 2, 3 and 5.
 | **B4** | Chart and Dashboard updaters `deleteTo(...)` every `HAS` relationship and re-insert it **before** checking whether anything changed — so an unrelated description PATCH rewrites every relationship row. `EntityRepository` documents the same hazard in-line at L6746–6758. | `jdbi3/ChartRepository.java` L257–276 and `jdbi3/DashboardRepository.java` L693–711: call `recordListChange` first and return when it reports no change | ~30 + IT | PORT |
 | **B5** | `SearchSettingsMergeUtil` resolves `SystemRepository` at class-load time; `CachedEntityDao` evicts the id and name aliases with two separate `DEL`s. | `migration/utils/SearchSettingsMergeUtil.java`, `cache/CachedEntityDao.java` | 7 + 4 (+ `SearchSettingsMigrationIT`, 68) | AS-IS |
 
+#### Already filed — three bugs found by porting #33248's atomicity tests onto `main`
+
+Filed 2026-09-15 against `500d929694` while checking which of the branch's transaction tests pass
+unchanged on `main`. These are **not** hunk ports: they are defects in `main` that the ported tests
+expose, and each issue carries the reproducer method that was removed from the pinned class because
+it fails today. They belong to the same salvage effort and are tracked as sub-issues of #32946.
+
+| Issue | Bug on `main` |
+|---|---|
+| **#33359** | `bulkSoftDeleteSubtree`/`bulkRestoreSubtree` commit **twice per level** — the version-history batch, then the row-update batch (`persistBulkUpdaters` L7383–7401). A failure after the row `UPDATE` leaves an orphaned version-history row, and neither path has deadlock replay. |
+| **#33360** | Hard delete cancels Flowable process instances **before** the enclosing transaction commits (`cleanup` L4988–5044; bulk path `bulkDeleteReferencesAndRows` L7130–7145), so a rollback leaves the entity row alive with its workflow already gone. |
+| **#33361** | `DeadlockRetry` covers only the create/update flush (L5161) and `executeInTransaction` (L5244) — a deadlock on the hard-delete `DELETE` propagates as a 500. Separately, a nested `executeInTransaction` replays only the **inner** unit, because with Jdbi 3.37.1 a nested `Handle.inTransaction` just runs the callback. |
+
+#33358 is the companion pin: the subset of `EntityTransactionBoundaryIT`,
+`EntityHardDeletionAtomicityIT` and `EntitySubtreeAtomicityIT` that **passes** on `main` today, to be
+committed as a regression guard. It is the already-started form of T2/T3 below — **T2/T3 must be
+reconciled against #33358 rather than duplicating it.**
+
 ### Group 2 — performance (the headline wins)
 
 | PR | What | Target on `main` | Size | Mode |
 |---|---|---|---|---|
-| **P1** | Table + column custom metrics and column extensions: **505 → 5 SQL statements**. `TableRepository.setFields` L212–226 runs two per-column loops and `batchFetchCustomMetrics` L3180–3198 runs a third. | Drop in `entity/types/table/TableMetadataLoader.java` (147 lines; its only dependency is `Supplier<EntityExtensionDAO>`), add `EntityExtensionDAO.getExtensionsByKeys` (+12 in `jdbi3/CoreRelationshipDAOs.java`), rewrite the 3 call sites with `() -> daoCollection.entityExtensionDAO()` | ~160/−45 + 340 test | drop-in class + 3 call-site rewrites |
+| **P1** (#33353) | Table + column custom metrics and column extensions: **505 → 5 SQL statements**. `TableRepository.setFields` L212–226 runs two per-column loops and `batchFetchCustomMetrics` L3180–3198 runs a third. | Drop in `entity/types/table/TableMetadataLoader.java` (147 lines; its only dependency is `Supplier<EntityExtensionDAO>`), add `EntityExtensionDAO.getExtensionsByKeys` (+12 in `jdbi3/CoreRelationshipDAOs.java`), rewrite the 3 call sites with `() -> daoCollection.entityExtensionDAO()` | ~160/−45 + 340 test | drop-in class + 3 call-site rewrites |
 | **P2** | Column pages resolve owners even when nobody asked for `profile`: a basic column page goes **20 → 0** statements. | `resources/databases/TableResource.java` `getColumnProfileOwners` + both handlers | 13 + 149 test | AS-IS (skip the `lookup().byId` rename hunk) |
 | **P3** | `patchChangeSummary` rewrites the entire entity JSON per accepted suggestion — a lost-update window on wide tables. | `EntityRepository.patchChangeSummary` L4549 → `EntityDAO.findSummaryForUpdate` (`JSON_OBJECT`/`jsonb_build_object … FOR UPDATE`) + `updateChangeDescription` (`JSON_SET`/`jsonb_set`) | ~70/−25 | PORT (skip the `EntitySummaryWriter` indirection) |
 | **P4** | Auth enrichment fetches owners and domains as two round trips. | `EntityRepository.enrichEntitiesForAuth` L11877 → one `UNION ALL` in `EntityRelationshipDAO.findOwnersAndDomainsBatch` | ~58 | PORT — ids bind twice; the existing 30k chunking stays under the 65,535-parameter limit |
@@ -104,8 +122,8 @@ before this plan existed.
 | PR | What | Size | Mode |
 |---|---|---|---|
 | **T1** | JDBI decorators in `it/util/`: `SqlQueryCounter` (SqlLogger, substring match, calling-thread or `forRequests` scoping), `SqlFailureProbe` (throws once after a matching statement; **add** a `forRequests(jdbi, fragment, failure)` variant scoped on `RequestLatencyContext` so REST-driven tests can use it), `TransactionCounter` (commit/rollback counter, promoted out of an IT inner class) | ~190 | AS-IS + one small extension |
-| **T2** | The transaction tests: `EntityTransactionBoundaryIT` (3 of 5 methods unchanged; the 2 extension methods rewritten via `entityExtensionDAO`), `EntityAssetMembershipIT` (0 edits), `EntityCreateManyIT` (0 edits), `EntityPostCommitRecoveryIT` (1 line → `CacheBundle.invalidateEntity`), `EntityHardDeletionAtomicityIT` (3 call sites → `createInternal`/`deleteInternal`/`bulkHardDeleteSubtree`), `EntityVersionHistoryIT#deletedRemainingRows…` (regression guard for #33016) | ~1,300 test | AS-IS / light rewrite; `@Isolated` wherever a decorator mutates global Jdbi state |
-| **T3** | Second wave, rewritten against main's API: `EntitySubtreeAtomicityIT`, `EntityCsvChangeLogIT`, `KnowledgePageTransactionIT`, `EntityTimeSeriesIT`, `EntityColumnMutationIT`, `EntityBulkUpdateAtomicityIT`, `EntityCacheCommitIT` | ~1,400 test | PORT — use the branch's `OneTransactionFlushAtomicityIT` diff as the API mapping table. **Assertions that encode refactor-only behaviour (e.g. commit counts on unchanged bulk updates) become pains, not tests.** |
+| **T2** (reconcile with #33358) | The transaction tests: `EntityTransactionBoundaryIT` (3 of 5 methods unchanged; the 2 extension methods rewritten via `entityExtensionDAO`), `EntityAssetMembershipIT` (0 edits), `EntityCreateManyIT` (0 edits), `EntityPostCommitRecoveryIT` (1 line → `CacheBundle.invalidateEntity`), `EntityHardDeletionAtomicityIT` (3 call sites → `createInternal`/`deleteInternal`/`bulkHardDeleteSubtree`), `EntityVersionHistoryIT#deletedRemainingRows…` (regression guard for #33016) | ~1,300 test | AS-IS / light rewrite; `@Isolated` wherever a decorator mutates global Jdbi state |
+| **T3** (reconcile with #33358) | Second wave, rewritten against main's API: `EntitySubtreeAtomicityIT`, `EntityCsvChangeLogIT`, `KnowledgePageTransactionIT`, `EntityTimeSeriesIT`, `EntityColumnMutationIT`, `EntityBulkUpdateAtomicityIT`, `EntityCacheCommitIT` | ~1,400 test | PORT — use the branch's `OneTransactionFlushAtomicityIT` diff as the API mapping table. **Assertions that encode refactor-only behaviour (e.g. commit counts on unchanged bulk updates) become pains, not tests.** |
 | **T4** | Multi-node IT isolation: secondary cluster nodes run in a forked JVM — `it/bootstrap/ForkedTestNode.java` (130), `SessionMultiNodeCluster`, `TestSuiteBootstrap` (`registerAdditionalNode`, `-DdbDurable`), `SessionMultiNodeIsolationIT` | ~200/−40 | AS-IS (drop the `EntityHardDeletionAtomicityIT` hunk and the h2 pom dependency) |
 | **T5** | Zero-edit guards worth keeping: `LineageHydratorTest` (100), `DefaultTemplateProvider` decoupling (`Function<String,EmailTemplate>`; callers `EmailUtil:91`, `DocumentRepository:76`) + test (59), `TestCaseResourceIT#test_testCaseSearchIndexUpdatedWhenTableTagIsReplaced` (47), `EntityDeleteTaskCleanupIT#hardDelete_removesOpenTasksAboutContainedEntities` (22), `McpServiceResourceIT#connectionResultInvalidatesBothCachedAliases…` (20), `KnowledgePageResourceIT` (271) | ~520 test | AS-IS |
 | **T6** | `scripts/jacoco_class_coverage.py` + its test — a generic per-class 90% coverage gate, not wired into CI | 390 | AS-IS, optional |
@@ -154,26 +172,34 @@ Sources: #32946 pains 1–6, the platform review's additions (caching, deletion,
 `Sub-issue of #32946.` and carrying three sections: **what hurts / root cause / how we know it is
 fixed**. Pains 7–9 are largely discharged by the salvage PRs above; the rest are the epic.
 
-| # | Pain | Root cause on `main` | Done when |
-|---|---|---|---|
-| **0** | No behaviour recording — and the base class grows ~110 lines/week | Nothing pins stored JSON, versions, `ChangeDescription`, or `change_event` | Ratchet test + golden master merged (Step 0 / RFC-0) |
-| **1** | Diff and apply are fused; versioning and consolidation cannot be tested without a database | `EntityUpdater.updateX` records the change and writes it in one breath; consolidation runs three write passes (~L9017–9500, `updateOwners` L9607, `updateDomains` L9902) | A pure `EntityDiff` + `UpdatePolicy`; `EntityDiffTest` with no mocks; the 13 `*ForImport` names gone (Step 1) |
-| **2** | The write lifecycle is implicit, so the import and bulk copies drifted | `createManyEntities` skips column extensions and the write-through cache; `updateManyEntitiesForImport` bypasses the updater entirely; Table CSV import is a PATCH path while glossary/testCase import use `*ForImport`. Ten methods, three modes expressed as booleans. | `WriteContext` + ordered `WriteStage` lists; bulk create writes exactly what single create writes (Step 4) |
-| **3** | Adding one capability touches ~8 places | 17 `supports*` flags plus a hand-wired `fieldSupportMap` | Aspects, Owners first (Step 3) |
-| **4** | The declared contract is 5 abstract methods; the real coupling surface is 140 protected method names | Template-method base with everything `protected`; `EntityUpdater` is a non-static inner class, so 56 files spell `EntityRepository<X>.EntityUpdater` | Hook budget ratcheted down per PR; the static-updater decision recorded (Step 6) |
-| **5** | ThreadLocals used as parameters; five post-commit collectors in four classes juggled by `DeferralScope` | `storedEntityJson`, `parentCacheForPrepare`, `DEFERRED_CACHE_INVALIDATIONS`, plus RDF/lineage/search/cache/post-commit collectors | One `UnitOfWork` and one outbox; `RdfIndexHandler` (Step 5) |
-| **6** | Construction is a service-locator call **with a side effect** | `Entity.registerEntity` runs in the constructor and `Entity.getX()` is called from constructors, so 146 test files `mockStatic(Entity.class)`; constructor failures are swallowed as `LOG.warn` | `RepositoryDependencies` injected through `Entity.initializeRepositories`; registration after construction; constructor failures propagate (Step 2) |
-| **7** | Transaction ownership gaps | Callers open their own transactions and there is no written "join the enclosing transaction" rule for extensions: metadata cleanup ran outside the owning transaction on unchanged bulk updates; Collate's dashboard-chart delete is two autocommits; per-chunk bulk hard delete is not atomic (#29378) | T2/T3 ITs green on `main`; #29378 closed; the rule written into the extension contract |
-| **8** | Read-path N+1s | Per-column loops in `TableRepository`; `enrichEntitiesForAuth` as two round trips; per-descendant deletes. Measured: per-column metrics/extensions 505 → 5, column pages 20 → 0, an expanded 100-column read = 207 queries, a 100-column hard delete = 470. | P1/P2/P4 merged **with the SQL-count ITs as permanent guards**; delete counts measured and budgeted |
-| **9** | Caching | `fillReadBundle` is all-or-nothing with a blind `put`; `CachedEntityDao` publishes one key at a time; `RequestEntityCache` serialises twice per alias | P5/P6/P7 merged with their ITs |
-| **10** | Deletion | Cascade loads the entity twice; the lock gate is dormant (`LockManagerInitializer` is never called); no stale-lock reaper; deletion races ingestion (#20891). See `docs/plans/2026-06-22-bulk-deletion-redesign.md` gaps 2–3. | Per-chunk transaction (#29378), lock gate wired, race IT |
-| **11** | Bulk / import | The `sourceHash` fast path has no benchmark baseline; 13 `*ForImport` shadows | Folded into pains 1–2 **after** a benchmark baseline exists |
-| **12** | The extension API surface leaks internals | No declared extension contract — Collate subclasses reach protected hooks, and #33248 would have made `storeEntity`/`prepare` public | A written extension contract plus a compile check in Collate CI |
+**Five sub-issues already exist** (filed 2026-09-15): #33353 for the P1 read-path N+1, #33358 for the
+atomicity pin, and #33359/#33360/#33361 for the three `main` bugs its port uncovered. The
+**Existing issue** column below records that, so the remaining rows are exactly what still has to be
+opened. Nothing in this plan re-files them.
+
+| # | Pain | Root cause on `main` | Done when | Existing issue |
+|---|---|---|---|---|
+| **0** | No behaviour recording — and the base class grows ~110 lines/week | Nothing pins stored JSON, versions, `ChangeDescription`, or `change_event` | Ratchet test + golden master merged (Step 0 / RFC-0) | partly #33358 |
+| **1** | Diff and apply are fused; versioning and consolidation cannot be tested without a database | `EntityUpdater.updateX` records the change and writes it in one breath; consolidation runs three write passes (~L9017–9500, `updateOwners` L9607, `updateDomains` L9902) | A pure `EntityDiff` + `UpdatePolicy`; `EntityDiffTest` with no mocks; the 13 `*ForImport` names gone (Step 1) | — |
+| **2** | The write lifecycle is implicit, so the import and bulk copies drifted | `createManyEntities` skips column extensions and the write-through cache; `updateManyEntitiesForImport` bypasses the updater entirely; Table CSV import is a PATCH path while glossary/testCase import use `*ForImport`. Ten methods, three modes expressed as booleans. | `WriteContext` + ordered `WriteStage` lists; bulk create writes exactly what single create writes (Step 4) | — |
+| **3** | Adding one capability touches ~8 places | 17 `supports*` flags plus a hand-wired `fieldSupportMap` | Aspects, Owners first (Step 3) | — |
+| **4** | The declared contract is 5 abstract methods; the real coupling surface is 140 protected method names | Template-method base with everything `protected`; `EntityUpdater` is a non-static inner class, so 56 files spell `EntityRepository<X>.EntityUpdater` | Hook budget ratcheted down per PR; the static-updater decision recorded (Step 6) | — |
+| **5** | ThreadLocals used as parameters; five post-commit collectors in four classes juggled by `DeferralScope` | `storedEntityJson`, `parentCacheForPrepare`, `DEFERRED_CACHE_INVALIDATIONS`, plus RDF/lineage/search/cache/post-commit collectors | One `UnitOfWork` and one outbox; `RdfIndexHandler` (Step 5) | — |
+| **6** | Construction is a service-locator call **with a side effect** | `Entity.registerEntity` runs in the constructor and `Entity.getX()` is called from constructors, so 146 test files `mockStatic(Entity.class)`; constructor failures are swallowed as `LOG.warn` | `RepositoryDependencies` injected through `Entity.initializeRepositories`; registration after construction; constructor failures propagate (Step 2) | — |
+| **7** | Transaction ownership gaps | Callers open their own transactions and there is no written "join the enclosing transaction" rule for extensions: metadata cleanup ran outside the owning transaction on unchanged bulk updates; Collate's dashboard-chart delete is two autocommits; per-chunk bulk hard delete is not atomic (#29378) | T2/T3 ITs green on `main`; #29378 closed; the rule written into the extension contract | #33358 (pin) · #33359 · #33360 · #33361 · #29378 |
+| **8** | Read-path N+1s | Per-column loops in `TableRepository`; `enrichEntitiesForAuth` as two round trips; per-descendant deletes. Measured: per-column metrics/extensions 505 → 5, column pages 20 → 0, an expanded 100-column read = 207 queries, a 100-column hard delete = 470. | P1/P2/P4 merged **with the SQL-count ITs as permanent guards**; delete counts measured and budgeted | #33353 (P1) |
+| **9** | Caching | `fillReadBundle` is all-or-nothing with a blind `put`; `CachedEntityDao` publishes one key at a time; `RequestEntityCache` serialises twice per alias | P5/P6/P7 merged with their ITs | — |
+| **10** | Deletion | Cascade loads the entity twice; the lock gate is dormant (`LockManagerInitializer` is never called); no stale-lock reaper; deletion races ingestion (#20891). See `docs/plans/2026-06-22-bulk-deletion-redesign.md` gaps 2–3. | Per-chunk transaction (#29378), lock gate wired, race IT | #29378 · #20891 |
+| **11** | Bulk / import | The `sourceHash` fast path has no benchmark baseline; 13 `*ForImport` shadows | Folded into pains 1–2 **after** a benchmark baseline exists | — |
+| **12** | The extension API surface leaks internals | No declared extension contract — Collate subclasses reach protected hooks, and #33248 would have made `storeEntity`/`prepare` public | A written extension contract plus a compile check in Collate CI | — |
 
 ### Sub-issue drafts
 
 Each sub-issue is opened with `gh issue create`, body starting `Sub-issue of #32946.`, and these
-three headings. Drafts (condensed — the issue body expands each with the line references above):
+three headings. Pains 7 and 8 are **not re-filed** — #33353, #33358, #33359, #33360 and #33361
+already cover them, and #33358's scope is the T2/T3 pin. What follows is the full set for
+completeness; the ones still to open are pains **0–6, 9, 11 and 12** (pain 10 is carried by #29378
+and #20891). Drafts condensed — the issue body expands each with the line references above:
 
 - **Pain 0 — Pin today's behaviour before changing it.** *What hurts:* every refactor PR is reviewed
   by reading, because nothing fails when stored JSON, a version bump, a `ChangeDescription` or a
@@ -312,9 +338,10 @@ static-`EntityUpdater` decision (Step 6) is taken.
 
 1. **This document** ships as the first docs-only PR, with one row in `docs/index.md`. The pain list
    is mirrored to the Notion platform folder by hand.
-2. **One GitHub sub-issue per pain** under #32946 (`Sub-issue of #32946.` + the three sections),
-   plus one tracking issue *"Salvage from #33248"* holding the PR checklist above. A comment on
-   #32946 links them.
+2. **One GitHub sub-issue per pain** under #32946 (`Sub-issue of #32946.` + the three sections) for
+   the pains that do not have one yet — 0–6, 9, 11, 12 — plus one tracking issue
+   *"Salvage from #33248"* holding the PR checklist above. #33353 and #33358–#33361 are reused as
+   they are. A comment on #32946 links the whole set.
 3. **One RFC per pain before its code**, in `docs/plans/`, following the
    `2026-06-22-bulk-deletion-redesign.md` format: Context / Problem on `main` with line references /
    Proposal / Alternatives considered / Migration + Collate impact / Verification naming the
