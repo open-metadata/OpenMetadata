@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   Task,
@@ -253,6 +254,87 @@ describe('TaskCommentCard', () => {
       );
 
       expect(deleteTaskComment).not.toHaveBeenCalled();
+    });
+  });
+
+  // Covers the useLayoutEffect unmount cleanup in TaskCommentCard.component.tsx:
+  // when the card that holds focus is removed, focus must move to a sibling card
+  // or fall back to the replies container, never to <body>.
+  //
+  // The parent is modelled on TaskTabNew's real wiring: a tabIndex={-1} replies
+  // container holding sibling cards, each handed the same ref. Removal is driven
+  // by re-rendering the parent with the comment gone, which is exactly what
+  // TaskTabNew does once its post-delete refetch resolves.
+  //
+  // Deliberately not routed through the delete dialog: in a browser react-aria
+  // restores focus to the trigger as the dialog closes, but jsdom does not
+  // reproduce that, so the precondition (focus inside the card at unmount) is
+  // established directly instead of mocking the real dialog away.
+  describe('focus management on delete', () => {
+    const secondComment: TaskComment = {
+      ...mockComment,
+      id: 'comment-2',
+      message: 'A sibling comment',
+    };
+
+    const CommentList = ({ comments }: { comments: TaskComment[] }) => {
+      const repliesContainerRef = useRef<HTMLDivElement>(null);
+
+      return (
+        <MemoryRouter>
+          <div
+            data-testid="feed-replies"
+            ref={repliesContainerRef}
+            tabIndex={-1}>
+            {comments.map((entry, index, arr) => (
+              <TaskCommentCard
+                comment={entry}
+                currentUser={{ name: 'alice' }}
+                isLastReply={index === arr.length - 1}
+                key={entry.id}
+                repliesContainerRef={repliesContainerRef}
+                task={mockTask}
+              />
+            ))}
+          </div>
+        </MemoryRouter>
+      );
+    };
+
+    const focusFirstCardsDeleteButton = () => {
+      const card = screen.getAllByTestId('task-comment-card')[0];
+      const button = within(card).getByTestId('delete-task-comment');
+
+      act(() => button.focus());
+
+      expect(card.contains(document.activeElement)).toBe(true);
+    };
+
+    it('should move focus to a sibling comment instead of letting it fall to <body>', () => {
+      const { rerender } = render(
+        <CommentList comments={[mockComment, secondComment]} />
+      );
+
+      focusFirstCardsDeleteButton();
+
+      rerender(<CommentList comments={[secondComment]} />);
+
+      const survivor = screen.getByTestId('task-comment-card');
+
+      expect(survivor).toHaveFocus();
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    it('should fall back to the replies container when the deleted comment has no sibling to focus', () => {
+      const { rerender } = render(<CommentList comments={[mockComment]} />);
+
+      focusFirstCardsDeleteButton();
+
+      rerender(<CommentList comments={[]} />);
+
+      expect(screen.queryByTestId('task-comment-card')).not.toBeInTheDocument();
+      expect(screen.getByTestId('feed-replies')).toHaveFocus();
+      expect(document.activeElement).not.toBe(document.body);
     });
   });
 });
