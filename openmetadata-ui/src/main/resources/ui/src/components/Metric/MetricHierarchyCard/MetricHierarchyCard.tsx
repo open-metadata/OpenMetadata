@@ -297,12 +297,14 @@ const MetricHierarchyTree = ({
   return (
     <Box direction="col">
       {isStandalone && (
-        <Typography
-          className="tw:px-3 tw:py-2 tw:text-tertiary"
-          data-testid="metric-tree-empty"
-          size="text-sm">
-          {t('message.metric-not-in-hierarchy')}
-        </Typography>
+        <div className="tw:mb-2">
+          <Typography
+            className=" tw:px-3 tw:py-2 tw:text-tertiary"
+            data-testid="metric-tree-empty"
+            size="text-sm">
+            {t('message.metric-not-in-hierarchy')}
+          </Typography>
+        </div>
       )}
       {hierarchy.group && <GroupRow group={hierarchy.group} />}
       {hierarchy.ancestors.map((ancestor, index) => (

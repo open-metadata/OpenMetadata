@@ -48,8 +48,7 @@ const baseValues = (
   customUnitOfMeasurement: '',
   language: item(Language.SQL),
   code: 'SELECT 1',
-  metricGroup: '',
-  isNewMetricGroup: false,
+  metricGroup: null,
   owners: [],
   reviewers: [],
   domains: [],
@@ -128,9 +127,20 @@ describe('transformMetricFormData', () => {
     expect(withDollars.customUnitOfMeasurement).toBeUndefined();
   });
 
-  it('should force metricGroup undefined and set parent when a parent FQN is given', () => {
+  it('should prefer the explicit parent FQN over the selected metric group', () => {
     const payload = transformMetricFormData(
-      baseValues({ metricGroup: 'ignored-group' }),
+      baseValues({
+        metricGroup: {
+          id: 'ignored',
+          label: 'ignored',
+          value: {
+            id: 'ignored',
+            type: 'metric',
+            name: 'ignored',
+            fullyQualifiedName: 'ignored.metric',
+          },
+        },
+      }),
       'parent.metric.fqn'
     );
 
@@ -138,13 +148,24 @@ describe('transformMetricFormData', () => {
     expect(payload.parent).toBe('parent.metric.fqn');
   });
 
-  it('should keep metricGroup when there is no parent', () => {
+  it('should set parent from the selected metric when there is no parent FQN', () => {
     const payload = transformMetricFormData(
-      baseValues({ metricGroup: 'growth' })
+      baseValues({
+        metricGroup: {
+          id: 'growth',
+          label: 'Growth',
+          value: {
+            id: 'growth',
+            type: 'metric',
+            name: 'growth',
+            fullyQualifiedName: 'growth',
+          },
+        },
+      })
     );
 
-    expect(payload.metricGroup).toBe('growth');
-    expect(payload.parent).toBeUndefined();
+    expect(payload.metricGroup).toBeUndefined();
+    expect(payload.parent).toBe('growth');
   });
 
   it('should build the metric expression from language and trimmed code', () => {

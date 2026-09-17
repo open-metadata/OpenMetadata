@@ -43,7 +43,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import MetricGroupSelect from '../MetricGroupSelect/MetricGroupSelect';
 import {
   AddMetricFormProps,
   MetricFormSelectItem,
@@ -60,8 +59,7 @@ export const METRIC_FORM_DEFAULTS: MetricFormValues = {
   customUnitOfMeasurement: '',
   language: { id: Language.SQL, label: Language.SQL, value: Language.SQL },
   code: '',
-  metricGroup: '',
-  isNewMetricGroup: false,
+  metricGroup: null,
   owners: [],
   reviewers: [],
   domains: [],
@@ -92,14 +90,13 @@ const AddMetricForm = ({
   const [relatedMetricOptions, setRelatedMetricOptions] = useState<
     MetricFormSelectItem[]
   >([]);
+  const [metricGroupOptions, setMetricGroupOptions] = useState<
+    MetricFormSelectItem[]
+  >([]);
 
   const selectedUnit = useWatch({
     control: form.control,
     name: 'unitOfMeasurement',
-  });
-  const metricGroupValue = useWatch({
-    control: form.control,
-    name: 'metricGroup',
   });
   const isCustomUnit = selectedUnit?.value === UnitOfMeasurement.Other;
 
@@ -272,6 +269,45 @@ const AddMetricForm = ({
     }
   }, []);
 
+  const fetchMetricGroupOptions = useCallback(async (searchText = '') => {
+    try {
+      const response = await searchQuery({
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        query: searchText,
+        searchIndex: SearchIndex.METRIC,
+      });
+
+      setMetricGroupOptions(
+        response.hits.hits.flatMap((hit) => {
+          const source = hit._source;
+          const fullyQualifiedName = source.fullyQualifiedName ?? source.name;
+          if (!fullyQualifiedName) {
+            return [];
+          }
+          const reference: EntityReference = {
+            id: fullyQualifiedName,
+            type: EntityType.METRIC,
+            name: source.name,
+            displayName: source.displayName,
+            fullyQualifiedName,
+          };
+
+          return [
+            {
+              id: fullyQualifiedName,
+              label: getEntityName(source),
+              supportingText: fullyQualifiedName,
+              value: reference,
+            },
+          ];
+        })
+      );
+    } catch {
+      setMetricGroupOptions([]);
+    }
+  }, []);
+
   const handleUserTeamFocus = useCallback(
     () => void fetchUserTeamOptions(),
     [fetchUserTeamOptions]
@@ -279,6 +315,10 @@ const AddMetricForm = ({
   const handleDomainFocus = useCallback(
     () => void fetchDomainOptions(),
     [fetchDomainOptions]
+  );
+  const handleMetricGroupFocus = useCallback(
+    () => void fetchMetricGroupOptions(),
+    [fetchMetricGroupOptions]
   );
   const handleRelatedMetricFocus = useCallback(
     () => void fetchRelatedMetricOptions(),
@@ -309,26 +349,28 @@ const AddMetricForm = ({
       ),
     [fetchRelatedMetricOptions]
   );
+  const debouncedMetricGroupSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchMetricGroupOptions(searchText),
+        250
+      ),
+    [fetchMetricGroupOptions]
+  );
 
   useEffect(
     () => () => {
       debouncedUserTeamSearch.cancel();
       debouncedDomainSearch.cancel();
       debouncedRelatedMetricSearch.cancel();
+      debouncedMetricGroupSearch.cancel();
     },
     [
       debouncedUserTeamSearch,
       debouncedDomainSearch,
       debouncedRelatedMetricSearch,
+      debouncedMetricGroupSearch,
     ]
-  );
-
-  const handleMetricGroupChange = useCallback(
-    (metricGroup?: string, isNewMetricGroup = false) => {
-      form.setValue('metricGroup', metricGroup ?? '');
-      form.setValue('isNewMetricGroup', isNewMetricGroup);
-    },
-    [form]
   );
 
   const nameField: FieldProp = {
@@ -519,6 +561,21 @@ const AddMetricForm = ({
     type: FieldTypes.ASYNC_SELECT,
   };
 
+  const metricGroupField: FieldProp = {
+    id: 'root/metricGroup',
+    label: t('label.metric-group'),
+    name: 'metricGroup',
+    placeholder: t('label.select-field', { field: t('label.metric-group') }),
+    props: {
+      filterOption: () => true,
+      onFocus: handleMetricGroupFocus,
+      onSearchChange: (searchText: string) =>
+        debouncedMetricGroupSearch(searchText),
+      options: metricGroupOptions,
+    },
+    type: FieldTypes.ASYNC_SELECT,
+  };
+
   return (
     <HookForm
       className="tw:flex tw:flex-col tw:gap-5"
@@ -560,14 +617,7 @@ const AddMetricForm = ({
           {parentMetricFqn}
         </Alert>
       ) : (
-        <div data-testid="metric-group-field">
-          <MetricGroupSelect
-            helperText={t('message.metric-group-optional')}
-            label={t('label.metric-group')}
-            value={metricGroupValue}
-            onChange={handleMetricGroupChange}
-          />
-        </div>
+        <div data-testid="metric-group-field">{getField(metricGroupField)}</div>
       )}
       <div>{getField(ownersField)}</div>
       <div>{getField(reviewersField)}</div>

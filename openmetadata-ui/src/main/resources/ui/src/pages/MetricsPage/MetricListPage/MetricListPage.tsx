@@ -57,6 +57,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import type { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1370,11 +1371,16 @@ const MetricListPage = () => {
             iconLeading={Settings01}>
             {t('label.customize')}
           </Button>
-          <Dropdown.Popover className="tw:min-w-[260px]">
-            <div className="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-secondary tw:px-3 tw:py-2.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
+          <Dropdown.Popover className="metric-customize-menu">
+            <div
+              className={classNames(
+                'metric-customize-header tw:flex tw:items-center tw:justify-between',
+                'tw:border-b tw:border-secondary tw:px-3 tw:py-2.5',
+                'tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary'
+              )}>
               <span>{t('label.column')}</span>
               <button
-                className="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-medium tw:normal-case tw:tracking-normal tw:text-brand-secondary"
+                className="metric-customize-toggle tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-medium tw:normal-case tw:tracking-normal tw:text-brand-secondary"
                 type="button"
                 onClick={() =>
                   persistVisibleColumns(
@@ -1386,24 +1392,32 @@ const MetricListPage = () => {
                   : t('label.view-all')}
               </button>
             </div>
-            <div className="tw:flex tw:flex-col tw:p-1.5">
+            <div className="metric-customize-list tw:flex tw:flex-col tw:p-1.5">
               {METRIC_COLUMN_ORDER.map((columnId) => {
                 const isVisible = visibleColumns.includes(columnId);
 
                 return (
                   <button
-                    className="tw:grid tw:grid-cols-[24px_1fr_20px] tw:items-center tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-2 tw:text-left tw:text-sm tw:text-primary tw:hover:bg-secondary"
+                    className={classNames(
+                      'metric-customize-row tw:flex tw:cursor-pointer tw:items-center tw:gap-3',
+                      'tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-2 tw:text-left',
+                      'tw:text-sm tw:text-primary tw:hover:bg-secondary'
+                    )}
                     key={columnId}
                     type="button"
                     onClick={() => handleToggleColumn(columnId)}>
-                    <span aria-hidden="true" className="tw:text-quaternary">
+                    <span
+                      aria-hidden="true"
+                      className="metric-customize-grip tw:text-quaternary">
                       ::
                     </span>
-                    <span>{t(METRIC_COLUMN_LABEL_KEYS[columnId])}</span>
+                    <span className="tw:flex-1">
+                      {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
+                    </span>
                     {isVisible ? (
-                      <Eye className="tw:size-4 tw:text-quaternary" />
+                      <Eye className="metric-customize-eye tw:size-4 tw:text-quaternary" />
                     ) : (
-                      <EyeOff className="tw:size-4 tw:text-quaternary" />
+                      <EyeOff className="metric-customize-eye tw:size-4 tw:text-quaternary" />
                     )}
                   </button>
                 );

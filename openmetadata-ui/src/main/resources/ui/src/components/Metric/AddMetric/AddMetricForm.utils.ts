@@ -67,9 +67,13 @@ export const transformMetricFormData = (
     unitOfMeasurement === UnitOfMeasurement.Other
       ? nonEmptyString(values.customUnitOfMeasurement)
       : undefined;
-  const metricGroup = parentMetricFqn
-    ? undefined
-    : nonEmptyString(values.metricGroup);
+  const selectedParent = values.metricGroup?.value as
+    | EntityReference
+    | undefined;
+  const parent =
+    parentMetricFqn ??
+    selectedParent?.fullyQualifiedName ??
+    selectedParent?.name;
 
   return {
     name,
@@ -79,8 +83,7 @@ export const transformMetricFormData = (
     ...optionalProperty('metricType', metricType),
     ...optionalProperty('unitOfMeasurement', unitOfMeasurement),
     ...optionalProperty('customUnitOfMeasurement', customUnit),
-    ...optionalProperty('metricGroup', metricGroup),
-    ...optionalProperty('parent', parentMetricFqn),
+    ...optionalProperty('parent', parent),
     ...optionalProperty(
       'owners',
       nonEmptyArray(entityReferences(values.owners))
