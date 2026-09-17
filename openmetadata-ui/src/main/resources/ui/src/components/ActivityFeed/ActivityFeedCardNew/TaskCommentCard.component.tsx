@@ -211,7 +211,6 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
             onClick={() => setShowDeleteDialog(true)}
           />
           <DeleteModal
-            elevated
             entityTitle={t('label.comment')}
             isDeleting={isDeleting}
             message={t('message.confirm-delete-message')}

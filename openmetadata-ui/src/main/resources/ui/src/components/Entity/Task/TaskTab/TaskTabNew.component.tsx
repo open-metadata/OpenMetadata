@@ -1843,6 +1843,9 @@ export const TaskTabNew = ({
         className="p-l-0 p-r-0"
         data-testid="feed-replies"
         ref={repliesContainerRef}
+        // Needed so .focus() in TaskCommentCard's unmount fallback actually
+        // works - a plain div isn't focusable without it, and focus would fall
+        // through to <body>. -1 keeps it out of the normal tab order.
         tabIndex={-1}>
         {sortedComments.map((comment, index, arr) => (
           <TaskCommentCard

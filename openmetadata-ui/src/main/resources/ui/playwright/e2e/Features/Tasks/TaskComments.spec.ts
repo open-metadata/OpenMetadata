@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Locator, Page } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
@@ -526,10 +527,7 @@ test.describe('Task Comments - Edit/Delete', () => {
    * (needed to match the DELETE response) and the comment's text (needed to
    * find the right `task-comment-card`).
    */
-  const postCommentAsUser = async (
-    page: import('@playwright/test').Page,
-    message: string
-  ) => {
+  const postCommentAsUser = async (page: Page, message: string) => {
     await table.visitEntityPage(page);
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
@@ -583,8 +581,8 @@ test.describe('Task Comments - Edit/Delete', () => {
    * keyboard/tab without hovering, but hover is the primary discovery path).
    */
   const deleteCommentViaUi = async (
-    page: import('@playwright/test').Page,
-    drawer: ReturnType<import('@playwright/test').Page['locator']>,
+    page: Page,
+    drawer: Locator,
     message: string,
     taskCommentId: string
   ) => {
