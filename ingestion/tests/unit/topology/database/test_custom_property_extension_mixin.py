@@ -381,15 +381,27 @@ class TestExistingDefinitionsAreNotOverwritten:
 
         assert source.metadata.get_entity_custom_properties.call_count == 1
 
-    def test_a_failed_listing_falls_back_to_registering(self):
-        """Losing the guard beats losing the feature; the registration call reports its own failure."""
+    def test_a_failed_listing_fails_closed(self):
+        """Treating an unreadable listing as an empty one would register over whatever is already
+        there - the corruption the lookup exists to prevent, from nothing worse than a timeout."""
         source = _FakeSource()
         source.metadata.get_entity_custom_properties.side_effect = RuntimeError("boom")
 
         result = source.build_entity_extension({"owner": "data-eng"}, source_label=SOURCE_LABEL)
 
-        assert result == {"owner": "data-eng"}
-        assert source.metadata.create_or_update_custom_property.call_count == 1
+        assert result is None
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+
+    def test_a_failed_listing_is_not_cached(self):
+        """A transient failure costs one entity its extension, not the rest of the run."""
+        source = _FakeSource()
+        source.metadata.get_entity_custom_properties.side_effect = [
+            RuntimeError("boom"),
+            [_definition("other", "string")],
+        ]
+
+        assert source.build_entity_extension({"owner": "v"}, source_label=SOURCE_LABEL) is None
+        assert source.build_entity_extension({"owner": "v"}, source_label=SOURCE_LABEL) == {"owner": "v"}
 
 
 class TestLegacyPropertyNamesAreReused:
@@ -467,3 +479,28 @@ class TestLegacyPropertyNamesAreReused:
 
         assert result == {digest: "v"}
         assert source.metadata.create_or_update_custom_property.call_count == 0
+
+
+class TestExistingDefinitionsCacheIsBounded:
+    """The mixin takes an arbitrary entity_type, and each entry holds a whole server snapshot."""
+
+    def test_cache_does_not_grow_past_capacity(self):
+        source = _FakeSource()
+        source._existing_properties = LRUCache(2)
+        entity_types = [type(f"Entity{i}", (), {}) for i in range(10)]
+
+        for entity_type in entity_types:
+            source.build_entity_extension({"k": "v"}, source_label=SOURCE_LABEL, entity_type=entity_type)
+
+        assert len(source._existing_properties) == 2
+
+    def test_an_evicted_entity_type_is_listed_again(self):
+        source = _FakeSource()
+        source._existing_properties = LRUCache(1)
+        other = type("Other", (), {})
+
+        source.build_entity_extension({"k": "v"}, source_label=SOURCE_LABEL)
+        source.build_entity_extension({"k": "v"}, source_label=SOURCE_LABEL, entity_type=other)
+        source.build_entity_extension({"k": "v"}, source_label=SOURCE_LABEL)
+
+        assert source.metadata.get_entity_custom_properties.call_count == 3

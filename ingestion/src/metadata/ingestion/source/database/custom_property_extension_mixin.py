@@ -50,6 +50,11 @@ PROPERTY_NAME_LEADING_CHAR_PATTERN = re.compile(r"^[A-Za-z0-9]")
 PROPERTY_NAME_LEADING_PREFIX = "p_"
 PROPERTY_NAME_DISAMBIGUATOR_LENGTH = 8
 PROCESSED_PROPERTY_CACHE_SIZE = 1024
+# One entry per entity type, each holding that type's definitions as the server returned them.
+EXISTING_DEFINITIONS_CACHE_SIZE = 8
+
+# name -> (data type, display name) for one entity type's custom property definitions.
+EntityDefinitions = dict[str, tuple[str, str | None]]
 
 
 class CustomPropertyExtensionMixin:
@@ -62,13 +67,13 @@ class CustomPropertyExtensionMixin:
     metadata: OpenMetadata
     _string_property_type_ref: PropertyType | None
     _processed_prop: LRUCache[str]
-    _existing_properties: dict[str, dict[str, tuple[str, str | None]]]
+    _existing_properties: LRUCache[EntityDefinitions]
 
     def _init_custom_properties(self) -> None:
         """Set up the per-source custom property state. Call from the source's __init__."""
         self._string_property_type_ref = None
         self._processed_prop = LRUCache(PROCESSED_PROPERTY_CACHE_SIZE)
-        self._existing_properties = {}
+        self._existing_properties = LRUCache(EXISTING_DEFINITIONS_CACHE_SIZE)
 
     @property
     def custom_properties_enabled(self) -> bool:
@@ -95,18 +100,29 @@ class CustomPropertyExtensionMixin:
         property_type = self._string_property_type_ref
         if property_type is None:
             return None
+        definitions = self._existing_definitions(entity_type)
+        if definitions is None:
+            # Fail closed. Treating unreadable definitions as none at all would register over
+            # whatever is already there, which is the corruption the lookup exists to prevent, and
+            # a timeout or a missing permission is enough to get there.
+            logger.warning(
+                "Cannot read %s custom property definitions; skipping the extension from %s",
+                entity_type.__name__,
+                source_label,
+            )
+            return None
         registered_properties: dict[str, str] = {}
         for prop_name, prop_value in properties.items():
             # Only absent and empty values are dropped. Glue extras are not coerced by the model,
             # so a parameter can arrive as 0 or False, and those are real values.
             if prop_value is None or prop_value == "":
                 continue
-            sanitized_name = self._resolve_property_name(prop_name, entity_type)
+            sanitized_name = self._resolve_property_name(prop_name, definitions)
             if sanitized_name in self._processed_prop:
                 if not self._owns_property_name(sanitized_name, prop_name):
                     continue
             elif not self._register_custom_property(
-                sanitized_name, prop_name, entity_type, source_label, property_type
+                sanitized_name, prop_name, entity_type, source_label, property_type, definitions
             ):
                 continue
             # Custom properties are registered as `string`; the server validates each value against
@@ -147,13 +163,14 @@ class CustomPropertyExtensionMixin:
             return CustomPropertyExtensionMixin._digest(prop_name)
         return sanitized_name
 
-    def _resolve_property_name(self, prop_name: str, entity_type: type) -> str:
+    @classmethod
+    def _resolve_property_name(cls, prop_name: str, definitions: EntityDefinitions) -> str:
         """The custom property name this source key writes to."""
-        sanitized_name = self._sanitize_property_name(prop_name)
-        legacy_name = self._legacy_property_name(prop_name)
+        sanitized_name = cls._sanitize_property_name(prop_name)
+        legacy_name = cls._legacy_property_name(prop_name)
         if legacy_name == sanitized_name:
             return sanitized_name
-        data_type, display_name = self._existing_property(entity_type, legacy_name)
+        data_type, display_name = definitions.get(legacy_name, (None, None))
         if data_type == CustomPropertyDataTypes.STRING.value and display_name == prop_name:
             # An earlier release registered this exact source key under the undisambiguated name,
             # and every table ingested since holds its values there. Moving to the disambiguated
@@ -195,9 +212,10 @@ class CustomPropertyExtensionMixin:
         entity_type: type,
         source_label: str,
         property_type: PropertyType,
+        definitions: EntityDefinitions,
     ) -> bool:
         """Ensure a `string` definition exists. Returns False when the caller must skip this property."""
-        existing_type, _ = self._existing_property(entity_type, sanitized_name)
+        existing_type, _ = definitions.get(sanitized_name, (None, None))
         if existing_type is not None and existing_type != CustomPropertyDataTypes.STRING.value:
             # The definition is global to the entity type, so registering over it would retype a
             # property every other table shares and invalidate their values. A string value would
@@ -233,31 +251,43 @@ class CustomPropertyExtensionMixin:
                 logger.debug(traceback.format_exc())
                 return False
         # Valued by the raw name that produced it so _owns_property_name can spot a digest collision.
+        # Checking the cache, registering and writing it back is deliberately not atomic: Athena runs
+        # schema workers concurrently, so two can miss the same first-seen name and both PUT. The PUT
+        # is idempotent and the name is cached straight after, so the cost is bounded at one
+        # redundant round trip per name per run - cheaper than holding a lock across a network call.
         self._processed_prop.put(sanitized_name, prop_name)
         return True
 
-    def _existing_property(self, entity_type: type, name: str) -> tuple[str | None, str | None]:
-        """(data type, display name) of an already defined custom property, (None, None) if free."""
+    def _existing_definitions(self, entity_type: type) -> EntityDefinitions | None:
+        """The entity type's custom property definitions, or None when they could not be read."""
         entity_key = entity_type.__name__
-        if entity_key not in self._existing_properties:
-            self._existing_properties[entity_key] = self._fetch_existing_properties(entity_type)
-        return self._existing_properties[entity_key].get(name, (None, None))
+        if entity_key in self._existing_properties:
+            try:
+                return self._existing_properties.get(entity_key)
+            except KeyError:
+                # Evicted between the check and the read; fetching again is correct either way.
+                pass
+        definitions = self._fetch_existing_properties(entity_type)
+        if definitions is None:
+            # Not cached, so a transient failure costs this entity its extension rather than
+            # disabling custom properties for the rest of the run.
+            return None
+        self._existing_properties.put(entity_key, definitions)
+        return definitions
 
-    def _fetch_existing_properties(self, entity_type: type) -> dict[str, tuple[str, str | None]]:
+    def _fetch_existing_properties(self, entity_type: type) -> EntityDefinitions | None:
         """Snapshot the entity type's definitions as name -> (data type, display name).
 
-        One response held verbatim rather than a cache that accumulates: it is read only, sized by
-        what the server already defines, and never added to as properties are registered.
+        One response held verbatim rather than a cache that accumulates: it is read only and never
+        added to as properties are registered. None means the listing failed.
         """
         try:
             existing = self.metadata.get_entity_custom_properties(entity_type=entity_type)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
         except Exception as exc:
-            # Nothing to compare against, so the guard above cannot fire and a name clash falls back
-            # to create-or-update. The same endpoint backs registration, which reports its own failure.
             logger.warning("Failed to list existing custom properties for [%s]: %s", entity_type.__name__, exc)
             logger.debug(traceback.format_exc())
-            return {}
-        defined: dict[str, tuple[str, str | None]] = {}
+            return None
+        defined: EntityDefinitions = {}
         for prop in existing or []:
             name = prop.get("name")
             data_type = (prop.get("propertyType") or {}).get("name")
