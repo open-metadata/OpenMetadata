@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
-import { debounce, startCase } from 'lodash';
+import { Box, FilterSelect, FilterSelectOption } from '@openmetadata/ui-core-components';
+import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuditLogFiltersProps } from '../../../../../../components/AuditLog/AuditLogFilters.interface';
 import DatePickerMenu from '../../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
-import QuickFilterDropdown from '../../../../../../components/Explore/QuickFilterDropdown';
-import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
 import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../../../../../constants/auditLog.constant';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -59,21 +57,19 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     [t]
   );
 
-  const [userOptions, setUserOptions] = useState<SearchDropdownOption[]>([]);
-  const [botOptions, setBotOptions] = useState<SearchDropdownOption[]>([]);
+  const [userOptions, setUserOptions] = useState<FilterSelectOption[]>([]);
+  const [botOptions, setBotOptions] = useState<FilterSelectOption[]>([]);
   const [filteredEntityTypeOptions, setFilteredEntityTypeOptions] = useState<
-    SearchDropdownOption[]
+    FilterSelectOption[]
   >(ENTITY_TYPE_SEARCH_OPTIONS);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingBots, setIsLoadingBots] = useState(false);
 
-  const getSelectedKeys = useCallback(
-    (category: AuditLogFilterCategoryType): SearchDropdownOption[] => {
+  const getSelectedValues = useCallback(
+    (category: AuditLogFilterCategoryType): string[] => {
       const filter = activeFilters.find((f) => f.category === category);
 
-      return filter
-        ? [{ key: filter.value.key, label: filter.value.label }]
-        : [];
+      return filter ? [filter.value.key] : [];
     },
     [activeFilters]
   );
@@ -147,39 +143,42 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     [activeFilters, onFiltersChange, t]
   );
 
-  const handleDropdownChange = useCallback(
-    (values: SearchDropdownOption[], searchKey: string) => {
-      const category = searchKey as AuditLogFilterCategoryType;
-      let newFilters: AuditLogActiveFilter[];
-
-      if (values.length === 0) {
-        newFilters = activeFilters.filter((f) => f.category !== category);
-      } else {
-        const option = values[0];
-        const existingIndex = activeFilters.findIndex(
-          (f) => f.category === category
+  const makeChangeHandler = useCallback(
+    (
+      category: AuditLogFilterCategoryType,
+      currentOptions: FilterSelectOption[]
+    ) =>
+      (values: string[]) => {
+        const optionMap = new Map(
+          currentOptions.map((o) => [o.value, o.label as string])
         );
-        const newFilter: AuditLogActiveFilter = {
-          category,
-          categoryLabel: getAuditLogCategoryLabel(category, t),
-          value: {
-            key: option.key,
-            label: option.label,
-            value: option.key,
-          },
-        };
+        let newFilters: AuditLogActiveFilter[];
 
-        if (existingIndex >= 0) {
-          newFilters = [...activeFilters];
-          newFilters[existingIndex] = newFilter;
+        if (values.length === 0) {
+          newFilters = activeFilters.filter((f) => f.category !== category);
         } else {
-          newFilters = [...activeFilters, newFilter];
-        }
-      }
+          const value = values[0];
+          const label = optionMap.get(value) ?? value;
+          const existingIndex = activeFilters.findIndex(
+            (f) => f.category === category
+          );
+          const newFilter: AuditLogActiveFilter = {
+            category,
+            categoryLabel: getAuditLogCategoryLabel(category, t),
+            value: { key: value, label, value },
+          };
 
-      const params = buildParamsFromFilters(newFilters);
-      onFiltersChange(newFilters, params);
-    },
+          if (existingIndex >= 0) {
+            newFilters = [...activeFilters];
+            newFilters[existingIndex] = newFilter;
+          } else {
+            newFilters = [...activeFilters, newFilter];
+          }
+        }
+
+        const params = buildParamsFromFilters(newFilters);
+        onFiltersChange(newFilters, params);
+      },
     [activeFilters, onFiltersChange, t]
   );
 
@@ -196,8 +195,8 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
       const users: User[] = formatUsersResponse(response.hits.hits);
       setUserOptions(
         users.map((user) => ({
-          key: user.name,
           label: getEntityName(user) || user.name,
+          value: user.name,
         }))
       );
     } catch {
@@ -220,8 +219,8 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
       const bots: User[] = formatUsersResponse(response.hits.hits);
       setBotOptions(
         bots.map((bot) => ({
-          key: bot.name,
-          label: startCase(getEntityName(bot) || bot.name),
+          label: getEntityName(bot) || bot.name,
+          value: bot.name,
         }))
       );
     } catch {
@@ -241,37 +240,6 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     [fetchBots]
   );
 
-  const handleSearch = useCallback(
-    (searchText: string, searchKey: string) => {
-      if (searchKey === 'user') {
-        debouncedFetchUsers(searchText);
-      } else if (searchKey === 'bot') {
-        debouncedFetchBots(searchText);
-      } else if (searchKey === 'entityType') {
-        const filtered = searchText
-          ? ENTITY_TYPE_SEARCH_OPTIONS.filter((option) =>
-              option.label.toLowerCase().includes(searchText.toLowerCase())
-            )
-          : ENTITY_TYPE_SEARCH_OPTIONS;
-        setFilteredEntityTypeOptions(filtered);
-      }
-    },
-    [debouncedFetchUsers, debouncedFetchBots]
-  );
-
-  const handleGetInitialOptions = useCallback(
-    (searchKey: string) => {
-      if (searchKey === 'user') {
-        fetchUsers('');
-      } else if (searchKey === 'bot') {
-        fetchBots('');
-      } else if (searchKey === 'entityType') {
-        setFilteredEntityTypeOptions(ENTITY_TYPE_SEARCH_OPTIONS);
-      }
-    },
-    [fetchUsers, fetchBots]
-  );
-
   return (
     <Box
       align="center"
@@ -286,44 +254,65 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         key={timeFilter?.value.key ?? 'no-time-filter'}
         options={auditTimeFilterRange}
       />
-      <QuickFilterDropdown
+      <FilterSelect
         hideCounts
-        showSelectedCounts
-        singleSelect
-        isSuggestionsLoading={isLoadingUsers}
+        searchable
+        isLoading={isLoadingUsers}
         label={t('label.user')}
         options={userOptions}
-        searchKey="user"
-        selectedKeys={getSelectedKeys('user')}
-        onChange={handleDropdownChange}
-        onGetInitialOptions={handleGetInitialOptions}
-        onSearch={handleSearch}
+        selectedValues={getSelectedValues('user')}
+        selectionMode="single"
+        triggerVariant="button"
+        onChange={makeChangeHandler('user', userOptions)}
+        onOpenChange={(open) => {
+          if (open) {
+            fetchUsers('');
+          }
+        }}
+        onSearch={debouncedFetchUsers}
       />
-      <QuickFilterDropdown
+      <FilterSelect
         hideCounts
-        showSelectedCounts
-        singleSelect
-        isSuggestionsLoading={isLoadingBots}
+        searchable
+        isLoading={isLoadingBots}
         label={t('label.bot')}
         options={botOptions}
-        searchKey="bot"
-        selectedKeys={getSelectedKeys('bot')}
-        onChange={handleDropdownChange}
-        onGetInitialOptions={handleGetInitialOptions}
-        onSearch={handleSearch}
+        selectedValues={getSelectedValues('bot')}
+        selectionMode="single"
+        triggerVariant="button"
+        onChange={makeChangeHandler('bot', botOptions)}
+        onOpenChange={(open) => {
+          if (open) {
+            fetchBots('');
+          }
+        }}
+        onSearch={debouncedFetchBots}
       />
-      <QuickFilterDropdown
+      <FilterSelect
         hideCounts
-        showSelectedCounts
-        singleSelect
-        isSuggestionsLoading={false}
+        searchable
+        isLoading={false}
         label={t('label.entity-type')}
         options={filteredEntityTypeOptions}
-        searchKey="entityType"
-        selectedKeys={getSelectedKeys('entityType')}
-        onChange={handleDropdownChange}
-        onGetInitialOptions={handleGetInitialOptions}
-        onSearch={handleSearch}
+        selectedValues={getSelectedValues('entityType')}
+        selectionMode="single"
+        triggerVariant="button"
+        onChange={makeChangeHandler('entityType', filteredEntityTypeOptions)}
+        onOpenChange={(open) => {
+          if (open) {
+            setFilteredEntityTypeOptions(ENTITY_TYPE_SEARCH_OPTIONS);
+          }
+        }}
+        onSearch={(text) => {
+          const filtered = text
+            ? ENTITY_TYPE_SEARCH_OPTIONS.filter((option) =>
+                String(option.label)
+                  .toLowerCase()
+                  .includes(text.toLowerCase())
+              )
+            : ENTITY_TYPE_SEARCH_OPTIONS;
+          setFilteredEntityTypeOptions(filtered);
+        }}
       />
     </Box>
   );

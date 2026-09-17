@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { SelectItemType } from '@openmetadata/ui-core-components';
+import {
+  FilterSelectOption,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
-import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import {
   Effect,
@@ -98,15 +100,15 @@ export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = POLICY_ENTITY_TYPES.map(
   })
 );
 
-export const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
+export const ENTITY_TYPE_SEARCH_OPTIONS: FilterSelectOption[] =
   ENTITY_TYPE_OPTIONS.map((o) => ({
     icon:
       searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(o.value),
         EntityIconSize.Size14
       ) ?? undefined,
-    key: o.value,
     label: o.label,
+    value: o.value,
   }));
 
 export const RESOURCE_ITEMS: SelectItemType[] = PERMISSION_RESOURCES.map(
