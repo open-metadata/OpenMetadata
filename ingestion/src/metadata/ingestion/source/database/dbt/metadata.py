@@ -1433,6 +1433,18 @@ class DbtSource(DbtServiceSource):
         return getattr(agg, "value", agg) if agg else None
 
     @staticmethod
+    def _is_simple_metric(metric_node: Any) -> bool:
+        """True when the metric is a dbt ``simple`` metric.
+
+        Only simple metrics own a measure, so only they get a synthesised measure from
+        the 1.12 inline fields. Derived/ratio/cumulative/conversion carry their formula in
+        type_params but do not represent a measure.
+        """
+        metric_type = getattr(metric_node, "type", None)
+        dbt_type = getattr(metric_type, "value", str(metric_type)) if metric_type else None
+        return dbt_type == "simple"
+
+    @staticmethod
     def _simple_metric_expression(type_params):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
@@ -1566,11 +1578,13 @@ class DbtSource(DbtServiceSource):
                         expression=getattr(measure, "expr", None),
                     )
                 )
-        # dbt 1.12+ inline spec: semantic model measures list is empty because the aggregation
-        # is defined directly on the metric. Fall back to type_params.expr on the metric node
-        # and carry the aggregation from metric_aggregation_params so the measure matches the
-        # metadata the pre-1.12 spec produced.
-        if not result:
+        # dbt 1.12+ inline spec: a simple metric no longer references a measure; its
+        # aggregation is defined directly on the metric. When the semantic model yields no
+        # measures, synthesise one from type_params.expr + metric_aggregation_params so the
+        # measure matches the metadata the pre-1.12 spec produced. Restricted to simple
+        # metrics: derived/ratio/etc. also carry type_params.expr (their formula), and that
+        # belongs only in the metric expression, not as a fabricated measure.
+        if not result and self._is_simple_metric(metric_node):
             type_params = getattr(metric_node, "type_params", None)
             expr = getattr(type_params, "expr", None) if type_params else None
             aggregation = self._metric_aggregation(type_params) if type_params else None

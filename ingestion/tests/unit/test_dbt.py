@@ -4752,6 +4752,7 @@ class TestDbtV12MetricIngest(TestCase):
         sm = SimpleNamespace(name="sm1", measures=[])
         metric_node = SimpleNamespace(
             name="distinct_users",
+            type="simple",
             type_params=SimpleNamespace(
                 measure=None,
                 expr="user_id",
@@ -4778,6 +4779,7 @@ class TestDbtV12MetricIngest(TestCase):
 
         metric_node = SimpleNamespace(
             name="active_users",
+            type="simple",
             type_params=SimpleNamespace(measure=None, expr="user_id"),
             refs=None,
             metrics=None,
@@ -4800,6 +4802,7 @@ class TestDbtV12MetricIngest(TestCase):
         sm = SimpleNamespace(name="sm1", measures=[])
         metric_node = SimpleNamespace(
             name="my_metric",
+            type="simple",
             type_params=SimpleNamespace(measure=None, expr=None),
             refs=None,
             metrics=None,
@@ -4854,6 +4857,7 @@ class TestDbtV12MetricAggregationAndCumulative(TestCase):
         source = self._make_source()
         metric_node = SimpleNamespace(
             name="row_count",
+            type="simple",
             type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params={"agg": "count"}),
             refs=None,
             metrics=None,
@@ -4872,7 +4876,30 @@ class TestDbtV12MetricAggregationAndCumulative(TestCase):
         source = self._make_source()
         metric_node = SimpleNamespace(
             name="empty_metric",
+            type="simple",
             type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params=None),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            assert source._extract_measures(metric_node, {}) == []
+
+    def test_v12_derived_metric_does_not_fabricate_measure(self):
+        """Regression: a derived metric stores its formula in type_params.expr, so the
+        inline fallback must not publish that formula as a measure. Only simple metrics
+        own a measure."""
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="profit",
+            type="derived",
+            type_params=SimpleNamespace(
+                measure=None,
+                expr="total_revenue - total_cost",
+                metric_aggregation_params=None,
+            ),
             refs=None,
             metrics=None,
         )
