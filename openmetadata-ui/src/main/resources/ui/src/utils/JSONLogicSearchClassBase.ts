@@ -49,7 +49,6 @@ import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
-import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 import { toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
@@ -764,10 +763,7 @@ class JSONLogicSearchClassBase {
   public getInitialConfigWithoutFields = (
     modes: QueryBuilderConfigModes = {}
   ) => {
-    const {
-      showLabels = true,
-      renderButton = renderJSONLogicQueryBuilderButtons,
-    } = modes;
+    const { showLabels = true } = modes;
 
     const initialConfigWithoutFields: Config = {
       ...this.baseConfig,
@@ -783,7 +779,6 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.operator'),
         showNot: false,
         valueLabel: t('label.value'),
-        renderButton,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
           popupClassName: 'json-logic-field-select',

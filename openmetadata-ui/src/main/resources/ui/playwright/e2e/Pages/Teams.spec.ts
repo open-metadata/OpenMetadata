@@ -549,6 +549,12 @@ test.describe('Teams Page', () => {
   test('Permanently deleting a team without soft deleting should work properly', async ({
     page,
   }) => {
+    // Per-test admin login, a settings navigation that reloads the whole
+    // Organization listing, and the two-step hard-delete flow: 20s on the
+    // release lane, but run 35144854437 (main, both databases) measured every
+    // attempt past the 60s default and timed out waiting for the team link.
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const team = new TeamClass();
     await team.create(apiContext);
