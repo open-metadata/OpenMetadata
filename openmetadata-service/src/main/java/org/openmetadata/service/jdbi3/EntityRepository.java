@@ -1148,6 +1148,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           resolveReferencesFromToRecords(
               inheritanceRelations, Relationship.HAS, DOMAIN, NON_DELETED));
     }
+    // find() above does not hydrate tags, so this ancestor would contribute only the tags it
+    // inherits in turn and never its own -- see fetchInheritableRelationships.
+    fetchAndSetTags(List.of(entity), fields);
     if (!requiresParentForInheritance(entity, fields)) {
       return entity;
     }
@@ -1210,6 +1213,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
+    // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
+    // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
+    fetchAndSetTags(entities, fields);
   }
 
   @SuppressWarnings("unchecked")
