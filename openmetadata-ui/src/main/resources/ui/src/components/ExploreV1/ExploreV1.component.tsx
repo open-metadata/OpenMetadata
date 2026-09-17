@@ -55,8 +55,9 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
@@ -572,8 +573,18 @@ const ExploreV1: React.FC<ExploreProps> = ({
   browseQueryFilter,
   onTreeSelect = noop,
 }) => {
-  const tabsInfo = searchClassBase.getTabsInfo();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // getTabsInfo() bakes translated labels into its result, so recompute on a
+  // language switch rather than freezing the first language for the mount.
+  const tabsInfo = useMemo(
+    () => searchClassBase.getTabsInfo(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- result bakes in t() output
+    [i18n.language]
+  );
+  // The router location, not the global: the global's `search` is not a valid
+  // hook dependency (mutating it never re-renders), so the memo below went
+  // stale across in-app navigation.
+  const location = useCustomLocation();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
@@ -595,7 +606,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
-    [location.search]
+    [parsedSearch.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
 
@@ -718,6 +729,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     queryFilter,
     browseQueryFilter,
     searchIndex,
+    isSearchMode,
   ]);
 
   const handleExportScopeConfirm = useCallback(async () => {
@@ -787,6 +799,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [
     exportScope,
+    t,
     searchIndex,
     allAssetsCount,
     visibleResultCount,
@@ -813,7 +826,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       ...field,
       name: t(field.name),
     }));
-  }, [searchIndex, t]);
+  }, [searchIndex, t, tabsInfo]);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -1117,7 +1130,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
     }
-  }, [searchResults]);
+  }, [
+    searchResults,
+    firstEntity?._source,
+    firstEntity?.highlight,
+    handleSummaryPanelDisplay,
+  ]);
 
   const exportModalTitle = useMemo(
     () => (
@@ -1144,7 +1162,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
     <div className="explore-page bg-grey" data-testid="explore-page">
       <Card className="p-xs card-padding-0 m-b-box">
         <Row className="tw:mr-2" gutter={[0, 8]}>
-          <Col>
+          {/* Zero flex-basis: with flex-wrap, a max-content basis would place
+              the sort controls on their own row before shrinking is even
+              considered; basis 0 keeps both columns on one line and lets the
+              toolbar wrap internally. */}
+          <Col className="tw:min-w-0" flex="1 1 0%">
             <ExploreQuickFilters
               immediateApply
               showSelectedCounts
@@ -1162,7 +1184,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               onFieldValueSelect={handleQuickFiltersValueSelect}
             />
           </Col>
-          <Col className="d-flex items-center justify-end gap-3" flex={410}>
+          {/* Content-sized: a grow factor here would swallow the free space the
+              zero-basis filters column needs (grow 410 vs 1 left it ~2px wide). */}
+          <Col className="d-flex items-center justify-end gap-3" flex="none">
             <Button
               aria-label={t('label.sort-order')}
               className="tw:p-0"
