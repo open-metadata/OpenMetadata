@@ -1065,7 +1065,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
       if (!assetRecords.isEmpty()
           && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
-        detachConflictingDataProductsAfterDomainChange(assetRecords, updatedDomains);
+        detachConflictingDataProductsAfterDomainChange(
+            findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null), updatedDomains);
       }
     }
 
@@ -1199,11 +1200,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void detachConflictingDataProductsAfterDomainChange(
-      List<CollectionDAO.EntityRelationshipRecord> assetRecords, List<EntityReference> newDomains) {
+      List<EntityReference> assets, List<EntityReference> newDomains) {
     Set<UUID> newDomainIds =
         newDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    for (EntityReference asset : resolveLiveReferences(assetRecords)) {
-      detachConflictingDataProducts(asset, ownDomainIds(asset));
+    for (EntityReference asset : assets) {
+      Set<UUID> assetDomainIds =
+          findFrom(asset.getId(), asset.getType(), Relationship.HAS, DOMAIN, NON_DELETED).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet());
+      detachConflictingDataProducts(asset, assetDomainIds);
       detachConflictingDataProductsFromDescendants(asset, newDomainIds);
     }
   }
@@ -1215,8 +1220,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    */
   private void detachConflictingDataProductsFromDescendants(
       EntityReference asset, Set<UUID> inheritedDomainIds) {
-    for (EntityReference child : getContainedChildren(asset)) {
-      if (!ownDomainIds(child).isEmpty()) {
+    for (EntityReference child :
+        findTo(asset.getId(), asset.getType(), Relationship.CONTAINS, null)) {
+      if (!findFrom(child.getId(), child.getType(), Relationship.HAS, DOMAIN, NON_DELETED)
+          .isEmpty()) {
         continue;
       }
       detachConflictingDataProducts(child, inheritedDomainIds);
@@ -1261,40 +1268,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     if (searchRepository != null) {
       searchRepository.updateEntity(asset);
     }
-  }
-
-  private Set<UUID> ownDomainIds(EntityReference asset) {
-    return findFrom(asset.getId(), asset.getType(), Relationship.HAS, DOMAIN, NON_DELETED).stream()
-        .map(EntityReference::getId)
-        .collect(Collectors.toSet());
-  }
-
-  private List<EntityReference> getContainedChildren(EntityReference parent) {
-    return resolveLiveReferences(
-        daoCollection
-            .relationshipDAO()
-            .findTo(parent.getId(), parent.getType(), Relationship.CONTAINS.ordinal()));
-  }
-
-  /**
-   * Resolve relationship records to live references. Records point at IDs regardless of the target's
-   * state, so a soft-deleted or already-removed asset/child would otherwise abort the whole
-   * domain-change transaction. Fetch with ALL (batched per type, skipping missing) and drop
-   * soft-deleted entities — they are not editable and never hit the validation rule.
-   */
-  private List<EntityReference> resolveLiveReferences(
-      List<CollectionDAO.EntityRelationshipRecord> records) {
-    Map<String, List<UUID>> idsByType = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipRecord record : records) {
-      idsByType.computeIfAbsent(record.getType(), type -> new ArrayList<>()).add(record.getId());
-    }
-    List<EntityReference> references = new ArrayList<>();
-    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
-      Entity.getEntityReferencesByIds(entry.getKey(), entry.getValue(), ALL).stream()
-          .filter(reference -> !Boolean.TRUE.equals(reference.getDeleted()))
-          .forEach(references::add);
-    }
-    return references;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {
