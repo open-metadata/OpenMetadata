@@ -354,7 +354,6 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
       />
       <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingUsers}
         label={t('label.user')}
@@ -367,7 +366,6 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
       />
       <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingBots}
         label={t('label.bot')}
@@ -380,7 +378,6 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
       />
       <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={false}
         label={t('label.entity-type')}

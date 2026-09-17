@@ -69,7 +69,6 @@ const AddTestCaseListFilters = ({
           options={filterOptions[filter.searchKey]}
           searchKey={filter.searchKey}
           selectedKeys={filterSelectedKeys[filter.searchKey]}
-          showSelectedCounts={filter.showSelectedCounts}
           singleSelect={filter.singleSelect}
           onChange={handleChange}
           onSearch={handleSearch}

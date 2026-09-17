@@ -168,7 +168,6 @@ export const useLearningResourceFilters = (
         {FILTER_FIELDS.map((field) => (
           <FilterSelectDropdown
             hideCounts
-            showSelectedCounts
             isSuggestionsLoading={false}
             key={field.key}
             label={translateWithNestedKeys(field.labelKey)}
