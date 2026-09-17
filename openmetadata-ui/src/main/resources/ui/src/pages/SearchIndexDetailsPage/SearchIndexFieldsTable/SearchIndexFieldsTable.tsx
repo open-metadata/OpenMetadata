@@ -68,7 +68,7 @@ import {
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
@@ -310,7 +310,7 @@ const SearchIndexFieldsTable = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>

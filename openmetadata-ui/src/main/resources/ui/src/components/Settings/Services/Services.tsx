@@ -55,7 +55,7 @@ import {
 } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getOptionalFields } from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -392,7 +392,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                 record.fullyQualifiedName ?? record.name,
                 serviceName
               )}>
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchTerm)
               )}
             </Link>
@@ -426,7 +426,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         filters: serviceTypeFilters,
         render: (serviceType) => (
           <span className="font-normal text-grey-body">
-            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+            {renderHighlightedText(highlightSearchText(serviceType, searchTerm))}
           </span>
         ),
       },

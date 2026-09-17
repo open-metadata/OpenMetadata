@@ -17,7 +17,7 @@ import { Team } from '../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../../../utils/EntitySearchUtils';
 
 type TeamHierarchyNameCellProps = {
   record: Team;
@@ -63,7 +63,7 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
       data-testid={`team-name-${record.name}`}
       ref={linkRef}
       to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-      {stringToHTML(highlightSearchText(displayName, searchTerm))}
+      {renderHighlightedText(highlightSearchText(displayName, searchTerm))}
     </Link>
   );
 

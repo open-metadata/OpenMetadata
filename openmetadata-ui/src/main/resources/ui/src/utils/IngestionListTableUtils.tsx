@@ -27,7 +27,7 @@ import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionText
 import { getEntityName } from './EntityNameUtils';
 import { highlightSearchText } from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
@@ -35,7 +35,7 @@ export const renderNameField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
-        {stringToHTML(highlightSearchText(getEntityName(record), searchText))}
+        {renderHighlightedText(highlightSearchText(getEntityName(record), searchText))}
       </Typography.Text>
     );
 
@@ -50,7 +50,7 @@ export const renderTypeField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
-        {stringToHTML(highlightSearchText(typeText, searchText))}
+        {renderHighlightedText(highlightSearchText(typeText, searchText))}
       </Typography.Text>
     );
   };

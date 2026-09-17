@@ -306,6 +306,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {...rest}
       />
     ),
+    SanitizedInput: ({ onChange, placeholder, value, ...rest }: any) => (
+      <input
+        placeholder={placeholder}
+        value={value ?? ''}
+        onChange={onChange}
+        {...rest}
+      />
+    ),
     CheckboxBase: ({ isSelected }: any) => (
       <input
         readOnly

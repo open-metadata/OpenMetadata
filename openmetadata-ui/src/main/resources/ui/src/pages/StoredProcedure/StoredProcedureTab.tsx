@@ -40,7 +40,7 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
+import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +173,7 @@ const StoredProcedureTab = () => {
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             id={record.id ?? ''}
@@ -182,7 +182,7 @@ const StoredProcedureTab = () => {
               EntityType.STORED_PROCEDURE,
               record.fullyQualifiedName ?? ''
             )}
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(highlightSearchText(record.name, searchValue))}
           />
         ),
       },

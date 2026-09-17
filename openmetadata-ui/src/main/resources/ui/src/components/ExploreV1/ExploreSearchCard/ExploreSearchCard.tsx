@@ -49,7 +49,7 @@ import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUt
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -305,7 +305,7 @@ const EntityTitleColumn = ({
         <Typography.Text
           className="text-lg font-medium text-link-color"
           data-testid="entity-header-display-name">
-          {stringToHTML(searchClassBase.getEntityName(source))}
+          {renderHighlightedText(searchClassBase.getEntityName(source))}
         </Typography.Text>
       </Button>
     ) : (
@@ -329,7 +329,7 @@ const EntityTitleColumn = ({
           <Typography.Text
             className="text-lg font-medium text-link-color break-word whitespace-normal"
             data-testid="entity-header-display-name">
-            {stringToHTML(searchClassBase.getEntityName(source))}
+            {renderHighlightedText(searchClassBase.getEntityName(source))}
           </Typography.Text>
         </Link>
 

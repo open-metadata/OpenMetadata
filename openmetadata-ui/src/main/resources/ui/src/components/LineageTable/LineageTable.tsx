@@ -74,7 +74,7 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
+import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
@@ -712,7 +712,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             record.entityType as EntityType,
             record
           )}>
-          {stringToHTML(
+          {renderHighlightedText(
             highlightSearchText(getEntityName(record), searchValue)
           )}
         </Link>
@@ -851,7 +851,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : stringToHTML(highlightSearchText(prunedColumnName, searchValue))}
+            : renderHighlightedText(highlightSearchText(prunedColumnName, searchValue))}
         </span>
       );
     },
@@ -871,7 +871,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
@@ -896,7 +896,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue

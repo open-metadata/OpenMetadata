@@ -60,7 +60,7 @@ import { t } from '../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../../utils/EntitySearchUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -270,7 +270,7 @@ export const DatabaseSchemaTable = ({
         sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             hasEditPermission={allowEditDisplayNamePermission}
@@ -284,7 +284,7 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(highlightSearchText(record.name, searchValue))}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),

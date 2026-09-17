@@ -37,7 +37,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../../utils/EntitySearchUtils';
 import {
   descriptionTableObject,
   tagTableObject,
@@ -132,7 +132,7 @@ function FilesTable({
                   EntityType.FILE,
                   record.fullyQualifiedName || ''
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(fileDisplayName, searchValue)
                 )}
               </Link>

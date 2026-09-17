@@ -41,7 +41,8 @@ import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -896,7 +897,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
-        {stringToHTML(activeColumn.name || '')}
+        {renderHighlightedText(activeColumn.name || '')}
       </Typography.Text>
     );
   }
@@ -963,7 +964,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
-                      {stringToHTML(
+                      {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
                           activeColumn.name ||

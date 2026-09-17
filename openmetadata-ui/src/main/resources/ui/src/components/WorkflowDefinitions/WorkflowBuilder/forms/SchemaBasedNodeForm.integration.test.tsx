@@ -112,7 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     className?: string;
   }) => <span className={props.className}>{props.children}</span>;
 
-  return { Input, TextArea, Toggle, Typography };
+  return { Input, SanitizedInput: Input, TextArea, Toggle, Typography };
 });
 
 jest.mock('./FormActionButtons', () => ({

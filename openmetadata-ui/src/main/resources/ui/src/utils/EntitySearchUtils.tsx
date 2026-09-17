@@ -171,34 +171,55 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
     return input ?? '';
   }
 
+  interface Segment {
+    kind: 'text' | 'hl';
+    value: string;
+  }
+
   HIGHLIGHT_TAG_RE.lastIndex = 0;
-  const parts: ReactNode[] = [];
+  const segments: Segment[] = [];
   let cursor = 0;
-  let key = 0;
   let match: RegExpExecArray | null;
 
   while ((match = HIGHLIGHT_TAG_RE.exec(input)) !== null) {
     if (match.index > cursor) {
-      parts.push(input.slice(cursor, match.index));
+      segments.push({ kind: 'text', value: input.slice(cursor, match.index) });
     }
-    parts.push(
-      // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
-      <span className="text-highlighter" key={`hl-${key++}`}>
-        {match[1]}
-      </span>
-    );
+    segments.push({ kind: 'hl', value: match[1] });
     cursor = match.index + match[0].length;
   }
 
   // No wrapper found — return the raw string so callers get a plain-string
-  // type rather than a single-element array.
+  // type rather than a wrapped node.
   if (cursor === 0) {
     return input;
   }
 
   if (cursor < input.length) {
-    parts.push(input.slice(cursor));
+    segments.push({ kind: 'text', value: input.slice(cursor) });
   }
 
-  return parts;
+  // Whole input is a single wrapper — return the bare React element rather
+  // than a length-1 array. This keeps `toEqual(<span ...>)` fixtures usable
+  // without forcing every caller/test to add a key.
+  if (segments.length === 1) {
+    const only = segments[0];
+
+    return only.kind === 'text' ? (
+      only.value
+    ) : (
+      <span className="text-highlighter">{only.value}</span>
+    );
+  }
+
+  return segments.map((segment, index) =>
+    segment.kind === 'text' ? (
+      segment.value
+    ) : (
+      // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
+      <span className="text-highlighter" key={`hl-${index}`}>
+        {segment.value}
+      </span>
+    )
+  );
 };

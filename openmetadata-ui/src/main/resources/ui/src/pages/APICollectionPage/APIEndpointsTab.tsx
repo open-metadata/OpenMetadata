@@ -50,7 +50,7 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
+import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -173,7 +173,7 @@ function APIEndpointsTab({
                   EntityType.API_ENDPOINT,
                   record.fullyQualifiedName as string
                 )}>
-                {stringToHTML(
+                {renderHighlightedText(
                   highlightSearchText(getEntityName(record), searchValue)
                 )}
               </Link>

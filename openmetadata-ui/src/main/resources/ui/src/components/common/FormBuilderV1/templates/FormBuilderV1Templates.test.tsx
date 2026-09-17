@@ -141,6 +141,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
+    SanitizedInput: jest.fn(
+      ({
+        id,
+        label,
+        placeholder,
+        value,
+        onBlur,
+        onChange,
+      }: {
+        id?: string;
+        label?: string;
+        placeholder?: string;
+        value?: string;
+        onBlur?: () => void;
+        onChange?: (v: string) => void;
+      }) => (
+        <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- test mock */}
+          {label && <label htmlFor={id}>{label}</label>}
+          <input
+            aria-label={label}
+            id={id}
+            placeholder={placeholder}
+            value={value}
+            onBlur={onBlur}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+        </div>
+      )
+    ),
     Typography: jest.fn(
       ({
         children,

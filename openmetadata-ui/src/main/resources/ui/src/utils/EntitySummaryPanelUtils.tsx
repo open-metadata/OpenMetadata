@@ -63,7 +63,7 @@ import {
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
-import { stringToHTML } from './StringUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 
 const APIEndpointSummary = withSuspenseFallback(
   lazy(
@@ -154,7 +154,7 @@ export const getTitle = (
   highlightedTitle?: ListItemHighlights['highlightedTitle']
 ): JSX.Element | JSX.Element[] => {
   const title = highlightedTitle
-    ? stringToHTML(highlightedTitle)
+    ? renderHighlightedText(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
   const sourceUrl = (listItem as Chart | Task).sourceUrl;
 

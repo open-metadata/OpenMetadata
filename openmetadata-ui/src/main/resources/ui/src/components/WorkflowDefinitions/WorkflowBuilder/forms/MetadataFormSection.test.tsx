@@ -91,7 +91,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
-  return { Input, TextArea };
+  return { Input, SanitizedInput: Input, TextArea };
 });
 
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({

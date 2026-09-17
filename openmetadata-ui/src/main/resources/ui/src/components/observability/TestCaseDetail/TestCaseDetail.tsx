@@ -46,7 +46,7 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -316,11 +316,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
           data-testid="entity-header-display-name"
           ellipsis={{
-            tooltip: breakableTooltipText(stringToHTML(displayName)),
+            tooltip: breakableTooltipText(renderHighlightedText(displayName)),
           }}
           size="text-lg"
           weight="bold">
-          {stringToHTML(displayName)}
+          {renderHighlightedText(displayName)}
         </Typography>
       )}
       <Typography

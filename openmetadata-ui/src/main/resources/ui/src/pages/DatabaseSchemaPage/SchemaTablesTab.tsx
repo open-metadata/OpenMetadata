@@ -65,7 +65,7 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
-import { stringToHTML } from '../../utils/StringUtils';
+import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -274,7 +274,7 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={stringToHTML(
+              displayName={renderHighlightedText(
                 highlightSearchText(record.displayName, searchValue)
               )}
               hasEditPermission={allowEditDisplayNamePermission}
@@ -284,7 +284,7 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={stringToHTML(highlightSearchText(record.name, searchValue))}
+              name={renderHighlightedText(highlightSearchText(record.name, searchValue))}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );
