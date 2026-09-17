@@ -537,10 +537,7 @@ test.describe('Lineage Filters', () => {
           .getByTestId('drop-down-menu')
           .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceName)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [entity];
 
@@ -641,10 +638,7 @@ test.describe('Lineage Filters', () => {
           .getByTestId('drop-down-menu')
           .getByText(serviceName)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceName)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceName).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -720,10 +714,7 @@ test.describe('Lineage Filters', () => {
           .getByTestId('drop-down-menu')
           .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceType)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [entity];
 
@@ -800,10 +791,7 @@ test.describe('Lineage Filters', () => {
           .getByTestId('drop-down-menu')
           .getByText(serviceType)
           .waitFor();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByText(serviceType)
-          .click();
+        await page.getByTestId('drop-down-menu').getByText(serviceType).click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
 
@@ -914,10 +902,7 @@ test.describe('Lineage Filters', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('loader')
         .waitFor({ state: 'hidden' });
-      await page
-        .getByTestId('drop-down-menu')
-        .getByText(databaseName)
-        .click();
+      await page.getByTestId('drop-down-menu').getByText(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
