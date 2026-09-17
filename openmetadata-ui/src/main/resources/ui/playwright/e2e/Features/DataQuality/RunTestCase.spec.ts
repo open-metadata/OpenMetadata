@@ -12,6 +12,7 @@
  */
 import type { APIRequestContext, Page, Response } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
@@ -57,7 +58,7 @@ const createTableWithTestCase = async (apiContext: APIRequestContext) => {
 
 // Unscheduled on purpose: a scheduled DAG can start a run of its own as soon as
 // it is deployed, which would disable the button before the test clicks it.
-const createDeployedPipeline = async (
+const createPipeline = async (
   apiContext: APIRequestContext,
   table: TableClass
 ) => {
@@ -82,12 +83,23 @@ const createDeployedPipeline = async (
   expect(createResponse.status()).toBe(201);
   const { id, name } = await createResponse.json();
 
-  const deployResponse = await apiContext.post(
-    `/api/v1/services/ingestionPipelines/deploy/${id}`
-  );
-  expect(deployResponse.status()).toBe(200);
-
   return { id: id as string, name: name as string };
+};
+
+const patchPipeline = async (
+  apiContext: APIRequestContext,
+  pipelineId: string,
+  path: string,
+  value: unknown
+) => {
+  const patchResponse = await apiContext.patch(
+    `/api/v1/services/ingestionPipelines/${pipelineId}`,
+    {
+      data: [{ op: 'add', path, value }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(patchResponse.status()).toBe(200);
 };
 
 const isPipelinePermissionResponse =
@@ -156,16 +168,81 @@ test.describe(
       });
     });
 
-    test.describe('With a deployed pipeline', () => {
+    // Marked deployed rather than deployed: these tests only need the page to see
+    // a runnable pipeline, and the common shards have no Airflow to deploy to.
+    test.describe('With a runnable pipeline', () => {
       let table!: TableClass;
       let pipeline!: { id: string; name: string };
 
       test.beforeAll(
-        'Create a test case and a deployed pipeline',
+        'Create a test case and a pipeline marked deployed',
         async ({ browser }) => {
           const { apiContext, afterAction } = await performAdminLogin(browser);
           table = await createTableWithTestCase(apiContext);
-          pipeline = await createDeployedPipeline(apiContext, table);
+          pipeline = await createPipeline(apiContext, table);
+          await patchPipeline(apiContext, pipeline.id, '/deployed', true);
+          await afterAction();
+        }
+      );
+
+      test.afterAll('Cleanup', async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await table.delete(apiContext);
+        await afterAction();
+      });
+
+      test('hides Run now from a data consumer, who may not trigger pipelines', async ({
+        dataConsumerPage: page,
+      }) => {
+        const pipelinePermissionResponse = page.waitForResponse(
+          isPipelinePermissionResponse(pipeline.name)
+        );
+
+        await openDetailsPage(page, table);
+        await pipelinePermissionResponse;
+
+        await expect(page.getByTestId('entity-page-header')).toBeVisible();
+        await expect(page.getByTestId(RUN_BUTTON)).toBeHidden();
+      });
+
+      test('shows Run now to a data consumer who owns the pipeline, since owners may trigger it', async ({
+        browser,
+        ownerPage: page,
+      }) => {
+        await test.step('Make the data consumer the pipeline owner', async () => {
+          const loggedInUserResponse = page.waitForResponse(
+            '/api/v1/users/loggedInUser*'
+          );
+          await redirectToHomePage(page);
+          const owner = await (await loggedInUserResponse).json();
+
+          const { apiContext, afterAction } = await performAdminLogin(browser);
+          await patchPipeline(apiContext, pipeline.id, '/owners', [
+            { id: owner.id, type: 'user' },
+          ]);
+          await afterAction();
+        });
+
+        await openDetailsPage(page, table);
+
+        await expect(page.getByTestId(RUN_BUTTON)).toBeVisible();
+      });
+    });
+
+    // Triggering a run needs Airflow, which only the @ingestion shards have.
+    test.describe('Running a test case', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
+      let table!: TableClass;
+
+      test.beforeAll(
+        'Create a test case and deploy its pipeline',
+        async ({ browser }) => {
+          const { apiContext, afterAction } = await performAdminLogin(browser);
+          table = await createTableWithTestCase(apiContext);
+          const pipeline = await createPipeline(apiContext, table);
+          const deployResponse = await apiContext.post(
+            `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+          );
+          expect(deployResponse.status()).toBe(200);
           await afterAction();
         }
       );
@@ -204,54 +281,6 @@ test.describe(
           await expect(runButton).toHaveText(/Queued|Running/);
           await expect(runButton).toBeDisabled();
         });
-      });
-
-      test('hides Run now from a data consumer, who may not trigger pipelines', async ({
-        dataConsumerPage: page,
-      }) => {
-        const pipelinePermissionResponse = page.waitForResponse(
-          isPipelinePermissionResponse(pipeline.name)
-        );
-
-        await openDetailsPage(page, table);
-        await pipelinePermissionResponse;
-
-        await expect(page.getByTestId('entity-page-header')).toBeVisible();
-        await expect(page.getByTestId(RUN_BUTTON)).toBeHidden();
-      });
-
-      test('shows Run now to a data consumer who owns the pipeline, since owners may trigger it', async ({
-        browser,
-        ownerPage: page,
-      }) => {
-        await test.step('Make the data consumer the pipeline owner', async () => {
-          const loggedInUserResponse = page.waitForResponse(
-            '/api/v1/users/loggedInUser*'
-          );
-          await redirectToHomePage(page);
-          const owner = await (await loggedInUserResponse).json();
-
-          const { apiContext, afterAction } = await performAdminLogin(browser);
-          const patchResponse = await apiContext.patch(
-            `/api/v1/services/ingestionPipelines/${pipeline.id}`,
-            {
-              data: [
-                {
-                  op: 'add',
-                  path: '/owners',
-                  value: [{ id: owner.id, type: 'user' }],
-                },
-              ],
-              headers: { 'Content-Type': 'application/json-patch+json' },
-            }
-          );
-          expect(patchResponse.status()).toBe(200);
-          await afterAction();
-        });
-
-        await openDetailsPage(page, table);
-
-        await expect(page.getByTestId(RUN_BUTTON)).toBeVisible();
       });
     });
   }

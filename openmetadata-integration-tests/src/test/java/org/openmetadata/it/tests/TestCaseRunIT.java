@@ -58,15 +58,14 @@ import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * POST /v1/dataQuality/testCases/{id}/run resolves the test case's suite pipeline and triggers it
- * scoped to that one test case. The IT server runs with the pipeline service client disabled, so a
- * successful resolution ends at the "Pipeline Client Disabled" response; the scoping itself and the
- * Airflow trigger payload are covered by TestCaseRunScopeTest and AirflowRESTClientTest.
+ * scoped to that one test case. Whether the shared IT server has a pipeline service client depends
+ * on which suites ran first - the Kubernetes pipeline tests install one - so an accepted run is
+ * asserted by its 200 response, not by what the client reports. The scoping itself and the Airflow
+ * trigger payload are covered by TestCaseRunScopeTest and AirflowRESTClientTest.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class TestCaseRunIT {
-
-  private static final String PIPELINE_CLIENT_DISABLED = "Pipeline Client Disabled";
 
   @Test
   void runWithoutDeployedPipelineIsNotFound(TestNamespace ns) {
@@ -91,7 +90,6 @@ public class TestCaseRunIT {
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
 
     assertEquals(200, response.getCode());
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
     assertNull(
         storedTestCaseScope(pipeline),
         "Running one test case must not narrow the suite pipeline for later scheduled runs");
@@ -120,7 +118,7 @@ public class TestCaseRunIT {
         JsonUtils.readValue(
             run(dataStewardClient(ns), testCase), PipelineServiceClientResponse.class);
 
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
   }
 
   @Test
@@ -156,7 +154,7 @@ public class TestCaseRunIT {
         JsonUtils.readValue(
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
 
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
   }
 
   /**
@@ -179,7 +177,7 @@ public class TestCaseRunIT {
     PipelineServiceClientResponse response =
         JsonUtils.readValue(
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
 
     reportStatus(
         pipelinesById.getFirst(), UUID.randomUUID().toString(), PipelineStatusType.RUNNING, now);
@@ -225,7 +223,7 @@ public class TestCaseRunIT {
         JsonUtils.readValue(
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
 
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
   }
 
   @Test
@@ -259,7 +257,7 @@ public class TestCaseRunIT {
     PipelineServiceClientResponse response =
         JsonUtils.readValue(
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
   }
 
   @Test
@@ -273,7 +271,7 @@ public class TestCaseRunIT {
         JsonUtils.readValue(
             run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
 
-    assertEquals(PIPELINE_CLIENT_DISABLED, response.getReason());
+    assertEquals(200, response.getCode());
   }
 
   @Test
