@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   findAllByTestId,
   findByTestId,
@@ -26,9 +27,11 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { getClassifications } from '../../utils/TagsUtils';
+import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagsPage from './TagsPage';
 import {
   MOCK_ALL_CLASSIFICATIONS,
@@ -55,9 +58,46 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
+// ClassificationDetails reads tag usage counts through React Query
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter>{children}</MemoryRouter>
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
 );
+
+// TagsPage now fetches the classification's own permission via useEntityPermissions rather
+// than the raw PermissionProvider.getEntityPermission REST boundary — mock the hook directly
+// (TableDetailsPageV1.test.tsx pattern) rather than the REST boundary.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockClassificationPermissions = (
+  overrides: Partial<Record<string, boolean>> = {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+  }
+) => {
+  const permissions = overrides as never;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const mockProps = {
   pageTitle: 'tags',
@@ -168,14 +208,6 @@ const mockCategory = [
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermission: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-    }),
     permissions: {
       classification: {
         Create: true,
@@ -197,7 +229,12 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+// jest.requireActual is load-bearing (Task 8 Batch 3 note 5): getDerivedPermissionFlags
+// (used both by the mocked useEntityPermissions helper above and internally by the real
+// PermissionDerivation module) calls getPrioritizedEditPermission/getPrioritizedViewPermission
+// from this same module — a blanket mock without it throws "... is not a function".
 jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   checkPermission: jest.fn().mockReturnValue(true),
   DEFAULT_ENTITY_PERMISSION: {
     Create: true,
@@ -240,6 +277,7 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Badge: ({
     children,
     'data-testid': testId,
@@ -328,6 +366,49 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  Owner: () => <div data-testid="owner-component" />,
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+    profileUrl?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+    profileUrl: ref.profileUrl,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+      profileUrl?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+        profileUrl?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+        profileUrl: ref.profileUrl,
+      })
+    ),
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
@@ -393,15 +474,24 @@ jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 
-jest.mock('../../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest.fn().mockImplementation(() => <div>OwnerLabelV2</div>),
-}));
-
 jest.mock('../../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label-v2" />),
 }));
+
+jest.mock('../../components/common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 jest.mock('../../utils/LazyTagComponents', () => ({
   LazyCommonWidgets: jest
@@ -501,6 +591,10 @@ jest.mock('../../hooks/useEntityRules', () => ({
 }));
 
 describe('Test TagsPage page', () => {
+  beforeEach(() => {
+    setMockClassificationPermissions();
+  });
+
   it('Component should render', async () => {
     render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
 
@@ -804,6 +898,40 @@ describe('Test TagsPage page', () => {
       expect(ResizableLeftPanels).toHaveBeenCalledWith(
         expect.objectContaining({
           pageTitle: 'PersonalData',
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('applies explicit-deny-wins to classificationFormPermissions.editDescription', async () => {
+    // Regression test for the Task 6 Finding 1 fix: the old raw
+    // `classificationPermissions.EditAll || classificationPermissions.EditDescription`
+    // let a classification-level EditAll override an explicit EditDescription: false. The
+    // getDerivedPermissionFlags-based conversion prioritizes the field-specific key, so an
+    // explicit deny now wins even with EditAll: true.
+    setMockClassificationPermissions({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: false,
+      EditDisplayName: true,
+    });
+
+    render(<TagsPage {...mockProps} />, { wrapper: Wrapper });
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    fireEvent.click(await screen.findByTestId('add-classification'));
+
+    await waitFor(() => {
+      expect(ClassificationFormDrawer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          permissions: expect.objectContaining({
+            editAll: true,
+            editDescription: false,
+            editDisplayName: true,
+          }),
         }),
         expect.anything()
       );

@@ -14,7 +14,7 @@
 import { Locator, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, selectOptionWithRetry } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
@@ -58,8 +58,12 @@ const chooseSelectOption = async (
   select: Locator,
   optionName: string
 ) => {
-  await select.getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  const trigger = select.getByRole('button');
+  const option = page
+    .locator('.core-one-of-field-select-popover')
+    .getByRole('option', { name: optionName, exact: true });
+
+  await selectOptionWithRetry(trigger, option);
 };
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {

@@ -42,6 +42,7 @@
         "Snowplow",
         "Mulesoft",
         "MicrosoftFabricPipeline",
+        "Data360Pipeline",
         "SapBw4HanaPipeline"
       ],
       "javaEnums": [
@@ -119,6 +120,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "Data360Pipeline"
         },
         {
           "name": "SapBw4HanaPipeline"
@@ -210,6 +214,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/data360PipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"

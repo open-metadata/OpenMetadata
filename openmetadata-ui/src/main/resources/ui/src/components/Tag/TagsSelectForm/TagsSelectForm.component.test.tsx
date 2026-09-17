@@ -132,4 +132,71 @@ describe('TagSelectForm', () => {
       {}
     );
   });
+
+  it('should pass scalar value to TreeAsyncSelectList in single-select mode', () => {
+    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
+
+    render(
+      <TagSelectForm
+        defaultValue={['Glossary.term1']}
+        multiSelect={false}
+        placeholder={placeholder}
+        tagType={TagSource.Glossary}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isMultiSelect: false,
+        value: 'Glossary.term1',
+      }),
+      {}
+    );
+  });
+
+  it('should pass array value to TreeAsyncSelectList in multi-select mode', () => {
+    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
+
+    render(
+      <TagSelectForm
+        defaultValue={['Glossary.term1', 'Glossary.term2']}
+        placeholder={placeholder}
+        tagType={TagSource.Glossary}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: ['Glossary.term1', 'Glossary.term2'],
+      }),
+      {}
+    );
+  });
+
+  it('should pass undefined value when single-select with empty defaultValue', () => {
+    (TreeAsyncSelectList as unknown as jest.Mock).mockClear();
+
+    render(
+      <TagSelectForm
+        defaultValue={[]}
+        multiSelect={false}
+        placeholder={placeholder}
+        tagType={TagSource.Glossary}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
+
+    expect(TreeAsyncSelectList).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isMultiSelect: false,
+        value: undefined,
+      }),
+      {}
+    );
+  });
 });

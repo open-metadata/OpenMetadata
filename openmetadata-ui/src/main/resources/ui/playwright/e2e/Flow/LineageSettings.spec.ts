@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Request } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -24,23 +24,16 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  clickOutside,
-  redirectToHomePage,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  activateColumnLayer,
   applyPipelineFromModal,
   connectEdgeBetweenNodesViaAPI,
   editLineage,
   editLineageClick,
   fillLineageConfigForm,
-  performCollapse,
-  performExpand,
   performZoomOut,
-  verifyColumnLayerActive,
-  verifyExpandHandleHover,
   verifyNodePresent,
   verifyPipelineDataInDrawer,
   visitLineageTab,
@@ -185,7 +178,10 @@ test.describe.serial(
 
         await expect(mlModelNode).not.toBeVisible();
 
-        await verifyColumnLayerActive(page);
+        await activateColumnLayer(page);
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('lineageBand'))
+          .toBe('FIELD');
       });
 
       await test.step('Update global lineage config and verify lineage for entity layer', async () => {
@@ -221,38 +217,6 @@ test.describe.serial(
         await expect(searchIndexNode).not.toBeVisible();
       });
 
-      await test.step('Verify Upstream and Downstream expand collapse buttons', async () => {
-        await redirectToHomePage(page);
-        await dashboard.visitEntityPage(page);
-        await visitLineageTab(page);
-        const closeIcon = page.getByTestId('entity-panel-close-icon');
-        if (await closeIcon.isVisible()) {
-          await closeIcon.click();
-        }
-        await performZoomOut(page);
-        await verifyNodePresent(page, topic);
-        await verifyNodePresent(page, mlModel);
-
-        await verifyExpandHandleHover(page, mlModel, false);
-        await clickOutside(page);
-        await verifyExpandHandleHover(page, topic, true);
-
-        await performExpand(page, mlModel, false, searchIndex);
-        await performExpand(page, searchIndex, false, container);
-        await performExpand(page, container, false, metric);
-        await performExpand(page, topic, true, table);
-
-        await performZoomOut(page);
-
-        await performCollapse(page, mlModel, false, [
-          searchIndex,
-          container,
-          metric,
-        ]);
-        await performZoomOut(page);
-        await performCollapse(page, dashboard, true, [table, topic]);
-      });
-
       await test.step('Reset global lineage config and verify lineage', async () => {
         await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
         await fillLineageConfigForm(page, {
@@ -273,41 +237,14 @@ test.describe.serial(
       });
     });
 
-    test('Verify lineage time filter and tab switch reuse loaded graph', async ({
+    test('Verify lineage time filter availability across tabs', async ({
       page,
     }) => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
       await verifyNodePresent(page, table);
 
-      const lineageTimeFilteredResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-
-        return (
-          url.pathname.endsWith('/api/v1/lineage/getLineage') &&
-          url.searchParams.has('startTime') &&
-          url.searchParams.has('endTime')
-        );
-      });
-
-      await page.getByTestId('lineage-time-filter').click();
-      await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
-
-      const response = await lineageTimeFilteredResponse;
-      const responseUrl = new URL(response.url());
-      const startTime = responseUrl.searchParams.get('startTime');
-      const endTime = responseUrl.searchParams.get('endTime');
-
-      expect(Number(startTime)).toBeLessThan(Number(endTime));
-      await expect(page.getByTestId('lineage-time-filter')).toContainText(
-        'Last 7 days'
-      );
-
-      const isLineageFetchRequest = (request: Request) => {
-        const url = new URL(request.url());
-
-        return url.pathname.endsWith('/api/v1/lineage/getLineage');
-      };
+      await expect(page.getByTestId('lineage-time-filter')).not.toBeVisible();
 
       const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
 
@@ -316,15 +253,13 @@ test.describe.serial(
         .click();
       await expect(page).toHaveURL(/mode=impact_analysis/);
       await waitForAllLoadersToDisappear(page);
-
-      const lineageFetchAfterViewSwitch = page
-        .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
-        .then(() => true)
-        .catch(() => false);
+      await expect(page.getByTestId('lineage-time-filter')).toBeVisible();
 
       await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
       await expect(page).not.toHaveURL(/mode=impact_analysis/);
-      expect(await lineageFetchAfterViewSwitch).toBe(false);
+      await waitForAllLoadersToDisappear(page);
+      await expect(page.getByTestId('lineage-time-filter')).not.toBeVisible();
+      await verifyNodePresent(page, table);
     });
 
     test('Verify lineage settings for PipelineViewMode as Edge', async ({

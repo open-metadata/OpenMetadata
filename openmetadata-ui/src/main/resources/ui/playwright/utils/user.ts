@@ -38,6 +38,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
+import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -616,13 +617,14 @@ export const checkStewardServicesPermissions = async (page: Page) => {
     .fill('table');
   await dataAssetDropdownRequest;
 
-  await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
+  const tableRow = page.getByTestId('drop-down-menu').getByTestId('table');
+  await tableRow.scrollIntoViewIfNeeded();
 
   // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="table-checkbox"]');
+  await tableRow.click();
   await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
@@ -641,8 +643,7 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
+  await getCellByName(page, /user_id/i)
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 

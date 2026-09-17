@@ -12,6 +12,7 @@
  */
 
 import { FieldOrGroup } from '@react-awesome-query-builder/ui';
+import { render } from '@testing-library/react';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -23,47 +24,22 @@ import {
   TAG_ASSETS_DROPDOWN_ITEMS,
   TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
-import {
-  EntityFields,
-  EntityReferenceFields,
-} from '../enums/AdvancedSearch.enum';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import {
   getAssetsPageQuickFilters,
-  getChartsOptions,
-  getColumnsOptions,
-  getEmptyJsonTree,
-  getEmptyJsonTreeForQueryBuilder,
   getOptionsFromAggregationBucket,
-  getSchemaFieldOptions,
-  getSearchLabel,
   getSelectedOptionLabelString,
-  getServiceOptions,
-  getTasksOptions,
 } from './AdvancedSearchPureUtils';
 import {
+  generateSearchDropdownLabel,
   getSearchDropdownLabels,
   processCustomPropertyField,
   processEntityTypeFields,
 } from './AdvancedSearchUtils';
 import {
-  highlightedItemLabel,
   mockBucketOptions,
-  mockGetChartsOptionsData,
-  mockGetChartsOptionsDataWithoutDN,
-  mockGetChartsOptionsDataWithoutNameDN,
-  mockGetColumnOptionsData,
-  mockGetColumnOptionsDataWithoutDN,
-  mockGetSchemaFieldOptionsData,
-  mockGetSchemaFieldOptionsDataWithoutDN,
-  mockGetServiceOptionData,
-  mockGetServiceOptionDataWithoutDN,
-  mockGetServiceOptionDataWithoutNameDN,
-  mockGetTasksOptionsData,
-  mockGetTasksOptionsDataWithoutDN,
-  mockItemLabel,
   mockLongOptionsArray,
   mockOptionsArray,
   mockShortOptionsArray,
@@ -121,6 +97,21 @@ describe('AdvancedSearchUtils tests', () => {
     expect(resultMenuItems).toHaveLength(4);
   });
 
+  it('renders dropdown labels as text instead of executable HTML', () => {
+    const payload = '<img src=x onerror="alert(1)">';
+    const label = generateSearchDropdownLabel(
+      { key: 'malicious', label: payload },
+      false,
+      'img',
+      false
+    );
+    const { container } = render(label);
+
+    expect(container.querySelector('img')).not.toBeInTheDocument();
+    expect(container).toHaveTextContent(payload);
+    expect(container.querySelector('mark')).toHaveTextContent('img');
+  });
+
   it('Function getSelectedOptionLabelString should return all options if the length of resultant string is less than 15', () => {
     const resultOptionsString = getSelectedOptionLabelString(
       mockShortOptionsArray
@@ -144,118 +135,6 @@ describe('AdvancedSearchUtils tests', () => {
     expect(resultOptionsString).toBe('');
   });
 
-  it('Function getSearchLabel should return string with highlighted substring for matched searchKey', () => {
-    const resultSearchLabel = getSearchLabel(mockItemLabel, 'wa');
-
-    expect(resultSearchLabel).toBe(highlightedItemLabel);
-  });
-
-  it('Function getSearchLabel should return original string if searchKey is not matched', () => {
-    const resultSearchLabel = getSearchLabel(mockItemLabel, 'wo');
-
-    expect(resultSearchLabel).toBe(mockItemLabel);
-  });
-
-  it('Function getSearchLabel should return original string if searchKey is passed as an empty string', () => {
-    const resultSearchLabel = getSearchLabel(mockItemLabel, '');
-
-    expect(resultSearchLabel).toBe(mockItemLabel);
-  });
-
-  it('Function getServiceOptions should return displayName of the service', () => {
-    const resultGetServiceOptions = getServiceOptions(mockGetServiceOptionData);
-
-    expect(resultGetServiceOptions).toBe('sample_data display');
-  });
-
-  it('Function getServiceOptions should return name of the service if no display name present', () => {
-    const resultGetServiceOptions = getServiceOptions(
-      mockGetServiceOptionDataWithoutDN
-    );
-
-    expect(resultGetServiceOptions).toBe('sample_data');
-  });
-
-  it('Function getServiceOptions should return text value in case not name or display name of service present', () => {
-    const resultGetServiceOptions = getServiceOptions(
-      mockGetServiceOptionDataWithoutNameDN
-    );
-
-    expect(resultGetServiceOptions).toBe('sample_data text');
-  });
-
-  it('Function getColumnsOptions should return displayName of the column', () => {
-    const resultGetColumnsOptions = getColumnsOptions(
-      mockGetColumnOptionsData,
-      SearchIndex.TABLE
-    );
-
-    expect(resultGetColumnsOptions).toBe('ad_id display');
-  });
-
-  it('Function getColumnsOptions should return name of the column if no display name present', () => {
-    const resultGetColumnsOptions = getColumnsOptions(
-      mockGetColumnOptionsDataWithoutDN,
-      SearchIndex.TABLE
-    );
-
-    expect(resultGetColumnsOptions).toBe('ad_id');
-  });
-
-  it('Function getSchemaFieldOptions should return displayName of the schemaField', () => {
-    const resultGetSchemaFieldOptions = getSchemaFieldOptions(
-      mockGetSchemaFieldOptionsData
-    );
-
-    expect(resultGetSchemaFieldOptions).toBe('AddressBook display');
-  });
-
-  it('Function getSchemaFieldOptions should return name of the schemaField if no display name present', () => {
-    const resultGetSchemaFieldOptions = getSchemaFieldOptions(
-      mockGetSchemaFieldOptionsDataWithoutDN
-    );
-
-    expect(resultGetSchemaFieldOptions).toBe('AddressBook');
-  });
-
-  it('Function getTasksOptions should return displayName of the Task', () => {
-    const resultGetTasksOptionsOptions = getTasksOptions(
-      mockGetTasksOptionsData
-    );
-
-    expect(resultGetTasksOptionsOptions).toBe('task display');
-  });
-
-  it('Function getTasksOptions should return name of the Task if no display name present', () => {
-    const resultGetTasksOptionsOptions = getTasksOptions(
-      mockGetTasksOptionsDataWithoutDN
-    );
-
-    expect(resultGetTasksOptionsOptions).toBe('task name');
-  });
-
-  it('Function getChartsOptions should return displayName of the chart', () => {
-    const resultGetChartsOptions = getChartsOptions(mockGetChartsOptionsData);
-
-    expect(resultGetChartsOptions).toBe('chart display');
-  });
-
-  it('Function getChartsOptions should return name of the chart if no display name present', () => {
-    const resultGetChartsOptions = getChartsOptions(
-      mockGetChartsOptionsDataWithoutDN
-    );
-
-    expect(resultGetChartsOptions).toBe('chart name');
-  });
-
-  it('Function getChartsOptions should return text value in case no name or display name of chart is present', () => {
-    const resultGetChartsOptions = getChartsOptions(
-      mockGetChartsOptionsDataWithoutNameDN
-    );
-
-    expect(resultGetChartsOptions).toBe('chart text');
-  });
-
   it('Function getOptionsFromAggregationBucket should return options which not include ingestionPipeline', () => {
     const resultGetOptionsWithoutPipeline =
       getOptionsFromAggregationBucket(mockBucketOptions);
@@ -264,172 +143,6 @@ describe('AdvancedSearchUtils tests', () => {
       { count: 1, key: 'pipeline', label: 'pipeline' },
       { count: 3, key: 'chart', label: 'chart' },
     ]);
-  });
-
-  describe('getEmptyJsonTree', () => {
-    it('should return a default JsonTree structure with OWNERS as the default field', () => {
-      const result = getEmptyJsonTree();
-
-      expect(result.type).toBe('group');
-      expect(result.properties).toEqual({
-        conjunction: 'AND',
-        not: false,
-      });
-
-      const children1Keys = Object.keys(result.children1 ?? {});
-
-      expect(children1Keys.length).toBe(1);
-
-      const children1AsRecord = result.children1 as Record<
-        string,
-        {
-          type: string;
-          children1?: Record<
-            string,
-            { type: string; properties?: { field: string } }
-          >;
-        }
-      >;
-      const firstChild = children1AsRecord[children1Keys[0]];
-
-      expect(firstChild?.type).toBe('group');
-
-      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
-
-      expect(grandChildren1Keys.length).toBe(1);
-
-      const grandChildren1AsRecord = firstChild?.children1 as Record<
-        string,
-        { type: string; properties?: { field: string } }
-      >;
-      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
-
-      expect(grandChild?.type).toBe('rule');
-      expect(grandChild?.properties?.field).toBe(EntityFields.OWNERS);
-    });
-
-    it('should use the provided field when passed as parameter', () => {
-      const customField = EntityFields.TAG;
-      const result = getEmptyJsonTree(customField);
-
-      const children1 = result.children1 as Record<
-        string,
-        { children1: Record<string, { properties: { field: string } }> }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        customField
-      );
-    });
-  });
-
-  describe('getEmptyJsonTreeForQueryBuilder', () => {
-    it('should return a JsonTree structure with default parameters', () => {
-      const result = getEmptyJsonTreeForQueryBuilder();
-
-      expect(result.type).toBe('group');
-      expect(result.properties).toEqual({
-        conjunction: 'AND',
-        not: false,
-      });
-
-      const children1Keys = Object.keys(result.children1 ?? {});
-
-      expect(children1Keys.length).toBe(1);
-
-      const children1AsRecord = result.children1 as Record<
-        string,
-        {
-          type: string;
-          properties?: { field: string; mode: string };
-          children1?: Record<
-            string,
-            { type: string; properties?: { field: string; operator: string } }
-          >;
-        }
-      >;
-      const firstChild = children1AsRecord[children1Keys[0]];
-
-      expect(firstChild?.type).toBe('rule_group');
-      expect(firstChild?.properties?.field).toBe(EntityReferenceFields.OWNERS);
-      expect(firstChild?.properties?.mode).toBe('some');
-
-      const grandChildren1Keys = Object.keys(firstChild?.children1 ?? {});
-
-      expect(grandChildren1Keys.length).toBe(1);
-
-      const grandChildren1AsRecord = firstChild?.children1 as Record<
-        string,
-        { type: string; properties?: { field: string; operator: string } }
-      >;
-      const grandChild = grandChildren1AsRecord[grandChildren1Keys[0]];
-
-      expect(grandChild?.type).toBe('rule');
-      expect(grandChild?.properties?.field).toBe(
-        `${EntityReferenceFields.OWNERS}.fullyQualifiedName`
-      );
-      expect(grandChild?.properties?.operator).toBe('select_equals');
-    });
-
-    it('should use custom field when provided', () => {
-      const customField = EntityReferenceFields.TAG;
-      const result = getEmptyJsonTreeForQueryBuilder(customField);
-
-      const children1 = result.children1 as Record<
-        string,
-        {
-          properties: { field: string };
-          children1: Record<string, { properties: { field: string } }>;
-        }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        properties: { field: string };
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.properties.field).toEqual(customField);
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        `${customField}.fullyQualifiedName`
-      );
-    });
-
-    it('should use custom subField when provided', () => {
-      const customSubField = 'name';
-      const result = getEmptyJsonTreeForQueryBuilder(
-        EntityReferenceFields.OWNERS,
-        customSubField
-      );
-
-      const children1 = result.children1 as Record<
-        string,
-        { children1: Record<string, { properties: { field: string } }> }
-      >;
-      const firstChildKey = Object.keys(children1)[0];
-      const firstChild = children1[firstChildKey] as {
-        children1: Record<string, { properties: { field: string } }>;
-      };
-      const grandChildKey = Object.keys(firstChild.children1)[0];
-
-      expect(firstChild.children1[grandChildKey]?.properties.field).toEqual(
-        `${EntityReferenceFields.OWNERS}.${customSubField}`
-      );
-    });
-
-    it('should have rule_group as the type for the first child', () => {
-      const result = getEmptyJsonTreeForQueryBuilder();
-
-      const children1 = result.children1 as Record<string, { type: string }>;
-      const firstChildKey = Object.keys(children1)[0];
-
-      expect(children1[firstChildKey].type).toEqual('rule_group');
-    });
   });
 
   describe('processCustomPropertyField', () => {

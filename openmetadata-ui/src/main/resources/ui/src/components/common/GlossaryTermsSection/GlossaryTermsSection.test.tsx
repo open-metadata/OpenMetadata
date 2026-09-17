@@ -354,7 +354,7 @@ describe('GlossaryTermsSection', () => {
         container.querySelector('.glossary-terms-list')
       ).toBeInTheDocument();
       expect(getEntityName).toHaveBeenCalled();
-      expect(screen.getAllByTestId('book-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('glossary-icon').length).toBeGreaterThan(0);
 
       expect(screen.getByText('Customer')).toBeInTheDocument();
       expect(screen.getByText('Order')).toBeInTheDocument();

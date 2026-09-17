@@ -24,7 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -36,6 +37,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -48,6 +50,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -273,18 +276,30 @@ function WorksheetDetails({
   }, [worksheetDetails.fullyQualifiedName]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DRIVE_SERVICES,
+          getPartialNameFromTableFQN(
+            worksheetDetails.fullyQualifiedName ?? '',
+            [FqnPart.Service]
+          )
+        )
+      ),
+    [worksheetDetails.fullyQualifiedName]
   );
 
+  // editAllPermission/viewAllPermission (raw worksheetPermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -308,13 +323,11 @@ function WorksheetDetails({
           worksheetPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: worksheetPermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           worksheetPermissions,
           Operation.EditLineage
         ) && !deleted,
-      viewAllPermission: worksheetPermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         worksheetPermissions,
         Operation.ViewCustomFields
@@ -391,8 +404,6 @@ function WorksheetDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

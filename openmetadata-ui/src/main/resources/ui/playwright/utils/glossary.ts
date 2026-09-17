@@ -349,7 +349,10 @@ export const addTeamAsReviewer = async (
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
   await teamsSearchResponse;
 
-  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
+  const ownerItem = page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: teamName });
+  await ownerItem.waitFor({ state: 'visible' });
 
   if (isSelectableInsideForm) {
     await ownerItem.click();
@@ -616,11 +619,11 @@ export const fillGlossaryTermDetails = async (
   await page.locator('#url-0').fill('https://test.com');
 
   if (term.icon) {
-    await page.locator('[data-testid="icon-url"]').fill(term.icon);
+    await fillStyleIconUrl(page, term.icon);
   }
 
   if (term.color) {
-    await page.locator('[data-testid="color-color-input"]').fill(term.color);
+    await selectStyleColor(page, term.color);
   }
 
   if (!isUndefined(term.owners)) {
@@ -634,6 +637,35 @@ export const fillGlossaryTermDetails = async (
       type: 'Users',
     });
   }
+};
+
+/**
+ * The icon field is a picker, not a text input: the trigger opens a popover
+ * with an icon grid and a URL tab. Re-clicking the trigger closes the popover
+ * so it cannot cover the form's Save button.
+ */
+export const selectStyleIcon = async (page: Page, iconName: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('button', { name: iconName, exact: true }).click();
+};
+
+export const fillStyleIconUrl = async (page: Page, iconUrl: string) => {
+  await page.getByTestId('icon-picker-btn').click();
+  await page.getByRole('tab', { name: 'URL' }).click();
+
+  const urlInput = page.getByRole('textbox', { name: 'Icon URL' });
+  await urlInput.fill(iconUrl);
+
+  await page.getByTestId('icon-picker-btn').click();
+  await expect(urlInput).not.toBeVisible();
+};
+
+/**
+ * `color` must be one of ENTITY_PALETTE_HEX (uppercase) — the colour field is a
+ * fixed palette of swatches, so an arbitrary hex cannot be picked.
+ */
+export const selectStyleColor = async (page: Page, color: string) => {
+  await page.getByRole('button', { name: `Select color ${color}` }).click();
 };
 
 export const verifyTaskCreated = async (
@@ -957,13 +989,11 @@ const testFilterWithSpecificOption = async (
 
   if (searchText) {
     const aggregateResponse = waitForAggregation(page, { value: searchText });
-    await page
-      .getByRole('textbox', { name: 'Search Service Type...' })
-      .fill(searchText);
+    await page.getByTestId('search-input').fill(searchText);
     await aggregateResponse;
   }
 
-  await page.locator(`[data-testid="${optionTestId}"]`).click();
+  await page.getByTestId('drop-down-menu').getByTestId(optionTestId).click();
 
   const filterResponse = page.waitForResponse(
     `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
@@ -993,7 +1023,7 @@ const testFilterWithFirstOption = async (
   const dropdownMenu = page.getByTestId('drop-down-menu');
   await dropdownMenu.waitFor();
 
-  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
+  const options = dropdownMenu.getByRole('menuitemcheckbox');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -1066,7 +1096,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table-checkbox',
+    'table',
     'table'
   );
 
@@ -1074,7 +1104,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'Mysql-checkbox',
+    'mysql',
     'mysql',
     'Mysql'
   );
@@ -1843,10 +1873,9 @@ export const addMultiOwnerInDialog = async (data: {
     await searchOwner;
     await waitForAllLoadersToDisappear(page);
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     if (type === 'Teams') {
       if (isSelectableInsideForm) {

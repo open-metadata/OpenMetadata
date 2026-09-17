@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -63,6 +64,7 @@ import {
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
@@ -71,6 +73,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { DEFAULT_GLOSSARY_TERM_ICON } from '../../common/IconPicker/IconPicker.constants';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
@@ -78,7 +81,7 @@ import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBa
 import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
-import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
@@ -87,6 +90,7 @@ import './glossery-header.less';
 type TranslateFunction = ReturnType<typeof useTranslation>['t'];
 
 const buildManageButtonContent = ({
+  canEditAll,
   t,
   isGlossary,
   importExportPermissions,
@@ -106,6 +110,8 @@ const buildManageButtonContent = ({
   importExportPermissions: boolean;
   editDisplayNamePermission: boolean;
   permissions: OperationPermission;
+  /** Derived EditAll flag; the raw object is still needed for the Delete key below. */
+  canEditAll: boolean;
   handleGlossaryExportClick: () => void;
   handleGlossaryImport: () => void;
   setShowActions: (value: boolean) => void;
@@ -195,7 +201,7 @@ const buildManageButtonContent = ({
         },
       ] as ItemType[])
     : []),
-  ...(permissions?.EditAll && !isGlossary
+  ...(canEditAll && !isGlossary
     ? ([
         {
           label: (
@@ -456,7 +462,8 @@ const GlossaryHeaderModals = ({
       onSave={onNameSave}
     />
 
-    <StyleModal
+    <IconColorModal
+      defaultIcon={DEFAULT_GLOSSARY_TERM_ICON}
       open={isStyleEditing}
       style={selectedData.style}
       onCancel={() => setIsStyleEditing(false)}
@@ -570,9 +577,17 @@ const GlossaryHeader = ({
     return null;
   }, [isGlossary, selectedData]);
 
-  const editDisplayNamePermission = useMemo(() => {
-    return permissions.EditAll || permissions.EditDisplayName;
-  }, [permissions]);
+  // Consumer via useGenericContext(). No `deleted` argument: neither call site here
+  // (editDisplayNamePermission, the style/change-parent menu items below) ever
+  // referenced selectedData.deleted in the old code, so getDerivedPermissionFlags
+  // defaults to its `deleted = false` — nothing to gate. Status-based gating
+  // (glossaryTermStatus / EntityStatus.Approved, used for createButtons) is a
+  // separate, unrelated concept and is left untouched per the batch's guidance not to
+  // fold status logic into permission flags.
+  const { canEditAll, canEditDisplayName } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
@@ -592,26 +607,21 @@ const GlossaryHeader = ({
       );
     }
 
-    if (selectedData.style?.iconURL) {
-      return (
-        <img
-          alt=""
-          className="align-middle object-contain"
-          data-testid="icon"
-          height={36}
-          src={selectedData.style?.iconURL}
-          width={32}
-        />
-      );
-    }
-
     return (
-      <IconTerm
+      <EntityStyleIcon
         className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        height={36}
-        name="doc"
-        width={32}
+        fallback={
+          <IconTerm
+            className="align-middle"
+            color={DE_ACTIVE_COLOR}
+            height={36}
+            name="doc"
+            width={32}
+          />
+        }
+        iconValue={selectedData.style?.iconURL}
+        imageClassName="align-middle object-contain"
+        size={36}
       />
     );
   }, [selectedData, isGlossary]);
@@ -704,8 +714,9 @@ const GlossaryHeader = ({
     t,
     isGlossary,
     importExportPermissions,
-    editDisplayNamePermission,
+    editDisplayNamePermission: canEditDisplayName,
     permissions,
+    canEditAll,
     handleGlossaryExportClick,
     handleGlossaryImport,
     setShowActions,

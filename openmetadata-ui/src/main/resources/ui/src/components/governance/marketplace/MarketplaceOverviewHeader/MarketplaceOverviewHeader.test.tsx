@@ -19,24 +19,20 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-jest.mock('components/common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: ({
-    title,
-    subtitle,
-    breadcrumb,
-    actions,
-    actionsClassName,
-    variant,
-  }: any) => (
-    <div data-testid="header-shell" data-variant={variant}>
-      <div data-testid="hs-breadcrumb">{breadcrumb}</div>
-      <div data-testid="hs-title">{title}</div>
-      <div data-testid="hs-subtitle">{subtitle}</div>
-      <div className={actionsClassName} data-testid="hs-actions">
-        {actions}
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+  PageLayout: {
+    PageHeader: ({ title, subtitle, breadcrumb, actions, variant }: any) => (
+      <div data-testid="page-header" data-variant={variant}>
+        <div data-testid="hs-breadcrumb">{breadcrumb}</div>
+        <div data-testid="hs-title">{title}</div>
+        <div data-testid="hs-subtitle">{subtitle}</div>
+        <div data-testid="hs-actions">{actions}</div>
       </div>
-    </div>
+    ),
+  },
+  Typography: ({ children, ...props }: any) => (
+    <span {...props}>{children}</span>
   ),
 }));
 
@@ -87,7 +83,7 @@ describe('MarketplaceOverviewHeader', () => {
     );
     expect(screen.getByTestId('hs-title')).toContainElement(headerLayout);
     expect(screen.getByTestId('hs-subtitle')).toBeEmptyDOMElement();
-    expect(screen.getByTestId('header-shell')).toHaveAttribute(
+    expect(screen.getByTestId('page-header')).toHaveAttribute(
       'data-variant',
       'gradient'
     );

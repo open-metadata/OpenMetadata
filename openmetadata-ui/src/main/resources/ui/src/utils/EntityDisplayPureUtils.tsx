@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import type { CurrentState } from 'Models';
@@ -36,12 +37,11 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <span
-        className="text-xs"
-        data-testid="filter-count"
-        title={count.toString()}>
-        {count}
-      </span>
+      <Tooltip title={count.toString()}>
+        <span className="text-xs" data-testid="filter-count">
+          {count}
+        </span>
+      </Tooltip>
     </span>
   );
 };
