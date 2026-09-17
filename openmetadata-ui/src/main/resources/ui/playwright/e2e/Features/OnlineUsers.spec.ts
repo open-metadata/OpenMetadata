@@ -104,8 +104,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     const userPage = await browser.newPage();
     try {
-      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- online-presence is registered by the sign-in flow itself, so the session must be established the way a user establishes it
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
       await sidebarClick(userPage, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(userPage);
@@ -236,8 +235,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
-      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- online-presence is registered by the sign-in flow itself, so the session must be established the way a user establishes it
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       // 1 step - go to explore page using new user
