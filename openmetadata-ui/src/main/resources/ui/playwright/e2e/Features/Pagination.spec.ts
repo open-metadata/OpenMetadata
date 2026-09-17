@@ -1484,7 +1484,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
           response.request().method() === 'GET'
       );
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByTestId('update-btn').click();
       await filterResetResponse;
       await waitForAllLoadersToDisappear(page);
 

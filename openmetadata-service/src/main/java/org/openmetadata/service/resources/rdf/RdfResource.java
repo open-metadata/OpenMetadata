@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -49,6 +50,9 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 import org.openmetadata.schema.api.data.RdfEntityDiff;
+import org.openmetadata.schema.api.rdf.AgentSparqlError;
+import org.openmetadata.schema.api.rdf.AgentSparqlQuery;
+import org.openmetadata.schema.api.rdf.AgentSparqlResponse;
 import org.openmetadata.schema.api.rdf.RdfInferenceStatus;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
@@ -73,6 +77,10 @@ import org.openmetadata.service.rdf.RdfValidationService;
 import org.openmetadata.service.rdf.SavedSparqlQueryService;
 import org.openmetadata.service.rdf.SavedSparqlQueryStore;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.agent.AgentSparqlAudit;
+import org.openmetadata.service.rdf.agent.AgentSparqlCaller;
+import org.openmetadata.service.rdf.agent.AgentSparqlResult;
+import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -85,6 +93,8 @@ import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -105,6 +115,7 @@ public class RdfResource {
   private final Authorizer authorizer;
   private final Supplier<RdfRepository> repositorySupplier;
   private final Supplier<RdfProjectionState> projectionStateSupplier;
+  private final AgentSparqlService agentSparqlService;
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
@@ -180,6 +191,9 @@ public class RdfResource {
     this.entityDiffService = entityDiffService;
     this.inferenceRuleService = inferenceRuleService;
     this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
+    this.agentSparqlService =
+        new AgentSparqlService(
+            this::sparqlService, projectionStateSupplier, SPARQL_EXECUTION_GUARD);
   }
 
   private static RdfProjectionState configuredProjectionState() {
@@ -1272,6 +1286,96 @@ public class RdfResource {
     String format = sparqlQuery.getFormat() != null ? sparqlQuery.getFormat().toString() : "json";
     return executeSparqlQuery(
         requireAuthenticatedUserName(securityContext), sparqlQuery.getQuery(), format, inference);
+  }
+
+  @POST
+  @Path(AgentSparqlTransport.RESOURCE_PATH)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "queryAgentSparql",
+      summary = "Execute a permissioned read-only SPARQL SELECT for agent tools",
+      description =
+          "Runs a SPARQL SELECT against the server-configured RDF dataset and default graph with"
+              + " inference disabled. Requires the ExecuteSparqlQuery operation on the rdf"
+              + " resource, granted by a policy that names it. FROM, FROM NAMED, GRAPH, SERVICE,"
+              + " and non-SELECT forms are rejected. Results are not filtered by persona or by"
+              + " asset-level permissions. Returns 503 PROJECTION_NOT_READY while the RDF"
+              + " projection is rebuilding or degraded.",
+      requestBody =
+          @RequestBody(
+              required = true,
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema = @Schema(implementation = AgentSparqlQuery.class))),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Typed SELECT result with completeness metadata",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = AgentSparqlResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "QUERY_INVALID, QUERY_FORM_NOT_ALLOWED, GRAPH_SELECTION_NOT_ALLOWED, or"
+                    + " QUERY_LIMIT_EXCEEDED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "401",
+            description = "AUTHENTICATION_REQUIRED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description =
+                "RDF_QUERY_FORBIDDEN, IMPERSONATION_NOT_ALLOWED, or FEDERATION_NOT_ALLOWED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "413",
+            description = "RESULT_OUTPUT_LIMIT_EXCEEDED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "429",
+            description = "EXECUTION_CAPACITY_EXHAUSTED",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "500",
+            description = "RDF_BACKEND_FAILURE",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class))),
+        @ApiResponse(
+            responseCode = "503",
+            description = "EXECUTION_TIMEOUT, RDF_REPOSITORY_UNAVAILABLE, or PROJECTION_NOT_READY",
+            content = @Content(schema = @Schema(implementation = AgentSparqlError.class)))
+      })
+  public Response queryAgentSparql(@Context SecurityContext securityContext, String requestBody) {
+    final AgentSparqlCaller caller = agentSparqlCaller(securityContext);
+    final AgentSparqlResult result =
+        AgentSparqlAudit.record(
+            caller,
+            () -> {
+              authorizer.authorize(
+                  securityContext,
+                  new OperationContext(Entity.RDF, MetadataOperation.EXECUTE_SPARQL_QUERY),
+                  RdfQueryResourceContext.INSTANCE);
+              return agentSparqlService.execute(
+                  caller.effectiveUser(), AgentSparqlTransport.readQuery(requestBody));
+            });
+    return Response.ok(result.body(), MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
+  private static AgentSparqlCaller agentSparqlCaller(SecurityContext securityContext) {
+    // The audit must attribute impersonated calls to the bot behind the validated swap, but
+    // Jersey may hand the resource a wrapped context; fall back to the request thread's
+    // ImpersonationContext the way DefaultAuthorizer does. JwtFilter sets both only after
+    // approving the swap, so a non-null value here never reflects an untrusted header.
+    String serviceActor = ImpersonationContext.getImpersonatedBy();
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null) {
+      serviceActor = catalogSecurityContext.impersonatedUser();
+    }
+    return AgentSparqlCaller.of(requireAuthenticatedUserName(securityContext), serviceActor);
   }
 
   @POST
