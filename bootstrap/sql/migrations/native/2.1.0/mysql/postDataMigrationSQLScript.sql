@@ -122,6 +122,17 @@ SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataRetentionApplication';
 
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship. Pre-existing test cases have no such row and need one
+-- backfilled from their test definition.
+--
+-- That backfill deliberately is NOT here. It has to join against data_quality_dimension, and the
+-- system dimensions do not exist yet at this point on an upgrading deployment -- they are seeded
+-- from JSON resources, which a SQL script cannot do. Joining anyway matches an empty table and
+-- inserts nothing, silently and permanently, since the statement is then checksummed as applied
+-- and never runs again. It is done in DataQualityDimensionMigration.backfillTestCaseDimensions(),
+-- which seeds the dimensions first.
+
 -- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
 -- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
 -- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
@@ -224,6 +235,13 @@ WHERE name IN (
     COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
     '"dimensionFailurePolicy"'
   );
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. The case-insensitive unique key on email
+-- guarantees no collisions can result from lowercasing.
+UPDATE user_entity
+SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
+WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
 
 -- External S3 sample-data storage support was removed (collate#5995).
 -- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /

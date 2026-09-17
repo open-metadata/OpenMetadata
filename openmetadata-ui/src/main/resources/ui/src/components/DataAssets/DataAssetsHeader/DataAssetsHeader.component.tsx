@@ -12,6 +12,8 @@
  */
 import {
   Button,
+  ClassificationTag,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -36,8 +38,8 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
@@ -94,7 +96,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -977,19 +978,26 @@ export const DataAssetsHeader = ({
 
       {showDomain && <HeaderDotSeparator />}
 
-      <OwnerLabel
+      <Owner
         showDashPlaceholder
         avatarSize={24}
         className="header-owner-heading"
         hasPermission={editOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
-        }}
         owners={dataAsset?.owners}
-        onUpdate={onOwnerUpdate}
+        placeHolder={t('label.owners')}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(editOwnerPermission)}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={dataAsset?.owners}
+            onUpdate={onOwnerUpdate}
+          />
+        }
       />
 
       <HeaderDotSeparator />

@@ -109,6 +109,17 @@ WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'DataRetentionApplication'
   AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
 
+-- Data quality dimensions became entities in 2.1.0 (issue #30362) and a test case now holds its
+-- dimension as a `relatedTo` relationship. Pre-existing test cases have no such row and need one
+-- backfilled from their test definition.
+--
+-- That backfill deliberately is NOT here. It has to join against data_quality_dimension, and the
+-- system dimensions do not exist yet at this point on an upgrading deployment -- they are seeded
+-- from JSON resources, which a SQL script cannot do. Joining anyway matches an empty table and
+-- inserts nothing, silently and permanently, since the statement is then checksummed as applied
+-- and never runs again. It is done in DataQualityDimensionMigration.backfillTestCaseDimensions(),
+-- which seeds the dimensions first.
+
 -- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
 -- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
 -- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
@@ -202,6 +213,14 @@ WHERE name IN (
     'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
+
+-- Normalize user emails to lowercase: email is the primary identity lookup key and the
+-- application always compares lowercased values. No collision guard is needed -- the 1.5.0
+-- migration already deleted rows duplicated by LOWER(email) and lowercased the survivors, and
+-- every write since normalizes, so at most one row can hold any given lowercased address.
+UPDATE user_entity
+SET json = jsonb_set(json, '{email}', to_jsonb(lower(json ->> 'email')))
+WHERE json ->> 'email' <> lower(json ->> 'email');
 
 -- External S3 sample-data storage support was removed (collate#5995).
 -- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /

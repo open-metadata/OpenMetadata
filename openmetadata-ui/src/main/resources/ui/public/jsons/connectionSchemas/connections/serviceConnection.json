@@ -270,9 +270,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -284,9 +282,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -298,9 +294,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -389,6 +383,13 @@
                       "expose": true,
                       "title": "Host and Port",
                       "description": "URL to the Looker instance.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "displayUrl": {
+                      "expose": true,
+                      "title": "Looker UI URL",
+                      "description": "Optional URL for human-facing Looker links when the API URL differs from the browser URL.",
                       "type": "string",
                       "format": "uri"
                     },
@@ -2113,9 +2114,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -2127,9 +2126,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -2141,9 +2138,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -2517,9 +2512,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -2531,9 +2524,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -2545,9 +2536,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -3251,9 +3240,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -3265,9 +3252,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -3279,9 +3264,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -3736,9 +3719,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -3750,9 +3731,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -3764,9 +3743,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -4634,9 +4611,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -4648,9 +4623,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -4662,9 +4635,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 }
@@ -4731,9 +4702,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -4745,9 +4714,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -4759,9 +4726,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -6032,9 +5997,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6046,9 +6009,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6060,9 +6021,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -6309,9 +6268,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6323,9 +6280,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6337,9 +6292,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -6601,9 +6554,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6615,9 +6566,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -6629,9 +6578,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -8524,6 +8471,224 @@
                 },
                 {
                   "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "ClickzettaConnection",
+                  "description": "ClickZetta Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.ClickzettaConnection",
+                  "definitions": {
+                    "clickzettaType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Clickzetta"
+                      ],
+                      "default": "Clickzetta"
+                    },
+                    "clickzettaScheme": {
+                      "description": "SQLAlchemy driver scheme options.",
+                      "type": "string",
+                      "enum": [
+                        "clickzetta"
+                      ],
+                      "default": "clickzetta"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Clickzetta",
+                      "type": "string",
+                      "enum": [
+                        "Clickzetta"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "SQLAlchemy driver scheme options.",
+                      "default": "clickzetta",
+                      "type": "string",
+                      "enum": [
+                        "clickzetta"
+                      ]
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Complete ClickZetta instance and service host, with an optional port.",
+                      "type": "string"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to ClickZetta.",
+                      "type": "string"
+                    },
+                    "authType": {
+                      "title": "Auth Configuration Type",
+                      "description": "Choose the ClickZetta authentication configuration.",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "title": "Basic Auth",
+                          "description": "Common Database Connection Config",
+                          "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+                          "type": "object",
+                          "properties": {
+                            "password": {
+                              "title": "Password",
+                              "description": "Password to connect to source.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "databaseName": {
+                      "title": "Workspace",
+                      "description": "ClickZetta workspace to ingest.",
+                      "type": "string"
+                    },
+                    "virtualCluster": {
+                      "title": "Virtual Cluster",
+                      "description": "ClickZetta virtual cluster used for metadata extraction.",
+                      "type": "string"
+                    },
+                    "databaseSchema": {
+                      "title": "Database Schema",
+                      "description": "Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.",
+                      "type": "string"
+                    },
+                    "queryHistoryTable": {
+                      "title": "Query History Table",
+                      "description": "Optional ClickZetta table or view used for usage and query-lineage extraction. Set this to information_schema.job_history for workspace-local native history or sys.information_schema.job_history for cross-workspace native history; the connector maps their native columns and scopes them to the configured workspace and schema. Custom tables or views must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns.",
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "title": "Protocol",
+                      "description": "Protocol used to connect to ClickZetta.",
+                      "type": "string",
+                      "enum": [
+                        "https",
+                        "http"
+                      ],
+                      "default": "https"
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to only include or exclude matching schemas.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to only include or exclude matching tables.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "databaseFilterPattern": {
+                      "title": "Default Database Filter Pattern",
+                      "description": "Regex to only include or exclude matching databases.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsProfiler": {
+                      "title": "Supports Profiler",
+                      "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsDataDiff": {
+                      "title": "Supports Data Diff Extraction.",
+                      "description": "Supports the data diff data qualty specification.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsDBTExtraction": {
+                      "description": "Supports DBT Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "authType",
+                    "databaseName",
+                    "virtualCluster"
+                  ]
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "DatabricksConnection",
                   "description": "Databricks Connection Config",
                   "type": "object",
@@ -8992,9 +9157,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -9006,9 +9169,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -9020,9 +9181,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -10308,9 +10467,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -10322,9 +10479,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -10336,9 +10491,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -10708,9 +10861,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -10722,9 +10873,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -10736,9 +10885,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -11442,9 +11589,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -11456,9 +11601,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -11470,9 +11613,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -12376,9 +12517,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -12390,9 +12529,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -12404,9 +12541,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -13505,9 +13640,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -13519,9 +13652,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -13533,9 +13664,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -14651,9 +14780,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -14665,9 +14792,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -14679,9 +14804,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -15122,9 +15245,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -15136,9 +15257,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -15150,9 +15269,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -15797,9 +15914,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -15811,9 +15926,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -15825,9 +15938,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -16041,9 +16152,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -16055,9 +16164,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -16069,9 +16176,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -16254,6 +16359,10 @@
                       "description": "PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow. Required when authType is OAuth2Credentials.",
                       "type": "string",
                       "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".key"
+                      ],
                       "uiFieldType": "fileOrInput"
                     },
                     "tokenUrl": {
@@ -16307,9 +16416,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -16321,9 +16428,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -16335,9 +16440,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -16699,6 +16802,11 @@
                       "description": "Connection to Snowflake instance via Private Key",
                       "type": "string",
                       "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".key",
+                        ".p8"
+                      ],
                       "uiFieldType": "fileOrInput",
                       "recommended": true
                     },
@@ -19142,9 +19250,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19156,9 +19262,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19170,9 +19274,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -19334,9 +19436,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19348,9 +19448,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19362,9 +19460,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -19790,9 +19886,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19804,9 +19898,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -19818,9 +19910,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -20070,9 +20160,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -20084,9 +20172,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -20098,9 +20184,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -20324,9 +20408,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -20338,9 +20420,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -20352,9 +20432,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -21373,9 +21451,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -21387,9 +21463,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -21401,9 +21475,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -22102,9 +22174,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -22116,9 +22186,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -22130,9 +22198,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -23196,9 +23262,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -23210,9 +23274,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -23224,9 +23286,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -24047,9 +24107,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24061,9 +24119,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24075,9 +24131,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -24107,9 +24161,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24121,9 +24173,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24135,9 +24185,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -24651,9 +24699,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24665,9 +24711,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -24679,9 +24723,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -25690,9 +25732,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -25704,9 +25744,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -25718,9 +25756,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -26593,9 +26629,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -26607,9 +26641,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -26621,9 +26653,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -27327,9 +27357,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -27341,9 +27369,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -27355,9 +27381,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -27866,9 +27890,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -27880,9 +27902,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -27894,9 +27914,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -29385,9 +29403,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -29399,9 +29415,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -29413,9 +29427,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -29971,9 +29983,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -29985,9 +29995,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -29999,9 +30007,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -30495,9 +30501,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -30509,9 +30513,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -30523,9 +30525,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -30900,9 +30900,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -30914,9 +30912,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -30928,9 +30924,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 }
@@ -31844,9 +31838,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -31858,9 +31850,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -31872,9 +31862,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -31963,9 +31951,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -31977,9 +31963,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -31991,9 +31975,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -32910,9 +32892,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -32924,9 +32904,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -32938,9 +32916,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -33277,9 +33253,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -33291,9 +33265,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -33305,9 +33277,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -33670,9 +33640,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -33684,9 +33652,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -33698,9 +33664,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -36303,19 +36267,36 @@
                                   "title": "CA Certificate Value",
                                   "description": "CA Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "clientCertValue": {
                                   "title": "Client Certificate Value",
                                   "description": "Client Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "privateKeyValue": {
                                   "title": "Private Key Value",
                                   "description": "Private Key Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".key"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "stagingDir": {
                                   "title": "Staging Directory Path",
@@ -36565,19 +36546,36 @@
                                   "title": "CA Certificate Value",
                                   "description": "CA Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "clientCertValue": {
                                   "title": "Client Certificate Value",
                                   "description": "Client Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "privateKeyValue": {
                                   "title": "Private Key Value",
                                   "description": "Private Key Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".key"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "stagingDir": {
                                   "title": "Staging Directory Path",
@@ -38514,9 +38512,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -38528,9 +38524,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -38542,9 +38536,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -38633,6 +38625,13 @@
                       "expose": true,
                       "title": "Host and Port",
                       "description": "URL to the Looker instance.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "displayUrl": {
+                      "expose": true,
+                      "title": "Looker UI URL",
+                      "description": "Optional URL for human-facing Looker links when the API URL differs from the browser URL.",
                       "type": "string",
                       "format": "uri"
                     },
@@ -40357,9 +40356,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -40371,9 +40368,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -40385,9 +40380,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -40761,9 +40754,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -40775,9 +40766,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -40789,9 +40778,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -41495,9 +41482,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -41509,9 +41494,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -41523,9 +41506,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -41980,9 +41961,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -41994,9 +41973,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -42008,9 +41985,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -42878,9 +42853,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -42892,9 +42865,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -42906,9 +42877,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 }
@@ -42975,9 +42944,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -42989,9 +42956,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -43003,9 +42968,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -44276,9 +44239,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44290,9 +44251,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44304,9 +44263,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -44553,9 +44510,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44567,9 +44522,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44581,9 +44534,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -44845,9 +44796,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44859,9 +44808,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -44873,9 +44820,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -46768,6 +46713,224 @@
                 },
                 {
                   "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "ClickzettaConnection",
+                  "description": "ClickZetta Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.ClickzettaConnection",
+                  "definitions": {
+                    "clickzettaType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Clickzetta"
+                      ],
+                      "default": "Clickzetta"
+                    },
+                    "clickzettaScheme": {
+                      "description": "SQLAlchemy driver scheme options.",
+                      "type": "string",
+                      "enum": [
+                        "clickzetta"
+                      ],
+                      "default": "clickzetta"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Clickzetta",
+                      "type": "string",
+                      "enum": [
+                        "Clickzetta"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "SQLAlchemy driver scheme options.",
+                      "default": "clickzetta",
+                      "type": "string",
+                      "enum": [
+                        "clickzetta"
+                      ]
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Complete ClickZetta instance and service host, with an optional port.",
+                      "type": "string"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to ClickZetta.",
+                      "type": "string"
+                    },
+                    "authType": {
+                      "title": "Auth Configuration Type",
+                      "description": "Choose the ClickZetta authentication configuration.",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "$schema": "http://json-schema.org/draft-07/schema#",
+                          "title": "Basic Auth",
+                          "description": "Common Database Connection Config",
+                          "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
+                          "type": "object",
+                          "properties": {
+                            "password": {
+                              "title": "Password",
+                              "description": "Password to connect to source.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "databaseName": {
+                      "title": "Workspace",
+                      "description": "ClickZetta workspace to ingest.",
+                      "type": "string"
+                    },
+                    "virtualCluster": {
+                      "title": "Virtual Cluster",
+                      "description": "ClickZetta virtual cluster used for metadata extraction.",
+                      "type": "string"
+                    },
+                    "databaseSchema": {
+                      "title": "Database Schema",
+                      "description": "Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.",
+                      "type": "string"
+                    },
+                    "queryHistoryTable": {
+                      "title": "Query History Table",
+                      "description": "Optional ClickZetta table or view used for usage and query-lineage extraction. Set this to information_schema.job_history for workspace-local native history or sys.information_schema.job_history for cross-workspace native history; the connector maps their native columns and scopes them to the configured workspace and schema. Custom tables or views must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns.",
+                      "type": "string"
+                    },
+                    "protocol": {
+                      "title": "Protocol",
+                      "description": "Protocol used to connect to ClickZetta.",
+                      "type": "string",
+                      "enum": [
+                        "https",
+                        "http"
+                      ],
+                      "default": "https"
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to only include or exclude matching schemas.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to only include or exclude matching tables.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "databaseFilterPattern": {
+                      "title": "Default Database Filter Pattern",
+                      "description": "Regex to only include or exclude matching databases.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsProfiler": {
+                      "title": "Supports Profiler",
+                      "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsDataDiff": {
+                      "title": "Supports Data Diff Extraction.",
+                      "description": "Supports the data diff data qualty specification.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsDBTExtraction": {
+                      "description": "Supports DBT Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "authType",
+                    "databaseName",
+                    "virtualCluster"
+                  ]
+                },
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "DatabricksConnection",
                   "description": "Databricks Connection Config",
                   "type": "object",
@@ -47236,9 +47399,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -47250,9 +47411,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -47264,9 +47423,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -48552,9 +48709,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -48566,9 +48721,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -48580,9 +48733,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -48952,9 +49103,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -48966,9 +49115,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -48980,9 +49127,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -49686,9 +49831,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -49700,9 +49843,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -49714,9 +49855,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -50620,9 +50759,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -50634,9 +50771,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -50648,9 +50783,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -51749,9 +51882,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -51763,9 +51894,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -51777,9 +51906,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -52895,9 +53022,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -52909,9 +53034,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -52923,9 +53046,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -53366,9 +53487,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -53380,9 +53499,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -53394,9 +53511,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -54041,9 +54156,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54055,9 +54168,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54069,9 +54180,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -54285,9 +54394,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54299,9 +54406,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54313,9 +54418,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -54498,6 +54601,10 @@
                       "description": "PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow. Required when authType is OAuth2Credentials.",
                       "type": "string",
                       "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".key"
+                      ],
                       "uiFieldType": "fileOrInput"
                     },
                     "tokenUrl": {
@@ -54551,9 +54658,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54565,9 +54670,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -54579,9 +54682,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -54943,6 +55044,11 @@
                       "description": "Connection to Snowflake instance via Private Key",
                       "type": "string",
                       "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".key",
+                        ".p8"
+                      ],
                       "uiFieldType": "fileOrInput",
                       "recommended": true
                     },
@@ -57386,9 +57492,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -57400,9 +57504,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -57414,9 +57516,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -57578,9 +57678,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -57592,9 +57690,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -57606,9 +57702,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -58034,9 +58128,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58048,9 +58140,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58062,9 +58152,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -58314,9 +58402,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58328,9 +58414,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58342,9 +58426,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -58568,9 +58650,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58582,9 +58662,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -58596,9 +58674,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -59617,9 +59693,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -59631,9 +59705,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -59645,9 +59717,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -60346,9 +60416,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -60360,9 +60428,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -60374,9 +60440,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -61440,9 +61504,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -61454,9 +61516,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -61468,9 +61528,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -62291,9 +62349,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62305,9 +62361,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62319,9 +62373,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -62351,9 +62403,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62365,9 +62415,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62379,9 +62427,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -62895,9 +62941,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62909,9 +62953,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -62923,9 +62965,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -63934,9 +63974,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -63948,9 +63986,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -63962,9 +63998,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -64837,9 +64871,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -64851,9 +64883,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -64865,9 +64895,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -65571,9 +65599,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -65585,9 +65611,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -65599,9 +65623,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -66110,9 +66132,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -66124,9 +66144,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -66138,9 +66156,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -67629,9 +67645,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -67643,9 +67657,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -67657,9 +67669,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -68215,9 +68225,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -68229,9 +68237,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -68243,9 +68249,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -68739,9 +68743,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -68753,9 +68755,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -68767,9 +68767,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -69144,9 +69142,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -69158,9 +69154,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 },
@@ -69172,9 +69166,7 @@
                                   "accept": [
                                     ".pem",
                                     ".crt",
-                                    ".cer",
-                                    ".der",
-                                    ".p12"
+                                    ".cer"
                                   ],
                                   "uiFieldType": "fileOrInput"
                                 }
@@ -70088,9 +70080,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -70102,9 +70092,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -70116,9 +70104,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -70207,9 +70193,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -70221,9 +70205,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -70235,9 +70217,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -71154,9 +71134,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -71168,9 +71146,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -71182,9 +71158,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -71521,9 +71495,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -71535,9 +71507,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             },
@@ -71549,9 +71519,7 @@
                               "accept": [
                                 ".pem",
                                 ".crt",
-                                ".cer",
-                                ".der",
-                                ".p12"
+                                ".cer"
                               ],
                               "uiFieldType": "fileOrInput"
                             }
@@ -71914,9 +71882,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -71928,9 +71894,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     },
@@ -71942,9 +71906,7 @@
                                       "accept": [
                                         ".pem",
                                         ".crt",
-                                        ".cer",
-                                        ".der",
-                                        ".p12"
+                                        ".cer"
                                       ],
                                       "uiFieldType": "fileOrInput"
                                     }
@@ -74547,19 +74509,36 @@
                                   "title": "CA Certificate Value",
                                   "description": "CA Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "clientCertValue": {
                                   "title": "Client Certificate Value",
                                   "description": "Client Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "privateKeyValue": {
                                   "title": "Private Key Value",
                                   "description": "Private Key Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".key"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "stagingDir": {
                                   "title": "Staging Directory Path",
@@ -74809,19 +74788,36 @@
                                   "title": "CA Certificate Value",
                                   "description": "CA Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "clientCertValue": {
                                   "title": "Client Certificate Value",
                                   "description": "Client Certificate Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".crt",
+                                    ".cer"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "privateKeyValue": {
                                   "title": "Private Key Value",
                                   "description": "Private Key Value",
                                   "type": "string",
-                                  "format": "password"
+                                  "format": "password",
+                                  "accept": [
+                                    ".pem",
+                                    ".key"
+                                  ],
+                                  "uiFieldType": "fileOrInput"
                                 },
                                 "stagingDir": {
                                   "title": "Staging Directory Path",

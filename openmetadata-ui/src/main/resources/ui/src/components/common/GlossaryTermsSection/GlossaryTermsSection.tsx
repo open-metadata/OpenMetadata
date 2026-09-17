@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GlossaryTag } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -168,12 +168,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           {editingGlossaryTerms.length > 0 ? (
             <div className="selected-glossary-terms-list">
               {editingGlossaryTerms.map((term) => (
-                <div className="selected-glossary-term-chip" key={term.tagFQN}>
-                  <GlossaryIcon className="glossary-term-icon" />
-                  <span className="glossary-term-name">
-                    {getEntityName(term)}
-                  </span>
-                </div>
+                <GlossaryTag
+                  color={term.style?.color}
+                  icon={term.style?.iconURL}
+                  key={term.tagFQN}
+                  label={getEntityName(term)}
+                  tooltip={getEntityName(term)}
+                />
               ))}
             </div>
           ) : (
@@ -222,20 +223,19 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             ? glossaryTerms
             : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
           ).map((glossaryTerm, index) => (
-            <div
-              className="glossary-term-item"
+            <GlossaryTag
+              color={glossaryTerm.style?.color}
               data-testid={`tag-${
                 glossaryTerm.tagFQN ||
                 glossaryTerm.name ||
                 glossaryTerm.displayName ||
                 index
               }`}
-              key={glossaryTerm.tagFQN}>
-              <GlossaryIcon className="glossary-term-icon" />
-              <span className="glossary-term-name">
-                {getEntityName(glossaryTerm)}
-              </span>
-            </div>
+              icon={glossaryTerm.style?.iconURL}
+              key={glossaryTerm.tagFQN}
+              label={getEntityName(glossaryTerm)}
+              tooltip={getEntityName(glossaryTerm)}
+            />
           ))}
           {glossaryTerms.length > maxVisibleGlossaryTerms && (
             <button

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
+import {
+  Breadcrumbs,
+  Card,
+  ClassificationTag,
+  Owner,
+} from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
@@ -44,10 +49,8 @@ import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { ClassificationTag } from '../../common/atoms/Tag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -346,134 +349,6 @@ const EntityTitleColumn = ({
     )}
   </Col>
 );
-
-const getColumnOtherDetails = (
-  columnSource: TableColumnSearchSource,
-  t: TFunc
-): ExtraInfo[] => {
-  const columnDetails: ExtraInfo[] = [];
-
-  if (columnSource.table) {
-    columnDetails.push({
-      key: t('label.table'),
-      value: (
-        <Link
-          className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
-          title={getEntityName(columnSource.table)}
-          to={searchClassBase.getEntityLink({
-            ...columnSource.table,
-            entityType: EntityType.TABLE,
-          } as SourceType)}>
-          {getEntityName(columnSource.table)}
-        </Link>
-      ),
-    });
-  }
-
-  columnDetails.push({
-    key: 'Owner',
-    value: (
-      <OwnerLabel
-        avatarSize={18}
-        isCompactView={false}
-        owners={columnSource?.owners ?? []}
-        showLabel={false}
-      />
-    ),
-  });
-
-  return columnDetails;
-};
-
-const getDomainEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => {
-  const shouldShowDomainField = !searchClassBase
-    .getListOfEntitiesWithoutDomain()
-    .includes(source?.entityType ?? '');
-
-  const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
-    ? [
-        {
-          key: 'Domain',
-          value: '',
-        },
-      ]
-    : [];
-
-  return source?.domains && source.domains.length > 0
-    ? [
-        {
-          key: 'Domains',
-          value: <DomainDisplay domains={source.domains} />,
-        },
-      ]
-    : emptyDomainInfo;
-};
-
-const getOwnerEntry = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo => ({
-  key: 'Owner',
-  value: (
-    <OwnerLabel
-      avatarSize={18}
-      isCompactView={false}
-      owners={(source?.owners as EntityReference[]) ?? []}
-      showLabel={false}
-    />
-  ),
-});
-
-const getTierEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => {
-  const tierValue = isString(source.tier)
-    ? source.tier
-    : source.tier && (
-        <ClassificationTag
-          color={source.tier.style?.color}
-          href={getTagRedirectLink(source.tier)}
-          icon={source.tier.style?.iconURL}
-          label={getTagName(source.tier)}
-          size="sm"
-        />
-      );
-
-  return searchClassBase
-    .getListOfEntitiesWithoutTier()
-    .includes((source?.entityType ?? '') as EntityType)
-    ? []
-    : [
-        {
-          key: 'Tier',
-          value: tierValue,
-        },
-      ];
-};
-
-const getUsageEntries = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] =>
-  'usageSummary' in source
-    ? [
-        {
-          value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
-            true
-          ),
-        },
-      ]
-    : [];
-
-const getEntityOtherDetails = (
-  source: ExploreSearchCardProps['source']
-): ExtraInfo[] => [
-  ...getDomainEntries(source),
-  getOwnerEntry(source),
-  ...getTierEntries(source),
-  ...getUsageEntries(source),
-];
 
 interface SignalBoosts {
   contributions: { label: string; value: number }[];
@@ -811,13 +686,121 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
-    const otherDetails = useMemo(
-      () =>
-        source?.entityType === EntityType.TABLE_COLUMN
-          ? getColumnOtherDetails(source as TableColumnSearchSource, t)
-          : getEntityOtherDetails(source),
-      [source, t]
-    );
+    const otherDetails = useMemo(() => {
+      const buildColumnDetails = (): ExtraInfo[] => {
+        const columnSource = source as TableColumnSearchSource;
+        const columnDetails: ExtraInfo[] = [];
+
+        if (columnSource.table) {
+          columnDetails.push({
+            key: t('label.table'),
+            value: (
+              <Link
+                className="text-primary no-underline truncate w-max-13 d-inline-block align-middle"
+                title={getEntityName(columnSource.table)}
+                to={searchClassBase.getEntityLink({
+                  ...columnSource.table,
+                  entityType: EntityType.TABLE,
+                } as SourceType)}>
+                {getEntityName(columnSource.table)}
+              </Link>
+            ),
+          });
+        }
+
+        columnDetails.push({
+          key: 'Owner',
+          value: (
+            <Owner
+              avatarSize={24}
+              isCompactView={false}
+              owners={(source as TableColumnSearchSource)?.owners ?? []}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.owner-plural'),
+              })}
+              showLabel={false}
+            />
+          ),
+        });
+
+        return columnDetails;
+      };
+
+      const buildEntityDetails = (): ExtraInfo[] => {
+        const tierValue = isString(source.tier)
+          ? source.tier
+          : source.tier && (
+              <ClassificationTag
+                color={source.tier.style?.color}
+                href={getTagRedirectLink(source.tier)}
+                icon={source.tier.style?.iconURL}
+                label={getTagName(source.tier)}
+                size="sm"
+              />
+            );
+
+        const getTierDetails = (): ExtraInfo[] =>
+          searchClassBase
+            .getListOfEntitiesWithoutTier()
+            .includes((source?.entityType ?? '') as EntityType)
+            ? []
+            : [{ key: 'Tier', value: tierValue }];
+
+        const getUsageDetails = (): ExtraInfo[] =>
+          'usageSummary' in source
+            ? [
+                {
+                  value: getUsagePercentile(
+                    source.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                    true
+                  ),
+                },
+              ]
+            : [];
+
+        const shouldShowDomainField = !searchClassBase
+          .getListOfEntitiesWithoutDomain()
+          .includes(source?.entityType ?? '');
+
+        const emptyDomainInfo: ExtraInfo[] = shouldShowDomainField
+          ? [{ key: 'Domain', value: '' }]
+          : [];
+
+        const domainInfo: ExtraInfo[] =
+          source?.domains && source.domains.length > 0
+            ? [
+                {
+                  key: 'Domains',
+                  value: <DomainDisplay domains={source.domains} />,
+                },
+              ]
+            : emptyDomainInfo;
+
+        return [
+          ...domainInfo,
+          {
+            key: 'Owner',
+            value: (
+              <Owner
+                avatarSize={24}
+                isCompactView={false}
+                owners={(source?.owners as EntityReference[]) ?? []}
+                placeHolder={t('label.no-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+                showLabel={false}
+              />
+            ),
+          },
+          ...getTierDetails(),
+          ...getUsageDetails(),
+        ];
+      };
+
+      return source?.entityType === EntityType.TABLE_COLUMN
+        ? buildColumnDetails()
+        : buildEntityDetails();
+    }, [source]);
 
     const breadcrumbs = useMemo(
       () =>
