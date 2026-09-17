@@ -18,12 +18,15 @@ connector: Athena runs the table node multi threaded, so the cache is shared sta
 
 import hashlib
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -101,7 +104,7 @@ class TestProcessedPropertyCacheIsBounded:
 
         source.build_entity_extension({"first": "v"}, source_label=SOURCE_LABEL)
         source.build_entity_extension({"second": "v"}, source_label=SOURCE_LABEL)
-        assert "first" not in source._processed_prop
+        assert "Table:first" not in source._processed_prop
 
         assert source.build_entity_extension({"first": "v"}, source_label=SOURCE_LABEL) == {"first": "v"}
 
@@ -510,7 +513,7 @@ class TestRegistrationSurvivesCacheEviction:
 
         source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL)
         source.build_entity_extension({"filler": "b"}, source_label=SOURCE_LABEL)
-        assert "owner" not in source._processed_prop
+        assert "Table:owner" not in source._processed_prop
 
         assert source.build_entity_extension({"owner": "c"}, source_label=SOURCE_LABEL) == {"owner": "c"}
         registered = [
@@ -527,3 +530,101 @@ class TestRegistrationSurvivesCacheEviction:
         assert source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL) is None
         assert source.build_entity_extension({"owner": "b"}, source_label=SOURCE_LABEL) == {"owner": "b"}
         assert source.metadata.create_or_update_custom_property.call_count == 2
+
+
+class TestProcessedNamesAreScopedByEntityType:
+    """A definition registered for one entity type says nothing about another. Emitting a property
+    the entity type has no definition for is rejected server side, and that fails the whole entity."""
+
+    def test_a_second_entity_type_registers_its_own_definition(self):
+        source = _FakeSource()
+        other = DatabaseSchema
+
+        source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL)
+        source.build_entity_extension({"owner": "b"}, source_label=SOURCE_LABEL, entity_type=other)
+
+        registered = [
+            (call.args[0].entity_type.__name__, call.args[0].createCustomPropertyRequest.name.root)
+            for call in source.metadata.create_or_update_custom_property.call_args_list
+        ]
+        assert registered == [("Table", "owner"), ("DatabaseSchema", "owner")]
+
+    def test_a_second_entity_type_still_gets_the_value(self):
+        source = _FakeSource()
+        other = DatabaseSchema
+
+        source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL)
+
+        assert source.build_entity_extension({"owner": "b"}, source_label=SOURCE_LABEL, entity_type=other) == {
+            "owner": "b"
+        }
+
+    def test_a_failed_registration_on_one_type_does_not_drop_the_other(self):
+        """Scoping must not leak a failure across types either."""
+        source = _FakeSource()
+        source.metadata.create_or_update_custom_property.side_effect = [RuntimeError("boom"), None]
+        other = DatabaseSchema
+
+        assert source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL) is None
+        assert source.build_entity_extension({"owner": "b"}, source_label=SOURCE_LABEL, entity_type=other) == {
+            "owner": "b"
+        }
+
+
+class TestDefinitionsSnapshotIsSharedAcrossThreads:
+    """Athena runs schema workers concurrently. Independent snapshots would let the last write
+    replace the rest, discarding definitions those workers recorded and re-sending them later.
+
+    The listing is deliberately slowed: with an instant mock the first worker finishes before the
+    others look, so the race these guard never happens and they would pass unfixed.
+    """
+
+    @staticmethod
+    def _slow_source(delay: float = 0.05) -> _FakeSource:
+        source = _FakeSource()
+
+        def slow_listing(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+            time.sleep(delay)
+            return []
+
+        source.metadata.get_entity_custom_properties.side_effect = slow_listing
+        return source
+
+    def test_concurrent_first_use_lists_definitions_once(self):
+        source = self._slow_source()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda _: source._existing_definitions(Table), range(8)))
+
+        assert source.metadata.get_entity_custom_properties.call_count == 1
+
+    def test_every_worker_shares_one_snapshot_object(self):
+        source = self._slow_source()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            snapshots = list(pool.map(lambda _: source._existing_definitions(Table), range(8)))
+
+        assert all(snapshot is snapshots[0] for snapshot in snapshots)
+
+    def test_concurrently_registered_names_all_survive_in_the_snapshot(self):
+        source = self._slow_source()
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(
+                pool.map(
+                    lambda i: source.build_entity_extension({f"k{i}": "v"}, source_label=SOURCE_LABEL),
+                    range(8),
+                )
+            )
+
+        snapshot = source._existing_definitions(Table)
+        assert snapshot is not None
+        assert {f"k{i}" for i in range(8)} <= set(snapshot)
+
+    def test_a_failed_listing_is_not_cached_under_the_lock(self):
+        """Fail-closed must still let a later entity retry."""
+        source = _FakeSource()
+        source.metadata.get_entity_custom_properties.side_effect = [RuntimeError("boom"), []]
+
+        assert source._existing_definitions(Table) is None
+        assert source._existing_definitions(Table) == {}

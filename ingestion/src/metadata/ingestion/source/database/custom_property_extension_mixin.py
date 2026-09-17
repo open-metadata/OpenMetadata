@@ -18,6 +18,7 @@ property name, then hand the values back to be attached to the entity extension.
 
 import hashlib
 import re
+import threading
 import traceback
 from collections.abc import Mapping
 from typing import Any
@@ -68,12 +69,14 @@ class CustomPropertyExtensionMixin:
     _string_property_type_ref: PropertyType | None
     _processed_prop: LRUCache[str]
     _existing_properties: LRUCache[EntityDefinitions]
+    _definitions_lock: threading.Lock
 
     def _init_custom_properties(self) -> None:
         """Set up the per-source custom property state. Call from the source's __init__."""
         self._string_property_type_ref = None
         self._processed_prop = LRUCache(PROCESSED_PROPERTY_CACHE_SIZE)
         self._existing_properties = LRUCache(EXISTING_DEFINITIONS_CACHE_SIZE)
+        self._definitions_lock = threading.Lock()
 
     @property
     def custom_properties_enabled(self) -> bool:
@@ -118,11 +121,16 @@ class CustomPropertyExtensionMixin:
             if prop_value is None or prop_value == "":
                 continue
             sanitized_name = self._resolve_property_name(prop_name, definitions)
-            if sanitized_name in self._processed_prop:
-                if not self._owns_property_name(sanitized_name, prop_name):
+            # Scoped by entity type, because the definitions it stands in for are. A name
+            # registered against Table says nothing about whether the same name exists on another
+            # entity type, and emitting a property that type has no definition for fails the whole
+            # entity server side, not just the property.
+            cache_key = f"{entity_type.__name__}:{sanitized_name}"
+            if cache_key in self._processed_prop:
+                if not self._owns_property_name(cache_key, sanitized_name, prop_name):
                     continue
             elif not self._register_custom_property(
-                sanitized_name, prop_name, entity_type, source_label, property_type, definitions
+                cache_key, sanitized_name, prop_name, entity_type, source_label, property_type, definitions
             ):
                 continue
             # Custom properties are registered as `string`; the server validates each value against
@@ -183,10 +191,10 @@ class CustomPropertyExtensionMixin:
     def _digest(prop_name: str) -> str:
         return hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
 
-    def _owns_property_name(self, sanitized_name: str, prop_name: str) -> bool:
+    def _owns_property_name(self, cache_key: str, sanitized_name: str, prop_name: str) -> bool:
         """False when an unrelated source key already owns this custom property name."""
         try:
-            previous = self._processed_prop.get(sanitized_name)
+            previous = self._processed_prop.get(cache_key)
         except KeyError:
             # Another thread evicted the name between the membership check and this read. The
             # property is registered either way; only the key that produced it is unknowable.
@@ -207,6 +215,7 @@ class CustomPropertyExtensionMixin:
 
     def _register_custom_property(
         self,
+        cache_key: str,
         sanitized_name: str,
         prop_name: str,
         entity_type: type,
@@ -260,27 +269,43 @@ class CustomPropertyExtensionMixin:
         # Checking the snapshot, registering and writing back is deliberately not atomic: Athena runs
         # schema workers concurrently, so two can miss the same first-seen name and both PUT. Both
         # send a payload derived only from the source key, so they write identical content, and the
-        # line above closes the window for every table after them - cheaper than holding a lock
-        # across a network call.
-        self._processed_prop.put(sanitized_name, prop_name)
+        # write above is into the one snapshot every worker shares, so it closes the window for all
+        # of them - cheaper than holding a lock across a PUT for every property.
+        self._processed_prop.put(cache_key, prop_name)
         return True
 
     def _existing_definitions(self, entity_type: type) -> EntityDefinitions | None:
         """The entity type's custom property definitions, or None when they could not be read."""
         entity_key = entity_type.__name__
-        if entity_key in self._existing_properties:
-            try:
-                return self._existing_properties.get(entity_key)
-            except KeyError:
-                # Evicted between the check and the read; fetching again is correct either way.
-                pass
-        definitions = self._fetch_existing_properties(entity_type)
-        if definitions is None:
-            # Not cached, so a transient failure costs this entity its extension rather than
-            # disabling custom properties for the rest of the run.
+        cached = self._cached_definitions(entity_key)
+        if cached is not None:
+            return cached
+        with self._definitions_lock:
+            # Re-check under the lock. Athena runs schema workers concurrently, so several can miss
+            # together; without this each fetches its own snapshot and the last write replaces the
+            # rest, discarding the definitions those workers had already recorded and re-sending
+            # every one of them once the processed-name cache evicts. One listing per entity type
+            # per run is a cheap thing to serialise, unlike the per-property PUT below it.
+            cached = self._cached_definitions(entity_key)
+            if cached is not None:
+                return cached
+            definitions = self._fetch_existing_properties(entity_type)
+            if definitions is None:
+                # Not cached, so a transient failure costs this entity its extension rather than
+                # disabling custom properties for the rest of the run.
+                return None
+            self._existing_properties.put(entity_key, definitions)
+            return definitions
+
+    def _cached_definitions(self, entity_key: str) -> EntityDefinitions | None:
+        """The snapshot already held for this entity type, if any."""
+        if entity_key not in self._existing_properties:
             return None
-        self._existing_properties.put(entity_key, definitions)
-        return definitions
+        try:
+            return self._existing_properties.get(entity_key)
+        except KeyError:
+            # Evicted between the check and the read; fetching again is correct either way.
+            return None
 
     def _fetch_existing_properties(self, entity_type: type) -> EntityDefinitions | None:
         """Snapshot the entity type's definitions as name -> (data type, display name).

@@ -720,7 +720,7 @@ class TestGetTableExtensionsDedup:
             athena_source.get_table_extensions("tbl2", TableType.Iceberg)
 
         assert mock_metadata.create_or_update_custom_property.call_count == 1
-        assert "shared_key" in athena_source._processed_prop
+        assert "Table:shared_key" in athena_source._processed_prop
 
     def test_distinct_props_each_registered_once(self, athena_source):
         with (
@@ -747,7 +747,7 @@ class TestGetTableExtensionsDedup:
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
         assert result is None
-        assert "k1" not in athena_source._processed_prop
+        assert "Table:k1" not in athena_source._processed_prop
 
     def test_registration_failure_for_one_prop_does_not_block_others(self, athena_source):
         """Registration errors on one prop don't prevent others from being returned."""

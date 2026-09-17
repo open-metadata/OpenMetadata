@@ -718,7 +718,7 @@ class TestGlueCustomPropertyValues:
             result = custom_property_source.get_table_extensions(table)
 
         assert result == {"good": "y"}
-        assert "bad" not in custom_property_source._processed_prop
+        assert "Table:bad" not in custom_property_source._processed_prop
 
     def test_shared_key_registered_once_across_tables(self, custom_property_source):
         with patch.object(custom_property_source, "metadata") as mock_metadata:
