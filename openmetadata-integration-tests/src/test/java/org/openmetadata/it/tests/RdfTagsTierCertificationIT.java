@@ -24,6 +24,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -538,7 +539,7 @@ class RdfTagsTierCertificationIT {
           .atMost(AWAIT_TIMEOUT)
           .pollInterval(POLL_INTERVAL)
           .until(() -> RdfTestUtils.executeSparqlAsk(sparql));
-    } catch (Exception e) {
+    } catch (ConditionTimeoutException e) {
       LOG.warn("Await failed for query: {}", sparql);
       throw e;
     }
@@ -552,7 +553,7 @@ class RdfTagsTierCertificationIT {
           .atMost(AWAIT_TIMEOUT)
           .pollInterval(POLL_INTERVAL)
           .until(() -> !RdfTestUtils.executeSparqlAsk(sparql));
-    } catch (Exception e) {
+    } catch (ConditionTimeoutException e) {
       LOG.warn("Await-false failed for query: {}", sparql);
       throw e;
     }
