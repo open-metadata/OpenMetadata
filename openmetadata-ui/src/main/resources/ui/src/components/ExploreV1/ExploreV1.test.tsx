@@ -366,6 +366,7 @@ jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
