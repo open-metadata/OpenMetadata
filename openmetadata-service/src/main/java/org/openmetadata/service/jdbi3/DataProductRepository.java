@@ -1223,9 +1223,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       List<CollectionDAO.EntityRelationshipRecord> assetRecords, List<EntityReference> newDomains) {
     Set<UUID> newDomainIds =
         newDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-      EntityReference asset =
-          Entity.getEntityReferenceById(record.getType(), record.getId(), NON_DELETED);
+    for (EntityReference asset : resolveLiveReferences(assetRecords)) {
       detachConflictingDataProducts(asset, ownDomainIds(asset));
       detachConflictingDataProductsFromDescendants(asset, newDomainIds);
     }
@@ -1293,12 +1291,31 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private List<EntityReference> getContainedChildren(EntityReference parent) {
-    return daoCollection
-        .relationshipDAO()
-        .findTo(parent.getId(), parent.getType(), Relationship.CONTAINS.ordinal())
-        .stream()
-        .map(record -> Entity.getEntityReferenceById(record.getType(), record.getId(), NON_DELETED))
-        .toList();
+    return resolveLiveReferences(
+        daoCollection
+            .relationshipDAO()
+            .findTo(parent.getId(), parent.getType(), Relationship.CONTAINS.ordinal()));
+  }
+
+  /**
+   * Resolve relationship records to live references. Records point at IDs regardless of the target's
+   * state, so a soft-deleted or already-removed asset/child would otherwise abort the whole
+   * domain-change transaction. Fetch with ALL (batched per type, skipping missing) and drop
+   * soft-deleted entities — they are not editable and never hit the validation rule.
+   */
+  private List<EntityReference> resolveLiveReferences(
+      List<CollectionDAO.EntityRelationshipRecord> records) {
+    Map<String, List<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      idsByType.computeIfAbsent(record.getType(), type -> new ArrayList<>()).add(record.getId());
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      Entity.getEntityReferencesByIds(entry.getKey(), entry.getValue(), ALL).stream()
+          .filter(reference -> !Boolean.TRUE.equals(reference.getDeleted()))
+          .forEach(references::add);
+    }
+    return references;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {

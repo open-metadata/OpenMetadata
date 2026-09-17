@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -742,6 +743,48 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         SdkClients.adminClient().tables().get(childTable.getId().toString(), "dataProducts");
     editableChild.setDescription("edited after ancestor domain move");
     SdkClients.adminClient().tables().update(editableChild.getId().toString(), editableChild);
+  }
+
+  @Test
+  void test_domainChangeSkipsSoftDeletedAssetsAndDoesNotAbort(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_soft");
+    Domain hr = createTestDomain(ns, "hr_soft");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_soft"))
+                .withDescription("Data product with a soft-deleted asset")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var liveSchema = createSchemaWithDomain(ns, "schema_live", finance);
+    var staleSchema = createSchemaWithDomain(ns, "schema_stale", finance);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(liveSchema.getEntityReference(), staleSchema.getEntityReference())));
+
+    // Soft-delete keeps the data-product relationship, so the stale schema still shows in the
+    // product's asset list. Before the fix, resolving it during detach threw
+    // EntityNotFoundException
+    // and rolled back the whole domain change.
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .delete(
+            staleSchema.getId().toString(), Map.of("hardDelete", "false", "recursive", "false"));
+
+    assertDoesNotThrow(() -> moveDataProductDomain(movingProduct, hr));
+
+    // The live asset was still migrated and stays writable.
+    var editableSchema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(liveSchema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain move with a soft-deleted sibling");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
   }
 
   private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
