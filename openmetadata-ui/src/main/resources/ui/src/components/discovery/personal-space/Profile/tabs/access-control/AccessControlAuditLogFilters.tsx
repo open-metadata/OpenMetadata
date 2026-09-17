@@ -77,6 +77,11 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     const startDate = new Date(value.startTs);
     const endDate = new Date(value.endTs);
 
+    // @internationalized/date is externalized in ui-core-components but resolves to a
+    // different patch version (3.12.0) than the one openmetadata-ui locks to (3.12.1).
+    // TypeScript therefore treats CalendarDate / DateValue from each copy as distinct
+    // nominal types even though they are structurally identical. Cast until both
+    // packages resolve the same version.
     return {
       start: new CalendarDate(
         startDate.getFullYear(),
@@ -100,50 +105,6 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     [activeFilters]
   );
 
-  const handleTimeFilterChange = useCallback(
-    (dateRange: {
-      key?: string;
-      title?: string;
-      startTs?: number;
-      endTs?: number;
-    }) => {
-      let label = dateRange.title ?? '';
-      if (
-        dateRange.key === CUSTOM_DATE_RANGE_KEY &&
-        dateRange.startTs &&
-        dateRange.endTs
-      ) {
-        label = `${DateTime.fromMillis(dateRange.startTs).toFormat(
-          'yyyy-MM-dd'
-        )} -> ${DateTime.fromMillis(dateRange.endTs).toFormat('yyyy-MM-dd')}`;
-      }
-
-      const newFilter: AuditLogActiveFilter = {
-        category: 'time',
-        categoryLabel: getAuditLogCategoryLabel('time', t),
-        value: {
-          key: dateRange.key ?? 'custom',
-          label,
-          value: dateRange.key ?? 'custom',
-          startTs: dateRange.startTs,
-          endTs: dateRange.endTs,
-        } as AuditLogActiveFilter['value'],
-      };
-
-      const existingIndex = activeFilters.findIndex(
-        (f) => f.category === 'time'
-      );
-      const newFilters =
-        existingIndex >= 0
-          ? activeFilters.map((f, i) => (i === existingIndex ? newFilter : f))
-          : [...activeFilters, newFilter];
-
-      const params = buildParamsFromFilters(newFilters);
-      onFiltersChange(newFilters, params);
-    },
-    [activeFilters, onFiltersChange, t]
-  );
-
   const handleDateRangeApply = useCallback(() => {
     if (!pendingDateRange) {
       return;
@@ -153,13 +114,32 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     const startTs = pendingDateRange.start.toDate(tz).setHours(0, 0, 0, 0);
     const endTs = pendingDateRange.end.toDate(tz).setHours(23, 59, 59, 999);
 
-    handleTimeFilterChange({
-      key: CUSTOM_DATE_RANGE_KEY,
-      startTs,
-      endTs,
-    });
+    const label = `${DateTime.fromMillis(startTs).toFormat(
+      'yyyy-MM-dd'
+    )} -> ${DateTime.fromMillis(endTs).toFormat('yyyy-MM-dd')}`;
+
+    const newFilter: AuditLogActiveFilter = {
+      category: 'time',
+      categoryLabel: getAuditLogCategoryLabel('time', t),
+      value: {
+        key: CUSTOM_DATE_RANGE_KEY,
+        label,
+        value: CUSTOM_DATE_RANGE_KEY,
+        startTs,
+        endTs,
+      } as AuditLogActiveFilter['value'],
+    };
+
+    const existingIndex = activeFilters.findIndex((f) => f.category === 'time');
+    const newFilters =
+      existingIndex >= 0
+        ? activeFilters.map((f, i) => (i === existingIndex ? newFilter : f))
+        : [...activeFilters, newFilter];
+
+    const params = buildParamsFromFilters(newFilters);
+    onFiltersChange(newFilters, params);
     setPendingDateRange(null);
-  }, [pendingDateRange, handleTimeFilterChange]);
+  }, [activeFilters, onFiltersChange, pendingDateRange, t]);
 
   const makeChangeHandler = useCallback(
     (

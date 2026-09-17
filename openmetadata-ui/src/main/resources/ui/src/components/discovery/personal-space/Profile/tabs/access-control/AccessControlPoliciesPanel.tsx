@@ -35,7 +35,11 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -157,7 +161,9 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       return undefined;
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -222,7 +228,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
         while (page < newPage && currentPaging.after) {
           page++;
-          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
           const data = await getPolicies(
             'roles',
             currentPaging.after,
@@ -257,7 +263,9 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
+        if (requestId === fetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     }
   };
@@ -458,7 +466,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[15, 25, 50]}
+            pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

@@ -222,6 +222,7 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
 
 interface RuleCardProps {
   canEditAll: boolean;
+  isActionsDisabled: boolean;
   isLoadingOnSave: boolean;
   rule: Rule;
   t: ReturnType<typeof useTranslation>['t'];
@@ -239,6 +240,7 @@ function getPermissionTooltipTitle(
 
 const RuleCard: FC<RuleCardProps> = ({
   canEditAll,
+  isActionsDisabled,
   isLoadingOnSave,
   rule,
   t,
@@ -268,7 +270,7 @@ const RuleCard: FC<RuleCardProps> = ({
             color="tertiary"
             data-testid={`edit-rule-${rule.name}`}
             icon={Edit}
-            isDisabled={!canEditAll || isLoadingOnSave}
+            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
             size="xs"
             tooltip={getPermissionTooltipTitle(
               canEditAll,
@@ -282,7 +284,7 @@ const RuleCard: FC<RuleCardProps> = ({
             color="tertiary"
             data-testid={`delete-rule-${rule.name}`}
             icon={Delete}
-            isDisabled={!canEditAll || isLoadingOnSave}
+            isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
             size="xs"
             tooltip={getPermissionTooltipTitle(
               canEditAll,
@@ -600,7 +602,7 @@ const usePolicyDetail = (fqn: string) => {
           (p) => p.id !== policy.id
         );
         const patch = compare(role, { ...role, policies: updatedPolicies });
-        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs entity fetched above
         await patchRole(patch, role.id);
         setPolicy((prev) =>
           prev
@@ -639,7 +641,7 @@ const usePolicyDetail = (fqn: string) => {
           (p) => p.id !== policy.id
         );
         const patch = compare(team, { ...team, policies: updatedPolicies });
-        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs entity fetched above
         await patchTeamDetail(team.id ?? '', patch);
         setPolicy((prev) =>
           prev
@@ -949,6 +951,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
             <AccessControlRuleForm
               form={ruleForm}
               key={editingRule?.name ?? 'new-rule'}
+              takenNames={(policy?.rules ?? [])
+                .filter((r) => r.name !== editingRule?.name)
+                .map((r) => r.name ?? '')}
             />
             <Box direction="row" gap={3} justify="end">
               <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
@@ -969,7 +974,8 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
           policy.rules.map((rule) => (
             <RuleCard
               canEditAll={canEditAll}
-              isLoadingOnSave={isLoadingOnSave || isAddingRule || !!editingRule}
+              isActionsDisabled={isAddingRule || !!editingRule}
+              isLoadingOnSave={isLoadingOnSave}
               key={rule.name ?? ''}
               rule={rule}
               t={t}

@@ -92,7 +92,7 @@ function trimCursorCache(cache: Record<number, string>) {
 }
 
 async function walkToPageCursor(
-  startCursor: string,
+  startCursor: string | undefined,
   startPage: number,
   targetPage: number,
   pageSize: number,
@@ -106,8 +106,8 @@ async function walkToPageCursor(
   let cursor: string | undefined = startCursor;
   const discoveredCursors: Record<number, string> = {};
 
-  while (p < targetPage - 1 && cursor) {
-    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+  while (p < targetPage - 1) {
+    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
     const response: AuditLogListResponse = await getAuditLogs({
       limit: pageSize,
       after: cursor,
@@ -118,6 +118,8 @@ async function walkToPageCursor(
     cursor = response.paging?.after;
     if (cursor) {
       discoveredCursors[p] = cursor;
+    } else {
+      break;
     }
   }
 
@@ -198,7 +200,9 @@ const AccessControlAuditLogsPanel: React.FC<
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
+        if (requestId === fetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [pageSize]
@@ -280,7 +284,11 @@ const AccessControlAuditLogsPanel: React.FC<
   );
 
   const walkToPage = useCallback(
-    async (startCursor: string, startPage: number, newPage: number) => {
+    async (
+      startCursor: string | undefined,
+      startPage: number,
+      newPage: number
+    ) => {
       const requestId = ++fetchRequestIdRef.current;
       setIsLoading(true);
       try {
@@ -324,7 +332,9 @@ const AccessControlAuditLogsPanel: React.FC<
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
+        if (requestId === fetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [pageSize]
@@ -353,17 +363,21 @@ const AccessControlAuditLogsPanel: React.FC<
         return;
       }
 
-      // Sequential walk: find the furthest page we know about, then walk forward
+      // Sequential walk: find the furthest page we know about, then walk forward.
+      // Fall back to page 0 (undefined cursor = from the beginning) if the cache
+      // was trimmed and no entry below newPage remains — avoids fetching the wrong
+      // page when currentPage > newPage - 1 after eviction.
       const knownPages = Object.keys(pageCursorsRef.current)
         .map(Number)
         .sort((a, b) => a - b)
         .filter((p) => p < newPage);
 
       const startPage =
-        knownPages.length > 0 ? knownPages[knownPages.length - 1] : currentPage;
-      const startCursor = pageCursorsRef.current[startPage];
+        knownPages.length > 0 ? knownPages[knownPages.length - 1] : 0;
+      const startCursor =
+        knownPages.length > 0 ? pageCursorsRef.current[startPage] : undefined;
 
-      if (!startCursor) {
+      if (knownPages.length > 0 && !startCursor) {
         return;
       }
 
@@ -745,6 +759,13 @@ const AccessControlAuditLogsPanel: React.FC<
                 <Typography as="p" className="tw:text-tertiary" size="text-md">
                   {`${t('label.date-range')} *`}
                 </Typography>
+                {/*
+                 * @internationalized/date is externalized in ui-core-components but resolves to a
+                 * different patch version (3.12.0) than the one openmetadata-ui locks to (3.12.1).
+                 * TypeScript therefore treats CalendarDate / DateValue from each copy as distinct
+                 * nominal types even though they are structurally identical. Cast until both
+                 * packages resolve the same version.
+                 */}
                 <DateRangePicker
                   data-testid="export-date-range-picker"
                   isDisabled={isExporting}

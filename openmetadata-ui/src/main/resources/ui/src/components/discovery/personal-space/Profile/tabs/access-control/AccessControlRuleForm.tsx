@@ -52,9 +52,13 @@ import { buildConditionOptions } from './AccessControl.utils';
 
 export interface AccessControlRuleFormProps {
   form: UseFormReturn<Rule>;
+  takenNames?: string[];
 }
 
-const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
+const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
+  form,
+  takenNames,
+}) => {
   const { t } = useTranslation();
 
   const nameField: FieldProp = {
@@ -66,6 +70,11 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
     props: { 'data-testid': 'rule-name' },
     rules: {
       required: t('label.field-required', { field: t('label.rule-name') }),
+      validate: (name: string) =>
+        !takenNames?.includes(name.trim()) ||
+        t('message.entity-with-name-already-exists', {
+          entity: t('label.rule-name'),
+        }),
     },
   };
 

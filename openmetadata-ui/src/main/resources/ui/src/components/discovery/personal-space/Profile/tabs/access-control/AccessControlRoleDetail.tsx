@@ -635,7 +635,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           ...user,
           roles: (user.roles ?? []).filter((r) => r.id !== role.id),
         };
-        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs entity fetched above
         await updateUserDetail(userId, compare(user, updatedUser));
         setRole({
           ...role,
@@ -672,7 +672,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           ...team,
           defaultRoles: updatedDefaultRoles,
         });
-        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
+        // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- patch needs entity fetched above
         await patchTeamDetail(team.id ?? '', patch);
         setRole((prev) =>
           prev

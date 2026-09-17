@@ -27,9 +27,13 @@ import {
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -54,6 +58,8 @@ import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
 
+const MAX_CURSOR_CACHE_PAGES = 100;
+
 type RoleColumnId = 'name' | 'description' | 'policies' | 'actions';
 type RoleColumn = { id: RoleColumnId; label: string; className?: string };
 
@@ -75,6 +81,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
   );
+  const fetchRequestIdRef = useRef(0);
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -111,6 +118,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     pagingParam?: Partial<Paging>,
     targetPage = 1
   ): Promise<Paging | undefined> => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getRoles(
@@ -121,9 +129,24 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         pageSize
       );
 
+      if (requestId !== fetchRequestIdRef.current) {
+        return undefined;
+      }
+
       setRoles(data.data || []);
       setPaging(data.paging);
-      setCursorCache((prev) => new Map(prev).set(targetPage, data.paging));
+      setCursorCache((prev) => {
+        const next = new Map(prev).set(targetPage, data.paging);
+
+        if (next.size > MAX_CURSOR_CACHE_PAGES) {
+          [...next.keys()]
+            .sort((a, b) => a - b)
+            .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+            .forEach((k) => next.delete(k));
+        }
+
+        return next;
+      });
 
       return data.paging;
     } catch (error) {
@@ -131,7 +154,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       return undefined;
     } finally {
-      setIsLoading(false);
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -188,6 +213,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     // Sequential forward navigation through uncached pages
     if (newPage > currentPage) {
+      const requestId = ++fetchRequestIdRef.current;
       setIsLoading(true);
       try {
         let page = currentPage;
@@ -195,7 +221,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
         while (page < newPage && currentPaging.after) {
           page++;
-          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration
+          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
           const data = await getRoles(
             'policies',
             currentPaging.after,
@@ -203,8 +229,24 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             undefined,
             pageSize
           );
+
+          if (requestId !== fetchRequestIdRef.current) {
+            return;
+          }
+
           currentPaging = data.paging;
-          setCursorCache((prev) => new Map(prev).set(page, data.paging));
+          setCursorCache((prev) => {
+            const next = new Map(prev).set(page, data.paging);
+
+            if (next.size > MAX_CURSOR_CACHE_PAGES) {
+              [...next.keys()]
+                .sort((a, b) => a - b)
+                .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+                .forEach((k) => next.delete(k));
+            }
+
+            return next;
+          });
 
           if (page === newPage) {
             setRoles(data.data || []);
@@ -215,7 +257,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        setIsLoading(false);
+        if (requestId === fetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     }
   };
@@ -420,7 +464,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[15, 25, 50]}
+            pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
