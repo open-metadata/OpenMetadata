@@ -240,7 +240,8 @@ test('Searching the bundle suites list from a later page resets to the first pag
         const url = new URL(response.url());
 
         return (
-          isBundleSuiteList(url) && url.searchParams.get('q') === targetSuite
+          isBundleSuiteList(url) &&
+          url.searchParams.get('q') === `*${targetSuite}*`
         );
       });
       await page.getByTestId('searchbar').fill(targetSuite);

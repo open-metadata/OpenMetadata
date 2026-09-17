@@ -541,7 +541,7 @@ describe('TestSuites component', () => {
 
     await waitFor(() => {
       expect(mockGetListTestSuites).toHaveBeenCalledWith(
-        expect.objectContaining({ q: 'sales', limit: 15, offset: 15 })
+        expect.objectContaining({ q: '*sales*', limit: 15, offset: 15 })
       );
     });
 
