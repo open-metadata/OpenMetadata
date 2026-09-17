@@ -3084,6 +3084,16 @@ describe('parseSamlMetadataXml', () => {
     );
   });
 
+  // The backend parses this certificate as X.509, so the base64 the IdP published has to survive
+  // the round trip byte for byte — only the PEM header and footer may be added.
+  it('should preserve the certificate body exactly as published by the IdP', () => {
+    const result = parseSamlMetadataXml(OKTA_METADATA);
+
+    expect(result.idpX509Certificate).toBe(
+      `-----BEGIN CERTIFICATE-----\nMIIDpDCCAoygAwIBAgIGAXyz4567\n-----END CERTIFICATE-----`
+    );
+  });
+
   it('should throw when metadata has no certificate', () => {
     const noCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">

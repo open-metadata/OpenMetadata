@@ -76,6 +76,7 @@ import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -122,6 +123,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
@@ -135,6 +137,16 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+
+  /** Providers whose settings live in {@code authenticationConfiguration.oidcConfiguration}. */
+  private static final Set<AuthProvider> OIDC_PROVIDERS =
+      Set.of(
+          AuthProvider.AZURE,
+          AuthProvider.GOOGLE,
+          AuthProvider.OKTA,
+          AuthProvider.AUTH_0,
+          AuthProvider.AWS_COGNITO,
+          AuthProvider.CUSTOM_OIDC);
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -1080,7 +1092,7 @@ public class SystemResource {
   public Response updateSecurityConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
@@ -1088,6 +1100,7 @@ public class SystemResource {
           SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
       preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+      validateConfigurationOfActiveProvider(securityConfig);
 
       // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
       systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
@@ -1113,9 +1126,49 @@ public class SystemResource {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
       return Response.ok(getSecurityConfig(securityContext)).build();
+    } catch (IllegalArgumentException e) {
+      // An invalid configuration is a client error; rethrow so the mapper answers 400 rather than
+      // letting the catch below report it as a server failure.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
+    }
+  }
+
+  /**
+   * Validates the configuration with the blocks of inactive providers left out.
+   *
+   * <p>Bean validation cascades into every nested block present in the payload, so an instance that
+   * once touched LDAP and still carries a partially-filled {@code ldapConfiguration} could not save
+   * its SAML configuration — the request was rejected over required LDAP fields that the active
+   * provider never reads. That also made {@code GET} responses un-resubmittable, because {@code GET}
+   * omits fields the cascade demanded. Only validation ignores those blocks; they are still stored.
+   */
+  private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
+    SecurityConfiguration scoped = JsonUtils.deepCopy(securityConfig, SecurityConfiguration.class);
+    clearInactiveProviderConfigurations(scoped.getAuthenticationConfiguration());
+
+    String violations = ValidatorUtil.validate(scoped);
+    if (violations != null) {
+      throw new IllegalArgumentException("Invalid security configuration: " + violations);
+    }
+  }
+
+  private void clearInactiveProviderConfigurations(AuthenticationConfiguration authConfig) {
+    if (authConfig == null || authConfig.getProvider() == null) {
+      return;
+    }
+
+    AuthProvider provider = authConfig.getProvider();
+    if (provider != AuthProvider.LDAP) {
+      authConfig.setLdapConfiguration(null);
+    }
+    if (provider != AuthProvider.SAML) {
+      authConfig.setSamlConfiguration(null);
+    }
+    if (!OIDC_PROVIDERS.contains(provider)) {
+      authConfig.setOidcConfiguration(null);
     }
   }
 
