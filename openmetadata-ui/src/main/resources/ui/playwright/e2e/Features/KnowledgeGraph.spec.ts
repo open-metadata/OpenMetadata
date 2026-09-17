@@ -1266,4 +1266,200 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       ''
     );
   });
+
+  test('bundles every repeated predicate: business terms, tags, owners of different kinds and mixed downstream assets', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1680, height: 1080 });
+    const graph = fixture();
+    const root = table.entityResponseData.id;
+    for (let index = 0; index < 5; index++) {
+      const id = 'concept-' + index;
+      graph.nodes.push({ id, label: 'Concept ' + index, type: 'glossaryTerm' });
+      // The same business term arrives twice, as a glossary term and as a tag.
+      graph.edges.push(
+        {
+          from: root,
+          to: id,
+          label: 'Has glossary term',
+          relationType: 'hasGlossaryTerm',
+        },
+        { from: root, to: id, label: 'Has tag', relationType: 'hasTag' }
+      );
+    }
+    graph.nodes.push(
+      { id: 'tag-person', label: 'Person', type: 'tag' },
+      { id: 'tag-channels', label: 'Channels', type: 'tag' },
+      { id: 'tier', label: 'Tier 4', type: 'tag' },
+      { id: 'finance-team', label: 'Finance team', type: 'team' },
+      { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+      {
+        id: 'model-accounts',
+        label: 'AccountsModel',
+        type: 'dashboardDataModel',
+      },
+      {
+        id: 'model-sales',
+        label: 'sales_datamart',
+        type: 'dashboardDataModel',
+      },
+      { id: 'view', label: 'new_view', type: 'table' },
+      { id: 'watcher', label: 'Watcher', type: 'user' },
+      { id: 'mention', label: 'Fix the schema', type: 'task' }
+    );
+    graph.edges.push(
+      ...['tag-person', 'tag-channels', 'tier'].map((to) => ({
+        from: root,
+        to,
+        label: 'Has tag',
+        relationType: 'hasTag',
+      })),
+      { from: root, to: 'tier', label: 'Has tier', relationType: 'hasTier' },
+      ...['finance-team', 'pere'].map((from) => ({
+        from,
+        to: root,
+        label: 'Owns',
+        relationType: 'owns',
+      })),
+      ...['model-accounts', 'model-sales', 'view'].map((to) => ({
+        from: root,
+        to,
+        label: 'Downstream',
+        relationType: 'downstream',
+      })),
+      // A follow returned from both ends, and a task mention: neither may be
+      // counted as ownership or as business meaning.
+      {
+        from: root,
+        to: 'watcher',
+        label: 'Has follower',
+        relationType: 'hasFollower',
+      },
+      { from: 'watcher', to: root, label: 'Follows', relationType: 'follows' },
+      {
+        from: root,
+        to: 'mention',
+        label: 'Mentioned in',
+        relationType: 'mentionedIn',
+      }
+    );
+    await page.route('**/api/v1/rdf/graph/explore?**', (route) =>
+      route.fulfill({
+        json: responseFor(new URL(route.request().url()), false, graph),
+      })
+    );
+    await open(page);
+    const bundle = (name: string) =>
+      page.locator('.kg-node-group').filter({ hasText: name });
+
+    await expect(page.locator('.kg-node-group')).toHaveCount(4);
+    await expect(bundle('Glossary Terms')).toHaveCount(1);
+    await expect(bundle('Tags')).toHaveCount(1);
+    await expect(bundle('People')).toHaveCount(1);
+    await expect(bundle('Data Assets')).toHaveCount(1);
+    await expect(bundle('People')).toContainText('Finance team');
+    await expect(bundle('People')).toContainText('Pere Miquel Brull');
+    // Tier is a distinguished tag and keeps the card of its own it always had.
+    await expect(page.getByTestId('node-Tier 4')).toHaveCount(1);
+    await expect(page.locator('[data-node-id]')).toHaveCount(12);
+    await expect(page.locator('[data-edge-id]')).toHaveCount(33);
+    await expect(page.getByTestId('graph-footer')).toContainText(
+      '8 individual · 14 bundled into 4 groups'
+    );
+    await page.screenshot({
+      path: test.info().outputPath('balanced-repeat-bundles.png'),
+    });
+
+    // A follow returned from both ends counts once, in one family — and a task
+    // mention is activity, not business meaning, so the ontology filter stays
+    // about concepts.
+    await page.getByTestId('knowledge-graph-legend-toggle').click();
+
+    await expect(page.getByTestId('legend-count-ownership')).toHaveText('3');
+    await expect(page.getByTestId('legend-count-other')).toHaveText('5');
+    await expect(page.getByTestId('legend-count-ontology')).toHaveText('7');
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('knowledge-graph-legend-items')).toHaveCount(
+      0
+    );
+
+    const inspector = page.getByTestId('graph-inspector');
+    const selectBundle = (name: string) =>
+      page.getByRole('button', { name: new RegExp('^' + name + ',') });
+    await selectBundle('Glossary Terms').click();
+
+    await expect(inspector.getByRole('heading')).toHaveText(
+      'Has glossary term'
+    );
+    await expect(inspector).toContainText(
+      '6 individual relationships · bundled'
+    );
+    await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
+      'hasGlossaryTerm'
+    );
+    await expect(
+      inspector.getByTestId('group-relationship-summary')
+    ).toHaveText('Orders → Has glossary term → 6 Glossary Terms');
+    await inspector.getByRole('button', { name: 'Close', exact: true }).click();
+
+    await selectBundle('People').click();
+
+    await expect(
+      inspector.getByTestId('group-relationship-summary')
+    ).toHaveText('2 People → Owns → Orders');
+    await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
+      'owns'
+    );
+    await expect(
+      inspector.getByRole('button', { name: 'Finance team ← Owns' })
+    ).toBeVisible();
+    await expect(
+      inspector.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+    ).toBeVisible();
+    await inspector
+      .getByRole('button', { name: 'Expand all 2 in graph', exact: true })
+      .click();
+
+    await expect(page.getByTestId('node-Finance team')).toBeVisible();
+    await expect(page.getByTestId('node-Pere Miquel Brull')).toBeVisible();
+
+    await page.getByTestId('graph-collapse-groups').click();
+
+    await expect(page.locator('[data-node-id]')).toHaveCount(12);
+
+    // Bundles are a view over the returned statements, never a filter on them.
+    const exported = await downloadRelationships(page);
+
+    expect(exported).toHaveLength(34);
+    expect(exported).toContainEqual([
+      'Orders',
+      'Has glossary term',
+      'Concept 4',
+      'ontology',
+      'hasGlossaryTerm',
+    ]);
+    expect(exported).toContainEqual([
+      'Orders',
+      'Has tag',
+      'Concept 4',
+      'governance',
+      'hasTag',
+    ]);
+    expect(exported).toContainEqual([
+      'Finance team',
+      'Owns',
+      'Orders',
+      'ownership',
+      'owns',
+    ]);
+    expect(exported).toContainEqual([
+      'Watcher',
+      'Follows',
+      'Orders',
+      'other',
+      'follows',
+    ]);
+  });
 });

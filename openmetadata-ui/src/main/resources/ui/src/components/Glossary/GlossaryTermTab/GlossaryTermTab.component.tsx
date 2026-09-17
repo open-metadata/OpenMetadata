@@ -20,6 +20,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   Button,
   Checkbox,
@@ -52,7 +53,6 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
