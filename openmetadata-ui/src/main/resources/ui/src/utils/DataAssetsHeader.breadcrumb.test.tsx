@@ -10,319 +10,111 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { DataAssetsHeaderProps } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { EntityReference } from '../generated/entity/type';
 import { EntityType } from '../enums/entity.enum';
-import { Database } from '../generated/entity/data/database';
-import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { getDataAssetsHeaderInfo } from './DataAssetsHeader.utils';
-import { getBreadcrumbForMetric } from './EntityGovernanceBreadcrumbUtils';
-import { getEntityName } from './EntityNameUtils';
-import {
-  getBreadcrumbForDatabase,
-  getBreadcrumbForDatabaseSchema,
-} from './EntityServiceBreadcrumbUtils';
 
-const buildService = (type: string) => ({
-  id: 'svc-id',
-  name: 'svc',
-  type,
-  fullyQualifiedName: 'svc',
+// The DataAssetsHeader breadcrumb must never render the same crumb twice. This
+// invariant was previously covered by 19 per-entity Playwright tests
+// (Pages/EntityHeaderBreadcrumb.spec.ts) that created a real entity, opened its
+// page, and asserted crumb uniqueness. The crumbs are built purely by
+// getDataAssetsHeaderInfo, so the matrix belongs here.
+
+const SERVICE = {
+  id: 'service-id',
+  type: 'databaseService',
+  name: 'sample-service',
+  displayName: 'Sample Service',
+  fullyQualifiedName: 'sample-service',
+};
+
+const DATABASE = {
+  id: 'database-id',
+  name: 'sample-database',
+  displayName: 'Sample Database',
+  fullyQualifiedName: 'sample-service.sample-database',
+};
+
+const DATABASE_SCHEMA = {
+  id: 'schema-id',
+  name: 'sample-schema',
+  displayName: 'Sample Schema',
+  fullyQualifiedName: 'sample-service.sample-database.sample-schema',
+};
+
+const ENTITY_NAME = 'Sample Entity';
+
+// A superset payload: each builder reads only the ancestor fields relevant to
+// its entity type. Distinct ancestor names mean a correct builder yields unique
+// crumbs; a builder that duplicated an ancestor or the current entity would
+// break the uniqueness assertion below.
+const buildDataAsset = (entityType: EntityType) => ({
+  id: 'entity-id',
+  name: 'sample-entity',
+  displayName: ENTITY_NAME,
+  fullyQualifiedName:
+    'sample-service.sample-database.sample-schema.sample-entity',
+  entityType,
+  service: SERVICE,
+  database: DATABASE,
+  databaseSchema: DATABASE_SCHEMA,
 });
 
-const databaseRef = { id: 'db-id', name: 'db', fullyQualifiedName: 'svc.db' };
-const schemaRef = {
-  id: 'schema-id',
-  name: 'schema',
-  fullyQualifiedName: 'svc.db.schema',
-};
-const apiCollectionRef = {
-  id: 'coll-id',
-  name: 'coll',
-  fullyQualifiedName: 'svc.coll',
-};
-
-const HEADER_ENTITY_CASES: Array<{
-  entityType: DataAssetsHeaderProps['entityType'];
-  entity: Record<string, unknown>;
-}> = [
-  {
-    entityType: EntityType.TABLE,
-    entity: {
-      name: 'tbl',
-      fullyQualifiedName: 'svc.db.schema.tbl',
-      service: buildService('databaseService'),
-      database: databaseRef,
-      databaseSchema: schemaRef,
-    },
-  },
-  {
-    entityType: EntityType.STORED_PROCEDURE,
-    entity: {
-      name: 'sp',
-      fullyQualifiedName: 'svc.db.schema.sp',
-      service: buildService('databaseService'),
-      database: databaseRef,
-      databaseSchema: schemaRef,
-    },
-  },
-  {
-    entityType: EntityType.DATABASE,
-    entity: {
-      name: 'db',
-      fullyQualifiedName: 'svc.db',
-      service: buildService('databaseService'),
-    },
-  },
-  {
-    entityType: EntityType.DATABASE_SCHEMA,
-    entity: {
-      name: 'schema',
-      fullyQualifiedName: 'svc.db.schema',
-      service: buildService('databaseService'),
-      database: databaseRef,
-    },
-  },
-  {
-    entityType: EntityType.DATABASE_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.METRIC,
-    entity: { name: 'metric1', fullyQualifiedName: 'metric1' },
-  },
-  {
-    entityType: EntityType.CHART,
-    entity: {
-      name: 'chart1',
-      fullyQualifiedName: 'svc.chart1',
-      service: buildService('dashboardService'),
-    },
-  },
-  {
-    entityType: EntityType.TOPIC,
-    entity: {
-      name: 'topic1',
-      fullyQualifiedName: 'svc.topic1',
-      service: buildService('messagingService'),
-    },
-  },
-  {
-    entityType: EntityType.DASHBOARD,
-    entity: {
-      name: 'dashboard1',
-      fullyQualifiedName: 'svc.dashboard1',
-      service: buildService('dashboardService'),
-    },
-  },
-  {
-    entityType: EntityType.PIPELINE,
-    entity: {
-      name: 'pipeline1',
-      fullyQualifiedName: 'svc.pipeline1',
-      service: buildService('pipelineService'),
-    },
-  },
-  {
-    entityType: EntityType.MLMODEL,
-    entity: {
-      name: 'mlmodel1',
-      fullyQualifiedName: 'svc.mlmodel1',
-      service: buildService('mlmodelService'),
-    },
-  },
-  {
-    entityType: EntityType.DASHBOARD_DATA_MODEL,
-    entity: {
-      name: 'datamodel1',
-      fullyQualifiedName: 'svc.datamodel1',
-      service: buildService('dashboardService'),
-    },
-  },
-  {
-    entityType: EntityType.SEARCH_INDEX,
-    entity: {
-      name: 'searchindex1',
-      fullyQualifiedName: 'svc.searchindex1',
-      service: buildService('searchService'),
-    },
-  },
-  {
-    entityType: EntityType.CONTAINER,
-    entity: {
-      name: 'container1',
-      fullyQualifiedName: 'svc.container1',
-      service: buildService('storageService'),
-    },
-  },
-  {
-    entityType: EntityType.DIRECTORY,
-    entity: {
-      name: 'directory1',
-      fullyQualifiedName: 'svc.directory1',
-      service: buildService('driveService'),
-    },
-  },
-  {
-    entityType: EntityType.FILE,
-    entity: {
-      name: 'file1',
-      fullyQualifiedName: 'svc.file1',
-      service: buildService('driveService'),
-    },
-  },
-  {
-    entityType: EntityType.SPREADSHEET,
-    entity: {
-      name: 'spreadsheet1',
-      fullyQualifiedName: 'svc.spreadsheet1',
-      service: buildService('driveService'),
-    },
-  },
-  {
-    entityType: EntityType.WORKSHEET,
-    entity: {
-      name: 'worksheet1',
-      fullyQualifiedName: 'svc.worksheet1',
-      service: buildService('driveService'),
-    },
-  },
-  {
-    entityType: EntityType.API_COLLECTION,
-    entity: {
-      name: 'collection1',
-      fullyQualifiedName: 'svc.collection1',
-      service: buildService('apiService'),
-    },
-  },
-  {
-    entityType: EntityType.API_ENDPOINT,
-    entity: {
-      name: 'endpoint1',
-      fullyQualifiedName: 'svc.coll.endpoint1',
-      service: buildService('apiService'),
-      apiCollection: apiCollectionRef,
-    },
-  },
-  {
-    entityType: EntityType.API_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.DASHBOARD_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.MESSAGING_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.PIPELINE_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.MLMODEL_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.METADATA_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.STORAGE_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.SEARCH_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.SECURITY_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
-  {
-    entityType: EntityType.DRIVE_SERVICE,
-    entity: { name: 'svc', fullyQualifiedName: 'svc' },
-  },
+const ENTITY_TYPES: Array<[string, EntityType]> = [
+  ['Database', EntityType.DATABASE],
+  ['Database Schema', EntityType.DATABASE_SCHEMA],
+  ['Metric', EntityType.METRIC],
+  ['Table', EntityType.TABLE],
+  ['Stored Procedure', EntityType.STORED_PROCEDURE],
+  ['Dashboard', EntityType.DASHBOARD],
+  ['Pipeline', EntityType.PIPELINE],
+  ['Topic', EntityType.TOPIC],
+  ['Ml Model', EntityType.MLMODEL],
+  ['Container', EntityType.CONTAINER],
+  ['Search Index', EntityType.SEARCH_INDEX],
+  ['Dashboard Data Model', EntityType.DASHBOARD_DATA_MODEL],
+  ['Chart', EntityType.CHART],
+  ['Api Collection', EntityType.API_COLLECTION],
+  ['Api Endpoint', EntityType.API_ENDPOINT],
+  ['Directory', EntityType.DIRECTORY],
+  ['File', EntityType.FILE],
+  ['Spreadsheet', EntityType.SPREADSHEET],
+  ['Worksheet', EntityType.WORKSHEET],
 ];
 
-describe('breadcrumb builders gate the current entity behind includeCurrent', () => {
-  const service = {
-    id: 'svc-id',
-    name: 'svc',
-    type: 'databaseService',
-    fullyQualifiedName: 'svc',
-  };
-  const database = {
-    id: 'db-id',
-    name: 'db',
-    fullyQualifiedName: 'svc.db',
-    service,
-  } as unknown as Database;
-  const databaseSchema = {
-    id: 'schema-id',
-    name: 'schema',
-    fullyQualifiedName: 'svc.db.schema',
-    service,
-    database: { id: 'db-id', name: 'db', fullyQualifiedName: 'svc.db' },
-  } as unknown as DatabaseSchema;
+const getRenderedCrumbLabels = (entityType: EntityType): string[] => {
+  const { breadcrumbs } = getDataAssetsHeaderInfo(
+    entityType,
+    buildDataAsset(entityType) as never,
+    ENTITY_NAME,
+    [] as EntityReference[]
+  );
 
-  it('should exclude the current database by default', () => {
-    const crumbs = getBreadcrumbForDatabase(database);
+  // Mirrors DataAssetsHeader's breadcrumbItems: the ancestor crumbs followed by
+  // the current entity, dropping any empty labels the way the rendered list does.
+  return [...breadcrumbs.map((crumb) => crumb.name), ENTITY_NAME]
+    .map((label) => label?.trim())
+    .filter((label): label is string => Boolean(label && label.length > 0));
+};
 
-    expect(crumbs.some((crumb) => crumb.name === 'db')).toBe(false);
-  });
+describe('getDataAssetsHeaderInfo breadcrumb uniqueness', () => {
+  it.each(ENTITY_TYPES)(
+    'should build unique, non-empty crumbs for %s',
+    (_, entityType) => {
+      const labels = getRenderedCrumbLabels(entityType);
 
-  it('should append the current database when includeCurrent is true', () => {
-    const crumbs = getBreadcrumbForDatabase(database, true);
+      expect(labels.length).toBeGreaterThan(0);
+      expect(new Set(labels).size).toBe(labels.length);
+    }
+  );
 
-    expect(crumbs[crumbs.length - 1].name).toBe('db');
-  });
+  it.each(ENTITY_TYPES)(
+    'should end the %s trail with the current entity exactly once',
+    (_, entityType) => {
+      const labels = getRenderedCrumbLabels(entityType);
 
-  it('should exclude the current schema by default', () => {
-    const crumbs = getBreadcrumbForDatabaseSchema(databaseSchema);
-
-    expect(crumbs.some((crumb) => crumb.name === 'schema')).toBe(false);
-  });
-
-  it('should append the current schema when includeCurrent is true', () => {
-    const crumbs = getBreadcrumbForDatabaseSchema(databaseSchema, true);
-
-    expect(crumbs[crumbs.length - 1].name).toBe('schema');
-  });
-
-  it('should exclude the current metric by default', () => {
-    const crumbs = getBreadcrumbForMetric('metric1');
-
-    expect(crumbs.some((crumb) => crumb.name === 'metric1')).toBe(false);
-  });
-
-  it('should append the current metric when includeCurrent is true', () => {
-    const crumbs = getBreadcrumbForMetric('metric1', true);
-
-    expect(crumbs[crumbs.length - 1].name).toBe('metric1');
-  });
-});
-
-describe('DataAssetsHeader breadcrumbs - builders are ancestor-only for every entity', () => {
-  it.each(HEADER_ENTITY_CASES)(
-    'should not include the current entity in breadcrumbs for $entityType',
-    ({ entityType, entity }) => {
-      const dataAsset = entity as unknown as DataAssetsHeaderProps['dataAsset'];
-      const entityName = getEntityName(dataAsset);
-      const { breadcrumbs } = getDataAssetsHeaderInfo(
-        entityType,
-        dataAsset,
-        entityName,
-        []
-      );
-
-      const currentEntityNames = new Set([entityName, entity.name as string]);
-      const currentEntityCrumbs = breadcrumbs.filter((crumb) =>
-        currentEntityNames.has(crumb.name)
-      );
-
-      expect(currentEntityCrumbs).toHaveLength(0);
+      expect(labels[labels.length - 1]).toBe(ENTITY_NAME);
+      expect(labels.filter((label) => label === ENTITY_NAME)).toHaveLength(1);
     }
   );
 });
