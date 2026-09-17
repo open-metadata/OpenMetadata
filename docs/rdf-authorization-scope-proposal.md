@@ -1,6 +1,6 @@
 # Proposal: deleted-entity scope and containment references for the sanitized model
 
-- **Status:** non-deleted scope implemented and verified in the test-only experiment; this supporting query-scope work is closed for this PR. It is not strictly RBAC and is not an approved production query contract. Containment semantics remain proposed. Further deletion/restoration, snapshot and lifecycle-consistency work is deferred outside this PR.
+- **Status:** non-deleted scope implemented and verified in the test-only experiment; this supporting query-scope work is closed for this PR. It is not strictly RBAC and is not an approved production query contract. Containment for independently readable containers (category 1) is implemented and verified in the experiment (Finding 13); identity-only exposure (category 2) and deleted container targets (category 3) remain proposed and unimplemented. Further deletion/restoration, snapshot and lifecycle-consistency work is deferred outside this PR.
 - **Date / base:** 2026-09-15, on top of `ab8bc7e745`.
 - **Context:** [`rdf-authorization-experiment.md`](rdf-authorization-experiment.md) Findings 10–11. Every other deferred fact stays fail-closed: `om:joins`, `om:childrenCount`, domain membership (`om:has`), domain and edge lineage, tag-application attributes, and lineage details.
 
@@ -80,9 +80,9 @@ Still unverified, though no longer material to the classification: that the inhe
 
 ### Three separate categories
 
-1. **Readable container resource.** The caller holds `VIEW_BASIC` on the container. It must be a full candidate whose own facts are mapped, which is not done yet, so this category fails closed today.
+1. **Readable container resource.** The caller holds `VIEW_BASIC` on the container. It must be a full candidate whose own facts are mapped. **Implemented in the experiment (Finding 13):** links and membership require both ends to be readable, and unmapped container facts such as the service connection still reject the build.
    - The container node also carries `rdfs:label` and `om:fullyQualifiedName` copies written from every referencing table's stored reference (`RdfPropertyMapper.addEntityReference`, `:471–495`), hidden tables included.
-   - Admitting the node's label or FQN therefore requires equality with the container's own database values. Otherwise it is a consistency failure.
+   - Those copies are governed by the container's own permission, like its own label. Whether divergent copies need a consistency check is **deferred**: more than one value would reveal a problem, but one value does not prove correctness, and the check would reopen closed consistency work.
 2. **Reference exposed through a readable table, target not independently readable.** Here the proposal is identity-only exposure. It is a **query-contract change that needs approval**, not a field mapping.
 3. **Deleted, missing or inconsistent container target.** This differs from an ordinary relationship target. A lineage edge or a domain membership pointing at a soft-deleted asset is excluded by the non-deleted scope, together with the edge. A container is different: a non-recursive delete of a container with children is refused, and a recursive one cascades to the children. A non-deleted table whose own container is deleted therefore contradicts the catalog's invariants. Each case below is a consistency failure:
    - a non-deleted readable table referencing a deleted or missing container;
@@ -139,7 +139,7 @@ Still unverified, though no longer material to the classification: that the inhe
 2. No caller-visible counts, identities or diagnostics about excluded, deleted or hidden references; generic failure reasons only.
 3. The deletion check table by object kind, including "absence is not denial".
 4. Explicit consistency failures, with no retry promise. The version comparison stays a hypothesis to evaluate, not part of the decision.
-5. Readable containers (category 1) as full candidates that stay fail-closed until their facts are mapped.
+5. Readable containers (category 1) as full candidates, with their unmapped facts failing closed. Implemented in the experiment (Finding 13).
 
 These need a product or contract decision:
 

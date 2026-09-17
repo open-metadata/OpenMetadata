@@ -3,6 +3,8 @@
 ## Status and working agreement
 
 **Status: proposal for discussion, not an approved architecture or implementation.**
+
+> **Historical (2026-09-17):** this is the initial plan and is superseded as a roadmap. For the current direction see the [ADR](../adr/2026-09-14-authorized-sparql.md) checklist and the "Status for review" section of the [experiment](../rdf-authorization-experiment.md).
 Prepared from the live issues and checkout `9985a4261b2` on branch
 `fmcardoso/add-asset-level-rbac-for-read-only-sparql-querie`.
 The working tree was clean before this document was added. No implementation, tests, or commits were made during planning.

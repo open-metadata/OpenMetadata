@@ -1,34 +1,38 @@
 # RDF authorization experiment: request-local sanitized model (candidate L)
 
 - **Status:** test-only prototype evidence for the proposed ADR [`docs/adr/2026-09-14-authorized-sparql.md`](adr/2026-09-14-authorized-sparql.md), candidate **L** of [`docs/rdf-authorization-research.md`](rdf-authorization-research.md). No production code, endpoint, schema, POM, or configuration changed. Not an approved architecture.
-- **Date / base:** 2026-09-14, on top of `9c2f27a7682`.
+- **Date / base:** started 2026-09-14 on top of `9c2f27a7682`; last updated 2026-09-17 at `41ef8fc1ec`. Dated sections below record the evidence as it was at the time; the summaries at the top and bottom are current.
 - **Question:** On real projected triples, does a request-local model that physically contains only admitted facts give the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`? Can a bounded retrieval from `graph/knowledge` build that model without guessing?
 - **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Local tests run on in-process Jena. An opt-in subclass reruns the same tests with every retrieval sent to an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`. An integration test checks decisions against OpenMetadata's real authorization on API-created entities, and that live projections are rejected where the map has no reviewed rule.
 
 ## Short answer
 
-- **Semantics: yes, on four tables.** All ADR example answers hold. Changes that touch only the hidden table leave visible answers unchanged.
-  - The current 56 tests pass in-process.
-  - All 56 also pass with retrieval from Fuseki 6.2.0 built from this checkout.
-- **Retrieval without guessing: not yet for realistic data.** Ordinary projected facts fail closed because no documented permission covers them:
-  - `om:labelType` and `om:tagState` on shared tag nodes;
-  - lineage details.
-  The fixture avoided both so the semantic tests could run. Those two mappings are the next decision.
+- **Semantics: yes, on a small fixture.** A request-local model that physically contains only admitted facts gives the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`. Changes that touch only a hidden asset leave visible answers unchanged.
+- **Real authorization: aligned on one fixture.** In-process decisions made the way a REST GET makes them matched REST across six domain and role phases, including an explicit allowed → denied revocation.
+- **Retrieval without guessing: not yet for realistic data.** On live projections the build is still **rejected as a whole**, deliberately, because facts without a reviewed permission rule remain (see "Status for review"). No complete model has been built from real data.
+- **Performance: unknown.** Nothing measured here is latency or memory evidence for the roughly two-second target.
+
+**Current test evidence (2026-09-17, `41ef8fc1ec`):**
+- `SanitizedModelExperimentTest`: 86 tests, 0 failures, 0 errors, 0 skipped, in-process.
+- `RdfAuthorizationAlignmentIT`: 2 tests, 0 failures, 0 errors, 0 skipped, against Postgres 15, OpenSearch 3.4.0 and Fuseki 6.2.0.
+- `SanitizedModelFusekiTest` (opt-in, retrieval through Fuseki): last run on 2026-09-14 with the 56 tests that existed then, all passing. **The 30 local tests added since have not been run through Fuseki.**
+- These are recorded worktree runs, not PR CI: no CI workflow runs the `postgres-rdf-tests` profile or the opt-in Fuseki class.
 
 ## What was added (test code only)
 
-All files are under `openmetadata-service/src/test/java/org/openmetadata/service/`.
+All files are under `openmetadata-service/src/test/java/org/openmetadata/service/` unless noted.
 
 | File | Role |
 | --- | --- |
-| `rdf/SanitizedModelExperimentTest.java` | 56 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, fail-closed cases, structured-node ownership conflicts, query-profile rejections. |
+| `rdf/SanitizedModelExperimentTest.java` | 86 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, scalar table and domain facts, the non-deleted scope, reference-lookup limits, containment, fail-closed cases, ownership conflicts and query-profile rejections. |
 | `rdf/SanitizedModelFusekiTest.java` | Opt-in subclass. Inherits every local test and reruns it with retrieval from a throwaway Fuseki container capped at 1 GiB. It asserts the server reports version 6.2.0, and before every `DROP ALL` it checks that the endpoint belongs to that container. Disabled unless `-DrdfAuthorizationFusekiImage` is set. |
-| `rdf/SanitizedModelFixture.java` | Tables A–D and tags projected by the production `JsonLdTranslator` and `RdfRepository.buildLineageModel`. Also holds the catalog and the policy rules. |
-| `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, and a fresh `Model`. |
+| `rdf/SanitizedModelFixture.java` | Tables A–D, tags, domains, a soft-deleted table and database containers, projected by the production `JsonLdTranslator` and `RdfRepository.buildLineageModel`. Also holds the catalog and the policy rules. |
+| `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, reference resolution and a fresh `Model`. |
 | `rdf/SanitizedQueryProfile.java` | Test-only query profile: `SELECT`/`ASK` only, confined to the model. |
 | `security/policyevaluator/PolicyContextFixture.java` | Builds `PolicyContext`, whose constructor is package-private. |
+| `openmetadata-integration-tests/…/rdf/RdfAuthorizationAlignmentIT.java` | Real authorization alignment across six phases, and a fail-closed regression on live projections. |
 
-The integration test lives in `openmetadata-integration-tests/src/test/java/org/openmetadata/service/rdf/RdfAuthorizationAlignmentIT.java`, in the builder's package so it can use the package-private experiment classes. The builder also gained the domain field family (`om:domains` on tables; domain type, label and FQN) that its catalog entries need.
+The integration test sits in the builder's package so it can use the package-private experiment classes.
 
 ## Beginner walkthrough
 
@@ -48,7 +52,7 @@ The fixture: tables A, B, C and D, with `A om:upstream B`, `B om:upstream C`, `A
    - Find what governs `s`: a catalog resource, or the resource that owns it.
    - Map `p` to a field, and the field to a view operation. The caller must hold that operation on the governing resource.
    - The object must be one of:
-     - a literal;
+     - a literal, except on the containment predicates, which require an entity (Finding 13);
      - an approved type, for `rdf:type` only;
      - a node the caller may see.
      A hidden catalog resource drops the fact: `<A> om:upstream <B>` and `<A> prov:wasDerivedFrom <B>` disappear. Anything unknown fails the whole build, and every violation is reported at once.
@@ -342,27 +346,59 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
       - **A prediction that did not hold:** neither `om:tables` nor `om:databaseSchemas` appeared on the live nodes, although the code trace said the projection loads those fields. Unverified explanation: the schema and database were projected when they were created and had no children, and adding a child writes only the CONTAINS relationship without re-projecting the parent, so the lists would appear only after a later update or reindex of the container. Their local rejection tests stay, because a reindexed container would carry them.
       - **Diagnostics, not latency evidence:** REST checks took 48–108 ms per phase and fresh-request checks 14–29 ms. Container peaks: OpenSearch 2,594 MiB, Fuseki 652 MiB, Postgres 216 MiB, MinIO 185 MiB. Free RAM stayed at or above 44%, with no pressure spikes and no swap-outs. The run's containers were removed; the stopped development containers were untouched.
 
-## Proven vs not proven
+## Status for review
 
-**Supported by this evidence (four tables; 56 tests in-process, and the same 56 with retrieval from one memory-capped Fuseki 6.2.0 container built from this checkout):**
-- A physically sanitized, request-local model gives the ADR answers for `COUNT`, `ASK`, inverse, transitive and cyclic paths, joins, subqueries and `EXISTS`, including hidden-only mutation invariance.
-- Subject-keyed, budgeted retrieval from `graph/knowledge` avoids inferred and default graphs, and refuses to answer partially.
-- An explicit predicate → field → operation map, with order-independent ownership, can fail closed on unknown or conflicting facts. It found real gaps (Findings 3–5).
-- Tag-conditioned deny rules evaluated by OpenMetadata's `PolicyEvaluator` produce the visible set.
-- The test query profile rejects every tested way of reading outside the model: `SERVICE`, `GRAPH`, `FROM`, property and extension functions, including inside `EXISTS`, aggregates, `GROUP BY`, `HAVING` and `ORDER BY`.
+This section is the current summary for PR review. It describes what the experiment supports on its fixtures, and what blocks production RBAC. Those blockers are not claimed to block merging a test-only experiment.
 
-**Not proven (explicitly out of scope or not reached):**
-- **The query profile as a security boundary.** It is a test helper, not reviewed as one. No endpoint uses it, and untested SPARQL forms are not covered by evidence.
-- **Remote retrieval beyond one small run.** The remote evidence is a single run of 56 tests on four tables, against one arm64 image built locally. Query evaluation happened on the local sanitized model, not inside Fuseki.
-- **Real policy integration end to end.** The integration test exercises `DefaultAuthorizer`, role policies resolved through `SubjectCache`, `ResourceContext` entity loading and the `hasDomain()` condition, for one user on four tables. Not exercised: team and persona policies, bot and reviewer handling, owner conditions such as `isOwner()`, and the search-side compiled RBAC filter. In the in-process semantic tests the catalog attributes (tags) are fixture values, not loaded from the database.
-- **A sanitized model built from live projections.** It is always rejected today (Findings 10 and 11).
-- **Field coverage** beyond the predicates this fixture emits. Also unproven: the documented map for glossary terms, domains, owners, data products, usage, sample data, tests, queries, custom properties, lifecycle and certification.
-- **Candidate selection at scale.** The builder evaluates every catalog resource; a real system needs a pre-filter (for example the search RBAC compiler).
-- **Remote consistency.** The three retrieval queries are not pinned to one dataset (ADR F8): no blue/green or in-place rebuild behavior (A9), and no snapshot.
-- **Permission freshness and revocation** (A7) beyond one JVM: the integration test shows REST and in-process decisions following a domain move and an assigned or removed deny role in the same application. Cross-pod invalidation, in-flight requests and policy edits are not covered. Cancellation of remote work (F9) is not covered either.
-- **Memory, latency and scale.** Nothing beyond four tables, and no heap or per-request timing measurement.
-- **Owned blank-node structures** (they fail closed by design, but no test covers them) and orphaned owned nodes.
+### What works, on these fixtures
 
-## Proposed next step (needs approval)
+- **Sanitized-model semantics.** `COUNT`, `ASK`, inverse, transitive and cyclic paths, joins, subqueries, `EXISTS` and `MINUS` give the ADR's answers, with hidden-only mutation invariance (Finding 1).
+- **Bounded, fail-closed retrieval.** Subject-keyed retrieval from `graph/knowledge` never reads inferred or default graphs. It fails rather than answer from a partial model when the triple budget or the 1,000-entity reference lookup is exceeded.
+- **Explicit admission.** Every fact needs a predicate → field → view-operation rule. Unknown facts, ownership conflicts, invalid references and projection/catalog disagreements reject the whole build with every violation reported.
+- **Mapped fact groups.** Table and domain scalars (Finding 10), the table's tags, columns, extension, domains and lineage, the non-deleted scope (Finding 12), and containment links and membership for independently readable databases, schemas and services (Finding 13).
+- **Real authorization alignment.** With `DefaultAuthorizer` and database-loaded policy attributes, fresh-request in-process decisions matched REST across six phases on one user and four tables (see "Integration run").
+- **Fail-closed on live data.** API-created entities still reject the build, and the regression asserts which deferred facts cause it.
+- **Test query profile.** It rejects every tested way of reading outside the model (22 forms).
 
-Decide, with the #33224 owners, how two things are governed or re-projected: tag-application attributes on shared tag nodes (Finding 3) and edge-owned lineage details (Finding 4). Map the scalar live facts of Finding 10 in small groups, deriving each operation from the resource's registered view operations. Review the relationship and shared-fact rules of Finding 11 separately. Scale, consistency and freshness measurements should wait until the map covers a representative asset.
+### Unsupported facts (each rejects the build today)
+
+- **Tag application:** `om:labelType` and `om:tagState` written onto shared tag nodes (Finding 3).
+- **Lineage details:** `om:hasLineageDetails` and the edge-owned nodes under it (Finding 4).
+- **Joins:** `om:joins`, a literal naming other tables.
+- **Domains:** membership `om:has`, domain lineage (`om:upstream`, `om:downstream`, `prov:wasDerivedFrom` on a domain) and `om:childrenCount` (Finding 11).
+- **Services:** `om:hasConnection`, `om:testConnectionResult`, `om:pipelines`, and `om:contains` on a service.
+- **Container fields:** the membership lists `om:tables` and `om:databaseSchemas`, both profiler configs, `om:default`, `om:hasLocation`, `skos:prefLabel`, `om:style`, `om:sourceHash`, `om:dataContract`, and owners, followers, tags, domains, certification and lifecycle on a container.
+- **Other operations:** usage, sample data, tests, queries and profiles, which need operations other than `VIEW_BASIC` (Finding 6).
+- **Every other entity type.** Only tables, tags, domains, database services, databases and schemas have a node kind. As a candidate, a dashboard, pipeline, topic, glossary term, user, team or any other type rejects the build as an unmapped resource. Referenced from an admitted fact without being a candidate, a readable one is a scope error and an unreadable one is dropped as hidden.
+- **Owned blank-node structures**, by design, with no test.
+
+A known admission gap that is **not** closed: only the four containment predicates require an entity object. Every other relationship predicate still admits a literal object once mapped, which would bypass that predicate's target check.
+
+### Permission-contract questions
+
+1. **Discovery versus direct read.** Should candidates be the assets a caller can discover, directly read, or a defined combination? Search-compiled policy may skip conditions, and rechecking candidates cannot recover assets that discovery missed.
+2. **Stricter than REST, declared.** REST returns a container reference after authorizing the table alone, and every child reference after authorizing the container alone. The experiment requires both ends to be readable. Is that the contract?
+3. **Identity-only exposure** for containers the caller cannot read, which REST effectively provides and the experiment does not ([scope proposal](rdf-authorization-scope-proposal.md), decisions 6–7).
+4. **Default GET versus requested fields.** The mapping follows the default GET, which needs `VIEW_BASIC`. A GET that names the same field needs `VIEW_ALL`. Free-text fields such as `description` can embed entity links.
+5. **Shared-node copies.** Labels and FQNs written onto a shared node by other assets are governed by the node's own permission. Whether divergent copies need a check is deferred.
+6. **Non-deleted scope and errors.** Is non-deleted-only the query contract? A caller-facing error must be translated to a generic reason without IRIs, types or counts.
+7. **Completeness.** Answers are exact for the admitted dataset, not for the full knowledge graph. The typed request, error and completeness contract with ai-platform #1299 is not agreed.
+8. **Callers not exercised:** team and persona policies, owner conditions such as `isOwner()`, bots, reviewers and admins.
+9. **The query profile is not a reviewed security boundary.** Untested SPARQL forms and engine extensions are not covered by evidence.
+
+### Missing performance and operational evidence
+
+- **No latency or memory measurement per request.** All timings are whole test classes or per-phase authorization diagnostics on four tables; container memory figures are coarse samples.
+- **The roughly two-second target is undetermined.** Candidate discovery, per-resource authorization, retrieval, model construction and evaluation have not been measured at any representative scope, cold or warm, or under concurrency.
+- **Candidate selection evaluates every catalog resource.** A real system needs a pre-filter whose completeness is proven.
+- **Retrieval is not pinned to one dataset** during blue/green promotion or in-place rebuild (ADR F8), and remote cancellation is not shown (F9).
+- **Freshness beyond one JVM:** cross-pod invalidation, in-flight requests and policy edits are not covered.
+- **Remote retrieval evidence is thin:** one Fuseki-backed run of 56 tests on arm64; the 30 later tests have not run through Fuseki.
+- **No CI coverage:** neither the RDF integration profile nor the opt-in Fuseki class runs in CI.
+
+### Follow-up work (blocks production RBAC, not necessarily this experiment)
+
+- Map the remaining fact families, each reviewed as its own group.
+- Production handling of secrets, joins, counts, tags and lineage, which may require projection changes.
+- A complete model built from real data, and scalability and latency benchmarks at representative scope.
+- A production endpoint, the final query contract and a security review of query confinement.
