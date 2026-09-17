@@ -374,7 +374,7 @@ test.describe('Lineage Filters', () => {
             .waitFor({ state: 'hidden' });
           await page
             .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
+            .getByText(filterValue)
             .click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -421,7 +421,7 @@ test.describe('Lineage Filters', () => {
             .waitFor({ state: 'hidden' });
           await page
             .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
+            .getByText(filterValue)
             .click();
 
           const lineageRes = page.waitForResponse(
@@ -535,11 +535,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .click();
 
         const entitiesToShow = [entity];
@@ -639,11 +639,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceName)
+          .getByText(serviceName)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
@@ -718,11 +718,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .click();
 
         const entitiesToShow = [entity];
@@ -798,11 +798,11 @@ test.describe('Lineage Filters', () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(serviceType)
+          .getByText(serviceType)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
@@ -914,7 +914,10 @@ test.describe('Lineage Filters', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('loader')
         .waitFor({ state: 'hidden' });
-      await page.getByTestId('drop-down-menu').getByLabel(databaseName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByText(databaseName)
+        .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
@@ -965,7 +968,7 @@ test.describe('Lineage Filters', () => {
         .waitFor({ state: 'hidden' });
       await page
         .getByTestId('drop-down-menu')
-        .getByLabel(databaseSchemaName)
+        .getByText(databaseSchemaName)
         .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -1015,7 +1018,7 @@ test.describe('Lineage Filters', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('loader')
         .waitFor({ state: 'hidden' });
-      await page.getByTestId('drop-down-menu').getByLabel(columnName).click();
+      await page.getByTestId('drop-down-menu').getByText(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
