@@ -561,21 +561,11 @@ public class PermissionDebugService {
     return step;
   }
 
-  // Helper method that replicates CompiledRule.matchOperation logic
+  // Delegates to CompiledRule so the debug tool reports exactly what enforcement evaluates,
+  // including the explicit-match exemptions (this also corrects the previously unmodeled
+  // Impersonate exemption in debug output; enforcement itself is unchanged).
   private boolean matchOperation(CompiledRule rule, MetadataOperation operation) {
-    List<MetadataOperation> operations = rule.getOperations();
-    if (operations.contains(MetadataOperation.ALL)) {
-      return true; // Match all operations
-    }
-    if (operations.contains(MetadataOperation.EDIT_ALL)
-        && OperationContext.isEditOperation(operation)) {
-      return true;
-    }
-    if (operations.contains(MetadataOperation.VIEW_ALL)
-        && OperationContext.isViewOperation(operation)) {
-      return true;
-    }
-    return operations.contains(operation);
+    return CompiledRule.operationMatches(rule.getOperations(), rule.getEffect(), operation);
   }
 
   private String normalizeEffect(Rule.Effect effect) {
