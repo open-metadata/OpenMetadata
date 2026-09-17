@@ -480,23 +480,6 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
-  void testPatchCannotMoveContractToAnotherEntity(TestNamespace ns) {
-    Table table = createTestTable(ns);
-    Table otherTable = createTestTable(ns);
-    DataContract contract =
-        createEntity(
-            new CreateDataContract()
-                .withName(ns.prefix("immutable_entity"))
-                .withEntity(table.getEntityReference()));
-
-    contract.setEntity(otherTable.getEntityReference());
-    DataContract patched = patchEntity(contract.getId().toString(), contract);
-
-    assertEquals(table.getId(), patched.getEntity().getId());
-    assertEquals(table.getFullyQualifiedName(), patched.getEntity().getFullyQualifiedName());
-  }
-
-  @Test
   void testDataContractVersionHistory(TestNamespace ns) {
     Table table = createTestTable(ns);
 
