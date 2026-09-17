@@ -349,7 +349,7 @@ class LineageSource(QueryParserSource, ABC):
             # bug and must keep propagating.
             except (SQLAlchemyError, OSError) as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch lineage query log from a connection, skipping it: {exc}")
+                logger.warning("Failed to fetch lineage query log from a connection, skipping it: %s", exc)
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """

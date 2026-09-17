@@ -105,7 +105,7 @@ class StoredProcedureLineageMixin(ABC):
             # bug and must keep propagating.
             except (SQLAlchemyError, OSError) as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch stored procedure query history from a connection, skipping it: {exc}")
+                logger.warning("Failed to fetch stored procedure query history from a connection, skipping it: %s", exc)
                 continue
 
             for row in results:

@@ -216,7 +216,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 load_description_map()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
+                logger.warning(
+                    "Could not load MSSQL %s descriptions, continuing without them: %s", description_type, exc
+                )
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
@@ -227,7 +229,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                 yield configured_db  # pyright: ignore[reportReturnType]
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Error trying to connect to database {configured_db}: {exc}")
+                logger.error("Error trying to connect to database %s: %s", configured_db, exc)
                 self.status.failed(
                     error=StackTraceError(
                         name=configured_db,  # pyright: ignore[reportArgumentType]
@@ -352,7 +354,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     ).all()
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error listing stored procedures for schema {schema_name}: {exc}")
+                logger.warning("Error listing stored procedures for schema %s: %s", schema_name, exc)
                 self.status.warning(
                     schema_name,
                     f"Error listing stored procedures for schema {schema_name}: {exc}",

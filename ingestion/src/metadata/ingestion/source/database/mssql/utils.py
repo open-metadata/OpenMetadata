@@ -13,7 +13,7 @@ MSSQL SQLAlchemy Helper Methods
 """
 
 import traceback
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text, util
 from sqlalchemy import types as sqltypes
@@ -490,7 +490,7 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> str | None:
         with engine.connect() as conn:
             result = conn.execute(text(GET_DB_CONFIGS)).all()
     except Exception as exc:
-        logger.warning(f"Could not determine MSSQL dateformat, falling back to the default: {exc}")
+        logger.warning("Could not determine MSSQL dateformat, falling back to the default: %s", exc)
         logger.debug(traceback.format_exc())
         return None
     for row in result:

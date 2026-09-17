@@ -117,8 +117,9 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Could not enumerate MSSQL databases for query history, falling back to the "
-                f"single instance-wide connection: {exc}"
+                "Could not enumerate MSSQL databases for query history, falling back to the "
+                "single instance-wide connection: %s",
+                exc,
             )
             databases = []
         if not databases:
@@ -130,7 +131,7 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
                 engine = self._engine_for_database(database)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Skipping MSSQL database {database} for query history: {exc}")
+                logger.warning("Skipping MSSQL database %s for query history: %s", database, exc)
                 continue
             self._active_query_store = is_query_store_enabled(engine)
             if self._active_query_store:
