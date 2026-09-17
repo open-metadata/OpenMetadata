@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.insights.search;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -33,14 +34,36 @@ public interface DataInsightsSearchInterface {
             readResource(resourcePath + "/indexMappingsTemplate.json"));
 
     String componentName = name + "-mapping";
-    String existing = getComponentTemplate(componentName);
-    boolean changed = !built.equals(existing);
+    boolean changed = !templateBodyMatches(getComponentTemplate(componentName), built);
 
     createComponentTemplate(componentName, built);
     createIndexTemplate(
         name,
         IndexTemplate.forDataStream(name, readResource(resourcePath + "/indexTemplate.json")));
-    return new TemplateUpdateResult(JsonUtils.readValue(built, IndexMappingTemplate.class), changed);
+    return new TemplateUpdateResult(
+        JsonUtils.readValue(built, IndexMappingTemplate.class), changed);
+  }
+
+  /**
+   * Compares the stored component-template body against the newly built mapping. The GET
+   * /_component_template response wraps the template inside {@code
+   * component_templates[0].component_template}, so a raw string comparison would always mismatch.
+   */
+  private static boolean templateBodyMatches(String getResponse, String built) {
+    if (getResponse == null) {
+      return false;
+    }
+    try {
+      JsonNode root = JsonUtils.readTree(getResponse);
+      JsonNode stored = root.path("component_templates").path(0).path("component_template");
+      if (stored.isMissingNode()) {
+        return false;
+      }
+      JsonNode expected = JsonUtils.readTree(built);
+      return stored.equals(expected);
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   default String readResource(String resourceFile) {
