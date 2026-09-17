@@ -14,24 +14,28 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { observabilityModule } from '../../../observability/ObservabilityModule/observability.module';
 import { AppModule } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import Sidebar from './Sidebar';
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from './useSidebarState';
 
-const mockModules = [
-  { id: 'home' },
-  { id: 'observability', subNav: { key: 'observability', sections: [] } },
-  { id: 'governance', subNav: { key: 'governance', sections: [] } },
-] as unknown as AppModule[];
+// A second sub-context: the same real SubNavConfig under a different module id,
+// so switching modules exercises the real SubPanel/SubRail again without pulling
+// another module's assets into the test.
+const SECOND_MODULE: AppModule = {
+  ...observabilityModule,
+  id: 'second-context',
+  subNav: observabilityModule.subNav
+    ? { ...observabilityModule.subNav, key: 'second-context' }
+    : undefined,
+};
+
+const OBS_ID = observabilityModule.id;
+const SECOND_ID = SECOND_MODULE.id;
 
 jest.mock('../sharedAppModules', () => ({
-  useAllAppModules: () => mockModules,
-}));
-
-jest.mock('./navConfig', () => ({
-  buildMainNavItems: () => [],
-  resolveActiveSubNavKey: () => undefined,
+  useAllAppModules: () => [observabilityModule, SECOND_MODULE],
 }));
 
 jest.mock('./useCustomizedMainNav', () => ({
@@ -46,8 +50,10 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
 }));
 
-// Stub the four panels so this test drives the collapse/expand coordination in
-// Sidebar, not each panel's internals. Each exposes its toggle callback.
+// Only the two heavy main-nav panels are stubbed: the real Rail/MainPanel pull
+// the app-mode extension registry, domain-scope store and user-profile card and
+// have their own tests. SubPanel and SubRail render for real, so the submenu
+// affordances this suite drives (collapse/expand) are the real ones.
 jest.mock('./MainPanel', () => ({
   __esModule: true,
   default: ({ onCollapse }: { onCollapse: () => void }) => (
@@ -74,32 +80,6 @@ jest.mock('./Rail', () => ({
   ),
 }));
 
-jest.mock('./SubPanel', () => ({
-  __esModule: true,
-  default: ({ onCollapse }: { onCollapse: () => void }) => (
-    <div data-testid="ask-sub-panel">
-      <button
-        aria-label="collapse sub"
-        data-testid="sub-collapse"
-        onClick={onCollapse}
-      />
-    </div>
-  ),
-}));
-
-jest.mock('./SubRail', () => ({
-  __esModule: true,
-  default: ({ onExpand }: { onExpand: () => void }) => (
-    <div data-testid="ask-sub-rail">
-      <button
-        aria-label="expand sub"
-        data-testid="sub-expand"
-        onClick={onExpand}
-      />
-    </div>
-  ),
-}));
-
 const setModule = (id: string | null) =>
   act(() => useActiveModuleStore.setState({ activeModule: id }));
 
@@ -110,9 +90,11 @@ const renderSidebar = () =>
     </MemoryRouter>
   );
 
-const railed = () => screen.queryByTestId('ask-rail') !== null;
-const subPanelOpen = () => screen.queryByTestId('ask-sub-panel') !== null;
-const subRailShown = () => screen.queryByTestId('ask-sub-rail') !== null;
+const hasClass = (modifier: string) =>
+  (screen.getByTestId('ask-sidebar') as HTMLElement).classList.contains(
+    modifier
+  );
+const present = (testId: string) => screen.queryByTestId(testId) !== null;
 
 describe('Sidebar dual-nav transitions', () => {
   beforeEach(() => {
@@ -127,82 +109,101 @@ describe('Sidebar dual-nav transitions', () => {
   });
 
   it('enters a sub-context railed, with the submenu expanded, by default', () => {
-    setModule('observability');
-    const { container } = renderSidebar();
+    setModule(OBS_ID);
+    renderSidebar();
 
-    expect(railed()).toBe(true);
-    expect(subPanelOpen()).toBe(true);
-    expect(subRailShown()).toBe(false);
-    expect(container.firstChild).toHaveClass('ask-sidebar--collapsed');
-    expect(container.firstChild).toHaveClass('ask-sidebar--sub');
-    expect(container.firstChild).not.toHaveClass('ask-sidebar--sub-collapsed');
+    expect(hasClass('ask-sidebar--sub')).toBe(true);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
+    expect(hasClass('ask-sidebar--sub-collapsed')).toBe(false);
+    expect(present('ask-rail')).toBe(true);
+    expect(present('ask-sub-panel')).toBe(true);
+    expect(present('ask-sub-rail')).toBe(false);
+  });
+
+  it('collapsing the submenu from its panel keeps the main nav railed', () => {
+    setModule(OBS_ID);
+    renderSidebar();
+
+    fireEvent.click(screen.getByTestId('ask-sub-panel-collapse-btn'));
+
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
+    expect(hasClass('ask-sidebar--sub-collapsed')).toBe(true);
+    expect(present('ask-rail')).toBe(true);
+    expect(present('ask-sub-rail')).toBe(true);
+    expect(present('ask-sub-panel')).toBe(false);
   });
 
   it('expanding the main nav inside a sub-context is transient (rails the submenu, persists nothing)', () => {
-    setModule('observability');
+    setModule(OBS_ID);
     renderSidebar();
 
     fireEvent.click(screen.getByTestId('rail-expand'));
 
-    expect(railed()).toBe(false);
-    expect(screen.getByTestId('ask-main-panel')).toBeInTheDocument();
-    expect(subRailShown()).toBe(true);
-    expect(subPanelOpen()).toBe(false);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+    expect(hasClass('ask-sidebar--sub-collapsed')).toBe(true);
+    expect(present('ask-rail')).toBe(false);
+    expect(present('ask-main-panel')).toBe(true);
+    expect(present('ask-sub-rail')).toBe(true);
+    expect(present('ask-sub-panel')).toBe(false);
     // Not persisted: the preference must not leak out of the sub-context.
     expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
   });
 
   it('switching to another sub-context re-rails the main nav and re-opens the submenu', () => {
-    setModule('observability');
+    setModule(OBS_ID);
     renderSidebar();
 
     fireEvent.click(screen.getByTestId('rail-expand'));
 
-    expect(railed()).toBe(false);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
 
-    setModule('governance');
+    setModule(SECOND_ID);
 
-    expect(railed()).toBe(true);
-    expect(subPanelOpen()).toBe(true);
-    expect(subRailShown()).toBe(false);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
+    expect(hasClass('ask-sidebar--sub-collapsed')).toBe(false);
+    expect(present('ask-rail')).toBe(true);
+    expect(present('ask-sub-panel')).toBe(true);
     expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
   });
 
   it('expanding the submenu rails the main nav so only one full panel is open', () => {
-    setModule('observability');
+    setModule(OBS_ID);
     renderSidebar();
 
     // Expand main → main full, submenu on its rail.
     fireEvent.click(screen.getByTestId('rail-expand'));
 
-    expect(railed()).toBe(false);
-    expect(subRailShown()).toBe(true);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+    expect(present('ask-sub-rail')).toBe(true);
 
-    // Expand the submenu → the main nav must rail again.
-    fireEvent.click(screen.getByTestId('sub-expand'));
+    // Expand the submenu from its rail → the main nav must rail again.
+    fireEvent.click(screen.getByTestId('ask-sub-rail-expand-btn'));
 
-    expect(railed()).toBe(true);
-    expect(subPanelOpen()).toBe(true);
-    expect(subRailShown()).toBe(false);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
+    expect(hasClass('ask-sidebar--sub-collapsed')).toBe(false);
+    expect(present('ask-sub-panel')).toBe(true);
+    expect(present('ask-sub-rail')).toBe(false);
   });
 
   it('persists a top-level collapse and restores it across a sub-context round-trip', () => {
     setModule(null);
     renderSidebar();
 
-    expect(railed()).toBe(false);
+    expect(hasClass('ask-sidebar--sub')).toBe(false);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(false);
+    expect(present('ask-rail')).toBe(false);
 
     fireEvent.click(screen.getByTestId('main-collapse'));
 
-    expect(railed()).toBe(true);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
     expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
 
-    setModule('observability');
+    setModule(OBS_ID);
 
-    expect(railed()).toBe(true);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
 
     setModule(null);
 
-    expect(railed()).toBe(true);
+    expect(hasClass('ask-sidebar--collapsed')).toBe(true);
   });
 });
