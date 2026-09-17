@@ -90,6 +90,11 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
+  public void rolloverDataStream(String name) throws IOException {
+    performRequest("POST", "/" + name + "/_rollover");
+  }
+
+  @Override
   public void deleteDataAssetDataStream(String name) throws IOException {
     performRequest("DELETE", String.format("/_data_stream/%s", name));
   }

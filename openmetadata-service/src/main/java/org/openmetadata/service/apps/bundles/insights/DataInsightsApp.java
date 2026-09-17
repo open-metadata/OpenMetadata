@@ -161,8 +161,28 @@ public class DataInsightsApp extends AbstractNativeApplication {
               language,
               dataAssetsConfig.getRetention());
         } else {
-          searchInterface.updateDataAssetsDataStream(
-              dataStreamName, dataAssetType, dataAssetIndex, language);
+          try {
+            searchInterface.updateDataAssetsDataStream(
+                dataStreamName, dataAssetType, dataAssetIndex, language);
+            // Rollover so the next write targets a fresh backing index created from the
+            // updated template. PUT _mapping can add properties but cannot apply new
+            // dynamic_templates or settings to an existing index — the rollover guarantees
+            // the write index carries the full template (e.g. completeness fact mappings
+            // added after the original index was created).
+            searchInterface.rolloverDataStream(dataStreamName);
+          } catch (IOException updateEx) {
+            LOG.warn(
+                "Mapping update failed for data stream {}; recreating to apply the full template.",
+                dataStreamName,
+                updateEx);
+            searchInterface.deleteDataAssetDataStream(dataStreamName);
+            searchInterface.createDataAssetsDataStream(
+                dataStreamName,
+                dataAssetType,
+                dataAssetIndex,
+                language,
+                dataAssetsConfig.getRetention());
+          }
         }
       } catch (IOException ex) {
         LOG.error(

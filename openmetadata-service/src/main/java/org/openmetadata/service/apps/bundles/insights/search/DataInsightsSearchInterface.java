@@ -120,6 +120,13 @@ public interface DataInsightsSearchInterface {
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException;
 
+  /**
+   * Forces the data stream to roll over so the next write targets a new backing index created from
+   * the current index template. This is needed after a template update adds {@code
+   * dynamic_templates} or settings that {@code PUT _mapping} cannot apply to an existing index.
+   */
+  void rolloverDataStream(String name) throws IOException;
+
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 
   String getClusterAlias();
