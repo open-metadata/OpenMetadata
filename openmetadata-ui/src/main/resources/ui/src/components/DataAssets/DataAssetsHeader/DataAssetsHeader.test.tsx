@@ -171,6 +171,11 @@ jest.mock(
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
@@ -241,14 +246,6 @@ jest.mock(
           />
         )
       )
-);
-
-jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
-  jest
-    .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
-    ))
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
