@@ -21,6 +21,8 @@ from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
+from sqlalchemy.exc import OperationalError
+
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
@@ -132,7 +134,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         mock_row.__getitem__ = lambda self, key: row_data.get(key)
 
         failing_engine = MagicMock()
-        failing_engine.connect.side_effect = Exception("VIEW SERVER STATE denied")
+        failing_engine.connect.side_effect = OperationalError("SELECT 1", {}, Exception("VIEW SERVER STATE denied"))
         good_engine = _create_engine_mock([mock_row])
 
         self.mixin.get_stored_procedure_engines = lambda: iter([failing_engine, good_engine])
@@ -142,6 +144,15 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         self.assertEqual(len(query_list), 1)
         self.assertIsInstance(query_list[0], QueryByProcedure)
         self.mixin.status.failed.assert_not_called()
+
+    def test_yield_stored_procedure_queries_does_not_swallow_a_statement_builder_bug(self):
+        """A bug in a source's get_stored_procedure_sql_statement is a code bug, not an
+        unreachable engine: it must surface instead of being skipped like one."""
+        self.mixin.get_stored_procedure_engines = lambda: iter([MagicMock()])
+        self.mixin.get_stored_procedure_sql_statement = MagicMock(side_effect=KeyError("start_date"))
+
+        with self.assertRaises(KeyError):
+            list(self.mixin.yield_stored_procedure_queries())
 
     def test_procedure_lineage_producer_streaming(self):
         """Test that procedure_lineage_producer streams data efficiently"""

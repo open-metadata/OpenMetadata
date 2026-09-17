@@ -25,6 +25,7 @@ from typing import Any
 
 import networkx as nx
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -313,13 +314,16 @@ class LineageSource(QueryParserSource, ABC):
         yield a TableQuery with query parsing info
         """
         for engine in self.get_engine():
+            # Built outside the guard below: a failure here is a bug in the source's
+            # statement builder, not an unreachable engine, and must not be reported
+            # as a skipped connection.
+            sql_statement = self.get_sql_statement(
+                start_time=self.start,
+                end_time=self.end,
+            )
+            logger.debug(f"Executing lineage query: {sql_statement}")
             try:
                 with engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
-                    sql_statement = self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
-                    )
-                    logger.debug(f"Executing lineage query: {sql_statement}")
                     rows = conn.execute(text(sql_statement))
                     row_count = 0
                     for row in rows:
@@ -339,7 +343,11 @@ class LineageSource(QueryParserSource, ABC):
                             logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                     logger.info(f"Processed {row_count} query log entries for lineage")
                     self.warn_if_query_log_truncated(row_count, "lineage")
-            except Exception as exc:
+            # Narrowed: SQLAlchemy wraps driver failures, but mssql+pytds leaks raw
+            # OSError subclasses on connect (socket.gaierror, TimeoutError) - the same
+            # types NETWORK_ERRORS matches. A KeyError/AttributeError here is a code
+            # bug and must keep propagating.
+            except (SQLAlchemyError, OSError) as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to fetch lineage query log from a connection, skipping it: {exc}")
 
