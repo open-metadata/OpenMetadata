@@ -415,8 +415,8 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#067647",
-                  RelationCardinality.ONE_TO_MANY,
-                  1,
+                  RelationCardinality.MANY_TO_MANY,
+                  null,
                   null),
               createRelationType(
                   "narrower",
@@ -429,9 +429,9 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#4e5ba6",
-                  RelationCardinality.MANY_TO_ONE,
+                  RelationCardinality.MANY_TO_MANY,
                   null,
-                  1),
+                  null),
               createRelationType(
                   "partOf",
                   "Part Of",
