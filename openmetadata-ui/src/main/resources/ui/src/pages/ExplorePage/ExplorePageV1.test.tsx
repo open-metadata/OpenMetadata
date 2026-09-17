@@ -82,13 +82,23 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
   })),
 }));
 
+// Opt one case onto the real hook, so what it writes to the shared URL can be asserted rather
+// than which callback it reached for.
+let mockUseRealPaging = false;
+
 jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn(() => ({
-    currentPage: 3,
-    handlePageChange: mockHandlePageChange,
-    handlePageSizeChange: mockHandlePageSizeChange,
-    pageSize: 25,
-  })),
+  usePaging: jest.fn((defaultPageSize?: number, pageSizeOptions?: number[]) =>
+    mockUseRealPaging
+      ? jest
+          .requireActual('../../hooks/paging/usePaging')
+          .usePaging(defaultPageSize, pageSizeOptions)
+      : {
+          currentPage: 3,
+          handlePageChange: mockHandlePageChange,
+          handlePageSizeChange: mockHandlePageSizeChange,
+          pageSize: 25,
+        }
+  ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -114,15 +124,12 @@ describe('ExplorePageV1', () => {
       preferences: {
         globalPageSize: 25,
       },
+      // The real hook persists the size it settles on; without this the case that drives it
+      // would fail on a missing setter rather than on what it wrote.
+      setPreference: jest.fn(),
     });
     (useIsAiMode as jest.Mock).mockReturnValue(false);
-    // Reset here, not in the factory, so a case can change the page size without leaking it.
-    (usePaging as jest.Mock).mockReturnValue({
-      currentPage: 3,
-      handlePageChange: mockHandlePageChange,
-      handlePageSizeChange: mockHandlePageSizeChange,
-      pageSize: 25,
-    });
+    mockUseRealPaging = false;
   });
 
   it('renders without crashing', async () => {
@@ -132,20 +139,22 @@ describe('ExplorePageV1', () => {
     expect(usePaging).toHaveBeenCalledWith(25, [15, 25, 50]);
   });
 
-  it('leaves a page size it cannot offer to usePaging instead of writing its own back', async () => {
-    // 24 is the connections grid's size, reached here because `pageSize` is shared and app mode
-    // keeps this page mounted. Correcting it overwrote that page's selection as it was made.
-    (usePaging as jest.Mock).mockReturnValue({
-      currentPage: 1,
-      handlePageChange: mockHandlePageChange,
-      handlePageSizeChange: mockHandlePageSizeChange,
-      pageSize: 24,
-    });
+  it('does not write a page size it cannot offer back to the shared URL', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    // 24 is the connections grid's size, in the shared param because app mode keeps this page
+    // mounted behind that one. Correcting it from here overwrote the grid's selection.
+    mockLocation.search = '?pageSize=24';
+    mockUseRealPaging = true;
 
     render(<ExplorePageV1 {...mockProps} />);
     await screen.findByText('ExploreV1');
 
-    expect(mockHandlePageSizeChange).not.toHaveBeenCalled();
+    const wrotePageSize = mockNavigate.mock.calls.some(
+      ([to]) => typeof to === 'object' && to?.search?.includes('pageSize=')
+    );
+
+    expect(wrotePageSize).toBe(false);
   });
 
   it('stretches the AI search header wrapper across the Explore page', async () => {
