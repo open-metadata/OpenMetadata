@@ -4881,6 +4881,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Classifications/ClassificationDetails/ClassificationDetails.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/BulkImport.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
@@ -5636,6 +5637,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/SqlQueryTab/AddSqlQueryFormModal/AddSqlQueryFormModal.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -7290,7 +7292,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchDropdown/SearchDropdown.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
