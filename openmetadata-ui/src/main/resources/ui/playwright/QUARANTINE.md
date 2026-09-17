@@ -27,15 +27,13 @@ coverage, a retried one looks green.
 
 ## Entries
 
-4 entries. Most evidence is failures observed across 11 merge_group runs sampled on
+2 entries. Most evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 1/1 | Re-quarantined 2026-09-10 on fresh evidence, not the 2026-09-04 sample. The 11/11 failure it was first tagged for was real and is fixed (`openEntitySummaryPanel` waited for the NavBar `searchBox` on a page that renders `ExploreSearchInput`), but releasing it surfaced a second cause underneath. In PR #33054 it failed its first attempt and passed on retry: `expectOwnerInPanel` polled for the owner chip for the full 60s, re-navigating between attempts, and never saw it — even though `addOwnerInKCPanel` had already awaited the PATCH, so the owner was persisted. That is the *original* recorded symptom (owner chip not found), so the panel's read path lags the write rather than the navigation being wrong. A longer poll is not the fix; find what the panel reads and wait on that. |
 | `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | 2/2 | Quarantined 2026-09-11 (BE bug, not a test flake). On both merge_group attempts of run 34588697338 the contract's quality/test-suite run finished without writing a result: `GET /dataContracts/{id}/results/{resultId}` shows `schemaValidation` (5/5) and `semanticsValidation` (1/1) populated but **`qualityValidation` absent**, so the aggregate `contractExecutionStatus` hangs on `Running` and never reaches a terminal state. The test suite + DQ ingestion pipeline were created and deployed fine (`POST …/ingestionPipelines/deploy` → 200), but the triggered Airflow DagRun completed in ~0.03s executing zero test cases, so no test-case result came back. `waitForDataContractExecution` then polls the full 600s and the fallback derives `suiteStatus = 'Running'`, failing `expect(...).toMatch(/^(Aborted\|Success\|Failed)$/)`. Fix is in BE: reap contract validation to a terminal state (`Aborted`/`Failed`) when the quality run fails to trigger or returns no result, instead of hanging on `Running`; plus BE/Ingestion should confirm test cases are attached before the pipeline is triggered so the run isn't empty. Owner: BE team. |
-| `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 
 ### Triage, 2026-09-09
@@ -43,7 +41,7 @@ generated variant rather than per source line.
 All three were run against a local stack (current UI via the Vite dev server,
 `--repeat-each=3`) and all three passed 3/3, well inside their budgets: the test
 suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
-10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11, so
+10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11 so
 this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
 will not settle them** — but neither will waiting for CI: nothing under
@@ -63,12 +61,12 @@ projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4586 of 4605**; the quarantined lane lists 26,
-which is 19 quarantined tests plus the 7 fixture projects above. The 19 are the 4
+default-lane count here. It is **4601 of 4618**; the quarantined lane lists 24,
+which is 17 quarantined tests plus the 7 fixture projects above. The 17 are the 2
 entries in the table and the whole `e2e/Pages/Lineage/LineageFilters.spec.ts`
 describe (15 tests), tagged in #33357 without an entry here yet.
-(It was 4575 of 4580 with 5 entries, 4576 of 4580 with 4, and 4543 of 4555 when
-the list held 13.)
+(It was 4586 of 4605 with 4 entries plus LineageFilters, 4575 of 4580 with 5
+entries, 4576 of 4580 with 4, and 4543 of 4555 when the list held 13.)
 
 ## Not quarantined — fixed instead
 
@@ -98,6 +96,8 @@ entry.
 | `e2e/Features/DataQuality/TestLibrary.spec.ts` | should maintain page on edit and reset to first page on delete | Same select-option path as above. |
 | `e2e/Features/PersonaAIContextRules.spec.ts` | knowledge entity type forces Fully rendered on and disables it | The evidence was already stale when it was written down. Every test in the file reached its subject through `navigateToAIContextTab`, which called `navigateToPersonaWithPagination` — a walk of up to 15 pages, each costing a `waitForAllLoadersToDisappear`, a `next` click and a `/api/v1/personas*` round trip, before the test touched anything it was asserting on. That is the timeout, and it is why the rate tracked shard load (7/11) rather than being deterministic: the walk grows with the personas the shard has accumulated. #32458 then moved the editor into Context Center on 2026-09-07, replacing the whole walk with `goto('/context-center/ai-context')` plus one card click, and made the list page follow its cursor to exhaustion server-side. Green 9/9 locally at ~5s against a 60s budget. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
+| `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | `changeTermHierarchyFromModal` calls the `moveAsync` API, which returns 200 immediately while the actual move is processed asynchronously. The test navigated to glossary2 and asserted the moved term without waiting for the async move to complete — a race the test lost 9/11 times. Added an `expect.poll` that waits for the term's `glossary.fullyQualifiedName` to update (same pattern as the passing H-M05 test). The misleading "Drag-and-drop" symptom label was from the quarantine entry; this test uses the modal, not drag-and-drop. |
+| `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | Released in #33395. The Explore summary panel renders owners from the search document, which is refreshed asynchronously after the owner PATCH, so polling the DOM and re-navigating raced the index refresh in both the add and remove steps. The test now gates on `/api/v1/search/query` through `waitForOwnerIndexed` (a nested `owners.id` query filter, since `owners` is nested in `knowledge_page_search_index`; removal waits on a `must_not` of the same clause), then navigates once and asserts. |
 
 ## Left running deliberately
 
