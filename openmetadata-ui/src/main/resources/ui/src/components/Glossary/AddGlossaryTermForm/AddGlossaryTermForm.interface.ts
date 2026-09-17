@@ -46,9 +46,11 @@ export interface IntakeFieldsSectionProps {
   extensionFormFields: IntakeFormField[];
   customProperties: CustomProperty[];
   intakeFieldsRef: RefObject<GlossaryTermIntakeFieldsHandle>;
+  onValuesChange?: (values: Record<string, unknown>) => void;
 }
 
 export interface GlossaryTermForm {
+  domains?: string[];
   name: string;
   displayName: string;
   description: string;

@@ -28,6 +28,7 @@ verdict cites an artifact that was checked to still exist):
 
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
+| `docs/unified-onboarding.md` | Intake configuration, lifecycle gates, Task V2 approvals, APIs, and resumable enrollment | Working on governance onboarding or intake forms | 2026-09-09 | CURRENT |
 | `docs/impersonation-design.md` | Bot→user impersonation: `updatedBy`=user / `impersonatedBy`=bot, gated by `allowImpersonation` + RBAC `Impersonate` policy scoping | Touching bot impersonation auth — the flag, `BotImpersonationPolicy` seeds, `checkImpersonationAuthorization` (§4.4 is authoritative) | 2026-06-16 | CURRENT ⚠¹ |
 | `docs/session-management-multi-node-design.md` | Shipped multi-node server-side session + websocket system: shared JDBC/Redis store, `OM_SESSION` cookie, session-bound JWTs, CAS refresh | Working on login/refresh/logout across pods, `SessionService`/`SessionStore`, JWT session validation, websocket handshake | 2026-06-03 | CURRENT |
 | `docs/streamable-logs.md` | S3/MinIO-backed streamable ingestion logs: HTTP append/close, `partial.txt`→`logs.txt`, SSE live tail, abandoned-run sweeper | Working on ingestion log storage/streaming — `S3LogStorage`, `LogStorageInterface`, `/logs/{fqn}/{runId}` endpoints | 2026-05-15 | CURRENT |

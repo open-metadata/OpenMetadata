@@ -48,6 +48,7 @@ import { CreateDataProduct } from '../../../generated/api/domains/createDataProd
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -119,6 +120,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { OnboardingChecklist } from '../../governance/onboarding/OnboardingChecklist';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm, {
@@ -1007,6 +1009,13 @@ const DomainDetails = ({
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
+        <OnboardingChecklist
+          asset={domain}
+          entityType={TargetEntityType.Domain}
+          isVersionView={isVersionsView}
+          permissions={domainPermission}
+          onRefresh={refreshDomains}
+        />
         <Box
           align="center"
           className="entity-header tw:mx-5 tw:gap-y-3"

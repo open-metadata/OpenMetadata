@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { HookForm } from '@openmetadata/ui-core-components';
-import { forwardRef, useImperativeHandle } from 'react';
-import { useForm } from 'react-hook-form';
+import { forwardRef, useEffect, useImperativeHandle } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
@@ -28,6 +28,7 @@ export interface GlossaryTermIntakeFieldsHandle {
 interface GlossaryTermIntakeFieldsProps {
   customProperties: CustomProperty[];
   formFields: IntakeFormField[];
+  onValuesChange?: (values: Record<string, unknown>) => void;
 }
 
 const findCustomPropertyByName = (
@@ -48,10 +49,31 @@ const findCustomPropertyByName = (
 const GlossaryTermIntakeFields = forwardRef<
   GlossaryTermIntakeFieldsHandle,
   GlossaryTermIntakeFieldsProps
->(({ customProperties, formFields }, ref) => {
+>(({ customProperties, formFields, onValuesChange }, ref) => {
   const form = useForm<DomainFormValues>({
     defaultValues: { extensionFormValues: {} },
   });
+  const watched = useWatch({
+    control: form.control,
+    name: 'extensionFormValues',
+  });
+  const serialized = JSON.stringify(
+    Object.entries(watched ?? {}).reduce<Record<string, unknown>>(
+      (result, [key, value]) => {
+        const name = getExtensionPropertyNameFromFormKey(key);
+        const definition = findCustomPropertyByName(customProperties, name);
+        result[name] = definition
+          ? serializeExtensionValue(definition, value)
+          : value;
+
+        return result;
+      },
+      {}
+    )
+  );
+  useEffect(() => {
+    onValuesChange?.(JSON.parse(serialized));
+  }, [serialized, onValuesChange]);
 
   useImperativeHandle(
     ref,

@@ -62,6 +62,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.onboarding.OnboardingTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -359,7 +360,7 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     if (!update) {
-      setDefaultAssigneesFromEntityOwners(task);
+      if (!OnboardingTasks.isManaged(task.getId())) setDefaultAssigneesFromEntityOwners(task);
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
@@ -1263,10 +1264,19 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     Task original = get(null, task.getId(), getFields("*"));
     Task updated = JsonUtils.deepCopy(original, Task.class);
-    updated.setStatus(mapResolutionToStatus(resolution.getType()));
+    TaskEntityStatus newStatus = mapResolutionToStatus(resolution.getType());
+    updated.setStatus(newStatus);
     updated.setResolution(resolution);
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    return persistLifecycleChange(original, updated, updatedBy);
+    // The onboarding binding's decision has to land in the same transaction as the task's own
+    // lifecycle write: a board that recorded an approval the task never got (or vice versa) would
+    // stay wrong until the next backfill.
+    return daoCollection.inTransaction(
+        dao -> {
+          Task persisted = persistLifecycleChange(original, updated, updatedBy);
+          OnboardingTasks.recordDecision(updated, newStatus == TaskEntityStatus.Approved);
+          return persisted;
+        });
   }
 
   private void applyTransitionTarget(

@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.onboarding.OnboardingTasks;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 
 /** Resolves schema-driven task execution metadata from TaskFormSchema uiSchema bindings. */
@@ -104,6 +105,8 @@ public final class TaskFormExecutionResolver {
   }
 
   public static TaskExecutionPlan resolveExecutionPlan(Task task) {
+    if (task != null && OnboardingTasks.isManaged(task.getId()))
+      return new TaskExecutionPlan(List.of(), List.of());
     TaskExecutionPlan defaults = defaultExecutionPlan(task);
     if (task == null || task.getType() == null) {
       return defaults;

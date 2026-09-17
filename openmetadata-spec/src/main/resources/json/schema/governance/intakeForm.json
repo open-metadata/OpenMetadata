@@ -2,21 +2,31 @@
   "$id": "https://open-metadata.org/schema/governance/intakeForm.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "IntakeForm",
-  "description": "An IntakeForm declares the fields shown when creating or updating a governance entity (Data Product, Domain, Glossary Term) and which of those fields are required. Required fields are enforced identically at the API and UI layers so both contracts match.",
+  "description": "One intake and onboarding configuration per governance entity type. Field requirements are shared by creation forms and lifecycle gates.",
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.governance.IntakeForm",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "targetEntityType": {
       "description": "Entity types supported by IntakeForm today.",
       "type": "string",
-      "enum": ["dataProduct", "domain", "glossaryTerm"]
+      "enum": [
+        "dataProduct",
+        "domain",
+        "glossaryTerm",
+        "metric"
+      ]
     },
     "fieldKind": {
       "description": "Whether a required field refers to a native entity attribute or a custom property defined via the Type system.",
       "type": "string",
-      "enum": ["native", "customProperty"]
+      "enum": [
+        "native",
+        "customProperty"
+      ]
     },
     "requiredField": {
       "description": "A single field declared as required by this IntakeForm.",
@@ -39,7 +49,11 @@
           "type": "string"
         }
       },
-      "required": ["fieldPath", "fieldLabel", "fieldKind"],
+      "required": [
+        "fieldPath",
+        "fieldLabel",
+        "fieldKind"
+      ],
       "additionalProperties": false
     },
     "intakeFormField": {
@@ -58,7 +72,10 @@
         "fieldKind": {
           "description": "Whether a form field refers to a native entity attribute or a custom property defined via the Type system.",
           "type": "string",
-          "enum": ["native", "customProperty"]
+          "enum": [
+            "native",
+            "customProperty"
+          ]
         },
         "required": {
           "description": "Whether this field must have a value before the entity can be created or updated.",
@@ -68,9 +85,18 @@
         "errorMessage": {
           "description": "Optional override for the validation error message when a required field is missing.",
           "type": "string"
+        },
+        "recommended": {
+          "type": "boolean",
+          "description": "An optional field recommended for onboarding.",
+          "default": false
         }
       },
-      "required": ["fieldPath", "fieldLabel", "fieldKind"],
+      "required": [
+        "fieldPath",
+        "fieldLabel",
+        "fieldKind"
+      ],
       "additionalProperties": false
     }
   },
@@ -154,8 +180,15 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "onboarding": {
+      "$ref": "./onboarding/onboardingConfiguration.json"
     }
   },
-  "required": ["id", "name", "entityType"],
+  "required": [
+    "id",
+    "name",
+    "entityType"
+  ],
   "additionalProperties": false
 }

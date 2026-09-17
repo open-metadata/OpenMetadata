@@ -46,6 +46,7 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { PageType } from '../../../generated/system/ui/page';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { Style } from '../../../generated/type/tagLabel';
@@ -113,6 +114,7 @@ import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { OnboardingChecklist } from '../../governance/onboarding/OnboardingChecklist';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
@@ -1016,6 +1018,13 @@ const DataProductsDetailsPage = ({
         <CoverImage
           imageUrl={coverImageProps.imageUrl}
           position={coverImageProps.position}
+        />
+        <OnboardingChecklist
+          asset={dataProduct}
+          entityType={TargetEntityType.DataProduct}
+          isVersionView={isVersionsView}
+          permissions={dataProductPermission}
+          onRefresh={onRefresh}
         />
         <GenericProvider<DataProduct>
           newTagsUI

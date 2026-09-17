@@ -64,7 +64,7 @@
     },
     {
       "projects": ["IntakeForm"],
-      "specs": ["playwright/e2e/Pages/IntakeForm.spec.ts"]
+      "specs": ["playwright/e2e/Pages/IntakeForm.spec.ts", "playwright/e2e/Pages/Onboarding.spec.ts"]
     }
   ],
   "sharedInfrastructure": [
@@ -86,6 +86,36 @@
     "openmetadata-ui/src/main/resources/ui/vite.config.ts"
   ],
   "mappings": [
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/**/onboarding/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/IntakeForms/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/intakeFormsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IntakeFormUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Domain/AddDomainForm/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Glossary/AddGlossaryTermForm/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/AddMetricPage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/governance/onboarding/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IntakeFormRepository.java",
+        "openmetadata-spec/src/main/resources/json/schema/governance/intakeForm.json",
+        "openmetadata-spec/src/main/resources/json/schema/governance/onboarding/**"
+      ],
+      "projects": [
+        "IntakeForm"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/IntakeForm.spec.ts",
+        "playwright/e2e/Pages/Onboarding.spec.ts",
+        "playwright/e2e/Pages/OnboardingConfiguration.spec.ts",
+        "playwright/e2e/Pages/OnboardingCreation.spec.ts",
+        "playwright/e2e/Pages/OnboardingFields.spec.ts",
+        "playwright/e2e/Pages/OnboardingNavigation.spec.ts",
+        "playwright/e2e/Pages/OnboardingRecovery.spec.ts",
+        "playwright/e2e/Pages/OnboardingRollout.spec.ts",
+        "playwright/e2e/Pages/OnboardingWorkflows.spec.ts"
+      ]
+    },
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",

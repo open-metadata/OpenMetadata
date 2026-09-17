@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStepResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStepResult",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStepResult",
+  "type": "object",
+  "properties": {
+    "step": {
+      "$ref": "./onboardingStep.json"
+    },
+    "field": {
+      "$ref": "../intakeForm.json#/definitions/intakeFormField"
+    },
+    "required": {
+      "type": "boolean",
+      "default": false
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Complete",
+        "NotApplicable",
+        "Blocked",
+        "Rejected",
+        "Failed"
+      ]
+    },
+    "message": {
+      "type": "string",
+      "description": "Explanation of an incomplete check."
+    },
+    "assignees": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "taskId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowInstanceId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "stage": {
+      "$ref": "./onboardingStage.json"
+    }
+  },
+  "required": [
+    "step",
+    "required",
+    "state"
+  ],
+  "additionalProperties": false
+}

@@ -49,7 +49,7 @@ import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
-import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { getCreationIntakeFields } from '../../../utils/governance/onboarding/Onboarding.utils';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -57,6 +57,11 @@ import {
   AVAILABLE_ICONS,
   DEFAULT_GLOSSARY_TERM_ICON,
 } from '../../common/IconPicker/IconPicker.constants';
+import { OnboardingCreationChecklist } from '../../governance/onboarding/OnboardingCreationChecklist';
+import {
+  OnboardingSupplementalFields,
+  OnboardingSupplementalHandle,
+} from '../../governance/onboarding/OnboardingSupplementalFields';
 import {
   AddGlossaryTermFormProps,
   IntakeFieldsSectionProps,
@@ -177,6 +182,7 @@ const IntakeFieldsSection = ({
   extensionFormFields,
   customProperties,
   intakeFieldsRef,
+  onValuesChange,
 }: IntakeFieldsSectionProps) =>
   !editMode &&
   customPropertiesLoaded &&
@@ -185,6 +191,7 @@ const IntakeFieldsSection = ({
       customProperties={customProperties}
       formFields={extensionFormFields}
       ref={intakeFieldsRef}
+      onValuesChange={onValuesChange}
     />
   );
 
@@ -199,12 +206,28 @@ const AddGlossaryTermForm = ({
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();
+  const watchedValues = Form.useWatch([], form);
+  const [supplementalValues, setSupplementalValues] = useState<
+    Record<string, unknown>
+  >({});
+  const [extensionValues, setExtensionValues] = useState<
+    Record<string, unknown>
+  >({});
+  const onboardingValues = useMemo(
+    () => ({
+      ...watchedValues,
+      ...supplementalValues,
+      extension: extensionValues,
+    }),
+    [watchedValues, supplementalValues, extensionValues]
+  );
   const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
   const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
   const intakeFieldsRef = useRef<GlossaryTermIntakeFieldsHandle>(null);
+  const supplementalRef = useRef<OnboardingSupplementalHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -267,7 +290,7 @@ const AddGlossaryTermForm = ({
   const nativeRequiredFieldsByPath = useMemo(() => {
     const fields = new Map<string, IntakeFormField>();
 
-    getIntakeFormFields(intakeForm).forEach((field) => {
+    getCreationIntakeFields(intakeForm, onboardingValues).forEach((field) => {
       const isCustomProperty =
         field.fieldKind === FieldKind.CustomProperty ||
         field.fieldPath.startsWith('extension.');
@@ -278,16 +301,16 @@ const AddGlossaryTermForm = ({
     });
 
     return fields;
-  }, [intakeForm]);
+  }, [intakeForm, onboardingValues]);
 
   const extensionFormFields = useMemo(
     () =>
-      getIntakeFormFields(intakeForm).filter(
+      getCreationIntakeFields(intakeForm, onboardingValues).filter(
         (field) =>
           field.fieldKind === FieldKind.CustomProperty ||
           field.fieldPath.startsWith('extension.')
       ),
-    [intakeForm]
+    [intakeForm, onboardingValues]
   );
 
   const applyIntakeFormRequired = useCallback(
@@ -358,7 +381,10 @@ const AddGlossaryTermForm = ({
     // Form, so antd's own validation pass cannot see them — validate explicitly
     // and abort so RHF renders the inline errors.
     const isIntakeValid = await (intakeFieldsRef.current?.validate() ?? true);
-    if (!editMode && !isIntakeValid) {
+    if (
+      !editMode &&
+      (!isIntakeValid || !(await (supplementalRef.current?.validate() ?? true)))
+    ) {
       return;
     }
 
@@ -376,7 +402,19 @@ const AddGlossaryTermForm = ({
       reviewersList,
     });
 
-    await onSave(data);
+    const supplemental = supplementalRef.current?.getValues();
+    await onSave({
+      ...data,
+      ...(supplemental?.domains
+        ? {
+            domains: Array.isArray(supplemental.domains)
+              ? supplemental.domains.filter(
+                  (domain): domain is string => typeof domain === 'string'
+                )
+              : [],
+          }
+        : {}),
+    });
   };
 
   useEffect(() => {
@@ -665,6 +703,10 @@ const AddGlossaryTermForm = ({
         }}
         layout="vertical"
         onFinish={handleSave}>
+        <OnboardingCreationChecklist
+          form={intakeForm}
+          values={onboardingValues}
+        />
         {generateFormFields(intakeAwareFormFields)}
 
         <Form.List name="references">
@@ -758,12 +800,21 @@ const AddGlossaryTermForm = ({
           own <form> element and nesting forms is invalid HTML. The modal's Save
           button sits in the footer outside both forms, so it still drives
           submission via the antd instance. */}
+      <OnboardingSupplementalFields
+        fields={getCreationIntakeFields(intakeForm, onboardingValues).filter(
+          (field) => field.fieldPath === 'domains'
+        )}
+        properties={[]}
+        ref={supplementalRef}
+        onValuesChange={setSupplementalValues}
+      />
       <IntakeFieldsSection
         customProperties={customProperties}
         customPropertiesLoaded={customPropertiesLoaded}
         editMode={editMode}
         extensionFormFields={extensionFormFields}
         intakeFieldsRef={intakeFieldsRef}
+        onValuesChange={setExtensionValues}
       />
     </>
   );

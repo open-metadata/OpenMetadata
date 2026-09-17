@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.onboarding.OnboardingConfigurationValidator;
 import org.openmetadata.service.resources.governance.IntakeFormResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -30,7 +31,8 @@ import org.openmetadata.service.util.IntakeFormUtil;
 @Slf4j
 @Repository
 public class IntakeFormRepository extends EntityRepository<IntakeForm> {
-  private static final String UPDATE_FIELDS = "owners,formFields,requiredFields,enabled,entityType";
+  private static final String UPDATE_FIELDS =
+      "owners,formFields,requiredFields,enabled,entityType,onboarding";
 
   public IntakeFormRepository() {
     super(
@@ -59,6 +61,8 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
       throw new IllegalArgumentException("IntakeForm requires entityType");
     }
     IntakeFormUtil.synchronizeFields(entity);
+    preserveOnboarding(entity, update);
+    OnboardingConfigurationValidator.validate(entity);
     ensureUniquePerEntityType(entity, update);
   }
 
@@ -121,6 +125,25 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     }
   }
 
+  private void preserveOnboarding(IntakeForm entity, boolean update) {
+    if (!update || entity.getOnboarding() != null) return;
+    String json =
+        Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entity.getEntityType().value());
+    if (json != null) {
+      var existing = JsonUtils.readValue(json, IntakeForm.class);
+      entity.setOnboarding(existing.getOnboarding());
+      if (existing.getOnboarding() != null) {
+        for (var field : IntakeFormUtil.getEffectiveFormFields(existing)) {
+          if (entity.getFormFields().stream()
+              .noneMatch(candidate -> candidate.getFieldPath().equals(field.getFieldPath()))) {
+            entity.getFormFields().add(field);
+          }
+        }
+        IntakeFormUtil.synchronizeFields(entity);
+      }
+    }
+  }
+
   private void ensureUniquePerEntityType(IntakeForm entity, boolean update) {
     String existingJson =
         Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entity.getEntityType().value());
@@ -152,6 +175,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("entityType", original.getEntityType(), updated.getEntityType());
+      recordChange("onboarding", original.getOnboarding(), updated.getOnboarding());
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("formFields", original.getFormFields(), updated.getFormFields());
       recordChange("requiredFields", original.getRequiredFields(), updated.getRequiredFields());

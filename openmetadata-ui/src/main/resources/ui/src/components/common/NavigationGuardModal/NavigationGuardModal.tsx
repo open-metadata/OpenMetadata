@@ -38,6 +38,7 @@ export const NavigationGuardModal = ({
       <Modal>
         <Dialog
           showCloseButton
+          aria-label={t('message.unsaved-changes')}
           data-testid="navigation-guard-modal"
           width={480}
           onClose={onStay}>

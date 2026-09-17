@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.onboarding.OnboardingWorkflowGuard;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
@@ -72,6 +73,12 @@ public class FilterEntityImpl implements JavaDelegate {
     // Parse entity type from entity link to determine which filter to use
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
+    if (OnboardingWorkflowGuard.suppressAutomaticApproval(
+        entityLink,
+        WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()))) {
+      execution.setVariable(PASSES_FILTER_VARIABLE, false);
+      return;
+    }
 
     // Extract entity-specific filter
     String filterLogic =
