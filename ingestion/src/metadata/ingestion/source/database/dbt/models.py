@@ -43,6 +43,7 @@ class DbtMetaOpenmetadata(BaseModel):
     glossary: list[str] | None = None
     customProperties: dict[str, Any] | None = None  # noqa: N815
     tags: list[str] | None = None
+    unit: str | None = None
 
 
 class DbtMeta(BaseModel):
