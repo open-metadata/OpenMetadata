@@ -1076,11 +1076,59 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * whether the entity already has local values.
    */
   protected boolean requiresParentForInheritance(T entity, Fields fields) {
+    return requiresParentForOwnersOrDomains(entity, fields)
+        || requiresParentForPropagatedTags(fields);
+  }
+
+  /**
+   * The owners/domains half of {@link #requiresParentForInheritance}. Repositories that choose for
+   * themselves which fields to project onto the parent need to ask this separately, because needing
+   * the parent's tags does not mean owners and domains have to be loaded as well.
+   */
+  protected final boolean requiresParentForOwnersOrDomains(T entity, Fields fields) {
     boolean needsOwners =
         supportsOwners && fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners());
     boolean needsDomains =
         supportsDomains && fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains());
     return needsOwners || needsDomains;
+  }
+
+  /**
+   * Whether the parent has to be loaded so its propagated tags can be merged in.
+   *
+   * <p>Deliberately without the "only when the entity has none of its own" condition that owners and
+   * domains carry: inherited tags merge rather than fill a gap, so an asset that already carries
+   * tags still needs its ancestors'. Without this the gate stays shut on a {@code ?fields=tags}
+   * read, the parent is never loaded, and propagation silently does nothing.
+   */
+  protected final boolean requiresParentForPropagatedTags(Fields fields) {
+    return supportsTags
+        && fields != null
+        && fields.contains(FIELD_TAGS)
+        && TagPropagation.isEnabled();
+  }
+
+  private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
+
+  /**
+   * Field list to project onto a parent, covering only the inheritance kinds that actually need it.
+   * Repositories that load the parent themselves rather than going through {@link
+   * #setInheritedFields(Object, Fields)} share this so a newly inheritable field is wired in once.
+   */
+  protected static String inheritanceParentFields(
+      boolean needsOwnersOrDomains, boolean needsRetentionPeriod, boolean needsTags) {
+    List<String> parentFields = new ArrayList<>();
+    if (needsOwnersOrDomains) {
+      parentFields.add(FIELD_OWNERS);
+      parentFields.add(FIELD_DOMAINS);
+    }
+    if (needsRetentionPeriod) {
+      parentFields.add(RETENTION_PERIOD_FIELD);
+    }
+    if (needsTags) {
+      parentFields.add(FIELD_TAGS);
+    }
+    return String.join(",", parentFields);
   }
 
   public final T getForInheritance(UUID id, Fields fields, Include include) {
@@ -1112,7 +1160,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (containerRef != null) {
       // Preserve the requested inheritance shape (e.g. retentionPeriod-only), but only for this
       // repository's declared inheritable fields to avoid leaking invalid fields up the chain.
-      String parentFields = projectInheritanceFields(fields);
+      String parentFields = projectInheritanceFields(fields, containerRef.getType());
       EntityInterface parent =
           Entity.getEntityForInheritance(
               containerRef.getType(), containerRef.getId(), parentFields, ALL);
@@ -1136,13 +1184,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ArrayList<>(relations);
   }
 
-  private String projectInheritanceFields(Fields fields) {
+  private String projectInheritanceFields(Fields fields, String parentEntityType) {
     String inheritableFields = getInheritableFields();
     if (inheritableFields == null || inheritableFields.isBlank()) {
-      return "";
+      return withPropagatedTags("", parentEntityType);
     }
     if (fields == null || nullOrEmpty(fields.getFieldList())) {
-      return inheritableFields;
+      return withPropagatedTags(inheritableFields, parentEntityType);
     }
 
     List<String> projectedFields = new ArrayList<>();
@@ -1153,7 +1201,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    return projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    String projected =
+        projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    return withPropagatedTags(projected, parentEntityType);
   }
 
   public void fetchInheritableRelationships(List<T> entities, Fields fields) {

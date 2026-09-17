@@ -2,6 +2,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.type.TagLabel;
@@ -134,11 +136,50 @@ class ServiceAttributeResolverTest {
     assertEquals(before, ServiceAttributeResolver.generation());
   }
 
+  /**
+   * Six indexes carry {@code service} without a denormalized {@code serviceType}, so the type
+   * condition resolves to ids as well rather than relying on that one field.
+   */
+  @Test
+  void resolvesConnectorTypesToServiceIds() {
+    assertEquals(
+        Set.of(sandbox.getId().toString(), warehouse.getId().toString()),
+        ServiceAttributeResolver.serviceIdsForTypes(Set.of("Snowflake")));
+    assertEquals(
+        Set.of(sandbox.getId().toString(), warehouse.getId().toString()),
+        ServiceAttributeResolver.serviceIdsForTypes(Set.of("snowflake")),
+        "matching is case-insensitive, to agree with the REST evaluator");
+    assertTrue(ServiceAttributeResolver.serviceIdsForTypes(Set.of("Postgres")).isEmpty());
+    assertTrue(ServiceAttributeResolver.serviceIdsForTypes(List.of()).isEmpty());
+  }
+
+  /**
+   * A failed rebuild must not read as "no service carries this tag". That answer compiles into a
+   * match-nothing clause, which for a Deny rule hides nothing — so a database outage would serve
+   * exactly the assets the policy exists to hide. Failing the lookup keeps the decision honest.
+   */
+  @Test
+  void aFailedRebuildFailsTheLookupRatherThanResolvingToNoServices() {
+    DatabaseServiceRepository repository = mock(DatabaseServiceRepository.class);
+    doReturn(true).when(repository).isSearchIndexable(any());
+    doReturn(true).when(repository).isVectorEmbeddable(any());
+    when(repository.getEntityType()).thenReturn(Entity.DATABASE_SERVICE);
+    when(repository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
+    when(repository.listAll(any(Fields.class), any(ListFilter.class)))
+        .thenThrow(new IllegalStateException("database unreachable"));
+    Entity.registerEntity(DatabaseService.class, Entity.DATABASE_SERVICE, repository);
+    ServiceAttributeResolver.invalidate();
+
+    assertThrows(
+        RuntimeException.class, () -> ServiceAttributeResolver.serviceIdsForTags(Set.of(DEV_TAG)));
+  }
+
   private static DatabaseService service(String name, TagLabel... tags) {
     return new DatabaseService()
         .withId(UUID.randomUUID())
         .withName(name)
         .withFullyQualifiedName(name)
+        .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake)
         .withTags(new ArrayList<>(List.of(tags)));
   }
 

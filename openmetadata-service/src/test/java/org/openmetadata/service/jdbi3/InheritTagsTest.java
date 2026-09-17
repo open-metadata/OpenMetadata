@@ -160,6 +160,22 @@ class InheritTagsTest {
     }
   }
 
+  /**
+   * {@code TableRepository} and {@code DatabaseSchemaRepository} load their parent themselves rather
+   * than going through {@code setInheritedFields}, choosing the projection from what inheritance
+   * actually needs. Omitting {@code tags} there loads a parent with none, so the merge has nothing
+   * to copy and propagation silently does nothing on the read path.
+   */
+  @Test
+  void inheritanceParentFields_asksTheParentForTagsOnlyWhenTagsAreNeeded() {
+    assertEquals(
+        "owners,domains,retentionPeriod,tags",
+        EntityRepository.inheritanceParentFields(true, true, true));
+    assertEquals("tags", EntityRepository.inheritanceParentFields(false, false, true));
+    assertEquals("owners,domains", EntityRepository.inheritanceParentFields(true, false, false));
+    assertEquals("retentionPeriod", EntityRepository.inheritanceParentFields(false, true, false));
+  }
+
   private static boolean propagatesField(
       List<PropagationDescriptor> descriptors, String fieldName) {
     return descriptors.stream().anyMatch(d -> fieldName.equals(d.fieldName()));

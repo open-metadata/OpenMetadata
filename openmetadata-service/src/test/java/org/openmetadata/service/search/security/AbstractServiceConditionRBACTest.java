@@ -166,16 +166,40 @@ abstract class AbstractServiceConditionRBACTest {
     assertEquals(matchNoneJson(), query);
   }
 
-  /** serviceType is indexed on both the asset and the service, so it needs no id resolution. */
+  /**
+   * {@code serviceType} is indexed on the service document and on most asset documents, so it
+   * carries most of the match. It is not sufficient on its own: {@code ingestion_pipeline}, {@code
+   * query}, {@code query_cost_record} and the three {@code test_case*} indexes carry {@code service}
+   * without it, so the resolved ids have to be OR'd in or a Deny leaves those documents visible.
+   */
   @Test
-  void serviceType_filtersOnTheIndexedServiceTypeField() {
+  void serviceType_filtersOnTheTypeFieldAndOnTheResolvedServiceIds() {
+    resolveTo(serviceIdOne);
     givenRule("matchAnyServiceType('Snowflake', 'BigQuery')", Rule.Effect.DENY);
 
     String query = serialize(evaluator.evaluateConditions(subjectContext));
 
     assertTrue(query.contains("serviceType"));
     assertTrue(query.contains("Snowflake") && query.contains("BigQuery"));
-    assertFalse(query.contains("service.id"), "no id resolution is needed for a service type");
+    assertTrue(
+        query.contains("service.id"),
+        "indexes without a denormalized serviceType are only reached by service id");
+    assertTrue(query.contains("id.keyword"), "the service's own document is covered too");
+    assertTrue(query.contains(serviceIdOne));
+  }
+
+  /**
+   * A type nobody uses resolves to no ids. The type clause still has to stand on its own — dropping
+   * to match-nothing here would make the Deny hide nothing for the indexes that do carry the field.
+   */
+  @Test
+  void serviceType_keepsTheTypeClauseWhenNoServiceResolves() {
+    givenRule("matchAnyServiceType('Snowflake')", Rule.Effect.DENY);
+
+    String query = serialize(evaluator.evaluateConditions(subjectContext));
+
+    assertTrue(query.contains("serviceType") && query.contains("Snowflake"));
+    assertFalse(query.contains("service.id"), "there is no id to filter on");
   }
 
   @Test
@@ -263,6 +287,7 @@ abstract class AbstractServiceConditionRBACTest {
     resolver
         .when(() -> ServiceAttributeResolver.serviceIdsForEnvironments(any()))
         .thenAnswer(byKeys);
+    resolver.when(() -> ServiceAttributeResolver.serviceIdsForTypes(any())).thenAnswer(byKeys);
   }
 
   private void givenRule(String condition, Rule.Effect effect) {

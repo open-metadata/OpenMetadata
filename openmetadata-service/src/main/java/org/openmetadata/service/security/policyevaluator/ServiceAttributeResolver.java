@@ -86,23 +86,28 @@ public final class ServiceAttributeResolver {
    * @param serviceIdsByName service name to its id, as a single-element set so callers can union
    *     lookups uniformly
    * @param serviceIdsByEnvironment environment value to the ids of services declaring it
+   * @param serviceIdsByType connector type to the ids of services of that type, lowercased
    * @param signature content hash, used to key caches that embed resolved ids
    */
   record ServiceSnapshot(
       Map<String, Set<String>> serviceIdsByTagFqn,
       Map<String, Set<String>> serviceIdsByName,
       Map<String, Set<String>> serviceIdsByEnvironment,
+      Map<String, Set<String>> serviceIdsByType,
       long signature) {
 
     static ServiceSnapshot of(
         Map<String, Set<String>> serviceIdsByTagFqn,
         Map<String, Set<String>> serviceIdsByName,
-        Map<String, Set<String>> serviceIdsByEnvironment) {
+        Map<String, Set<String>> serviceIdsByEnvironment,
+        Map<String, Set<String>> serviceIdsByType) {
       return new ServiceSnapshot(
           deepCopy(serviceIdsByTagFqn),
           deepCopy(serviceIdsByName),
           deepCopy(serviceIdsByEnvironment),
-          Objects.hash(serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment));
+          deepCopy(serviceIdsByType),
+          Objects.hash(
+              serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment, serviceIdsByType));
     }
 
     /** The value sets are copied too, so the snapshot cannot be mutated through them. */
@@ -113,7 +118,7 @@ public final class ServiceAttributeResolver {
     }
 
     static ServiceSnapshot empty() {
-      return of(Map.of(), Map.of(), Map.of());
+      return of(Map.of(), Map.of(), Map.of(), Map.of());
     }
   }
 
@@ -135,6 +140,22 @@ public final class ServiceAttributeResolver {
     return lookup(
         snapshot().serviceIdsByEnvironment(),
         environments.stream().map(ServiceAttributeResolver::normalize).toList());
+  }
+
+  /**
+   * Ids of every service whose connector type is in {@code serviceTypes}. Matching is
+   * case-insensitive, as the REST-side condition is.
+   *
+   * <p>Needed even though asset documents carry a denormalized {@code serviceType}: six indexes
+   * ({@code ingestion_pipeline}, {@code query}, {@code query_cost_record}, {@code test_case},
+   * {@code test_case_result}, {@code test_case_resolution_status}) index {@code service} without
+   * it, so a type-only clause would leave those documents visible under a Deny that the REST path
+   * enforces.
+   */
+  public static Set<String> serviceIdsForTypes(Collection<String> serviceTypes) {
+    return lookup(
+        snapshot().serviceIdsByType(),
+        serviceTypes.stream().map(ServiceAttributeResolver::normalize).toList());
   }
 
   private static String normalize(String value) {
@@ -193,35 +214,37 @@ public final class ServiceAttributeResolver {
    * the tens, and only the {@code tags} projection is requested, so the whole pass is 13 list
    * queries plus one batched tag read.
    *
-   * <p>A failure yields an empty snapshot rather than propagating: this runs inside search query
-   * building, and an empty snapshot makes every service condition resolve to "no services", which
-   * the callers compile into a match-nothing clause. A Deny then hides nothing and an Allow grants
-   * nothing — both are the behaviour of a condition that matched no service, and neither silently
-   * drops the rule.
+   * <p>A failure propagates rather than yielding an empty snapshot. An empty snapshot resolves
+   * every service condition to "no services", which compiles to a match-nothing clause — for a Deny
+   * rule that hides nothing, so a database outage would quietly serve the assets the policy exists
+   * to hide. Letting the load throw keeps {@code refreshAfterWrite} serving the last known good
+   * snapshot, which is both safe and current enough; only a cold cache has nothing to fall back on,
+   * and there the request fails instead of over-sharing.
    */
   private static ServiceSnapshot loadSnapshot() {
     Map<String, Set<String>> serviceIdsByTagFqn = new HashMap<>();
     Map<String, Set<String>> serviceIdsByName = new HashMap<>();
     Map<String, Set<String>> serviceIdsByEnvironment = new HashMap<>();
-    try {
-      for (String serviceEntityType : Entity.getServiceEntityTypes()) {
-        // A service type with no repository registered yet is not a failure — it happens during
-        // bootstrap and in unit tests that register only the entities they exercise.
-        if (Entity.hasEntityRepository(serviceEntityType)) {
-          indexServices(
-              serviceEntityType, serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment);
-        }
+    Map<String, Set<String>> serviceIdsByType = new HashMap<>();
+    for (String serviceEntityType : Entity.getServiceEntityTypes()) {
+      // A service type with no repository registered yet is not a failure — it happens during
+      // bootstrap and in unit tests that register only the entities they exercise.
+      if (Entity.hasEntityRepository(serviceEntityType)) {
+        indexServices(
+            serviceEntityType,
+            serviceIdsByTagFqn,
+            serviceIdsByName,
+            serviceIdsByEnvironment,
+            serviceIdsByType);
       }
-    } catch (RuntimeException e) {
-      LOG.error("Failed to build the service attribute snapshot; treating it as empty", e);
-      return ServiceSnapshot.empty();
     }
     LOG.debug(
         "Built service attribute snapshot: {} services, {} distinct tags, {} environments",
         serviceIdsByName.size(),
         serviceIdsByTagFqn.size(),
         serviceIdsByEnvironment.size());
-    return ServiceSnapshot.of(serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment);
+    return ServiceSnapshot.of(
+        serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment, serviceIdsByType);
   }
 
   /**
@@ -232,7 +255,8 @@ public final class ServiceAttributeResolver {
       String serviceEntityType,
       Map<String, Set<String>> serviceIdsByTagFqn,
       Map<String, Set<String>> serviceIdsByName,
-      Map<String, Set<String>> serviceIdsByEnvironment) {
+      Map<String, Set<String>> serviceIdsByEnvironment,
+      Map<String, Set<String>> serviceIdsByType) {
     EntityRepository<? extends EntityInterface> repository =
         Entity.getEntityRepository(serviceEntityType);
     List<? extends EntityInterface> services =
@@ -246,7 +270,19 @@ public final class ServiceAttributeResolver {
             .add(serviceId);
       }
       indexEnvironment(service, serviceId, serviceIdsByEnvironment);
+      indexServiceType(service, serviceId, serviceIdsByType);
     }
+  }
+
+  private static void indexServiceType(
+      EntityInterface service, String serviceId, Map<String, Set<String>> serviceIdsByType) {
+    String serviceType = ServiceAttributeUtil.serviceTypeOf(service);
+    if (serviceType == null) {
+      return;
+    }
+    serviceIdsByType
+        .computeIfAbsent(normalize(serviceType), type -> new HashSet<>())
+        .add(serviceId);
   }
 
   /**

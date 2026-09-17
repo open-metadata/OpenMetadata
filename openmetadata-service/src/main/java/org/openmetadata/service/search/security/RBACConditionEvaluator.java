@@ -363,17 +363,31 @@ public class RBACConditionEvaluator {
   }
 
   /**
-   * {@code serviceType} is indexed on both the asset and the service document, so no resolution is
-   * needed and the service is covered by the same clause. Its mapping carries a lowercase
-   * normalizer, which is applied to the query term too — matching the case-insensitive comparison
-   * the REST evaluator makes.
+   * {@code serviceType} is indexed on most asset documents and on the service document, and its
+   * mapping carries a lowercase normalizer that is applied to the query term too — matching the
+   * case-insensitive comparison the REST evaluator makes.
+   *
+   * <p>It is not enough on its own. Six indexes — {@code ingestion_pipeline}, {@code query},
+   * {@code query_cost_record}, {@code test_case}, {@code test_case_result} and
+   * {@code test_case_resolution_status} — index {@code service} without {@code serviceType}, so a
+   * type-only clause would leave those documents visible under a Deny the REST path enforces. The
+   * resolved service ids are OR'd in to cover them; the two clauses are redundant everywhere else,
+   * which is harmless.
    */
   private void matchAnyServiceType(List<String> serviceTypes, ConditionCollector collector) {
     if (serviceTypes.isEmpty()) {
       collector.setMatchNothing(true);
       return;
     }
-    collector.addMust(queryBuilderFactory.termsQuery("serviceType", serviceTypes));
+    List<OMQueryBuilder> clauses = new ArrayList<>();
+    clauses.add(queryBuilderFactory.termsQuery("serviceType", serviceTypes));
+    Set<String> serviceIds = ServiceAttributeResolver.serviceIdsForTypes(serviceTypes);
+    if (!serviceIds.isEmpty()) {
+      List<String> ids = List.copyOf(serviceIds);
+      clauses.add(queryBuilderFactory.termsQuery("service.id", ids));
+      clauses.add(queryBuilderFactory.termsQuery("id.keyword", ids));
+    }
+    collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
   }
 
   public void matchAnyCertification(

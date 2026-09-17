@@ -5,6 +5,7 @@ public final class SharedResourceLocks {
   public static final String OPEN_LINEAGE_SETTINGS = "openLineageSettings";
   public static final String SEARCH_SETTINGS = "searchSettings";
   public static final String TABLE_COLUMN_CUSTOM_PROPERTIES = "customProperties:tableColumn";
+  public static final String TAG_PROPAGATION_SETTINGS = "tagPropagationSettings";
 
   private SharedResourceLocks() {}
 }

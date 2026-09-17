@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
@@ -27,6 +28,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.configuration.TagPropagationSettings;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -379,6 +381,109 @@ public class ServiceAttributePolicyIT {
                 .withColumns(List.of(COLUMN)));
   }
 
+  /**
+   * Issue #22095 ask 3: a tag on the service reaches its assets once propagation is switched on.
+   *
+   * <p>A table is the case that matters and the one most easily missed: {@code TableRepository}
+   * loads its parent itself rather than going through the generic inheritance path, so it decides
+   * for itself whether the parent is needed and which of its fields to project. The chain also has
+   * to be walked transitively — the tag is set on the service, and the table's parent is the schema
+   * two hops below it.
+   */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TAG_PROPAGATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void tagPropagation_carriesAServiceTagDownToItsTables(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_propagated", schema);
+      tagService(admin, service, HIDDEN_TAG);
+
+      boolean originalPropagation = setTagPropagation(admin, false);
+      cleanup.push(() -> setTagPropagationQuietly(admin, originalPropagation));
+
+      assertFalse(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "propagation is opt-in: with the setting off the service's tag must not appear");
+
+      setTagPropagation(admin, true);
+
+      assertTrue(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "a tags-only read has to walk service -> database -> schema -> table");
+      assertTrue(
+          tagFqnsOf(admin.databaseSchemas().get(schema.getId().toString(), TAGS_FIELD))
+              .contains(HIDDEN_TAG),
+          "the intermediate schema inherits it too, which is what makes the walk transitive");
+
+      setTagPropagation(admin, false);
+
+      assertFalse(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "switching propagation back off stops the API reporting the inherited tag");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  private static Set<String> tagFqnsOf(Table table) {
+    return tagFqns(table.getTags());
+  }
+
+  private static Set<String> tagFqnsOf(DatabaseSchema schema) {
+    return tagFqns(schema.getTags());
+  }
+
+  private static Set<String> tagFqns(List<TagLabel> tags) {
+    Set<String> fqns = new HashSet<>();
+    if (tags != null) {
+      tags.forEach(tag -> fqns.add(tag.getTagFQN()));
+    }
+    return fqns;
+  }
+
+  /** Returns the setting as it was, so the test can put it back. */
+  private boolean setTagPropagation(OpenMetadataClient admin, boolean enabled)
+      throws JsonProcessingException {
+    String settingsJson =
+        admin
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/settings/" + SettingsType.TAG_PROPAGATION_SETTINGS.value(),
+                null,
+                RequestOptions.builder().build());
+    Settings settings = MAPPER.readValue(settingsJson, Settings.class);
+    TagPropagationSettings config =
+        MAPPER.convertValue(settings.getConfigValue(), TagPropagationSettings.class);
+    boolean original = Boolean.TRUE.equals(config.getEnabled());
+    Settings updated =
+        new Settings()
+            .withConfigType(SettingsType.TAG_PROPAGATION_SETTINGS)
+            .withConfigValue(new TagPropagationSettings().withEnabled(enabled));
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings",
+            MAPPER.writeValueAsString(updated),
+            RequestOptions.builder().build());
+    return original;
+  }
+
+  private void setTagPropagationQuietly(OpenMetadataClient admin, boolean enabled) {
+    try {
+      setTagPropagation(admin, enabled);
+    } catch (OpenMetadataException | JsonProcessingException ignored) {
+      // Best-effort restore; the next test sets the value it needs rather than trusting this.
+    }
+  }
+
   private void tagService(OpenMetadataClient admin, DatabaseService service, String tagFqn) {
     DatabaseService fetched = admin.databaseServices().get(service.getId().toString(), TAGS_FIELD);
     List<TagLabel> tags =
@@ -500,8 +605,8 @@ public class ServiceAttributePolicyIT {
                 "/v1/system/settings/reset/" + SettingsType.SEARCH_SETTINGS.value(),
                 null,
                 RequestOptions.builder().build());
-      } catch (Exception ignored) {
-        // Best-effort restore.
+      } catch (OpenMetadataException ignored) {
+        // Best-effort restore: the next test re-reads the setting rather than trusting this.
       }
     }
   }
@@ -510,7 +615,7 @@ public class ServiceAttributePolicyIT {
     while (!cleanup.isEmpty()) {
       try {
         cleanup.pop().run();
-      } catch (Exception ignored) {
+      } catch (OpenMetadataException ignored) {
         // Best-effort teardown; concurrent namespaces keep tests isolated regardless.
       }
     }

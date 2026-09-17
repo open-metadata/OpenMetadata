@@ -540,19 +540,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(schema, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(schema, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && schema.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     Database database =
-        loadInheritanceParentLeniently(schema.getDatabase(), inheritanceFields, Database.class);
+        loadInheritanceParentLeniently(
+            schema.getDatabase(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            Database.class);
     if (database == null) {
       return;
     }
@@ -563,6 +563,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (needsRetention) {
       schema.withRetentionPeriod(database.getRetentionPeriod());
     }
+    // The database was loaded through the inheritance path, so its tags already carry the
+    // service's -- that is what makes propagation transitive down to tables.
+    inheritTags(schema, fields, database);
   }
 
   @Override
