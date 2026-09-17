@@ -21,6 +21,7 @@ jest.mock('../../../SwTokenStorageUtils', () => ({
   clearOidcToken: jest.fn(),
   getOidcToken: jest.fn(() => 'stale-token'),
   setOidcToken: jest.fn(),
+  setOidcTokenStrict: jest.fn(),
 }));
 
 jest.mock('../../../AuthProvider.util', () => ({
@@ -558,18 +559,61 @@ describe('AuthCoordinator', () => {
       coordinator.registerRenewer(async () => payload);
       // Default beforeEach already installs the leader-path mock;
       // just assert the side effects.
-      const { setOidcToken } = jest.requireMock('../../../SwTokenStorageUtils');
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      );
 
       await coordinator.ensureFreshToken();
 
       // Persist must happen before the broadcast so a sibling tab can't
       // read stale storage behind a fresh `done` (the CrossTabLock
       // P1 fix).
-      const setOrder = (setOidcToken as jest.Mock).mock.invocationCallOrder[0];
+      const setOrder = (setOidcTokenStrict as jest.Mock).mock
+        .invocationCallOrder[0];
       const notifyOrder = mockNotifyDone.mock.invocationCallOrder[0];
 
       expect(setOrder).toBeLessThan(notifyOrder);
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
+    });
+
+    // Greptile P1 (r4035047159): the previous impl used the fail-silent
+    // `setOidcToken`, which meant a broken storage layer (private-browsing
+    // IndexedDB, quota, SW crash) let the leader broadcast `done` with a
+    // payload no sibling tab could trust across a reload — followers
+    // accepted it in-memory, but the next cold-load read stale storage
+    // and re-triggered refresh (or bounced to sign-in if the refresh path
+    // itself also happened to be unhealthy at that moment). The strict
+    // variant now propagates the write error out of `publish`; the
+    // `try/catch` in `CrossTabLock.runExclusive` broadcasts `failed`
+    // instead, followers retry through the lock, and the coordinator
+    // emits `refresh-failed` for the downstream interceptor + queue.
+    it('publish-hook storage failure broadcasts failed and emits refresh-failed', async () => {
+      coordinator.registerRenewer(async () => ({
+        expiresAt: Date.now() + 300_000,
+        idToken: 'never-persisted',
+      }));
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      );
+      (setOidcTokenStrict as jest.Mock).mockRejectedValueOnce(
+        new Error('IndexedDB write failed')
+      );
+      const failures: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+
+      await expect(coordinator.ensureFreshToken()).rejects.toThrow(
+        /IndexedDB write failed/
+      );
+
+      // `notifyDone` must NOT fire when the persist fails — otherwise
+      // followers accept an unpersisted payload. `notifyFailed` fires
+      // instead via CrossTabLock's own try/catch (its postMessage runs
+      // through the `channel` on the lock instance, so this test's
+      // field-swap `mockNotifyFailed` doesn't observe it directly; the
+      // observable is `notifyDone` staying uncalled + `refresh-failed`
+      // bus event with the storage-error reason).
+      expect(mockNotifyDone).not.toHaveBeenCalled();
+      expect(failures).toEqual([{ reason: 'IndexedDB write failed' }]);
     });
   });
 

@@ -207,6 +207,24 @@ export const setOidcToken = async (token: string): Promise<void> => {
   }
 };
 
+// Strict variant that surfaces storage failures instead of swallowing them.
+// Used by AuthCoordinator's leader-path `publish` hook, where a silently
+// failed write would otherwise let the leader broadcast `done` with a
+// payload no sibling tab can trust across a reload — followers accept it
+// in-memory, but the next cold-load reads stale storage and re-triggers
+// refresh (or bounces to sign-in if the refresh path also happens to be
+// unhealthy at that point). Propagating the error lets the CrossTabLock's
+// `try/catch` in `runExclusive` broadcast `failed` instead, so followers
+// retry through the lock rather than trusting an unpersisted token.
+// Other callers (OidcAuthenticator.renewIdToken, Auth0Authenticator.
+// renewIdToken) still use the fail-silent `setOidcToken` — they own their
+// own recovery paths and don't participate in the leader/follower broadcast.
+export const setOidcTokenStrict = async (token: string): Promise<void> => {
+  const state = await getAppState();
+  state[OIDC_TOKEN_KEY] = token;
+  await setAppState(state);
+};
+
 export const getRefreshToken = async (): Promise<string> => {
   try {
     const state = await getAppState();

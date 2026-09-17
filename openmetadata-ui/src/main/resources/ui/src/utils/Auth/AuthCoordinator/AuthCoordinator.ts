@@ -16,7 +16,7 @@ import {
   EXPIRY_THRESHOLD_MILLES,
   extractDetailsFromToken,
 } from '../../AuthProvider.util';
-import { getOidcToken, setOidcToken } from '../../SwTokenStorageUtils';
+import { getOidcToken, setOidcTokenStrict } from '../../SwTokenStorageUtils';
 import { CrossTabLock, LockTimeoutError } from './CrossTabLock';
 import { TypedEventBus } from './eventBus';
 import { ProactiveTimer } from './ProactiveTimer';
@@ -287,8 +287,15 @@ export class AuthCoordinator {
         publish: async (result) => {
           // Persist BEFORE broadcasting so a sibling tab that immediately
           // reads storage can never observe the old expired token behind
-          // a fresh `done`.
-          await setOidcToken(result.idToken);
+          // a fresh `done`. Use the strict variant so a silent-write
+          // failure (private-browsing IndexedDB, quota, SW crash) throws
+          // out of `publish` — the try/catch in
+          // `CrossTabLock.runExclusive` then broadcasts `failed` under
+          // the same lock hold, and followers retry through the lock
+          // instead of trusting an unpersisted `done` payload the next
+          // cold-load would see stale storage behind. Greptile P1
+          // (r4035047159).
+          await setOidcTokenStrict(result.idToken);
           this.lock.notifyDone(result);
         },
       });
