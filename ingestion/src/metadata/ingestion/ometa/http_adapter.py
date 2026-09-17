@@ -34,9 +34,11 @@ def _socket_optname(name: str) -> int:
 
 def build_keepalive_socket_options() -> list[tuple[int, int, int | bytes]]:
     """TCP keepalive socket options, guarded for platform differences."""
-    options = list(HTTPConnection.default_socket_options) + [
-        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-    ]
+    # urllib3 2.8.0 types `default_socket_options` as `ClassVar[Final[...]]`, which PEP 591
+    # forbids, so checkers see a non-iterable bare `Final`. At runtime it is a plain list.
+    options: list[tuple[int, int, int | bytes]] = list(
+        HTTPConnection.default_socket_options  # pyright: ignore[reportArgumentType]
+    ) + [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
 
     if hasattr(socket, "TCP_KEEPIDLE"):
         options.append(
