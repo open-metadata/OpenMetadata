@@ -98,6 +98,17 @@ def test_reports_remain_on_prs_and_shards_enforce_queue_coverage():
     tests = next(step for step in shard_steps if step.get("id") == "run-tests")
     assert not tests.get("continue-on-error", False)
     assert 'exit "$test_exit"' in tests["run"]
+    # A merge group may not carry an unconditional upload -- a green queue run
+    # should cost no artifact storage. It must, however, be able to leave
+    # evidence behind when it breaks: the queue rebases onto a moving target, so
+    # re-running the failure locally is a different SHA with different
+    # neighbouring changes, and without an artifact the only record of a 2am
+    # break is terminal output in a log that expires. So failure-gated uploads
+    # are allowed for merge groups; `always()` ones are not.
     for step in shard_steps:
-        if step.get("uses", "").startswith("actions/upload-artifact"):
-            assert "github.event_name != 'merge_group'" in step["if"], step["name"]
+        if not step.get("uses", "").startswith("actions/upload-artifact"):
+            continue
+        condition = step["if"]
+        if "github.event_name != 'merge_group'" in condition:
+            continue
+        assert "failure()" in condition, step["name"]

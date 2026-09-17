@@ -797,6 +797,11 @@ jobs:
         # once, before fan-out, with the real compiled components and browser.
         run: |
           core_dir="openmetadata-ui-core-components/src/main/resources/ui"
+          # The workspace is mounted read-only and /tmp is a tmpfs in a --rm
+          # container, so anything written to either dies with the container.
+          # Give the run one writable mount and point Playwright's output at it,
+          # otherwise a failure here is a single line of `list` output.
+          mkdir -p "$RUNNER_TEMP/browser-helper-results"
           docker run --rm --network none --read-only --shm-size=1g \
             --cap-drop ALL --security-opt no-new-privileges \
             --user "$(id -u):$(id -g)" \
@@ -804,11 +809,25 @@ jobs:
             --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
             --mount "type=bind,source=$RUNNER_TEMP/playwright-core/node_modules,target=/workspace/$core_dir/node_modules,readonly" \
             --mount "type=bind,source=$RUNNER_TEMP/playwright-core/dist,target=/workspace/$core_dir/dist,readonly" \
+            --mount "type=bind,source=$RUNNER_TEMP/browser-helper-results,target=/artifacts" \
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
+            --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
             ./node_modules/.bin/playwright test \
-            --config=playwright/browser-helper-tests.config.ts --output=/tmp/browser-helper-results
+            --config=playwright/browser-helper-tests.config.ts --output=/artifacts
+
+      - name: Upload browser helper failure diagnostics
+        uses: actions/upload-artifact@v6
+        # Failure-only, so a green run uploads nothing. Without this the traces
+        # and results.json the container just wrote are discarded with it.
+        if: ${{ !inputs.ref && (failure() || cancelled()) }}
+        continue-on-error: true
+        with:
+          name: playwright-browser-helper-results
+          path: ${{ runner.temp }}/browser-helper-results
+          retention-days: 5
+          if-no-files-found: ignore
 
       - name: Discover tests
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -1867,7 +1886,7 @@ jobs:
 
       - name: Upload failure-only test results
         uses: actions/upload-artifact@v6
-        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
+        if: ${{ failure() || cancelled() }}
         continue-on-error: true
         with:
           name: playwright-test-results-${{ matrix.shardId }}
@@ -1893,7 +1912,11 @@ jobs:
       - name: Upload results JSON for summary
         id: upload-results-json
         uses: actions/upload-artifact@v6
-        if: ${{ always() && github.event_name != 'merge_group' }}
+        # PR runs publish this unconditionally because the summary job consumes
+        # it. Merge groups publish it only on failure: the summary does not read
+        # it there, and results.json is the one machine-readable record of which
+        # test broke the queue.
+        if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) }}
         # Preserve the shard's test outcome when transport fails. The summary
         # still fails closed if complete, valid execution evidence is unavailable.
         continue-on-error: true
@@ -1907,7 +1930,7 @@ jobs:
           if-no-files-found: error
 
       - name: Collect failure diagnostics
-        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
+        if: ${{ failure() || cancelled() }}
         continue-on-error: true
         run: |
           DIAGNOSTICS_DIR="${RUNNER_TEMP}/playwright-ci-diagnostics"
@@ -1948,7 +1971,7 @@ jobs:
 
       - name: Upload failure diagnostics
         uses: actions/upload-artifact@v6
-        if: ${{ github.event_name != 'merge_group' && (failure() || cancelled()) }}
+        if: ${{ failure() || cancelled() }}
         continue-on-error: true
         with:
           name: playwright-ci-diagnostics-${{ matrix.shardId }}

@@ -12,11 +12,34 @@
  */
 import { defineConfig } from '@playwright/test';
 
+/**
+ * Where this lane may write.
+ *
+ * CI runs these in a container that mounts the workspace read-only, so nothing
+ * can be written next to the config -- not a trace, not a report. The workflow
+ * bind-mounts a writable directory and names it here; locally the default is a
+ * gitignored folder beside the tests.
+ */
+const outputDir =
+  process.env.PW_BROWSER_HELPER_OUTPUT ?? './output/browser-helper-results';
+
 export default defineConfig({
   captureGitInfo: { commit: false, diff: false },
   testDir: './browser-tests',
   retries: 0,
   workers: 3,
   fullyParallel: true,
-  reporter: 'list',
+  outputDir,
+  use: {
+    /* Failure-only, so a green run writes nothing. Without these a failure in
+     * this lane is a single line of `list` output and the container is gone. */
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
+  reporter: [
+    ['list'],
+    /* Machine-readable failures, for the same reason the main config always
+     * keeps a json reporter: stdout scrolls, `results.json` names the test. */
+    ['json', { outputFile: `${outputDir}/results.json` }],
+  ],
 });

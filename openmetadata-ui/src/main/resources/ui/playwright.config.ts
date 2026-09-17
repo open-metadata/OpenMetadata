@@ -187,7 +187,7 @@ const reporters: ReporterDescription[] = [
     {
       useDetails: true,
       showError: true,
-      showArtifactsLink: !isMergeGroup,
+      showArtifactsLink: true,
     },
   ],
   ...blobReporter,
@@ -231,9 +231,15 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
-    /* PRs retain first-failure diagnostics; merge groups verify results locally. */
-    trace: isMergeGroup ? 'off' : 'retain-on-failure',
-    screenshot: isMergeGroup ? 'off' : 'only-on-failure',
+    /* Both are failure-only, so they cost nothing on a green run and exist
+     * exactly when something has to be explained. That matters most in the
+     * merge queue, which rebases onto a moving target: a local rerun is a
+     * different SHA with different neighbouring changes, so "reproduce it
+     * locally" is not a debugging path for a 2am queue break. The bulky
+     * always-on artifacts (html, blob) stay off for merge groups -- see
+     * htmlReporter/blobReporter above. */
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.
      * This ensures page.goto() and waitForLoadState() calls timeout after 60s
@@ -343,7 +349,7 @@ export default defineConfig({
       ],
       use: {
         ...devices['Desktop Chrome'],
-        trace: isMergeGroup ? 'off' : 'retain-on-failure',
+        trace: 'retain-on-failure',
       },
       fullyParallel: false,
       workers: 1,
