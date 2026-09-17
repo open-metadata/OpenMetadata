@@ -280,6 +280,7 @@ export const navigateToArticles = async (page: Page) => {
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
 
 export const navigateToDocuments = async (page: Page) => {

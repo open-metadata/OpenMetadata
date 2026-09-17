@@ -45,7 +45,6 @@ import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
@@ -684,11 +683,7 @@ class AdvancedSearchClassBase {
   public getInitialConfigWithoutFields = (
     modes: QueryBuilderConfigModes = {}
   ) => {
-    const {
-      showLabels = true,
-      useFriendlyOperatorLabels = false,
-      renderButton = renderAdvanceSearchButtons,
-    } = modes;
+    const { showLabels = true, useFriendlyOperatorLabels = false } = modes;
 
     const initialConfigWithoutFields: BasicConfig = {
       ...this.baseConfig,
@@ -741,7 +736,6 @@ class AdvancedSearchClassBase {
         removeEmptyGroupsOnLoad: false,
         setOpOnChangeField: ['none'],
         defaultField: EntityFields.OWNERS,
-        renderButton,
 
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,

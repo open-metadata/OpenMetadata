@@ -469,6 +469,14 @@ const handlePropertyValueInput = async (
   // already focused picker need not issue another request.
   await inputElement.click();
 
+  // An entity-reference picker fetches its options, so the list has to arrive
+  // before anything is typed into the box (from main).
+  if (isEntityRefProperty) {
+    await expect(
+      page.locator('[role="listbox"]:visible').getByRole('option')
+    ).not.toHaveCount(0);
+  }
+
   await fillPropertyValue(inputElement, stringValue);
 
   if (MULTISELECT_OPERATORS.includes(operator)) {

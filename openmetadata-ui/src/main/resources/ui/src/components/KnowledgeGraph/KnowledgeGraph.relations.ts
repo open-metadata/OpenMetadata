@@ -172,6 +172,7 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   wasderivedfrom: 'lineage',
   wasgeneratedby: 'lineage',
   used: 'lineage',
+  hascolumnlineage: 'lineage',
 
   // structure — containment / composition of the physical catalogue
   hascolumn: 'structure',
@@ -184,6 +185,16 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   hasschema: 'structure',
   hastable: 'structure',
   haschart: 'structure',
+  haschild: 'structure',
+  hasparent: 'structure',
+  hasdashboard: 'structure',
+  haspipeline: 'structure',
+  hastopic: 'structure',
+  hascontainer: 'structure',
+  hasmodel: 'structure',
+  hasstoredprocedure: 'structure',
+  hasindex: 'structure',
+  hasworksheet: 'structure',
 
   // ownership — people and teams
   ownedby: 'ownership',
@@ -198,7 +209,13 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   memberof: 'ownership',
   hasmember: 'ownership',
   expert: 'ownership',
+  hasexpert: 'ownership',
   reviewer: 'ownership',
+  hasreviewer: 'ownership',
+  reviews: 'ownership',
+  owns: 'ownership',
+  assignedto: 'ownership',
+  editedby: 'ownership',
 
   // governance — domains, products, tags, contracts
   partofdomain: 'governance',
@@ -217,9 +234,24 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   hastier: 'governance',
   hascertification: 'governance',
   certifiedas: 'governance',
+  belongstodomain: 'governance',
+  hassubdomain: 'governance',
 
+  // Social and activity relations: deliberately their own catch-all family so
+  // the ownership filter stays "who is accountable", not "who is watching".
+  // `follows` is the inverse of `hasFollower` and must land in the same family,
+  // or half of a follow pair disappears when the user filters by family.
   hasfollower: 'other',
   followedby: 'other',
+  follows: 'other',
+  isabout: 'other',
+  addressedto: 'other',
+  repliedto: 'other',
+  reactedto: 'other',
+  voted: 'other',
+  appliedto: 'other',
+  joinedwith: 'other',
+  defaultsto: 'other',
 
   // ontology — business meaning
   mappedto: 'ontology',
@@ -228,6 +260,7 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   parentof: 'ontology',
   childof: 'ontology',
   relatedto: 'ontology',
+  relatesto: 'ontology',
   related: 'ontology',
   isrelatedto: 'ontology',
   isa: 'ontology',
@@ -239,8 +272,6 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   narrower: 'ontology',
   broadernarrower: 'ontology',
   seealso: 'ontology',
-  mentionedin: 'ontology',
-  mentions: 'ontology',
 
   // quality — tests and their verdicts
   hastestcase: 'quality',
@@ -249,6 +280,8 @@ const CATEGORY_BY_PREDICATE: Record<string, RelationCategory> = {
   testsuite: 'quality',
   validates: 'quality',
   hasincident: 'quality',
+  testedby: 'quality',
+  hastestdefinition: 'quality',
 };
 
 /** Entity types that make an otherwise-unknown predicate a business relation. */

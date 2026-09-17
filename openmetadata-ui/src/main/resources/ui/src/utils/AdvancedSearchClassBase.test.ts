@@ -23,7 +23,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
-import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
@@ -46,9 +45,7 @@ jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('./AdvancedSearchPureUtils', () => ({
-  getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
-}));
+jest.mock('./AdvancedSearchPureUtils', () => ({}));
 
 describe('autocomplete request ordering', () => {
   type AggregateResponse = Awaited<ReturnType<typeof getAggregateFieldOptions>>;
@@ -532,8 +529,6 @@ describe('configOperators', () => {
 describe('getCustomPropertiesSubFields', () => {
   let advancedSearchClassBase: AdvancedSearchClassBase;
   const mockGetEntityName = getEntityName as jest.Mock;
-  const mockGetCustomPropertyAdvanceSearchEnumOptions =
-    getCustomPropertyAdvanceSearchEnumOptions as jest.Mock;
 
   beforeEach(() => {
     advancedSearchClassBase = new AdvancedSearchClassBase();
@@ -560,9 +555,6 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(mockGetEntityName).toHaveBeenCalledWith(mockField);
-    expect(
-      mockGetCustomPropertyAdvanceSearchEnumOptions
-    ).not.toHaveBeenCalled();
 
     expect(result).toEqual({
       subfieldsKey: 'statusField.keyword',
@@ -1099,10 +1091,6 @@ describe('getCustomPropertiesSubFields', () => {
             },
           },
         });
-
-        expect(
-          mockGetCustomPropertyAdvanceSearchEnumOptions
-        ).not.toHaveBeenCalled();
       });
 
       it('should use asyncFetch with base field name for enum type with JSONLogic output', () => {
@@ -1138,10 +1126,6 @@ describe('getCustomPropertiesSubFields', () => {
             },
           },
         });
-
-        expect(
-          mockGetCustomPropertyAdvanceSearchEnumOptions
-        ).not.toHaveBeenCalled();
       });
     });
 

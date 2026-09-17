@@ -226,10 +226,8 @@ test('should show correct count for tier filter options from aggregation', async
 
   for (const bucket of buckets) {
     await expect(
-      page
-        .locator(`[data-menu-id$="-${bucket.key}"]`)
-        .getByTestId('filter-count')
-    ).toHaveText(bucket.doc_count.toString());
+      page.getByTestId(bucket.key).getByTestId('filter-count')
+    ).toHaveText(bucket.doc_count.toLocaleString());
   }
 
   await clickOutside(page);
@@ -275,9 +273,8 @@ test('should filter assets by data product', async ({ page }) => {
   await clickUpdateButtonIfVisible(page);
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByTestId(`search-dropdown-${filter.label}`)
-  ).toContainText('(1)');
+  // The selection count renders as a badge beside the label now.
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
   await expect(
     page.getByTestId(
@@ -307,17 +304,19 @@ test('should persist quick filter on global search', async ({ page }) => {
   await clickOutside(page);
 
   // expect the quick filter to be persisted
-  await expect(
-    page.getByRole('button', { name: 'Owners : (1)' })
-  ).toBeVisible();
+  // The trigger shows its label with the selection count in a sibling badge,
+  // rather than spelling it out as "Owners : (1)".
+  await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
   await page.getByTestId('searchBox').click();
   await page.keyboard.down('Enter');
 
   // expect the quick filter to be persisted
-  await expect(
-    page.getByRole('button', { name: 'Owners : (1)' })
-  ).toBeVisible();
+  // The trigger shows its label with the selection count in a sibling badge,
+  // rather than spelling it out as "Owners : (1)".
+  await expect(page.getByTestId('search-dropdown-Owners')).toBeVisible();
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 });
 
 test('Filter by column entity type shows only column results', async ({
@@ -327,7 +326,9 @@ test('Filter by column entity type shows only column results', async ({
 
   await page.getByRole('button', { name: 'Data Assets' }).click();
 
-  const columnCheckbox = page.getByTestId('tablecolumn-checkbox');
+  const columnRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('tablecolumn');
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
@@ -340,7 +341,7 @@ test('Filter by column entity type shows only column results', async ({
 
   await dataAssetDropdownRequest;
 
-  await columnCheckbox.check();
+  await columnRow.click();
 
   const updateButton = page.getByTestId('update-btn');
   if (await updateButton.isVisible().catch(() => false)) {
@@ -348,11 +349,11 @@ test('Filter by column entity type shows only column results', async ({
     await updateButton.click();
     await page.getByTestId('search-dropdown-Data Assets').click();
   }
-  // Immediate-apply leaves the dropdown open with the box already checked.
-  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
-  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
-    '(1)'
-  );
+  // Immediate-apply leaves the dropdown open with the row already selected.
+  await expect(
+    page.getByTestId('drop-down-menu').getByTestId('tablecolumn')
+  ).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 });
 
 test.describe('Tier filter - aggregation-based options', () => {
@@ -419,10 +420,8 @@ test.describe('Tier filter - aggregation-based options', () => {
         .getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
         .click();
       await expect(
-        page.getByTestId(
-          `${tier.responseData.fullyQualifiedName.toLowerCase()}-checkbox`
-        )
-      ).toBeChecked();
+        page.getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+      ).toHaveAttribute('aria-checked', 'true');
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {

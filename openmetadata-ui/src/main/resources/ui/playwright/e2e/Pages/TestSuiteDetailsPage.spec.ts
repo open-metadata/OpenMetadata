@@ -14,7 +14,7 @@ import { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import {
-  addTestCaseListFilterByFirstColumnInAddTestCasesDialog,
+  addTestCaseListFilterByColumnInAddTestCasesDialog,
   addTestCaseListFilterByStatusInAddTestCasesDialog,
   addTestCaseListFilterByTableInAddTestCasesDialog,
   addTestCaseListFilterByTestTypeInAddTestCasesDialog,
@@ -50,7 +50,7 @@ test.beforeEach(async ({ page }) => {
 
 test(
   'Add test case modal on Test Suite details page - filters and select',
-  { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] },
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
   async ({ page }) => {
     test.slow();
 
@@ -179,13 +179,17 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumnInAddTestCasesDialog(page);
+      await addTestCaseListFilterByColumnInAddTestCasesDialog(
+        page,
+        table.columnsName[0]
+      );
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFiltersInAddTestCasesDialog(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 

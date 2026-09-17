@@ -264,8 +264,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       );
 
       await page.getByRole('button', { name: 'Asset Type' }).click();
-      await page.getByRole('menuitem', { name: 'Table' }).click();
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Table' }).click();
+      await page.getByTestId('update-btn').click();
 
       const apiRequest = await apiCallPromise;
       expect(apiRequest.url()).toContain('entityTypes=table');

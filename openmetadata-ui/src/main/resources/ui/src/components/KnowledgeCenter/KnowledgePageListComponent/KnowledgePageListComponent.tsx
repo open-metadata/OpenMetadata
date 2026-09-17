@@ -79,7 +79,7 @@ interface KnowledgePageListComponentProps {
 
 /** The listing's loading placeholder — four skeleton knowledge cards. */
 const KnowledgePageListSkeleton = () => (
-  <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
+  <Row data-testid="knowledge-page-skeleton" gutter={[0, 56]}>
     {Array.from({ length: 4 }).map(() => (
       <Col className="knowledge-card-col" key={uniqueId()} span={24}>
         <Row gutter={[16, 16]}>

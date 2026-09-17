@@ -22,7 +22,6 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
@@ -42,7 +41,6 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { entityRules } = useEntityRules(EntityType.TABLE);
   // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
   // off `permission` — canEditOwners/canEditDescription/canEditTags already
@@ -126,8 +124,7 @@ const TableQueryRightPanel = ({
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={toOwnersWithHref(query.owners)}
-                renderOwnerContent={renderOwnerContent}
+                owners={query.owners}
                 showLabel={false}
               />
             </ExpandableCard>

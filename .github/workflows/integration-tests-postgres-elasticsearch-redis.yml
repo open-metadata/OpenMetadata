@@ -135,7 +135,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies
@@ -155,7 +155,7 @@ jobs:
       - name: Build and Bundle Integration Test Runtime
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           project_version="$(mvn --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
@@ -241,7 +241,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven dependencies

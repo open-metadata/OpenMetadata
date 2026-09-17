@@ -847,7 +847,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${tier}-checkbox`);
+      const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
@@ -870,7 +870,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
         .getByTestId('drop-down-menu')
         .getByTestId('search-input')
         .fill(searchTerm);
-      await page.getByRole('menuitem', { name: tagPattern }).click();
+      await page.getByRole('menuitemcheckbox', { name: tagPattern }).click();
       const filterRes = page.waitForResponse(
         '/api/v1/search/query?*index=all*'
       );
@@ -887,7 +887,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${entityType}-checkbox`);
+      const checkbox = page
+        .getByTestId('drop-down-menu')
+        .getByTestId(entityType);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(

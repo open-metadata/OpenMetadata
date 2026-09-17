@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Category, Type } from '../../../../generated/entity/type';
@@ -45,19 +46,18 @@ const tableType: Type = {
 const invalidNameMessage = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;
 const i18n = createInstance();
 
-const renderForm = () => {
+const renderForm = (element = <AddCustomProperty open />) => {
   render(
-    <I18nextProvider i18n={i18n}>
-      <MemoryRouter initialEntries={['/properties', '/properties/table/add']}>
-        <Routes>
-          <Route element={<div>Custom properties</div>} path="/properties" />
-          <Route
-            element={<AddCustomProperty open />}
-            path="/properties/:entityType/add"
-          />
-        </Routes>
-      </MemoryRouter>
-    </I18nextProvider>
+    <HelmetProvider>
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={['/properties', '/properties/table/add']}>
+          <Routes>
+            <Route element={<div>Custom properties</div>} path="/properties" />
+            <Route element={element} path="/properties/:entityType/add" />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>
+    </HelmetProvider>
   );
 };
 
@@ -215,6 +215,18 @@ describe('AddCustomProperty form validation', () => {
     renderForm();
 
     await user.click(screen.getByTestId('cancel-button'));
+
+    expect(await screen.findByText('Custom properties')).toBeVisible();
+    expect(addPropertyToEntity).not.toHaveBeenCalled();
+  });
+
+  // Omitting `open` renders the page layout, which has its own footer
+  // (back-button) instead of the drawer's cancel-button.
+  it('goes back without saving from the page layout', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderForm(<AddCustomProperty />);
+
+    await user.click(screen.getByTestId('back-button'));
 
     expect(await screen.findByText('Custom properties')).toBeVisible();
     expect(addPropertyToEntity).not.toHaveBeenCalled();
