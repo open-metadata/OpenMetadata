@@ -19,7 +19,9 @@ import {
   annotateGraphCoverage,
   buildGraphPresentation,
   filterGraphPresentation,
+  getGroupMemberLabelKey,
   getMappingCoverage,
+  getSharedMemberType,
   restrictToEntityLevel,
 } from './knowledgeGraphPresentation.utils';
 
@@ -671,4 +673,314 @@ describe('concept docking', () => {
     expect(side('tag')).toBe('right');
     expect(side('term')).toBe('right');
   });
+});
+
+describe('relationship bundling', () => {
+  const asset: GraphNode = { id: 'root', label: 'customers', type: 'table' };
+  const scenefor = (data: GraphData, rootId = 'root') =>
+    buildGraphPresentation(data, data, rootId, 'balanced', []).data;
+  const bundleOf = (scene: GraphData) => {
+    const group = scene.nodes.find((node) => node.presentation?.members);
+
+    return { group, members: requirePresentation(group).members ?? [] };
+  };
+
+  it('bundles a repeated concept fan instead of stacking one label per term', () => {
+    const terms = Array.from({ length: 5 }, (_, index) => ({
+      id: 'term' + index,
+      label: 'Term ' + index,
+      type: 'glossaryTerm',
+    }));
+    const data: GraphData = {
+      nodes: [asset, ...terms],
+      edges: terms.flatMap((term) => [
+        {
+          from: 'root',
+          to: term.id,
+          label: 'Has glossary term',
+          relationType: 'hasGlossaryTerm',
+        },
+        { from: 'root', to: term.id, label: 'Has tag', relationType: 'hasTag' },
+      ]),
+    };
+    const scene = scenefor(data);
+    const { group, members } = bundleOf(scene);
+
+    expect(members).toHaveLength(5);
+    expect(group?.type).toBe('glossaryTerm');
+    expect(getSharedMemberType(members)).toBe('glossaryTerm');
+    expect(getGroupMemberLabelKey(members, group?.type ?? '')).toBe(
+      'label.glossary-term-plural'
+    );
+    expect(scene.nodes).toHaveLength(2);
+    expect(
+      scene.edges.map((item) => [item.label, item.members?.length])
+    ).toEqual([
+      ['Has glossary term', 5],
+      ['Has tag', 5],
+    ]);
+    expect(scene.edges.flatMap((item) => item.members ?? [item])).toHaveLength(
+      10
+    );
+  });
+
+  it('keeps neighbouring concepts individual around a concept root', () => {
+    const concepts = Array.from({ length: 5 }, (_, index) => ({
+      id: 'concept' + index,
+      label: 'Concept ' + index,
+      type: 'glossaryTerm',
+    }));
+    const data: GraphData = {
+      nodes: [
+        { id: 'root', label: 'Customer', type: 'glossaryTerm' },
+        ...concepts,
+      ],
+      edges: concepts.map((concept) => edge('root', concept.id, 'isRelatedTo')),
+    };
+    const scene = scenefor(data);
+
+    expect(scene.nodes.filter((node) => node.presentation?.members)).toEqual(
+      []
+    );
+    expect(scene.nodes).toHaveLength(6);
+    expect(scene.edges).toHaveLength(5);
+  });
+
+  it('bundles a pair of owners that arrive as a user and a team', () => {
+    const data: GraphData = {
+      nodes: [
+        asset,
+        { id: 'finance', label: 'Finance', type: 'team' },
+        { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+      ],
+      edges: [
+        { from: 'finance', to: 'root', label: 'Owns', relationType: 'owns' },
+        { from: 'pere', to: 'root', label: 'Owns', relationType: 'owns' },
+      ],
+    };
+    const scene = scenefor(data);
+    const { group, members } = bundleOf(scene);
+
+    expect(members.map((member) => member.label)).toEqual([
+      'Finance',
+      'Pere Miquel Brull',
+    ]);
+    expect(getSharedMemberType(members)).toBeUndefined();
+    expect(getGroupMemberLabelKey(members, group?.type ?? '')).toBe(
+      'label.people'
+    );
+    expect(
+      scene.edges.map((item) => [item.label, item.members?.length])
+    ).toEqual([['Owns', 2]]);
+  });
+
+  it('names a lineage bundle after its family when it mixes asset types', () => {
+    const data: GraphData = {
+      nodes: [
+        asset,
+        { id: 'accounts', label: 'AccountsModel', type: 'dashboardDataModel' },
+        { id: 'sales', label: 'sales_datamart', type: 'dashboardDataModel' },
+        { id: 'view', label: 'new_view', type: 'table' },
+      ],
+      edges: ['accounts', 'sales', 'view'].map((id) => ({
+        from: 'root',
+        to: id,
+        label: 'Downstream',
+        relationType: 'downstream',
+      })),
+    };
+    const scene = scenefor(data);
+    const { group, members } = bundleOf(scene);
+
+    expect(members).toHaveLength(3);
+    expect(group?.type).toBe('dashboardDataModel');
+    expect(getSharedMemberType(members)).toBeUndefined();
+    expect(getGroupMemberLabelKey(members, group?.type ?? '')).toBe(
+      'label.data-asset-plural'
+    );
+    expect(
+      scene.edges.map((item) => [item.label, item.members?.length])
+    ).toEqual([['Downstream', 3]]);
+  });
+
+  it('bundles a pair of tags while tier keeps its own card', () => {
+    const data: GraphData = {
+      nodes: [
+        asset,
+        { id: 'person', label: 'Person', type: 'tag' },
+        { id: 'channels', label: 'Channels', type: 'tag' },
+        { id: 'tier', label: 'Tier4', type: 'tag' },
+      ],
+      edges: [
+        ...['person', 'channels', 'tier'].map((id) => ({
+          from: 'root',
+          to: id,
+          label: 'Has tag',
+          relationType: 'hasTag',
+        })),
+        {
+          from: 'root',
+          to: 'tier',
+          label: 'Has tier',
+          relationType: 'hasTier',
+        },
+      ],
+    };
+    const scene = scenefor(data);
+    const { members } = bundleOf(scene);
+
+    expect(members.map((member) => member.label)).toEqual([
+      'Channels',
+      'Person',
+    ]);
+    expect(scene.nodes.some((node) => node.id === 'tier')).toBe(true);
+    expect(
+      scene.edges.map((item) => [item.label, (item.members ?? [item]).length])
+    ).toEqual([
+      ['Has tag', 2],
+      ['Has tag', 1],
+      ['Has tier', 1],
+    ]);
+  });
+
+  it('never bundles neighbours of unrelated families reached by one predicate', () => {
+    const data: GraphData = {
+      nodes: [
+        asset,
+        { id: 'contract', label: 'Customers DC', type: 'dataContract' },
+        { id: 'suite', label: 'Quality checks', type: 'testSuite' },
+      ],
+      edges: ['contract', 'suite'].map((id) => edge('root', id, 'contains')),
+    };
+    const scene = scenefor(data);
+
+    expect(scene.nodes.filter((node) => node.presentation?.members)).toEqual(
+      []
+    );
+    expect(scene.nodes).toHaveLength(3);
+  });
+});
+
+/**
+ * Every entity type the RDF graph endpoint can return as a neighbour. A bundle
+ * of them is a count plus a noun, so the noun has to be plural —
+ * `getPluralizeEntityName` answers with the singular for most of these, which
+ * is why bundles resolve their own label first.
+ */
+describe('bundle naming across the returned entity types', () => {
+  const graphTypes = [
+    'table',
+    'column',
+    'dashboard',
+    'dashboardDataModel',
+    'chart',
+    'pipeline',
+    'topic',
+    'container',
+    'searchIndex',
+    'mlmodel',
+    'apiEndpoint',
+    'apiCollection',
+    'metric',
+    'storedProcedure',
+    'spreadsheet',
+    'worksheet',
+    'directory',
+    'file',
+    'database',
+    'databaseSchema',
+    'databaseService',
+    'dashboardService',
+    'messagingService',
+    'pipelineService',
+    'storageService',
+    'mlmodelService',
+    'metadataService',
+    'searchService',
+    'apiService',
+    'driveService',
+    'user',
+    'team',
+    'role',
+    'policy',
+    'persona',
+    'bot',
+    'domain',
+    'dataProduct',
+    'dataContract',
+    'tag',
+    'classification',
+    'certification',
+    'glossaryTerm',
+    'glossary',
+    'term',
+    'concept',
+    'property',
+    'testCase',
+    'testSuite',
+    'testDefinition',
+    'task',
+    'query',
+    'page',
+    'document',
+    'contextMemory',
+  ];
+
+  it.each(graphTypes)('names a bundle of %s in the plural', (type) => {
+    const members = [
+      { id: 'a', label: 'a', type },
+      { id: 'b', label: 'b', type },
+    ];
+
+    expect(getGroupMemberLabelKey(members, type)).toMatch(/-plural$/);
+  });
+});
+
+it('puts a person who both owns and follows the entity on the ownership bundle', () => {
+  const followers = ['Ram', 'admin', 'Karthick Sharan', 'harsha'];
+  const data: GraphData = {
+    nodes: [
+      { id: 'root', label: 'customers', type: 'table' },
+      ...[...followers, 'Pere Miquel Brull'].map((label) => ({
+        id: 'user:' + label,
+        label,
+        type: 'user',
+      })),
+      { id: 'team:Finance', label: 'Finance', type: 'team' },
+    ],
+    edges: [
+      ...followers.flatMap((label) => [
+        {
+          from: 'root',
+          to: 'user:' + label,
+          label: 'Has follower',
+          relationType: 'hasFollower',
+        },
+        {
+          from: 'user:' + label,
+          to: 'root',
+          label: 'Follows',
+          relationType: 'follows',
+        },
+      ]),
+      ...['team:Finance', 'user:Pere Miquel Brull', 'user:Karthick Sharan'].map(
+        (from) => ({ from, to: 'root', label: 'Owns', relationType: 'owns' })
+      ),
+    ],
+  };
+  const scene = buildGraphPresentation(data, data, 'root', 'balanced', []).data;
+  const bundle = (predicate: string) =>
+    scene.nodes
+      .find((node) => node.presentation?.predicate === predicate)
+      ?.presentation?.members?.map((member) => member.label);
+
+  expect(bundle('Owns')).toEqual([
+    'Finance',
+    'Karthick Sharan',
+    'Pere Miquel Brull',
+  ]);
+  expect(bundle('Follows')).not.toContain('Karthick Sharan');
+  expect(scene.edges.flatMap((edge) => edge.members ?? [edge])).toHaveLength(
+    data.edges.length
+  );
 });

@@ -147,10 +147,17 @@ export const buildCreateTestDefinitionPayload = (
 const isNoopEmptyArray = (value: unknown, initialValue: unknown): boolean =>
   Array.isArray(value) && value.length === 0 && initialValue === undefined;
 
+const DIMENSION_PATH = '/dataQualityDimension';
+
+/**
+ * @param dimensionOnly Keep only the data quality dimension ops — the single field a system
+ * test definition accepts an edit on.
+ */
 export const buildEditPatch = (
   initialValues: TestDefinition,
   values: TestDefinitionFormValues,
-  dirtyFields: Partial<Record<keyof TestDefinitionFormValues, unknown>> = {}
+  dirtyFields: Partial<Record<keyof TestDefinitionFormValues, unknown>> = {},
+  dimensionOnly = false
 ): Operation[] => {
   const normalizedRaw: Record<string, unknown> = {
     name: values.name,
@@ -182,5 +189,9 @@ export const buildEditPatch = (
     }
   });
 
-  return compare(initialValues, merged);
+  const patch = compare(initialValues, merged);
+
+  return dimensionOnly
+    ? patch.filter((operation) => operation.path === DIMENSION_PATH)
+    : patch;
 };
