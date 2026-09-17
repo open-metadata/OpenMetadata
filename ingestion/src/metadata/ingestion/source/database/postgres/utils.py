@@ -526,8 +526,14 @@ def get_schema_names(self, connection, **kw):
 DEFAULT_QUERY_STATEMENT_SOURCE = "pg_stat_statements"
 # An optionally schema-qualified identifier. Deliberately narrower than Postgres
 # allows - no quoted identifiers - because every documented value fits this shape.
+# A bare identifier, or a double-quoted one - Postgres needs quoting for names that are
+# case-sensitive or contain spaces, and queryStatementSource is documented as a fully
+# qualified relation name, so those have to keep working. A quoted name cannot break out:
+# the closing quote must be followed by end-of-string or ".<part>", and "" is an escaped
+# quote, so the whole value stays a relation reference.
+_RELATION_PART = r'(?:[A-Za-z_][A-Za-z0-9_$]*|"(?:[^"]|"")+")'
 # Matched with fullmatch, not match: "$" would also accept a trailing newline.
-QUERY_STATEMENT_SOURCE_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*(\.[A-Za-z_][A-Za-z0-9_$]*)?")
+QUERY_STATEMENT_SOURCE_PATTERN = re.compile(rf"{_RELATION_PART}(?:\.{_RELATION_PART})?")
 
 
 def validate_query_statement_source(query_statement_source: str | None) -> str:

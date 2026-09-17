@@ -45,6 +45,21 @@ class TestValidateQueryStatementSource:
         assert validate_query_statement_source(relation) == relation
 
     @pytest.mark.parametrize(
+        "relation",
+        [
+            '"Audit Schema"."Query Log"',
+            '"MySchema"."QueryHistory"',
+            'history."select"',
+            '"quoted_only"',
+            '"has""escaped"',
+        ],
+    )
+    def test_quoted_identifiers_are_accepted(self, relation):
+        """Postgres needs quoting for case-sensitive or spaced names, and the field is
+        documented as a fully qualified relation name, so those must keep working."""
+        assert validate_query_statement_source(relation) == relation
+
+    @pytest.mark.parametrize(
         "payload",
         [
             "pg_stat_statements; DROP TABLE users--",
@@ -60,6 +75,11 @@ class TestValidateQueryStatementSource:
             # "$" in a regex also matches before a trailing newline, so this has to
             # be rejected by fullmatch rather than by anchoring.
             "pg_stat_statements\n",
+            # A quoted name must not be able to close its quote and continue.
+            '"x"; DROP TABLE y--',
+            '"unterminated',
+            '"a" OR 1=1',
+            '"a"."b"."c"',
         ],
     )
     def test_injection_payloads_are_rejected(self, payload):
