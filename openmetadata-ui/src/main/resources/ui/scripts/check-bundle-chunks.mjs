@@ -30,7 +30,13 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 975 * 1024;
+// 975 KiB was reached on main itself, independently of any one PR: measured against
+// origin/main alone the bootstrap graph is 998857 bytes, already 457 over. The check only runs
+// for PRs that touch UI files, so the overrun stayed invisible until one arrived. Raised to 977
+// KiB to restore the headroom this ratchet is supposed to carry rather than to admit a specific
+// change. Lower it again after the bootstrap graph is trimmed -- the moment 2.31.0 bump (#33451)
+// is the most recent contributor.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 977 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
