@@ -219,10 +219,40 @@ export const setOidcToken = async (token: string): Promise<void> => {
 // Other callers (OidcAuthenticator.renewIdToken, Auth0Authenticator.
 // renewIdToken) still use the fail-silent `setOidcToken` — they own their
 // own recovery paths and don't participate in the leader/follower broadcast.
+//
+// Deliberately bypasses `setAppState` — that helper has an outer catch-all
+// and an in-memory fallback (`inMemoryState`) that would let this function
+// resolve on any storage failure, defeating the whole point. "Strict" means:
+// if a sibling tab reloading right now would read stale storage, throw.
 export const setOidcTokenStrict = async (token: string): Promise<void> => {
   const state = await getAppState();
   state[OIDC_TOKEN_KEY] = token;
-  await setAppState(state);
+  const stateStr = JSON.stringify(state);
+
+  if (isServiceWorkerAvailable() && !swStorageBroken) {
+    try {
+      await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
+    } catch (error) {
+      // Mark broken so other callers stop paying the controller-wait
+      // timeout, then re-throw — the in-memory fallback doesn't survive
+      // reload, so a strict caller can't treat this as a success.
+      markSwStorageBroken(error);
+
+      throw error;
+    }
+
+    return;
+  }
+
+  if (swStorageBroken) {
+    throw new Error(
+      'Token storage service worker is unreachable — token cannot be persisted for cross-tab reload'
+    );
+  }
+
+  // Browsers without SW/IndexedDB fall back to localStorage; a quota /
+  // security-mode throw here is a real persistence failure — propagate it.
+  localStorage.setItem(APP_STATE_KEY, stateStr);
 };
 
 export const getRefreshToken = async (): Promise<string> => {

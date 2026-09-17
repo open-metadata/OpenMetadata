@@ -18,6 +18,7 @@ import {
   isServiceWorkerAvailable,
   resetSwTokenStorageState,
   setOidcToken,
+  setOidcTokenStrict,
   setRefreshToken,
 } from './SwTokenStorageUtils';
 
@@ -232,6 +233,86 @@ describe('SwTokenStorageUtils', () => {
       mockGetItem.mockRejectedValue(new Error('Service worker error'));
 
       await expect(setOidcToken('test-token')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('setOidcTokenStrict', () => {
+    // Greptile P1 r4037800527: `setAppState` swallows every write error and
+    // falls back to a module-level in-memory store, so the earlier
+    // "strict" variant that delegated through it silently resolved on
+    // broken IndexedDB / quota / SW crash — letting the CrossTabLock
+    // leader broadcast `done` with a payload no reload could recover.
+    // The strict path bypasses `setAppState` entirely; these tests pin
+    // the propagation contract each failure mode has to honour.
+    beforeEach(() => {
+      mockNavigator.serviceWorker = {};
+      (global.window as unknown as MockWindow).indexedDB = {};
+    });
+
+    it('writes through the service worker on the happy path', async () => {
+      const existing = JSON.stringify({ secondary: 'refresh-token' });
+      mockGetItem.mockResolvedValue(existing);
+      mockSetItem.mockResolvedValue(undefined);
+
+      await setOidcTokenStrict('leader-persisted');
+
+      expect(mockSetItem).toHaveBeenCalledWith(
+        'app_state',
+        JSON.stringify({ secondary: 'refresh-token', primary: 'leader-persisted' })
+      );
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('propagates a service-worker setItem rejection instead of falling back to memory', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      mockGetItem.mockResolvedValue(null);
+      const swFailure = new Error('IndexedDB write failed');
+      mockSetItem.mockRejectedValue(swFailure);
+
+      await expect(setOidcTokenStrict('never-persisted')).rejects.toBe(swFailure);
+      // Nothing may reach localStorage (SECURITY invariant preserved) and
+      // subsequent callers must see the SW as broken so they stop paying the
+      // controller-wait timeout — same side effect as the fail-silent path.
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('throws when the service worker has already been marked broken (in-memory does not survive reload)', async () => {
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(jest.fn());
+      // Trip the broken verdict via a fail-silent write so subsequent
+      // strict calls hit the swStorageBroken branch.
+      mockGetItem.mockResolvedValue(null);
+      mockSetItem.mockRejectedValueOnce(new Error('SW timeout'));
+      await setOidcToken('best-effort');
+      mockSetItem.mockClear();
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toThrow(
+        /service worker is unreachable/i
+      );
+      // Must not silently attempt the SW again — that's the whole point of
+      // the `swStorageBroken` short-circuit.
+      expect(mockSetItem).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('propagates a localStorage throw on the no-service-worker path', async () => {
+      delete mockNavigator.serviceWorker;
+      mockLocalStorage.getItem.mockReturnValue(null);
+      const quotaError = new Error('QuotaExceededError');
+      mockLocalStorage.setItem.mockImplementationOnce(() => {
+        throw quotaError;
+      });
+
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toBe(
+        quotaError
+      );
     });
   });
 
