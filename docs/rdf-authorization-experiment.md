@@ -76,7 +76,13 @@ The fixture: tables A, B, C and D, with `A om:upstream B`, `B om:upstream C`, `A
 | domain | `rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `dct:description`, `dct:modified`, `dcat:version`, `dct:hasVersion`, `om:domainType`, `om:entityStatus` | core → `VIEW_BASIC` on the **domain** resource | see "Scalar attribute evidence" |
 | table, domain | `om:isDeleted`, admitted only as `false` on a candidate | core → `VIEW_BASIC`, under the local non-deleted scope experiment (Finding 12) | [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md) |
 
-Approved `rdf:type` objects: `om:Table`, `om:Tag`, `om:Domain`, `om:Column`, `om:Extension`, `om:ExtensionProperty`, `dcat:Dataset`, `skos:Concept`, `skos:Collection`, `prov:Entity`.
+| table | `om:belongsToService`, `om:belongsToDatabase`, `om:belongsToSchema` | core → `VIEW_BASIC` on the table, **and** the container must be independently readable | see "Containment evidence" |
+| database service, database, database schema | `rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `dct:description`, `dct:modified`, `dcat:version`, `dct:hasVersion`, `om:entityStatus`, `om:isDeleted` | core → `VIEW_BASIC` on the container itself | see "Containment evidence" |
+| database, database schema | `om:hasServiceType`, `om:belongsToService`, and `om:belongsToDatabase` on a schema | core → `VIEW_BASIC` on the container, and the target must be independently readable | same |
+| database service | `om:serviceType` | core → `VIEW_BASIC` | same |
+| database, database schema | `om:contains` | `databaseSchemas` / `tables` → `VIEW_BASIC` on the container, and the child must be independently readable | `DatabaseResource:98-101`, `DatabaseSchemaResource:106-109` |
+
+Approved `rdf:type` objects: `om:Table`, `om:Tag`, `om:Domain`, `om:Column`, `om:Extension`, `om:ExtensionProperty`, `om:DatabaseService`, `om:Database`, `om:DatabaseSchema`, `dcat:Dataset`, `dcat:Catalog`, `dcat:DataService`, `skos:Concept`, `skos:Collection`, `prov:Entity`.
 
 ### Scalar attribute evidence
 
@@ -99,6 +105,24 @@ Open semantics, not resolved by this mapping:
 - **Explicitly requested fields:** a GET that names one of these fields in `fields=` asks `getViewOperations` for `VIEW_ALL`, because the resources do not register them. The mapping follows the default GET response instead.
 - **Deleted flag:** `om:isDeleted` (from `deleted`) is mapped only within the local non-deleted scope experiment (Finding 12), not as a production decision.
 - **Deferred:** `om:childrenCount` stays unmapped because `DomainRepository.clearFields` returns it only when requested.
+
+### Containment evidence
+
+Context routing sends tables, databases and schemas to `dataAsset-complete` and services to `service` (`RdfContextRegistry.contextNameFor:19-52`).
+
+| Predicate | Subject | Source field | On a default GET? | Operation REST needs | REST authorizes the target? |
+| --- | --- | --- | --- | --- | --- |
+| `om:belongsToService` | table, database, schema | `service` | Yes, always. `setFields` calls `setDefaultFields` unconditionally (`TableRepository:196-197`), `DatabaseRepository:248` sets it outright, and no clear path removes it (`TableRepository:313-323`, `EntityRepository.clearFieldsInternal:3789-3802`). | `VIEW_BASIC` (`EntityResource.getViewOperations:1308-1311`) | No |
+| `om:belongsToDatabase` | table, schema | `database` | Yes, always | `VIEW_BASIC` | No |
+| `om:belongsToSchema` | table | `databaseSchema` | Yes, always | `VIEW_BASIC` | No |
+| `om:contains` | database → schema, schema → table | the relationship hook, not a field (`EntityRepository:7477-7496`, `RdfRepository.getRelationshipPredicateUri:807-823`) | The equivalent REST field is `databaseSchemas` / `tables` | `VIEW_BASIC`, registered (`DatabaseResource:98-101`, `DatabaseSchemaResource:106-109`) | No — REST returns every child reference after authorizing the container alone |
+| `om:serviceType` / `om:hasServiceType` | service / database, schema | `serviceType` | Yes | `VIEW_BASIC` | n/a |
+
+**Stricter than REST, deliberately.** REST returns a container reference after authorizing the table alone, and returns every child reference after authorizing the container alone. The experiment admits a link only when *both* ends are independently readable, so a hidden child contributes no membership and an unreadable container contributes nothing at all. That is the ADR's hidden-object rule, and it is a contract difference to declare rather than a bug to fix.
+
+**Where `service` comes from differs from the other two.** It is stripped from the stored JSON (`TableRepository:1586-1588`, `DatabaseRepository:115-117`, `DatabaseSchemaRepository:114-116`) and re-derived from the CONTAINS record per read, while `database` and `databaseSchema` are the reference snapshot stored in the child's JSON.
+
+**Left fail-closed, and why.** The label and FQN copies written onto a container node by every referencing table (`RdfPropertyMapper.addEntityReference:471-495`) are governed by the container's own permission, since the fact's subject is the container. Whether those copies can diverge from the container's own values is a consistency question that stays open; no check for it is implemented.
 
 ## Results
 
@@ -241,7 +265,7 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
    - Comparisons by term must therefore use a reference read through the same store; comparing against the in-memory fixture instead makes whole-model comparisons fail.
    - The tests read the unrestricted reference through the same source as the sanitized build.
 10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build failed closed with 22 violations (see "Integration run"). The scalar slice resolves 12 of them, traced in "Scalar attribute evidence": 10 predicate violations (4 on tables, 6 on domains) and the 2 domain-type violations. Still rejected at that point: the container links, `om:joins`, `om:isDeleted`, `om:childrenCount`, domain membership and domain lineage. Finding 12 later maps `om:isDeleted` locally. An integration run on 2026-09-15 confirmed this on live data. No violation named a mapped term, the four asserted deferred facts were still rejected, and every violation was a mapping gap. That run did not record the full remaining list.
-11. **Relationship and shared facts need target-aware rules, not field mappings.** Domain membership (`om:has`) and domain-level lineage, which `LineageRepository.addDomainLineage` derives from asset lineage, both reference other assets. `om:joins` is a JSON literal naming other tables. Container links point at service, database and schema entities. A visible domain must not reveal hidden members. These rules are undecided.
+11. **Relationship and shared facts need target-aware rules, not field mappings.** Domain membership (`om:has`) and domain-level lineage, which `LineageRepository.addDomainLineage` derives from asset lineage, both reference other assets. `om:joins` is a JSON literal naming other tables. A visible domain must not reveal hidden members. These rules are undecided. Container links were in this group until Finding 13 gave them a target-aware rule.
 12. **Non-deleted scope (local experiment, not the production contract).** Proposed in [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md).
     - **Candidates** are catalog entities loaded as non-deleted, readable or not.
     - **References outside the candidates.** A catalog entity that a retrieved fact references but that is not a candidate is resolved through one catalog lookup, bounded at 1,000 entities; above the bound the build fails. Its state decides the result:
@@ -286,6 +310,37 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
       - **Six authorization phases:** all passed, with REST matching the expected result and fresh-request decisions matching REST.
       - **Container permissions (recorded, not asserted):** the caller could read the service, database and schema in every phase, through REST and in-process alike, including the phase where an unconditional deny hid every table. This matches the code-level expectation in [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md), so this fixture exercises readable containers only.
       - **Diagnostics, not latency evidence:** REST checks took 52–88 ms per phase, fresh-request checks 13–18 ms. Container peaks: OpenSearch 2,744 MiB, Fuseki 721 MiB, Postgres 267 MiB. Free RAM stayed at or above 43%, with no swap-outs.
+
+13. **Containment for independently readable containers (local experiment, not the production contract).**
+    - **Admitted:** a table's three container links, each requiring `VIEW_BASIC` on the table *and* on the container itself; the containers' own core scalars under their own permission; and `om:contains` from a database to a schema and from a schema to a table, requiring `VIEW_BASIC` on the container and on the child.
+    - **A containment object must be an entity.** `om:contains` and the three links admit only an `entity/<type>/<id>` object; a literal one is a consistency failure. Without that rule a literal object is admitted on sight once its predicate is mapped, so it would carry the target past its permission check. **Every other relationship predicate still admits a literal object**; closing that shape for them is a separate, unreviewed change.
+    - **Rejection exercised by a test:** `om:hasConnection`, `om:testConnectionResult` and `om:pipelines` on a service, each on its own; the child-membership lists `om:tables` and `om:databaseSchemas`; `om:contains` on a service, because no service field governs which databases it contains; `om:databaseSchemaProfilerConfig`; and a literal object on each of the four containment predicates.
+    - **Unmapped but not exercised by a test**, so rejection is by construction rather than by evidence: `om:databaseProfilerConfig`, `skos:prefLabel`, `om:style`, `om:sourceHash`, `om:dataContract`, `om:hasLocation` and `om:default`, and tags, owners, followers and domains on a container. Each would reject the build as an unmapped predicate, and none has been run.
+    - **Why the service payloads matter:** `connection` carries the stored connection config, which REST masks for every non-bot caller, admins included (`ServiceEntityResource.decryptOrNullify:58-80`, `DefaultAuthorizer.shouldMaskPasswords:153-156`); `testConnectionResult` can carry host names and failure detail; the membership lists duplicate membership as one opaque JSON literal including hidden children, size-capped at 32,768 characters (`RdfPropertyMapper.processUnmappedField:430-437`).
+    - **An unreadable container contributes nothing:** no link, no type, no label, no FQN, no node. A readable table inside it still appears, without its container link. Nothing distinguishes "no container" from "container hidden". Identity-only exposure is not implemented and stays an open contract decision.
+    - **Deferred:** the label/FQN divergence check. More than one value would reveal a problem, but one value does not prove correctness, and the check reopens consistency work that is closed.
+    - **Tests:** `tableLinksToItsIndependentlyReadableContainersAreAdmitted`, `containerFactsNeedTheContainersOwnPermissionNotAVisibleChildsOne`, `hiddenTableContributesNoMembershipToItsReadableSchema`, `containmentPathsAndCountsUseAdmittedLinksOnly`, `aContainmentPredicateWithALiteralObjectIsRejected` (4 cases), `servicePayloadsAreRejected` (3 cases), `childMembershipListsOnAContainerAreRejected`, `childMembershipOfAServiceIsRejected`, `containerFieldsOutsideTheReviewedMappingStillRejectTheBuild`.
+    - **RED → GREEN (2026-09-16), in two steps.**
+      - The mapping: with the fixture and tests in place but no container node kind, `SanitizedModelExperimentTest` reported 80 tests, 4 failures and 4 errors — the four admission tests and the four rejection tests, all failing on `No mapping for resource database`. The rejection tests therefore lock in that the new mapping does not open those facts; they do not demonstrate a protection that was missing. With the mapping: 80 tests, 0 failures, 0 errors.
+      - The object-type rule: with the mapping but no entity-object check, the four literal-object cases were **silently admitted** — the build threw nothing at all — while the three service-payload cases already passed. With the check: **86 tests, 0 failures, 0 errors, 0 skipped**.
+      - The 72 earlier tests stayed green throughout. Scoped spotless is clean and the integration-test module compiles.
+    - **The local fixture is deliberately partial:** the container facts this slice rejects are added only by the overlays that assert their rejection, so the admitted case can be exercised on its own. Nothing here shows that a model builds from live container projections.
+    - **Not covered:** the Fuseki-backed variant of these local tests; latency or scale. The containers' live facts are covered by the run below, for this fixture only.
+    - **Integration expectations:** `RdfAuthorizationAlignmentIT` adds the three containers to its candidate list, because a link predicate is mapped only where its target type is also a candidate type, and its deferred-violation set drops `om:belongsToSchema on TABLE` for `om:joins on TABLE`. It also records the container nodes' predicate names, object kinds, referenced entity types and counts — never raw objects or literals, which for a service can carry connection payloads. Both were verified in the live run below. Unsupported container facts stay an explicit failure and are reviewed one group at a time, never mapped opportunistically to make a run pass.
+    - **Live run, 2026-09-17** (one guarded run, same command and 6.2.0 image; the guard gained two preconditions — no other Maven build running, and an abort if the rebuilt spec jar lacks `elasticsearch/indexMapping.json` before any container starts — after the previous attempt failed to boot on exactly that missing resource with 0 tests run): `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped; `SanitizedModelExperimentTest` 86 tests, 0 failures, 0 errors, 0 skipped; Maven exit 0 in 156 s.
+      - **The build is still rejected, now with containers as candidates**, and every assertion held: each violation was a mapping gap, so no container reference produced a scope error; the three deferred facts were rejected; and no violation named the three container links or the five new type terms, so those were admitted on live data. The run did not record the full violation list.
+      - **Container reads:** the service, database and schema were readable in all six phases, through REST and fresh-request in-process checks alike.
+      - **Recorded container facts** — predicate names, object kinds, referenced entity types and counts only. `?object` is never projected by the query, and a scan of the diagnostics for connection-related terms found none.
+
+        | Node | Predicates beyond the core scalars (`rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `dct:modified` ×2, `dct:hasVersion`, `dcat:version`, `om:entityStatus`, `om:isDeleted`) |
+        | --- | --- |
+        | service | `dct:description`; `om:serviceType`; **`om:hasConnection`** (1 literal); `om:contains` → database (1) |
+        | database | `om:hasServiceType`; `om:belongsToService` → databaseService; `om:contains` → databaseSchema (1); **`om:default`** (1 literal) |
+        | schema | `om:hasServiceType`; `om:belongsToDatabase` → database; `om:belongsToService` → databaseService; `om:contains` → table (5: A–D and soft-deleted E) |
+
+      - **What the live facts imply, derived from the table rather than asserted by the test:** the container gaps are `om:hasConnection` and `om:contains` on the service, and `om:default` on the database. `om:default` was predicted but untested; it stays unmapped and is not mapped opportunistically. No owners, tags, domains, pipelines or `om:testConnectionResult` were projected on these fixture containers.
+      - **A prediction that did not hold:** neither `om:tables` nor `om:databaseSchemas` appeared on the live nodes, although the code trace said the projection loads those fields. Unverified explanation: the schema and database were projected when they were created and had no children, and adding a child writes only the CONTAINS relationship without re-projecting the parent, so the lists would appear only after a later update or reindex of the container. Their local rejection tests stay, because a reindexed container would carry them.
+      - **Diagnostics, not latency evidence:** REST checks took 48–108 ms per phase and fresh-request checks 14–29 ms. Container peaks: OpenSearch 2,594 MiB, Fuseki 652 MiB, Postgres 216 MiB, MinIO 185 MiB. Free RAM stayed at or above 44%, with no pressure spikes and no swap-outs. The run's containers were removed; the stopped development containers were untouched.
 
 ## Proven vs not proven
 

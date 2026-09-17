@@ -54,6 +54,12 @@ final class SanitizedModelBuilder {
   private static final String VERSION = "http://www.w3.org/ns/dcat#version";
   private static final String HAS_VERSION = "http://purl.org/dc/terms/hasVersion";
   private static final String IS_DELETED = OM + "isDeleted";
+  private static final String CONTAINS = OM + "contains";
+  private static final String BELONGS_TO_SERVICE = OM + "belongsToService";
+  private static final String BELONGS_TO_DATABASE = OM + "belongsToDatabase";
+  private static final String BELONGS_TO_SCHEMA = OM + "belongsToSchema";
+  private static final String HAS_SERVICE_TYPE = OM + "hasServiceType";
+  private static final String ENTITY_STATUS = OM + "entityStatus";
   private static final String INVALIDATED_AT = "http://www.w3.org/ns/prov#invalidatedAtTime";
   static final String CONSISTENCY_FAILURE = "Consistency failure: ";
   static final String SCOPE_ERROR = "Scope error: ";
@@ -76,7 +82,13 @@ final class SanitizedModelBuilder {
     COLUMNS,
     DOMAINS,
     EXTENSION,
-    LINEAGE;
+    LINEAGE,
+    /**
+     * Child membership of a container: {@code tables} on a schema and {@code databaseSchemas} on a
+     * database, both registered as VIEW_BASIC view operations. The child must also be independently
+     * readable, so a hidden child contributes no membership.
+     */
+    CHILDREN;
 
     MetadataOperation operation() {
       return MetadataOperation.VIEW_BASIC;
@@ -87,6 +99,9 @@ final class SanitizedModelBuilder {
     TABLE(ViewField.CORE),
     TAG(ViewField.CORE),
     DOMAIN(ViewField.CORE),
+    DATABASE_SERVICE(ViewField.CORE),
+    DATABASE(ViewField.CORE),
+    DATABASE_SCHEMA(ViewField.CORE),
     COLUMN(ViewField.COLUMNS),
     EXTENSION(ViewField.EXTENSION),
     EXTENSION_PROPERTY(ViewField.EXTENSION);
@@ -96,6 +111,29 @@ final class SanitizedModelBuilder {
     NodeKind(final ViewField field) {
       this.field = field;
     }
+  }
+
+  /**
+   * Attributes every container returns from a GET without a fields parameter. The label and FQN are
+   * also copied onto the container node by each referencing table's projection; the fact's subject
+   * is the container, so the container's own permission governs the copy too.
+   */
+  private static final Map<String, ViewField> CONTAINER_CORE =
+      Map.ofEntries(
+          entry(TYPE, ViewField.CORE),
+          entry(LABEL, ViewField.CORE),
+          entry(FQN, ViewField.CORE),
+          entry(DESCRIPTION, ViewField.CORE),
+          entry(MODIFIED, ViewField.CORE),
+          entry(VERSION, ViewField.CORE),
+          entry(HAS_VERSION, ViewField.CORE),
+          entry(ENTITY_STATUS, ViewField.CORE),
+          entry(IS_DELETED, ViewField.CORE));
+
+  private static Map<String, ViewField> containerFields(final Map<String, ViewField> own) {
+    final Map<String, ViewField> fields = new HashMap<>(CONTAINER_CORE);
+    fields.putAll(own);
+    return Map.copyOf(fields);
   }
 
   private static final Map<NodeKind, Map<String, ViewField>> FIELD_BY_PREDICATE =
@@ -109,10 +147,13 @@ final class SanitizedModelBuilder {
               entry(MODIFIED, ViewField.CORE),
               entry(VERSION, ViewField.CORE),
               entry(HAS_VERSION, ViewField.CORE),
-              entry(OM + "hasServiceType", ViewField.CORE),
-              entry(OM + "entityStatus", ViewField.CORE),
+              entry(HAS_SERVICE_TYPE, ViewField.CORE),
+              entry(ENTITY_STATUS, ViewField.CORE),
               entry(OM + "processedLineage", ViewField.CORE),
               entry(IS_DELETED, ViewField.CORE),
+              entry(BELONGS_TO_SERVICE, ViewField.CORE),
+              entry(BELONGS_TO_DATABASE, ViewField.CORE),
+              entry(BELONGS_TO_SCHEMA, ViewField.CORE),
               entry(OM + "hasTag", ViewField.TAGS),
               entry(OM + "domains", ViewField.DOMAINS),
               entry(OM + "hasColumn", ViewField.COLUMNS),
@@ -148,8 +189,23 @@ final class SanitizedModelBuilder {
               entry(VERSION, ViewField.CORE),
               entry(HAS_VERSION, ViewField.CORE),
               entry(OM + "domainType", ViewField.CORE),
-              entry(OM + "entityStatus", ViewField.CORE),
+              entry(ENTITY_STATUS, ViewField.CORE),
               entry(IS_DELETED, ViewField.CORE)),
+          NodeKind.DATABASE_SERVICE,
+          containerFields(Map.of(OM + "serviceType", ViewField.CORE)),
+          NodeKind.DATABASE,
+          containerFields(
+              Map.of(
+                  HAS_SERVICE_TYPE, ViewField.CORE,
+                  BELONGS_TO_SERVICE, ViewField.CORE,
+                  CONTAINS, ViewField.CHILDREN)),
+          NodeKind.DATABASE_SCHEMA,
+          containerFields(
+              Map.of(
+                  HAS_SERVICE_TYPE, ViewField.CORE,
+                  BELONGS_TO_SERVICE, ViewField.CORE,
+                  BELONGS_TO_DATABASE, ViewField.CORE,
+                  CONTAINS, ViewField.CHILDREN)),
           NodeKind.COLUMN,
           Map.of(
               TYPE,
@@ -173,6 +229,13 @@ final class SanitizedModelBuilder {
               OM + "extensionValue",
               ViewField.EXTENSION));
 
+  /**
+   * Containment predicates whose object must be another entity. Every other relationship predicate
+   * still admits a literal object; closing that shape for them is a separate, unreviewed change.
+   */
+  private static final Set<String> ENTITY_OBJECT_PREDICATES =
+      Set.of(CONTAINS, BELONGS_TO_SERVICE, BELONGS_TO_DATABASE, BELONGS_TO_SCHEMA);
+
   private static final Map<String, NodeKind> OWNED_CHILD_BY_PREDICATE =
       Map.of(
           OM + "hasColumn", NodeKind.COLUMN,
@@ -188,6 +251,11 @@ final class SanitizedModelBuilder {
           OM + "Column",
           OM + "Extension",
           OM + "ExtensionProperty",
+          OM + "DatabaseService",
+          OM + "Database",
+          OM + "DatabaseSchema",
+          "http://www.w3.org/ns/dcat#Catalog",
+          "http://www.w3.org/ns/dcat#DataService",
           "http://www.w3.org/ns/dcat#Dataset",
           "http://www.w3.org/2004/02/skos/core#Concept",
           "http://www.w3.org/2004/02/skos/core#Collection",
@@ -426,10 +494,28 @@ final class SanitizedModelBuilder {
       final Retrieval retrieval,
       final Map<String, ReferenceState> referenced) {
     final RDFNode object = statement.getObject();
+    final String predicate = statement.getPredicate().getURI();
+    if (ENTITY_OBJECT_PREDICATES.contains(predicate)) {
+      requireEntityObject(predicate, object);
+      return isVisible(object, retrieval, referenced);
+    }
     return object.isLiteral()
         || (statement.getPredicate().equals(RDF.type)
             ? isTypeVocabulary(object)
             : isVisible(object, retrieval, referenced));
+  }
+
+  /**
+   * A literal is admitted on sight once its predicate is mapped, so a containment predicate whose
+   * object is a literal would carry the target past its permission check. It is a disagreement
+   * between the projection and the contract, not a fact to admit.
+   */
+  private static void requireEntityObject(final String predicate, final RDFNode object) {
+    if (!object.isURIResource() || !ENTITY_IRI.matcher(object.asResource().getURI()).matches()) {
+      throw new FactAdmissionException(
+          CONSISTENCY_FAILURE
+              + "%s must reference an entity, but names %s".formatted(predicate, object));
+    }
   }
 
   private static boolean isTypeVocabulary(final RDFNode type) {
@@ -496,6 +582,9 @@ final class SanitizedModelBuilder {
       case Entity.TABLE -> NodeKind.TABLE;
       case Entity.TAG -> NodeKind.TAG;
       case Entity.DOMAIN -> NodeKind.DOMAIN;
+      case Entity.DATABASE_SERVICE -> NodeKind.DATABASE_SERVICE;
+      case Entity.DATABASE -> NodeKind.DATABASE;
+      case Entity.DATABASE_SCHEMA -> NodeKind.DATABASE_SCHEMA;
       default -> throw new FactAdmissionException("No mapping for resource " + resource.type());
     };
   }

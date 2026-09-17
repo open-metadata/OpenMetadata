@@ -8,24 +8,31 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.CONSISTENCY_FAILURE;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.MAX_REFERENCE_LOOKUPS;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.SCOPE_ERROR;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.BASE;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.DATABASE_ID;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_RESTRICTED;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_VISIBLE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.HIDDEN_COLUMN_PREFIX;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.KNOWLEDGE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.RESTRICTED_TAG_ID;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.SCHEMA_RESTRICTED;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.SCHEMA_VISIBLE;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.SERVICE_ID;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.SHARED_TAG_ID;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_A;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_B;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_C;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_D;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_DELETED;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_IN_RESTRICTED_SCHEMA;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_OUTSIDE_READABLE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_OUTSIDE_RESTRICTED;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.domainIri;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.entityIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tableIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tagIri;
 
@@ -34,6 +41,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
@@ -47,9 +56,13 @@ import org.apache.jena.sparql.resultset.ResultsCompare;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.FactAdmissionException;
@@ -88,7 +101,12 @@ class SanitizedModelExperimentTest {
           entry("<T_RESTRICTED>", "<" + tagIri(RESTRICTED_TAG_ID) + ">"),
           entry("<T_SHARED>", "<" + tagIri(SHARED_TAG_ID) + ">"),
           entry("<D_VISIBLE>", "<" + domainIri(DOMAIN_VISIBLE) + ">"),
-          entry("<D_RESTRICTED>", "<" + domainIri(DOMAIN_RESTRICTED) + ">"));
+          entry("<D_RESTRICTED>", "<" + domainIri(DOMAIN_RESTRICTED) + ">"),
+          entry("<SERVICE>", "<" + entityIri(Entity.DATABASE_SERVICE, SERVICE_ID) + ">"),
+          entry("<DATABASE>", "<" + entityIri(Entity.DATABASE, DATABASE_ID) + ">"),
+          entry("<SCHEMA>", "<" + entityIri(Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE) + ">"),
+          entry("<VAULT>", "<" + entityIri(Entity.DATABASE_SCHEMA, SCHEMA_RESTRICTED) + ">"),
+          entry("<KEYS>", "<" + tableIri(TABLE_IN_RESTRICTED_SCHEMA) + ">"));
   private static final String TABLE_SCALAR_ATTRIBUTES =
       """
       ASK { %s om:hasServiceType "Postgres" ; om:entityStatus "Approved" ;
@@ -102,6 +120,20 @@ class SanitizedModelExperimentTest {
                <http://purl.org/dc/terms/modified> ?modified ;
                <http://www.w3.org/ns/dcat#version> ?version ;
                <http://purl.org/dc/terms/hasVersion> ?number }
+      """;
+  private static final String CONTAINMENT_CHAIN =
+      """
+      ASK { <A> om:belongsToSchema <SCHEMA> ; om:belongsToDatabase <DATABASE> ;
+               om:belongsToService <SERVICE> .
+            <SCHEMA> om:belongsToDatabase <DATABASE> ; om:belongsToService <SERVICE> .
+            <DATABASE> om:belongsToService <SERVICE> }
+      """;
+  private static final String CHILDREN_OF_SCHEMA =
+      "SELECT (COUNT(?child) AS ?n) WHERE { <SCHEMA> om:contains ?child }";
+  private static final String TABLES_MATCHING_THEIR_SCHEMA =
+      """
+      SELECT (COUNT(DISTINCT ?table) AS ?n)
+      WHERE { ?table om:belongsToSchema ?schema . ?schema om:contains ?table }
       """;
   private static final List<String> INVARIANCE_QUERIES =
       List.of(
@@ -408,6 +440,118 @@ class SanitizedModelExperimentTest {
   }
 
   @Test
+  void tableLinksToItsIndependentlyReadableContainersAreAdmitted() {
+    SanitizedModelFixture.addContainers(store);
+    final Model model = sanitizedWithContainers().model();
+    assertTrue(ask(model, CONTAINMENT_CHAIN));
+    assertTrue(ask(model, "ASK { <SCHEMA> a om:DatabaseSchema ; rdfs:label \"schema\" }"));
+    assertTrue(ask(model, "ASK { <DATABASE> a om:Database ; om:hasServiceType \"Postgres\" }"));
+    assertTrue(ask(model, "ASK { <SERVICE> a om:DatabaseService ; om:serviceType \"Postgres\" }"));
+  }
+
+  @Test
+  void containerFactsNeedTheContainersOwnPermissionNotAVisibleChildsOne() {
+    SanitizedModelFixture.addContainers(store);
+    final Model model = sanitizedWithContainers().model();
+    assertTrue(ask(knowledgeGraph(), "ASK { <KEYS> om:belongsToSchema <VAULT> }"));
+    assertTrue(ask(model, "ASK { <KEYS> a om:Table }"));
+    assertFalse(ask(model, "ASK { <KEYS> om:belongsToSchema ?schema }"));
+    assertFalse(ask(model, "ASK { { <VAULT> ?p ?o } UNION { ?s ?p <VAULT> } }"));
+  }
+
+  @Test
+  void hiddenTableContributesNoMembershipToItsReadableSchema() {
+    SanitizedModelFixture.addContainers(store);
+    final Model model = sanitizedWithContainers().model();
+    assertEquals(2, count(knowledgeGraph(), CHILDREN_OF_SCHEMA));
+    assertEquals(1, count(model, CHILDREN_OF_SCHEMA));
+    assertEquals(
+        List.of(tableIri(TABLE_A)),
+        column(model, "SELECT ?child WHERE { <SCHEMA> om:contains ?child }"));
+    assertFalse(ask(model, "ASK { ?s ?p <B> }"));
+  }
+
+  @Test
+  void containmentPathsAndCountsUseAdmittedLinksOnly() {
+    SanitizedModelFixture.addContainers(store);
+    final Model model = sanitizedWithContainers().model();
+    assertTrue(ask(model, "ASK { <A> om:belongsToSchema/om:belongsToDatabase <DATABASE> }"));
+    assertTrue(ask(model, "ASK { <A> om:belongsToSchema/om:belongsToService <SERVICE> }"));
+    assertFalse(ask(model, "ASK { <KEYS> om:belongsToSchema/om:belongsToDatabase ?database }"));
+    assertEquals(3, count(knowledgeGraph(), TABLES_MATCHING_THEIR_SCHEMA));
+    assertEquals(1, count(model, TABLES_MATCHING_THEIR_SCHEMA));
+  }
+
+  @Test
+  void childMembershipListsOnAContainerAreRejected() {
+    SanitizedModelFixture.addContainers(store);
+    SanitizedModelFixture.addChildMembershipLists(store);
+    final FactAdmissionException failure = failsClosed(this::sanitizedWithContainers);
+    assertTrue(
+        failure.getMessage().contains(BASE + "ontology/tables on DATABASE_SCHEMA"),
+        failure.getMessage());
+    assertTrue(
+        failure.getMessage().contains(BASE + "ontology/databaseSchemas on DATABASE"),
+        failure.getMessage());
+  }
+
+  /**
+   * A literal object would never reach the target's permission check, so a containment predicate
+   * carrying one must fail rather than be admitted as an ordinary literal.
+   */
+  @ParameterizedTest(name = "{0} om:{1}")
+  @CsvSource(
+      delimiter = '|',
+      textBlock =
+          """
+          <A>      | belongsToService
+          <A>      | belongsToDatabase
+          <A>      | belongsToSchema
+          <SCHEMA> | contains
+          """)
+  void aContainmentPredicateWithALiteralObjectIsRejected(
+      final String subject, final String predicate) {
+    SanitizedModelFixture.addContainers(store);
+    insertKnowledge("%s om:%s \"service.db.schema\"".formatted(subject, predicate));
+    assertFailsClosedOn(
+        this::sanitizedWithContainers,
+        CONSISTENCY_FAILURE + BASE + "ontology/" + predicate + " must reference an entity");
+  }
+
+  @ParameterizedTest(name = "om:{0}")
+  @MethodSource("servicePayloadsOutsideTheMapping")
+  void servicePayloadsAreRejected(final String predicate, final Consumer<Dataset> payload) {
+    SanitizedModelFixture.addContainers(store);
+    payload.accept(store);
+    assertFailsClosedOn(this::sanitizedWithContainers, BASE + "ontology/" + predicate);
+  }
+
+  private static Stream<Arguments> servicePayloadsOutsideTheMapping() {
+    return Stream.of(
+        arguments("hasConnection", (Consumer<Dataset>) SanitizedModelFixture::addServiceConnection),
+        arguments(
+            "testConnectionResult",
+            (Consumer<Dataset>) SanitizedModelFixture::addServiceTestConnectionResult),
+        arguments("pipelines", (Consumer<Dataset>) SanitizedModelFixture::addServicePipelines));
+  }
+
+  @Test
+  void childMembershipOfAServiceIsRejected() {
+    SanitizedModelFixture.addContainers(store);
+    SanitizedModelFixture.addServiceMembership(store);
+    assertFailsClosedOn(
+        this::sanitizedWithContainers, BASE + "ontology/contains on DATABASE_SERVICE");
+  }
+
+  @Test
+  void containerFieldsOutsideTheReviewedMappingStillRejectTheBuild() {
+    SanitizedModelFixture.addContainers(store);
+    SanitizedModelFixture.addSchemaProfilerConfig(store);
+    assertFailsClosedOn(
+        this::sanitizedWithContainers, BASE + "ontology/databaseSchemaProfilerConfig");
+  }
+
+  @Test
   void lineageDetailsWithoutAPermissionMappingFailClosed() {
     SanitizedModelFixture.addLineageDetails(store, TABLE_A, TABLE_D);
     assertFailsClosedOn(BASE + "ontology/hasLineageDetails");
@@ -582,9 +726,16 @@ class SanitizedModelExperimentTest {
   }
 
   private void assertFailsClosedOn(final String unmappedTerm) {
-    final FactAdmissionException failure =
-        assertThrows(FactAdmissionException.class, this::sanitized);
+    assertFailsClosedOn(this::sanitized, unmappedTerm);
+  }
+
+  private void assertFailsClosedOn(final Executable build, final String unmappedTerm) {
+    final FactAdmissionException failure = failsClosed(build);
     assertTrue(failure.getMessage().contains(unmappedTerm), failure.getMessage());
+  }
+
+  private FactAdmissionException failsClosed(final Executable build) {
+    return assertThrows(FactAdmissionException.class, build);
   }
 
   private SanitizedModel sanitized() {
@@ -601,6 +752,16 @@ class SanitizedModelExperimentTest {
             SanitizedModelFixture.catalogWithDomains(),
             SanitizedModelFixture.references(),
             SanitizedModelFixture.restrictedTablesAndDomainsHidden(),
+            TRIPLE_BUDGET)
+        .build();
+  }
+
+  private SanitizedModel sanitizedWithContainers() {
+    return new SanitizedModelBuilder(
+            source(store),
+            SanitizedModelFixture.catalogWithContainers(),
+            SanitizedModelFixture.references(),
+            SanitizedModelFixture.restrictedTablesAndSchemasHidden(),
             TRIPLE_BUDGET)
         .build();
   }

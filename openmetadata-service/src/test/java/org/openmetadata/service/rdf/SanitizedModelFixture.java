@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -65,11 +66,32 @@ final class SanitizedModelFixture {
       UUID.fromString("0a000000-0000-4000-8000-000000000001");
   static final UUID TABLE_OUTSIDE_RESTRICTED =
       UUID.fromString("0a000000-0000-4000-8000-000000000002");
+  static final UUID SERVICE_ID = UUID.fromString("5e000000-0000-4000-8000-000000000001");
+  static final UUID DATABASE_ID = UUID.fromString("5e000000-0000-4000-8000-000000000002");
+  static final UUID SCHEMA_VISIBLE = UUID.fromString("5e000000-0000-4000-8000-000000000003");
+  static final UUID SCHEMA_RESTRICTED = UUID.fromString("5e000000-0000-4000-8000-000000000004");
+  static final UUID TABLE_IN_RESTRICTED_SCHEMA =
+      UUID.fromString("5e000000-0000-4000-8000-000000000005");
+
+  private static final UUID PIPELINE_ID = UUID.fromString("5e000000-0000-4000-8000-000000000006");
 
   /** Entity types the fixture's catalog registers; a reference naming any other type is invalid. */
-  static final Set<String> REGISTERED_TYPES = Set.of(Entity.TABLE, Entity.TAG, Entity.DOMAIN);
+  static final Set<String> REGISTERED_TYPES =
+      Set.of(
+          Entity.TABLE,
+          Entity.TAG,
+          Entity.DOMAIN,
+          Entity.DATABASE_SERVICE,
+          Entity.DATABASE,
+          Entity.DATABASE_SCHEMA);
 
   static final String HIDDEN_COLUMN_PREFIX = BASE + "entity/column/service.db.schema.secret_b.";
+
+  private static final String SERVICE_NAME = "service";
+  private static final String DATABASE_NAME = "db";
+  private static final String SCHEMA_NAME = "schema";
+  private static final String RESTRICTED_SCHEMA_NAME = "vault";
+  private static final String SERVICE_TYPE = "Postgres";
 
   private static final ObjectMapper JSON = new ObjectMapper();
   private static final JsonLdTranslator TRANSLATOR = RdfSchemaFixture.translator();
@@ -149,6 +171,134 @@ final class SanitizedModelFixture {
     addUpstream(store, TABLE_A, TABLE_DELETED);
   }
 
+  /**
+   * The containers around the tables: one service, one database and two schemas, one of which the
+   * caller may not read. A and hidden B sit in the readable schema; a readable table sits in the
+   * unreadable one. The container facts this slice keeps rejecting are added by the overlays below,
+   * so the admitted case can be exercised on its own — this projection is deliberately partial.
+   */
+  static void addContainers(final Dataset store) {
+    final Model knowledge = store.getNamedModel(KNOWLEDGE);
+    knowledge.add(project(Entity.DATABASE_SERVICE, SERVICE_ID, service()));
+    knowledge.add(project(Entity.DATABASE, DATABASE_ID, database()));
+    knowledge.add(project(Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, schema(SCHEMA_NAME)));
+    knowledge.add(
+        project(
+            Entity.DATABASE_SCHEMA,
+            SCHEMA_RESTRICTED,
+            schema(RESTRICTED_SCHEMA_NAME, RESTRICTED_TAG)));
+    knowledge.add(
+        project(
+            Entity.TABLE,
+            TABLE_A,
+            contained(withExtension(table("orders", SHARED_TAG)), SCHEMA_VISIBLE, SCHEMA_NAME)));
+    knowledge.add(
+        project(
+            Entity.TABLE,
+            TABLE_B,
+            contained(table("secret_b", RESTRICTED_TAG, SHARED_TAG), SCHEMA_VISIBLE, SCHEMA_NAME)));
+    knowledge.add(
+        project(
+            Entity.TABLE,
+            TABLE_IN_RESTRICTED_SCHEMA,
+            contained(
+                tableIn(RESTRICTED_SCHEMA_NAME, "keys"),
+                SCHEMA_RESTRICTED,
+                RESTRICTED_SCHEMA_NAME)));
+    addContains(store, Entity.DATABASE, DATABASE_ID, Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE);
+    addContains(store, Entity.DATABASE, DATABASE_ID, Entity.DATABASE_SCHEMA, SCHEMA_RESTRICTED);
+    addContains(store, Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, Entity.TABLE, TABLE_A);
+    addContains(store, Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, Entity.TABLE, TABLE_B);
+    addContains(
+        store, Entity.DATABASE_SCHEMA, SCHEMA_RESTRICTED, Entity.TABLE, TABLE_IN_RESTRICTED_SCHEMA);
+  }
+
+  /** The child list a container also projects as one opaque literal, hidden children included. */
+  static void addChildMembershipLists(final Dataset store) {
+    final ObjectNode schema = schema(SCHEMA_NAME);
+    schema
+        .putArray("tables")
+        .add(reference(Entity.TABLE, TABLE_B, "secret_b", schemaFqn(SCHEMA_NAME) + ".secret_b"));
+    final ObjectNode database = database();
+    database
+        .putArray("databaseSchemas")
+        .add(
+            reference(
+                Entity.DATABASE_SCHEMA,
+                SCHEMA_RESTRICTED,
+                RESTRICTED_SCHEMA_NAME,
+                schemaFqn(RESTRICTED_SCHEMA_NAME)));
+    final Model knowledge = store.getNamedModel(KNOWLEDGE);
+    knowledge.add(project(Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, schema));
+    knowledge.add(project(Entity.DATABASE, DATABASE_ID, database));
+  }
+
+  /** The stored connection config, which REST masks for every non-bot caller. */
+  static void addServiceConnection(final Dataset store) {
+    final ObjectNode service = service();
+    service
+        .putObject("connection")
+        .putObject("config")
+        .put("hostPort", "db.internal:5432")
+        .put("username", "ingestion");
+    projectService(store, service);
+  }
+
+  /** The last connection test, which can carry host names and failure detail. */
+  static void addServiceTestConnectionResult(final Dataset store) {
+    final ObjectNode service = service();
+    service
+        .putObject("testConnectionResult")
+        .put("status", "Failed")
+        .putArray("steps")
+        .addObject()
+        .put("name", "CheckAccess")
+        .put("message", "could not connect to db.internal:5432 as ingestion");
+    projectService(store, service);
+  }
+
+  /** The ingestion pipelines of a service, projected as one opaque literal. */
+  static void addServicePipelines(final Dataset store) {
+    final ObjectNode service = service();
+    service
+        .putArray("pipelines")
+        .add(
+            reference(
+                Entity.INGESTION_PIPELINE, PIPELINE_ID, "metadata", SERVICE_NAME + ".metadata"));
+    projectService(store, service);
+  }
+
+  private static void projectService(final Dataset store, final ObjectNode service) {
+    store.getNamedModel(KNOWLEDGE).add(project(Entity.DATABASE_SERVICE, SERVICE_ID, service));
+  }
+
+  /** A service has no field of its own governing which databases it contains. */
+  static void addServiceMembership(final Dataset store) {
+    addContains(store, Entity.DATABASE_SERVICE, SERVICE_ID, Entity.DATABASE, DATABASE_ID);
+  }
+
+  /** A container field a GET has to ask for by name, which no reviewed mapping covers. */
+  static void addSchemaProfilerConfig(final Dataset store) {
+    final ObjectNode schema = schema(SCHEMA_NAME);
+    schema.putObject("databaseSchemaProfilerConfig").put("profileSample", 50);
+    store.getNamedModel(KNOWLEDGE).add(project(Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, schema));
+  }
+
+  /** The containment edge the relationship hook writes from the parent, with its own predicate. */
+  static void addContains(
+      final Dataset store,
+      final String fromType,
+      final UUID fromId,
+      final String toType,
+      final UUID toId) {
+    final Model knowledge = store.getNamedModel(KNOWLEDGE);
+    knowledge.add(
+        knowledge.createResource(entityIri(fromType, fromId)),
+        knowledge.createProperty(
+            RdfRepository.getRelationshipPredicateUri(Relationship.CONTAINS.value())),
+        knowledge.createResource(entityIri(toType, toId)));
+  }
+
   /** Candidate C as projected after a soft delete that the candidate load did not see. */
   static void markCandidateDeletedInProjection(final Dataset store) {
     final ObjectNode fields = table("customers");
@@ -156,16 +306,20 @@ final class SanitizedModelFixture {
     store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_C, fields));
   }
 
+  static String entityIri(final String type, final UUID id) {
+    return BASE + "entity/" + type + "/" + id;
+  }
+
   static String domainIri(final UUID id) {
-    return BASE + "entity/domain/" + id;
+    return entityIri(Entity.DOMAIN, id);
   }
 
   static String tableIri(final UUID id) {
-    return BASE + "entity/table/" + id;
+    return entityIri(Entity.TABLE, id);
   }
 
   static String tagIri(final UUID id) {
-    return BASE + "entity/tag/" + id;
+    return entityIri(Entity.TAG, id);
   }
 
   static List<CatalogResource> catalog() {
@@ -185,6 +339,20 @@ final class SanitizedModelFixture {
             Stream.of(
                 new CatalogResource(Entity.DOMAIN, DOMAIN_VISIBLE, List.of()),
                 new CatalogResource(Entity.DOMAIN, DOMAIN_RESTRICTED, labels(RESTRICTED_TAG))))
+        .toList();
+  }
+
+  /** The catalog plus the containers; the restricted schema carries the restricted tag. */
+  static List<CatalogResource> catalogWithContainers() {
+    return Stream.concat(
+            catalog().stream(),
+            Stream.of(
+                new CatalogResource(Entity.DATABASE_SERVICE, SERVICE_ID, List.of()),
+                new CatalogResource(Entity.DATABASE, DATABASE_ID, List.of()),
+                new CatalogResource(Entity.DATABASE_SCHEMA, SCHEMA_VISIBLE, List.of()),
+                new CatalogResource(
+                    Entity.DATABASE_SCHEMA, SCHEMA_RESTRICTED, labels(RESTRICTED_TAG)),
+                new CatalogResource(Entity.TABLE, TABLE_IN_RESTRICTED_SCHEMA, List.of())))
         .toList();
   }
 
@@ -236,15 +404,22 @@ final class SanitizedModelFixture {
 
   /** Data-consumer style grant plus a tag-conditioned deny, evaluated by OpenMetadata's engine. */
   static CallerPermissions restrictedTablesHidden() {
-    return evaluatedBy(List.of(allowViewAll(), denyRestrictedTables()));
+    return evaluatedBy(List.of(allowViewAll(), denyRestricted(Entity.TABLE)));
   }
 
   static CallerPermissions restrictedTablesAndTagsHidden() {
-    return evaluatedBy(List.of(allowViewAll(), denyRestrictedTables(), denyTags()));
+    return evaluatedBy(List.of(allowViewAll(), denyRestricted(Entity.TABLE), denyTags()));
   }
 
   static CallerPermissions restrictedTablesAndDomainsHidden() {
-    return evaluatedBy(List.of(allowViewAll(), denyRestrictedTables(), denyRestrictedDomains()));
+    return evaluatedBy(
+        List.of(allowViewAll(), denyRestricted(Entity.TABLE), denyRestricted(Entity.DOMAIN)));
+  }
+
+  static CallerPermissions restrictedTablesAndSchemasHidden() {
+    return evaluatedBy(
+        List.of(
+            allowViewAll(), denyRestricted(Entity.TABLE), denyRestricted(Entity.DATABASE_SCHEMA)));
   }
 
   private static CallerPermissions evaluatedBy(final List<Rule> rules) {
@@ -276,19 +451,10 @@ final class SanitizedModelFixture {
         .withEffect(Rule.Effect.ALLOW);
   }
 
-  private static Rule denyRestrictedTables() {
+  private static Rule denyRestricted(final String resource) {
     return new Rule()
-        .withName("HideRestrictedTables")
-        .withResources(List.of(Entity.TABLE))
-        .withOperations(List.of(MetadataOperation.VIEW_ALL))
-        .withEffect(Rule.Effect.DENY)
-        .withCondition("matchAnyTag('" + RESTRICTED_TAG + "')");
-  }
-
-  private static Rule denyRestrictedDomains() {
-    return new Rule()
-        .withName("HideRestrictedDomains")
-        .withResources(List.of(Entity.DOMAIN))
+        .withName("HideRestricted-" + resource)
+        .withResources(List.of(resource))
         .withOperations(List.of(MetadataOperation.VIEW_ALL))
         .withEffect(Rule.Effect.DENY)
         .withCondition("matchAnyTag('" + RESTRICTED_TAG + "')");
@@ -317,7 +483,12 @@ final class SanitizedModelFixture {
   }
 
   private static ObjectNode table(final String name, final String... tagFqns) {
-    final String fqn = "service.db.schema." + name;
+    return tableIn(SCHEMA_NAME, name, tagFqns);
+  }
+
+  private static ObjectNode tableIn(
+      final String schemaName, final String name, final String... tagFqns) {
+    final String fqn = schemaFqn(schemaName) + "." + name;
     final ObjectNode fields = JSON.createObjectNode();
     fields.put("name", name);
     fields.put("fullyQualifiedName", fqn);
@@ -327,6 +498,76 @@ final class SanitizedModelFixture {
       fields.withArray("tags").add(tagLabel(tagFqn));
     }
     return fields;
+  }
+
+  private static String databaseFqn() {
+    return SERVICE_NAME + "." + DATABASE_NAME;
+  }
+
+  private static String schemaFqn(final String schemaName) {
+    return databaseFqn() + "." + schemaName;
+  }
+
+  private static ObjectNode service() {
+    final ObjectNode fields = container(SERVICE_NAME, SERVICE_NAME);
+    fields.put("serviceType", SERVICE_TYPE);
+    return fields;
+  }
+
+  private static ObjectNode database() {
+    final ObjectNode fields = container(DATABASE_NAME, databaseFqn());
+    fields.put("serviceType", SERVICE_TYPE);
+    fields.set("service", serviceReference());
+    return fields;
+  }
+
+  private static ObjectNode schema(final String name, final String... tagFqns) {
+    final ObjectNode fields = container(name, schemaFqn(name));
+    fields.put("serviceType", SERVICE_TYPE);
+    fields.set("service", serviceReference());
+    fields.set("database", reference(Entity.DATABASE, DATABASE_ID, DATABASE_NAME, databaseFqn()));
+    for (String tagFqn : tagFqns) {
+      fields.withArray("tags").add(tagLabel(tagFqn));
+    }
+    return fields;
+  }
+
+  /** The scalar attributes a container returns from a GET without a fields parameter. */
+  private static ObjectNode container(final String name, final String fullyQualifiedName) {
+    final ObjectNode fields = JSON.createObjectNode();
+    fields.put("name", name);
+    fields.put("fullyQualifiedName", fullyQualifiedName);
+    fields.put("description", "Container " + name);
+    fields.put("entityStatus", "Approved");
+    fields.put("deleted", false);
+    fields.put("version", 0.1);
+    fields.put("updatedAt", 1000L);
+    return fields;
+  }
+
+  /** The container references a table returns from a GET without a fields parameter. */
+  private static ObjectNode contained(
+      final ObjectNode fields, final UUID schemaId, final String schemaName) {
+    fields.set("service", serviceReference());
+    fields.set("database", reference(Entity.DATABASE, DATABASE_ID, DATABASE_NAME, databaseFqn()));
+    fields.set(
+        "databaseSchema",
+        reference(Entity.DATABASE_SCHEMA, schemaId, schemaName, schemaFqn(schemaName)));
+    return fields;
+  }
+
+  private static ObjectNode serviceReference() {
+    return reference(Entity.DATABASE_SERVICE, SERVICE_ID, SERVICE_NAME, SERVICE_NAME);
+  }
+
+  private static ObjectNode reference(
+      final String type, final UUID id, final String name, final String fullyQualifiedName) {
+    final ObjectNode reference = JSON.createObjectNode();
+    reference.put("id", id.toString());
+    reference.put("type", type);
+    reference.put("name", name);
+    reference.put("fullyQualifiedName", fullyQualifiedName);
+    return reference;
   }
 
   private static ObjectNode withScalarAttributes(final ObjectNode fields) {

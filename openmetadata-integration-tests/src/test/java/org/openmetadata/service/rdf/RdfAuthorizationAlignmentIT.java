@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +36,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.query.ResultSet;
 import org.apache.jena.sparql.exec.http.QueryExecutionHTTP;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -130,16 +134,16 @@ class RdfAuthorizationAlignmentIT {
 
   /**
    * Deferred facts that must keep rejecting the build until reviewed: domain membership and domain
-   * lineage reference other assets, and container links reference other entities.
+   * lineage reference other assets, and joins name other tables inside a literal.
    */
   private static final Set<String> DEFERRED_FACT_VIOLATIONS =
       Set.of(
           UNMAPPED_PREDICATE + OM + "has on DOMAIN",
           UNMAPPED_PREDICATE + OM + "upstream on DOMAIN",
-          UNMAPPED_PREDICATE + OM + "belongsToSchema on TABLE");
+          UNMAPPED_PREDICATE + OM + "joins on TABLE");
 
-  /** Scalar attributes and types the builder now maps; live facts using them must be admitted. */
-  private static final Set<String> MAPPED_SCALAR_TERMS =
+  /** Terms the builder now maps; live facts using them must be admitted, not reported as gaps. */
+  private static final Set<String> MAPPED_TERMS =
       Set.of(
           "http://purl.org/dc/terms/description",
           "http://purl.org/dc/terms/modified",
@@ -150,8 +154,33 @@ class RdfAuthorizationAlignmentIT {
           OM + "processedLineage",
           OM + "isDeleted",
           OM + "domainType",
+          OM + "belongsToService",
+          OM + "belongsToDatabase",
+          OM + "belongsToSchema",
           OM + "Domain",
+          OM + "DatabaseService",
+          OM + "Database",
+          OM + "DatabaseSchema",
+          "http://www.w3.org/ns/dcat#Catalog",
+          "http://www.w3.org/ns/dcat#DataService",
           "http://www.w3.org/2004/02/skos/core#Collection");
+
+  /**
+   * Predicate names, object kinds, referenced entity types and counts for one node. {@code ?object}
+   * is bound only inside the aggregation, so no object value can reach the result.
+   */
+  private static final String CONTAINER_FACTS =
+      """
+      SELECT ?predicate ?kind ?target (COUNT(*) AS ?count)
+      WHERE {
+        GRAPH <%s> { <%s> ?predicate ?object }
+        BIND(IF(isLiteral(?object), "literal", IF(isBlank(?object), "blank", "iri")) AS ?kind)
+        BIND(IF(isIRI(?object) && STRSTARTS(STR(?object), "%sentity/"),
+                STRBEFORE(STRAFTER(STR(?object), "%sentity/"), "/"), "") AS ?target)
+      }
+      GROUP BY ?predicate ?kind ?target
+      ORDER BY ?predicate ?kind ?target
+      """;
 
   private final Authorizer authorizer = new DefaultAuthorizer();
 
@@ -184,6 +213,7 @@ class RdfAuthorizationAlignmentIT {
     final Fixture fixture = createFixture(namespace);
     final Table retired = createSoftDeletedUpstreamOfA(fixture, namespace);
     awaitProjectedFacts(fixture);
+    recordContainerFacts(fixture);
     verifyDeletionStateContract(fixture, retired);
     final FactAdmissionException rejection =
         assertThrows(FactAdmissionException.class, () -> inFreshRequest(() -> buildModel(fixture)));
@@ -195,8 +225,8 @@ class RdfAuthorizationAlignmentIT {
                 "deferred facts must be rejected: " + violations),
         () ->
             assertTrue(
-                violations.stream().noneMatch(RdfAuthorizationAlignmentIT::namesMappedScalarTerm),
-                "mapped scalar attributes must be admitted: " + violations),
+                violations.stream().noneMatch(RdfAuthorizationAlignmentIT::namesMappedTerm),
+                "mapped terms must be admitted: " + violations),
         () ->
             assertTrue(
                 violations.stream().allMatch(RdfAuthorizationAlignmentIT::isMappingGap),
@@ -262,8 +292,8 @@ class RdfAuthorizationAlignmentIT {
     assertInstanceOf(ReferenceState.Live.class, states.get(liveIri.iri()));
   }
 
-  private static boolean namesMappedScalarTerm(final String violation) {
-    return MAPPED_SCALAR_TERMS.stream()
+  private static boolean namesMappedTerm(final String violation) {
+    return MAPPED_TERMS.stream()
         .anyMatch(
             term ->
                 violation.startsWith(UNMAPPED_PREDICATE + term + " on ")
@@ -283,6 +313,13 @@ class RdfAuthorizationAlignmentIT {
     awaitProjection("<%s> <%sbelongsToSchema> ?schema".formatted(tableIri(fixture.a()), OM));
     awaitProjection(
         "<%s> <%supstream> <%s>".formatted(tableIri(fixture.a()), OM, tableIri(fixture.d())));
+    fixture
+        .containers()
+        .forEach(container -> awaitProjection("<%s> ?p ?o".formatted(entityIri(container))));
+  }
+
+  private static String entityIri(final EntityReference reference) {
+    return SanitizedModelBuilder.BASE + "entity/" + reference.getType() + "/" + reference.getId();
   }
 
   private void verifyAfterDomainMove(
@@ -339,7 +376,9 @@ class RdfAuthorizationAlignmentIT {
 
   /**
    * Recorded, never asserted: whether the caller can read the service, database and schema in this
-   * phase, through REST and through a fresh-request in-process check. Containment stays unmapped.
+   * phase, through REST and through a fresh-request in-process check. A container link is admitted
+   * only when the container is readable on its own, so these decisions bound what containment can
+   * contribute.
    */
   private void recordContainerDecisions(final Fixture fixture, final String phase) {
     final Map<String, Boolean> rest = new LinkedHashMap<>();
@@ -539,16 +578,56 @@ class RdfAuthorizationAlignmentIT {
   }
 
   private static KnowledgeSource suiteFuseki() {
-    final String endpoint = TestSuiteBootstrap.getFusekiQueryEndpoint();
     return sparql -> {
-      try (QueryExecution execution =
-          QueryExecutionHTTP.service(endpoint)
-              .query(sparql)
-              .timeout(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-              .build()) {
+      try (QueryExecution execution = remote(sparql)) {
         return execution.execConstruct();
       }
     };
+  }
+
+  private static QueryExecution remote(final String sparql) {
+    return QueryExecutionHTTP.service(TestSuiteBootstrap.getFusekiQueryEndpoint())
+        .query(sparql)
+        .timeout(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build();
+  }
+
+  /**
+   * Recorded, never asserted: what each container node projects, so the mapping is reviewed against
+   * the live shape instead of a prediction. Object values never leave the store. The query
+   * aggregates without ever returning {@code ?object}, because a service node carries its
+   * connection config and its last connection test as literals, and neither may reach a diagnostics
+   * file. Only an entity IRI contributes a type; every other object is reported by kind alone.
+   */
+  private static void recordContainerFacts(final Fixture fixture) {
+    for (EntityReference container : fixture.containers()) {
+      record(
+          "model",
+          "container-facts",
+          Map.of("type", container.getType(), "facts", containerFacts(entityIri(container))));
+    }
+  }
+
+  private static List<Map<String, String>> containerFacts(final String iri) {
+    final String base = SanitizedModelBuilder.BASE;
+    final List<Map<String, String>> facts = new ArrayList<>();
+    try (QueryExecution execution =
+        remote(CONTAINER_FACTS.formatted(SanitizedModelBuilder.KNOWLEDGE, iri, base, base))) {
+      final ResultSet rows = execution.execSelect();
+      while (rows.hasNext()) {
+        facts.add(fact(rows.next()));
+      }
+    }
+    return facts;
+  }
+
+  private static Map<String, String> fact(final QuerySolution row) {
+    final Map<String, String> fact = new LinkedHashMap<>();
+    fact.put("predicate", row.getResource("predicate").getURI());
+    fact.put("objectKind", row.getLiteral("kind").getString());
+    fact.put("targetType", row.getLiteral("target").getString());
+    fact.put("count", String.valueOf(row.getLiteral("count").getInt()));
+    return fact;
   }
 
   private static void awaitProjection(final String triplePattern) {
@@ -561,11 +640,7 @@ class RdfAuthorizationAlignmentIT {
   }
 
   private static boolean askRemote(final String ask) {
-    try (QueryExecution execution =
-        QueryExecutionHTTP.service(TestSuiteBootstrap.getFusekiQueryEndpoint())
-            .query(ask)
-            .timeout(REQUEST_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-            .build()) {
+    try (QueryExecution execution = remote(ask)) {
       return execution.execAsk();
     }
   }
@@ -813,14 +888,26 @@ class RdfAuthorizationAlignmentIT {
           Set.of());
     }
 
+    /**
+     * A link predicate is mapped only where its target type is also a candidate type, so the
+     * containers join the candidates together with the container links. Their own live facts that
+     * no reviewed mapping covers, such as the service connection, still reject the build.
+     */
     List<CatalogResource> catalog() {
-      return List.of(
-          resource(Entity.TABLE, a().getId()),
-          resource(Entity.TABLE, b().getId()),
-          resource(Entity.TABLE, c().getId()),
-          resource(Entity.TABLE, d().getId()),
-          resource(Entity.DOMAIN, visibleDomain.getId()),
-          resource(Entity.DOMAIN, hiddenDomain.getId()));
+      final List<CatalogResource> containers =
+          containers().stream()
+              .map(container -> resource(container.getType(), container.getId()))
+              .toList();
+      return Stream.concat(
+              Stream.of(
+                  resource(Entity.TABLE, a().getId()),
+                  resource(Entity.TABLE, b().getId()),
+                  resource(Entity.TABLE, c().getId()),
+                  resource(Entity.TABLE, d().getId()),
+                  resource(Entity.DOMAIN, visibleDomain.getId()),
+                  resource(Entity.DOMAIN, hiddenDomain.getId())),
+              containers.stream())
+          .toList();
     }
 
     private static CatalogResource resource(final String type, final UUID id) {
