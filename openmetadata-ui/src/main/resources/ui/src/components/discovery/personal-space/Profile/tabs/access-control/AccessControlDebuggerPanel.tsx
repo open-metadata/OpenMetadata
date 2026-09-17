@@ -28,27 +28,21 @@ import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   evaluatePermission,
-  getPermissionDebugInfo,
-  PermissionDebugInfo,
   PermissionEvaluationDebugInfo,
 } from '../../../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import Loader from '../../../../../common/Loader/Loader';
 import { OPERATION_ITEMS, RESOURCE_ITEMS } from './AccessControl.constants';
 import AccessControlUserPermissions from './AccessControlUserPermissions';
 
 const AccessControlDebuggerPanel: FC = () => {
   const { t } = useTranslation();
   const [selectedUsername, setSelectedUsername] = useState('');
-  const [permissionInfo, setPermissionInfo] = useState<PermissionDebugInfo>();
   const [evaluationInfo, setEvaluationInfo] =
     useState<PermissionEvaluationDebugInfo>();
-  const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [loadingEvaluation, setLoadingEvaluation] = useState(false);
   const [userOptions, setUserOptions] = useState<SelectItemType[]>([]);
 
-  const permissionRequestIdRef = useRef(0);
   const evaluationRequestIdRef = useRef(0);
 
   // Evaluation form state
@@ -98,26 +92,9 @@ const AccessControlDebuggerPanel: FC = () => {
     []
   );
 
-  const handleUserSelect = async (username: string) => {
-    const requestId = ++permissionRequestIdRef.current;
+  const handleUserSelect = (username: string) => {
     setSelectedUsername(username);
-    setPermissionInfo(undefined);
     setEvaluationInfo(undefined);
-    setLoadingPermissions(true);
-    try {
-      const response = await getPermissionDebugInfo(username);
-      if (requestId === permissionRequestIdRef.current) {
-        setPermissionInfo(response.data);
-      }
-    } catch (error) {
-      if (requestId === permissionRequestIdRef.current) {
-        showErrorToast(error as AxiosError);
-      }
-    } finally {
-      if (requestId === permissionRequestIdRef.current) {
-        setLoadingPermissions(false);
-      }
-    }
   };
 
   const validateForm = (): boolean => {
@@ -552,30 +529,10 @@ const AccessControlDebuggerPanel: FC = () => {
             </Typography>
           </Box>
           <Box className="tw:p-6">
-            {(() => {
-              if (loadingPermissions) {
-                return (
-                  <Box className="tw:py-8" justify="center">
-                    <Loader />
-                  </Box>
-                );
-              }
-
-              if (permissionInfo) {
-                return (
-                  <AccessControlUserPermissions
-                    isLoggedInUser={false}
-                    username={selectedUsername}
-                  />
-                );
-              }
-
-              return (
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('message.select-user-first')}
-                </Typography>
-              );
-            })()}
+            <AccessControlUserPermissions
+              isLoggedInUser={false}
+              username={selectedUsername}
+            />
           </Box>
         </Card>
       )}

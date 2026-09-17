@@ -22,7 +22,6 @@ import {
   Skeleton,
   Table,
   TableCard,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
@@ -36,7 +35,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -59,10 +57,6 @@ import {
   LIST_CAP,
   userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
-import {
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-} from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -74,7 +68,7 @@ type PolicyColumnId = 'name' | 'description' | 'roles' | 'actions';
 type PolicyColumn = { id: PolicyColumnId; label: string; className?: string };
 
 interface AccessControlPoliciesPanelProps {
-  onNavigate?: (view: AccessControlView) => void;
+  onNavigate: (view: AccessControlView) => void;
 }
 
 const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
@@ -191,13 +185,11 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   }, [selectedPolicy, handleAfterDeleteAction]);
 
   const handlePolicyClick = (policy: Policy) => {
-    if (onNavigate) {
-      onNavigate({
-        type: 'policies-detail',
-        fqn: policy.fullyQualifiedName ?? '',
-        name: getEntityName(policy),
-      });
-    }
+    onNavigate({
+      type: 'policies-detail',
+      fqn: policy.fullyQualifiedName ?? '',
+      name: getEntityName(policy),
+    });
   };
 
   const handlePageNavigation = async (newPage: number) => {
@@ -292,32 +284,21 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       );
     }
 
-    if (onNavigate) {
-      return (
-        <Button
-          className="tw:truncate tw:block"
-          color="link-color"
-          key={key}
-          size="sm"
-          onPress={() =>
-            onNavigate({
-              type: 'roles-detail',
-              fqn: role.fullyQualifiedName ?? '',
-              name: getEntityName(role),
-            })
-          }>
-          {getEntityName(role)}
-        </Button>
-      );
-    }
-
     return (
-      <Link
+      <Button
         className="tw:truncate tw:block"
+        color="link-color"
         key={key}
-        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+        size="sm"
+        onPress={() =>
+          onNavigate({
+            type: 'roles-detail',
+            fqn: role.fullyQualifiedName ?? '',
+            name: getEntityName(role),
+          })
+        }>
         {getEntityName(role)}
-      </Link>
+      </Button>
     );
   };
 
@@ -356,7 +337,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const renderCell = (policy: Policy, colId: PolicyColumnId) => {
     switch (colId) {
       case 'name':
-        return onNavigate ? (
+        return (
           <Button
             className="tw:max-w-full tw:truncate tw:block tw:text-left"
             color="link-color"
@@ -367,22 +348,6 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
             onPress={() => handlePolicyClick(policy)}>
             {getEntityName(policy)}
           </Button>
-        ) : (
-          <Tooltip
-            placement="top"
-            title={getEntityName(policy)}
-            triggerClassName="tw:block tw:w-full">
-            <Link
-              className="tw:block tw:truncate link-hover"
-              data-testid="policy-name"
-              to={
-                policy.fullyQualifiedName
-                  ? getPolicyWithFqnPath(policy.fullyQualifiedName)
-                  : ''
-              }>
-              {getEntityName(policy)}
-            </Link>
-          </Tooltip>
         );
 
       case 'description':

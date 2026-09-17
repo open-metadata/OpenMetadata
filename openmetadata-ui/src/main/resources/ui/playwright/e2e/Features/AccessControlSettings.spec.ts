@@ -20,6 +20,7 @@ import {
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { expect, test } from '../../support/fixtures/base';
+import { UserClass } from '../../support/user/UserClass';
 import {
   clickDetailTab,
   navigateToPoliciesPanel,
@@ -162,27 +163,31 @@ test.describe(
           .click();
       });
 
-      await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') && r.request().method() === 'POST'
-        );
-        await page.getByTestId('submit-btn').click();
-        const createResponse = await responsePromise;
-        expect(createResponse.status()).toBe(201);
+      let roleId: string | undefined;
 
-        // No search in the list — verify via success toast
-        await toastNotification(page, /successfully/i);
-      });
+      try {
+        await test.step('Submit and verify via toast', async () => {
+          const responsePromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') && r.request().method() === 'POST'
+          );
+          await page.getByTestId('submit-btn').click();
+          const createResponse = await responsePromise;
+          expect(createResponse.status()).toBe(201);
+          roleId = (await createResponse.json()).id;
 
-      // Cleanup via API (the role was just created)
-      const roleData = await apiContext
-        .get(`/api/v1/roles/name/${encodeURIComponent(roleName)}`)
-        .then((r) => r.json());
-      await apiContext.delete(
-        `/api/v1/roles/${roleData.id}?hardDelete=true&recursive=true`
-      );
-      await afterAction();
+          // No search in the list — verify via success toast
+          await toastNotification(page, /successfully/i);
+        });
+      } finally {
+        // Cleanup via API (the role was just created)
+        if (roleId) {
+          await apiContext.delete(
+            `/api/v1/roles/${roleId}?hardDelete=true&recursive=true`
+          );
+        }
+        await afterAction();
+      }
     });
 
     test('should navigate to role detail and verify all 3 tabs', async ({
@@ -205,11 +210,11 @@ test.describe(
         `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
       );
 
-      // Add admin user to role via API so the Users tab is non-empty
-      const adminUser = await apiContext
-        .get('/api/v1/users/name/admin?fields=id,name,displayName')
-        .then((r) => r.json());
-      await apiContext.patch(`/api/v1/users/${adminUser.id}`, {
+      // Add a dedicated test user to the role so the Users tab is non-empty.
+      // Using a dedicated user avoids mutating the shared admin account in parallel runs.
+      const testUser = new UserClass();
+      await testUser.create(apiContext);
+      await apiContext.patch(`/api/v1/users/${testUser.responseData.id}`, {
         data: [
           {
             op: 'add',
@@ -226,33 +231,36 @@ test.describe(
         headers: { 'Content-Type': 'application/json-patch+json' },
       });
 
-      await openAccessControlSettings(page);
-      await navigateToRolesPanel(page);
-      await navigateToRoleDetail(page, role.responseData.displayName);
+      try {
+        await openAccessControlSettings(page);
+        await navigateToRolesPanel(page);
+        await navigateToRoleDetail(page, role.responseData.displayName);
 
-      await test.step('Policies tab (default) shows policy row', async () => {
-        await expect(
-          page.getByRole('tab', { name: /policies/i })
-        ).toBeVisible();
-        await expect(
-          page.getByText(DEFAULT_POLICIES.dataConsumerPolicy)
-        ).toBeVisible();
-      });
+        await test.step('Policies tab (default) shows policy row', async () => {
+          await expect(
+            page.getByRole('tab', { name: /policies/i })
+          ).toBeVisible();
+          await expect(
+            page.getByText(DEFAULT_POLICIES.dataConsumerPolicy)
+          ).toBeVisible();
+        });
 
-      await test.step('Teams tab shows empty state', async () => {
-        await clickDetailTab(page, 'teams');
-        await expect(page.getByText('No Teams found')).toBeVisible();
-      });
+        await test.step('Teams tab shows empty state', async () => {
+          await clickDetailTab(page, 'teams');
+          await expect(page.getByText('No Teams found')).toBeVisible();
+        });
 
-      await test.step('Users tab shows pre-added user', async () => {
-        await clickDetailTab(page, 'users');
-        await expect(
-          page.getByRole('rowheader', { name: adminUser.name })
-        ).toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await afterAction();
+        await test.step('Users tab shows pre-added user', async () => {
+          await clickDetailTab(page, 'users');
+          await expect(
+            page.getByRole('rowheader', { name: testUser.responseData.name })
+          ).toBeVisible();
+        });
+      } finally {
+        await testUser.delete(apiContext);
+        await role.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should edit role description', async ({ page }) => {
@@ -277,35 +285,37 @@ test.describe(
 
       const updatedDescription = `Updated description ${uuid()}`;
 
-      await test.step('Click edit description and fill', async () => {
-        await page.getByTestId('edit-description-btn').click();
-        const editor = page.locator('.om-block-editor[contenteditable="true"]');
-        await editor.waitFor({ state: 'visible' });
-        await editor.clear();
-        await editor.fill(updatedDescription);
+      try {
+        await test.step('Click edit description and fill', async () => {
+          await page.getByTestId('edit-description-btn').click();
+          const editor = page.locator('.om-block-editor[contenteditable="true"]');
+          await editor.waitFor({ state: 'visible' });
+          await editor.clear();
+          await editor.fill(updatedDescription);
 
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('role-detail-container')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('role-detail-container')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify description updated', async () => {
-        await expect(
-          page.locator('.om-block-editor[contenteditable="true"]')
-        ).not.toBeVisible();
-        await expect(page.getByText(updatedDescription)).toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await afterAction();
+        await test.step('Verify description updated', async () => {
+          await expect(
+            page.locator('.om-block-editor[contenteditable="true"]')
+          ).not.toBeVisible();
+          await expect(page.getByText(updatedDescription)).toBeVisible();
+        });
+      } finally {
+        await role.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should rename a role', async ({ page }) => {
@@ -330,35 +340,37 @@ test.describe(
       await navigateToRolesPanel(page);
       await navigateToRoleDetail(page, role.responseData.displayName);
 
-      await test.step('Click rename button and fill new name', async () => {
-        await page.getByTestId('rename-role-btn').click();
-        await page.getByTestId('rename-input').waitFor({ state: 'visible' });
-        const renameInput = page
-          .getByTestId('rename-input')
-          .getByRole('textbox');
-        await renameInput.clear();
-        await renameInput.fill(newDisplayName);
+      try {
+        await test.step('Click rename button and fill new name', async () => {
+          await page.getByTestId('rename-role-btn').click();
+          await page.getByTestId('rename-input').waitFor({ state: 'visible' });
+          const renameInput = page
+            .getByTestId('rename-input')
+            .getByRole('textbox');
+          await renameInput.clear();
+          await renameInput.fill(newDisplayName);
 
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('profile-content-header')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('profile-content-header')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify new display name is shown', async () => {
-        await expect(page.getByTestId('rename-input')).not.toBeVisible();
-        await expect(page.getByText(newDisplayName)).toHaveCount(2);
-      });
-
-      await role.delete(apiContext);
-      await afterAction();
+        await test.step('Verify new display name is shown', async () => {
+          await expect(page.getByTestId('rename-input')).not.toBeVisible();
+          await expect(page.getByText(newDisplayName)).toHaveCount(2);
+        });
+      } finally {
+        await role.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should add a policy to an existing role', async ({ page }) => {
@@ -381,48 +393,50 @@ test.describe(
       await navigateToRolesPanel(page);
       await navigateToRoleDetail(page, role.responseData.displayName);
 
-      await test.step('Click Add Policy button in Policies tab', async () => {
-        await page.getByTestId('add-policy').click();
-        await page
-          .getByTestId('add-policy-select')
-          .waitFor({ state: 'visible' });
-      });
+      try {
+        await test.step('Click Add Policy button in Policies tab', async () => {
+          await page.getByTestId('add-policy').click();
+          await page
+            .getByTestId('add-policy-select')
+            .waitFor({ state: 'visible' });
+        });
 
-      await test.step('Select the extra policy', async () => {
-        const autocomplete = page.getByTestId('add-policy-select');
-        await autocomplete
-          .getByRole('combobox')
-          .fill('AutoClassification Bot Policy');
-        await page
-          .getByRole('option', {
-            name: 'AutoClassification Bot Policy',
-          })
-          .click();
-        await page.keyboard.press('Escape');
-      });
+        await test.step('Select the extra policy', async () => {
+          const autocomplete = page.getByTestId('add-policy-select');
+          await autocomplete
+            .getByRole('combobox')
+            .fill('AutoClassification Bot Policy');
+          await page
+            .getByRole('option', {
+              name: 'AutoClassification Bot Policy',
+            })
+            .click();
+          await page.keyboard.press('Escape');
+        });
 
-      await test.step('Confirm adding policy', async () => {
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('role-detail-container')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+        await test.step('Confirm adding policy', async () => {
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('role-detail-container')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify new policy appears in the table', async () => {
-        await expect(
-          page.getByText('AutoClassificationBotPolicy')
-        ).toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await afterAction();
+        await test.step('Verify new policy appears in the table', async () => {
+          await expect(
+            page.getByText('AutoClassificationBotPolicy')
+          ).toBeVisible();
+        });
+      } finally {
+        await role.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should remove a policy from a role', async ({ page }) => {
@@ -463,29 +477,31 @@ test.describe(
 
       const policyDisplayName = policyToRemove.responseData.displayName;
 
-      await test.step('Click remove button for the policy', async () => {
-        await page.getByTestId(`remove-${policyDisplayName}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-      });
+      try {
+        await test.step('Click remove button for the policy', async () => {
+          await page.getByTestId(`remove-${policyDisplayName}`).click();
+          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+        });
 
-      await test.step('Confirm removal', async () => {
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH'
-        );
-        await page.getByTestId('confirm-button').click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+        await test.step('Confirm removal', async () => {
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'PATCH'
+          );
+          await page.getByTestId('confirm-button').click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Policy is no longer listed', async () => {
-        await expect(page.getByText(policyDisplayName)).not.toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await policyToRemove.delete(apiContext);
-      await afterAction();
+        await test.step('Policy is no longer listed', async () => {
+          await expect(page.getByText(policyDisplayName)).not.toBeVisible();
+        });
+      } finally {
+        await role.delete(apiContext);
+        await policyToRemove.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should remove a user from a role via the Users tab', async ({
@@ -506,10 +522,11 @@ test.describe(
         `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
       );
 
-      const adminUser = await apiContext
-        .get('/api/v1/users/name/admin?fields=id,name,displayName')
-        .then((r) => r.json());
-      await apiContext.patch(`/api/v1/users/${adminUser.id}`, {
+      // Use a dedicated test user instead of admin to avoid mutating the shared
+      // admin account while other specs run in parallel.
+      const testUser = new UserClass();
+      await testUser.create(apiContext);
+      await apiContext.patch(`/api/v1/users/${testUser.responseData.id}`, {
         data: [
           {
             op: 'add',
@@ -526,38 +543,41 @@ test.describe(
         headers: { 'Content-Type': 'application/json-patch+json' },
       });
 
-      await openAccessControlSettings(page);
-      await navigateToRolesPanel(page);
-      await navigateToRoleDetail(page, role.responseData.displayName);
-      await clickDetailTab(page, 'users');
+      try {
+        await openAccessControlSettings(page);
+        await navigateToRolesPanel(page);
+        await navigateToRoleDetail(page, role.responseData.displayName);
+        await clickDetailTab(page, 'users');
 
-      await test.step('User row is visible', async () => {
-        await expect(
-          page.getByRole('rowheader', { name: 'admin' })
-        ).toBeVisible();
-      });
+        await test.step('User row is visible', async () => {
+          await expect(
+            page.getByRole('rowheader', { name: testUser.responseData.name })
+          ).toBeVisible();
+        });
 
-      await test.step('Click remove and confirm', async () => {
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/users') &&
-            r.request().method() === 'PATCH'
-        );
-        await page.getByTestId(`remove-${adminUser.name}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-        await page.getByTestId('confirm-button').click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+        await test.step('Click remove and confirm', async () => {
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/users') &&
+              r.request().method() === 'PATCH'
+          );
+          await page.getByTestId(`remove-${testUser.responseData.name}`).click();
+          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          await page.getByTestId('confirm-button').click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('User row is gone', async () => {
-        await expect(
-          page.getByRole('rowheader', { name: 'admin' })
-        ).not.toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await afterAction();
+        await test.step('User row is gone', async () => {
+          await expect(
+            page.getByRole('rowheader', { name: testUser.responseData.name })
+          ).not.toBeVisible();
+        });
+      } finally {
+        await testUser.delete(apiContext);
+        await role.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should delete a role from the roles list table', async ({ page }) => {
@@ -739,27 +759,31 @@ test.describe(
           })
           .toBe(true);
       });
-      await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'POST'
-        );
-        await page.getByTestId('submit-btn').click();
-        const createResponse = await responsePromise;
-        expect(createResponse.status()).toBe(201);
+      let createdPolicyId: string | undefined;
 
-        // No search in the list — verify via success toast
-        await toastNotification(page, /successfully/i);
-      });
+      try {
+        await test.step('Submit and verify via toast', async () => {
+          const responsePromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'POST'
+          );
+          await page.getByTestId('submit-btn').click();
+          const createResponse = await responsePromise;
+          expect(createResponse.status()).toBe(201);
+          createdPolicyId = (await createResponse.json()).id;
 
-      const policyData = await apiContext
-        .get(`/api/v1/policies/name/${encodeURIComponent(policyName)}`)
-        .then((r) => r.json());
-      await apiContext.delete(
-        `/api/v1/policies/${policyData.id}?hardDelete=true&recursive=true`
-      );
-      await afterAction();
+          // No search in the list — verify via success toast
+          await toastNotification(page, /successfully/i);
+        });
+      } finally {
+        if (createdPolicyId) {
+          await apiContext.delete(
+            `/api/v1/policies/${createdPolicyId}?hardDelete=true&recursive=true`
+          );
+        }
+        await afterAction();
+      }
     });
 
     test('should view policy detail and verify all 3 tabs', async ({
@@ -830,31 +854,33 @@ test.describe(
         headers: { 'Content-Type': 'application/json-patch+json' },
       });
 
-      await openAccessControlSettings(page);
-      await navigateToPoliciesPanel(page);
-      await navigateToPolicyDetail(page, policy.responseData.displayName);
+      try {
+        await openAccessControlSettings(page);
+        await navigateToPoliciesPanel(page);
+        await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Rules tab (default) shows rule card', async () => {
-        await expect(
-          page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
-        ).toBeVisible();
-      });
+        await test.step('Rules tab (default) shows rule card', async () => {
+          await expect(
+            page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
+          ).toBeVisible();
+        });
 
-      await test.step('Roles tab shows pre-linked role', async () => {
-        await clickDetailTab(page, 'roles');
-        await expect(
-          page.getByTestId(role.responseData.displayName)
-        ).toBeVisible();
-      });
+        await test.step('Roles tab shows pre-linked role', async () => {
+          await clickDetailTab(page, 'roles');
+          await expect(
+            page.getByTestId(role.responseData.displayName)
+          ).toBeVisible();
+        });
 
-      await test.step('Teams tab shows pre-linked team', async () => {
-        await clickDetailTab(page, 'teams');
-        await expect(page.getByTestId(orgTeam.name)).toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Teams tab shows pre-linked team', async () => {
+          await clickDetailTab(page, 'teams');
+          await expect(page.getByTestId(orgTeam.name)).toBeVisible();
+        });
+      } finally {
+        await role.delete(apiContext);
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should edit policy description', async ({ page }) => {
@@ -879,35 +905,37 @@ test.describe(
       await navigateToPoliciesPanel(page);
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Click edit description and fill new value', async () => {
-        await page.getByTestId('edit-description-btn').click();
-        const editor = page.locator('.om-block-editor[contenteditable="true"]');
-        await editor.waitFor({ state: 'visible' });
-        await editor.clear();
-        await editor.fill(updatedDescription);
+      try {
+        await test.step('Click edit description and fill new value', async () => {
+          await page.getByTestId('edit-description-btn').click();
+          const editor = page.locator('.om-block-editor[contenteditable="true"]');
+          await editor.waitFor({ state: 'visible' });
+          await editor.clear();
+          await editor.fill(updatedDescription);
 
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('policy-detail-container')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('policy-detail-container')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify description updated', async () => {
-        await expect(
-          page.locator('.om-block-editor[contenteditable="true"]')
-        ).not.toBeVisible();
-        await expect(page.getByText(updatedDescription)).toBeVisible();
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Verify description updated', async () => {
+          await expect(
+            page.locator('.om-block-editor[contenteditable="true"]')
+          ).not.toBeVisible();
+          await expect(page.getByText(updatedDescription)).toBeVisible();
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should rename a policy', async ({ page }) => {
@@ -932,35 +960,37 @@ test.describe(
       await navigateToPoliciesPanel(page);
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Click rename button and fill new name', async () => {
-        await page.getByTestId('rename-policy-btn').click();
-        await page.getByTestId('rename-input').waitFor({ state: 'visible' });
-        const renameInput = page
-          .getByTestId('rename-input')
-          .getByRole('textbox');
-        await renameInput.clear();
-        await renameInput.fill(newDisplayName);
+      try {
+        await test.step('Click rename button and fill new name', async () => {
+          await page.getByTestId('rename-policy-btn').click();
+          await page.getByTestId('rename-input').waitFor({ state: 'visible' });
+          const renameInput = page
+            .getByTestId('rename-input')
+            .getByRole('textbox');
+          await renameInput.clear();
+          await renameInput.fill(newDisplayName);
 
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('profile-content-header')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('profile-content-header')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify new display name is shown', async () => {
-        await expect(page.getByTestId('rename-input')).not.toBeVisible();
-        await expect(page.getByText(newDisplayName)).toHaveCount(2);
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Verify new display name is shown', async () => {
+          await expect(page.getByTestId('rename-input')).not.toBeVisible();
+          await expect(page.getByText(newDisplayName)).toHaveCount(2);
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should add a rule to a policy', async ({ page }) => {
@@ -987,86 +1017,88 @@ test.describe(
       await navigateToPoliciesPanel(page);
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Existing seeded rule card is visible', async () => {
-        await expect(
-          page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
-        ).toBeVisible();
-      });
+      try {
+        await test.step('Existing seeded rule card is visible', async () => {
+          await expect(
+            page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
+          ).toBeVisible();
+        });
 
-      await test.step('Click Add Rule button', async () => {
-        await page.getByTestId('add-rule').click();
-        await page.getByTestId('rule-name').waitFor({ state: 'visible' });
-      });
+        await test.step('Click Add Rule button', async () => {
+          await page.getByTestId('add-rule').click();
+          await page.getByTestId('rule-name').waitFor({ state: 'visible' });
+        });
 
-      await test.step('Fill rule form', async () => {
-        await page
-          .getByTestId('rule-name')
-          .getByRole('textbox')
-          .fill(newRuleName);
+        await test.step('Fill rule form', async () => {
+          await page
+            .getByTestId('rule-name')
+            .getByRole('textbox')
+            .fill(newRuleName);
 
-        await expect
-          .poll(async () => {
-            const resourcesAutocomplete = page.getByTestId('resources');
+          await expect
+            .poll(async () => {
+              const resourcesAutocomplete = page.getByTestId('resources');
 
-            await resourcesAutocomplete.click();
+              await resourcesAutocomplete.click();
 
-            const option = page
-              .getByRole('listbox')
-              .getByRole('option', { name: 'All', exact: true });
+              const option = page
+                .getByRole('listbox')
+                .getByRole('option', { name: 'All', exact: true });
 
-            try {
-              await option.click({ timeout: 1000 });
+              try {
+                await option.click({ timeout: 1000 });
 
-              return true;
-            } catch {
-              return false;
-            }
-          })
-          .toBe(true);
-        await page.keyboard.press('Escape');
-        await expect
-          .poll(async () => {
-            const operationsAutocomplete = page.getByTestId('operations');
+                return true;
+              } catch {
+                return false;
+              }
+            })
+            .toBe(true);
+          await page.keyboard.press('Escape');
+          await expect
+            .poll(async () => {
+              const operationsAutocomplete = page.getByTestId('operations');
 
-            await operationsAutocomplete.click();
+              await operationsAutocomplete.click();
 
-            const option = page
-              .getByRole('listbox')
-              .getByRole('option', { name: 'All', exact: true });
+              const option = page
+                .getByRole('listbox')
+                .getByRole('option', { name: 'All', exact: true });
 
-            try {
-              await option.click({ timeout: 1000 });
+              try {
+                await option.click({ timeout: 1000 });
 
-              return true;
-            } catch {
-              return false;
-            }
-          })
-          .toBe(true);
-        await page.keyboard.press('Escape');
-      });
+                return true;
+              } catch {
+                return false;
+              }
+            })
+            .toBe(true);
+          await page.keyboard.press('Escape');
+        });
 
-      await test.step('Save rule and verify new card appears', async () => {
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('policy-detail-container')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-        await expect(page.getByTestId(`rule-${newRuleName}`)).toBeVisible();
-        // Original seeded rule is still present
-        await expect(
-          page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
-        ).toBeVisible();
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Save rule and verify new card appears', async () => {
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('policy-detail-container')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+          await expect(page.getByTestId(`rule-${newRuleName}`)).toBeVisible();
+          // Original seeded rule is still present
+          await expect(
+            page.getByTestId(`rule-${VIEW_ALL_RULE[0].name}`)
+          ).toBeVisible();
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should edit a rule in a policy', async ({ page }) => {
@@ -1092,40 +1124,42 @@ test.describe(
       await navigateToPoliciesPanel(page);
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Click edit rule button', async () => {
-        await page.getByTestId(`edit-rule-${existingRuleName}`).click();
-        await page.getByTestId('rule-name').waitFor({ state: 'visible' });
-      });
+      try {
+        await test.step('Click edit rule button', async () => {
+          await page.getByTestId(`edit-rule-${existingRuleName}`).click();
+          await page.getByTestId('rule-name').waitFor({ state: 'visible' });
+        });
 
-      await test.step('Change the rule name', async () => {
-        const ruleNameInput = page
-          .getByTestId('rule-name')
-          .getByRole('textbox');
-        await ruleNameInput.clear();
-        await ruleNameInput.fill(updatedRuleName);
+        await test.step('Change the rule name', async () => {
+          const ruleNameInput = page
+            .getByTestId('rule-name')
+            .getByRole('textbox');
+          await ruleNameInput.clear();
+          await ruleNameInput.fill(updatedRuleName);
 
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH'
-        );
-        await page
-          .getByTestId('policy-detail-container')
-          .getByRole('button', { name: 'Save' })
-          .click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'PATCH'
+          );
+          await page
+            .getByTestId('policy-detail-container')
+            .getByRole('button', { name: 'Save' })
+            .click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Verify updated rule card appears', async () => {
-        await expect(page.getByTestId(`rule-${updatedRuleName}`)).toBeVisible();
-        await expect(
-          page.getByTestId(`rule-${existingRuleName}`)
-        ).not.toBeVisible();
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Verify updated rule card appears', async () => {
+          await expect(page.getByTestId(`rule-${updatedRuleName}`)).toBeVisible();
+          await expect(
+            page.getByTestId(`rule-${existingRuleName}`)
+          ).not.toBeVisible();
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should delete a rule from a policy', async ({ page }) => {
@@ -1158,25 +1192,27 @@ test.describe(
       await navigateToPoliciesPanel(page);
       await navigateToPolicyDetail(page, policy.responseData.displayName);
 
-      await test.step('Click delete rule button and confirm', async () => {
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH'
-        );
-        await page.getByTestId(`delete-rule-${extraRuleName}`).click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+      try {
+        await test.step('Click delete rule button and confirm', async () => {
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/policies') &&
+              r.request().method() === 'PATCH'
+          );
+          await page.getByTestId(`delete-rule-${extraRuleName}`).click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Rule card is gone', async () => {
-        await expect(
-          page.getByTestId(`rule-${extraRuleName}`)
-        ).not.toBeVisible();
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Rule card is gone', async () => {
+          await expect(
+            page.getByTestId(`rule-${extraRuleName}`)
+          ).not.toBeVisible();
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should remove a role from a policy via Roles tab', async ({
@@ -1216,36 +1252,38 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
       await clickDetailTab(page, 'roles');
 
-      await test.step('Role row is visible', async () => {
-        await expect(
-          page.getByTestId(role.responseData.displayName)
-        ).toBeVisible();
-      });
+      try {
+        await test.step('Role row is visible', async () => {
+          await expect(
+            page.getByTestId(role.responseData.displayName)
+          ).toBeVisible();
+        });
 
-      await test.step('Click remove and confirm', async () => {
-        await page
-          .getByTestId(`remove-${role.responseData.displayName}`)
-          .click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH'
-        );
-        await page.getByTestId('confirm-button').click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+        await test.step('Click remove and confirm', async () => {
+          await page
+            .getByTestId(`remove-${role.responseData.displayName}`)
+            .click();
+          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'PATCH'
+          );
+          await page.getByTestId('confirm-button').click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Role row is gone', async () => {
-        await expect(
-          page.getByTestId(role.responseData.displayName)
-        ).not.toBeVisible();
-      });
-
-      await role.delete(apiContext);
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Role row is gone', async () => {
+          await expect(
+            page.getByTestId(role.responseData.displayName)
+          ).not.toBeVisible();
+        });
+      } finally {
+        await role.delete(apiContext);
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should remove a team from a policy via Teams tab', async ({
@@ -1308,29 +1346,31 @@ test.describe(
       await navigateToPolicyDetail(page, policy.responseData.displayName);
       await clickDetailTab(page, 'teams');
 
-      await test.step('Team row is visible', async () => {
-        await expect(page.getByTestId(orgTeam.name)).toBeVisible();
-      });
+      try {
+        await test.step('Team row is visible', async () => {
+          await expect(page.getByTestId(orgTeam.name)).toBeVisible();
+        });
 
-      await test.step('Click remove and confirm', async () => {
-        await page.getByTestId(`remove-${orgTeam.name}`).click();
-        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/teams') &&
-            r.request().method() === 'PATCH'
-        );
-        await page.getByTestId('confirm-button').click();
-        const patchResponse = await patchPromise;
-        expect(patchResponse.status()).toBe(200);
-      });
+        await test.step('Click remove and confirm', async () => {
+          await page.getByTestId(`remove-${orgTeam.name}`).click();
+          await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+          const patchPromise = page.waitForResponse(
+            (r) =>
+              r.url().includes('/api/v1/teams') &&
+              r.request().method() === 'PATCH'
+          );
+          await page.getByTestId('confirm-button').click();
+          const patchResponse = await patchPromise;
+          expect(patchResponse.status()).toBe(200);
+        });
 
-      await test.step('Team row is gone', async () => {
-        await expect(page.getByTestId(orgTeam.name)).not.toBeVisible();
-      });
-
-      await policy.delete(apiContext);
-      await afterAction();
+        await test.step('Team row is gone', async () => {
+          await expect(page.getByTestId(orgTeam.name)).not.toBeVisible();
+        });
+      } finally {
+        await policy.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('should delete a policy from the policies list table', async ({

@@ -22,7 +22,6 @@ import {
   Skeleton,
   Table,
   TableCard,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
@@ -30,7 +29,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -51,10 +49,6 @@ import {
   LIST_CAP,
   userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
-import {
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-} from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -64,7 +58,7 @@ type RoleColumnId = 'name' | 'description' | 'policies' | 'actions';
 type RoleColumn = { id: RoleColumnId; label: string; className?: string };
 
 interface AccessControlRolesPanelProps {
-  onNavigate?: (view: AccessControlView) => void;
+  onNavigate: (view: AccessControlView) => void;
 }
 
 const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
@@ -165,13 +159,11 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   }, [selectedRole, handleAfterDeleteAction]);
 
   const handleRoleClick = (role: Role) => {
-    if (onNavigate) {
-      onNavigate({
-        type: 'roles-detail',
-        fqn: role.fullyQualifiedName ?? '',
-        name: getEntityName(role),
-      });
-    }
+    onNavigate({
+      type: 'roles-detail',
+      fqn: role.fullyQualifiedName ?? '',
+      name: getEntityName(role),
+    });
   };
 
   const handlePageNavigation = async (newPage: number) => {
@@ -254,32 +246,21 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       );
     }
 
-    if (onNavigate) {
-      return (
-        <Button
-          className="tw:truncate tw:block"
-          color="link-color"
-          key={key}
-          size="sm"
-          onPress={() =>
-            onNavigate({
-              type: 'policies-detail',
-              fqn: policy.fullyQualifiedName ?? '',
-              name: getEntityName(policy),
-            })
-          }>
-          {getEntityName(policy)}
-        </Button>
-      );
-    }
-
     return (
-      <Link
+      <Button
         className="tw:truncate tw:block"
+        color="link-color"
         key={key}
-        to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
+        size="sm"
+        onPress={() =>
+          onNavigate({
+            type: 'policies-detail',
+            fqn: policy.fullyQualifiedName ?? '',
+            name: getEntityName(policy),
+          })
+        }>
         {getEntityName(policy)}
-      </Link>
+      </Button>
     );
   };
 
@@ -318,7 +299,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const renderCell = (role: Role, colId: RoleColumnId) => {
     switch (colId) {
       case 'name':
-        return onNavigate ? (
+        return (
           <Button
             className="tw:max-w-full tw:truncate tw:block tw:text-left"
             color="link-color"
@@ -329,18 +310,6 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             onPress={() => handleRoleClick(role)}>
             {getEntityName(role)}
           </Button>
-        ) : (
-          <Tooltip
-            placement="top"
-            title={getEntityName(role)}
-            triggerClassName="tw:block tw:w-full">
-            <Link
-              className="tw:block tw:truncate link-hover"
-              data-testid="role-name"
-              to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
-              {getEntityName(role)}
-            </Link>
-          </Tooltip>
         );
 
       case 'description':
