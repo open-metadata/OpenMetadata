@@ -439,16 +439,23 @@ class DbtSource(DbtServiceSource):
 
                 if not data_product:
                     logger.warning(
-                        f"Data Product '{product_name}' not found in OpenMetadata for table "
-                        f"{table_fqn}; skipping assignment"
+                        "Data Product '%s' not found in OpenMetadata for table %s; skipping assignment",
+                        product_name,
+                        table_fqn,
                     )
                     continue
 
                 self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
-                logger.info(f"Added table {table_fqn} to Data Product '{product_name}'")
+                logger.info("Added table %s to Data Product '%s'", table_fqn, product_name)
 
             except Exception as exc:  # pylint: disable=broad-except
-                logger.warning(f"Failed to assign Data Product '{product_name}' to {table_fqn}: {exc}")
+                logger.warning(
+                    "Failed to assign Data Product '%s' to %s: %s. If this is a domain validation "
+                    "error, ensure the table's domain matches the Data Product's domain.",
+                    product_name,
+                    table_fqn,
+                    exc,
+                )
                 logger.debug(traceback.format_exc())
 
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
