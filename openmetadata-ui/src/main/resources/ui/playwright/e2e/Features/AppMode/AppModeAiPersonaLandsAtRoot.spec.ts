@@ -163,7 +163,7 @@ test.describe('AppMode — landing URL', { tag: ['@Platform'] }, () => {
           }
         });
 
-        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
         await user.login(page);
         await waitForAllLoadersToDisappear(page);
 

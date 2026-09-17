@@ -177,8 +177,9 @@ test.describe(
     test.beforeEach('Visit entity details page', async ({ page }) => {
       // Tour is entered from the welcome banner, so this suite must NOT suppress
       // it. The other tour tests already guard against the banner if present.
-      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the tour is entered from the welcome banner that a real sign-in renders
-      await user.login(page, undefined, undefined, {
+      // The banner is gated on the `loggedInUsers` seed, not on the form, so
+      // signIn() renders it too once the same opt-out is passed.
+      await user.signIn(page, undefined, undefined, {
         suppressWelcomeScreen: false,
       });
     });
