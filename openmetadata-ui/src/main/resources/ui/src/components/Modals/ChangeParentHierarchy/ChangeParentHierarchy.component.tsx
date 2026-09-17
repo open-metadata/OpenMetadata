@@ -56,7 +56,9 @@ const ChangeParentHierarchy = ({
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
   const submittedJobId = useRef<string>();
   const awaitingResponse = useRef(false);
-  const bufferedEvent = useRef<MoveGlossaryTermWebsocketResponse>();
+  const bufferedEvents = useRef(
+    new Map<string, MoveGlossaryTermWebsocketResponse>()
+  );
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -134,9 +136,9 @@ const ChangeParentHierarchy = ({
       submittedJobId.current = response.jobId;
       awaitingResponse.current = false;
 
-      const early = bufferedEvent.current;
-      bufferedEvent.current = undefined;
-      if (early?.jobId === response.jobId) {
+      const early = bufferedEvents.current.get(response.jobId);
+      bufferedEvents.current.clear();
+      if (early) {
         handleMoveJobUpdate(early);
 
         return;
@@ -168,8 +170,8 @@ const ChangeParentHierarchy = ({
             data.jobId === submittedJobId.current
           ) {
             handleMoveJobUpdate(data);
-          } else if (awaitingResponse.current) {
-            bufferedEvent.current = data;
+          } else if (awaitingResponse.current && data.jobId) {
+            bufferedEvents.current.set(data.jobId, data);
           }
         }
       });
