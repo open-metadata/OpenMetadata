@@ -885,6 +885,7 @@
     "domain-lowercase": "domain",
     "domain-lowercase-plural": "domains",
     "domain-plural": "Domains",
+    "domain-scope": "Domain scope",
     "domain-type": "Domain Type",
     "domain_access": "Domain Access",
     "done": "Done",

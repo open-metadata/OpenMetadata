@@ -258,7 +258,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    flex-shrink: 0;
+    // Shrink and scroll before the bottom-pinned footer clips when there is no
+    // recent-chats region to absorb the overflow on a short viewport.
+    min-height: 0;
+    overflow-y: auto;
   }
 
   &__chats {
@@ -273,13 +276,16 @@
     flex-shrink: 0;
   }
 
-  // Footer (user card) sticks to the bottom of the panel. When a plugin
-  // contributes the recent-chats slot (`&__chats`), it fills the space
-  // between the nav and the footer; otherwise the footer sits directly
-  // under the nav via this auto margin.
+  &__domain {
+    flex-shrink: 0;
+  }
+
   &__footer {
     margin-top: auto;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 }
 
@@ -892,7 +898,10 @@
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    // Shrink and scroll before the bottom-pinned profile footer clips on a
+    // short viewport with no recent-chats region to absorb the overflow.
+    min-height: 0;
+    overflow-y: auto;
   }
 
   // Collapsed-rail recent-activity region (e.g. the recent-chats popover
@@ -979,6 +988,50 @@
       height: @ask-nav-item-icon-size;
       transition: width 150ms @ask-transition-ease,
         height 150ms @ask-transition-ease;
+    }
+  }
+
+  // Rail trigger reuses `.ask-rail__item` sizing so it lines up with the nav
+  // icons above it; ButtonUtility ships no matching size preset.
+  &__domain {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+
+    .ask-domain-scope__rail-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: @ask-rail-item-size;
+      height: @ask-rail-item-size;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: @ask-nav-item-radius;
+      color: @ask-text-quaternary;
+      cursor: pointer;
+      transition: background-color 150ms @ask-transition-ease,
+        color 150ms @ask-transition-ease;
+
+      svg {
+        width: @ask-nav-item-icon-size;
+        height: @ask-nav-item-icon-size;
+      }
+
+      &:not(:disabled):hover {
+        background: @ask-bg-hover;
+        color: @ask-text-tertiary;
+      }
+
+      &--active {
+        color: @ask-brand-active;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
     }
   }
 
