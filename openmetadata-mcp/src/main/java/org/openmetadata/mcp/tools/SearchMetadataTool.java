@@ -82,7 +82,7 @@ public class SearchMetadataTool implements McpTool {
           "originEntityFQN",
           "testCaseStatus",
           "testCaseType",
-          "dataQualityDimension",
+          "dataQualityDimensionName",
           "testPlatforms",
           "basic",
           "lastResultTimestamp");
