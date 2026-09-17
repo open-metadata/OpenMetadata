@@ -80,8 +80,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void writeReturnsEarlyForEmptyEntitiesAndRejectsMissingEntityType() throws Exception {
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       sink.write(
@@ -100,8 +100,8 @@ class OpenSearchBulkSinkBehaviorTest {
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     when(searchRepository.getIndexMapping(ENTITY_TYPE)).thenReturn(null);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       sink.write(
@@ -123,12 +123,11 @@ class OpenSearchBulkSinkBehaviorTest {
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
 
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       SearchIndex searchIndex = new StubSearchIndex(Map.of("field", "value"));
@@ -192,15 +191,14 @@ class OpenSearchBulkSinkBehaviorTest {
     when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
     when(embeddingClient.getDimension()).thenReturn(2);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 2000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
       // The bulk sink consults this to keep restricted ContextMemory out of the vector index.
@@ -265,8 +263,8 @@ class OpenSearchBulkSinkBehaviorTest {
     SearchRepository.ScriptedPartialUpdate partialUpdate =
         new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
       invokePrivate(
@@ -317,8 +315,8 @@ class OpenSearchBulkSinkBehaviorTest {
         new SearchRepository.ScriptedPartialUpdate(
             "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 128L);
 
       invokePrivate(
@@ -360,12 +358,11 @@ class OpenSearchBulkSinkBehaviorTest {
     when(searchRepository.buildRelationshipDocumentUpdate(eq(entity), any()))
         .thenReturn(documentUpdate);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
       entityMock
@@ -421,8 +418,8 @@ class OpenSearchBulkSinkBehaviorTest {
     when(entity.getId()).thenReturn(entityId);
     when(entity.getFullyQualifiedName()).thenReturn("table.fqn");
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
       sink.setFailureCallback(failureCallback);
@@ -475,12 +472,11 @@ class OpenSearchBulkSinkBehaviorTest {
     when(successEntity.getId()).thenReturn(successId);
     when(failedEntity.getId()).thenReturn(failedId);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       sink.setFailureCallback(failureCallback);
 
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
@@ -532,13 +528,11 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void flushAndCloseDelegateToProcessorAndPreserveInterrupts() throws Exception {
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      OpenSearchBulkSink.CustomBulkProcessor columnProcessor =
-          processorConstruction.constructed().get(1);
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor columnProcessor = processorConstruction.constructed().get(1);
 
       setAtomicField(sink, "totalSubmitted", 3);
       setAtomicField(sink, "totalSuccess", 2);
@@ -574,11 +568,10 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void settersUpdateConfigurationAndForwardCallbacks() {
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchCustomBulkProcessor.class)) {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
+      OpenSearchCustomBulkProcessor processor = processorConstruction.constructed().getFirst();
       BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
       OpenSearchBulkSink.SinkStatsCallback statsCallback =
           mock(OpenSearchBulkSink.SinkStatsCallback.class);
@@ -604,8 +597,8 @@ class OpenSearchBulkSinkBehaviorTest {
     DocBuildContext ctxForEntity = DocBuildContext.withUpstreamLineage(edges);
     Map<UUID, DocBuildContext> docBuildContexts = Map.of(entityId, ctxForEntity);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
@@ -668,25 +661,16 @@ class OpenSearchBulkSinkBehaviorTest {
 
     String entityJson = "{\"name\":\"my-table\",\"description\":\"desc\"}";
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
-      String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
+      String result = embedder.enrich(entity, entityJson, existingEmbeddingsById, tracker, null);
 
       verify(vectorService, never()).generateEmbeddingFields(any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -707,8 +691,8 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     when(entity.getId()).thenReturn(UUID.randomUUID());
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> ignored =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> ignored =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
@@ -800,8 +784,8 @@ class OpenSearchBulkSinkBehaviorTest {
     Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
     String entityJson = "{\"name\":\"my-table\"}";
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
@@ -817,17 +801,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
-      String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
+      String result = embedder.enrich(entity, entityJson, existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -860,8 +835,8 @@ class OpenSearchBulkSinkBehaviorTest {
     Map<String, JsonNode> existingEmbeddingsById =
         Map.of(entityId.toString(), cachedWithoutEmbedding);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
@@ -871,20 +846,10 @@ class OpenSearchBulkSinkBehaviorTest {
               docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.1, 0.2, 0.3), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -913,8 +878,8 @@ class OpenSearchBulkSinkBehaviorTest {
     Map<String, JsonNode> existingEmbeddingsById =
         Map.of(entityId.toString(), arrayInsteadOfObject);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
@@ -924,20 +889,10 @@ class OpenSearchBulkSinkBehaviorTest {
               docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.4, 0.5, 0.6), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -975,8 +930,8 @@ class OpenSearchBulkSinkBehaviorTest {
     Map<String, JsonNode> existingEmbeddingsById =
         Map.of(entityId.toString(), staleDimensionCached);
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
@@ -991,20 +946,10 @@ class OpenSearchBulkSinkBehaviorTest {
               "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker, null);
 
       verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -1034,28 +979,18 @@ class OpenSearchBulkSinkBehaviorTest {
 
     Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
 
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+    try (MockedConstruction<OpenSearchCustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchCustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
             mockStatic(OpenSearchVectorService.class);
         MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      Method enrich =
-          OpenSearchBulkSink.class.getDeclaredMethod(
-              "enrichWithEmbedding",
-              EntityInterface.class,
-              String.class,
-              Map.class,
-              StageStatsTracker.class,
-              String.class);
-      enrich.setAccessible(true);
+      OpenSearchDocEmbedder embedder = new OpenSearchDocEmbedder(new ObjectMapper());
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker, null);
+          embedder.enrich(entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker, null);
 
       docBuilderMock.verify(() -> VectorDocBuilder.fromEntity(any(), any()), never());
       verify(vectorService, never()).writeEntityChunks(any(), any(), any());

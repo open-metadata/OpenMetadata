@@ -258,6 +258,67 @@ class SearchIndexRetryQueueIT {
   }
 
   @Test
+  void testUpsertDoesNotUnclaimAnInFlightRow(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".entity";
+
+    // Staged through COMPLETED rather than PENDING: the background SearchIndexRetryWorker claims
+    // PENDING rows and would race us for the claim (same reason as testFindByStatuses).
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "first failure", SearchIndexRetryQueue.STATUS_COMPLETED, "table");
+    String claimToken = UUID.randomUUID().toString();
+    assertEquals(
+        1,
+        retryQueueDAO.claimRecord(
+            entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED, claimToken));
+    // Give the row a non-zero retryCount, so a reset back to 0 is observable. This releases the
+    // claim (claimToken = NULL), so re-claim afterwards to get back to a genuinely in-flight row.
+    assertEquals(
+        1,
+        retryQueueDAO.updateFailureAndRetryCount(
+            entityId,
+            entityFqn,
+            "attempt failed",
+            SearchIndexRetryQueue.STATUS_COMPLETED,
+            claimToken));
+    assertEquals(
+        1,
+        retryQueueDAO.claimRecord(
+            entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED, claimToken));
+
+    // A new failure arrives for the same entity while the worker still holds the claim.
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "concurrent failure", SearchIndexRetryQueue.STATUS_PENDING, "table");
+
+    SearchIndexRetryRecord record =
+        retryQueueDAO
+            .findByStatuses(
+                List.of(
+                    SearchIndexRetryQueue.STATUS_IN_PROGRESS,
+                    SearchIndexRetryQueue.STATUS_PENDING,
+                    SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+                    SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+                    SearchIndexRetryQueue.STATUS_COMPLETED,
+                    SearchIndexRetryQueue.STATUS_FAILED),
+                5000)
+            .stream()
+            .filter(r -> r.getEntityId().equals(entityId))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("row vanished entirely for " + entityId));
+    // The claim survives, so the worker's outcome can still land...
+    assertEquals(SearchIndexRetryQueue.STATUS_IN_PROGRESS, record.getStatus());
+    assertEquals(claimToken, record.getClaimToken());
+    assertNotNull(record.getClaimedAt());
+    // ...the backoff ladder is not rewound...
+    assertEquals(1, record.getRetryCount());
+    // ...and the new failure is still recorded.
+    assertEquals("concurrent failure", record.getFailureReason());
+
+    // The worker can still complete its claim, which an un-claiming upsert would have prevented.
+    assertEquals(1, retryQueueDAO.deleteClaimed(entityId, entityFqn, claimToken));
+  }
+
+  @Test
   void testClaimRecordFailsIfStatusChanged(TestNamespace ns) {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";

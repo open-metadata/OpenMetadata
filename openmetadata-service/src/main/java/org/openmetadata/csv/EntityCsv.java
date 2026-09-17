@@ -107,6 +107,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -1353,7 +1354,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
       Entity.getSearchRepository().updateEntitiesBulk(pendingSearchIndexUpdates);
       LOG.info("Bulk indexed {} entities in search", pendingSearchIndexUpdates.size());
     } catch (Exception e) {
-      LOG.error("Error bulk indexing entities in search, will retry individually", e);
+      // This used to log "will retry individually" and then do nothing, while the finally below
+      // cleared the batch — so every entity in it was dropped from search until the next full
+      // reindex. The bulk path enqueues the per-entity failures it handles itself, but an exception
+      // escaping it (unavailable client, a request that fails to build) bypasses that entirely,
+      // which is exactly the case that reaches here.
+      LOG.error(
+          "Error bulk indexing {} entities in search; queued for retry",
+          pendingSearchIndexUpdates.size(),
+          e);
+      String failureReason =
+          SearchIndexRetryQueue.failureReason("flushPendingSearchIndexUpdates", e);
+      for (EntityInterface pending : pendingSearchIndexUpdates) {
+        // A multi-entity-type import (see FIELD_ENTITY_TYPE) batches mixed types, so take each
+        // entity's own type and only fall back to this importer's.
+        EntityReference ref = pending.getEntityReference();
+        SearchIndexRetryQueue.enqueue(
+            pending.getId() != null ? pending.getId().toString() : null,
+            pending.getFullyQualifiedName(),
+            ref != null && ref.getType() != null ? ref.getType() : entityType,
+            failureReason);
+      }
     } finally {
       pendingSearchIndexUpdates.clear();
     }

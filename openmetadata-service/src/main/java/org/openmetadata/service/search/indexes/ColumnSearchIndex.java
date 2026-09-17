@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchFieldLimits;
@@ -128,13 +129,7 @@ public class ColumnSearchIndex implements SearchIndex {
       doc.put("glossaryTags", parseTags.getGlossaryTags());
     }
 
-    // Inherit tier from parent table if column doesn't have its own tier
-    if (doc.get("tier") == null && parentTable.getTags() != null) {
-      ParseTags tableParseTags = new ParseTags(parentTable.getTags());
-      if (tableParseTags.getTierTag() != null) {
-        doc.put("tier", tableParseTags.getTierTag());
-      }
-    }
+    applyInheritedTier(doc, parentTable);
 
     if (parentTable.getCertification() != null) {
       doc.put("certification", parentTable.getCertification());
@@ -148,6 +143,53 @@ public class ColumnSearchIndex implements SearchIndex {
     }
 
     return doc;
+  }
+
+  /**
+   * Copies the parent table's tier onto a column that has none of its own, matching what the live
+   * cascade writes.
+   *
+   * <p>Two things have to hold for the rebuilt document to equal the live one, and neither did:
+   *
+   * <ul>
+   *   <li>The inherited label is <b>derived</b>, not manually applied to this column. The live
+   *       propagation script marks it {@code DERIVED}; copying the parent's label verbatim left it
+   *       {@code MANUAL}.
+   *   <li>{@link ParseTags} puts a tier's FQN in {@code classificationTags} as well as lifting it
+   *       into {@code tier} — so an inherited tier belongs there too. When a column carried no tags
+   *       of its own the block above never ran, leaving {@code classificationTags} unset entirely
+   *       while the live path had it populated.
+   * </ul>
+   *
+   * <p>Both were caught by {@code LiveVsReindexParityIT}; the second is the exact disagreement
+   * {@code SearchClient.TAG_RESEPARATION_SCRIPT}'s javadoc warns about.
+   */
+  private static void applyInheritedTier(Map<String, Object> doc, Table parentTable) {
+    if (doc.get("tier") != null || parentTable.getTags() == null) {
+      return;
+    }
+    TagLabel parentTier = new ParseTags(parentTable.getTags()).getTierTag();
+    if (parentTier == null) {
+      return;
+    }
+    // Copy before mutating — the label belongs to the parent entity still in memory. appliedAt is
+    // dropped for the same reason TaggableIndex drops it: database-assigned, so a live write cannot
+    // reproduce it, and nothing queries it.
+    TagLabel inherited =
+        JsonUtils.deepCopy(parentTier, TagLabel.class)
+            .withLabelType(TagLabel.LabelType.DERIVED)
+            .withAppliedAt(null);
+    doc.put("tier", inherited);
+    addClassificationTag(doc, inherited.getTagFQN());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void addClassificationTag(Map<String, Object> doc, String tagFqn) {
+    List<String> classificationTags =
+        (List<String>) doc.computeIfAbsent("classificationTags", key -> new ArrayList<String>());
+    if (!classificationTags.contains(tagFqn)) {
+      classificationTags.add(tagFqn);
+    }
   }
 
   public static String generateColumnId(String columnFQN) {

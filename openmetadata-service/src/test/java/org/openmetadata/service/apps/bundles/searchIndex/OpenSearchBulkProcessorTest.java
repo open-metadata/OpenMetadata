@@ -234,7 +234,7 @@ class OpenSearchBulkProcessorTest {
       harness.processor.setStatsCallback(statsCallback);
 
       Method method =
-          OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
+          OpenSearchCustomBulkProcessor.class.getDeclaredMethod(
               "handleBulkFailure", List.class, long.class, int.class, int.class, Throwable.class);
       method.setAccessible(true);
 
@@ -276,8 +276,8 @@ class OpenSearchBulkProcessorTest {
     MockedConstruction<OpenSearchAsyncClient> asyncConstruction =
         mockConstruction(OpenSearchAsyncClient.class);
 
-    OpenSearchBulkSink.CustomBulkProcessor processor =
-        new OpenSearchBulkSink.CustomBulkProcessor(
+    OpenSearchCustomBulkProcessor processor =
+        new OpenSearchCustomBulkProcessor(
             searchClient,
             bulkActions,
             4096L,
@@ -345,34 +345,31 @@ class OpenSearchBulkProcessorTest {
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, String> getEntityTypeMap(OpenSearchBulkSink.CustomBulkProcessor processor)
+  private Map<String, String> getEntityTypeMap(OpenSearchCustomBulkProcessor processor)
       throws Exception {
-    Field field =
-        OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredField("docIdToEntityType");
+    Field field = OpenSearchCustomBulkProcessor.class.getDeclaredField("docIdToEntityType");
     field.setAccessible(true);
     return (Map<String, String>) field.get(processor);
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, StageStatsTracker> getTrackerMap(
-      OpenSearchBulkSink.CustomBulkProcessor processor) throws Exception {
-    Field field = OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredField("docIdToTracker");
+  private Map<String, StageStatsTracker> getTrackerMap(OpenSearchCustomBulkProcessor processor)
+      throws Exception {
+    Field field = OpenSearchCustomBulkProcessor.class.getDeclaredField("docIdToTracker");
     field.setAccessible(true);
     return (Map<String, StageStatsTracker>) field.get(processor);
   }
 
-  private AtomicInteger getActiveBulkRequests(OpenSearchBulkSink.CustomBulkProcessor processor)
+  private AtomicInteger getActiveBulkRequests(OpenSearchCustomBulkProcessor processor)
       throws Exception {
-    Field field =
-        OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredField("activeBulkRequests");
+    Field field = OpenSearchCustomBulkProcessor.class.getDeclaredField("activeBulkRequests");
     field.setAccessible(true);
     return (AtomicInteger) field.get(processor);
   }
 
   @SuppressWarnings("unchecked")
-  private List<BulkOperation> getBuffer(OpenSearchBulkSink.CustomBulkProcessor processor)
-      throws Exception {
-    Field field = OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredField("buffer");
+  private List<BulkOperation> getBuffer(OpenSearchCustomBulkProcessor processor) throws Exception {
+    Field field = OpenSearchCustomBulkProcessor.class.getDeclaredField("buffer");
     field.setAccessible(true);
     return (List<BulkOperation>) field.get(processor);
   }
@@ -382,7 +379,7 @@ class OpenSearchBulkProcessorTest {
   }
 
   private final class ProcessorHarness implements AutoCloseable {
-    private final OpenSearchBulkSink.CustomBulkProcessor processor;
+    private final OpenSearchCustomBulkProcessor processor;
     private final BulkCircuitBreaker circuitBreaker;
     private final MockedConstruction<OpenSearchAsyncClient> asyncConstruction;
     private final OpenSearchAsyncClient asyncClient;
@@ -392,7 +389,7 @@ class OpenSearchBulkProcessorTest {
     private final AtomicInteger statsUpdates;
 
     private ProcessorHarness(
-        OpenSearchBulkSink.CustomBulkProcessor processor,
+        OpenSearchCustomBulkProcessor processor,
         BulkCircuitBreaker circuitBreaker,
         MockedConstruction<OpenSearchAsyncClient> asyncConstruction,
         OpenSearchAsyncClient asyncClient,
