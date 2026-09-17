@@ -36,6 +36,7 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
+import { TreeSelect } from './filter-tree-select';
 
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that
@@ -281,7 +282,7 @@ const OptionRow = ({
  * `CheckboxBase` size `sm`), so checkbox size, alignment, and typography are
  * uniform by construction.
  */
-export const FilterSelect = ({
+const FilterSelect = ({
   label,
   options,
   selectedValues,
@@ -642,3 +643,10 @@ export const FilterSelect = ({
     </Dropdown.Root>
   );
 };
+
+const _FilterSelect = FilterSelect as typeof FilterSelect & {
+  Tree: typeof TreeSelect;
+};
+_FilterSelect.Tree = TreeSelect;
+
+export { _FilterSelect as FilterSelect };

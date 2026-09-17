@@ -13,71 +13,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 import { GlossaryTerm } from '../icons';
-import { TreeSelect } from '../components/application/tree-select/tree-select';
+import { FilterSelect } from '../components/application/filter-select/filter-select';
 import type {
   TreeSelectDataResponse,
   TreeSelectNode,
-} from '../components/application/tree-select/tree-select.types';
+} from '../components/application/filter-select/filter-tree-select.types';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const GlossaryIcon = () => (
-  <GlossaryTerm className="tw:text-fg-brand-primary" size={16} />
-);
-
-const DOMAIN_TREE: TreeSelectNode[] = [
-  {
-    id: 'eng',
-    label: 'Engineering',
-    value: 'Engineering',
-    lazyLoad: false,
-    children: [
-      {
-        id: 'eng-platform',
-        label: 'Platform',
-        value: 'Engineering.Platform',
-        lazyLoad: false,
-      },
-      {
-        id: 'eng-data',
-        label: 'Data',
-        value: 'Engineering.Data',
-        lazyLoad: false,
-      },
-    ],
-  },
-  {
-    id: 'sales',
-    label: 'Sales',
-    value: 'Sales',
-    lazyLoad: false,
-    children: [
-      { id: 'sales-emea', label: 'EMEA', value: 'Sales.EMEA', lazyLoad: false },
-      { id: 'sales-amer', label: 'AMER', value: 'Sales.AMER', lazyLoad: false },
-    ],
-  },
-  { id: 'marketing', label: 'Marketing', value: 'Marketing', lazyLoad: false },
-];
-
-const findAll = (nodes: TreeSelectNode[]): TreeSelectNode[] =>
-  nodes.flatMap((node) => [node, ...findAll(node.children ?? [])]);
-
-const fetchDomains = async ({
-  searchTerm,
-}: {
-  searchTerm?: string;
-}): Promise<TreeSelectDataResponse> => {
-  await wait(300);
-  if (searchTerm) {
-    const matches = findAll(DOMAIN_TREE).filter((node) =>
-      node.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return { nodes: matches };
-  }
-
-  return { nodes: DOMAIN_TREE };
-};
+const GlossaryIcon = () => <GlossaryTerm size={16} />;
 
 const GLOSSARY_TERMS: Record<string, TreeSelectNode[]> = {
   Finance: [
@@ -111,48 +55,12 @@ const GLOSSARY_TERMS: Record<string, TreeSelectNode[]> = {
       label: 'Gross Savings',
       value: 'Finance.NetSavingsRate.GrossSavings',
       allowSelection: true,
-      isLeaf: false,
-      lazyLoad: true,
       icon: <GlossaryIcon />,
     },
     {
       id: 'fin-nsr-net',
       label: 'Net Savings',
       value: 'Finance.NetSavingsRate.NetSavings',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-  ],
-  'fin-nsr-gross': [
-    {
-      id: 'fin-nsr-gross-q1',
-      label: 'Q1 Savings',
-      value: 'Finance.NetSavingsRate.GrossSavings.Q1',
-      allowSelection: true,
-      isLeaf: false,
-      lazyLoad: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'fin-nsr-gross-q2',
-      label: 'Q2 Savings',
-      value: 'Finance.NetSavingsRate.GrossSavings.Q2',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-  ],
-  'fin-nsr-gross-q1': [
-    {
-      id: 'fin-nsr-gross-q1-jan',
-      label: 'January',
-      value: 'Finance.NetSavingsRate.GrossSavings.Q1.Jan',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'fin-nsr-gross-q1-feb',
-      label: 'February',
-      value: 'Finance.NetSavingsRate.GrossSavings.Q1.Feb',
       allowSelection: true,
       icon: <GlossaryIcon />,
     },
@@ -231,280 +139,30 @@ const fetchGlossaryTerms = async ({
   };
 };
 
-const MIXED_GLOSSARY_TERMS: Record<string, TreeSelectNode[]> = {
-  Sensitivity: [
-    {
-      id: 'sens-pii',
-      label: 'PII',
-      value: 'Sensitivity.PII',
-      allowSelection: true,
-      isParentMutuallyExclusive: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'sens-phi',
-      label: 'PHI',
-      value: 'Sensitivity.PHI',
-      allowSelection: true,
-      isParentMutuallyExclusive: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'sens-public',
-      label: 'Public',
-      value: 'Sensitivity.Public',
-      allowSelection: true,
-      isParentMutuallyExclusive: true,
-      icon: <GlossaryIcon />,
-    },
-  ],
-  Finance: [
-    {
-      id: 'mix-fin-mrr',
-      label: 'Monthly Recurring Revenue',
-      value: 'Finance.MRR',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'mix-fin-arr',
-      label: 'Annual Recurring Revenue',
-      value: 'Finance.ARR',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-    {
-      id: 'mix-fin-churn',
-      label: 'Churn Rate',
-      value: 'Finance.Churn',
-      allowSelection: true,
-      icon: <GlossaryIcon />,
-    },
-  ],
-};
-
-const MIXED_ROOTS = ['Sensitivity', 'Finance'];
-
-const fetchMixedGlossary = async ({
-  parentId,
-}: {
-  parentId?: string;
-}): Promise<TreeSelectDataResponse> => {
-  await wait(300);
-
-  if (parentId) {
-    return { nodes: MIXED_GLOSSARY_TERMS[parentId] ?? [] };
-  }
-
-  return {
-    nodes: MIXED_ROOTS.map((name) => ({
-      id: name,
-      label: name,
-      value: name,
-      allowSelection: true,
-      lazyLoad: true,
-      isLeaf: false,
-      icon: <GlossaryIcon />,
-      hasExclusiveChildren: name === 'Sensitivity',
-    })),
-  };
-};
-
 const meta = {
-  title: 'Components/TreeSelect',
-  component: TreeSelect,
+  title: 'Components/FilterSelect',
+  component: FilterSelect.Tree,
   parameters: {
     layout: 'centered',
   },
-  tags: ['autodocs'],
-} satisfies Meta<typeof TreeSelect>;
+} satisfies Meta<typeof FilterSelect.Tree>;
 
 export default meta;
 
-export const SingleSelect: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode | null>(null);
+type StoryObj = import('@storybook/react').StoryObj<typeof meta>;
 
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
-          searchable
-          fetchData={fetchDomains}
-          label="Domain"
-          placeholder="Select domain"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? null : next)}
-        />
-      </div>
-    );
-  },
-};
-
-export const MultipleWithCascade: StoryObj = {
+export const GlossaryTermFilter: StoryObj = {
   render: () => {
     const [value, setValue] = useState<TreeSelectNode[]>([]);
 
     return (
       <div style={{ width: 360 }}>
-        <TreeSelect
-          cascadeSelection
-          multiple
-          searchable
-          fetchData={fetchDomains}
-          label="Domains"
-          placeholder="Select domains"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-        />
-      </div>
-    );
-  },
-};
-
-export const LazyLoadGlossary: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
-          lazyLoad
-          multiple
-          searchable
-          fetchData={fetchGlossaryTerms}
-          label="Glossary Terms"
-          placeholder="Select glossary terms"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-        />
-      </div>
-    );
-  },
-};
-
-export const Disabled: StoryObj = {
-  render: () => (
-    <div style={{ width: 360 }}>
-      <TreeSelect
-        disabled
-        fetchData={fetchDomains}
-        label="Domain"
-        placeholder="Select domain"
-      />
-    </div>
-  ),
-};
-
-export const ButtonTrigger: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
-          multiple
-          searchable
-          fetchData={fetchDomains}
-          label="Domain"
-          triggerVariant="button"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-        />
-      </div>
-    );
-  },
-};
-
-export const ButtonTriggerBordered: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
-          bordered
-          multiple
-          searchable
-          fetchData={fetchDomains}
-          label="Domain"
-          triggerVariant="button"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-        />
-      </div>
-    );
-  },
-};
-
-export const GlossaryFilterBordered: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 24,
-        }}>
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            gap: '16px 32px',
-          }}>
-          <TreeSelect
-            bordered
-            cascadeSelection
-            lazyLoad
-            multiple
-            searchable
-            showConnectorLines
-            showSelectAll
-            fetchData={fetchGlossaryTerms}
-            label="Glossary Term"
-            triggerVariant="button"
-            value={value}
-            onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-          />
-          <TreeSelect
-            cascadeSelection
-            lazyLoad
-            multiple
-            searchable
-            showConnectorLines
-            showSelectAll
-            fetchData={fetchGlossaryTerms}
-            label="Glossary Term"
-            triggerVariant="button"
-            value={value}
-            onChange={(next) => setValue(Array.isArray(next) ? next : [])}
-          />
-        </div>
-        <p style={{ fontSize: 13, color: '#667085', maxWidth: 500 }}>
-          Finance &amp; Customer: checkboxes with cascade (selecting parent
-          selects all children). PII: radio buttons (mutually exclusive — only
-          one term can be selected).
-        </p>
-      </div>
-    );
-  },
-};
-
-export const CascadeSelection: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode[]>([]);
-
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
+        <FilterSelect.Tree
           bordered
           cascadeSelection
           lazyLoad
           multiple
           searchable
-          showConnectorLines
           showSelectAll
           fetchData={fetchGlossaryTerms}
           label="Glossary Term"
@@ -512,9 +170,6 @@ export const CascadeSelection: StoryObj = {
           value={value}
           onChange={(next) => setValue(Array.isArray(next) ? next : [])}
         />
-        <p style={{ fontSize: 13, marginTop: 12, color: '#667085' }}>
-          Selecting a parent auto-selects all its children.
-        </p>
       </div>
     );
   },
@@ -526,44 +181,22 @@ export const MutuallyExclusive: StoryObj = {
 
     return (
       <div style={{ width: 360 }}>
-        <TreeSelect
+        <FilterSelect.Tree
           bordered
           lazyLoad
           multiple
           searchable
-          showConnectorLines
           showSelectAll
-          fetchData={fetchMixedGlossary}
+          fetchData={fetchGlossaryTerms}
           label="Glossary Term"
           triggerVariant="button"
           value={value}
           onChange={(next) => setValue(Array.isArray(next) ? next : [])}
         />
-        <p style={{ fontSize: 13, marginTop: 12, color: '#667085' }}>
-          &ldquo;Sensitivity&rdquo; terms are mutually exclusive (radio
-          buttons). &ldquo;Finance&rdquo; terms allow multiple selection
-          (checkboxes).
+        <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
+          Finance &amp; Customer use checkboxes (multi-select). PII uses radio
+          buttons (mutually exclusive — only one term can be selected).
         </p>
-      </div>
-    );
-  },
-};
-
-export const ConnectorLines: StoryObj = {
-  render: () => {
-    const [value, setValue] = useState<TreeSelectNode | null>(null);
-
-    return (
-      <div style={{ width: 360 }}>
-        <TreeSelect
-          searchable
-          showConnectorLines
-          fetchData={fetchDomains}
-          label="Domain"
-          placeholder="Select domain"
-          value={value}
-          onChange={(next) => setValue(Array.isArray(next) ? null : next)}
-        />
       </div>
     );
   },
