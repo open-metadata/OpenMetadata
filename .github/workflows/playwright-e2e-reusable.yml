@@ -815,7 +815,7 @@ jobs:
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
             ./node_modules/.bin/playwright test \
-            --config=playwright/browser-helper-tests.config.ts --output=/artifacts
+            --config=playwright/browser-helper-tests.config.ts
 
       - name: Upload browser helper failure diagnostics
         uses: actions/upload-artifact@v6

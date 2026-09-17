@@ -20,8 +20,18 @@ import { defineConfig } from '@playwright/test';
  * bind-mounts a writable directory and names it here; locally the default is a
  * gitignored folder beside the tests.
  */
-const outputDir =
+const artifactRoot =
   process.env.PW_BROWSER_HELPER_OUTPUT ?? './output/browser-helper-results';
+
+/**
+ * Playwright empties `outputDir` before a run by removing the directory
+ * itself, tolerating only EBUSY if that fails. In CI `artifactRoot` is a
+ * bind-mount point inside a --read-only container, where removing the mount
+ * point fails with EROFS -- rmdir needs write permission on the parent, and
+ * the parent is `/`. Keep the run's output one level inside the mount so the
+ * removal targets an ordinary directory.
+ */
+const outputDir = `${artifactRoot}/test-results`;
 
 export default defineConfig({
   captureGitInfo: { commit: false, diff: false },
@@ -40,6 +50,6 @@ export default defineConfig({
     ['list'],
     /* Machine-readable failures, for the same reason the main config always
      * keeps a json reporter: stdout scrolls, `results.json` names the test. */
-    ['json', { outputFile: `${outputDir}/results.json` }],
+    ['json', { outputFile: `${artifactRoot}/results.json` }],
   ],
 });
