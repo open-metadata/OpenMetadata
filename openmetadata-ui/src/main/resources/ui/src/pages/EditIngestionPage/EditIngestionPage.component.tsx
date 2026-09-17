@@ -104,7 +104,9 @@ const EditIngestionPage = () => {
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getServiceByFQN(serviceCategory, serviceFQN)
+      getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      })
         .then((resService) => {
           if (resService) {
             setServiceData(resService as ServicesUpdateRequest);
@@ -134,8 +136,10 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
+      // `owners` must be fetched so the form pre-fills the saved owners and the
+      // patch diff replaces them instead of adding against a missing baseline.
       getIngestionPipelineByFqn(ingestionFQN, {
-        fields: TabSpecificField.PIPELINE_STATUSES,
+        fields: [TabSpecificField.PIPELINE_STATUSES, TabSpecificField.OWNERS],
       })
         .then((res) => {
           if (res) {
