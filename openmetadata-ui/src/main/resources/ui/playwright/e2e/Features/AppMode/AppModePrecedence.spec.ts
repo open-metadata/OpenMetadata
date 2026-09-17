@@ -196,7 +196,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
       const context = await browser.newContext();
       const page = await context.newPage();
       try {
-        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
         await user.login(page);
         await waitForAllLoadersToDisappear(page);
         // 'default' is the runtime name for Classic.
@@ -229,7 +229,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: 'classic',
         action: async (page) => {
-          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
           await user.login(page);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'ai');
@@ -254,7 +254,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: 'ai',
         action: async (page) => {
-          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
           await user.login(page);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'ai');
@@ -293,7 +293,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
         browser,
         desired: null,
         action: async (page) => {
-          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+          // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
           await user.login(page);
           await waitForAllLoadersToDisappear(page);
           await waitForAppMode(page, 'default');
@@ -331,7 +331,7 @@ test.describe('AppMode — unified precedence', { tag: ['@Platform'] }, () => {
       try {
         // Log in and manually switch to AI in this tab. Persona still says
         // Classic; the manual switch overrides for this tab.
-        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
+        // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
         await user.login(page);
         await waitForAllLoadersToDisappear(page);
         await switchToAiModeViaProfileToggle(page);
