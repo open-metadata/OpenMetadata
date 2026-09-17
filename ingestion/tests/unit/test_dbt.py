@@ -1911,6 +1911,30 @@ class DbtUnitTest(TestCase):
 
         mock_add_assets.assert_not_called()
 
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_process_dbt_data_products_api_error_is_bounded(self, mock_get_by_name, mock_add_assets):
+        """A failing assets/add (e.g. the server domain-match rule returning 400) is logged as a
+        bounded warning and never aborts ingestion."""
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+        mock_table.id = uuid.uuid4()
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        mock_product = MagicMock()
+        mock_product.fullyQualifiedName = "Marketing"
+        mock_get_by_name.return_value = mock_product
+        mock_add_assets.side_effect = Exception("400 Client Error: Bad Request")
+
+        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+
+        # Must not raise
+        self.dbt_source_obj.process_dbt_data_products(data_model_link)
+
+        mock_add_assets.assert_called_once()
+
     # Test Custom Properties processing functionality
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
