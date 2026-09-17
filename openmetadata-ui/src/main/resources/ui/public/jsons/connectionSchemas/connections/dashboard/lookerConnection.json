@@ -54,6 +54,13 @@
       "type": "string",
       "format": "uri"
     },
+    "displayUrl": {
+      "expose": true,
+      "title": "Looker UI URL",
+      "description": "Optional URL for human-facing Looker links when the API URL differs from the browser URL.",
+      "type": "string",
+      "format": "uri"
+    },
     "gitCredentials": {
       "title": "GitHub Credentials",
       "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
