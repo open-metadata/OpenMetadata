@@ -697,21 +697,31 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
    * link alone — locale-independent, since we only take a URL out of it.
    */
   useEffect(() => {
-    if (!isWorkflow) {
+    // The host pages render once with no service loaded yet, and the resulting
+    // path names no connector — skip it rather than request it.
+    if (!isWorkflow || !serviceName) {
       return;
     }
 
-    // A missing file resolves as the SPA's index.html rather than rejecting,
-    // so the content is validated before it is kept.
+    let superseded = false;
     const connectorFile = `${SupportedLocales.English}/${getDocsServiceType(
       serviceType
     )}/${serviceName}.md`;
 
     fetchMarkdownFile(connectorFile)
-      .then((content) =>
-        setConnectorMarkdown(isUsableMarkdown(content) ? content : '')
-      )
-      .catch(() => setConnectorMarkdown(''));
+      .catch(() => '')
+      // A missing file resolves as the SPA's index.html rather than rejecting,
+      // so the content is validated before it is kept. `superseded` drops a
+      // response whose request a later service has already replaced.
+      .then((content) => {
+        if (!superseded) {
+          setConnectorMarkdown(isUsableMarkdown(content) ? content : '');
+        }
+      });
+
+    return () => {
+      superseded = true;
+    };
   }, [isWorkflow, serviceName, serviceType]);
 
   const activeFieldName = useMemo(

@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/core';
 import React from 'react';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
@@ -1320,6 +1326,65 @@ describe('ServiceDocPanel Component', () => {
 
     // A connector file that does not exist is served as the SPA's index.html
     // with a 200, so the guard is on the content and not on a rejection.
+    // The host pages render once before the service has loaded, so the panel is
+    // first mounted with an empty serviceName. That first response must not be
+    // able to land last and wipe the connector markdown.
+    it('should ignore a superseded connector response when serviceName arrives late', async () => {
+      let releaseEmpty: ((v: string) => void) | undefined;
+      mockFetchMarkdownFile.mockImplementation((filePath: string) => {
+        if (filePath.includes('/workflows/')) {
+          return Promise.resolve('# Metadata');
+        }
+        // the request made while serviceName was still empty
+        if (filePath.endsWith('/.md')) {
+          return new Promise<string>((resolve) => {
+            releaseEmpty = resolve;
+          });
+        }
+
+        return Promise.resolve(
+          'See the <a href="https://docs.open-metadata.org/connectors/database/bigquery">docs</a>.'
+        );
+      });
+
+      const { container, rerender } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName=""
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      rerender(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/bigquery`
+        );
+      });
+
+      // the stale request now finishes last
+      await act(async () => {
+        releaseEmpty?.('<!doctype html><html><body></body></html>');
+      });
+
+      expect(getDocsLink(container)).toHaveAttribute(
+        'href',
+        `${CONNECTORS_DOCS}/database/bigquery`
+      );
+    });
+
     it('should fall back to the connectors overview page when the connector markdown is unavailable in workflow mode', async () => {
       mockFetchMarkdownFile.mockImplementation((filePath: string) =>
         Promise.resolve(
