@@ -2421,7 +2421,7 @@
     "remove-default": "ลบค่าเริ่มต้น",
     "remove-entity": "ลบ {{entity}}",
     "remove-entity-lowercase": "ลบ {{entity}}",
-    "remove-filter": "Remove filter",
+    "remove-filter": "ลบตัวกรอง",
     "remove-lowercase": "ลบ",
     "removed": "ถูกลบ",
     "removed-entity": "ลบ {{entity}}",

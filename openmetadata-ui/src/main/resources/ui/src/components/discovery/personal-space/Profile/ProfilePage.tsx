@@ -64,7 +64,6 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
-  const [contentKey, setContentKey] = useState(0);
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
   const [headerOverride, setHeaderOverride] =
@@ -187,7 +186,6 @@ const ProfilePage: React.FC = () => {
       }
       setSelectedId(id);
       setHeaderOverride(null);
-      setContentKey((k) => k + 1);
     },
     [selectedId]
   );
@@ -234,7 +232,7 @@ const ProfilePage: React.FC = () => {
               onBreadcrumbAction={headerBreadcrumbAction}
             />
             {activeItem.selfContainedLayout ? (
-              <React.Fragment key={`${selectedId}-${contentKey}`}>
+              <React.Fragment key={selectedId}>
                 {activeItem.render({
                   userData,
                   isProfileLoading,
@@ -246,7 +244,7 @@ const ProfilePage: React.FC = () => {
               <div
                 className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
                 data-testid="profile-content-body"
-                key={`${selectedId}-${contentKey}`}>
+                key={selectedId}>
                 {activeItem.render({
                   userData,
                   isProfileLoading,

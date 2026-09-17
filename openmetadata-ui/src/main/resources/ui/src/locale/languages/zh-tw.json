@@ -2421,7 +2421,7 @@
     "remove-default": "移除預設值",
     "remove-entity": "移除 {{entity}}",
     "remove-entity-lowercase": "移除 {{entity}}",
-    "remove-filter": "Remove filter",
+    "remove-filter": "移除篩選器",
     "remove-lowercase": "移除",
     "removed": "已移除",
     "removed-entity": "已移除的 {{entity}}",

@@ -2421,7 +2421,7 @@
     "remove-default": "Ta bort standard",
     "remove-entity": "Ta bort {{entity}}",
     "remove-entity-lowercase": "ta bort {{entity}}",
-    "remove-filter": "Remove filter",
+    "remove-filter": "Ta bort filter",
     "remove-lowercase": "ta bort",
     "removed": "Borttagen",
     "removed-entity": "Borttagen {{entity}}",
