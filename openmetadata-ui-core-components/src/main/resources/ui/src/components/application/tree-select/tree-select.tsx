@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
   SearchInputIcon,
-  TriggerButton,
   TriggerCountBadge,
 } from '../filter-select/filter-select';
 import {
@@ -589,18 +588,26 @@ export const TreeSelect = <T = unknown,>({
 
     return (
       <div className={cx('tw:relative tw:inline-block', className)}>
-        <div
-          ref={triggerRef}
-          onClick={() => setIsOpen((prev) => !prev)}>
-          <TriggerButton
-            bordered={bordered}
-            count={multiple && hasSelection ? displayedSelectedCount : undefined}
-            hasSelection={hasSelection}
-            label={triggerText}
-            testId={dataTestId}
-            text={triggerText}
-            variant="button"
-          />
+        <div ref={triggerRef}>
+          <Button
+            className={cx(
+              'tw:whitespace-nowrap',
+              !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              hasSelection &&
+                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+              hasSelection && bordered && 'tw:after:outline-brand'
+            )}
+            color={bordered ? 'secondary' : 'tertiary'}
+            data-testid={dataTestId}
+            iconTrailing={ChevronDown}
+            isDisabled={disabled}
+            size={bordered ? 'md' : 'sm'}
+            onPress={() => !disabled && setIsOpen((prev) => !prev)}>
+            {triggerText}
+            {multiple && hasSelection && (
+              <TriggerCountBadge count={displayedSelectedCount} />
+            )}
+          </Button>
         </div>
         {isOpen && treeDropdown}
       </div>

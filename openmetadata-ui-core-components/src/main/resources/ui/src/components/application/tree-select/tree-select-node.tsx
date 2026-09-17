@@ -52,7 +52,7 @@ export const TreeSelectTreeItemContent = <T,>({
       hasChildItems={hasChildItems}
       indentPerLevel={28}
       maxIndentLevel={2}>
-      {(renderProps) => (
+      {() => (
         <div
           className={cx(
             'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
