@@ -11,9 +11,13 @@
 """
 DynamoDB Models
 """
+
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
+
+PARTITION_KEY_TYPE = "HASH"
+SORT_KEY_TYPE = "RANGE"
 
 
 class TableResponse(BaseModel):
@@ -23,3 +27,66 @@ class TableResponse(BaseModel):
 
     Items: Optional[List[Dict]] = []
     LastEvaluatedKey: Optional[Any] = None
+
+
+class KeySchemaElement(BaseModel):
+    """
+    One entry of a DynamoDB table key schema
+    """
+
+    AttributeName: str
+    KeyType: str
+
+
+class AttributeDefinition(BaseModel):
+    """
+    Declared type of a DynamoDB key attribute
+    """
+
+    AttributeName: str
+    AttributeType: str
+
+
+class TableKeyMetadata(BaseModel):
+    """
+    Key schema of a DynamoDB table, as returned by DescribeTable
+    """
+
+    KeySchema: List[KeySchemaElement] = []
+    AttributeDefinitions: List[AttributeDefinition] = []
+
+    def _key_of_type(self, key_type: str) -> Optional[str]:
+        return next(
+            (
+                element.AttributeName
+                for element in self.KeySchema
+                if element.KeyType == key_type
+            ),
+            None,
+        )
+
+    @property
+    def partition_key(self) -> Optional[str]:
+        return self._key_of_type(PARTITION_KEY_TYPE)
+
+    @property
+    def sort_key(self) -> Optional[str]:
+        return self._key_of_type(SORT_KEY_TYPE)
+
+    @property
+    def primary_key(self) -> List[str]:
+        """
+        A DynamoDB primary key is the partition key on its own, or the partition key
+        together with the sort key when the table defines one.
+        """
+        return [key for key in (self.partition_key, self.sort_key) if key]
+
+    def attribute_type(self, attribute_name: str) -> Optional[str]:
+        return next(
+            (
+                definition.AttributeType
+                for definition in self.AttributeDefinitions
+                if definition.AttributeName == attribute_name
+            ),
+            None,
+        )
