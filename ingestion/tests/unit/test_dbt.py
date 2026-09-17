@@ -3,6 +3,7 @@ Test dbt
 """
 
 import json
+import logging
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -1843,98 +1844,6 @@ class DbtUnitTest(TestCase):
         self.dbt_source_obj.extracted_domains = {"service.db.schema.table1": "NonExistentDomain"}
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
-
-    def test_process_dbt_meta_extracts_data_products(self):
-        """meta.openmetadata.dataProducts is stored per table FQN"""
-        manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
-
-        self.dbt_source_obj.extracted_data_products = {}
-        self.dbt_source_obj.process_dbt_meta(manifest_meta, "service.db.schema.table1")
-
-        assert self.dbt_source_obj.extracted_data_products == {
-            "service.db.schema.table1": ["Marketing", "Domain.Sales"]
-        }
-
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
-    def test_process_dbt_data_products_success(self, mock_get_by_name, mock_add_assets):
-        """Existing data products get the table added as an asset"""
-        mock_table = MagicMock()
-        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
-        mock_table.id = uuid.uuid4()
-
-        data_model_link = MagicMock()
-        data_model_link.table_entity = mock_table
-
-        mock_product = MagicMock()
-        mock_product.fullyQualifiedName = "Marketing"
-        mock_get_by_name.return_value = mock_product
-
-        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
-
-        self.dbt_source_obj.process_dbt_data_products(data_model_link)
-
-        mock_get_by_name.assert_called_once()
-        mock_add_assets.assert_called_once()
-        assert mock_add_assets.call_args.args[0] == "Marketing"
-
-    def test_process_dbt_data_products_no_products(self):
-        """No dataProducts declared leaves the unchanged path untouched"""
-        mock_table = MagicMock()
-        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
-
-        data_model_link = MagicMock()
-        data_model_link.table_entity = mock_table
-
-        self.dbt_source_obj.extracted_data_products = {}
-
-        self.dbt_source_obj.process_dbt_data_products(data_model_link)
-
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
-    def test_process_dbt_data_products_not_found(self, mock_get_by_name, mock_add_assets):
-        """Unknown products are skipped, never created, and never assigned"""
-        mock_table = MagicMock()
-        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
-        mock_table.id = uuid.uuid4()
-
-        data_model_link = MagicMock()
-        data_model_link.table_entity = mock_table
-
-        mock_get_by_name.return_value = None
-
-        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Ghost"]}
-
-        self.dbt_source_obj.process_dbt_data_products(data_model_link)
-
-        mock_add_assets.assert_not_called()
-
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
-    def test_process_dbt_data_products_api_error_is_bounded(self, mock_get_by_name, mock_add_assets):
-        """A failing assets/add (e.g. the server domain-match rule returning 400) is logged as a
-        bounded warning and never aborts ingestion."""
-        mock_table = MagicMock()
-        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
-        mock_table.id = uuid.uuid4()
-
-        data_model_link = MagicMock()
-        data_model_link.table_entity = mock_table
-
-        mock_product = MagicMock()
-        mock_product.fullyQualifiedName = "Marketing"
-        mock_get_by_name.return_value = mock_product
-        mock_add_assets.side_effect = Exception("400 Client Error: Bad Request")
-
-        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
-
-        with self.assertLogs(level="WARNING") as captured:
-            self.dbt_source_obj.process_dbt_data_products(data_model_link)
-
-        mock_add_assets.assert_called_once()
-        warnings = " ".join(captured.output)
-        assert "Marketing" in warnings
-        assert "domain" in warnings.lower()
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
     def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):
@@ -4738,3 +4647,77 @@ class TestAddDbtSourceFreshnessResults:
             source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
             == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
         )
+
+
+class TestDbtDataProducts:
+    """process_dbt_data_products attaches tables to their dbt-declared Data Products,
+    resolving each through the API and degrading unknown or failed assignments to
+    bounded warnings."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.extracted_data_products = {}
+        source.source_config = MagicMock(includeTags=False)
+        source.metadata = MagicMock()
+        return source
+
+    def _link(self, fqn="service.db.schema.table1"):
+        table_entity = MagicMock()
+        table_entity.fullyQualifiedName.root = fqn
+        table_entity.id = uuid.uuid4()
+        data_model_link = MagicMock()
+        data_model_link.table_entity = table_entity
+        return data_model_link
+
+    def test_meta_extraction_stores_products_per_table(self):
+        source = self._source()
+        manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
+
+        DbtSource.process_dbt_meta(source, manifest_meta, "service.db.schema.table1")
+
+        assert source.extracted_data_products == {"service.db.schema.table1": ["Marketing", "Domain.Sales"]}
+
+    def test_existing_products_are_attached_as_assets(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_called_once()
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert source.metadata.add_assets_to_data_product.call_args.args[0] == "Marketing"
+
+    def test_no_products_declared_is_a_noop(self):
+        source = self._source()
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.get_by_name.assert_not_called()
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_unknown_product_is_skipped_never_created(self):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Ghost"]}
+        source.metadata.get_by_name.return_value = None
+
+        DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_not_called()
+
+    def test_assignment_failure_is_a_bounded_warning(self, caplog):
+        source = self._source()
+        source.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+        product = MagicMock()
+        product.fullyQualifiedName = "Marketing"
+        source.metadata.get_by_name.return_value = product
+        source.metadata.add_assets_to_data_product.side_effect = Exception("400 Client Error: Bad Request")
+
+        with caplog.at_level(logging.WARNING):
+            DbtSource.process_dbt_data_products(source, self._link())
+
+        source.metadata.add_assets_to_data_product.assert_called_once()
+        assert "Marketing" in caplog.text
+        assert "domain" in caplog.text.lower()
