@@ -6820,14 +6820,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricSemanticList/MetricSemanticList.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/Metric.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx"
       ],
       "specs": [
