@@ -13,6 +13,7 @@ import importlib
 import os
 import re
 import sys
+import threading
 import traceback
 from multiprocessing import get_context
 
@@ -25,6 +26,12 @@ from packaging import version
 from openmetadata_managed_apis.utils.logger import api_logger
 
 logger = api_logger()
+
+# filelock (pulled in by Airflow) installs an os.fork audit hook that raises RuntimeError
+# while any other thread is inside its own fork. The API server handles deploys on
+# concurrent threads, so a bulk re-deploy made two scans fork at once and one deploy
+# failed after its DAG was already synced.
+_FORK_LOCK = threading.Lock()
 
 
 class MissingArgException(Exception):  # noqa: N818
@@ -229,6 +236,11 @@ def scan_dags_job_background() -> ScanDagsTask:
     to not block the API call
     """
     process = ScanDagsTask()
-    process.start()
+    # The lock is main's guard for two deploys forking at once (#33514). It is
+    # belt-and-braces while ScanDagsTask spawns -- a spawned child never calls
+    # os.fork, so filelock's audit hook cannot fire -- but it keeps the race
+    # closed if the context ever goes back to fork.
+    with _FORK_LOCK:
+        process.start()
 
     return process
