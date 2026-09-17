@@ -60,7 +60,6 @@ import {
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import {
   DerivedPermissionFlags,
   getDerivedPermissionFlags,
@@ -810,9 +809,7 @@ const ClassificationDetails = forwardRef(
                   }
                   isExpandDisabled={isEmpty(currentClassification.owners)}
                   title={t('label.owner-plural')}>
-                  <Owner
-                    owners={toOwnerRefs(currentClassification.owners ?? [])}
-                  />
+                  <Owner owners={currentClassification.owners ?? []} />
                 </WidgetCard>
                 {tagClassBase.getClassificationReviewerWidget()}
               </div>
