@@ -69,8 +69,6 @@ from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CDC_ENVELOPE_FIELDS,
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
     MESSAGING_ENDPOINT_KEYS,
-    SERVICE_CONNECTION_HOST_ATTRIBUTES,
-    SERVICE_TYPE_HOST_DOMAIN_SUFFIXES,
     SERVICE_TYPE_HOSTNAME_KEYS,
     STORAGE_SINK_CONNECTOR_CLASSES,
 )
@@ -165,16 +163,6 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return host_string.strip()
 
-    @staticmethod
-    def _strip_domain_suffix(host: str, domain_suffixes: List[str]) -> str:  # noqa: UP006
-        """
-        Drop a known domain suffix so a bare host and its fully qualified form compare equal.
-        """
-        for suffix in domain_suffixes:
-            if host.endswith(suffix):
-                return host[: -len(suffix)]
-        return host
-
     def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:  # noqa: UP045
         """
         Find database service by matching serviceType and hostname.
@@ -202,8 +190,6 @@ class KafkaconnectSource(PipelineServiceSource):
 
             # Extract just the hostname (no protocol, no port)
             connector_host = self._extract_hostname(hostname).lower()
-            domain_suffixes = SERVICE_TYPE_HOST_DOMAIN_SUFFIXES.get(service_type, [])
-            connector_host_key = self._strip_domain_suffix(connector_host, domain_suffixes)
 
             # Match by hostname in service connection config
             for service in filtered_services:
@@ -212,23 +198,20 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 service_config = service.connection.config
 
-                # Extract the host from the service config
+                # Extract hostPort from service config
                 # Different services use different field names
-                host_port = next(
-                    (
-                        getattr(service_config, attribute)
-                        for attribute in SERVICE_CONNECTION_HOST_ATTRIBUTES
-                        if getattr(service_config, attribute, None)
-                    ),
-                    None,
-                )
+                host_port = None
+                if hasattr(service_config, "hostPort") and service_config.hostPort:
+                    host_port = service_config.hostPort
+                elif hasattr(service_config, "host") and service_config.host:  # pyright: ignore[reportAttributeAccessIssue]
+                    host_port = service_config.host  # pyright: ignore[reportAttributeAccessIssue]
 
                 if host_port:
                     # Extract just the hostname (no protocol, no port)
                     service_host = self._extract_hostname(host_port).lower()
 
-                    # Match hostname (case-insensitive, ignoring a known domain suffix)
-                    if self._strip_domain_suffix(service_host, domain_suffixes) == connector_host_key:
+                    # Match hostname (case-insensitive)
+                    if service_host == connector_host:
                         logger.info(
                             f"Matched database service: {service.name} (type={service_type}, hostname={connector_host})"
                         )
@@ -358,38 +341,6 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to extract service names from connector config: {exc}")
             return ServiceResolutionResult(database_service_name=None, messaging_service_name=None)
-
-    def _debug_hostname(self, pipeline_details: KafkaConnectPipelineDetails) -> str:
-        """
-        Best-effort hostname for diagnostic/summary messages only -- never used to make a
-        resolution decision. Mirrors the key lookup get_service_from_connector_config uses
-        (service-type-derived keys from SERVICE_TYPE_HOSTNAME_KEYS first) so the message
-        shows the value the real resolution path actually read, instead of always assuming
-        CDC/JDBC-style keys -- some registered service types expose their host under a
-        connector-specific key those three don't cover. Falls back to those legacy keys for
-        connectors matched by them but absent from CONNECTOR_CLASS_TO_SERVICE_TYPE.
-        """
-        if not pipeline_details.config:
-            return "NOT SET"
-
-        hostname_value = None
-        connector_class = pipeline_details.config.get("connector.class", "")
-        class_name = connector_class.split(".")[-1] if connector_class else ""
-        service_type = CONNECTOR_CLASS_TO_SERVICE_TYPE.get(class_name)
-        if service_type:
-            for key in SERVICE_TYPE_HOSTNAME_KEYS.get(service_type, []):
-                hostname_value = pipeline_details.config.get(key)
-                if hostname_value:
-                    break
-
-        hostname_value = (
-            hostname_value
-            or pipeline_details.config.get("database.hostname")
-            or pipeline_details.config.get("database.server")
-            or pipeline_details.config.get("connection.host")
-        )
-
-        return self._extract_hostname(hostname_value) if hostname_value else "NOT SET"
 
     def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:  # noqa: UP045
         """
@@ -1861,8 +1812,15 @@ class KafkaconnectSource(PipelineServiceSource):
                         # Get matched database service name and hostname
                         result = self.get_service_from_connector_config(pipeline_details)
 
-                        # Extract hostname from connector config (diagnostic only)
-                        db_hostname_for_debug = self._debug_hostname(pipeline_details)
+                        # Extract hostname from connector config
+                        db_hostname_for_debug = "NOT SET"
+                        if pipeline_details.config:
+                            db_hostname_for_debug = (
+                                pipeline_details.config.get("database.hostname")
+                                or pipeline_details.config.get("database.server")
+                                or pipeline_details.config.get("connection.host")
+                                or "NOT SET"
+                            )
 
                         # Build debug message with what we searched for
                         if dataset_details.table:

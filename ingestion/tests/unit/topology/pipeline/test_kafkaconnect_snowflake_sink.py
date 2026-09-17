@@ -142,6 +142,186 @@ class TestMappedTableNameIsFoldedLikeADerivedOne:
         assert {d.source_topic: d.table for d in datasets}["order_events_flat"] == "orders"
 
 
+def _mapped(map_value: str, topic: str, *, replacement: bool = False, topics: str | None = None):
+    """The table the resolver predicts for `topic` under `snowflake.topic2table.map`.
+
+    Returns None when no map entry applied, which is where the connector falls back to
+    deriving a name -- the Python stand-in for the upstream resolvers' `null`.
+    """
+    config = dict(BASE_SNOWFLAKE_CONFIG, topics=topics or topic, **{"snowflake.topic2table.map": map_value})
+    if replacement:
+        config["snowflake.topic2table.map.regex.replacement"] = "true"
+    datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [KafkaConnectTopics(name=topic)])
+    table = {d.source_topic: d.table for d in datasets}.get(topic)
+    return None if table == snowflake_table_name(topic) else table
+
+
+def _map_is_rejected(map_value: str, caplog) -> str:
+    """The warning text emitted when a map the connector would refuse is ignored wholesale."""
+    config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": map_value})
+    with caplog.at_level(logging.WARNING):
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+    assert datasets == [], f"expected {map_value!r} to yield no datasets"
+    return " ".join(record.message for record in caplog.records)
+
+
+class TestUpstreamRegexResolverParity:
+    """Ported case for case from snowflakedb/snowflake-kafka-connector
+    src/test/java/com/snowflake/kafka/connector/RegexTopicToTableResolverTest.java.
+
+    These run with snowflake.topic2table.map.regex.replacement=true, the connector 4.1.0+
+    resolver. Each test keeps the upstream method name so a reviewer can diff them directly.
+    `tableNames()` has no analogue here -- it drives startup table creation, not lineage --
+    but its named-group case is kept because it pins `${name}` template expansion.
+    """
+
+    def test_exact_match_unquoted_is_uppercased(self):
+        assert _mapped("my_topic:my_table", "my_topic", replacement=True) == "MY_TABLE"
+
+    def test_exact_match_quoted_preserves_case(self):
+        assert _mapped('my_topic:"My_Table"', "my_topic", replacement=True) == "My_Table"
+
+    def test_group_substitution_unquoted_is_uppercased(self):
+        assert _mapped("src_(.*):dest_$1", "src_orders", replacement=True) == "DEST_ORDERS"
+        assert _mapped("src_(.*):dest_$1", "src_users", replacement=True) == "DEST_USERS"
+
+    def test_group_substitution_quoted_preserves_case(self):
+        assert _mapped('src_(.*):"Dest_$1"', "src_Orders", replacement=True) == "Dest_Orders"
+
+    def test_multiple_groups(self):
+        assert _mapped(r'(.*)\.(.*):"$1_$2"', "db.events", replacement=True) == "db_events"
+        assert _mapped(r'(.*)\.(.*):"$1_$2"', "app.logs", replacement=True) == "app_logs"
+
+    def test_no_match_returns_null(self):
+        assert _mapped("prefix_.*:table", "other_topic", replacement=True) is None
+
+    def test_multiple_patterns(self):
+        entries = "alpha_(.*):a_$1, beta_(.*):b_$1"
+        assert _mapped(entries, "alpha_x", replacement=True) == "A_X"
+        assert _mapped(entries, "beta_y", replacement=True) == "B_Y"
+        assert _mapped(entries, "gamma_z", replacement=True) is None
+
+    def test_named_group_templates_resolve(self):
+        """Java spells a named group `(?<env>...)` where Python spells it `(?P<env>...)`;
+        the template references it as `${env}` in both."""
+        entries = "(?<env>.*)_topic:${env}_sink, plain:static_table"
+        assert _mapped(entries, "prod_topic", replacement=True) == "PROD_SINK"
+        assert _mapped(entries, "plain", replacement=True) == "STATIC_TABLE"
+
+    def test_full_match_required(self):
+        assert _mapped("abc:table", "xabcx", replacement=True) is None
+        assert _mapped("abc:table", "abc", replacement=True) == "TABLE"
+
+
+class TestUpstreamParserParity:
+    """Ported case for case from snowflakedb/snowflake-kafka-connector
+    src/test/java/com/snowflake/kafka/connector/TopicToTableParserTest.java.
+
+    A map the connector refuses to start on is ignored wholesale here rather than
+    half-applied: the sink it describes is not running, so predicting its tables would
+    invent lineage.
+    """
+
+    @pytest.mark.parametrize("raw_map", ["", "   "])
+    def test_parse_empty_input(self, raw_map):
+        """A map that parses to no entries is not a rejected map: the connector runs and
+        derives every table from its topic. Asserting on the datasets rather than on
+        `_mapped` is deliberate -- both answers look like None through that helper."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, topics="anything", **{"snowflake.topic2table.map": raw_map})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert [(d.source_topic, d.table) for d in datasets] == [("anything", "ANYTHING")]
+
+    def test_parse_multiple_entries(self):
+        entries = "topic_a:table_a, topic_b:table_b"
+        assert _mapped(entries, "topic_a") == "TABLE_A"
+        assert _mapped(entries, "topic_b") == "TABLE_B"
+        assert _mapped(entries, "topic_c") is None
+
+    def test_parse_quoted_entries(self):
+        entries = '"topic:one":"table,one", "topic two":"table two"'
+        assert _mapped(entries, "topic:one") == "table,one"
+        assert _mapped(entries, "topic two") == "table two"
+
+    def test_parse_uppercases_only_unquoted_table_tokens(self):
+        entries = 'topic:e, other_topic:"e"'
+        assert _mapped(entries, "topic") == "E"
+        assert _mapped(entries, "other_topic") == "e"
+
+    def test_parse_rejects_duplicate_topics(self, caplog):
+        assert "Duplicate topic: topic" in _map_is_rejected("topic:one, topic:two", caplog)
+
+    def test_parse_rejects_overlapping_regexes(self, caplog):
+        warning = _map_is_rejected(".*:table_a, .*foo:table_b", caplog)
+        assert "Topic regexes cannot overlap" in warning
+        assert ".*foo" in warning
+
+    def test_parse_rejects_unterminated_quoted_token(self, caplog):
+        assert "Unterminated quoted token" in _map_is_rejected('"topic:table', caplog)
+
+    def test_parse_rejects_empty_quoted_token(self, caplog):
+        assert "Empty quoted token" in _map_is_rejected('"":table', caplog)
+
+    def test_parse_rejects_missing_colon(self, caplog):
+        assert "Expected ':'" in _map_is_rejected("topic table", caplog)
+
+    def test_parse_regex_group_substitution(self):
+        entries = "topic_(.*):table_$1"
+        assert _mapped(entries, "topic_events", replacement=True) == "TABLE_EVENTS"
+        assert _mapped(entries, "topic_logs", replacement=True) == "TABLE_LOGS"
+        assert _mapped(entries, "other", replacement=True) is None
+
+    def test_parse_regex_quoted_preserves_case(self):
+        assert _mapped('topic_(.*):"Table_$1"', "topic_Events", replacement=True) == "Table_Events"
+
+
+class TestTheTwoResolversAreVersionDistinct:
+    """`snowflake.topic2table.map.regex.replacement` picks between two different resolvers,
+    not between two settings of one. It arrived in connector 4.1.0 and defaults to false
+    (Constants.SNOWFLAKE_TOPIC2TABLE_MAP_REGEX_REPLACEMENT_DEFAULT), so the static resolver is
+    also the whole of the pre-4.1.0 contract."""
+
+    def test_static_resolver_does_not_substitute_groups(self):
+        """StaticTopicToTableResolver returns the configured value verbatim, so a template
+        written for a connector too old to expand it lands as a literal table name."""
+        assert _mapped("topic_(.*):table_$1", "topic_events") == "TABLE_$1"
+
+    def test_static_resolver_matches_a_key_that_is_not_its_own_regex(self):
+        """`x+` matches the topic `x+` only by the exact-key stage -- as a pattern it does not
+        match itself. That stage exists in StaticTopicToTableResolver and nowhere else."""
+        assert _mapped("x+:TBL", "x+") == "TBL"
+
+    def test_regex_resolver_has_no_exact_match_stage(self):
+        """Same map, replacement on: RegexTopicToTableResolver only ever compiles, so the
+        topic no longer resolves and the connector derives a name instead."""
+        assert _mapped("x+:TBL", "x+", replacement=True) is None
+
+
+class TestUpstreamDeriveTableNameParity:
+    """Transliteration checks against Utils.deriveTableName, whose exact byte sequence decides
+    whether the FQN this connector builds addresses a table that exists."""
+
+    def test_leading_invalid_character_emits_two_placeholders(self):
+        """Upstream appends a placeholder for the invalid first character *without* consuming
+        it, so the loop sanitises the same character again."""
+        assert snowflake_table_name("-orders") == f"__ORDERS_{abs(java_string_hashcode('-orders'))}"
+
+    def test_literal_wildcard_is_removed_not_sanitised(self):
+        """`topic.replaceAll("\\.\\*", "")` drops the sequence outright; sanitising it to
+        underscores instead would name a table the connector never creates."""
+        assert snowflake_table_name("orders.*v1") == f"ORDERSV1_{abs(java_string_hashcode('orders.*v1'))}"
+
+    def test_hash_is_taken_before_the_wildcard_strip(self):
+        assert snowflake_table_name("orders.*v1").endswith(str(abs(java_string_hashcode("orders.*v1"))))
+        assert not snowflake_table_name("orders.*v1").endswith(str(abs(java_string_hashcode("ordersv1"))))
+
+    def test_a_topic_of_only_wildcards_has_no_derivable_name(self, caplog):
+        """Upstream indexes position 0 of the stripped name and throws; there is no table to
+        predict, so answer with nothing rather than inventing one."""
+        with caplog.at_level(logging.WARNING):
+            assert snowflake_table_name(".*") == ""
+        assert "no derivable Snowflake table name" in " ".join(r.message for r in caplog.records)
+
+
 class TestDatasetDetailsNewFields:
     def test_defaults_preserve_existing_behaviour(self):
         dataset = KafkaConnectDatasetDetails(table="ORDERS")
@@ -284,14 +464,19 @@ class TestSnowflakeSinkResolver:
         datasets = get_resolver("SnowflakeSink").resolve_datasets(config, topics)
         assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [("topic,one", "Table:One")]
 
-    def test_exact_mapping_wins_before_regex_regardless_of_declaration_order(self):
+    def test_a_catch_all_beside_a_literal_key_is_rejected_as_overlapping(self, caplog):
+        """`.*` also selects `orange_cat`, so the connector refuses to start on this map
+        (TopicToTableParser.parseAndValidate). Guessing which entry wins would predict tables
+        for a sink that is not running."""
         config = dict(
             BASE_SNOWFLAKE_CONFIG,
             topics="orange_cat",
             **{"snowflake.topic2table.map": ".*:CATCH_ALL,orange_cat:EXACT"},
         )
-        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
-        assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [("orange_cat", "EXACT")]
+        with caplog.at_level(logging.WARNING):
+            datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert datasets == []
+        assert "Topic regexes cannot overlap" in " ".join(record.message for record in caplog.records)
 
     def test_regex_mapping_matches_concrete_topics_without_creating_a_pattern_topic(self):
         config = dict(
@@ -374,7 +559,7 @@ class TestPartialQualificationNeverMisplacesTheDatabase:
 
     def test_a_database_only_config_keeps_the_database_out_of_the_schema_slot(self):
         dataset = get_resolver("SnowflakeSink").resolve_datasets(DATABASE_ONLY_CONFIG, [])[0]
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             dataset,
             KafkaConnectPipelineDetails(name="s", type="sink", config=DATABASE_ONLY_CONFIG),
             # Snowflake is a multi-database service; the point is that the slot survives
@@ -510,12 +695,18 @@ class TestMappedTopicsSurviveAnEmptyTopicList:
 LITERAL_MAP_CONFIG = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
 
 
-class TestLiteralMapKeysAreNotTreatedAsSelectors:
-    """A metachar-free topic2table.map key names one topic; `_with_mapped_topics` already reads it
-    that way, deliberately allowing the dots that are ordinary in Kafka topic names. Handing the
-    same key to a regex compiler made those dots wildcards, so `prod.orders` fullmatched a real
-    `prodXorders` -- first pulling that topic into discovery, then claiming it in `_mapped_table`
-    -- and minted lineage into ORDERS for a topic the connector never consumes."""
+class TestLiteralMapKeysSelectTopicsButNeverInventThem:
+    """Discovery and resolution answer two different questions about a metachar-free key.
+
+    *Which topics does this connector consume?* is never answered by the map -- subscription
+    comes from `topics`/`topics.regex` -- so compiling `prod.orders` raw during discovery would
+    pull in a real `prodXorders` and mint lineage for a topic the connector never reads. Hence
+    the escaping below.
+
+    *Which table does this topic land in?* is answered by the connector, and it compiles every
+    key (StaticTopicToTableResolver.resolve retries them all with `topic.matches(key)`). So a
+    `prodXorders` that the `topics` list genuinely names does get ORDERS -- predicting anything
+    else would name a table the connector never writes."""
 
     def test_a_literal_key_reaches_the_topic_search_escaped(self):
         (pattern,) = get_resolver("SnowflakeSink").topic_patterns(LITERAL_MAP_CONFIG)
@@ -526,18 +717,23 @@ class TestLiteralMapKeysAreNotTreatedAsSelectors:
         config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": ".*_cat:CAT_TABLE"})
         assert get_resolver("SnowflakeSink").topic_patterns(config) == [".*_cat"]
 
-    def test_a_topic_a_literal_key_only_matches_as_regex_derives_its_own_table(self):
-        """The second half of the same defect: even a topic discovered by the `topics` list --
-        never by the map -- was captured by the regex fallback in `_mapped_table`."""
+    def test_a_subscribed_topic_the_key_matches_as_regex_takes_the_mapping(self):
+        """Upstream parity: the key is a pattern at resolution time, so a topic the `topics`
+        list names and the key's dots match is written to the mapped table."""
         config = dict(LITERAL_MAP_CONFIG, topics="prod.orders,prodXorders")
         datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
         assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [
             ("prod.orders", "ORDERS"),
-            ("prodXorders", "PRODXORDERS"),
+            ("prodXorders", "ORDERS"),
         ]
 
+    def test_a_topic_the_key_does_not_match_still_derives_its_own_table(self):
+        config = dict(LITERAL_MAP_CONFIG, topics="prod.orders,unrelated_topic")
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert {d.source_topic: d.table for d in datasets}["unrelated_topic"] == "UNRELATED_TOPIC"
+
     def test_escaping_does_not_cost_the_literal_key_its_own_dataset(self):
-        """Escaping must narrow the match, not drop the mapping: the key still names a topic."""
+        """Escaping must narrow discovery, not drop the mapping: the key still names a topic."""
         datasets = get_resolver("SnowflakeSink").resolve_datasets(LITERAL_MAP_CONFIG, [])
         assert {d.source_topic: d.table for d in datasets}["prod.orders"] == "ORDERS"
 
@@ -749,47 +945,12 @@ class TestSourceDelegatesToResolver:
         assert matched == "<topic>"
 
 
-class TestSnowflakeServiceResolution:
-    def test_managed_plugin_name_maps_to_snowflake(self):
-        assert CONNECTOR_CLASS_TO_SERVICE_TYPE["SnowflakeSink"] == "Snowflake"
-
-    def test_self_managed_class_maps_to_snowflake(self):
-        assert CONNECTOR_CLASS_TO_SERVICE_TYPE["SnowflakeSinkConnector"] == "Snowflake"
-
-    def test_current_self_managed_class_maps_to_snowflake(self):
-        assert CONNECTOR_CLASS_TO_SERVICE_TYPE["SnowflakeStreamingSinkConnector"] == "Snowflake"
-
-    def test_snowflake_hostname_key_is_url_name(self):
-        assert "snowflake.url.name" in SERVICE_TYPE_HOSTNAME_KEYS["Snowflake"]
-
-    def test_url_with_leading_whitespace_is_stripped(self):
-        """Observed live: the Confluent UI stored the URL with a leading space, as
-        '<account>.snowflakecomputing.com' (account anonymised here)."""
-        extracted = KafkaconnectSource._extract_hostname(None, " EXAMPLE1-AB00000.snowflakecomputing.com")
-        assert extracted == "EXAMPLE1-AB00000.snowflakecomputing.com"
-
-
-# Observed live: Confluent reports "<account>.snowflakecomputing.com" (with a leading
-# space, as the UI stored it) while the OpenMetadata service holds the bare account.
-# The shape is what was captured; the account identifier itself is anonymised.
-LIVE_SNOWFLAKE_URL = " EXAMPLE1-AB00000.snowflakecomputing.com"
-LIVE_SNOWFLAKE_ACCOUNT = "EXAMPLE1-AB00000"
-
-
 def _database_service(name: str, service_type: DatabaseServiceType, config) -> DatabaseService:
     return DatabaseService(
         id=uuid.uuid4(),
         name=name,
         serviceType=service_type,
         connection=DatabaseConnection(config=config),
-    )
-
-
-def _snowflake_service(name: str = "snowflake_prod", account: str = LIVE_SNOWFLAKE_ACCOUNT) -> DatabaseService:
-    return _database_service(
-        name,
-        DatabaseServiceType.Snowflake,
-        SnowflakeConnection(username="etl_user", account=account, warehouse="COMPUTE_WH"),
     )
 
 
@@ -800,37 +961,48 @@ def _source_with_services(services) -> KafkaconnectSource:
     return source
 
 
-class TestSnowflakeHostnameMatching:
-    """SnowflakeConnection has neither hostPort nor host, so hostname matching has to
-    probe `account` and tolerate the .snowflakecomputing.com suffix — otherwise
-    SERVICE_TYPE_HOSTNAME_KEYS["Snowflake"] extracts a value it can never match and
-    dbServiceNames stays mandatory."""
+class TestSnowflakeSinksAreNotMatchedByHostname:
+    """A Snowflake sink deliberately resolves no database service from its config.
 
-    def test_account_matches_connector_url_with_domain_suffix(self):
-        source = _source_with_services([_snowflake_service()])
-        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
+    Hostname matching returns the *first* service whose host compares equal, with no
+    tie-break, and a single Snowflake account is routinely registered as several
+    OpenMetadata services (per role, per database, per filter) -- all sharing the one
+    `account`. Matching on it would pick between them arbitrarily and silently attach
+    lineage to the wrong service. Resolution is left to dbServiceNames and the
+    cross-service search in `_get_table_entity`, which are at least explicit about it.
+    """
 
-    def test_account_matching_is_case_insensitive(self):
-        source = _source_with_services([_snowflake_service(account="example1-ab00000")])
-        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
+    def test_no_service_type_is_derived_from_a_snowflake_sink_class(self):
+        for connector_class in ("SnowflakeSink", "SnowflakeSinkConnector", "SnowflakeStreamingSinkConnector"):
+            assert connector_class not in CONNECTOR_CLASS_TO_SERVICE_TYPE
 
-    def test_a_different_account_does_not_match(self):
-        source = _source_with_services([_snowflake_service(account="OTHER-ACCOUNT")])
-        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) is None
+    def test_snowflake_url_name_is_not_a_hostname_key(self):
+        assert "Snowflake" not in SERVICE_TYPE_HOSTNAME_KEYS
 
-    def test_snowflake_service_resolves_from_connector_config(self):
-        """End to end through the real config-key lookup: a live Confluent Snowflake Sink
-        config must resolve its database service with no dbServiceNames configured."""
-        source = _source_with_services([_snowflake_service()])
+    def test_live_config_resolves_no_database_service(self):
+        """The captured Confluent config names a Snowflake account, and a Snowflake
+        service holding exactly that account is registered -- resolution must still
+        decline, leaving the table lookup to dbServiceNames/search."""
+        source = _source_with_services(
+            [
+                _database_service(
+                    "snowflake_prod",
+                    DatabaseServiceType.Snowflake,
+                    SnowflakeConnection(username="etl_user", account="EXAMPLE1-AB00000", warehouse="COMPUTE_WH"),
+                )
+            ]
+        )
         details = KafkaConnectPipelineDetails(
             name="snowflake-landing",
             type="sink",
-            config=dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.url.name": LIVE_SNOWFLAKE_URL}),
+            config=CAPTURED_CONFLUENT_CLOUD_RESPONSE["config"],
         )
-        assert source.get_service_from_connector_config(details).database_service_name == "snowflake_prod"
+        assert source.get_service_from_connector_config(details).database_service_name is None
 
     def test_host_port_matching_is_unchanged(self):
-        """Regression guard: services that do expose hostPort must keep matching."""
+        """Regression guard: services that do expose hostPort must keep matching, so
+        dropping the Snowflake path cannot regress the CDC/JDBC connectors that rely on
+        hostname resolution."""
         source = _source_with_services(
             [
                 _database_service(
@@ -855,8 +1027,15 @@ CDC_PIPELINE_DETAILS = KafkaConnectPipelineDetails(
 )
 
 
-def _priority_one_fqn_kwargs(dataset, pipeline_details, supports_database=None) -> dict:
-    """The keyword arguments Priority 1 of ``_get_table_entity`` passes to ``fqn.build``.
+def _first_table_fqn_kwargs(dataset, pipeline_details, supports_database=None, matched_service=None) -> dict:
+    """The keyword arguments the first table lookup in ``_get_table_entity`` passes to
+    ``fqn.build``.
+
+    Both the hostname-matched priority and the ``dbServiceNames`` one funnel through
+    ``_lookup_table_in_service``, so the slots are the same either way; which one supplies
+    the service name is what differs. Snowflake sinks resolve no service from their config
+    (see ``TestSnowflakeSinksAreNotMatchedByHostname``), so they arrive here via
+    ``dbServiceNames`` -- ``matched_service`` selects that path when left as None.
 
     ``supports_database`` stands in for the target service's class as
     ``_service_supports_database`` reports it: None when the service cannot be resolved
@@ -867,7 +1046,7 @@ def _priority_one_fqn_kwargs(dataset, pipeline_details, supports_database=None) 
     source = _new_source()
     source.metadata = MagicMock()
     # A miss on every lookup keeps all three priorities reachable, so captured[0]
-    # is unambiguously the Priority 1 call.
+    # is unambiguously the first one.
     source.metadata.get_by_name.return_value = None
     source.metadata.search_in_any_service.return_value = None
 
@@ -879,9 +1058,13 @@ def _priority_one_fqn_kwargs(dataset, pipeline_details, supports_database=None) 
         patch.object(
             KafkaconnectSource,
             "get_service_from_connector_config",
-            return_value=MagicMock(database_service_name="matched_service"),
+            return_value=MagicMock(database_service_name=matched_service),
         ),
-        patch.object(KafkaconnectSource, "get_db_service_names", return_value=[]),
+        patch.object(
+            KafkaconnectSource,
+            "get_db_service_names",
+            return_value=[] if matched_service else ["configured_service"],
+        ),
         patch.object(KafkaconnectSource, "_service_supports_database", return_value=supports_database),
         patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
@@ -907,7 +1090,7 @@ class TestDatasetFqnConstruction:
     """
 
     def test_qualified_dataset_builds_four_part_fqn(self):
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="ORDER_EVENTS_FLAT",
                 database="EVENT_LANDING",
@@ -917,7 +1100,7 @@ class TestDatasetFqnConstruction:
             ),
             KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
         )
-        assert kwargs["service_name"] == "matched_service"
+        assert kwargs["service_name"] == "configured_service"
         assert kwargs["database_name"] == "EVENT_LANDING"
         assert kwargs["schema_name"] == "PUBLIC"
         assert kwargs["table_name"] == "ORDER_EVENTS_FLAT"
@@ -928,7 +1111,7 @@ class TestDatasetFqnConstruction:
         fqn.build to resolve it by search. This is the case the shared CDC rule gets
         wrong -- with `fully_qualified` ignored, `schema or database` slides the database
         into the schema slot and builds an FQN that names a database as a schema."""
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="ORDER_EVENTS_FLAT",
                 database="EVENT_LANDING",
@@ -945,9 +1128,10 @@ class TestDatasetFqnConstruction:
         """Debezium's 'database' is the logical server name (topic.prefix), not a real
         database, so with no schema parsed it belongs in the schema slot with the
         database slot left empty."""
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False),
             CDC_PIPELINE_DETAILS,
+            matched_service="matched_service",
         )
         assert kwargs["database_name"] is None
         assert kwargs["schema_name"] == "inventory"
@@ -957,7 +1141,7 @@ class TestDatasetFqnConstruction:
         """MySQL/ClickHouse ingest under a synthetic 'default' database, so a Debezium
         "database" there is only ever topic.prefix and constraining by it guarantees a
         miss. table.include.list is what reliably reports the schema."""
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="orders",
                 database="inventory",
@@ -966,6 +1150,7 @@ class TestDatasetFqnConstruction:
             ),
             CDC_PIPELINE_DETAILS,
             supports_database=False,
+            matched_service="matched_service",
         )
         assert kwargs["database_name"] is None
         assert kwargs["schema_name"] == "public"
@@ -975,7 +1160,7 @@ class TestDatasetFqnConstruction:
         """On Postgres and friends `database` may be a real database.dbname, and a schema
         name like 'public' repeats across databases in one service -- so the qualified
         shape is tried first rather than assumed to be a topic.prefix."""
-        kwargs = _priority_one_fqn_kwargs(
+        kwargs = _first_table_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="orders",
                 database="inventory",
@@ -984,6 +1169,7 @@ class TestDatasetFqnConstruction:
             ),
             CDC_PIPELINE_DETAILS,
             supports_database=True,
+            matched_service="matched_service",
         )
         assert kwargs["database_name"] == "inventory"
         assert kwargs["schema_name"] == "public"
@@ -2114,68 +2300,3 @@ class TestCdcFieldResolutionIsUnchanged:
         topic = _debezium_envelope_topic()
         assert _new_source()._get_topic_field_fqn(topic, "before.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.id"
         assert _new_source()._get_topic_field_fqn(topic, "after.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.id"
-
-
-class TestDebugHostnameDiagnostic:
-    """Task 10: the NOT FOUND summary line hardcoded three CDC/JDBC-style config keys and
-    never consulted SERVICE_TYPE_HOSTNAME_KEYS, so a managed Snowflake sink -- whose host
-    lives under `snowflake.url.name` -- always reported 'hostname: NOT SET' even though the
-    connector plainly declared one (observed live, with a leading space from the Confluent
-    UI). That misleads support triage into thinking the connector never set a host."""
-
-    def test_snowflake_sink_not_found_summary_reports_real_hostname(self):
-        """End-to-end through yield_pipeline_lineage_details with the table intentionally
-        unresolvable, exercising the exact summary line a support engineer would read."""
-        source = _new_source()
-        source._topics_cache = {}
-        source.lineage_results = []
-        source._database_services_cache = []  # no service can match -> "no service matched" branch
-        source._messaging_services_cache = []
-        source.context = MagicMock()
-        source.context.get.return_value = SimpleNamespace(
-            pipeline_service="KafkaConnectSvc", pipeline="SnowflakeSinkConnector_0"
-        )
-        source._resolve_messaging_service = lambda pipeline_details: None
-        source.get_dataset_entity = lambda **kwargs: None  # table never resolves
-
-        pipeline_entity = SimpleNamespace(id=SimpleNamespace(root=uuid.uuid4()))
-
-        def _get_by_name(entity=None, fqn=None, **kwargs):
-            return pipeline_entity if getattr(entity, "__name__", "") == "Pipeline" else None
-
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.side_effect = _get_by_name
-        source.metadata.search_in_any_service.return_value = None
-
-        details = KafkaConnectPipelineDetails(
-            name="SnowflakeSinkConnector_0",
-            type="sink",
-            config=CAPTURED_CONFLUENT_CLOUD_RESPONSE["config"],
-        )
-
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
-            return_value=None,
-        ):
-            list(source.yield_pipeline_lineage_details(details))
-
-        assert source.lineage_results, "expected at least one lineage result entry"
-        table_fqn = source.lineage_results[0]["table_fqn"]
-        assert "NOT SET" not in table_fqn
-        assert "hostname: EXAMPLE1-AB00000.snowflakecomputing.com" in table_fqn
-
-    def test_cdc_style_connector_falls_back_to_database_hostname(self):
-        """A connector class absent from CONNECTOR_CLASS_TO_SERVICE_TYPE (or a service type
-        absent from SERVICE_TYPE_HOSTNAME_KEYS) must still surface its host via the legacy
-        `database.hostname`/`database.server`/`connection.host` keys -- the fix must not
-        regress connectors that are only ever matched by those."""
-        details = KafkaConnectPipelineDetails(
-            name="cdc",
-            type="source",
-            config={
-                "connector.class": "SomeUnmappedCdcSource",
-                "database.hostname": "cdc.example.com",
-                "table.name.format": "orders",
-            },
-        )
-        assert _new_source()._debug_hostname(details) == "cdc.example.com"

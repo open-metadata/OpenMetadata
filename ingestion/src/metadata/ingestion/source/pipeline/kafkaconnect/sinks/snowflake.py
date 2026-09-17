@@ -40,6 +40,8 @@ VALID_SNOWFLAKE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]+$")
 CURRENT_SELF_MANAGED_CLASS = "SnowflakeStreamingSinkConnector"
 # Dots are valid and common in literal Kafka topic names. Other regex operators are
 # unambiguous selectors and must never be emitted as if they were concrete topics.
+# This split governs *discovery* only -- which topics we go looking for. Resolution
+# compiles every key, exactly as the connector does.
 REGEX_META_CHARACTERS = frozenset("*+?[](){}|^$\\")
 # How every parser renders an array in dataTypeDisplay ("ARRAY<record>",
 # "UNION<null,ARRAY<record>>"), which is where a nullable array's arrayness survives.
@@ -56,7 +58,14 @@ class TopicTableMapping:
 
     @property
     def is_regex(self) -> bool:
-        """Whether this key selects topics, rather than naming one."""
+        """
+        Whether this key selects topics, rather than naming one.
+
+        A discovery-time question only: can this key be treated as a concrete topic name to
+        go and fetch? The connector never subscribes by this map -- it consumes what `topics`
+        / `topics.regex` name -- so a key with operators in it names no topic we could look
+        up. Resolution deliberately does not consult this: there, every key is a pattern.
+        """
         return any(char in REGEX_META_CHARACTERS for char in self.topic_pattern)
 
 
@@ -80,16 +89,39 @@ def java_string_hashcode(value: str) -> int:
 def snowflake_table_name(topic: str, sanitize: bool = True) -> str:
     """
     Derive the Snowflake table a topic lands in when no topic2table.map entry applies.
+
+    Transliterated from the connector's Utils.deriveTableName, statement for statement,
+    because every deviation is a table name that silently does not exist:
+
+    - the hash is taken from the *original* topic, before the ".*" strip below;
+    - literal ".*" sequences are dropped ("remove wildcard regex from topic name"),
+      which is not the same as sanitising them to underscores;
+    - an invalid first character emits a placeholder without consuming the character,
+      so it is *also* sanitised by the loop -- "-orders" becomes "__ORDERS_<hash>",
+      with two underscores, not one.
     """
     if not sanitize:
         return topic
     if VALID_SNOWFLAKE_IDENTIFIER.match(topic):
         return topic.upper()
 
-    sanitized = "".join(char if (char.isascii() and char.isalnum()) or char in "_$" else "_" for char in topic)
-    if not re.match(r"^[A-Za-z_]", sanitized):
-        sanitized = f"_{sanitized}"
-    return f"{sanitized.upper()}_{abs(java_string_hashcode(topic))}"
+    hashed = abs(java_string_hashcode(topic))
+    stripped = topic.replace(".*", "")
+    if not stripped:
+        # Upstream indexes position 0 unconditionally here and throws on a topic that is
+        # nothing but wildcards; there is no table name to predict, so say so rather than
+        # inventing one that cannot exist.
+        logger.warning(f"Topic '{topic}' leaves no derivable Snowflake table name; skipping its lineage")
+        return ""
+
+    if re.match(r"[_a-zA-Z]", stripped[0]):
+        result, index = [stripped[0]], 1
+    else:
+        # Upstream appends the placeholder without advancing its index, so the offending
+        # character is then sanitised again by the loop below. Keep both underscores.
+        result, index = ["_"], 0
+    result.extend(char if re.match(r"[_$a-zA-Z0-9]", char) else "_" for char in stripped[index:])
+    return f"{''.join(result).upper()}_{hashed}"
 
 
 class SnowflakeSinkResolver(SinkDatasetResolver):
@@ -112,7 +144,9 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
     ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
         topic_names = self._topic_names(config, topics)
         mappings = self._topic2table_mappings(config)
-        if config.get("snowflake.topic2table.map") and not mappings:
+        if mappings is None:
+            # The map is one the connector would refuse to start on, so the sink it describes
+            # is not running. Deriving names from the topics anyway would invent lineage.
             return []
         if not topic_names and not mappings:
             # A connector can subscribe by topics.regex, and get_connector_topics answers
@@ -164,7 +198,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         # *entity*, which the name-only recovery in `_with_mapped_topics` cannot do.
         return [
             mapping.topic_pattern if mapping.is_regex else re.escape(mapping.topic_pattern)
-            for mapping in self._topic2table_mappings(config)
+            for mapping in self._topic2table_mappings(config) or []
         ]
 
     def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
@@ -324,7 +358,14 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return None
 
     @staticmethod
-    def _topic2table_mappings(config: dict) -> List[TopicTableMapping]:  # noqa: UP006
+    def _topic2table_mappings(config: dict) -> Optional[List[TopicTableMapping]]:  # noqa: UP006, UP045
+        """
+        The parsed map, or None when it is one the connector would reject.
+
+        The two are not the same answer: a map that parses to nothing -- absent, empty, or
+        only whitespace -- means every topic derives its own name, exactly as with no map at
+        all. Conflating that with a rejected map costs a working sink all of its lineage.
+        """
         raw_mapping = config.get("snowflake.topic2table.map") or ""
         if not raw_mapping:
             return []
@@ -332,102 +373,197 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             mappings = SnowflakeSinkResolver._parse_topic2table_mappings(raw_mapping)
         except ValueError as exc:
             logger.warning(f"Ignoring invalid snowflake.topic2table.map for sink '{config.get('name')}': {exc}")
-            return []
+            return None
         else:
             return mappings
 
     @staticmethod
     def _parse_topic2table_mappings(raw_mapping: str) -> List[TopicTableMapping]:  # noqa: UP006
-        mappings = []
-        seen = set()
-        for pair in SnowflakeSinkResolver._split_unquoted(raw_mapping, ","):
-            parts = SnowflakeSinkResolver._split_unquoted(pair, ":", maxsplit=1)
-            if len(parts) != 2:
-                raise ValueError(f"mapping entry has no table separator: {pair!r}")
-            topic, _ = SnowflakeSinkResolver._unquote(parts[0])
-            table, quoted_table = SnowflakeSinkResolver._unquote(parts[1])
-            if not topic or not table:
-                raise ValueError("mapping topic and table must both be non-empty")
+        """
+        Transliteration of TopicToTableParser.parseAndValidate.
+
+        Tokenising rather than splitting on separators is what makes `"topic:one":"table,one"`
+        parse: inside quotes the delimiters are ordinary characters. The overlap rule is the
+        connector's own -- it refuses to start on a map where one key's regex would also
+        select another key -- so a running connector can never present an ambiguous map, and
+        the first-match-wins resolution below is deterministic rather than merely arbitrary.
+        """
+        entries = SnowflakeSinkResolver._parse_entries(raw_mapping)
+        seen: List[str] = []  # noqa: UP006
+        for entry in entries:
+            # Upstream only compiles a key when something first matches against it, so a lone
+            # unparseable pattern surfaces as a task failure rather than a config error. Same
+            # outcome, reported earlier: a key that cannot compile predicts no table at all,
+            # and deriving one from the topic name instead would be a confident wrong answer.
             try:
-                re.compile(topic)
+                re.compile(entry.topic_pattern)
             except re.error as exc:
-                raise ValueError(f"invalid topic selector {topic!r}: {exc}") from exc
-            if topic in seen:
-                raise ValueError(f"duplicate topic selector: {topic!r}")
-            seen.add(topic)
-            mappings.append(TopicTableMapping(topic, table, quoted_table))
-        return mappings
+                raise ValueError(f"invalid topic selector {entry.topic_pattern!r}: {exc}") from exc
+            if entry.topic_pattern in seen:
+                raise ValueError(f"Duplicate topic: {entry.topic_pattern}")
+            for previous in seen:
+                if SnowflakeSinkResolver._full_match(entry.topic_pattern, previous) or (
+                    SnowflakeSinkResolver._full_match(previous, entry.topic_pattern)
+                ):
+                    raise ValueError(
+                        f"Topic regexes cannot overlap. Overlapping regexes: {previous}, {entry.topic_pattern}"
+                    )
+            seen.append(entry.topic_pattern)
+        return entries
 
     @staticmethod
-    def _split_unquoted(value: str, separator: str, maxsplit: int = -1) -> List[str]:  # noqa: UP006
-        parts = []
-        current = []
-        quoted = False
-        splits = 0
-        for char in value:
-            if char == '"':
-                quoted = not quoted
-                current.append(char)
-            elif char == separator and not quoted and (maxsplit < 0 or splits < maxsplit):
-                parts.append("".join(current).strip())
-                current = []
-                splits += 1
-            else:
-                current.append(char)
-        if quoted:
-            raise ValueError("unterminated quoted identifier")
-        parts.append("".join(current).strip())
-        return parts
+    def _parse_entries(raw_mapping: str) -> List[TopicTableMapping]:  # noqa: UP006
+        """Transliteration of TopicToTableParser.parseEntries."""
+        entries = []
+        index = 0
+        while True:
+            index = SnowflakeSinkResolver._skip_whitespace(raw_mapping, index)
+            if index >= len(raw_mapping):
+                return entries
+            topic, _, index = SnowflakeSinkResolver._parse_token(raw_mapping, index)
+            index = SnowflakeSinkResolver._skip_whitespace(raw_mapping, index)
+            index = SnowflakeSinkResolver._expect(raw_mapping, index, ":")
+            index = SnowflakeSinkResolver._skip_whitespace(raw_mapping, index)
+            table, table_quoted, index = SnowflakeSinkResolver._parse_token(raw_mapping, index)
+            # Only the table token drives case folding; quotes around a topic are discarded.
+            entries.append(TopicTableMapping(SnowflakeSinkResolver._to_python_regex(topic), table, table_quoted))
+            index = SnowflakeSinkResolver._skip_whitespace(raw_mapping, index)
+            if index >= len(raw_mapping):
+                return entries
+            index = SnowflakeSinkResolver._expect(raw_mapping, index, ",")
 
     @staticmethod
-    def _unquote(value: str) -> tuple[str, bool]:
-        value = value.strip()
-        if value.startswith('"') or value.endswith('"'):
-            if len(value) < 2 or not (value.startswith('"') and value.endswith('"')):
-                raise ValueError(f"unbalanced quoted identifier: {value!r}")
-            return value[1:-1], True
-        return value, False
+    def _skip_whitespace(raw_mapping: str, position: int) -> int:
+        while position < len(raw_mapping) and raw_mapping[position].isspace():
+            position += 1
+        return position
+
+    @staticmethod
+    def _parse_token(raw_mapping: str, position: int) -> tuple[str, bool, int]:
+        """One quoted or unquoted token, plus whether it was quoted and where it ended."""
+        if position >= len(raw_mapping):
+            raise ValueError(f"Expected token, found end of input at position {position}")
+        if raw_mapping[position] != '"':
+            start = position
+            while position < len(raw_mapping) and not (
+                raw_mapping[position].isspace() or raw_mapping[position] in ':,"'
+            ):
+                position += 1
+            if position == start:
+                raise ValueError(f"Expected token at position {position}")
+            return raw_mapping[start:position], False, position
+        position += 1
+        start = position
+        while position < len(raw_mapping) and raw_mapping[position] != '"':
+            position += 1
+        if position >= len(raw_mapping):
+            raise ValueError(f"Unterminated quoted token at position {position}")
+        if position == start:
+            raise ValueError(f"Empty quoted token at position {position}")
+        return raw_mapping[start:position], True, position + 1
+
+    @staticmethod
+    def _expect(raw_mapping: str, position: int, character: str) -> int:
+        if position >= len(raw_mapping) or raw_mapping[position] != character:
+            raise ValueError(f"Expected '{character}' at position {position}: {raw_mapping!r}")
+        return position + 1
+
+    @staticmethod
+    def _to_python_regex(pattern: str) -> str:
+        """
+        Spell a Java named group the way `re` does.
+
+        The connector compiles these with java.util.regex, where a named group is `(?<env>x)`;
+        Python spells the same thing `(?P<env>x)` and raises on the Java form -- which would
+        reject the whole map and lose every mapping in it. Lookbehind (`(?<=`, `(?<!`) is
+        spelled identically in both and must survive untouched. Java-only constructs beyond
+        this (possessive quantifiers, `\\p{...}`) still fail to compile, which is the safe
+        direction: no predicted table beats a wrong one.
+        """
+        return re.sub(r"\(\?<(?![=!])", "(?P<", pattern)
+
+    @staticmethod
+    def _full_match(pattern: str, value: str) -> bool:
+        """Java's String.matches: a full match, and an unusable pattern is a config error."""
+        try:
+            return re.fullmatch(pattern, value) is not None
+        except re.error as exc:
+            raise ValueError(f"invalid topic selector {pattern!r}: {exc}") from exc
 
     @staticmethod
     def _mapped_table(topic: str, mappings: list[TopicTableMapping], config: dict) -> tuple[bool, Optional[str]]:  # noqa: UP045
+        """
+        The table this map sends `topic` to, mirroring whichever resolver the connector builds.
+
+        With `snowflake.topic2table.map.regex.replacement` off (the default, and the only
+        behaviour before connector 4.1.0) this is StaticTopicToTableResolver: exact key first,
+        then *every* key retried as a regex in declaration order -- literal-looking keys
+        included, since the connector compiles them all. With it on it is
+        RegexTopicToTableResolver, which has no exact-match stage at all and expands group
+        references into the template.
+        """
+        if SnowflakeSinkResolver._config_bool(config, "snowflake.topic2table.map.regex.replacement", default=False):
+            return SnowflakeSinkResolver._resolve_with_replacement(topic, mappings)
+        return SnowflakeSinkResolver._resolve_static(topic, mappings)
+
+    @staticmethod
+    def _resolve_static(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, Optional[str]]:  # noqa: UP045
+        """Transliteration of StaticTopicToTableResolver.resolve -- no group substitution."""
         mapping = next((entry for entry in mappings if entry.topic_pattern == topic), None)
-        match = None
         if mapping is None:
-            for candidate in mappings:
-                if not candidate.is_regex:
-                    # The exact lookup above already settled every literal key. Re-testing
-                    # them as regexes is the other half of how `prod.orders` claims
-                    # `prodXorders` -- this time on a topic the `topics` list discovered.
-                    continue
-                try:
-                    match = re.fullmatch(candidate.topic_pattern, topic)
-                except re.error as exc:
-                    logger.warning(f"Ignoring invalid topic2table regex '{candidate.topic_pattern}': {exc}")
-                    continue
-                if match:
-                    mapping = candidate
-                    break
+            mapping = next(
+                (entry for entry in mappings if SnowflakeSinkResolver._safe_full_match(entry.topic_pattern, topic)),
+                None,
+            )
         if mapping is None:
             return False, None
+        return True, SnowflakeSinkResolver._fold(mapping.table_template, mapping)
 
-        table = mapping.table_template
-        if match and SnowflakeSinkResolver._config_bool(
-            config, "snowflake.topic2table.map.regex.replacement", default=False
-        ):
-            replacement = re.sub(r"\$\{([^}]+)\}", r"\\g<\1>", table)
+    @staticmethod
+    def _resolve_with_replacement(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, Optional[str]]:  # noqa: UP045
+        """Transliteration of RegexTopicToTableResolver.resolve -- declaration order, then expand."""
+        for mapping in mappings:
+            try:
+                match = re.fullmatch(mapping.topic_pattern, topic)
+            except re.error as exc:
+                logger.warning(f"Ignoring invalid topic2table regex '{mapping.topic_pattern}': {exc}")
+                continue
+            if not match:
+                continue
+            # Java's Matcher.replaceFirst template syntax: $1 numbered, ${name} named.
+            replacement = re.sub(r"\$\{([^}]+)\}", r"\\g<\1>", mapping.table_template)
             replacement = re.sub(r"\$(\d+)", r"\\g<\1>", replacement)
             try:
-                table = match.expand(replacement)
+                expanded = match.expand(replacement)
             except (IndexError, re.error) as exc:
-                logger.warning(f"Unable to expand Snowflake table mapping '{table}' for topic '{topic}': {exc}")
+                logger.warning(
+                    f"Unable to expand Snowflake table mapping '{mapping.table_template}' for topic '{topic}': {exc}"
+                )
                 return True, None
-        # The connector puts the configured value straight into CREATE TABLE. Unquoted,
-        # Snowflake uppercases it, so `order_events:orders` lands in ORDERS -- matching how
-        # the derived branch of this expression already folds. Leaving the two to fold
-        # differently would hand Priority 1 an exact FQN that misses, on the path this
-        # resolver exists to make deterministic. Double quoting is the one way to keep case,
-        # and `_unquote` has already dropped the quotes: they are delimiters, not the name.
-        return True, table if mapping.preserve_table_case else table.upper()
+            # Upstream uppercases *after* substitution, so an unquoted template folds the
+            # captured groups too.
+            return True, SnowflakeSinkResolver._fold(expanded, mapping)
+        return False, None
+
+    @staticmethod
+    def _safe_full_match(pattern: str, topic: str) -> bool:
+        try:
+            return re.fullmatch(pattern, topic) is not None
+        except re.error as exc:
+            logger.warning(f"Ignoring invalid topic2table regex '{pattern}': {exc}")
+            return False
+
+    @staticmethod
+    def _fold(table: str, mapping: TopicTableMapping) -> str:
+        """
+        The connector puts the configured value straight into CREATE TABLE. Unquoted,
+        Snowflake uppercases it, so `order_events:orders` lands in ORDERS -- matching how the
+        derived branch folds. Leaving the two to fold differently would build an exact FQN
+        that misses, on the path this resolver exists to make deterministic. Double quoting is
+        the one way to keep case, and the parser has already dropped the quotes: they are
+        delimiters, not part of the name.
+        """
+        return table if mapping.preserve_table_case else table.upper()
 
     @staticmethod
     def _config_bool(config: dict, key: str, default: bool) -> bool:
@@ -440,6 +576,15 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
 
     @staticmethod
     def _sanitize_generated_names(config: dict) -> bool:
+        """
+        Whether the connector sanitises the names it derives, per its own version's default.
+
+        The compatibility switches only exist on the current streaming connector, where
+        Constants.SNOWFLAKE_COMPATIBILITY_ENABLE_AUTOGENERATED_TABLE_NAME_SANITIZATION_DEFAULT
+        is false; every earlier and managed connector sanitised unconditionally and has no
+        flag to read. Reading the flag for those would answer for a version that never
+        shipped it.
+        """
         connector_class = (config.get("connector.class") or "").split(".")[-1]
         if connector_class != CURRENT_SELF_MANAGED_CLASS:
             return True
