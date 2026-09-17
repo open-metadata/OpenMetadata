@@ -14,6 +14,10 @@
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { getPluralizeEntityName } from '../../utils/EntityNameUtils';
+import {
+  getGroupMemberLabelKey,
+  getSharedMemberType,
+} from '../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
 import { getGroupRelationship } from '../../utils/KnowledgeGraph.utils';
 import { GraphNode, KnowledgeGraphG6Edge } from './KnowledgeGraph.interface';
 import { getRelationStyle } from './KnowledgeGraph.relations';
@@ -46,10 +50,10 @@ const describeBundle = (
   const presentation = node.presentation;
   const members = presentation?.members ?? [];
   const bundle = getGroupRelationship(node, edges);
-  const memberType =
-    node.type === 'column'
-      ? t('label.column-plural')
-      : getPluralizeEntityName(node.type);
+  const memberKey = getGroupMemberLabelKey(members, node.type);
+  const memberType = memberKey
+    ? t(memberKey)
+    : getPluralizeEntityName(getSharedMemberType(members));
   const memberSummary = `${members.length} ${memberType}`;
   const endpoint = (id?: string) =>
     id === node.id ? memberSummary : nodes.get(id ?? '')?.label;
