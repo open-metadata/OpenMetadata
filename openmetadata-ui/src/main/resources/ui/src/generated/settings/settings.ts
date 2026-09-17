@@ -58,6 +58,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    SparqlQuerySettings = "sparqlQuerySettings",
     StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
@@ -110,6 +111,8 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Administrator-managed SPARQL query templates available across the installation.
  *
  * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
  * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
@@ -217,6 +220,16 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -230,12 +243,15 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -287,19 +303,32 @@ export interface PipelineServiceClientConfiguration {
      */
     tokenValidationAlgorithm?: TokenValidationAlgorithm;
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -316,11 +345,12 @@ export interface PipelineServiceClientConfiguration {
      */
     enableSecureSocketConnection?: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
     enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain?: string;
     /**
@@ -669,6 +699,10 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Installation query templates visible to SPARQL console users.
+     */
+    queryTemplates?: SavedSparqlQuery[];
+    /**
      * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
      * not chosen one; user preference and persona-level app mode still win over this default.
      * Null means no tenant default is configured.
@@ -725,6 +759,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -1273,6 +1314,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -1286,12 +1337,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
-    jwtPrincipalClaims: string[];
+    jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1612,7 +1666,7 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
      */
     tokenValidity?: number;
     /**
@@ -1724,7 +1778,7 @@ export interface Security {
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -1790,19 +1844,32 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -1823,13 +1890,14 @@ export interface AuthorizerConfiguration {
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**
@@ -2680,6 +2748,60 @@ export interface PolicyAgentConfiguration {
      * (pushed) when the run finishes, with a safety timer as the fallback.
      */
     pollingIntervalSeconds?: number;
+}
+
+/**
+ * A SPARQL query saved by a user or curated as an installation query template.
+ */
+export interface SavedSparqlQuery {
+    /**
+     * Preferred result serialization.
+     */
+    format: Format;
+    /**
+     * Stable identifier for the saved query.
+     */
+    id: string;
+    /**
+     * Preferred inference level.
+     */
+    inference: Inference;
+    /**
+     * Display name for the saved query.
+     */
+    name: string;
+    /**
+     * SPARQL query body.
+     */
+    query: string;
+    /**
+     * Time the query was last saved, in Unix epoch milliseconds.
+     */
+    savedAt: number;
+}
+
+/**
+ * Preferred result serialization.
+ */
+export enum Format {
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
+}
+
+/**
+ * Preferred inference level.
+ */
+export enum Inference {
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
 }
 
 /**

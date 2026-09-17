@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Style,
+} from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 
@@ -69,6 +72,7 @@ export interface TermsRowEditorProps {
 export interface RelatedTermTagButtonProps {
   entity: EntityReference;
   relationType?: string;
+  style?: Style;
   versionStatus?: VersionStatus;
   getRelationDisplayName: (relationType: string) => string;
   onRelatedTermClick: (fqn: string) => void;

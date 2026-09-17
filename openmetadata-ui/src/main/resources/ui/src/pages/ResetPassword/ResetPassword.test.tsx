@@ -44,7 +44,7 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'label.reset-your-password': 'Reset Your Password',
         'label.password-not-match': 'Passwords do not match',

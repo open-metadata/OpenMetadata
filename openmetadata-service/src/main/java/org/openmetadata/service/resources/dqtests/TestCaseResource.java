@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -105,8 +106,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
       "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,incidentStatus,domains,tags,followers,dataProducts";
+  // dataQualityDimension stays excluded for documents indexed before the rename: they hold it as a
+  // string, which fails to deserialize into the EntityReference until testCase is reindexed.
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,dataQualityDimensionName,testCaseType,originEntityFQN,followers";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -123,7 +126,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("testSuite,testDefinition", MetadataOperation.VIEW_BASIC);
-    return null;
+    // EditStatus governs the Incident Manager (test case resolution status, severity and incident
+    // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
+    // incident management without granting edit rights on the test case itself.
+    return listOf(MetadataOperation.EDIT_STATUS);
   }
 
   public static class TestCaseList extends ResultList<TestCase> {
@@ -470,6 +476,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
+    String searchTerm = q;
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter =
@@ -481,7 +488,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             type,
             testPlatforms,
             dataQualityDimension,
-            q,
+            searchTerm,
             includeFields,
             domain,
             tags,
@@ -506,7 +513,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         searchSortFilter,
         limit,
         offset,
-        q,
+        searchTerm,
         queryString);
   }
 

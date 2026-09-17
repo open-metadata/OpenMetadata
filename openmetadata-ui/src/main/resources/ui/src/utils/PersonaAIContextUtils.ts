@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -30,6 +30,8 @@ import {
 } from '../generated/type/personaContextDefinition';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
+import type { TreeNode } from './queryBuilder/url';
+import { withExploreFieldKeys } from './queryBuilder/url';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
@@ -54,6 +56,7 @@ export const normalizePersonaContextDefinition = (
       ...cloneDeep(rule),
       alwaysInContext: rule.alwaysInContext ?? false,
       enabled: rule.enabled ?? true,
+      filteredInSearch: rule.filteredInSearch ?? false,
       fullyRendered: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
         rule.entityType as EntityType
       )
@@ -130,8 +133,15 @@ export const getRuleExplorePath = (
     ? searchClassBase.getTabsInfo()[searchIndex]?.path
     : undefined;
 
+  // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
+  const exploreTree = tree
+    ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
+    : tree;
+
   return getExplorePath({
-    extraParameters: tree ? { queryFilter: JSON.stringify(tree) } : undefined,
+    extraParameters: exploreTree
+      ? { queryFilter: JSON.stringify(exploreTree) }
+      : undefined,
     isPersistFilters: false,
     tab,
   });
@@ -225,6 +235,25 @@ export const getRuleConditionParts = (
 
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
+
+// The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch.
+export const isSearchScopedRule = (rule: ContextRule): boolean =>
+  Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
+
+// Mirrors both of searchScope()'s gates, in the order the backend applies them: a definition that is switched off
+// serves an empty scope, so none of its rules narrow search however they are flagged, and within an enabled definition
+// a disabled rule is dropped too.
+export const getScopedRuleCount = (
+  definition?: PersonaContextDefinition
+): number => {
+  if (definition?.enabled === false) {
+    return 0;
+  }
+
+  return (definition?.rules ?? []).filter(
+    (rule) => isSearchScopedRule(rule) && rule.enabled !== false
+  ).length;
+};
 
 export interface PersonaContextVersionChange {
   key: string;
@@ -321,45 +350,70 @@ const diffContextRules = (
   return changes;
 };
 
-const diffContextSettings = (
+const diffCharacterBudgetChange = (
   previous?: PersonaContextDefinition,
   current?: PersonaContextDefinition
-): PersonaContextVersionChange[] => {
-  const changes: PersonaContextVersionChange[] = [];
+): PersonaContextVersionChange | null => {
   if (
     current?.characterBudget != null &&
     previous?.characterBudget !== current.characterBudget
   ) {
-    changes.push({
+    return {
       key: 'message.persona-context-history-budget',
       values: {
         from: (previous?.characterBudget ?? 0).toLocaleString(),
         to: current.characterBudget.toLocaleString(),
       },
-    });
+    };
   }
+
+  return null;
+};
+
+const diffCacheTtlChange = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange | null => {
   if (
     current?.cacheTtlMinutes != null &&
     previous?.cacheTtlMinutes !== current.cacheTtlMinutes
   ) {
-    changes.push({
+    return {
       key: 'message.persona-context-history-ttl',
       values: {
         from: previous?.cacheTtlMinutes ?? 0,
         to: current.cacheTtlMinutes,
       },
-    });
+    };
   }
+
+  return null;
+};
+
+const diffEnabledChange = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange | null => {
   if ((previous?.enabled ?? true) !== (current?.enabled ?? true)) {
-    changes.push({
+    return {
       key: current?.enabled
         ? 'message.persona-context-history-enabled'
         : 'message.persona-context-history-disabled',
-    });
+    };
   }
 
-  return changes;
+  return null;
 };
+
+const diffContextSettings = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange[] =>
+  [
+    diffCharacterBudgetChange(previous, current),
+    diffCacheTtlChange(previous, current),
+    diffEnabledChange(previous, current),
+  ].filter((change): change is PersonaContextVersionChange => change != null);
 
 const parseVersionSnapshot = (snapshot: unknown): Persona | undefined => {
   try {
@@ -408,9 +462,8 @@ const describeVersionChanges = (
     return changes;
   }
 
-  // The version bumped but the AI context is byte-equal to the previous one —
-  // it came from an unrelated persona edit (name, users, default, …). Label it
-  // as such instead of implying the AI context changed.
+  // The version bumped but the AI context is byte-equal to the previous one — it came from an unrelated persona edit
+  // (name, users, default, …).
   return isEqual(currentComparable, previousComparable)
     ? [{ key: 'message.persona-context-history-metadata-only' }]
     : [{ key: 'message.persona-context-history-updated' }];

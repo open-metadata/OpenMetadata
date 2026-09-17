@@ -12,7 +12,7 @@
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from pydantic import ValidationError
 
@@ -98,14 +98,14 @@ class QuicksightSource(DashboardServiceSource):
         }
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: QuickSightConnection = config.serviceConnection.root.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(f"Expected QuickSightConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _check_pagination(self, listing_method, entity_key) -> Optional[List]:  # noqa: UP006, UP045
+    def _check_pagination(self, listing_method, entity_key) -> list | None:
         entity_summary_list = []
         entity_response = listing_method(self.default_args)
         entity_summary_list.extend(entity_response[entity_key])
@@ -121,7 +121,7 @@ class QuicksightSource(DashboardServiceSource):
                 break
         return entity_summary_list
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         """
         Get List of all dashboards
         """
@@ -238,7 +238,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table(parsed form query source) <-> dashboard"""
         db_service_entity = None
@@ -273,13 +273,33 @@ class QuicksightSource(DashboardServiceSource):
             )
             query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(source=LineageSource.DashboardLineage, sqlQuery=sql_query)
+            # A table qualified by the query resolves to the same FQN for every connection database
+            # the data source exposes, so without this the same edge is searched and yielded once
+            # per database. Scoped to this dataset's source tables, so it stays small.
+            searched_fqns: set[str] = set()
             for db_name in source_database_names:
-                if prefix_database_name and db_name and prefix_database_name.lower() != str(db_name).lower():
-                    logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")
-                    continue
                 for table in lineage_parser.source_tables:
-                    database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
-                    database_schema_name = self.check_database_schema_name(database_schema_name)
+                    table_details = fqn.split_table_name(str(table))
+                    # A `database.schema.table` reference carries its own database. Only fall back
+                    # to the data source's connection database when the query left it unqualified.
+                    database_name = table_details.get("database") or db_name
+                    database_schema_name = self.check_database_schema_name(table_details.get("database_schema"))
+                    table_name = table_details.get("table")
+                    if not table_name:
+                        continue
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != str(database_name).lower()
+                    ):
+                        logger.debug(
+                            "[%s] Database %s does not match prefix %s",
+                            query_hash,
+                            database_name,
+                            prefix_database_name,
+                        )
+                        continue
 
                     if (
                         prefix_schema_name
@@ -291,16 +311,22 @@ class QuicksightSource(DashboardServiceSource):
                         )
                         continue
 
-                    if prefix_table_name and table and prefix_table_name.lower() != table.lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
+                    if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
+                        logger.debug(
+                            "[%s] Table %s does not match prefix %s", query_hash, table_name, prefix_table_name
+                        )
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=prefix_database_name or db_name,
+                        database_name=prefix_database_name or database_name,
                         schema_name=prefix_schema_name or database_schema_name,
                         service_name=db_service_name or "*",
-                        table_name=prefix_table_name or table,
+                        table_name=prefix_table_name or table_name,
                     )
+                    if fqn_search_string in searched_fqns:
+                        continue
+                    searched_fqns.add(fqn_search_string)
+
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
@@ -381,7 +407,7 @@ class QuicksightSource(DashboardServiceSource):
         data_model_entity,
         data_source_resp: DataSourceModel,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str],  # noqa: UP045
+        db_service_prefix: str | None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """yield lineage from table <-> dashboard"""
         try:
@@ -454,7 +480,7 @@ class QuicksightSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self,
         dashboard_details: DashboardDetail,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -586,8 +612,8 @@ class QuicksightSource(DashboardServiceSource):
         Each QuickSight dataset produces a separate DataModel entity,
         identified by dataset_id rather than datasource_id.
         """
-        self.data_models: List[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)  # noqa: UP006
-        dataset_groups: dict[str, List[DescribeDataSourceResponse]] = defaultdict(list)  # noqa: UP006
+        self.data_models: list[DescribeDataSourceResponse] = self._get_dashboard_datamodels(dashboard_details)
+        dataset_groups: dict[str, list[DescribeDataSourceResponse]] = defaultdict(list)
         for data_model in self.data_models:
             key = data_model.dataset_id if data_model.dataset_id is not None else data_model.DataSource.DataSourceId
             dataset_groups[key].append(data_model)

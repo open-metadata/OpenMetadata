@@ -15,7 +15,6 @@ Test Datalake connector with CLI
 
 import urllib.parse
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -77,15 +76,15 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
         return None
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["aws-datalake-e2e"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return [".*example.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return [".*test.*"]
 
     @staticmethod

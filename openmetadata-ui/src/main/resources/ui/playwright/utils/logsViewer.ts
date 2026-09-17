@@ -202,8 +202,7 @@ export const scrollLogViewerToTail = async (
     }
 
     await page.mouse.wheel(0, deltaY);
-    // Let each wheel commit: back-to-back wheels coalesce, and then the loop
-    // travels far less than its budget suggests.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- pacing synthetic input, not waiting for state: back-to-back wheel events coalesce in the browser, so without a gap the loop travels far less than its budget suggests
     await page.waitForTimeout(60);
   }
 
@@ -322,6 +321,22 @@ const readLatestPipelineStatus = async (
  * little to ingest to leave a live window, which is a different problem from a
  * scheduler that never started.
  */
+/**
+ * The run was accepted but Airflow never moved it off `queued`.
+ *
+ * Distinct from every other failure this helper can raise, because it says
+ * nothing about the code under test — the trigger succeeded and the scheduler
+ * simply did not pick the DAG up. Callers treat it as an environment condition;
+ * a pipeline that reaches a terminal state instead is a real failure and stays a
+ * plain Error.
+ */
+export class SchedulerDidNotStartError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchedulerDidNotStartError';
+  }
+}
+
 export const waitForRunningPipelineStatus = async (
   apiContext: APIRequestContext,
   pipelineFqn: string,
@@ -354,7 +369,7 @@ export const waitForRunningPipelineStatus = async (
     );
   }
 
-  throw new Error(
+  throw new SchedulerDidNotStartError(
     `Pipeline ${pipelineFqn} did not report a "running" status within ${timeoutMs}ms ` +
       `(last seen: ${lastSeenState}). The scheduler did not start the run in time.`
   );

@@ -24,7 +24,7 @@ is not concerned with concurrent access.
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from contextlib import ExitStack
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
@@ -54,7 +54,7 @@ class BaseConnection(ABC, Generic[S, C]):
     """
 
     service_connection: S
-    _client: Optional[C]  # noqa: UP045
+    _client: C | None
 
     # Per-step test-connection timeout used when the caller passes none. Connectors
     # with slower steps override this attribute instead of ``test_connection``.
@@ -106,8 +106,8 @@ class BaseConnection(ABC, Generic[S, C]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = None,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = None,
     ) -> TestConnectionResult:
         """
         Test the connection through the runner. The timeout is applied per step,

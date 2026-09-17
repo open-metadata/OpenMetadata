@@ -366,6 +366,7 @@ jest.mock('../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
   Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -591,7 +592,7 @@ describe('ExploreV1', () => {
     ).toHaveAttribute('data-title-strong', 'false');
     expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
       'data-size',
-      'xs'
+      'sm'
     );
     expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
       'data-hide-focus-outline',
@@ -602,7 +603,7 @@ describe('ExploreV1', () => {
     );
     expect(
       screen.getByText('label.tool-plural').closest('button')
-    ).toHaveAttribute('data-size', 'xs');
+    ).toHaveAttribute('data-size', 'sm');
     expect(
       screen.getByText('label.tool-plural').closest('button')
     ).toHaveAttribute('data-hide-focus-outline', 'true');

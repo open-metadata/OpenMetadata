@@ -35,5 +35,5 @@ def health_response():
         logger.error(msg)
         return ApiResponse.error(
             status=ApiResponse.STATUS_BAD_REQUEST,
-            error=msg,
+            error="Unable to determine the Airflow REST API status.",
         )

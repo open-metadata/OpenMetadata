@@ -30,6 +30,7 @@ FULL_PROJECTS = {
     "GlobalSettings",
     "SystemCertificationTags",
     "IntakeForm",
+    "AdvancedSearch",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -46,6 +47,7 @@ PROJECT_LANES = {
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
+    "AdvancedSearch": "advanced-search",
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
@@ -103,6 +105,11 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
+    # Breached the 20-minute ceiling after the timing-baseline refresh that
+    # landed in main — split into per-spec units to stay within budget.
+    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
+    ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
+    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
@@ -548,6 +555,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
+        "advanced-search",
         "domain-isolation",
         "global-state",
         "import-export",
@@ -660,11 +668,46 @@ def write_plan(
     }
 
 
+# The workflow passes one `--history` per downloaded full-run artifact and only
+# falls back to the checked-in baseline when *no* artifact could be downloaded
+# (see the `history_args` block in playwright-e2e-reusable.yml). A newly added
+# spec file exists in the baseline -- its author seeds the durations there, as
+# the stale-baseline gate below instructs -- but in no artifact yet, so a single
+# successful download silently dropped those seeded timings and the gate fired
+# on a file that *does* have history. Fold the baseline in at the lowest
+# precedence instead: an artifact weight always wins where one exists, and the
+# baseline only backfills tests no artifact has ever observed.
+CHECKED_IN_BASELINE = Path(".github/playwright/timing-baseline.json")
+
+
+def backfill_from_checked_in_baseline(
+    paths: list[Path],
+    weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    baseline = next(
+        (
+            candidate
+            for candidate in (root / CHECKED_IN_BASELINE for root in SPEC_ROOT_CANDIDATES)
+            if candidate.is_file()
+        ),
+        None,
+    )
+    if baseline is None or any(path.resolve() == baseline.resolve() for path in paths):
+        return
+    fallback_weights, fallback_identity = load_history([baseline])
+    for test_id, weight in fallback_weights.items():
+        weights.setdefault(test_id, weight)
+    for identity, weight in fallback_identity.items():
+        identity_weights.setdefault(identity, weight)
+
+
 def main() -> None:
     args = parse_args()
     report = json.loads(args.test_list.read_text(encoding="utf-8"))
     selection = json.loads(args.selection.read_text(encoding="utf-8"))
     test_weights, identity_weights = load_history(args.history)
+    backfill_from_checked_in_baseline(args.history, test_weights, identity_weights)
     discovered_units = discover_units(report)
     unmatched_selectors = [
         selector["spec"]

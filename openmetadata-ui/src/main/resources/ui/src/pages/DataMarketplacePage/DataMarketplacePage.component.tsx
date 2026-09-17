@@ -25,7 +25,7 @@ import MarketplaceSearchBar from '../../components/DataMarketplace/MarketplaceSe
 import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   docStoreQueryFn,
@@ -35,6 +35,7 @@ import {
 } from '../../rest/queries/docStoreQuery';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -50,7 +51,7 @@ import './data-marketplace-page.less';
 // customize page still uses the grid, which is where drag and resize happen.
 const WIDGET_GAP = 18;
 
-// In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
+// In AI mode the caller's `PageHeader` owns the 20px gap to the content below
 // through its own bottom margin, matching the Domains/Data Products list pages —
 // the column must not stack another offset on top of it. The classic hero keeps
 // the original 8px offset it was designed against.
@@ -121,9 +122,7 @@ const DataMarketplacePage = ({
       return defaultLayout;
     }
 
-    const pageData = docData.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.DataMarketplace
-    );
+    const pageData = getPersonaPage(docData, PageType.DataMarketplace);
 
     const tabLayout = getLayoutFromCustomizedPage(
       PageType.DataMarketplace,

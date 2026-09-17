@@ -88,32 +88,32 @@ jobs:
 
       - name: Cache Maven dependencies
         if: steps.files.outputs.any == 'true'
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Run spotless (full tree apply)
-        if: steps.files.outputs.any == 'true'
-        run: mvn -B spotless:apply
-
-      - name: Fail only if changed Java files diverged
+      - name: Run spotless:check on changed Java files only
         if: steps.files.outputs.any == 'true'
         env:
           CHANGED: ${{ steps.files.outputs.changed }}
         run: |
           set -euo pipefail
-          # Guard against baseline drift: only assert on files the push touched.
-          # xargs is used so an empty CHANGED simply exits 0 rather than diffing all.
-          if [ -z "${CHANGED}" ]; then exit 0; fi
-          if [ -n "$(echo ${CHANGED} | xargs git status --porcelain --)" ]; then
-            echo "spotless:apply rewrote files pushed by this commit:"
-            echo ${CHANGED} | xargs git status --porcelain --
-            echo ${CHANGED} | xargs git --no-pager diff --
-            exit 1
-          fi
+          # spotless-maven-plugin accepts a comma-separated list of regexes
+          # matched against absolute file paths. Build one regex per file with
+          # `.` escaped and a `.*` prefix so it survives Maven's absolutization.
+          PATTERNS=""
+          for f in ${CHANGED}; do
+            # Escape regex metacharacters we might see in filenames.
+            ESCAPED=$(printf '%s' "$f" | sed 's/[][().^$+*?|\\]/\\&/g')
+            PATTERNS="${PATTERNS}${PATTERNS:+,}.*${ESCAPED}"
+          done
+          echo "spotless:check regex: ${PATTERNS}"
+          # Baseline drift on other files is intentionally ignored; scope
+          # matches the "Determine changed X files" step above.
+          mvn -B spotless:check "-DspotlessFiles=${PATTERNS}"
 
   python-checkstyle:
     name: Python Checkstyle

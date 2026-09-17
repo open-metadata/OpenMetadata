@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
 import {
   getAuthContext,
@@ -23,7 +24,12 @@ import { waitForAllLoadersToDisappear } from './entity';
 
 export const authenticateAdminPage = async (page: Page) => {
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-  const requiresLogin = await Promise.race([
+  // Promise.any, not Promise.race: only one of the two elements ever appears, so
+  // the losing waitFor keeps running until it times out or the page closes. With
+  // race, that loser's late rejection is unhandled and shows up in traces as a
+  // giant red "Wait for selector #email" spanning the whole test — misleading
+  // noise that points at a login stall that never happened. any() consumes it.
+  const requiresLogin = await Promise.any([
     page
       .locator('#email')
       .waitFor({ state: 'visible' })
@@ -39,7 +45,10 @@ export const authenticateAdminPage = async (page: Page) => {
     await admin.login(page);
   }
 
-  await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
+  );
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -133,6 +142,7 @@ export async function performAdminLogin(
         ? 'playwright/.auth/admin.json'
         : undefined,
   });
+  await installServerLoadReducers(page.context());
 
   try {
     await authenticateAdminPage(page);

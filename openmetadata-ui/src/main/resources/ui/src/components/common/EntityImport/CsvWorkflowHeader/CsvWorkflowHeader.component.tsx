@@ -72,7 +72,7 @@ const CsvWorkflowHeader = ({
               <span
                 className="csv-workflow-breadcrumb-item"
                 data-testid="breadcrumb-item"
-                key={`${breadcrumb.name}-${index}`}>
+                key={breadcrumb.name}>
                 {!isLast && breadcrumb.url ? (
                   <Link to={breadcrumb.url}>{content}</Link>
                 ) : (

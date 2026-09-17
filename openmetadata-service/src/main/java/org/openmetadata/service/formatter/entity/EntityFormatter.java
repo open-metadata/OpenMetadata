@@ -13,15 +13,15 @@
 
 package org.openmetadata.service.formatter.entity;
 
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public interface EntityFormatter {
   String format(
       MessageDecorator<?> messageDecorator,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType);
 }

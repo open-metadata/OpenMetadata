@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
@@ -40,7 +41,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -447,18 +447,11 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
-export const getDomainIcon = (iconURL?: string) => {
-  // Try to render the icon using the utility (handles both URLs and icon names)
-  const iconElement = renderIcon(iconURL, {
-    size: 24,
-    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
-  });
-
-  // If we got an icon element, return it
-  if (iconElement) {
-    return iconElement;
-  }
-
-  // Otherwise return the default domain icon
-  return <DomainIcon className="tw:text-quaternary" />;
-};
+export const getDomainIcon = (iconURL?: string) => (
+  <Icon
+    fallback={<DomainIcon className="tw:text-quaternary" />}
+    iconValue={iconURL}
+    imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
+    size={24}
+  />
+);

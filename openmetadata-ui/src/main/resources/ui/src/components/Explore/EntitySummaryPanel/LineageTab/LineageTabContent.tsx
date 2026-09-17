@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Owner, Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -31,8 +31,6 @@ import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.inte
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -143,6 +141,41 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     });
   }, [lineageItems, searchText]);
 
+  const renderEntityTypeInfo = (entityType: string | undefined) => {
+    if (!entityType) {
+      return null;
+    }
+
+    return (
+      <>
+        {searchClassBase.getEntityIcon(entityType) && (
+          <span className="w-4 d-inline-flex align-middle entity-type-icon">
+            {searchClassBase.getEntityIcon(entityType)}
+          </span>
+        )}
+        <Typography.Text className="item-entity-type-text">
+          {capitalize(entityType)}
+        </Typography.Text>
+      </>
+    );
+  };
+
+  const renderOwnerInfo = (owners: EntityReference[] | undefined) => {
+    if (owners && owners.length > 0) {
+      return (
+        <Owner
+          avatarSize={16}
+          className="item-owner-label-text"
+          isCompactView={false}
+          owners={owners}
+          showLabel={false}
+        />
+      );
+    }
+
+    return <Owner className="item-owner-label-text" owners={[]} />;
+  };
+
   return (
     <div className="lineage-tab-content">
       <div className="lineage-filter-buttons">
@@ -235,16 +268,18 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <Tooltip placement="top" title={t('label.upstream')}>
-                        <TooltipTrigger>
-                          <UpstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.upstream')}
+                        triggerClassName="tw:inline-flex">
+                        <UpstreamIcon height={18} width={18} />
                       </Tooltip>
                     ) : (
-                      <Tooltip placement="top" title={t('label.downstream')}>
-                        <TooltipTrigger>
-                          <DownstreamIcon height={18} width={18} />
-                        </TooltipTrigger>
+                      <Tooltip
+                        placement="top"
+                        title={t('label.downstream')}
+                        triggerClassName="tw:inline-flex">
+                        <DownstreamIcon height={18} width={18} />
                       </Tooltip>
                     )}
                   </div>
@@ -254,43 +289,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     {getEntityName(item.entity)}
                   </Typography.Text>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
-                    {item.entity.entityType && (
-                      <>
-                        {searchClassBase.getEntityIcon(
-                          item.entity.entityType ?? ''
-                        ) && (
-                          <span className="w-4 d-inline-flex align-middle entity-type-icon">
-                            {searchClassBase.getEntityIcon(
-                              item.entity.entityType ?? ''
-                            )}
-                          </span>
-                        )}
-                        <Typography.Text className="item-entity-type-text">
-                          {capitalize(item.entity.entityType)}
-                        </Typography.Text>
-                      </>
-                    )}
+                    {renderEntityTypeInfo(item.entity.entityType)}
                     <span className="item-bullet-separator">
                       {BULLET_SEPARATOR}
                     </span>
-                    {item.entity.owners && item.entity.owners.length > 0 ? (
-                      <OwnerLabel
-                        avatarSize={16}
-                        className="item-owner-label-text"
-                        isCompactView={false}
-                        owners={item.entity.owners}
-                        showLabel={false}
-                      />
-                    ) : (
-                      <NoOwnerFound
-                        isCompactView
-                        showLabel
-                        className="item-owner-label-text"
-                        multiple={{ user: false, team: false }}
-                        owners={[]}
-                        showDashPlaceholder={false}
-                      />
-                    )}
+                    {renderOwnerInfo(item.entity.owners)}
                   </div>
                 </div>
               </div>

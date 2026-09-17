@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { SubDomain } from '../../../support/domain/SubDomain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test as base } from '../../../support/fixtures/base';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -36,7 +37,10 @@ import {
   selectDomain,
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForEntitySearchable } from '../../../utils/search';
+import {
+  waitForDomainAssetCount,
+  waitForEntitySearchable,
+} from '../../../utils/search';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -92,7 +96,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
-  test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -131,6 +134,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   });
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
+    test.slow();
     await redirectToHomePage(page, false);
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -160,6 +164,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are added', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -201,6 +206,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Domain asset count should update when assets are removed', async ({
     page,
   }) => {
+    test.slow();
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
@@ -232,6 +238,16 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       .getByTestId('save-button')
       .click();
     await removeRes;
+
+    // The remove mutation returns before Elasticsearch is refreshed, and both
+    // the assets-tab badge and the landing-page widget read the count exactly
+    // once per page load. Wait for the search index to reflect the removal
+    // before reloading so those single-shot reads snapshot the updated count.
+    await waitForDomainAssetCount(
+      page,
+      domain.responseData.fullyQualifiedName ?? domain.data.name,
+      1
+    );
 
     await page.reload();
     await checkAssetsCount(page, 1);

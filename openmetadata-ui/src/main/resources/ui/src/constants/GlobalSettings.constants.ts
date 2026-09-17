@@ -72,6 +72,7 @@ export enum GlobalSettingOptions {
   APPLICATIONS = 'apps',
   OM_HEALTH = 'om-health',
   PROFILER_CONFIGURATION = 'profiler-configuration',
+  DATA_QUALITY = 'data-quality',
   APPEARANCE = 'appearance',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
   DATA_OBSERVABILITY = 'dataObservability',
@@ -105,4 +106,5 @@ export enum GlobalSettingOptions {
   WORKFLOW_DEFINITIONS = 'workflow-definitions',
   LEARNING_RESOURCES = 'learning-resources',
   COLUMN = 'column',
+  APP_MODE = 'appMode',
 }

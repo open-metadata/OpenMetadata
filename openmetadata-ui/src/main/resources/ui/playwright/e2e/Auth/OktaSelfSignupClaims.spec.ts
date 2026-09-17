@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { BrowserContext, expect, Page, test } from '@playwright/test';
+import { BrowserContext, Page } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import { swapSecurityConfig } from '../../utils/ssoAuth';
 
@@ -39,7 +40,6 @@ for (const scenario of CLAIM_SCENARIOS) {
     `Okta self-signup username resolution — ${scenario.title} (issue #26591)`,
     { tag: ['@sso', '@Platform', '@okta'] },
     () => {
-      test.slow();
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(
         !username || !password,
@@ -80,6 +80,7 @@ for (const scenario of CLAIM_SCENARIOS) {
       });
 
       test('resolves a non-empty username on /signup', async () => {
+        test.slow();
         const page = userPage!;
 
         await test.step('Authenticate at Okta', async () => {

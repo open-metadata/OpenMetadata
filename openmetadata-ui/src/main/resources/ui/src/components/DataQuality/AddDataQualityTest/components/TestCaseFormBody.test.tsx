@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HookForm } from '@openmetadata/ui-core-components';
+import {
+  FieldTypes,
+  FormItemLayout,
+  HookForm,
+} from '@openmetadata/ui-core-components';
 import {
   act,
   fireEvent,
@@ -21,6 +25,7 @@ import {
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -49,6 +54,16 @@ jest.mock('../../../../rest/tableAPI', () => ({
 jest.mock('../../../../rest/testAPI', () => ({
   getListTestDefinitions: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
+}));
+
+jest.mock('../../../../rest/dataQualityDimensionAPI', () => ({
+  getDataQualityDimensions: jest.fn().mockResolvedValue({
+    data: [
+      { id: 'dim-1', name: 'Accuracy', displayName: 'Accuracy' },
+      { id: 'dim-2', name: 'Timeliness', displayName: 'Timeliness' },
+    ],
+    paging: { total: 2 },
+  }),
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -86,10 +101,10 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
 }));
 
 jest.mock(
-  '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1',
+  '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval',
   () =>
     jest.fn().mockImplementation(({ onChange }) => (
-      <div data-testid="schedule-interval-v1">
+      <div data-testid="schedule-interval">
         <button
           data-testid="schedule-change-btn"
           onClick={() => onChange?.('0 0 * * *')}>
@@ -233,6 +248,10 @@ describe('TestCaseFormBody', () => {
       data: [],
       paging: { total: 0 },
     } as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('renders the three test level cards', async () => {
@@ -381,7 +400,81 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
-  it('hides the parameter fields when dynamic assertion is enabled', async () => {
+  it('defaults the data quality dimension to the selected test definition one', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    expect(
+      await screen.findByTestId('data-quality-dimension')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    await waitFor(() => {
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Accuracy',
+        label: 'Accuracy',
+      });
+    });
+  });
+
+  it('does not expose distribution-only fields from a schema capability alone', async () => {
+    mockGetListTestDefinitions.mockResolvedValue({
+      data: [DYNAMIC_DEFINITION],
+      paging: { total: 1 },
+    } as never);
+
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    await waitFor(() => {
+      expect(mockGetListTestDefinitions).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('use-dynamic-assertion')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders distribution-specific fields supplied by the class base', async () => {
+    jest
+      .spyOn(testCaseClassBase, 'createFormAdditionalFields')
+      .mockReturnValue([
+        {
+          name: 'useDynamicAssertion',
+          label: 'Dynamic Assertion',
+          type: FieldTypes.SWITCH,
+          id: 'root/useDynamicAssertion',
+          formItemLayout: FormItemLayout.HORIZONTAL,
+          props: {
+            'data-testid': 'use-dynamic-assertion',
+          },
+        },
+      ]);
     mockGetListTestDefinitions.mockResolvedValue({
       data: [DYNAMIC_DEFINITION],
       paging: { total: 1 },
@@ -405,6 +498,11 @@ describe('TestCaseFormBody', () => {
     expect(
       await screen.findByTestId('use-dynamic-assertion')
     ).toBeInTheDocument();
+
+    expect(testCaseClassBase.createFormAdditionalFields).toHaveBeenCalledWith(
+      true
+    );
+
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
 
     await act(async () => {
@@ -520,9 +618,7 @@ describe('TestCaseFormBody', () => {
     });
 
     expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('schedule-interval-v1')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('schedule-interval')).toBeInTheDocument();
     expect(await screen.findByTestId('enable-debug-log')).toBeInTheDocument();
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });
@@ -790,6 +886,33 @@ describe('TestCaseFormBody', () => {
       expect(formRef?.getValues('dimensionColumns')).toEqual(['id']);
       expect(formRef?.getValues('topDimensions')).toBe(5);
     });
+
+    it('keeps the prefilled custom dimension instead of the test definition one', async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.TABLE,
+            selectedTable: TABLE_FQN,
+            dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('dataQualityDimension')).toEqual({
+        id: 'Timeliness',
+        label: 'Timeliness',
+      });
+    });
   });
 
   describe('showOnlyParameter', () => {
@@ -802,6 +925,16 @@ describe('TestCaseFormBody', () => {
       expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
       expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    });
+
+    it('keeps the dimension field, it is edited from the parameter box', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, showOnlyParameter: true });
+      });
+
+      expect(
+        await screen.findByTestId('data-quality-dimension')
+      ).toBeInTheDocument();
     });
   });
 });

@@ -12,8 +12,6 @@
  */
 
 import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
   cloneDeep,
   groupBy,
@@ -26,12 +24,16 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
+import Table from '../../../components/common/Table/TableV2';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
@@ -64,6 +66,7 @@ import {
   highlightSearchText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -211,8 +214,10 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). `hasViewAccess` is a
+  // byte-for-byte match of the old `ViewAll || ViewBasic` bare OR — pure rename.
   const hasViewPermission = useMemo(
-    () => permissions?.ViewAll || permissions?.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
@@ -242,10 +247,12 @@ const SearchIndexFieldsTable = ({
         return <>{NO_DATA_PLACEHOLDER}</>;
       }
 
+      const shouldShowPlainText =
+        isReadOnly || (displayValue && displayValue.length < 25 && !isReadOnly);
+
       return (
         <div data-testid={`${record.name}-data-type`}>
-          {isReadOnly ||
-          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
             <Tooltip title={toLower(displayValue)}>

@@ -52,7 +52,7 @@ jobs:
 
       - name: Update Playwright PR comment
         if: ${{ always() && steps.download-comment.outcome == 'success' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
         with:

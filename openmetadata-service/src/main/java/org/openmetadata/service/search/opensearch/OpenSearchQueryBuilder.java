@@ -15,6 +15,7 @@ import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.SimpleQueryStringFlag;
 import os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType;
 
 public class OpenSearchQueryBuilder {
@@ -294,6 +295,39 @@ public class OpenSearchQueryBuilder {
                 }));
   }
 
+  /**
+   * Build a {@code simple_query_string} over {@code fields} that treats the whole input as literal
+   * text. Unlike {@code query_string}, this parser never throws on malformed input, so a caller can
+   * paste a URL or a name containing Lucene syntax without producing a {@code
+   * query_shard_exception}. {@code flags(None)} disables every operator, which is what makes the
+   * input literal — with operators live, a {@code -} or {@code |} in a name would still change the
+   * meaning of the query even though it could no longer throw.
+   */
+  public static Query simpleQueryStringQuery(
+      String query, Map<String, Float> fields, Operator operator) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, boost) -> {
+          if (boost != null && boost != 1.0f) {
+            fieldList.add(field + "^" + boost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.simpleQueryString(
+                sqs -> {
+                  sqs.query(query);
+                  sqs.fields(fieldList);
+                  sqs.flags(f -> f.single(SimpleQueryStringFlag.None));
+                  if (operator != null) {
+                    sqs.defaultOperator(operator);
+                  }
+                  return sqs;
+                }));
+  }
+
   public static BoolQueryBuilder boolQuery() {
     return new BoolQueryBuilder();
   }
@@ -437,11 +471,17 @@ public class OpenSearchQueryBuilder {
   public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
     Map<String, JsonData> scriptParams = new HashMap<>();
     params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    // Lucene 10 (OpenSearch 3.x) NPE guard: a script_score whose inner query matches zero docs on
+    // a segment returns a null sub-scorer, which DisjunctionMaxScorer/DisiWrapper rejects and the
+    // shard silently fails. Wrapping the inner query in a single-clause
+    // bool[should, minimumShouldMatch=1] gives it a well-defined empty iterator; scoring is
+    // identical because a single-clause bool with no must/filter scores exactly its clause.
+    Query guardedQuery = boolQuery().should(query).minimumShouldMatch(1).build();
     return Query.of(
         q ->
             q.scriptScore(
                 ss ->
-                    ss.query(query)
+                    ss.query(guardedQuery)
                         .script(
                             Script.of(
                                 s ->

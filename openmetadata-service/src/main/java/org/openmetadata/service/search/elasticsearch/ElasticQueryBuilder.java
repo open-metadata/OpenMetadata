@@ -9,6 +9,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.QueryStringQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.SimpleQueryStringFlag;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.json.JsonData;
 import java.util.ArrayList;
@@ -293,6 +294,39 @@ public class ElasticQueryBuilder {
                 }));
   }
 
+  /**
+   * Build a {@code simple_query_string} over {@code fields} that treats the whole input as literal
+   * text. Unlike {@code query_string}, this parser never throws on malformed input, so a caller can
+   * paste a URL or a name containing Lucene syntax without producing a {@code
+   * query_shard_exception}. {@code flags(NONE)} disables every operator, which is what makes the
+   * input literal — with operators live, a {@code -} or {@code |} in a name would still change the
+   * meaning of the query even though it could no longer throw.
+   */
+  public static Query simpleQueryStringQuery(
+      String query, Map<String, Float> fields, Operator operator) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, boost) -> {
+          if (boost != null && boost != 1.0f) {
+            fieldList.add(field + "^" + boost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.simpleQueryString(
+                sqs -> {
+                  sqs.query(query);
+                  sqs.fields(fieldList);
+                  sqs.flags(SimpleQueryStringFlag.None);
+                  if (operator != null) {
+                    sqs.defaultOperator(operator);
+                  }
+                  return sqs;
+                }));
+  }
+
   public static BoolQueryBuilder boolQuery() {
     return new BoolQueryBuilder();
   }
@@ -438,11 +472,16 @@ public class ElasticQueryBuilder {
   public static Query scriptScoreQuery(Query query, String source, Map<String, Double> params) {
     Map<String, JsonData> scriptParams = new HashMap<>();
     params.forEach((name, value) -> scriptParams.put(name, JsonData.of(value)));
+    // Lucene 10 NPE guard (mirrors OpenSearchQueryBuilder): a script_score whose inner query
+    // matches zero docs on a segment returns a null sub-scorer that DisjunctionMaxScorer rejects.
+    // A single-clause bool[should, minimumShouldMatch=1] wrapper yields an empty iterator instead
+    // of null; scoring is identical since a single-clause bool scores exactly its clause.
+    Query guardedQuery = boolQuery().should(query).minimumShouldMatch(1).build();
     return Query.of(
         q ->
             q.scriptScore(
                 ss ->
-                    ss.query(query)
+                    ss.query(guardedQuery)
                         .script(
                             Script.of(
                                 s ->

@@ -19,6 +19,29 @@ CONVERGENCE_TARGET_NAMES = frozenset(
     }
 )
 
+# Budget targets are SIGNALS, not gates. A budget breach means the pipeline
+# is slower/noisier than the plan promised — someone should look at capacity,
+# the timing baseline, or a runaway spec — but it must never eject a PR from
+# the merge queue when every test passed. Run 32500973433 is the canonical
+# counter-example this classification exists to prevent: chromium-12 finished
+# all 142 tests green, one wedged retry attempt (unbounded on-failure
+# trace/video teardown) pushed execution past the old blocking ceiling, and
+# the PR was ejected with "0 Playwright test failure(s)". Breaches surface
+# via the `Signal Playwright budget breaches` step in
+# playwright-postgresql-e2e.yml (log annotations + job summary + a tracked
+# GitHub issue), not via the required check.
+BUDGET_TARGET_NAMES = frozenset(
+    {
+        "environmentAtMostFiveMinutes",
+        "executionAtMostTwentyFiveMinutes",
+        "shardsAtMostThirtyMinutesBeforeUpload",
+        "flakyRateAtMostPointFivePercent",
+        "retryWorkerTimeAtMostTwoPercent",
+        "staticRequestsPerAppBootBelowOneHundred",
+        "appBootMeasurementIntegrity",
+    }
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -83,26 +106,36 @@ def aggregate_ranked_counts(
 
 def classify_targets(
     targets: dict[str, bool],
-) -> tuple[dict[str, bool], dict[str, bool]]:
+) -> tuple[dict[str, bool], dict[str, bool], dict[str, bool]]:
     convergence_targets = {
         name: passed
         for name, passed in targets.items()
         if name in CONVERGENCE_TARGET_NAMES
     }
+    budget_targets = {
+        name: passed
+        for name, passed in targets.items()
+        if name in BUDGET_TARGET_NAMES
+    }
+    # Anything neither budget nor convergence still hard-fails --enforce.
+    # The set is intentionally empty today; it exists so a future target
+    # that must eject PRs (e.g. corrupt results artifacts) has a home
+    # without re-plumbing the workflow.
     blocking_targets = {
         name: passed
         for name, passed in targets.items()
-        if name not in CONVERGENCE_TARGET_NAMES
+        if name not in CONVERGENCE_TARGET_NAMES and name not in BUDGET_TARGET_NAMES
     }
 
-    return blocking_targets, convergence_targets
+    return blocking_targets, budget_targets, convergence_targets
 
 
 # Human-readable label + phase-field a target reads, keyed by the target name
-# used in the `targets` dict below. Used to attribute a gate failure to the
+# used in the `targets` dict below. Used to attribute a budget breach to the
 # specific shard(s) that exceeded the threshold (per the phase artifacts) so
-# the merge-queue error and the PR summary are useful without the raw log.
-BLOCKING_TARGET_DETAILS: dict[str, dict[str, Any]] = {
+# the breach annotation, job summary, and tracked issue are useful without
+# the raw log.
+BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     # TRANSITIONAL: threshold widened from 300 → 480 s while the
     # `playwright-chromium-deps-v2` apt cache is still populating across
     # branches (a cache miss triggers a real apt install that can take
@@ -117,6 +150,18 @@ BLOCKING_TARGET_DETAILS: dict[str, dict[str, Any]] = {
         "unit": "s",
         "threshold": 480,
     },
+    # The planner packs shards to a 19-minute predicted budget
+    # (COMMON_SHARD_BUDGET_MS in build_playwright_shards.py); 1500 s is that
+    # promise plus tail headroom. The hang-protection `timeout … 60m` wrapper
+    # in playwright-e2e-reusable.yml sits far above this on purpose: a shard
+    # over 25 minutes breaches the budget (signal) but still finishes, uploads
+    # results, and keeps the run green if tests passed. These two targets are
+    # the "this shard is too slow" alert — they annotate the run and upsert the
+    # tracked issue "Playwright CI over time budget". The wrapper is not an
+    # alert and must never be used as one: killing a slow shard destroys its
+    # blob report, so its tests read as never-executed and the merge-queue
+    # batch is ejected with no record of what passed (2026-09-04: 584 of 4464
+    # tests lost, 0 test failures, 27 batches ejected).
     "executionAtMostTwentyFiveMinutes": {
         "label": "Maximum shard execution",
         "phase_field": "executionSeconds",
@@ -135,7 +180,7 @@ BLOCKING_TARGET_DETAILS: dict[str, dict[str, Any]] = {
 def offending_shards(
     phases: list[dict[str, Any]], target_name: str
 ) -> list[dict[str, Any]]:
-    detail = BLOCKING_TARGET_DETAILS.get(target_name)
+    detail = BUDGET_TARGET_DETAILS.get(target_name)
     if not detail:
         return []
     field = detail["phase_field"]
@@ -157,7 +202,7 @@ def offending_shards(
 def describe_failed_target(
     name: str, phases: list[dict[str, Any]]
 ) -> str:
-    detail = BLOCKING_TARGET_DETAILS.get(name)
+    detail = BUDGET_TARGET_DETAILS.get(name)
     shards = offending_shards(phases, name)
     if not detail or not shards:
         return name
@@ -339,16 +384,18 @@ def main() -> None:
             app_boots, ui_scenarios, app_entry_requests
         ),
     }
-    blocking_targets, convergence_targets = classify_targets(targets)
-    failed_target_details = {
+    blocking_targets, budget_targets, convergence_targets = classify_targets(
+        targets
+    )
+    failed_budget_details = {
         name: {
-            "label": BLOCKING_TARGET_DETAILS[name]["label"],
-            "threshold": BLOCKING_TARGET_DETAILS[name]["threshold"],
-            "unit": BLOCKING_TARGET_DETAILS[name]["unit"],
+            "label": BUDGET_TARGET_DETAILS[name]["label"],
+            "threshold": BUDGET_TARGET_DETAILS[name]["threshold"],
+            "unit": BUDGET_TARGET_DETAILS[name]["unit"],
             "offendingShards": offending_shards(phases, name),
         }
-        for name, passed in blocking_targets.items()
-        if not passed and name in BLOCKING_TARGET_DETAILS
+        for name, passed in budget_targets.items()
+        if not passed and name in BUDGET_TARGET_DETAILS
     }
     output = {
         "version": 1,
@@ -358,12 +405,28 @@ def main() -> None:
         "targetsMet": all(targets.values()),
         "blockingTargets": blocking_targets,
         "blockingTargetsMet": all(blocking_targets.values()),
+        "budgetTargets": budget_targets,
+        "budgetTargetsMet": all(budget_targets.values()),
         "convergenceTargets": convergence_targets,
         "convergenceTargetsMet": all(convergence_targets.values()),
-        "failedBlockingTargetDetails": failed_target_details,
+        # Kept for downstream consumers that predate the budget/blocking
+        # split (publish_playwright_pr_comment.cjs schema guard); the
+        # blocking set is empty today so this is always {}.
+        "failedBlockingTargetDetails": {},
+        "failedBudgetTargetDetails": failed_budget_details,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
+
+    # Budget breaches never fail this script — they are surfaced by the
+    # caller (log annotation + job summary + tracked issue). Print them so
+    # the raw log is self-explanatory either way.
+    for name, passed in budget_targets.items():
+        if not passed:
+            print(
+                f"BUDGET BREACH: {describe_failed_target(name, phases)}",
+                flush=True,
+            )
 
     if args.enforce and not output["blockingTargetsMet"]:
         failed = "; ".join(

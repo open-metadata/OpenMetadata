@@ -14,7 +14,6 @@ Test Athena connector with CLI
 """
 
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -76,15 +75,15 @@ class AthenaCliTest(CliCommonDB.TestSuite):
         return None
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["e2e_db"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return [".*customers.*"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return [".*sales.*"]
 
     @staticmethod

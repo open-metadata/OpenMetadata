@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,21 +30,17 @@ import DataProductsContainer from '../../components/DataProducts/DataProductsCon
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
-import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
@@ -57,17 +54,13 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { version, tab } = useRequiredParams<{
     version: string;
     tab: EntityTabs;
@@ -86,9 +79,8 @@ function DatabaseSchemaVersionPage() {
   } = pagingInfo;
 
   const [tableData, setTableData] = useState<Array<Table>>([]);
-  const [servicePermissions, setServicePermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isVersionsListLoading, setIsVersionsListLoading] =
+    useState<boolean>(true);
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
   const [isTableDataLoading, setIsTableDataLoading] = useState<boolean>(true);
@@ -100,19 +92,34 @@ function DatabaseSchemaVersionPage() {
     {} as EntityHistory
   );
 
-  const viewVersionPermission = useMemo(
-    () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
-    [servicePermissions]
-  );
+  // Fetch-owner, by fqn — reads-only conversion, mechanism preserved
+  // (APICollectionVersionPage.tsx / ServiceVersionPage.tsx precedent). `hasViewAccess` is a
+  // byte-for-byte match of the old bare `servicePermissions.ViewAll || servicePermissions
+  // .ViewBasic` OR; `canViewCustomFields` already carries the same field-then-ViewAll
+  // prioritization the old `getPrioritizedViewPermission` call had.
+  const {
+    permissions: servicePermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(ResourceEntity.DATABASE, decodedEntityFQN, {
+    enabled: Boolean(decodedEntityFQN),
+  });
 
-  const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        servicePermissions,
-        Operation.ViewCustomFields
-      ),
-    [servicePermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `isLoading` state doubled as both the permission-fetch
+  // loading flag AND the version-list-fetch loading flag (fetchVersionsList only ever runs
+  // when view access is granted, per the effect below) — same shape as ServiceVersionPage.tsx's
+  // fix (Task 8 Batch 10). Gated on `viewVersionPermission` so `isVersionsListLoading`'s
+  // initial `true` isn't counted while denied.
+  const isLoading =
+    isPermissionsLoading || (viewVersionPermission && isVersionsListLoading);
 
   const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
@@ -136,23 +143,9 @@ function DatabaseSchemaVersionPage() {
       [currentVersionData.changeDescription, owners, tier, domains]
     );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.DATABASE,
-        decodedEntityFQN
-      );
-
-      setServicePermissions(permission);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [decodedEntityFQN, getEntityPermissionByFqn, setServicePermissions]);
-
   const fetchVersionsList = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsVersionsListLoading(true);
 
       const { id } = await getDatabaseSchemaDetailsByFQN(decodedEntityFQN, {
         include: Include.All,
@@ -163,7 +156,7 @@ function DatabaseSchemaVersionPage() {
 
       setVersionList(versions);
     } finally {
-      setIsLoading(false);
+      setIsVersionsListLoading(false);
     }
   }, [viewVersionPermission, decodedEntityFQN]);
 
@@ -421,12 +414,6 @@ function DatabaseSchemaVersionPage() {
     versionList,
     domainDisplayName,
   ]);
-
-  useEffect(() => {
-    if (!isEmpty(decodedEntityFQN)) {
-      fetchResourcePermission();
-    }
-  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {

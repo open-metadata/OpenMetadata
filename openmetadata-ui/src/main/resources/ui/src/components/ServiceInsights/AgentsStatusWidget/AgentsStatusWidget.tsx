@@ -27,6 +27,41 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import './agents-status-widget.less';
 import { AgentsStatusWidgetProps } from './AgentsStatusWidget.interface';
 
+const renderAgentStatusExpandIcon = (
+  isLoading: boolean,
+  agentStatusSummary: Record<string, number>,
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <div
+    className="expand-icon-container"
+    data-testid="agent-status-widget-expand-icon">
+    {isLoading ? (
+      <Skeleton.Input active size="small" />
+    ) : (
+      <div className="agent-status-summary-container">
+        {Object.entries(agentStatusSummary).map(([key, value]) => (
+          <div
+            className={classNames('agent-status-summary-item', key)}
+            data-testid={`agent-status-summary-item-${key}`}
+            key={key}>
+            {getIconFromStatus(key)}
+            <Typography.Text data-testid="pipeline-count">
+              {value}
+            </Typography.Text>
+            <Typography.Text>{key}</Typography.Text>
+          </div>
+        ))}
+      </div>
+    )}
+    <Typography.Text
+      className="text-primary"
+      data-testid="agent-status-widget-view-more">
+      {t('label.view-more')}
+    </Typography.Text>
+    <ArrowSvg className="text-primary" height={14} width={14} />
+  </div>
+);
+
 function AgentsStatusWidget({
   liveAutoPilotStatusData,
   isLoading,
@@ -52,36 +87,9 @@ function AgentsStatusWidget({
     <Collapse
       className="service-insights-collapse-widget agents-status-widget"
       data-testid="agent-status-widget"
-      expandIcon={() => (
-        <div
-          className="expand-icon-container"
-          data-testid="agent-status-widget-expand-icon">
-          {isLoading ? (
-            <Skeleton.Input active size="small" />
-          ) : (
-            <div className="agent-status-summary-container">
-              {Object.entries(agentStatusSummary).map(([key, value]) => (
-                <div
-                  className={classNames('agent-status-summary-item', key)}
-                  data-testid={`agent-status-summary-item-${key}`}
-                  key={key}>
-                  {getIconFromStatus(key)}
-                  <Typography.Text data-testid="pipeline-count">
-                    {value}
-                  </Typography.Text>
-                  <Typography.Text>{key}</Typography.Text>
-                </div>
-              ))}
-            </div>
-          )}
-          <Typography.Text
-            className="text-primary"
-            data-testid="agent-status-widget-view-more">
-            {t('label.view-more')}
-          </Typography.Text>
-          <ArrowSvg className="text-primary" height={14} width={14} />
-        </div>
-      )}
+      expandIcon={() =>
+        renderAgentStatusExpandIcon(isLoading, agentStatusSummary, t)
+      }
       expandIconPosition="end">
       <Collapse.Panel
         header={
@@ -109,15 +117,16 @@ function AgentsStatusWidget({
 
         <Row gutter={[16, 16]}>
           {isLoading
-            ? Array(8)
-                .fill(null)
-                .map((_, index) => (
-                  <Col key={index} span={6}>
-                    <Card className="agent-status-card">
-                      <Skeleton.Input active />
-                    </Card>
-                  </Col>
-                ))
+            ? Array.from(
+                { length: 8 },
+                (_, index) => `agent-skeleton-${index}`
+              ).map((skeletonKey) => (
+                <Col key={skeletonKey} span={6}>
+                  <Card className="agent-status-card">
+                    <Skeleton.Input active />
+                  </Card>
+                </Col>
+              ))
             : agentsInfo.map((agent) => (
                 <Col key={agent.label} span={6}>
                   <Card

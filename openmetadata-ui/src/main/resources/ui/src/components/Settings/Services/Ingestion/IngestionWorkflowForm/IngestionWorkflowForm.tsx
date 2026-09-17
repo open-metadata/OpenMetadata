@@ -20,6 +20,7 @@ import {
   forwardRef,
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -45,6 +46,7 @@ import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchema
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -342,6 +344,19 @@ const IngestionWorkflowForm = forwardRef<
     []
   );
 
+  /**
+   * Workflow markdown only documents a subset of the pipeline fields, so the docs
+   * panel needs the focused field's own schema title/description to fall back on.
+   * Custom fields (arrays, toggles) emit focus through formContext.handleFocus
+   * rather than RJSF's form-level onFocus, so both paths get the enriched handler.
+   */
+  const handleFieldFocus = useCallback(
+    (id: string) => {
+      onFocus(id, getFieldSchemaForId(schema as Record<string, unknown>, id));
+    },
+    [onFocus, schema]
+  );
+
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       let formData = { ...e.formData };
@@ -385,7 +400,7 @@ const IngestionWorkflowForm = forwardRef<
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
         fields={customFields}
-        formContext={{ handleFocus: onFocus }}
+        formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -403,7 +418,7 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
-        onFocus={onFocus}
+        onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width
          * and keep the card's bottom border-radius visible during scroll. */}

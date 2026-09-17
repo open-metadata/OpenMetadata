@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyBulkJob.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyBulkJob",
+  "description": "Background execution state for an ontology bulk request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyBulkJob",
+  "definitions": {
+    "status": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkJobStatus",
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "integer",
+      "minimum": 1,
+      "existingJavaType": "java.lang.Long"
+    },
+    "operation": {
+      "$ref": "ontologyBulkRequest.json#/definitions/operation"
+    },
+    "status": {
+      "$ref": "#/definitions/status"
+    },
+    "glossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "progress": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "result": {
+      "$ref": "ontologyBulkResultArtifact.json"
+    },
+    "error": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "cancelRequested": {
+      "type": "boolean",
+      "default": false
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "completedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "id",
+    "operation",
+    "status",
+    "glossary",
+    "dryRun",
+    "progress",
+    "total",
+    "createdBy",
+    "createdAt",
+    "updatedAt"
+  ],
+  "additionalProperties": false
+}

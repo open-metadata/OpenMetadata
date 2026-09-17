@@ -175,77 +175,73 @@
               }
             }
           },
-          "resolved": {
+          "testCaseFailureReason": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 15
+              }
+            }
+          },
+          "testCaseFailureComment": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "resolvedBy": {
             "properties": {
-              "testCaseFailureReason": {
+              "id": {
                 "type": "keyword",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "ignore_above": 15
+                    "ignore_above": 36
                   }
                 }
               },
-              "testCaseFailureComment": {
-                "type": "text",
-                "analyzer": "om_analyzer_jp",
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
-                  },
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
+                    "ignore_above": 256
                   }
                 }
               },
-              "resolvedBy": {
-                "properties": {
-                  "id": {
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
                     "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                      }
-                    }
-                  },
-                  "type": {
-                    "type": "keyword"
-                  },
-                  "name": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "displayName": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "fullyQualifiedName": {
-                    "type": "text"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "deleted": {
-                    "type": "text"
-                  },
-                  "href": {
-                    "type": "text"
+                    "ignore_above": 256
                   }
                 }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
           }

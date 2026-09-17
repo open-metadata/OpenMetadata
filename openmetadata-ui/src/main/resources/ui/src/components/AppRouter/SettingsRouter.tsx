@@ -77,6 +77,12 @@ const DataAssetRulesPage = withPageSuspenseFallback(
   )
 );
 
+const DefaultAppModePage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/Settings/DefaultAppModePage/DefaultAppModePage')
+  )
+);
+
 const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -232,6 +238,12 @@ const ProfilerConfigurationPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage')
+  )
+);
+
+const DataQualitySettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataQualitySettingsPage/DataQualitySettingsPage')
   )
 );
 
@@ -868,6 +880,17 @@ const SettingsRouter = () => {
           GlobalSettingOptions.LOGIN_CONFIGURATION
         )}
       />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <DataQualitySettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.DATA_QUALITY
+        )}
+      />
 
       {/* An app mode that replaces the service listing outright makes these two routes a second,
           divergent way to reach it. Everything that used to link here now goes through
@@ -929,6 +952,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LEARNING_RESOURCES
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <DefaultAppModePage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.APP_MODE
         )}
       />
       <Route

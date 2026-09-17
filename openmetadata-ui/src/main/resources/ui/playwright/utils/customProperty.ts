@@ -28,6 +28,9 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
+  getDescriptionBox,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -141,7 +144,8 @@ export const setValueForProperty = async (data: {
   const patchRequestPromise = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -337,7 +341,11 @@ export const validateValueForProperty = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
@@ -698,8 +706,10 @@ export const addCustomPropertiesForEntity = async ({
   await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
-  await page.locator('[data-testid="propertyType"]').click();
-  await page.getByRole('option', { name: customType, exact: true }).click();
+  await selectOptionWithRetry(
+    page.locator('[data-testid="propertyType"]'),
+    page.getByRole('option', { name: customType, exact: true })
+  );
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
@@ -759,8 +769,10 @@ export const addCustomPropertiesForEntity = async ({
 
   // Format configuration
   if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
-    await page.getByTestId('formatConfig').click();
-    await page.getByRole('option', { name: formatConfig, exact: true }).click();
+    await selectOptionWithRetry(
+      page.getByTestId('formatConfig'),
+      page.getByRole('option', { name: formatConfig, exact: true })
+    );
   }
 
   // Description
@@ -768,8 +780,9 @@ export const addCustomPropertiesForEntity = async ({
     page.locator(String.raw`#root\/entityReferenceConfig_list`)
   ).not.toBeVisible();
 
-  await page.locator(descriptionBox).waitFor({ state: 'visible' });
-  await page.locator(descriptionBox).click();
+  await getDescriptionBox(page).waitFor({ state: 'visible' });
+  await expect(getDescriptionBox(page)).toHaveCount(1);
+  await getDescriptionBox(page).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
@@ -838,8 +851,8 @@ export const editCreatedProperty = async (
   await page.fill('[data-testid="display-name"]', '');
   await page.fill('[data-testid="display-name"]', propertyName.toUpperCase());
 
-  await page.locator(descriptionBox).fill('');
-  await page.locator(descriptionBox).fill('This is new description');
+  await fillDescriptionBox(page, '');
+  await fillDescriptionBox(page, 'This is new description');
 
   if (type === 'Enum') {
     await page.click(String.raw`#root\/customPropertyConfig`);
@@ -944,12 +957,13 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
 
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
-  // Select "Custom Properties" from the field dropdown
+  // Select "Custom Properties" from the field dropdown. Each level below it
+  // gets its own control in the row, suffixed by depth.
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Custom Properties',
     true
   );
@@ -957,7 +971,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   if (entityType !== 'TableColumn') {
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field .ant-select'),
+      ruleLocator.getByTestId('advanced-search-field-select-1'),
       entityType,
       true
     );
@@ -965,26 +979,26 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     if (propertyType === 'Time Interval') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} (Start)`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} (End)`,
         true
       );
     } else if (propertyType === 'Hyperlink') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} URL`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} Display Text`,
         true
       );
@@ -992,7 +1006,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
       for (const column of propertyConfig ?? []) {
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.getByTestId('advanced-search-field-select-2'),
           `${propertyName} - ${column}`,
           true
         );
@@ -1000,7 +1014,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     } else {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         propertyName,
         true
       );
@@ -1068,12 +1082,13 @@ export const editColumnCustomProperty = async (
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    await input.fill(value);
-    await page.waitForResponse(
+    const assetSearchResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
+    await input.fill(value);
+    await assetSearchResponse;
     await page.getByTestId(value).click();
 
     // Verify selection is applied before saving
@@ -1132,7 +1147,10 @@ export const validateColumnCustomProperty = async (
     await expect(card.getByTestId('property-value')).toContainText(end);
   } else if (propertyType === 'table-cp') {
     await expect(
-      page.getByRole('row', { name: `${testValue} row1col2` })
+      page
+        .getByRole('row')
+        .filter({ hasText: testValue })
+        .filter({ hasText: 'row1col2' })
     ).toBeVisible();
   } else if (propertyType === 'entityReference') {
     await expect(card.getByTestId('property-value')).toContainText(testValue);
@@ -1327,7 +1345,8 @@ export const updateCustomPropertyInRightPanel = async (data: {
 
   switch (propertyType) {
     case 'markdown':
-      await expect(page.locator(descriptionBox)).toBeVisible();
+      await expect(getDescriptionBox(page)).toHaveCount(1);
+      await expect(getDescriptionBox(page)).toBeVisible();
       await page.click(descriptionBox);
       await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
@@ -1510,7 +1529,11 @@ export const updateCustomPropertyInRightPanel = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page
+        .getByRole('row')
+        .filter({ hasText: values[0] })
+        .filter({ hasText: values[1] })
+        .first()
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters

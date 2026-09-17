@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -84,7 +84,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -175,7 +175,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for teams tab content to load
       await waitForAllLoadersToDisappear(page);
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await expect(
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
+      ).toBeVisible();
 
       // click on the users tab
       const usersTab = page.locator('[role="tab"]:has-text("Users")');
@@ -184,7 +189,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for users tab content to load
       await waitForAllLoadersToDisappear(page);
-      await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
+      await expect(
+        // Engine-agnostic: AntD puts the empty state in a plain cell, the
+        // react-aria grid renders it as the row's rowheader — but both sit
+        // in a row whose accessible name is the placeholder text.
+        page.getByRole('row', { name: 'No data' })
+      ).toBeVisible();
 
       // Navigate to roles list page to verify the added role
       await settingClick(page, GlobalSettingOptions.ROLES);
@@ -233,7 +243,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#name').fill(roleName);
 
       // Entering description
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(description);
 
@@ -267,7 +277,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await editDescriptionButton.click();
 
       // Wait for description editor to be visible
-      const descriptionField = page.locator(descriptionBox);
+      const descriptionField = getDescriptionBox(page);
       await expect(descriptionField).toBeVisible();
       await descriptionField.fill(`${description}-updated`);
 
@@ -460,40 +470,45 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Delete created Role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
+      // Delete from the role's own detail page instead of paginating the
+      // shared roles list. The list carries every role in the environment
+      // (hundreds of leftover PW fixtures under a shared nightly backend) and
+      // getElementWithPagination gives up after 50 pages — the created role,
+      // sorted by name after all "PW%Roles-*" fixtures, now falls past that
+      // cap. The detail URL is deterministic from roleName, matching the
+      // pattern the edit steps above already use.
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
-      const roleLocator = page.locator(
-        `[data-testid="delete-action-${updatedRoleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
+      const manageButton = page.getByTestId('manage-button');
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
 
-      // Wait for delete button to be visible and click it
-      await expect(roleLocator).toBeVisible();
+      const deleteButton = page.getByTestId('delete-button-title');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
 
       const confirmButton = page.locator('[data-testid="confirm-button"]');
       await expect(confirmButton).toBeVisible();
       await expect(confirmButton).toBeEnabled();
 
-      await Promise.all([
-        // Wait for API call to complete
-        page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/roles') &&
-            response.status() === 200
-        ),
-        confirmButton.click(),
-      ]);
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/roles') &&
+          response.request().method() === 'DELETE'
+      );
+      await confirmButton.click();
+      const response = await deleteResponse;
 
-      // Wait for modal to close and UI to update
+      expect(response.status()).toBe(200);
+
+      // Wait for redirect to the roles list and UI to settle
       await waitForAllLoadersToDisappear(page);
 
       // Validate deleted role is no longer visible
       await expect(
         page.locator(
-          `[data-testid="role-name"][href="/settings/access/roles/${updatedRoleName}"]`
+          `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
         )
       ).not.toBeVisible();
     });

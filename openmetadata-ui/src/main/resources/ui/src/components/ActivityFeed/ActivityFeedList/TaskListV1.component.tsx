@@ -54,12 +54,17 @@ const TaskListV1 = ({
   }, [taskList, selectedTask, onTaskClick]);
 
   useEffect(() => {
+    // While a fetch is in flight the list is intentionally empty; collapsing the
+    // right panel here would flash the layout on every sub-tab/filter switch.
+    if (isLoading) {
+      return;
+    }
     if (isEmpty(taskList) && handlePanelResize) {
       handlePanelResize?.(true);
     } else {
       handlePanelResize?.(false);
     }
-  }, [taskList]);
+  }, [taskList, isLoading, handlePanelResize]);
 
   const tasks = useMemo(
     () =>

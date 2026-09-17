@@ -13,8 +13,6 @@
 Validator for column value min to be between test case
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column, func
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -36,7 +34,7 @@ logger = test_suite_logger()
 class ColumnValueMinToBeBetweenValidator(BaseColumnValueMinToBeBetweenValidator, SQAValidatorMixin):
     """Validator for column value min to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: Column) -> int | None:
         """compute result of the test case
 
         Args:
@@ -58,7 +56,7 @@ class ColumnValueMinToBeBetweenValidator(BaseColumnValueMinToBeBetweenValidator,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for min with proper aggregation
 
         Uses the statistical aggregation helper to:
