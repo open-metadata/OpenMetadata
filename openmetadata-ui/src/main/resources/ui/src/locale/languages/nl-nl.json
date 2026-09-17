@@ -890,6 +890,7 @@
     "domain-lowercase": "domein",
     "domain-lowercase-plural": "domeinen",
     "domain-plural": "Domeinen",
+    "domain-scope": "Domeinbereik",
     "domain-type": "Domeintype",
     "domain_access": "Domeintoegang",
     "done": "Klaar",

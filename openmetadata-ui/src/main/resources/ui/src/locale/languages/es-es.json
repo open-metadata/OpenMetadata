@@ -890,6 +890,7 @@
     "domain-lowercase": "dominio",
     "domain-lowercase-plural": "dominios",
     "domain-plural": "Dominios",
+    "domain-scope": "Ámbito del dominio",
     "domain-type": "Tipo de Dominio",
     "domain_access": "Acceso al Dominio",
     "done": "Hecho",

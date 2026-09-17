@@ -434,6 +434,15 @@ public final class TaskWorkflowLifecycleResolver {
   }
 
   /**
+   * Identify an approval transition by its target status rather than its `id` string. Every
+   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
+   * coupling callers to the literal `"approve"` id that the workflow JSON happens to use.
+   */
+  public static boolean isApproveTransition(TaskAvailableTransition transition) {
+    return transition != null && transition.getTargetTaskStatus() == TaskEntityStatus.Approved;
+  }
+
+  /**
    * Resolve fallback transitions for a workflow-managed task whose stored
    * {@code availableTransitions} is empty. Prefer the stage-specific lookup so a partially
    * configured workflow can override the defaults; fall back to
