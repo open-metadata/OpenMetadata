@@ -134,6 +134,67 @@ test.describe('Task Comments - Add Comment', () => {
     }
   });
 
+  // Replaces a Jest assertion that could only check Tailwind class names: jsdom has
+  // no layout engine, so it could not have caught an actual reflow. Here the delete
+  // affordance is positioned out of flow, so revealing it on hover must not shift
+  // the comment body by a single pixel.
+  test('revealing the delete affordance on hover must not reflow the comment body', async ({
+    page,
+  }) => {
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
+
+    await page.getByTestId('activity_feed').click();
+    await waitForPageLoaded(page);
+
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
+    if (await tasksTab.isVisible()) {
+      await tasksTab.click();
+      await waitForPageLoaded(page);
+    }
+
+    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
+
+    const drawer = page.locator('.ant-drawer-content');
+    await expect(drawer).toBeVisible();
+
+    const message = `Layout probe ${Date.now()}`;
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(message);
+
+    const commentResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await drawer.getByTestId('send-comment').click();
+    await commentResponse;
+
+    const card = drawer
+      .locator('[data-testid="task-comment-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    const body = card.getByTestId('viewer-container');
+    const before = await body.boundingBox();
+
+    await card.hover();
+
+    const deleteAction = card.getByTestId('delete-task-comment');
+    await expect(deleteAction).toBeVisible();
+
+    const after = await body.boundingBox();
+
+    expect(after).toEqual(before);
+  });
+
   test('non-assignee should be able to add comment', async ({ page }) => {
     await commentingUser.login(page);
     await table.visitEntityPage(page);

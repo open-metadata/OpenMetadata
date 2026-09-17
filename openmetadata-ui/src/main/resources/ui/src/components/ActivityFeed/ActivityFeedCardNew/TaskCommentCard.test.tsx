@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -29,6 +29,7 @@ import TaskCommentCard from './TaskCommentCard.component';
 // card renders for real, so the assertions describe what a user actually sees.
 jest.mock('../../../rest/tasksAPI', () => ({
   deleteTaskComment: jest.fn().mockResolvedValue({}),
+  editTaskComment: jest.fn().mockResolvedValue({}),
 }));
 
 // The other half of that boundary: useUserProfile resolves the comment author
@@ -107,21 +108,6 @@ describe('TaskCommentCard', () => {
 
       expect(screen.getByTestId('author-name')).not.toHaveAttribute('href');
     });
-
-    // Regression guard for #33112: the delete affordance overlays the card rather
-    // than sharing its flow, so revealing it cannot reflow the comment body. jsdom
-    // performs no layout, so the positioning contract is the observable proxy.
-    it('should overlay the delete action instead of placing it in the flow', () => {
-      renderCard({ currentUser: { name: 'alice' } });
-
-      expect(screen.getByTestId('task-comment-card')).toHaveClass(
-        'tw:relative',
-        'tw:group'
-      );
-      expect(screen.getByTestId('delete-task-comment')).toHaveClass(
-        'tw:absolute'
-      );
-    });
   });
 
   describe('delete affordance permissions', () => {
@@ -170,11 +156,15 @@ describe('TaskCommentCard', () => {
       const user = setup();
       renderCard({ currentUser: { name: 'alice' } });
 
-      // Real tab order: the author's profile link comes first, the delete action
-      // second. Both are reachable without a pointer.
+      // Real tab order: the author's profile link, then edit, then delete - all
+      // reachable without a pointer.
       await user.tab();
 
       expect(screen.getByTestId('author-name')).toHaveFocus();
+
+      await user.tab();
+
+      expect(screen.getByTestId('edit-task-comment')).toHaveFocus();
 
       await user.tab();
 
@@ -185,13 +175,71 @@ describe('TaskCommentCard', () => {
       expect(await screen.findByTestId('delete-modal')).toBeInTheDocument();
     });
 
-    it('should reveal the delete action on card hover via CSS, not by unmounting it', () => {
+    it('should reveal the actions on card hover via CSS, not by unmounting them', () => {
       renderCard({ currentUser: { name: 'alice' } });
 
-      expect(screen.getByTestId('delete-task-comment')).toHaveClass(
+      // The reveal lives on the actions container so the buttons themselves stay
+      // mounted and focusable; unmounting them until hover is what put them out
+      // of the keyboard's reach.
+      expect(screen.getByTestId('task-comment-actions')).toHaveClass(
         'tw:opacity-0',
-        'tw:group-hover:opacity-100'
+        'tw:group-hover:opacity-100',
+        'tw:focus-within:opacity-100'
       );
+      expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
+    });
+  });
+
+  describe('edit permissions and flow', () => {
+    it('should offer edit to the comment author', () => {
+      renderCard({ currentUser: { name: 'alice' } });
+
+      expect(screen.getByTestId('edit-task-comment')).toBeInTheDocument();
+    });
+
+    // Deliberately narrower than delete: an admin may remove someone else's
+    // comment but must not rewrite it, matching the server's rules.
+    it('should not offer edit to an admin who is not the author', () => {
+      renderCard({ currentUser: { name: 'bob', isAdmin: true } });
+
+      expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
+      expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
+    });
+
+    it('should not offer edit to a non-author non-admin', () => {
+      renderCard({ currentUser: { name: 'bob' } });
+
+      expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
+    });
+
+    it('should open the inline editor and hide the actions while editing', async () => {
+      const user = setup();
+      renderCard({ currentUser: { name: 'alice' } });
+
+      await user.click(screen.getByTestId('edit-task-comment'));
+
+      expect(
+        await screen.findByTestId('edit-task-comment-editor')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-comment-actions')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should return to the rendered comment when the edit is cancelled', async () => {
+      const user = setup();
+      renderCard({ currentUser: { name: 'alice' } });
+
+      await user.click(screen.getByTestId('edit-task-comment'));
+      await user.click(await screen.findByTestId('cancel-edit-task-comment'));
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('edit-task-comment-editor')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(screen.getByTestId('task-comment-actions')).toBeInTheDocument();
     });
   });
 

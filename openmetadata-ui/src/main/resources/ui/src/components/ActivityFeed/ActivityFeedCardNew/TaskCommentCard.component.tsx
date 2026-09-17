@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { Delete as DeleteIcon } from '@openmetadata/ui-core-components/icons';
 import { Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,7 +26,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { deleteTaskComment, Task, TaskComment } from '../../../rest/tasksAPI';
+import {
+  deleteTaskComment,
+  editTaskComment,
+  Task,
+  TaskComment,
+} from '../../../rest/tasksAPI';
 import {
   formatDateTime,
   getRelativeTime,
@@ -36,11 +39,14 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { resolveCommentPermissions } from '../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import TaskCommentActions from '../../common/TaskComment/TaskCommentActions';
+import TaskCommentBody from '../../common/TaskComment/TaskCommentBody';
 interface TaskCommentCardProps {
   comment: TaskComment;
   task: Task;
@@ -79,12 +85,11 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const canDelete = useMemo(
-    () =>
-      (Boolean(currentUser?.name) &&
-        comment.author?.name === currentUser?.name) ||
-      Boolean(currentUser?.isAdmin),
-    [currentUser, comment.author]
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { canEdit, canDelete, canModify } = useMemo(
+    () => resolveCommentPermissions(currentUser, comment),
+    [currentUser, comment]
   );
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -120,6 +125,19 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
     },
     [repliesContainerRef]
   );
+
+  const handleEditSave = async (message: string) => {
+    if (!message) {
+      return;
+    }
+    try {
+      await editTaskComment(task.id, comment.id, message);
+      setIsEditing(false);
+      onCommentDeleted?.();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -191,25 +209,31 @@ const TaskCommentCard: FC<TaskCommentCardProps> = ({
             )}
           </Space>
           <div className="m-t-xs">
-            <RichTextEditorPreviewNew
-              markdown={getFrontEndFormat(comment.message)}
-            />
+            <TaskCommentBody
+              comment={comment}
+              isEditing={isEditing}
+              onCancelEdit={() => setIsEditing(false)}
+              onSave={handleEditSave}>
+              <RichTextEditorPreviewNew
+                markdown={getFrontEndFormat(comment.message)}
+              />
+            </TaskCommentBody>
           </div>
         </div>
       </Space>
-      {canDelete && (
+      {canModify && (
         <>
           {/* Stays mounted so it is reachable by Tab, and is revealed on card
               hover or on its own focus rather than on a mouse-only hover state. */}
-          <ButtonUtility
-            className="tw:absolute tw:top-3 tw:right-2 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-visible:opacity-100"
-            color="tertiary"
-            data-testid="delete-task-comment"
-            icon={DeleteIcon}
-            size="xs"
-            tooltip={t('label.delete')}
-            onClick={() => setShowDeleteDialog(true)}
-          />
+          {!isEditing && (
+            <TaskCommentActions
+              canDelete={canDelete}
+              canEdit={canEdit}
+              className="tw:absolute tw:top-3 tw:right-2 tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+              onDeleteRequest={() => setShowDeleteDialog(true)}
+              onEditRequest={() => setIsEditing(true)}
+            />
+          )}
           <DeleteModal
             entityTitle={t('label.comment')}
             isDeleting={isDeleting}

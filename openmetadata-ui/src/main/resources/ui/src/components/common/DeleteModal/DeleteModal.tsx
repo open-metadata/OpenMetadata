@@ -39,7 +39,7 @@ export const DeleteModal = ({
       data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
-      style={{ zIndex: 999 }}
+      style={{ zIndex: 'var(--om-z-modal)' }}
       onOpenChange={(isOpen) => !isOpen && !isDeleting && onCancel()}>
       <Modal>
         <Dialog width={400} onClose={onCancel}>
