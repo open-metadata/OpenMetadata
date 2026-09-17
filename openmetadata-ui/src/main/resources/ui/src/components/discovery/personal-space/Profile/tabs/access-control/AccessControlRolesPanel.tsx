@@ -27,7 +27,13 @@ import {
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -191,6 +197,57 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     });
   };
 
+  const navigateSequentially = async (newPage: number) => {
+    const requestId = ++fetchRequestIdRef.current;
+    setIsLoading(true);
+    try {
+      let page = currentPage;
+      let currentPaging: Paging = paging;
+
+      while (page < newPage && currentPaging.after) {
+        page++;
+        // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
+        const data = await getRoles(
+          'policies',
+          currentPaging.after,
+          undefined,
+          undefined,
+          pageSize
+        );
+
+        if (requestId !== fetchRequestIdRef.current) {
+          return;
+        }
+
+        currentPaging = data.paging;
+        setCursorCache((prev) => {
+          const next = new Map(prev).set(page, data.paging);
+
+          if (next.size > MAX_CURSOR_CACHE_PAGES) {
+            [...next.keys()]
+              .sort((a, b) => a - b)
+              .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+              .forEach((k) => next.delete(k));
+          }
+
+          return next;
+        });
+
+        if (page === newPage) {
+          setRoles(data.data || []);
+          setPaging(data.paging);
+          setCurrentPage(newPage);
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      if (requestId === fetchRequestIdRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const handlePageNavigation = async (newPage: number) => {
     if (newPage === currentPage) {
       return;
@@ -213,54 +270,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     // Sequential forward navigation through uncached pages
     if (newPage > currentPage) {
-      const requestId = ++fetchRequestIdRef.current;
-      setIsLoading(true);
-      try {
-        let page = currentPage;
-        let currentPaging: Paging = paging;
-
-        while (page < newPage && currentPaging.after) {
-          page++;
-          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
-          const data = await getRoles(
-            'policies',
-            currentPaging.after,
-            undefined,
-            undefined,
-            pageSize
-          );
-
-          if (requestId !== fetchRequestIdRef.current) {
-            return;
-          }
-
-          currentPaging = data.paging;
-          setCursorCache((prev) => {
-            const next = new Map(prev).set(page, data.paging);
-
-            if (next.size > MAX_CURSOR_CACHE_PAGES) {
-              [...next.keys()]
-                .sort((a, b) => a - b)
-                .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
-                .forEach((k) => next.delete(k));
-            }
-
-            return next;
-          });
-
-          if (page === newPage) {
-            setRoles(data.data || []);
-            setPaging(data.paging);
-            setCurrentPage(newPage);
-          }
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        if (requestId === fetchRequestIdRef.current) {
-          setIsLoading(false);
-        }
-      }
+      await navigateSequentially(newPage);
     }
   };
 
@@ -464,7 +474,11 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+            pageSizeOptions={[
+              PAGE_SIZE_BASE,
+              PAGE_SIZE_MEDIUM,
+              PAGE_SIZE_LARGE,
+            ]}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

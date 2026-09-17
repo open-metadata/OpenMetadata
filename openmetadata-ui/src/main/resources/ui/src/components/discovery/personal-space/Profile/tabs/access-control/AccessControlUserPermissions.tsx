@@ -115,7 +115,7 @@ const renderPolicy = (policy: PolicyInfo, index: number, t: TFunction) => {
             {policy.effect}
           </Badge>
           <Typography className="tw:text-secondary" size="text-sm">
-            {`${policy.rules.length} rules`}
+            {`${policy.rules.length} ${t('label.rule-lowercase-plural')}`}
           </Typography>
         </Box>
       </AccordionHeader>

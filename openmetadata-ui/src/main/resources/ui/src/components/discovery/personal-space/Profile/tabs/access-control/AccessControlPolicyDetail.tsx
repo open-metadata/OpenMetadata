@@ -238,6 +238,8 @@ function getPermissionTooltipTitle(
   return String(canEdit ? allowed : denied);
 }
 
+const formatList = (items?: string[]) => items?.join(', ') || '--';
+
 const RuleCard: FC<RuleCardProps> = ({
   canEditAll,
   isActionsDisabled,
@@ -302,7 +304,7 @@ const RuleCard: FC<RuleCardProps> = ({
             {`${t('label.resource-plural')}:`}
           </Typography>
           <Typography className="tw:text-primary" size="text-sm">
-            {(rule.resources ?? []).join(', ') || '--'}
+            {formatList(rule.resources)}
           </Typography>
         </Box>
         <Box direction="row" gap={2}>
@@ -310,7 +312,7 @@ const RuleCard: FC<RuleCardProps> = ({
             {`${t('label.operation-plural')}:`}
           </Typography>
           <Typography className="tw:text-primary" size="text-sm">
-            {(rule.operations ?? []).join(', ') || '--'}
+            {formatList(rule.operations)}
           </Typography>
         </Box>
         <Box direction="row" gap={2}>

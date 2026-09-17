@@ -254,7 +254,9 @@ test.describe(
         await test.step('Users tab shows pre-added user', async () => {
           await clickDetailTab(page, 'users');
           await expect(
-            page.getByRole('rowheader', { name: testUser.responseData.displayName })
+            page.getByRole('rowheader', {
+              name: testUser.responseData.displayName,
+            })
           ).toBeVisible();
         });
       } finally {
@@ -554,7 +556,9 @@ test.describe(
 
         await test.step('User row is visible', async () => {
           await expect(
-            page.getByRole('rowheader', { name: testUser.responseData.displayName })
+            page.getByRole('rowheader', {
+              name: testUser.responseData.displayName,
+            })
           ).toBeVisible();
         });
 
@@ -736,7 +740,7 @@ test.describe(
               .getByRole('option', { name: 'All', exact: true });
 
             try {
-              await option.click();
+              await option.click({ timeout: 3000 });
 
               return true;
             } catch {
@@ -755,7 +759,7 @@ test.describe(
               .getByRole('option', { name: 'All', exact: true });
 
             try {
-              await option.click();
+              await option.click({ timeout: 3000 });
 
               return true;
             } catch {
@@ -1053,7 +1057,7 @@ test.describe(
                 .getByRole('option', { name: 'All', exact: true });
 
               try {
-                await option.click();
+                await option.click({ timeout: 3000 });
 
                 return true;
               } catch {
@@ -1073,7 +1077,7 @@ test.describe(
                 .getByRole('option', { name: 'All', exact: true });
 
               try {
-                await option.click();
+                await option.click({ timeout: 3000 });
 
                 return true;
               } catch {
