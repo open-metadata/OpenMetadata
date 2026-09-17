@@ -49,10 +49,17 @@ public final class SparqlQueryLimits {
 
   public static String requireBoundedOutput(final String output) {
     if (output != null && output.getBytes(StandardCharsets.UTF_8).length > MAX_OUTPUT_BYTES) {
-      throw new IllegalStateException(
+      throw new OutputLimitExceededException();
+    }
+    return output;
+  }
+
+  /** The complete result is larger than {@link #MAX_OUTPUT_BYTES}. */
+  public static final class OutputLimitExceededException extends IllegalStateException {
+    public OutputLimitExceededException() {
+      super(
           "SPARQL result exceeds the maximum response size of %,d bytes"
               .formatted(MAX_OUTPUT_BYTES));
     }
-    return output;
   }
 }

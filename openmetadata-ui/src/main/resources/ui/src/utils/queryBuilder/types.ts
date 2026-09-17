@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { RenderSettings } from '@react-awesome-query-builder/ui';
 
 // Whether the user may create their own bracketed sub-groups.
 export const QUERY_BUILDER_GROUP_MODE = {
@@ -69,6 +68,4 @@ export interface QueryBuilderConfigModes {
   showLabels?: boolean;
   // `is` / `is not` / `is set` instead of `equal` / `not equal` / `not null`.
   useFriendlyOperatorLabels?: boolean;
-  // RAQB `settings.renderButton`.
-  renderButton?: RenderSettings['renderButton'];
 }
