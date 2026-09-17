@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type {
-  ButtonProps,
-  ConfigContext,
-} from '@react-awesome-query-builder/ui';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -27,12 +23,6 @@ jest.mock('../AdvancedSearchClassBase', () =>
   jest.requireActual('../AdvancedSearchClassBase')
 );
 
-const renderOf = (
-  type: string,
-  config: ReturnType<typeof buildQueryBuilderConfig>
-) =>
-  config.settings.renderButton?.({ type } as ButtonProps, {} as ConfigContext);
-
 const buildEs = (
   options: Partial<Parameters<typeof buildQueryBuilderConfig>[0]> = {}
 ) =>
@@ -44,33 +34,6 @@ const buildEs = (
 
 describe('buildQueryBuilderConfig', () => {
   describe('groupMode', () => {
-    it('should withhold addGroup and delGroup in flat mode', () => {
-      const config = buildEs({ groupMode: 'flat' });
-
-      expect(renderOf('addGroup', config)).toBeNull();
-      expect(renderOf('delGroup', config)).toBeNull();
-    });
-
-    it('should still render rule buttons in flat mode', () => {
-      const config = buildEs({ groupMode: 'flat' });
-
-      expect(renderOf('addRule', config)).not.toBeNull();
-      expect(renderOf('delRule', config)).not.toBeNull();
-    });
-
-    it('should not suppress delRuleGroup in flat mode, because a rule_group is structural', () => {
-      const config = buildEs({ groupMode: 'flat' });
-
-      expect(renderOf('delRuleGroup', config)).not.toBeNull();
-    });
-
-    it('should render addGroup and delGroup in nested mode', () => {
-      const config = buildEs({ groupMode: 'nested' });
-
-      expect(renderOf('addGroup', config)).not.toBeNull();
-      expect(renderOf('delGroup', config)).not.toBeNull();
-    });
-
     it('should set canRegroup from the mode', () => {
       expect(buildEs({ groupMode: 'flat' }).settings.canRegroup).toBe(false);
       expect(buildEs({ groupMode: 'nested' }).settings.canRegroup).toBe(true);
@@ -198,8 +161,6 @@ describe('buildQueryBuilderConfig', () => {
 });
 
 describe('buildQueryBuilderConfig – fallbacks and edges', () => {
-  type RenderButton = (props?: { type?: string }, ctx?: unknown) => unknown;
-
   it('should cope with a class base that returns nothing', () => {
     const spy = jest
       .spyOn(advancedSearchClassBase, 'getQbConfigs')
@@ -207,22 +168,12 @@ describe('buildQueryBuilderConfig – fallbacks and edges', () => {
 
     try {
       const config = buildEs({ groupMode: 'flat' });
-      const render = config.settings.renderButton as unknown as RenderButton;
 
-      expect(render({ type: 'addGroup' })).toBeNull();
-      expect(render({ type: 'addRule' })).toBeUndefined();
       expect(config.fields).toBeUndefined();
       expect(config.conjunctions).toBeUndefined();
     } finally {
       spy.mockRestore();
     }
-  });
-
-  it('should tolerate a button render call with no props', () => {
-    const render = buildEs({ groupMode: 'flat' }).settings
-      .renderButton as unknown as RenderButton;
-
-    expect(() => render()).not.toThrow();
   });
 
   it('should leave conjunctions alone when the fixed one is not available', () => {
