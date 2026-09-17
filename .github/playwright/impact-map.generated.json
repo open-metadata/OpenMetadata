@@ -2490,6 +2490,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
