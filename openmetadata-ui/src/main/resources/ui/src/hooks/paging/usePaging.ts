@@ -60,11 +60,17 @@ export interface UsePagingInterface {
   pagingCursor: PagingUrlParams;
 }
 
+/** A caller that declares no options accepts any size, so an absent list allows everything. */
+const isAllowedPageSize = (size: number, pageSizeOptions?: number[]) =>
+  !pageSizeOptions || pageSizeOptions.includes(size);
+
 /**
  * @param defaultPageSize where to start when the URL carries no size; falls back to the app-wide
  *   `globalPageSize` preference.
  * @param pageSizeOptions the sizes this page's picker offers. Pass them when the page is not on
  *   the app-wide scale: a size from the shared URL param or preference is reconciled to this set.
+ *   Pass a stable reference (a module constant) — a fresh array each render re-runs the sync
+ *   effect below, which is wasted work rather than a bug, since its updates bail on equal values.
  */
 export const usePaging = (
   defaultPageSize?: number,
@@ -75,31 +81,10 @@ export const usePaging = (
     setPreference,
   } = useCurrentUserPreferences();
 
-  // Joined, not held by identity, so an inline array from a caller doesn't re-run the sync effect.
-  const allowedSizesKey = pageSizeOptions?.join(',') ?? '';
-  const allowedSizes = useMemo(
-    () =>
-      allowedSizesKey ? allowedSizesKey.split(',').map(Number) : undefined,
-    [allowedSizesKey]
-  );
-
   const fallbackPageSize = defaultPageSize ?? globalPageSize;
-  const processedPageSize = useMemo(
-    () =>
-      allowedSizes && !allowedSizes.includes(fallbackPageSize)
-        ? allowedSizes[0]
-        : fallbackPageSize,
-    [allowedSizes, fallbackPageSize]
-  );
-
-  // Both sources are shared — one `pageSize` query param (and app mode keeps every visited route
-  // mounted against it) plus one app-wide preference — so either can hand a page a size its picker
-  // has no option for, which renders as an unselectable placeholder.
-  const toAllowedPageSize = useCallback(
-    (size: number) =>
-      allowedSizes && !allowedSizes.includes(size) ? processedPageSize : size,
-    [allowedSizes, processedPageSize]
-  );
+  const processedPageSize = isAllowedPageSize(fallbackPageSize, pageSizeOptions)
+    ? fallbackPageSize
+    : (pageSizeOptions as number[])[0];
 
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
@@ -108,53 +93,46 @@ export const usePaging = (
     pageSize: String(processedPageSize),
   });
 
-  const initialPageSize = toAllowedPageSize(
-    Number(urlParams.pageSize) || processedPageSize
-  );
+  // Both sources this can come from are shared — one `pageSize` query param (and app mode keeps
+  // every visited route mounted against it) plus one app-wide preference — so either can hand a
+  // page a size its picker has no option for, which renders as an unselectable placeholder.
+  const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
+  const resolvedPageSize = isAllowedPageSize(urlPageSize, pageSizeOptions)
+    ? urlPageSize
+    : processedPageSize;
+
   const initialCurrentPage =
     Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
-  const [pageSize, setPageSize] = useState<number>(initialPageSize);
+  const [pageSize, setPageSize] = useState<number>(resolvedPageSize);
 
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
   useEffect(() => {
     const nextCurrentPage =
       Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
-    const nextPageSize = toAllowedPageSize(
-      Number(urlParams.pageSize) || processedPageSize
-    );
 
     setCurrentPage((currentPage) =>
       currentPage === nextCurrentPage ? currentPage : nextCurrentPage
     );
     setPageSize((pageSize) =>
-      pageSize === nextPageSize ? pageSize : nextPageSize
+      pageSize === resolvedPageSize ? pageSize : resolvedPageSize
     );
-  }, [
-    processedPageSize,
-    toAllowedPageSize,
-    urlParams.currentPage,
-    urlParams.pageSize,
-  ]);
+  }, [resolvedPageSize, urlParams.currentPage]);
 
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({
       cursorType: urlParams.cursorType,
       cursorValue: urlParams.cursorValue,
       currentPage: urlParams.currentPage,
-      pageSize: toAllowedPageSize(
-        Number(urlParams.pageSize) || processedPageSize
-      ),
+      pageSize: resolvedPageSize,
     }),
     [
       urlParams.cursorType,
       urlParams.cursorValue,
       urlParams.currentPage,
-      urlParams.pageSize,
-      processedPageSize,
-      toAllowedPageSize,
+      resolvedPageSize,
     ]
   );
 
