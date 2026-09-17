@@ -105,6 +105,23 @@ describe('useMainCollapse', () => {
       expect(result.current[0]).toBe(true);
     });
 
+    it('rails when inSubMode resolves true with the contextKey already set (direct load)', () => {
+      // On a direct load / reload of a sub-context URL, the active module id is
+      // known before its sub-nav resolves: inSubMode flips false→true while
+      // contextKey stays the same. The main nav must still rail — regression for
+      // the "main nav not visible" bug.
+      const { result, rerender } = renderHook(
+        ({ sub, key }) => useMainCollapse(sub, key),
+        { initialProps: { sub: false, key: 'observability' as string | null } }
+      );
+
+      expect(result.current[0]).toBe(false);
+
+      rerender({ sub: true, key: 'observability' });
+
+      expect(result.current[0]).toBe(true);
+    });
+
     it('restores the persisted preference on returning to the top level', () => {
       localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
       const { result, rerender } = renderHook(

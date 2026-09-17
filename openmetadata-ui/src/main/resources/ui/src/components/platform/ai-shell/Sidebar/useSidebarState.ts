@@ -58,43 +58,54 @@ export const useMainCollapse = (
   const inSubModeRef = useRef(inSubMode);
   inSubModeRef.current = inSubMode;
 
-  const [collapsed, setCollapsed] = useState<boolean>(() =>
-    inSubMode ? true : readTopLevelDefault()
-  );
+  // Persisted preference, meaningful only at the top level.
+  const [topLevelCollapsed, setTopLevelCollapsed] =
+    useState<boolean>(readTopLevelDefault);
 
-  // Re-derive synchronously (during render, not in an effect) when entering/
-  // leaving a sub-context or switching between sub-contexts, so the main nav
-  // rails in the same commit the sub-panel appears — an effect would run after
-  // paint and briefly show both full panels. This is React's supported
-  // "adjust state when a prop changes" pattern; the ref-guarded setCollapsed
-  // fires only on an actual context change, so within a context an explicit
-  // toggle is preserved.
+  // Transient main-nav expand *inside* a sub-context — never persisted.
+  const [subExpanded, setSubExpanded] = useState(false);
+
+  // Re-rail synchronously (during render) whenever the sub-context changes, so a
+  // transient expand does not leak into the next context. Only ever sets
+  // `false`, so it can never leave the main nav un-railed in a sub-context.
   const prevContextRef = useRef({ inSubMode, contextKey });
   if (
     prevContextRef.current.inSubMode !== inSubMode ||
     prevContextRef.current.contextKey !== contextKey
   ) {
     prevContextRef.current = { inSubMode, contextKey };
-    setCollapsed(inSubMode ? true : readTopLevelDefault());
+    setSubExpanded(false);
   }
 
-  // Persist only at the top level; a sub-context toggle stays transient.
+  // Derived, not transition-reset: a sub-context always rails the main nav
+  // (unless the user transiently expanded it), the top level follows the
+  // persisted preference. Deriving it means entering a sub-context rails the
+  // main nav on the very first render — no race with async module sync, and no
+  // frame showing both full panels.
+  const collapsed = inSubMode ? !subExpanded : topLevelCollapsed;
+
   const toggle = useCallback(() => {
-    setCollapsed((prev) => {
+    if (inSubModeRef.current) {
+      setSubExpanded((prev) => !prev);
+
+      return;
+    }
+    setTopLevelCollapsed((prev) => {
       const next = !prev;
-      if (!inSubModeRef.current) {
-        persist(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
-      }
+      persist(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
 
       return next;
     });
   }, []);
 
   const set = useCallback((value: boolean) => {
-    setCollapsed(value);
-    if (!inSubModeRef.current) {
-      persist(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
+    if (inSubModeRef.current) {
+      setSubExpanded(!value);
+
+      return;
     }
+    setTopLevelCollapsed(value);
+    persist(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
   }, []);
 
   return [collapsed, toggle, set] as const;
