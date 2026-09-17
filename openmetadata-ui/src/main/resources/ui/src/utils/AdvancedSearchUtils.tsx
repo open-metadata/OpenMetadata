@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
   ListValues,
-  RenderSettings,
   ValueSource,
 } from '@react-awesome-query-builder/ui';
-import { Plus, Trash01, X } from '@untitledui/icons';
 import { escapeRegExp, isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { Focusable } from 'react-aria-components';
@@ -33,10 +31,8 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
-import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
 import { toTagSelectOptions } from './SearchPureUtils';
 
@@ -72,62 +68,6 @@ const renderSearchLabel = (label: string, searchKey: string) => {
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
-};
-
-export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
-  props
-) => {
-  const type = props?.type;
-
-  if (type === 'delRule') {
-    return (
-      <X
-        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
-        data-testid="advanced-search-delete-rule"
-        onClick={props?.onClick}
-      />
-    );
-  }
-
-  if (type === 'addRule') {
-    return (
-      <Button
-        className="action action--ADD-RULE"
-        color="secondary"
-        data-testid="advanced-search-add-rule"
-        iconLeading={Plus}
-        size="sm"
-        onPress={() => props?.onClick?.()}>
-        {t('label.add')}
-      </Button>
-    );
-  }
-
-  if (type === 'addGroup') {
-    return (
-      <Button
-        className="action action--ADD-GROUP"
-        color="secondary"
-        data-testid="advanced-search-add-group"
-        iconLeading={Plus}
-        size="sm"
-        onPress={() => props?.onClick?.()}>
-        {t('label.add')}
-      </Button>
-    );
-  }
-
-  if (type === 'delGroup') {
-    return (
-      <Trash01
-        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-error-primary"
-        data-testid="advanced-search-delete-group"
-        onClick={props?.onClick as () => void}
-      />
-    );
-  }
-
-  return <></>;
 };
 
 export const generateSearchDropdownLabel = (
@@ -254,7 +194,6 @@ export const getTreeConfig = ({
     : {
         showLabels: false,
         useFriendlyOperatorLabels: true,
-        renderButton: renderQueryBuilderFilterButtons,
       };
 
   if (searchOutputType === SearchOutputType.ElasticSearch) {
