@@ -30,11 +30,7 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// 975 KiB left ~0 headroom: converging every filter onto the library's FilterSelect
-// puts it in the entry graph from more modules than the deleted SearchDropdown was,
-// which costs ~0.5 KiB Brotli even though the app loses a 563-line component and its
-// LESS. Same +5 KiB step as #33366 took the day before.
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 980 * 1024;
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 975 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
