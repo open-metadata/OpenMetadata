@@ -37,6 +37,7 @@ import {
   entityDisplayName,
   getEntityFQN,
   getEntityType,
+  isFeedPostAuthor,
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -49,6 +50,7 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import { FEED_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -157,13 +159,14 @@ const ActivityFeedCardNew = ({
     selectedThread,
     postFeed,
     updateFeed,
+    deleteFeed,
+    updateReactions,
     isPostsLoading,
     postActivityComment,
     activityReplies,
   } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [, , user] = useUserProfile({
     permission: true,
     name: createdBy,
@@ -289,10 +292,12 @@ const ActivityFeedCardNew = ({
     setShowFeedEditor(false);
   };
 
-  const canShowFeedActions = isHovered && !isActivityEvent && !isPost;
+  // Rendered unconditionally and revealed with CSS: gating the mount on hover
+  // put these permanently out of reach of the keyboard and screen readers.
   const feedActions =
-    canShowFeedActions && feed ? (
+    !isActivityEvent && !isPost && feed ? (
       <ActivityFeedActions
+        className={FEED_ACTIONS_HOVER_REVEAL}
         conversation={feed}
         conversationId={feed.id}
         isReply={false}
@@ -323,16 +328,44 @@ const ActivityFeedCardNew = ({
 
     return (
       <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-        {orderedPosts.map((reply, index, arr) => (
-          <CommentCard
-            closeFeedEditor={closeFeedEditor}
-            conversation={feed}
-            conversationId={activity?.id ?? feed?.id ?? ''}
-            isLastReply={index === arr.length - 1}
-            key={reply.id}
-            reply={reply}
-          />
-        ))}
+        {orderedPosts.map((reply, index, arr) => {
+          const conversationId = activity?.id ?? feed?.id ?? '';
+          const canManage =
+            isFeedPostAuthor(currentUser, reply.author) ||
+            Boolean(currentUser?.isAdmin);
+
+          return (
+            <CommentCard
+              author={reply.author}
+              canDelete={canManage}
+              canEdit={canManage}
+              closeFeedEditor={closeFeedEditor}
+              createdAt={reply.createdAt}
+              isLastReply={index === arr.length - 1}
+              key={reply.id}
+              message={reply.message}
+              reactions={reply.reactions}
+              onDelete={() => deleteFeed(conversationId, reply.id, false)}
+              onEdit={async (message) => {
+                await updateFeed(
+                  conversationId,
+                  reply.id,
+                  false,
+                  compare(reply, { ...reply, message })
+                );
+              }}
+              onReaction={(reaction, operation) =>
+                updateReactions(
+                  reply,
+                  conversationId,
+                  false,
+                  reaction,
+                  operation
+                )
+              }
+            />
+          );
+        })}
       </Col>
     );
   }, [
@@ -344,6 +377,10 @@ const ActivityFeedCardNew = ({
     isActivityEvent,
     activityReplies,
     activity?.id,
+    currentUser,
+    deleteFeed,
+    updateFeed,
+    updateReactions,
   ]);
 
   const feedMessage = useMemo(() => {
@@ -357,16 +394,14 @@ const ActivityFeedCardNew = ({
   const renderWidgetCard = () => (
     <Card
       className={getFeedCardWrapperClassName(
-        'activity-feed-card-new',
+        'activity-feed-card-new tw:group/feed-card',
         showThread,
         isPost,
         isOpenInDrawer,
         isActive
       )}
       data-conversation-id={feed?.id}
-      data-testid="feed-card-v2-sidebar"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <div className="flex gap-2 w-full">
           <div className="flex-center flex-col">
@@ -524,16 +559,14 @@ const ActivityFeedCardNew = ({
   const renderFullCard = () => (
     <Card
       className={getFeedCardWrapperClassName(
-        'relative activity-feed-card-new',
+        'relative activity-feed-card-new tw:group/feed-card',
         showThread,
         isPost,
         isOpenInDrawer,
         isActive
       )}
       data-conversation-id={feed?.id}
-      data-testid="feed-card-v2-sidebar"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
         <Space className="d-flex" direction="vertical">
           <Space

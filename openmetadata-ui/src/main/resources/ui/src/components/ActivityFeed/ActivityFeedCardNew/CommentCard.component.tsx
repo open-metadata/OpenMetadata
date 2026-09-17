@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import {
-  Conversation,
-  ConversationReply,
-} from '../../../generated/entity/feed/conversation';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -34,35 +32,54 @@ import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
-import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import { COMMENT_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
 
-interface CommentCardInterface {
-  conversation?: Conversation;
-  conversationId: string;
-  reply: ConversationReply;
+interface CommentCardProps {
+  author: EntityReference;
+  createdAt: number;
+  message: string;
+  reactions?: Reaction[];
   isLastReply: boolean;
-  closeFeedEditor: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  onEdit: (message: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+  /** Omitted by callers with no reactions support - hides the footer entirely. */
+  onReaction?: (
+    type: ReactionType,
+    operation: ReactionOperation
+  ) => Promise<void>;
+  /**
+   * Lets the owning feed dismiss its own reply editor when this card opens
+   * one, so the two are never open at the same time. Optional because callers
+   * outside the activity feed have no second editor to close.
+   */
+  closeFeedEditor?: () => void;
 }
 
 const CommentCard = ({
-  conversation,
-  conversationId,
-  reply,
+  author,
+  createdAt,
+  message,
+  reactions,
   isLastReply,
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
+  onReaction,
   closeFeedEditor,
-}: CommentCardInterface) => {
-  const { updateFeed } = useActivityFeedProvider();
-  const [isHovered, setIsHovered] = useState(false);
+}: CommentCardProps) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const seperator = '.';
   const editorRef = useRef<HTMLDivElement>(null);
-  const authorName = reply.author.name ?? reply.author.fullyQualifiedName ?? '';
+  const authorName = author.name ?? author.fullyQualifiedName ?? '';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,24 +105,18 @@ const CommentCard = ({
   });
 
   const onEditPost = () => {
-    closeFeedEditor();
-    setIsEditPost(!isEditPost);
-  };
-
-  const onUpdate = async (message: string) => {
-    const updatedReply = { ...reply, message };
-    const patch = compare(reply, updatedReply);
-    updateFeed(conversationId, reply.id, false, patch);
+    closeFeedEditor?.();
     setIsEditPost(!isEditPost);
   };
 
   const handleSave = useCallback(() => {
-    onUpdate?.(postMessage ?? '');
-  }, [onUpdate, postMessage]);
+    onEdit(postMessage ?? '');
+    setIsEditPost(false);
+  }, [onEdit, postMessage]);
 
   const defaultValue = useMemo(
-    () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(reply.message)),
-    [reply.message]
+    () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(message)),
+    [message]
   );
 
   const feedBodyRender = useMemo(() => {
@@ -127,24 +138,24 @@ const CommentCard = ({
     return (
       <RichTextEditorPreviewerV1
         className="text-wrap text-xs"
-        markdown={getFrontEndFormat(reply.message)}
+        markdown={getFrontEndFormat(message)}
       />
     );
   }, [isEditPost, postMessage, handleSave]);
 
   return (
     <div
-      className={classNames('d-flex justify-start relative reply-card gap-2', {
-        'reply-card-border-bottom': !isLastReply,
-      })}
-      data-testid="feed-reply-card"
-      role="presentation"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      className={classNames(
+        'd-flex justify-start relative reply-card gap-2 tw:group/comment',
+        {
+          'reply-card-border-bottom': !isLastReply,
+        }
+      )}
+      data-testid="feed-reply-card">
       <div className="profile-picture">
         <UserPopOverCard userName={authorName}>
           <div className="d-flex items-center">
-            <ProfilePicture key={reply.id} name={authorName} width="32" />
+            <ProfilePicture name={authorName} width="32" />
           </div>
         </UserPopOverCard>
       </div>
@@ -166,34 +177,44 @@ const CommentCard = ({
             <Tooltip
               color="white"
               overlayClassName="timestamp-tooltip"
-              title={formatDateTime(reply.createdAt)}>
+              title={formatDateTime(createdAt)}>
               <Typography.Text
                 className="feed-card-header-v2-timestamp mr-2"
                 data-testid="timestamp">
-                {getRelativeTime(reply.createdAt)}
+                {getRelativeTime(createdAt)}
               </Typography.Text>
             </Tooltip>
           </Typography.Text>
         </div>
         {feedBodyRender}
 
-        <FeedCardFooterNew
-          isReply
-          conversation={conversation}
-          conversationId={conversationId}
-          reply={reply}
-        />
+        {onReaction && (
+          <Row align="top" className="m-y-md">
+            <Col
+              className="footer-container"
+              data-testid="feed-card-footer"
+              span={24}>
+              <div>
+                <div className="flex items-center gap-2 w-full rounded-8">
+                  <Reactions
+                    reactions={reactions ?? []}
+                    onReactionSelect={onReaction}
+                  />
+                </div>
+              </div>
+            </Col>
+          </Row>
+        )}
       </div>
 
-      {isHovered && (
-        <ActivityFeedActions
-          isReply
-          conversation={conversation}
-          conversationId={conversationId}
-          reply={reply}
-          onEditPost={onEditPost}
-        />
-      )}
+      <ActivityFeedActions
+        isReply
+        canDelete={canDelete}
+        canEdit={canEdit}
+        className={COMMENT_ACTIONS_HOVER_REVEAL}
+        onDelete={onDelete}
+        onEditPost={onEditPost}
+      />
     </div>
   );
 };

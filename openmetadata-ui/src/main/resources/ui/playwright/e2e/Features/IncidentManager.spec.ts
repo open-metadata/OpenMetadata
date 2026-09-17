@@ -1027,7 +1027,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
    * @description #33112 was reported on the Incident Manager page, but the rest of
    * the task-comment coverage exercises the activity-feed drawer only. This runs
    * the same post-then-delete flow through TestCaseIncidentTab, which renders the
-   * task tab (and so TaskCommentCard) rather than the drawer.
+   * task tab (and so CommentCard) rather than the drawer.
    */
   test('Delete a task comment from the incident task tab', async ({ page }) => {
     const testCase = table1.testCasesResponseData[0];
@@ -1047,16 +1047,20 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     // Post a comment to delete. Unique per run so the card can be matched by
     // text rather than by position.
     const message = `Incident tab comment ${Date.now()}`;
-    const commentInput = taskTab.locator(
-      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-    );
+    // The input is a trigger that opens the editor - it cannot be filled.
+    const commentInput = taskTab.getByTestId('comments-input-field');
     await expect(commentInput).toBeVisible();
-    await commentInput.fill(message);
+    await commentInput.click();
+
+    const editor = taskTab.locator('[data-testid="editor-wrapper"] .ql-editor');
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.click();
+    await editor.type(message);
 
     // Anchored so it cannot match the tab's own GET of the task with its comments.
     const postResponse = await clickAndWaitFor(
       page,
-      taskTab.getByTestId('send-comment'),
+      taskTab.getByTestId('send-button'),
       /\/api\/v1\/tasks\/[^/]+\/comments$/
     );
     const postedTask = await postResponse.json();
@@ -1064,7 +1068,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const commentId = comments[comments.length - 1]?.id as string;
 
     const card = taskTab
-      .locator('[data-testid="task-comment-card"]')
+      .locator('[data-testid="feed-reply-card"]')
       .filter({ hasText: message });
     await expect(card).toBeVisible();
 
@@ -1072,16 +1076,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     // for the keyboard too - hovering here mirrors what a mouse user does.
     await card.hover();
 
-    await card.getByTestId('delete-task-comment').click();
+    await card.getByTestId('delete-message').click();
     await clickAndWaitFor(
       page,
-      page.getByTestId('confirm-button'),
+      page.getByTestId('save-button'),
       new RegExp(`/comments/${commentId}$`)
     );
 
     await expect(
       taskTab
-        .locator('[data-testid="task-comment-card"]')
+        .locator('[data-testid="feed-reply-card"]')
         .filter({ hasText: message })
     ).toHaveCount(0);
   });

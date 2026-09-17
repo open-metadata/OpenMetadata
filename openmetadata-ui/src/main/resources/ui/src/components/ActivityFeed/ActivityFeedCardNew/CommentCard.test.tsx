@@ -13,20 +13,9 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import {
-  Conversation,
-  ConversationReply,
-  ConversationSource,
-} from '../../../generated/entity/feed/conversation';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import { ReactionType } from '../../../generated/type/reaction';
 import CommentCard from './CommentCard.component';
-
-const mockUpdateFeed = jest.fn();
-
-jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
-  useActivityFeedProvider: () => ({
-    updateFeed: mockUpdateFeed,
-  }),
-}));
 
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: () => [
@@ -59,8 +48,17 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   ));
 });
 
-jest.mock('../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew', () => {
-  return jest.fn(() => <div data-testid="feed-card-footer" />);
+jest.mock('../Reactions/Reactions', () => {
+  return jest.fn(({ reactions, onReactionSelect }) => (
+    <button
+      data-reaction-count={reactions.length}
+      data-testid="reactions"
+      onClick={() =>
+        onReactionSelect(ReactionType.ThumbsUp, ReactionOperation.ADD)
+      }>
+      React
+    </button>
+  ));
 });
 
 jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
@@ -71,24 +69,29 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () => {
         data-testid="editor-input"
         onChange={(e) => onTextChange(e.target.value)}
       />
-      <button
-        data-testid="send-button"
-        onClick={() => onSave('edited message')}>
+      <button data-testid="send-button" onClick={() => onSave()}>
         Save
       </button>
     </div>
   ));
 });
 
+const mockActivityFeedActions = jest.fn();
 jest.mock('../Shared/ActivityFeedActions', () => {
-  return jest.fn(({ onEditPost }) => (
-    <div data-testid="feed-actions">
-      <button data-testid="edit-button" onClick={onEditPost}>
-        Edit
-      </button>
-      <button data-testid="delete-button">Delete</button>
-    </div>
-  ));
+  return jest.fn((props) => {
+    mockActivityFeedActions(props);
+
+    return (
+      <div data-testid="feed-actions">
+        <button data-testid="edit-button" onClick={props.onEditPost}>
+          Edit
+        </button>
+        <button data-testid="delete-button" onClick={props.onDelete}>
+          Delete
+        </button>
+      </div>
+    );
+  });
 });
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
@@ -98,49 +101,22 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
   },
 }));
 
-const createMockReply = (
-  author: string,
-  message: string
-): ConversationReply => ({
-  id: 'reply-123',
-  conversationId: 'conversation-123',
-  message,
-  createdAt: 1234567890,
-  updatedAt: 1234567890,
-  author: { id: 'user-1', type: 'user', name: author },
-});
-
-const createMockConversation = (): Conversation => ({
-  id: 'conversation-123',
-  href: 'http://test',
-  createdAt: 1234567890,
-  about: '<#E::table::test>',
-  createdBy: { id: 'user-1', type: 'user', name: 'testuser' },
-  entityRef: { id: 'entity-1', type: 'table', name: 'test' },
-  updatedAt: 1234567890,
-  updatedBy: 'testuser',
-  source: ConversationSource.User,
-  message: 'Test thread message',
-  replyCount: 1,
-  replies: [],
-  reactions: [],
-  resolved: false,
-});
+const onEdit = jest.fn().mockResolvedValue(undefined);
+const onDelete = jest.fn().mockResolvedValue(undefined);
+const onReaction = jest.fn().mockResolvedValue(undefined);
 
 const renderCommentCard = (
-  props?: Partial<{
-    conversation: Conversation;
-    conversationId: string;
-    reply: ConversationReply;
-    isLastReply: boolean;
-    closeFeedEditor: () => void;
-  }>
+  props?: Partial<React.ComponentProps<typeof CommentCard>>
 ) => {
-  const defaultProps = {
-    conversation: createMockConversation(),
-    conversationId: 'conversation-123',
-    reply: createMockReply('testuser', 'Test comment message'),
+  const defaultProps: React.ComponentProps<typeof CommentCard> = {
+    author: { id: 'user-1', type: 'user', name: 'testuser' },
+    createdAt: 1234567890,
+    message: 'Test comment message',
     isLastReply: false,
+    canEdit: true,
+    canDelete: true,
+    onDelete,
+    onEdit,
     closeFeedEditor: jest.fn(),
   };
 
@@ -149,6 +125,14 @@ const renderCommentCard = (
       <CommentCard {...defaultProps} {...props} />
     </MemoryRouter>
   );
+};
+
+const hoverCard = async () => {
+  fireEvent.mouseEnter(screen.getByTestId('feed-reply-card'));
+
+  await waitFor(() => {
+    expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
+  });
 };
 
 describe('CommentCard', () => {
@@ -181,16 +165,77 @@ describe('CommentCard', () => {
       expect(screen.getByTestId('user-popover-2')).toBeInTheDocument();
     });
 
-    it('should render feed card footer', () => {
-      renderCommentCard();
-
-      expect(screen.getByTestId('feed-card-footer')).toBeInTheDocument();
-    });
-
     it('should render timestamp', () => {
       renderCommentCard();
 
       expect(screen.getByTestId('timestamp')).toBeInTheDocument();
+    });
+
+    it('should fall back to the fully qualified name when author has no name', () => {
+      renderCommentCard({
+        author: { id: 'user-1', type: 'user', fullyQualifiedName: 'fqn-user' },
+      });
+
+      expect(screen.getByTestId('profile-fqn-user')).toBeInTheDocument();
+    });
+  });
+
+  describe('Reactions footer', () => {
+    it('should render the footer only when onReaction is provided', () => {
+      const { rerender } = renderCommentCard();
+
+      expect(screen.queryByTestId('feed-card-footer')).not.toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <CommentCard
+            canDelete
+            canEdit
+            author={{ id: 'user-1', type: 'user', name: 'testuser' }}
+            createdAt={1234567890}
+            isLastReply={false}
+            message="Test comment message"
+            onDelete={onDelete}
+            onEdit={onEdit}
+            onReaction={onReaction}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByTestId('feed-card-footer')).toBeInTheDocument();
+    });
+
+    it('should forward the reaction selection to onReaction', () => {
+      renderCommentCard({ onReaction, reactions: [] });
+
+      fireEvent.click(screen.getByTestId('reactions'));
+
+      expect(onReaction).toHaveBeenCalledWith(
+        ReactionType.ThumbsUp,
+        ReactionOperation.ADD
+      );
+    });
+  });
+
+  describe('Permissions', () => {
+    it('should forward canEdit and canDelete to the actions', async () => {
+      renderCommentCard({ canDelete: false, canEdit: true });
+
+      await hoverCard();
+
+      expect(mockActivityFeedActions).toHaveBeenCalledWith(
+        expect.objectContaining({ canDelete: false, canEdit: true })
+      );
+    });
+
+    it('should call onDelete when the delete action fires', async () => {
+      renderCommentCard();
+
+      await hoverCard();
+
+      fireEvent.click(screen.getByTestId('delete-button'));
+
+      expect(onDelete).toHaveBeenCalled();
     });
   });
 
@@ -198,28 +243,31 @@ describe('CommentCard', () => {
     it('should show feed actions on hover', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
-      });
+      await hoverCard();
     });
 
-    it('should hide feed actions when not hovering', async () => {
+    it('should keep feed actions mounted when not hovering', () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
+      // Never unmounted on pointer state: doing that made the edit and delete
+      // controls unreachable by keyboard and invisible to screen readers.
+      // Hiding them until hover is CSS's job, and it leaves them focusable.
+      expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
+    });
 
-      fireEvent.mouseEnter(card);
-      await waitFor(() => {
-        expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
-      });
+    it('should hand the comment-scoped hover reveal to the actions', () => {
+      renderCommentCard();
 
-      fireEvent.mouseLeave(card);
-      await waitFor(() => {
-        expect(screen.queryByTestId('feed-actions')).not.toBeInTheDocument();
-      });
+      expect(screen.getByTestId('feed-reply-card').className).toContain(
+        'tw:group/comment'
+      );
+      expect(mockActivityFeedActions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          className: expect.stringContaining(
+            'tw:group-hover/comment:opacity-100'
+          ),
+        })
+      );
     });
   });
 
@@ -227,12 +275,7 @@ describe('CommentCard', () => {
     it('should show editor when edit button is clicked', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-      });
+      await hoverCard();
 
       fireEvent.click(screen.getByTestId('edit-button'));
 
@@ -245,27 +288,17 @@ describe('CommentCard', () => {
       const closeFeedEditor = jest.fn();
       renderCommentCard({ closeFeedEditor });
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-      });
+      await hoverCard();
 
       fireEvent.click(screen.getByTestId('edit-button'));
 
       expect(closeFeedEditor).toHaveBeenCalled();
     });
 
-    it('should call updateFeed when saving edited message', async () => {
+    it('should call onEdit with the edited message when saving', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-      });
+      await hoverCard();
 
       fireEvent.click(screen.getByTestId('edit-button'));
 
@@ -280,19 +313,14 @@ describe('CommentCard', () => {
       fireEvent.click(screen.getByTestId('send-button'));
 
       await waitFor(() => {
-        expect(mockUpdateFeed).toHaveBeenCalled();
+        expect(onEdit).toHaveBeenCalledWith('updated message');
       });
     });
 
     it('should hide editor and show preview after update', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-      });
+      await hoverCard();
 
       fireEvent.click(screen.getByTestId('edit-button'));
 
@@ -331,12 +359,7 @@ describe('CommentCard', () => {
     it('should close edit mode when clicking outside', async () => {
       renderCommentCard();
 
-      const card = screen.getByTestId('feed-reply-card');
-      fireEvent.mouseEnter(card);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('edit-button')).toBeInTheDocument();
-      });
+      await hoverCard();
 
       fireEvent.click(screen.getByTestId('edit-button'));
 

@@ -323,6 +323,8 @@ jest.mock('../../../../rest/tasksAPI', () => ({
   resolveTask: jest.fn().mockResolvedValue({}),
   closeTask: jest.fn().mockResolvedValue({}),
   patchTask: jest.fn().mockResolvedValue({}),
+  editTaskComment: jest.fn().mockResolvedValue({}),
+  deleteTaskComment: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../rest/userAPI', () => ({
@@ -425,14 +427,14 @@ jest.mock(
   }
 );
 
-const mockTaskCommentCardProps: Record<string, unknown>[] = [];
+const mockCommentCardProps: Record<string, unknown>[] = [];
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component',
+  '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component',
   () => {
     return jest.fn().mockImplementation((props) => {
-      mockTaskCommentCardProps.push(props);
+      mockCommentCardProps.push(props);
 
-      return <p>TaskCommentCard</p>;
+      return <p>CommentCard</p>;
     });
   }
 );
@@ -459,7 +461,7 @@ const mockProps = {
 describe('TaskTabNew Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockTaskCommentCardProps.length = 0;
+    mockCommentCardProps.length = 0;
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
       useApplicationStore,
@@ -1282,7 +1284,7 @@ describe('TaskTabNew Component', () => {
     // The card re-renders, so assert against the props it was last handed rather
     // than a render count.
     const lastCommentCardProps = () =>
-      mockTaskCommentCardProps[mockTaskCommentCardProps.length - 1];
+      mockCommentCardProps[mockCommentCardProps.length - 1];
 
     const MOCK_TASK_WITH_COMMENT: Task = {
       ...MOCK_TASK,
@@ -1296,31 +1298,97 @@ describe('TaskTabNew Component', () => {
       ],
     };
 
-    it('should pass the current user down so the card can resolve delete permission', async () => {
+    const renderWithComment = async () => {
       await act(async () => {
         render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
           wrapper: MemoryRouter,
         });
       });
+    };
 
-      expect(lastCommentCardProps().currentUser).toEqual(
-        expect.objectContaining({ name: 'test-user' })
+    it('should pass the comment through to the card', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({
+          author: expect.objectContaining({ name: 'alice' }),
+          createdAt: 1735732800000,
+          message: 'A comment on the incident',
+        })
       );
     });
 
-    it('should refetch the thread when a comment is deleted', async () => {
-      await act(async () => {
-        render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
-          wrapper: MemoryRouter,
-        });
+    it('should deny edit and delete to a non-author, non-admin user', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: false, canEdit: false })
+      );
+    });
+
+    it('should let an admin delete but not edit someone elses comment', async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockReturnValue({
+        currentUser: {
+          id: 'admin-id',
+          name: 'an-admin',
+          isAdmin: true,
+          teams: [],
+        },
       });
+
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: true, canEdit: false })
+      );
+    });
+
+    it('should omit onReaction so the card hides its reactions footer', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps().onReaction).toBeUndefined();
+    });
+
+    it('should delete the comment and refetch the thread', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
 
       mockFetchUpdatedThread.mockClear();
 
       await act(async () => {
-        (lastCommentCardProps().onCommentDeleted as () => void)();
+        await (lastCommentCardProps().onDelete as () => Promise<void>)();
       });
 
+      expect(deleteTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1'
+      );
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
+    });
+
+    it('should edit the comment and refetch the thread', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        await (
+          lastCommentCardProps().onEdit as (message: string) => Promise<void>
+        )('an edited comment');
+      });
+
+      expect(editTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1',
+        'an edited comment'
+      );
       expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
         MOCK_TASK_WITH_COMMENT.id,
         true

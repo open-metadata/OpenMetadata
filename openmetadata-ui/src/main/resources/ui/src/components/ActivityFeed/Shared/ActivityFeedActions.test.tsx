@@ -204,6 +204,94 @@ describe('ActivityFeedActions', () => {
     expect(mockUpdateEditorFocus).toHaveBeenCalledWith(true);
   });
 
+  it('renders every control as a focusable button with an accessible name', () => {
+    render(
+      <ActivityFeedActions
+        conversation={conversation}
+        conversationId={conversation.id}
+        isReply={false}
+      />
+    );
+
+    // The regression this guards: these were `<Icon onClick>`, which Ant
+    // renders as `<span role="img">` - not focusable, not announced as a
+    // control, and unusable with Enter/Space.
+    for (const testId of [
+      'add-reply',
+      'toggle-resolved',
+      'edit-message',
+      'delete-message',
+    ]) {
+      const control = screen.getByTestId(testId);
+
+      expect(control.tagName).toBe('BUTTON');
+      expect(control).toHaveAccessibleName();
+
+      control.focus();
+
+      expect(control).toHaveFocus();
+    }
+  });
+
+  it('groups the actions and never unmounts them on pointer state', () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+
+    expect(screen.getByTestId('feed-actions')).toHaveAttribute('role', 'group');
+    expect(screen.getByTestId('feed-actions')).toHaveAccessibleName();
+  });
+
+  it('merges the reveal class handed down by the owning card', () => {
+    render(
+      <ActivityFeedActions
+        isReply
+        className="tw:opacity-0"
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+
+    const actions = screen.getByTestId('feed-actions');
+
+    expect(actions).toHaveClass('feed-actions');
+    expect(actions).toHaveClass('tw:opacity-0');
+  });
+
+  it('honours canEdit and canDelete independently of the author rule', () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { id: 'other-id', name: 'bob', isAdmin: false },
+    });
+
+    render(
+      <ActivityFeedActions
+        canDelete
+        isReply
+        canEdit={false}
+        conversationId={conversation.id}
+        reply={reply}
+      />
+    );
+
+    expect(screen.queryByTestId('edit-message')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-message')).toBeInTheDocument();
+  });
+
+  it('calls onDelete instead of the feed provider when one is supplied', () => {
+    const onDelete = jest.fn();
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    fireEvent.click(screen.getByTestId('delete-message'));
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(onDelete).toHaveBeenCalled();
+    expect(mockDeleteFeed).not.toHaveBeenCalled();
+  });
+
   it('closes the confirmation without deleting', () => {
     render(
       <ActivityFeedActions

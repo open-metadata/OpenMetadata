@@ -97,6 +97,8 @@ import {
 } from '../../../../rest/taskFormSchemasAPI';
 import {
   closeTask as closeTaskAPI,
+  deleteTaskComment,
+  editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
   Task,
@@ -130,6 +132,7 @@ import {
   fetchOptions,
   generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
+import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
@@ -150,7 +153,7 @@ import {
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
+import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -421,10 +424,6 @@ export const TaskTabNew = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  // Stable, always-focusable (tabIndex={-1}) fallback target the comment
-  // cards can hand focus to when a deleted comment has no sibling left -
-  // see TaskCommentCard's unmount focus-management effect.
-  const repliesContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
@@ -1839,26 +1838,34 @@ export const TaskTabNew = ({
     );
 
     return (
-      <Col
-        className="p-l-0 p-r-0"
-        data-testid="feed-replies"
-        ref={repliesContainerRef}
-        // Needed so .focus() in TaskCommentCard's unmount fallback actually
-        // works - a plain div isn't focusable without it, and focus would fall
-        // through to <body>. -1 keeps it out of the normal tab order.
-        tabIndex={-1}>
-        {sortedComments.map((comment, index, arr) => (
-          <TaskCommentCard
-            closeFeedEditor={closeFeedEditor}
-            comment={comment}
-            currentUser={currentUser}
-            isLastReply={index === arr.length - 1}
-            key={comment.id}
-            repliesContainerRef={repliesContainerRef}
-            task={task}
-            onCommentDeleted={() => fetchUpdatedThread(task.id, true)}
-          />
-        ))}
+      <Col className="p-l-0 p-r-0" data-testid="feed-replies">
+        {sortedComments.map((comment, index, arr) => {
+          const { canEdit, canDelete } = resolveCommentPermissions(
+            currentUser,
+            comment
+          );
+
+          return (
+            <CommentCard
+              author={comment.author}
+              canDelete={canDelete}
+              canEdit={canEdit}
+              closeFeedEditor={closeFeedEditor}
+              createdAt={comment.createdAt}
+              isLastReply={index === arr.length - 1}
+              key={comment.id}
+              message={comment.message}
+              onDelete={async () => {
+                await deleteTaskComment(task.id, comment.id);
+                await fetchUpdatedThread(task.id, true);
+              }}
+              onEdit={async (message) => {
+                await editTaskComment(task.id, comment.id, message);
+                await fetchUpdatedThread(task.id, true);
+              }}
+            />
+          );
+        })}
       </Col>
     );
   }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
