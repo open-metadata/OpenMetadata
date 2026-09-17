@@ -70,6 +70,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/config.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AutoPilot.spec.ts",
@@ -304,6 +305,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/permission.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
@@ -757,6 +759,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -787,6 +790,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -1928,6 +1932,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
@@ -2665,6 +2670,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/accessControl.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/activityAPI.ts"
       ],
       "specs": [
@@ -2961,6 +2974,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
@@ -3500,6 +3514,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
@@ -4075,6 +4090,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/roles.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts"
       ]
@@ -4812,6 +4828,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/AuditLog/AuditLogFilters.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/AuditLog/AuditLogList.component.tsx"
       ],
       "specs": [
@@ -5112,6 +5136,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/AssetsSelectionModal/AssetSelectionContentBody.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
@@ -7265,6 +7290,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchDropdown/SearchDropdown.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
@@ -7689,8 +7715,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Team/TeamDetails/TeamDetailsV1.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
-        "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
       ]
@@ -8218,6 +8244,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
@@ -8262,6 +8289,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
@@ -9213,6 +9241,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileContentHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage.tsx"
       ],
       "specs": [
@@ -9249,6 +9285,113 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAddPolicyForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAddRoleForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAuditLogFilters.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlAuditLogsPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/ExploreQueryBar.spec.ts",
+        "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlDebuggerPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlLanding.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/Teams.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPoliciesPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlPolicyDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlRoleDetail.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlRolesPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
     {
@@ -9351,6 +9494,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
@@ -9752,6 +9896,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -10422,6 +10567,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AuditLogsPage/AuditLogsPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
@@ -10807,6 +10953,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/AddPolicyPage/AddPolicyPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
@@ -10815,6 +10962,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
@@ -10823,9 +10971,8 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/PoliciesListPage/PoliciesListPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/Policies.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
     {
@@ -10833,6 +10980,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PoliciesPage/RuleForm/RuleForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
@@ -10868,6 +11016,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/RolesPage/AddRolePage/AddRolePage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
@@ -10896,9 +11045,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/RolesPage/RolesDetailPage/RolesDetailPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/Policies.spec.ts",
-        "playwright/e2e/Pages/Roles.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
+        "playwright/e2e/Pages/Roles.spec.ts"
       ]
     },
     {
@@ -10906,6 +11053,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/RolesPage/RolesListPage/RolesListPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
