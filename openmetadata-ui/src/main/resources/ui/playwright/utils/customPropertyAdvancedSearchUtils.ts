@@ -466,14 +466,12 @@ const handlePropertyValueInput = async (
     // Convert object values to JSON strings
     const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
-    const apiResponsePromise = isEntityRefProperty
-      ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
-      : undefined;
-
     await inputElement.click();
 
-    if (apiResponsePromise) {
-      await apiResponsePromise;
+    if (isEntityRefProperty) {
+      await expect(
+        page.locator('[role="listbox"]:visible').getByRole('option')
+      ).not.toHaveCount(0);
     }
 
     await fillPropertyValue(inputElement, stringValue);
