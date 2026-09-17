@@ -9,6 +9,7 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.IndexMappingTemplate;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final Rest5Client client;
@@ -43,9 +44,9 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public String getComponentTemplate(String name) throws IOException {
+  public String getDataStreamMappings(String name) throws IOException {
     try {
-      Response response = performRequest("GET", "/_component_template/" + name);
+      Response response = performRequest("GET", "/" + name + "/_mapping");
       return new String(response.getEntity().getContent().readAllBytes());
     } catch (IOException e) {
       if (e.getMessage() != null && e.getMessage().contains("404")) {
@@ -87,13 +88,14 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   public boolean updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException {
-    TemplateUpdateResult result =
+    int currentVersion = writeIndexMappingVersion(name);
+    IndexMappingTemplate template =
         prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
     performRequest(
         "PUT",
         "/" + name + "/_mapping",
-        JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
-    return result.changed();
+        JsonUtils.pojoToJson(template.getTemplate().getMappings()));
+    return currentVersion != MAPPING_VERSION;
   }
 
   @Override

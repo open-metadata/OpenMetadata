@@ -52,8 +52,8 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public String getComponentTemplate(String name) throws IOException {
-    var request = Requests.builder().method("GET").endpoint("/_component_template/" + name).build();
+  public String getDataStreamMappings(String name) throws IOException {
+    var request = Requests.builder().method("GET").endpoint("/" + name + "/_mapping").build();
     try (var response = client.generic().execute(request)) {
       if (response.getStatus() == 404) {
         return null;
@@ -93,13 +93,14 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   public boolean updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
       throws IOException {
-    TemplateUpdateResult result =
+    int currentVersion = writeIndexMappingVersion(name);
+    IndexMappingTemplate template =
         prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
     performRequest(
         "PUT",
         "/" + name + "/_mapping",
-        JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
-    return result.changed();
+        JsonUtils.pojoToJson(template.getTemplate().getMappings()));
+    return currentVersion != MAPPING_VERSION;
   }
 
   @Override
