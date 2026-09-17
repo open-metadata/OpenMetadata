@@ -96,19 +96,14 @@ class TestProcessedPropertyCacheIsBounded:
 
         assert result == {"a": "1", "b": "2", "c": "3", "d": "4"}
 
-    def test_evicted_name_is_registered_again(self):
+    def test_an_evicted_name_still_yields_its_value(self):
         source = _FakeSource(capacity=1)
 
         source.build_entity_extension({"first": "v"}, source_label=SOURCE_LABEL)
         source.build_entity_extension({"second": "v"}, source_label=SOURCE_LABEL)
-        source.build_entity_extension({"first": "v"}, source_label=SOURCE_LABEL)
+        assert "first" not in source._processed_prop
 
-        # "first" was evicted by "second", so it is registered twice overall.
-        registered = [
-            call.args[0].createCustomPropertyRequest.name.root
-            for call in source.metadata.create_or_update_custom_property.call_args_list
-        ]
-        assert registered == ["first", "second", "first"]
+        assert source.build_entity_extension({"first": "v"}, source_label=SOURCE_LABEL) == {"first": "v"}
 
     def test_cached_name_is_not_registered_again(self):
         source = _FakeSource(capacity=10)
@@ -504,3 +499,31 @@ class TestExistingDefinitionsCacheIsBounded:
         source.build_entity_extension({"k": "v"}, source_label=SOURCE_LABEL)
 
         assert source.metadata.get_entity_custom_properties.call_count == 3
+
+
+class TestRegistrationSurvivesCacheEviction:
+    """_processed_prop is bounded, so a large catalog evicts names this run registered. Re-sending
+    the PUT is not a no-op: it rewrites displayName, description and config on a live property."""
+
+    def test_an_evicted_name_is_not_registered_twice(self):
+        source = _FakeSource(capacity=1)
+
+        source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL)
+        source.build_entity_extension({"filler": "b"}, source_label=SOURCE_LABEL)
+        assert "owner" not in source._processed_prop
+
+        assert source.build_entity_extension({"owner": "c"}, source_label=SOURCE_LABEL) == {"owner": "c"}
+        registered = [
+            call.args[0].createCustomPropertyRequest.name.root
+            for call in source.metadata.create_or_update_custom_property.call_args_list
+        ]
+        assert registered == ["owner", "filler"]
+
+    def test_a_failed_registration_is_not_recorded(self):
+        """It does not exist, so the next table has to be free to try again."""
+        source = _FakeSource(capacity=1)
+        source.metadata.create_or_update_custom_property.side_effect = [RuntimeError("boom"), None]
+
+        assert source.build_entity_extension({"owner": "a"}, source_label=SOURCE_LABEL) is None
+        assert source.build_entity_extension({"owner": "b"}, source_label=SOURCE_LABEL) == {"owner": "b"}
+        assert source.metadata.create_or_update_custom_property.call_count == 2

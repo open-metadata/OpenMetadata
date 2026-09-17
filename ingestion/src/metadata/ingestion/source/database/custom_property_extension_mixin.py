@@ -250,11 +250,18 @@ class CustomPropertyExtensionMixin:
                 logger.warning("Failed to register custom property [%s] for %s: %s", prop_name, source_label, exc)
                 logger.debug(traceback.format_exc())
                 return False
+            # The definition exists now, so record it rather than leaving the snapshot saying the
+            # name is free. _processed_prop is bounded and will evict this name on a large catalog;
+            # without this the next table registers it again, and that PUT is not a no-op - it
+            # resends this displayName, description and a null config over whatever the property
+            # carries by then. Keeping it here also stops the extra round trip.
+            definitions[sanitized_name] = (CustomPropertyDataTypes.STRING.value, prop_name)
         # Valued by the raw name that produced it so _owns_property_name can spot a digest collision.
-        # Checking the cache, registering and writing it back is deliberately not atomic: Athena runs
-        # schema workers concurrently, so two can miss the same first-seen name and both PUT. The PUT
-        # is idempotent and the name is cached straight after, so the cost is bounded at one
-        # redundant round trip per name per run - cheaper than holding a lock across a network call.
+        # Checking the snapshot, registering and writing back is deliberately not atomic: Athena runs
+        # schema workers concurrently, so two can miss the same first-seen name and both PUT. Both
+        # send a payload derived only from the source key, so they write identical content, and the
+        # line above closes the window for every table after them - cheaper than holding a lock
+        # across a network call.
         self._processed_prop.put(sanitized_name, prop_name)
         return True
 
@@ -278,8 +285,9 @@ class CustomPropertyExtensionMixin:
     def _fetch_existing_properties(self, entity_type: type) -> EntityDefinitions | None:
         """Snapshot the entity type's definitions as name -> (data type, display name).
 
-        One response held verbatim rather than a cache that accumulates: it is read only and never
-        added to as properties are registered. None means the listing failed.
+        One server response, plus the definitions registered against it as the run proceeds, so it
+        converges on what the server holds for this entity type rather than growing with the
+        catalog. None means the listing failed.
         """
         try:
             existing = self.metadata.get_entity_custom_properties(entity_type=entity_type)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
