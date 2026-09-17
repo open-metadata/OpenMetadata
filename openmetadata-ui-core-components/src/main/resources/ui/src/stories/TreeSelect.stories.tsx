@@ -12,7 +12,10 @@
  */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
-import { GlossaryTerm } from '../icons';
+import { Edit, GlossaryTerm } from '../icons';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
+import { Card } from '../components/base/card/card';
+import { GlossaryTag } from '../components/application/tag/glossary-tag';
 import { FilterSelect } from '../components/application/filter-select/filter-select';
 import type {
   TreeSelectDataResponse,
@@ -170,6 +173,67 @@ export const GlossaryTermFilter: StoryObj = {
           value={value}
           onChange={(next) => setValue(Array.isArray(next) ? next : [])}
         />
+      </div>
+    );
+  },
+};
+
+// How the entity-page widgets use it: the card's own edit icon is the trigger,
+// the picked terms stay visible behind the popover, and nothing is saved until
+// Apply — so a selection costs one request rather than one per checkbox.
+export const WidgetEditPopover: StoryObj = {
+  render: () => {
+    const [terms, setTerms] = useState<TreeSelectNode[]>([]);
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <div style={{ width: 400 }}>
+        <Card size="sm">
+          <Card.Header
+            className="tw:border-0 tw:p-4"
+            extra={
+              <FilterSelect.Tree
+                multiple
+                searchable
+                showSelectAll
+                commitMode="staged"
+                fetchData={fetchGlossaryTerms}
+                isOpen={isOpen}
+                label="Glossary Term"
+                renderTrigger={({ toggle }) => (
+                  <ButtonUtility
+                    color="tertiary"
+                    icon={Edit}
+                    size="xs"
+                    tooltip="Edit Glossary Terms"
+                    onClick={toggle}
+                  />
+                )}
+                value={terms}
+                onChange={(next) => setTerms(Array.isArray(next) ? next : [])}
+                onOpenChange={setIsOpen}
+              />
+            }
+            title="Glossary Term"
+          />
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              padding: '0 16px 16px',
+            }}>
+            {terms.length > 0 ? (
+              terms.map((term) => (
+                <GlossaryTag key={term.id} label={term.label} size="sm" />
+              ))
+            ) : (
+              <span style={{ color: '#667085', fontSize: 13 }}>
+                No Glossary Terms
+              </span>
+            )}
+          </div>
+        </Card>
       </div>
     );
   },
