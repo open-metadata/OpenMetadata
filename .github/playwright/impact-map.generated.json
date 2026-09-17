@@ -2567,8 +2567,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
-        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
-        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts"
       ]
     },
     {
