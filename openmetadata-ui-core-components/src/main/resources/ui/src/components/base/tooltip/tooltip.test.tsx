@@ -259,6 +259,25 @@ describe('Tooltip — disabled trigger', () => {
     );
   });
 
+  // `excludeTriggerFromTabOrder` has to survive the disabled path too. Note
+  // the wrapper gets *no* tabIndex rather than -1: a -1 element is still
+  // programmatically focusable, so antd's FocusTrap.restoreFocus() can land on
+  // it — the very problem the non-disabled span branch exists to avoid.
+  it('honours excludeTriggerFromTabOrder on a disabled child', () => {
+    render(
+      <Tooltip excludeTriggerFromTabOrder title="t">
+        <Button isDisabled data-testid="x">
+          Add
+        </Button>
+      </Tooltip>
+    );
+
+    const wrapper = screen.getByTestId('x').parentElement as HTMLElement;
+
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).not.toHaveAttribute('tabindex');
+  });
+
   it('leaves an enabled button unwrapped by a span', () => {
     render(
       <Tooltip title="t">
