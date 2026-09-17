@@ -19,12 +19,6 @@ import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 public final class RdfIndexingFields {
 
-  // RdfPropertyMapper skips these in its generic field loop precisely because a dedicated
-  // structured-emission step owns them (emitTableConstraints, RdfQualityMapper, RdfActivityMapper,
-  // RdfUsageMapper). They must still be *fetched*, or those mappers find nothing to map.
-  private static final Set<String> DEDICATED_MAPPER_FIELDS =
-      Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
-
   private RdfIndexingFields() {}
 
   public static List<String> forEntityType(String entityType) {
@@ -35,10 +29,7 @@ public final class RdfIndexingFields {
     // The RDF mapper emits even fields absent from its JSON-LD contexts, so a search-index field
     // subset can silently remove triples. Start from the repository's complete field contract.
     return supportedFields.stream()
-        .filter(
-            field ->
-                DEDICATED_MAPPER_FIELDS.contains(field)
-                    || !RdfPropertyMapper.isIgnoredEntityField(field))
+        .filter(RdfPropertyMapper::isIndexableEntityField)
         .sorted()
         .toList();
   }
