@@ -60,10 +60,6 @@ export interface UsePagingInterface {
   pagingCursor: PagingUrlParams;
 }
 
-/** A caller that declares no options accepts any size, so an absent list allows everything. */
-const isAllowedPageSize = (size: number, pageSizeOptions?: number[]) =>
-  !pageSizeOptions || pageSizeOptions.includes(size);
-
 /**
  * @param defaultPageSize where to start when the URL carries no size; falls back to the app-wide
  *   `globalPageSize` preference.
@@ -81,10 +77,12 @@ export const usePaging = (
     setPreference,
   } = useCurrentUserPreferences();
 
+  // A caller that declares no options accepts any size, so an absent list allows everything.
   const fallbackPageSize = defaultPageSize ?? globalPageSize;
-  const processedPageSize = isAllowedPageSize(fallbackPageSize, pageSizeOptions)
-    ? fallbackPageSize
-    : (pageSizeOptions as number[])[0];
+  const processedPageSize =
+    pageSizeOptions && !pageSizeOptions.includes(fallbackPageSize)
+      ? pageSizeOptions[0]
+      : fallbackPageSize;
 
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
@@ -97,9 +95,10 @@ export const usePaging = (
   // every visited route mounted against it) plus one app-wide preference — so either can hand a
   // page a size its picker has no option for, which renders as an unselectable placeholder.
   const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
-  const resolvedPageSize = isAllowedPageSize(urlPageSize, pageSizeOptions)
-    ? urlPageSize
-    : processedPageSize;
+  const resolvedPageSize =
+    pageSizeOptions && !pageSizeOptions.includes(urlPageSize)
+      ? processedPageSize
+      : urlPageSize;
 
   const initialCurrentPage =
     Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
