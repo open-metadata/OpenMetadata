@@ -1,4 +1,5 @@
 {
   "fr-fr": ["label.page", "label.pagination"],
-  "nl-nl": ["label.records"]
+  "nl-nl": ["label.records"],
+  "pr-pr": ["label.remove-entity", "label.tree-select"]
 }

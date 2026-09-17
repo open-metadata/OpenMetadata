@@ -548,7 +548,7 @@ export const TreeSelect = <T = unknown,>({
           </div>
         ) : (
           <Tree
-            aria-label={label ?? placeholder ?? 'Tree select'}
+            aria-label={label ?? placeholder ?? t('label.tree-select')}
             expandedKeys={filteredExpandedKeys}
             selectionMode="none"
             onAction={(key) => {
@@ -663,7 +663,7 @@ export const TreeSelect = <T = unknown,>({
                   {node.label}
                 </p>
                 <button
-                  aria-label={`Remove ${node.label}`}
+                  aria-label={t('label.remove-entity', { entity: node.label })}
                   className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
                   disabled={disabled}
                   type="button"
