@@ -15,102 +15,119 @@ import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
   SIDEBAR_COLLAPSED_STORAGE_KEY,
-  SUB_COLLAPSED_STORAGE_KEY,
-  usePersistedCollapse,
+  useMainCollapse,
 } from './useSidebarState';
 
-const renderCollapse = (
-  key = SIDEBAR_COLLAPSED_STORAGE_KEY,
-  defaultCollapsed = false
-) => renderHook(() => usePersistedCollapse(key, defaultCollapsed));
+const renderMain = (inSubMode = false, contextKey: string | null = null) =>
+  renderHook(({ sub, key }) => useMainCollapse(sub, key), {
+    initialProps: { sub: inSubMode, key: contextKey },
+  });
 
-describe('usePersistedCollapse', () => {
+describe('useMainCollapse', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('falls back to the default when nothing is persisted', () => {
-    expect(renderCollapse().result.current[0]).toBe(false);
-    expect(
-      renderCollapse(SUB_COLLAPSED_STORAGE_KEY, true).result.current[0]
-    ).toBe(true);
+  describe('top level (no sub-nav)', () => {
+    it('defaults to expanded when nothing is persisted', () => {
+      expect(renderMain(false).result.current[0]).toBe(false);
+    });
+
+    it('starts from the persisted preference', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+
+      expect(renderMain(false).result.current[0]).toBe(true);
+    });
+
+    it('persists an explicit toggle', () => {
+      const { result } = renderMain(false);
+
+      act(() => result.current[1]());
+
+      expect(result.current[0]).toBe(true);
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+    });
+
+    it('persists an explicit set', () => {
+      const { result } = renderMain(false);
+
+      act(() => result.current[2](true));
+
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
+    });
   });
 
-  it('starts from the persisted value, which wins over the default', () => {
-    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+  describe('inside a sub-context', () => {
+    it('always starts collapsed, ignoring a persisted-expanded preference', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'false');
 
-    expect(
-      renderCollapse(SIDEBAR_COLLAPSED_STORAGE_KEY, false).result.current[0]
-    ).toBe(true);
+      expect(renderMain(true, 'observability').result.current[0]).toBe(true);
+    });
 
-    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'false');
+    it('does not persist a toggle made in a sub-context', () => {
+      const { result } = renderMain(true, 'observability');
 
-    expect(
-      renderCollapse(SIDEBAR_COLLAPSED_STORAGE_KEY, true).result.current[0]
-    ).toBe(false);
+      // starts collapsed → toggle expands transiently
+      act(() => result.current[1]());
+
+      expect(result.current[0]).toBe(false);
+      expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBeNull();
+    });
+
+    it('re-collapses (rails) when the active sub-context changes', () => {
+      const { result, rerender } = renderHook(
+        ({ sub, key }) => useMainCollapse(sub, key),
+        { initialProps: { sub: true, key: 'observability' } }
+      );
+
+      act(() => result.current[1]());
+
+      expect(result.current[0]).toBe(false);
+
+      rerender({ sub: true, key: 'context-center' });
+
+      expect(result.current[0]).toBe(true);
+    });
   });
 
-  it('treats any non-"true" persisted value as expanded', () => {
-    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'invalid');
+  describe('crossing between top level and a sub-context', () => {
+    it('rails on entering a sub-context, even with a persisted-expanded preference', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'false');
+      const { result, rerender } = renderHook(
+        ({ sub, key }) => useMainCollapse(sub, key),
+        { initialProps: { sub: false, key: null as string | null } }
+      );
 
-    expect(renderCollapse().result.current[0]).toBe(false);
+      expect(result.current[0]).toBe(false);
+
+      rerender({ sub: true, key: 'observability' });
+
+      expect(result.current[0]).toBe(true);
+    });
+
+    it('restores the persisted preference on returning to the top level', () => {
+      localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, 'true');
+      const { result, rerender } = renderHook(
+        ({ sub, key }) => useMainCollapse(sub, key),
+        { initialProps: { sub: true, key: 'observability' as string | null } }
+      );
+
+      expect(result.current[0]).toBe(true);
+
+      rerender({ sub: false, key: null });
+
+      expect(result.current[0]).toBe(true);
+    });
   });
 
-  it('toggles between collapsed and expanded', () => {
-    const { result } = renderCollapse();
-
-    act(() => result.current[1]());
-
-    expect(result.current[0]).toBe(true);
-
-    act(() => result.current[1]());
-
-    expect(result.current[0]).toBe(false);
-  });
-
-  it('persists the new value on toggle', () => {
-    const { result } = renderCollapse();
-
-    act(() => result.current[1]());
-
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
-
-    act(() => result.current[1]());
-
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('false');
-  });
-
-  it('sets and persists an explicit value', () => {
-    const { result } = renderCollapse();
-
-    act(() => result.current[2](true));
-
-    expect(result.current[0]).toBe(true);
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
-  });
-
-  it('keeps each panel on its own key', () => {
-    const main = renderCollapse(SIDEBAR_COLLAPSED_STORAGE_KEY, false);
-
-    act(() => main.result.current[1]());
-
-    expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
-    expect(localStorage.getItem(SUB_COLLAPSED_STORAGE_KEY)).toBeNull();
-    expect(
-      renderCollapse(SUB_COLLAPSED_STORAGE_KEY, false).result.current[0]
-    ).toBe(false);
-  });
-
-  it('falls back to the default when storage reads throw (e.g. private mode)', () => {
+  it('falls back to expanded when storage reads throw (e.g. private mode)', () => {
     const getItem = jest
       .spyOn(Storage.prototype, 'getItem')
       .mockImplementation(() => {
         throw new Error('denied');
       });
 
-    expect(
-      renderCollapse(SIDEBAR_COLLAPSED_STORAGE_KEY, true).result.current[0]
-    ).toBe(true);
+    expect(renderMain(false).result.current[0]).toBe(false);
 
     getItem.mockRestore();
   });
@@ -121,7 +138,7 @@ describe('usePersistedCollapse', () => {
       .mockImplementation(() => {
         throw new Error('quota');
       });
-    const { result } = renderCollapse();
+    const { result } = renderMain(false);
 
     act(() => result.current[1]());
 

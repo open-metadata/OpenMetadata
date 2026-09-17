@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.mainCollapsed';
-export const SUB_COLLAPSED_STORAGE_KEY = 'aiShell.sidebar.submenuCollapsed';
 
-const readPersisted = (key: string, fallback: boolean): boolean => {
+const readPersisted = (key: string): boolean | null => {
   try {
     const stored = localStorage.getItem(key);
 
-    return stored === null ? fallback : stored === 'true';
+    return stored === null ? null : stored === 'true';
   } catch {
-    return fallback;
+    return null;
   }
 };
 
@@ -34,42 +33,60 @@ const persist = (key: string, value: boolean): void => {
   }
 };
 
+// Top-level main-nav collapse preference, defaulting to expanded.
+const readTopLevelDefault = (): boolean =>
+  readPersisted(SIDEBAR_COLLAPSED_STORAGE_KEY) ?? false;
+
 /**
- * Persisted collapse state for a sidebar panel. The value is read from and
- * written to `localStorage` under `storageKey` so it survives a full reload —
- * navigating (or a `page.goto` in tests) never resets an explicit expand/
- * collapse choice, matching the pre-migration AskCollate sidebar. Collapse is
- * purely user-controlled via the returned `toggle`/`set`; routing never mutates
- * it, otherwise clicking into a submenu item would rail the main nav or pop the
- * submenu open on its own.
+ * Main-nav collapse state, with context-dependent precedence:
  *
- * @param storageKey persistence key
- * @param defaultCollapsed value used when nothing is stored yet
+ *  - Top level (no sub-nav): the persisted user preference wins — the user can
+ *    collapse/expand the main nav and it is remembered in `localStorage`.
+ *  - Inside a sub-context: the main nav ALWAYS starts collapsed (the icon rail);
+ *    the persisted preference does NOT keep it expanded. The user may expand it
+ *    transiently, but that is never persisted and re-collapses when the active
+ *    sub-context changes or on reload — main preference does not win here.
+ *
+ * @param inSubMode whether the active module renders a sub-nav
+ * @param contextKey identifies the active sub-context; a change re-derives the
+ *   collapse state (re-railing the main nav)
  */
-export const usePersistedCollapse = (
-  storageKey: string,
-  defaultCollapsed: boolean
+export const useMainCollapse = (
+  inSubMode: boolean,
+  contextKey: string | null
 ): readonly [boolean, () => void, (value: boolean) => void] => {
+  const inSubModeRef = useRef(inSubMode);
+  inSubModeRef.current = inSubMode;
+
   const [collapsed, setCollapsed] = useState<boolean>(() =>
-    readPersisted(storageKey, defaultCollapsed)
+    inSubMode ? true : readTopLevelDefault()
   );
 
+  // Re-derive when entering/leaving a sub-context or switching between
+  // sub-contexts: sub-contexts always rail the main nav, the top level restores
+  // the persisted preference.
+  useEffect(() => {
+    setCollapsed(inSubMode ? true : readTopLevelDefault());
+  }, [inSubMode, contextKey]);
+
+  // Persist only at the top level; a sub-context toggle stays transient.
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
-      persist(storageKey, next);
+      if (!inSubModeRef.current) {
+        persist(SIDEBAR_COLLAPSED_STORAGE_KEY, next);
+      }
 
       return next;
     });
-  }, [storageKey]);
+  }, []);
 
-  const set = useCallback(
-    (value: boolean) => {
-      setCollapsed(value);
-      persist(storageKey, value);
-    },
-    [storageKey]
-  );
+  const set = useCallback((value: boolean) => {
+    setCollapsed(value);
+    if (!inSubModeRef.current) {
+      persist(SIDEBAR_COLLAPSED_STORAGE_KEY, value);
+    }
+  }, []);
 
   return [collapsed, toggle, set] as const;
 };
