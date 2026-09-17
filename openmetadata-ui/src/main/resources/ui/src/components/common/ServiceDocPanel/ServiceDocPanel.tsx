@@ -21,6 +21,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -263,6 +264,11 @@ const isUsableMarkdown = (content: string) => {
     !trimmedContent.startsWith('<html')
   );
 };
+
+const getSettledMarkdown = (result: PromiseSettledResult<string>): string =>
+  result.status === 'fulfilled' && isUsableMarkdown(result.value)
+    ? result.value
+    : '';
 
 const extractRequirementsMarkdown = (content: string): string => {
   const startIndex = content.search(/^## Requirements\b/m);
@@ -598,6 +604,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [markdownContent, setMarkdownContent] = useState<string>('');
   const [connectorMarkdown, setConnectorMarkdown] = useState<string>('');
   const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
+  const markdownRequestIdRef = useRef(0);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -640,10 +647,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const fetchRequirement = async () => {
+    const requestId = ++markdownRequestIdRef.current;
     setIsLoading(true);
+    let response = '';
     try {
       const supportedServiceType = getDocsServiceType(serviceType);
-      let response = '';
       const language = getSupportedLanguage(i18n.language);
       const isEnglishLanguage = language === SupportedLocales.English;
       let filePath = `${language}/${supportedServiceType}/${serviceName}.md`;
@@ -661,30 +669,28 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           : fetchMarkdownFile(fallbackFilePath),
       ]);
 
-      if (
-        translation.status === 'fulfilled' &&
-        isUsableMarkdown(translation.value)
-      ) {
-        response = translation.value;
-      } else if (
-        fallbackTranslation.status === 'fulfilled' &&
-        isUsableMarkdown(fallbackTranslation.value)
-      ) {
-        response = fallbackTranslation.value;
-      }
-
-      setMarkdownContent(
-        response.replaceAll(
-          'OpenMetadata',
-          process.env.BRAND_NAME ?? 'OpenMetadata'
-        )
-      );
+      response =
+        getSettledMarkdown(translation) ||
+        getSettledMarkdown(fallbackTranslation);
     } catch {
-      setMarkdownContent('');
-    } finally {
-      setIsLoading(false);
-      setIsMarkdownReady(true);
+      response = '';
     }
+
+    // The host pages render once before the service has loaded, so a first
+    // request can still be in flight when a second one is made. Only the
+    // newest may write, otherwise a stale response blanks the panel.
+    if (requestId !== markdownRequestIdRef.current) {
+      return;
+    }
+
+    setMarkdownContent(
+      response.replaceAll(
+        'OpenMetadata',
+        process.env.BRAND_NAME ?? 'OpenMetadata'
+      )
+    );
+    setIsLoading(false);
+    setIsMarkdownReady(true);
   };
 
   useEffect(() => {

@@ -1212,6 +1212,50 @@ describe('ServiceDocPanel Component', () => {
     });
   });
 
+  describe('Stale markdown responses', () => {
+    // fetchRequirement runs on the same serviceName that starts empty and then
+    // changes, so a superseded response must not be allowed to blank the panel.
+    it('should ignore a superseded panel markdown response when switching service', async () => {
+      const release: Record<string, (v: string) => void> = {};
+
+      mockFetchMarkdownFile.mockImplementation(
+        (filePath: string) =>
+          new Promise<string>((resolve) => {
+            release[filePath.includes('Snowflake') ? 'snowflake' : 'bigquery'] =
+              resolve;
+          })
+      );
+
+      const { rerender } = render(
+        <ServiceDocPanel {...defaultProps} serviceName="BigQuery" />
+      );
+      await waitFor(() => expect(release.bigquery).toBeDefined());
+
+      rerender(<ServiceDocPanel {...defaultProps} serviceName="Snowflake" />);
+      await waitFor(() => expect(release.snowflake).toBeDefined());
+
+      await act(async () => {
+        release.snowflake('# Snowflake docs body');
+      });
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Snowflake docs body')
+        );
+      });
+
+      mockProcessDocMarkdown.mockClear();
+
+      // the superseded BigQuery request answers last
+      await act(async () => {
+        release.bigquery('# BigQuery docs body');
+      });
+
+      expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+        expect.stringContaining('BigQuery docs body')
+      );
+    });
+  });
+
   describe('Connector Docs URL', () => {
     const getDocsLink = (container: HTMLElement) =>
       container.querySelector('.focused-service-docs-link');
@@ -1326,28 +1370,13 @@ describe('ServiceDocPanel Component', () => {
 
     // A connector file that does not exist is served as the SPA's index.html
     // with a 200, so the guard is on the content and not on a rejection.
-    // The host pages render once before the service has loaded, so the panel is
-    // first mounted with an empty serviceName. That first response must not be
-    // able to land last and wipe the connector markdown.
-    it('should ignore a superseded connector response when serviceName arrives late', async () => {
-      let releaseEmpty: ((v: string) => void) | undefined;
-      mockFetchMarkdownFile.mockImplementation((filePath: string) => {
-        if (filePath.includes('/workflows/')) {
-          return Promise.resolve('# Metadata');
-        }
-        // the request made while serviceName was still empty
-        if (filePath.endsWith('/.md')) {
-          return new Promise<string>((resolve) => {
-            releaseEmpty = resolve;
-          });
-        }
+    // The host pages render once with no service loaded, so the panel is first
+    // mounted with an empty serviceName. That path names no connector and must
+    // not be requested at all.
+    it('should not request a connector file while no service is loaded', async () => {
+      mockFetchMarkdownFile.mockResolvedValue('# Metadata');
 
-        return Promise.resolve(
-          'See the <a href="https://docs.open-metadata.org/connectors/database/bigquery">docs</a>.'
-        );
-      });
-
-      const { container, rerender } = render(
+      render(
         <ServiceDocPanel
           {...defaultProps}
           focusedMode
@@ -1357,7 +1386,34 @@ describe('ServiceDocPanel Component', () => {
         />
       );
 
-      rerender(
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalled();
+      });
+
+      expect(mockFetchMarkdownFile).not.toHaveBeenCalledWith(
+        expect.stringMatching(/\/\.md$/)
+      );
+    });
+
+    // Navigating between two services reuses the component, so serviceName can
+    // change without a remount and the first response can land last.
+    it('should ignore a superseded connector response when switching service', async () => {
+      const release: Record<string, (v: string) => void> = {};
+      const link = (slug: string) =>
+        `See the <a href="https://docs.open-metadata.org/connectors/database/${slug}">docs</a>.`;
+
+      mockFetchMarkdownFile.mockImplementation((filePath: string) => {
+        if (filePath.includes('/workflows/')) {
+          return Promise.resolve('# Metadata');
+        }
+
+        return new Promise<string>((resolve) => {
+          release[filePath.includes('Snowflake') ? 'snowflake' : 'bigquery'] =
+            resolve;
+        });
+      });
+
+      const { container, rerender } = render(
         <ServiceDocPanel
           {...defaultProps}
           focusedMode
@@ -1367,21 +1423,40 @@ describe('ServiceDocPanel Component', () => {
         />
       );
 
+      await waitFor(() => expect(release.bigquery).toBeDefined());
+
+      rerender(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="Snowflake"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => expect(release.snowflake).toBeDefined());
+
+      // the newer service answers first
+      await act(async () => {
+        release.snowflake(link('snowflake'));
+      });
+
       await waitFor(() => {
         expect(getDocsLink(container)).toHaveAttribute(
           'href',
-          `${CONNECTORS_DOCS}/database/bigquery`
+          `${CONNECTORS_DOCS}/database/snowflake`
         );
       });
 
-      // the stale request now finishes last
+      // the superseded BigQuery request now answers last
       await act(async () => {
-        releaseEmpty?.('<!doctype html><html><body></body></html>');
+        release.bigquery(link('bigquery'));
       });
 
       expect(getDocsLink(container)).toHaveAttribute(
         'href',
-        `${CONNECTORS_DOCS}/database/bigquery`
+        `${CONNECTORS_DOCS}/database/snowflake`
       );
     });
 
