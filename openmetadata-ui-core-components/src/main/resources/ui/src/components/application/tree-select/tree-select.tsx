@@ -489,7 +489,7 @@ export const TreeSelect = <T = unknown,>({
   const treeDropdown = (
     <div
       className={cx(
-        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:px-3',
+        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
         isButtonVariant ? 'tw:w-80' : 'tw:w-full tw:min-w-full',
         popoverClassName
       )}
@@ -520,7 +520,7 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:py-1 tw:pl-[7px]"
+        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:p-4 tw:text-sm tw:text-tertiary">
@@ -594,7 +594,7 @@ export const TreeSelect = <T = unknown,>({
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
               hasSelection &&
-                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+                'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
               hasSelection && bordered && 'tw:after:outline-brand'
             )}
             color={bordered ? 'secondary' : 'tertiary'}
@@ -703,7 +703,10 @@ export const TreeSelect = <T = unknown,>({
           <ChevronDown
             aria-hidden="true"
             className={cx(
-              'tw:size-4 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform',
+              'tw:size-4 tw:shrink-0 tw:transition-transform',
+              selectedData.length > 0
+                ? 'tw:text-fg-brand-primary'
+                : 'tw:text-fg-quaternary',
               isOpen && 'tw:rotate-180'
             )}
           />
