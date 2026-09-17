@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Alert } from './alert';
+import { Alert, AlertVariant } from './alert';
 
 describe('Alert', () => {
   it('renders a title when given one', () => {
@@ -75,4 +75,21 @@ describe('Alert', () => {
 
     expect(container.firstElementChild).toHaveClass('tw:items-center');
   });
+
+describe('Alert theme semantics', () => {
+  it.each<[AlertVariant, string, string]>([
+    ['success', 'tw:bg-success-primary', 'tw:border-success-subtle'],
+    ['warning', 'tw:bg-warning-primary', 'tw:border-warning-subtle'],
+    ['error', 'tw:bg-error-primary', 'tw:border-error-subtle'],
+  ])(
+    'uses semantic surface and border roles for the %s variant',
+    (variant, backgroundClass, borderClass) => {
+      render(<Alert title={`${variant} alert`} variant={variant} />);
+
+      expect(screen.getByRole('alert')).toHaveClass(
+        backgroundClass,
+        borderClass
+      );
+    }
+  );
 });

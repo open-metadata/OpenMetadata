@@ -320,6 +320,21 @@ const ExplorePageV1: FC<unknown> = () => {
       : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex);
   }, [autoSelectedSearchIndex, tab, searchHitCounts, searchQueryParam]);
 
+  // parseSearchParams defaults the sort to INITIAL_SORT_FIELD regardless of tab, but each
+  // tab exposes its own sortingFields. When the URL sort is not selectable on the active tab
+  // (e.g. 'totalVotes' on the Columns tab), fall back to that tab's default so the sort sent
+  // to the search request and the label shown in the dropdown stay in agreement.
+  const effectiveSortValue = useMemo(() => {
+    const sortingFields = tabsInfo[searchIndex]?.sortingFields ?? [];
+    const isSupported = sortingFields.some(
+      (field) => field.value === sortValue
+    );
+
+    return isSupported
+      ? sortValue
+      : tabsInfo[searchIndex]?.sortField ?? sortValue;
+  }, [tabsInfo, searchIndex, sortValue]);
+
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
     const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
@@ -376,7 +391,7 @@ const ExplorePageV1: FC<unknown> = () => {
       browsePath: parsedSearch.browsePath,
       queryFilter,
       searchQueryParam,
-      sortValue,
+      sortValue: effectiveSortValue,
       sortOrder,
       showDeleted,
       page: currentPage,
@@ -391,7 +406,7 @@ const ExplorePageV1: FC<unknown> = () => {
     parsedSearch.browsePath,
     queryFilter,
     searchQueryParam,
-    sortValue,
+    effectiveSortValue,
     sortOrder,
     showDeleted,
     currentPage,
@@ -545,7 +560,7 @@ const ExplorePageV1: FC<unknown> = () => {
         queryFilter,
         searchIndex,
         showDeleted,
-        sortValue,
+        sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
         size: currentPageSize,
@@ -577,7 +592,7 @@ const ExplorePageV1: FC<unknown> = () => {
         queryFilter,
         searchIndex,
         showDeleted,
-        sortValue,
+        sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
         size: currentPageSize,
@@ -634,7 +649,7 @@ const ExplorePageV1: FC<unknown> = () => {
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
-      sortValue={sortValue}
+      sortValue={effectiveSortValue}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
@@ -663,7 +678,7 @@ const EXPLORE_MODE_PAGE_CLASS_NAME =
   'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
-  'tw:mx-2 tw:mt-2 tw:shrink-0';
+  'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
   'tw:flex tw:h-full tw:flex-col tw:bg-primary',

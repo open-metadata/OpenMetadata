@@ -40,7 +40,11 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../../utils/PermissionsUtils';
 import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -369,8 +373,15 @@ export const useTestCaseIncidentHeader = ({
     dimensionKey,
     hasEditStatusPermission,
     hasEditOwnerPermission,
+    // testCasePermission is undefined until the store's fetch-owner populates it (out of
+    // this file's scope); DEFAULT_ENTITY_PERMISSION (all-false) reproduces the old
+    // Boolean(testCasePermission?.EditAll) undefined/absent-is-false behavior.
     hasEditDomainPermission:
-      !isVersionPage && !isDeleted && Boolean(testCasePermission?.EditAll),
+      !isVersionPage &&
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION,
+        isDeleted
+      ).canEditAll,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

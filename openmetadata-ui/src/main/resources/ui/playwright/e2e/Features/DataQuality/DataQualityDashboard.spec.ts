@@ -12,8 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
 import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -452,7 +452,8 @@ test.describe(
           user1.responseData.name
         );
         await page
-          .getByRole('listitem', { name: user1.getUserDisplayName() })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.getUserDisplayName() })
           .click();
         for (const apiRes of ownerApiResponse) {
           const responseData = await apiRes;

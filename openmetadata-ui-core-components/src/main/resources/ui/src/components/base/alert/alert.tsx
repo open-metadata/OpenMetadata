@@ -34,18 +34,20 @@ const variantStyles: Record<
     defaultIcon: FC<{ className?: string }>;
   }
 > = {
+  // Severity roles preserve the intended contrast on each theme surface;
+  // palette steps invert independently and are reserved for data-bound color.
   success: {
-    root: 'tw:border-utility-success-300 tw:bg-success-primary',
+    root: 'tw:border-success-subtle tw:bg-success-primary',
     iconColor: 'success',
     defaultIcon: CheckCircle,
   },
   warning: {
-    root: 'tw:border-utility-warning-300 tw:bg-warning-primary',
+    root: 'tw:border-warning-subtle tw:bg-warning-primary',
     iconColor: 'warning',
     defaultIcon: AlertTriangle,
   },
   error: {
-    root: 'tw:border-utility-error-300 tw:bg-error-primary',
+    root: 'tw:border-error-subtle tw:bg-error-primary',
     iconColor: 'error',
     defaultIcon: AlertCircle,
   },

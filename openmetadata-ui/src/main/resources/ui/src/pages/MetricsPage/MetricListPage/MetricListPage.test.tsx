@@ -13,11 +13,20 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityStatus } from '../../../generated/entity/data/metric';
+import {
+  EntityReference,
+  EntityStatus,
+} from '../../../generated/entity/data/metric';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+} from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 
 import MetricListPage from './MetricListPage';
@@ -50,7 +59,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Box: jest.fn().mockImplementation(({ children, className, role, onClick }) =>
+    onClick ? (
+      <div
+        className={className}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick(e);
+          }
+        }}>
+        {children}
+      </div>
+    ) : (
+      <div className={className} role={role}>
+        {children}
+      </div>
+    )
+  ),
   Button: jest
     .fn()
     .mockImplementation(
@@ -128,17 +156,6 @@ jest.mock('../../../utils/ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
 
-jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
-  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
-    <span
-      data-color={tagColor}
-      data-icon={icon}
-      data-testid={props['data-testid'] ?? 'tag-chip'}>
-      {label}
-    </span>
-  ))
-);
-
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -214,13 +231,21 @@ jest.mock(
 jest.mock('../../../components/common/Table/TableV2', () => ({
   __esModule: true,
   default: ({
+    columns,
     dataSource,
     locale,
     rowSelection,
+    onRowAction,
   }: {
-    dataSource: Array<{ id: string; name: string }>;
-    locale: { emptyText: React.ReactNode };
+    columns: Array<{
+      key: string;
+      dataIndex: string;
+      render?: (value: unknown, record: Record<string, unknown>) => ReactNode;
+    }>;
+    dataSource: Array<Record<string, unknown> & { id: string }>;
+    locale: { emptyText: ReactNode };
     rowSelection?: { onChange: (keys: string[]) => void };
+    onRowAction?: (key: string) => void;
   }) => (
     <div>
       {dataSource.length ? (
@@ -231,13 +256,37 @@ jest.mock('../../../components/common/Table/TableV2', () => ({
             select
           </button>
           {dataSource.map((metric) => (
-            <span key={metric.id}>{metric.name}</span>
+            <div
+              key={metric.id}
+              role="presentation"
+              onClick={() => onRowAction?.(metric.id)}>
+              {columns.map((column) => (
+                <div key={column.key}>
+                  {column.render
+                    ? column.render(metric[column.dataIndex], metric)
+                    : String(metric[column.dataIndex] ?? '')}
+                </div>
+              ))}
+            </div>
           ))}
         </>
       ) : (
         locale.emptyText
       )}
     </div>
+  ),
+}));
+
+jest.mock('../../../components/Tag/TagsViewer/TagsViewer', () => ({
+  __esModule: true,
+  default: ({ tags }: { tags: Array<{ tagFQN: string }> }) => (
+    <>
+      {tags.map((tag) => (
+        <a href={`/tag/${tag.tagFQN}`} key={tag.tagFQN}>
+          {tag.tagFQN}
+        </a>
+      ))}
+    </>
   ),
 }));
 
@@ -490,5 +539,140 @@ describe('MetricListPage', () => {
     expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+  });
+
+  describe('nested cell links', () => {
+    const ALL_COLUMNS = [
+      'description',
+      'glossary',
+      'entityStatus',
+      'owners',
+      'tags',
+      'domains',
+      'updatedAt',
+    ];
+
+    const owner = { id: 'owner-id', type: 'user', name: 'alice' };
+
+    const linkedMetric = {
+      id: 'metric-id',
+      name: 'net_sales',
+      displayName: 'Net Sales',
+      fullyQualifiedName: 'net_sales',
+      tags: [
+        {
+          tagFQN: 'Business.Revenue',
+          name: 'Revenue',
+          source: 'Glossary',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+        {
+          tagFQN: 'PII.Sensitive',
+          name: 'Sensitive',
+          source: 'Classification',
+          labelType: 'Manual',
+          state: 'Confirmed',
+        },
+      ],
+      owners: [{ ...owner, displayName: 'Alice' }],
+      domains: [
+        {
+          id: 'domain-id',
+          type: 'domain',
+          name: 'Finance',
+          fullyQualifiedName: 'Finance',
+        },
+      ],
+    };
+
+    const renderWithAllColumns = async (
+      metrics: Array<Record<string, unknown>>,
+      awaitText: string
+    ) => {
+      localStorage.setItem(
+        'metricsList.columnPrefs.v1',
+        JSON.stringify(ALL_COLUMNS)
+      );
+      const { searchQuery } = require('../../../rest/searchAPI');
+      searchQuery.mockResolvedValue(buildSearchResponse(metrics));
+
+      renderPage();
+
+      await screen.findByText(awaitText);
+    };
+
+    beforeEach(() => {
+      const {
+        usePermissionProvider,
+      } = require('../../../context/PermissionProvider/PermissionProvider');
+      usePermissionProvider.mockReturnValue({
+        permissions: { metric: { ViewAll: true, ViewBasic: true } },
+        getResourcePermission: jest
+          .fn()
+          .mockResolvedValue({ ViewAll: true, ViewBasic: true }),
+      });
+    });
+
+    afterEach(() => localStorage.clear());
+
+    it.each([
+      ['domain', 'Finance', getDomainPath('Finance')],
+      ['owner', 'Alice', getOwnerPath(owner as EntityReference)],
+    ])('links the %s to its own page', async (_label, name, href) => {
+      await renderWithAllColumns([linkedMetric], 'Net Sales');
+
+      expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+    });
+
+    it.each([
+      ['glossary term', 'Business.Revenue'],
+      ['classification tag', 'PII.Sensitive'],
+      ['domain', 'Finance'],
+      ['owner', 'Alice'],
+    ])(
+      'does not open the metric when the %s is clicked',
+      async (_label, name) => {
+        await renderWithAllColumns([linkedMetric], 'Net Sales');
+
+        fireEvent.click(screen.getByRole('link', { name }));
+
+        expect(mockNavigate).not.toHaveBeenCalled();
+      }
+    );
+
+    it('opens the metric when nothing under the click handles it', async () => {
+      await renderWithAllColumns(
+        [
+          {
+            id: 'bare-id',
+            name: 'bare_metric',
+            fullyQualifiedName: 'bare_metric',
+          },
+        ],
+        'bare_metric'
+      );
+
+      fireEvent.click(screen.getAllByText('label.empty-dash')[0]);
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        getEntityDetailsPath(EntityType.METRIC, 'bare_metric')
+      );
+    });
+
+    it('leaves a domain without a fully qualified name unlinked', async () => {
+      await renderWithAllColumns(
+        [
+          {
+            ...linkedMetric,
+            domains: [{ id: 'domain-id', type: 'domain', name: 'Finance' }],
+          },
+        ],
+        'Net Sales'
+      );
+
+      expect(screen.getByText('Finance')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Finance' })).toBeNull();
+    });
   });
 });
