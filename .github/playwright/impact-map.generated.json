@@ -4264,6 +4264,7 @@
         "playwright/e2e/Features/TeamsHierarchy.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Features/UserProfileOnlineStatus.spec.ts",
+        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
@@ -6988,8 +6989,7 @@
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
-        "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
-        "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts"
+        "playwright/e2e/Features/SettingsNavigationPage.spec.ts"
       ]
     },
     {
@@ -8845,14 +8845,6 @@
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilderWidgetV1/QueryBuilderWidgetV1.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     },
     {
@@ -11207,14 +11199,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/AdvancedSearchUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AdvancedSearch.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/AlertsUtil.tsx"
       ],
       "specs": [
@@ -11324,16 +11308,6 @@
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/QueryBuilderUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
