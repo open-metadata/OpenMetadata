@@ -133,9 +133,13 @@ export const signInViaApi = async (
 
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
 
+  // Either shell counts. A user whose persona resolves to AI mounts the AI route
+  // tree, whose sidebar is `ask-sidebar` — waiting only for `left-sidebar` made
+  // this time out for such a user and then blame tokenStorage, which is the one
+  // thing that was working. Found by signing an AI-persona user in this way.
   await expect(
-    page.getByTestId('left-sidebar'),
-    `API sign-in as "${credentials.email}" did not produce a signed-in session — the app shell never rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
+    page.getByTestId('left-sidebar').or(page.getByTestId('ask-sidebar')),
+    `API sign-in as "${credentials.email}" did not produce a signed-in session — neither the Classic shell (left-sidebar) nor the AI shell (ask-sidebar) rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
   ).toBeAttached({ timeout: 30_000 });
 
   return accessToken;
