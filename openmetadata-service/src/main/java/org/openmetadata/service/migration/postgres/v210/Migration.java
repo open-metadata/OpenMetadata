@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
@@ -56,5 +57,8 @@ public class Migration extends MigrationProcessImpl {
     // migration.
     // Idempotent.
     repairFieldNamesAggregations();
+    // Data contracts stored their entity reference as sent, usually without a name or FQN.
+    // Idempotent.
+    rebuildDataContractEntityReferences(collectionDAO);
   }
 }

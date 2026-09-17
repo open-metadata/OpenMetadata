@@ -445,6 +445,57 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         "Contract without entity reference should fail");
   }
 
+  // #33486: the UI sends only id and type, so the stored reference must be built from the entity.
+  @Test
+  void testContractCreatedWithIdAndTypeStoresTheFullEntityReference(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("id_type_entity"))
+            .withEntity(new EntityReference().withId(table.getId()).withType("table"));
+
+    DataContract created = createEntity(request);
+    DataContract fetched = getEntity(created.getId().toString());
+
+    assertEquals(table.getName(), created.getEntity().getName());
+    assertEquals(table.getFullyQualifiedName(), created.getEntity().getFullyQualifiedName());
+    assertEquals(table.getFullyQualifiedName(), fetched.getEntity().getFullyQualifiedName());
+  }
+
+  @Test
+  void testContractWhoseEntityReferenceNamesAnotherEntityIsRejected(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    Table otherTable = createTestTable(ns);
+    EntityReference misnamed =
+        table
+            .getEntityReference()
+            .withName(otherTable.getName())
+            .withFullyQualifiedName(otherTable.getFullyQualifiedName());
+    CreateDataContract request =
+        new CreateDataContract().withName(ns.prefix("misnamed_entity")).withEntity(misnamed);
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  @Test
+  void testPatchCannotMoveContractToAnotherEntity(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    Table otherTable = createTestTable(ns);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("immutable_entity"))
+                .withEntity(table.getEntityReference()));
+
+    contract.setEntity(otherTable.getEntityReference());
+    DataContract patched = patchEntity(contract.getId().toString(), contract);
+
+    assertEquals(table.getId(), patched.getEntity().getId());
+    assertEquals(table.getFullyQualifiedName(), patched.getEntity().getFullyQualifiedName());
+  }
+
   @Test
   void testDataContractVersionHistory(TestNamespace ns) {
     Table table = createTestTable(ns);
