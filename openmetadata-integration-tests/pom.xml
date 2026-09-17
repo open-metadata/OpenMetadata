@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
