@@ -1418,6 +1418,21 @@ class DbtSource(DbtServiceSource):
         return metric_expression, related_metrics
 
     @staticmethod
+    def _metric_aggregation(type_params: Any) -> str | None:
+        """Return the aggregation function name from the dbt 1.12+ inline spec.
+
+        In the measure-less spec the aggregation lives on
+        ``type_params.metric_aggregation_params.agg``. The manifest parser keeps that
+        block as an extra attribute, so it may arrive as a dict or an object. Returns
+        ``None`` for the pre-1.12 spec, where the measure itself carries the aggregation.
+        """
+        params = getattr(type_params, "metric_aggregation_params", None)
+        if params is None:
+            return None
+        agg = params.get("agg") if isinstance(params, dict) else getattr(params, "agg", None)
+        return getattr(agg, "value", agg) if agg else None
+
+    @staticmethod
     def _simple_metric_expression(type_params):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
@@ -1470,6 +1485,15 @@ class DbtSource(DbtServiceSource):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if not measure_name:
+            # dbt 1.12+ inline spec: the measure is gone; a cumulative metric now wraps
+            # another metric referenced on cumulative_type_params.metric.
+            cum_params = getattr(type_params, "cumulative_type_params", None)
+            metric_ref = getattr(cum_params, "metric", None) if cum_params else None
+            if isinstance(metric_ref, dict):
+                measure_name = metric_ref.get("name")
+            else:
+                measure_name = getattr(metric_ref, "name", None) if metric_ref else None
         if measure_name:
             window_str = DbtSource._cumulative_window_str(type_params)
             expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
@@ -1543,15 +1567,18 @@ class DbtSource(DbtServiceSource):
                     )
                 )
         # dbt 1.12+ inline spec: semantic model measures list is empty because the aggregation
-        # is defined directly on the metric. Fall back to type_params.expr on the metric node.
+        # is defined directly on the metric. Fall back to type_params.expr on the metric node
+        # and carry the aggregation from metric_aggregation_params so the measure matches the
+        # metadata the pre-1.12 spec produced.
         if not result:
             type_params = getattr(metric_node, "type_params", None)
             expr = getattr(type_params, "expr", None) if type_params else None
-            if expr:
+            aggregation = self._metric_aggregation(type_params) if type_params else None
+            if expr or aggregation:
                 result.append(
                     MetricMeasure(
                         name=getattr(metric_node, "name", ""),
-                        aggregation=None,
+                        aggregation=aggregation,
                         description=None,
                         expression=expr,
                     )
