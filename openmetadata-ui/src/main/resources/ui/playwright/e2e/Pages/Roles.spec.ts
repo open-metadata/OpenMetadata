@@ -494,8 +494,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       const deleteResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/roles') &&
-          response.status() === 200
+          response.url().includes('/api/v1/roles') && response.status() === 200
       );
       await confirmButton.click();
       await deleteResponse;
