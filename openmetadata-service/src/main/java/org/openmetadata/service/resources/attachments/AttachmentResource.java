@@ -99,6 +99,7 @@ public class AttachmentResource {
     if (asset == null) {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
+    authorizeViewOfAttachedEntity(securityContext, asset.getEntityLink());
     return Response.ok(asset).build();
   }
 
@@ -174,13 +175,7 @@ public class AttachmentResource {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
 
-    // Authorization check
-    MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(asset.getEntityLink());
-    ResourceContextInterface resourceContext =
-        new ResourceContext<>(parsedLink.getEntityType(), null, parsedLink.getEntityFQN());
-    OperationContext operationContext =
-        new OperationContext(parsedLink.getEntityType(), MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeViewOfAttachedEntity(securityContext, asset.getEntityLink());
 
     boolean isImage = asset.getContentType() != null && asset.getContentType().startsWith("image/");
     boolean useCdn = cdnUrl != null && !cdnUrl.isEmpty();
@@ -297,13 +292,31 @@ public class AttachmentResource {
       @QueryParam("sortBy") String sortBy,
       @QueryParam("sortOrder") String sortOrder,
       @QueryParam("limit") Integer limit,
-      @QueryParam("offset") @DefaultValue("0") int offset) {
+      @QueryParam("offset") @DefaultValue("0") int offset,
+      @Context SecurityContext securityContext) {
     List<Asset> assets = assetRepository.getByFQN(fqn, assetType);
     if (assets == null) {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
+    if (!assets.isEmpty()) {
+      // Every asset here hangs off the same FQN, so one check covers the whole page.
+      authorizeViewOfAttachedEntity(securityContext, assets.getFirst().getEntityLink());
+    }
     List<Asset> result = applySortAndPaginate(assets, sortBy, sortOrder, limit, offset);
     return Response.ok(result).build();
+  }
+
+  /**
+   * Attachments inherit the visibility of the entity they hang off, so every endpoint that returns
+   * attachment data resolves the parent entity and checks {@code VIEW_BASIC} against it.
+   */
+  private void authorizeViewOfAttachedEntity(SecurityContext securityContext, String entityLink) {
+    MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(entityLink);
+    ResourceContextInterface resourceContext =
+        new ResourceContext<>(parsedLink.getEntityType(), null, parsedLink.getEntityFQN());
+    OperationContext operationContext =
+        new OperationContext(parsedLink.getEntityType(), MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   private static List<Asset> applySortAndPaginate(
