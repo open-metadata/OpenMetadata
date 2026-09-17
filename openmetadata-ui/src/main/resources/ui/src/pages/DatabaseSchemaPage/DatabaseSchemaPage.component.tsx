@@ -50,7 +50,12 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -480,7 +485,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      !isSoftDelete && navigate(getEntityDetailsPath(EntityType.DATABASE, getPartialNameFromTableFQN(decodedDatabaseSchemaFQN, [FqnPart.Service, FqnPart.Database], FQN_SEPARATOR_CHAR))),
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE,
+          getPartialNameFromTableFQN(
+            decodedDatabaseSchemaFQN,
+            [FqnPart.Service, FqnPart.Database],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
     [decodedDatabaseSchemaFQN]
   );
 

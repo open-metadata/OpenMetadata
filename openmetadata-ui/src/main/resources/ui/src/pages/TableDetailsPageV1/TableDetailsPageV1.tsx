@@ -45,7 +45,12 @@ import {
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -865,7 +870,17 @@ const TableDetailsPageV1: React.FC = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
-      !isSoftDelete && navigate(getEntityDetailsPath(EntityType.DATABASE_SCHEMA, getPartialNameFromTableFQN(tableFqn, [FqnPart.Service, FqnPart.Database, FqnPart.Schema], FQN_SEPARATOR_CHAR))),
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          getPartialNameFromTableFQN(
+            tableFqn,
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
     [tableFqn]
   );
 
