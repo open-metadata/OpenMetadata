@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OwnerRef } from '../../../types';
+import type { OwnerEntityReference } from '../../../types';
 
 /**
  * Structural interface satisfied by any object that carries the fields Owner
  * needs. Both OpenMetadata and Collate's generated EntityReference types match
  * this shape, so neither repo needs to import the other's generated types.
  */
-export interface OwnerLike {
+export interface OwnerDetails {
   id: string;
   type?: string;
   name?: string;
@@ -26,11 +26,11 @@ export interface OwnerLike {
   profileUrl?: string;
 }
 
-export const toOwnerRef = (ref: OwnerLike): OwnerRef => ({
+export const toOwnerRef = (ref: OwnerDetails): OwnerEntityReference => ({
   id: ref.id,
   name: ref.name,
   displayName: ref.displayName,
-  type: (ref.type ?? 'user') as OwnerRef['type'],
+  type: (ref.type ?? 'user') as OwnerEntityReference['type'],
   // `href` is intentionally NOT copied from the source ref: on an API
   // EntityReference it is the backend self-link (/api/v1/users/<id>), and Owner
   // renders the owner name as `<a href>`, so copying it makes the name navigate
@@ -40,5 +40,5 @@ export const toOwnerRef = (ref: OwnerLike): OwnerRef => ({
   profileUrl: ref.profileUrl,
 });
 
-export const toOwnerRefs = (refs?: OwnerLike[]): OwnerRef[] =>
+export const toOwnerRefs = (refs?: OwnerDetails[]): OwnerEntityReference[] =>
   (refs ?? []).map(toOwnerRef);

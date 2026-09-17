@@ -45,7 +45,7 @@ export const Owner = ({
 }: OwnerProps) => {
   const { t } = useCoreTranslation();
 
-  // Normalise raw refs (EntityReference-like) to OwnerRef once so every branch
+  // Normalise raw refs (EntityReference-like) to OwnerEntityReference once so every branch
   // below and the child components receive the library's owner shape.
   const owners = toOwnerRefs(ownersInput);
 

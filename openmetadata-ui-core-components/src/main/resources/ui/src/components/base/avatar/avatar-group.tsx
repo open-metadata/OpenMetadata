@@ -19,7 +19,7 @@ import {
 import { cx } from '@/utils/cx';
 import { getOwnerRenderer } from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
-import type { AvatarSize, OwnerRef } from '../../../types';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
 import { getAvatarColorTokens, getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
@@ -41,7 +41,7 @@ const groupAvatarSizeMap: Record<number, AvatarProps['size']> = {
 };
 
 export interface AvatarGroupProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   /** Max avatars shown before collapsing to +N. Default 3. */
   maxCount?: number;
   /** Avatar pixel size (16–64). Default 24. */
@@ -71,7 +71,7 @@ export const AvatarGroup = ({
   const overflowCount = Math.max(0, owners.length - maxCount);
   const overlapPx = Math.round(avatarSize / 4);
 
-  const renderSingleAvatar = (owner: OwnerRef) => {
+  const renderSingleAvatar = (owner: OwnerEntityReference) => {
     const rawDisplayName =
       ownerDisplayName?.get(owner.name ?? '') ??
       owner.displayName ??

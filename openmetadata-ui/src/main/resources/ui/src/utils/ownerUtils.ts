@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { OwnerRef } from '@openmetadata/ui-core-components';
+import type { OwnerEntityReference } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
@@ -33,7 +33,7 @@ export const getOwnerPath = (owner: EntityReference): string => {
  * route without call sites wrapping the array. Kept distinct from the backend
  * EntityReference.href (the API self-link that would 401 on click).
  */
-export const getOwnerHref = (owner: OwnerRef): string =>
+export const getOwnerHref = (owner: OwnerEntityReference): string =>
   getOwnerPath({
     id: owner.id,
     name: owner.name,

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import type { AvatarSize, OwnerRef } from '../../../types';
-import type { OwnerLike } from './owner-utils';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
+import type { OwnerDetails } from './owner-utils';
 
 export type RenderOwnerContent = (
-  owner: OwnerRef,
+  owner: OwnerEntityReference,
   chip: ReactNode
 ) => ReactNode;
 
 export interface OwnerChipProps {
-  owner: OwnerRef;
+  owner: OwnerEntityReference;
   avatarSize?: AvatarSize;
   isCompactView?: boolean;
   ownerDisplayName?: Map<string, ReactNode>;
@@ -28,7 +28,7 @@ export interface OwnerChipProps {
 }
 
 export interface OwnerAvatarStackProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   avatarSize?: AvatarSize;
   maxVisibleOwners?: number;
   ownerDisplayName?: Map<string, ReactNode>;
@@ -42,10 +42,10 @@ export interface OwnerAvatarStackProps {
 export interface OwnerProps {
   /**
    * Owner refs to display. Accepts raw refs (the app's EntityReference shape) —
-   * `Owner` normalises them to `OwnerRef` internally, so call sites pass the
+   * `Owner` normalises them to `OwnerEntityReference` internally, so call sites pass the
    * array as-is with no `toOwnerRefs`/`toOwnersWithHref` wrapping.
    */
-  owners?: OwnerLike[];
+  owners?: OwnerDetails[];
   /**
    * When true, renders owners as a horizontal row of chips (default).
    * When false, renders a column with a header label row and avatar stack.
