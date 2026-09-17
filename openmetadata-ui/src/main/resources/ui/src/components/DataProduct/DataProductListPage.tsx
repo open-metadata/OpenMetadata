@@ -17,7 +17,6 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
-  Owner,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -43,16 +42,16 @@ import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
+  renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -67,7 +66,6 @@ import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.inter
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
-import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -245,40 +243,34 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return (
-            <Owner
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={toOwnersWithHref(entity.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
-              showLabel={false}
-            />
+          return renderDomainOwnersCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
           );
         case 'glossaryTerms':
-          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
+          return renderDomainGlossaryTagsCell(entity);
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
-          return (
-            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
-          );
+          return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return (
-            <Owner
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={toOwnersWithHref(entity.experts ?? [])}
-              renderOwnerContent={renderOwnerContent}
-              showLabel={false}
-            />
+          return renderDomainExpertsCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
           );
         default:
           return null;
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [
+      dataProductListing.actionHandlers.onEntityClick,
+      toOwnersWithHref,
+      renderOwnerContent,
+    ]
   );
 
   const selectedDataProductEntities = useMemo(

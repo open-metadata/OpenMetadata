@@ -21,6 +21,8 @@ import pytest
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.database.trino.lineage import TrinoLineageSource
+from metadata.ingestion.source.database.trino.usage import TrinoUsageSource
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 WARN_LOGGER = "metadata.ingestion.source.database.query_parser_source.logger"
@@ -83,6 +85,10 @@ def _source(cls, method_name: str, row_count: int, result_limit: int, engines: i
 CASES = [
     (UsageSource, "yield_table_queries", "usage may be incomplete"),
     (LineageSource, "yield_table_query", "lineage may be incomplete"),
+    # The Trino sources reimplement the pagination loop and cap at resultLimit,
+    # so they must emit the same truncation warning as the generic loops they override.
+    (TrinoUsageSource, "yield_table_queries", "usage may be incomplete"),
+    (TrinoLineageSource, "yield_table_query", "lineage may be incomplete"),
 ]
 
 

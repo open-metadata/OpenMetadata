@@ -33,7 +33,11 @@ import {
   getEntityNameLabel,
   getPluralizeEntityName,
 } from '../../../utils/EntityNameUtils';
-import { getGraphNodeLabel } from '../../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
+import {
+  getGraphNodeLabel,
+  getGroupMemberLabelKey,
+  getSharedMemberType,
+} from '../../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
 import { GraphNodePresentation } from '../KnowledgeGraph.interface';
 import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';
@@ -113,23 +117,18 @@ function CustomNode({
   const members = presentation?.members;
   const color = data.colorMain as string | undefined;
   const typeLabel = getNodeTypeLabel(type, t);
-  const groupLabel = () => {
+  const groupLabel = (bundled: GraphNodePresentation['members'] = []) => {
     const predicate = normalizeRelationKey(presentation?.predicate ?? '');
-    if (['hasfollower', 'followedby'].includes(predicate)) {
+    // `follows` is the same relation read from the other end; whichever
+    // direction formed the bundle, the card names the people following.
+    if (['hasfollower', 'followedby', 'follows'].includes(predicate)) {
       return t('label.follower-plural');
     }
-    const keys: Record<string, string> = {
-      column: 'label.column-plural',
-      query: 'label.query-plural',
-      property: 'label.property-plural',
-      tag: 'label.tag-plural',
-      user: 'label.user-plural',
-      team: 'label.team-plural',
-    };
+    const key = getGroupMemberLabelKey(bundled, type);
 
-    return keys[type] ? t(keys[type]) : getPluralizeEntityName(type);
+    return key ? t(key) : getPluralizeEntityName(getSharedMemberType(bundled));
   };
-  const label = members ? groupLabel() : rawLabel;
+  const label = members ? groupLabel(members) : rawLabel;
 
   return (
     <Box
