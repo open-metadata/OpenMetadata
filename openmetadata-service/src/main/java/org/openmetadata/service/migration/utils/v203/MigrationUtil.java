@@ -8,11 +8,19 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 @Slf4j
 public class MigrationUtil {
 
   private static final String GLOSSARY_TERM_RELATION_SETTINGS = "glossaryTermRelationSettings";
+
+  // Postgres stores the settings column as jsonb and will not implicitly cast a bound string
+  // (e.g. ::jsonb is required); MySQL's JSON column parses the string directly.
+  private static final String UPDATE_MYSQL =
+      "UPDATE openmetadata_settings SET json = :json WHERE configType = :configType";
+  private static final String UPDATE_POSTGRES =
+      "UPDATE openmetadata_settings SET json = :json::jsonb WHERE configType = :configType";
 
   private static final Map<String, RelationCardinality> SYSTEM_DEFAULT_CARDINALITIES =
       systemDefaultCardinalities();
@@ -64,9 +72,9 @@ public class MigrationUtil {
       return;
     }
 
+    boolean isMySQL = Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
     handle
-        .createUpdate(
-            "UPDATE openmetadata_settings SET json = :json WHERE configType = :configType")
+        .createUpdate(isMySQL ? UPDATE_MYSQL : UPDATE_POSTGRES)
         .bind("configType", GLOSSARY_TERM_RELATION_SETTINGS)
         .bind("json", JsonUtils.pojoToJson(settings))
         .execute();
