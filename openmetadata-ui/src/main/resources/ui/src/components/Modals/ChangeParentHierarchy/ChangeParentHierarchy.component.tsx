@@ -39,6 +39,8 @@ import {
   MoveGlossaryTermWebsocketResponse,
 } from './ChangeParentHierarchy.interface';
 
+const MAX_BUFFERED_EVENTS = 100;
+
 const ChangeParentHierarchy = ({
   selectedData,
   onCancel,
@@ -167,7 +169,11 @@ const ChangeParentHierarchy = ({
 
           if (submittedJobId.current && data.jobId === submittedJobId.current) {
             handleMoveJobUpdate(data);
-          } else if (awaitingResponse.current && data.jobId) {
+          } else if (
+            awaitingResponse.current &&
+            data.jobId &&
+            bufferedEvents.current.size < MAX_BUFFERED_EVENTS
+          ) {
             bufferedEvents.current.set(data.jobId, data);
           }
         }
