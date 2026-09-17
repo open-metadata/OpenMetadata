@@ -20,7 +20,6 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -41,6 +40,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -774,12 +774,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase testCase = repository.get(uriInfo, id, getFields("testSuite"));
     IngestionPipeline pipeline = runnablePipelineOf(testCase);
     authorizeTrigger(securityContext, pipeline);
-    ensureNoRunInProgress(pipeline);
     IngestionPipeline scopedPipeline =
         scopePipelineToTestCase(pipeline, testCase.getName(), securityContext);
     ServiceEntityInterface service =
         Entity.getEntity(scopedPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return ingestionPipelineRepository().runIngestionPipeline(uriInfo, scopedPipeline, service);
+    return ingestionPipelineRepository()
+        .runIngestionPipelineUnlessInProgress(uriInfo, scopedPipeline, service);
   }
 
   // Same check as the pipeline's own /trigger endpoint, so running a single test case is never a
@@ -834,7 +834,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .<IngestionPipeline>map(
             reference -> Entity.getEntity(reference, Entity.FIELD_OWNERS, Include.NON_DELETED))
         .filter(TestCaseResource::isRunnable)
-        .findFirst()
+        // A suite can have several runnable pipelines. The lowest id keeps the choice stable, so a
+        // client listing the suite's pipelines can check permission and run state on this one.
+        .min(Comparator.comparing(pipeline -> pipeline.getId().toString()))
         .orElseThrow(
             () ->
                 new NotFoundException(
@@ -848,18 +850,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private static boolean isRunnable(IngestionPipeline pipeline) {
     return Boolean.TRUE.equals(pipeline.getEnabled())
         && Boolean.TRUE.equals(pipeline.getDeployed());
-  }
-
-  // One run at a time per suite pipeline: Airflow would only queue a second one behind it, and
-  // Kubernetes and Argo would run both in parallel against the same source.
-  private static void ensureNoRunInProgress(IngestionPipeline pipeline) {
-    if (ingestionPipelineRepository().hasRunInProgress(pipeline)) {
-      throw new ClientErrorException(
-          String.format(
-              "A run of ingestion pipeline '%s' is already queued or running.",
-              pipeline.getFullyQualifiedName()),
-          Response.Status.CONFLICT);
-    }
   }
 
   private static IngestionPipelineRepository ingestionPipelineRepository() {

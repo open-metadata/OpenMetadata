@@ -56,6 +56,21 @@ describe('getRunnablePipeline', () => {
     ).toBe(runnable);
   });
 
+  it('picks the runnable pipeline with the lowest id, as the run endpoint does', () => {
+    const lowest = pipeline({ id: '1b2e0c4a-0000-4000-8000-000000000000' });
+
+    expect(
+      getRunnablePipeline([
+        pipeline({ id: '9f1d7a3e-0000-4000-8000-000000000000' }),
+        pipeline({
+          id: '0a0a0a0a-0000-4000-8000-000000000000',
+          deployed: false,
+        }),
+        lowest,
+      ])
+    ).toBe(lowest);
+  });
+
   it('returns nothing when no pipeline could be run', () => {
     expect(
       getRunnablePipeline([pipeline({ deployed: false })])

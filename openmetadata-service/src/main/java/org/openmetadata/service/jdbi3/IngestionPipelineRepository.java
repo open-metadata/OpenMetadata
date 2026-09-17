@@ -20,6 +20,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.Striped;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
@@ -35,6 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
@@ -110,6 +113,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
+  private static final Striped<Lock> PIPELINE_RUN_LOCKS = Striped.lazyWeakLock(64);
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -1093,11 +1097,43 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   /**
+   * Triggers {@code ingestionPipeline} unless a run of it is already queued or running, one run at
+   * a time per pipeline: Airflow would only queue a second run behind the first, and Kubernetes and
+   * Argo would run both in parallel against the same source.
+   *
+   * <p>The check and the trigger hold a per-pipeline lock until the queued status is recorded, so
+   * two requests cannot both pass the check before either run shows up. The lock is in-process:
+   * requests to different server replicas can still both pass within the trigger call, which a
+   * database-backed claim on the pipeline would close.
+   */
+  public PipelineServiceClientResponse runIngestionPipelineUnlessInProgress(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    Lock runLock = PIPELINE_RUN_LOCKS.get(ingestionPipeline.getId());
+    runLock.lock();
+    try {
+      ensureNoRunInProgress(ingestionPipeline);
+      return runIngestionPipeline(uriInfo, ingestionPipeline, service);
+    } finally {
+      runLock.unlock();
+    }
+  }
+
+  private void ensureNoRunInProgress(IngestionPipeline ingestionPipeline) {
+    if (hasRunInProgress(ingestionPipeline)) {
+      throw new ClientErrorException(
+          String.format(
+              "A run of ingestion pipeline '%s' is already queued or running.",
+              ingestionPipeline.getFullyQualifiedName()),
+          Response.Status.CONFLICT);
+    }
+  }
+
+  /**
    * Whether a run of {@code ingestionPipeline} is queued or running. A run that outlived its timeout
    * does not count: a queued run that never started, or a running one whose worker died, never
    * reports again, and counting it would block on-demand runs of the pipeline for good.
    */
-  public boolean hasRunInProgress(IngestionPipeline ingestionPipeline) {
+  private boolean hasRunInProgress(IngestionPipeline ingestionPipeline) {
     long now = System.currentTimeMillis();
     return hasRunInProgress(
         getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName()),

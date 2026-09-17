@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { first, sortBy } from 'lodash';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   IngestionPipeline,
@@ -27,9 +28,18 @@ const ACTIVE_RUN_LABEL_KEYS: Partial<Record<PipelineState, string>> = {
   [PipelineState.Running]: 'label.running',
 };
 
-/** The pipeline the run endpoint executes: the suite's first enabled, deployed one. */
+/**
+ * The pipeline the run endpoint executes: of the suite's enabled, deployed
+ * pipelines, the one with the lowest id - the same rule the endpoint applies,
+ * so permission and run state are read from the pipeline a run will use.
+ */
 export const getRunnablePipeline = (pipelines: IngestionPipeline[]) =>
-  pipelines.find((pipeline) => pipeline.enabled && pipeline.deployed);
+  first(
+    sortBy(
+      pipelines.filter((pipeline) => pipeline.enabled && pipeline.deployed),
+      'id'
+    )
+  );
 
 /**
  * The permissions to check Trigger against. Without a runnable pipeline there
