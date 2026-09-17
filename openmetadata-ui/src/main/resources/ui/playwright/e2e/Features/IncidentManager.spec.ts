@@ -38,6 +38,7 @@ import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
+import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -1052,14 +1053,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(commentInput).toBeVisible();
     await commentInput.fill(message);
 
-    const postResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tasks/') &&
-        response.url().includes('/comments') &&
-        response.request().method() === 'POST'
+    // Anchored so it cannot match the tab's own GET of the task with its comments.
+    const postResponse = await clickAndWaitFor(
+      page,
+      taskTab.getByTestId('send-comment'),
+      /\/api\/v1\/tasks\/[^/]+\/comments$/
     );
-    await taskTab.getByTestId('send-comment').click();
-    const postedTask = await (await postResponse).json();
+    const postedTask = await postResponse.json();
     const comments = postedTask.comments ?? [];
     const commentId = comments[comments.length - 1]?.id as string;
 
@@ -1072,14 +1072,12 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     // for the keyboard too - hovering here mirrors what a mouse user does.
     await card.hover();
 
-    const deleteResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/comments/${commentId}`) &&
-        response.request().method() === 'DELETE'
-    );
     await card.getByTestId('delete-task-comment').click();
-    await page.getByTestId('confirm-button').click();
-    await deleteResponse;
+    await clickAndWaitFor(
+      page,
+      page.getByTestId('confirm-button'),
+      new RegExp(`/comments/${commentId}$`)
+    );
 
     await expect(
       taskTab

@@ -17,6 +17,7 @@ import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { waitForPageLoaded } from '../../../utils/polling';
+import { clickAndWaitFor } from '../../../utils/waitHelpers';
 
 /**
  * Task Comments Tests
@@ -116,13 +117,7 @@ test.describe('Task Comments - Add Comment', () => {
     // Submit comment
     const sendBtn = drawer.getByTestId('send-comment');
     await expect(sendBtn).toBeVisible();
-    const commentResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tasks/') &&
-        response.url().includes('/comments')
-    );
-    await sendBtn.click();
-    await commentResponse;
+    await clickAndWaitFor(page, sendBtn, /\/api\/v1\/tasks\/[^/]+\/comments$/);
 
     // Verify comment appears
     await expect(
@@ -167,14 +162,11 @@ test.describe('Task Comments - Add Comment', () => {
     await expect(commentInput).toBeVisible();
     await commentInput.fill(message);
 
-    const commentResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tasks/') &&
-        response.url().includes('/comments') &&
-        response.request().method() === 'POST'
+    await clickAndWaitFor(
+      page,
+      drawer.getByTestId('send-comment'),
+      /\/api\/v1\/tasks\/[^/]+\/comments$/
     );
-    await drawer.getByTestId('send-comment').click();
-    await commentResponse;
 
     const card = drawer
       .locator('[data-testid="task-comment-card"]')
@@ -356,7 +348,8 @@ test.describe('Task Comments - @Mention', () => {
     // The suggestion list is populated asynchronously, so this needs a wait - but
     // it must actually arrive. A swallowed waitFor left this test asserting
     // nothing, so it passed whether or not the dropdown ever rendered.
-    await expect(mentionDropdown.first()).toBeVisible({ timeout: 10_000 });
+    await expect(mentionDropdown).toHaveCount(1, { timeout: 10_000 });
+    await expect(mentionDropdown).toBeVisible();
   });
 
   test('selecting user from @ dropdown should add mention', async ({
@@ -395,13 +388,12 @@ test.describe('Task Comments - @Mention', () => {
     // The suggestion list is populated from an async lookup, so it needs a wait -
     // but it must actually arrive. Previously a swallowed waitFor plus a boolean
     // check let the whole mention flow no-op without failing.
-    const mentionItem = page.locator(
-      `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
-    );
-    const firstMention = mentionItem.first();
-    await expect(firstMention).toBeVisible({ timeout: 10_000 });
+    const mentionItem = page
+      .locator('.mention-item, .ql-mention-list-item')
+      .filter({ hasText: mentionedUser.responseData.displayName });
+    await expect(mentionItem).toHaveCount(1, { timeout: 10_000 });
 
-    await firstMention.click();
+    await mentionItem.click();
 
     // Continue typing and submit
     await page.keyboard.type(' please review this task');
@@ -490,21 +482,32 @@ test.describe('Task Comments - Edit/Delete', () => {
     const drawer = page.locator('.ant-drawer-content');
 
     await expect(drawer).toBeVisible();
-    // Find comment
-    const comment = drawer.locator(
-      '[data-testid="comment-item"], .task-comment'
+
+    // Post a comment of our own so the card can be addressed by its text rather
+    // than by position - the drawer already holds comments from earlier tests in
+    // this serial describe.
+    const message = `Author actions ${Date.now()}`;
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(message);
+
+    await clickAndWaitFor(
+      page,
+      drawer.getByTestId('send-comment'),
+      /\/api\/v1\/tasks\/[^/]+\/comments$/
     );
 
-    await expect(comment.first()).toBeVisible();
-    // Hover to show actions
-    await comment.first().hover();
+    const comment = drawer
+      .locator('[data-testid="task-comment-card"]')
+      .filter({ hasText: message });
+    await expect(comment).toHaveCount(1);
+    await comment.hover();
 
-    // Look for edit/delete buttons
-    const editBtn = comment.first().getByTestId('edit-comment');
-    const deleteBtn = comment.first().getByTestId('delete-comment');
-
-    // Author should see these buttons
-    // (depends on UI implementation)
+    // The author may both edit and delete their own comment.
+    await expect(comment.getByTestId('edit-task-comment')).toBeVisible();
+    await expect(comment.getByTestId('delete-task-comment')).toBeVisible();
   });
 
   test('should be able to edit own comment', async ({ page }) => {
