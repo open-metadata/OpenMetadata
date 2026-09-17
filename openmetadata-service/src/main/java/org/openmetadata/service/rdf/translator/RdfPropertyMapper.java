@@ -61,7 +61,7 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties skipped by the generic field-mapping loop. Three reasons:
+  // Properties skipped by the generic field-mapping loop. Four reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
   //   2. Handled by a dedicated structured-emission step elsewhere in this class, so they must not
   //      also be written as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
@@ -72,6 +72,10 @@ public class RdfPropertyMapper {
   //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
   //      testCaseResult inline; serializing it would push per-run test-result time-series into the
   //      graph on every reindex/update.
+  //   4. Authentication material, which must not become SPARQL-queryable metadata:
+  //      identityProviderSubject is the IdP's 'sub' claim, stored only to bind an account to one
+  //      provider identity. It carries no discovery value and is an identity correlator. Contrast
+  //      user email, which reaches the graph only through a deliberate foaf:mbox mapping.
   private static final Set<String> IGNORED_PROPERTIES =
       Set.of(
           "changeDescription",
@@ -80,7 +84,8 @@ public class RdfPropertyMapper {
           "profile",
           "pipelineStatus",
           "usageSummary",
-          "testCaseResult");
+          "testCaseResult",
+          "identityProviderSubject");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
