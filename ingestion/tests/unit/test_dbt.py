@@ -20,6 +20,7 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.domains.domain import Domain
@@ -4611,19 +4612,8 @@ class TestAddDbtSourceFreshnessResults:
         )
 
 
-class TestDbtV12MetricIngest(TestCase):
+class TestDbtV12MetricIngest:
     """Unit tests for dbt 1.12+ inline metric spec (measure-less semantic models)."""
-
-    def setUp(self):
-        from metadata.generated.schema.entity.data.metric import (
-            Language,
-            MetricExpression,
-            MetricMeasure,
-        )
-
-        self.Language = Language
-        self.MetricExpression = MetricExpression
-        self.MetricMeasure = MetricMeasure
 
     # ------------------------------------------------------------------
     # _simple_metric_expression
@@ -4649,7 +4639,7 @@ class TestDbtV12MetricIngest(TestCase):
         assert related is None
         assert expr is not None
         assert expr.code == "user_id"
-        assert expr.language == self.Language.SQL
+        assert expr.language == Language.SQL
 
     def test_simple_metric_expression_dbt_v12_no_measure_no_expr_returns_none(self):
         """Both measure and expr absent → no expression emitted (no crash)."""
@@ -4778,7 +4768,7 @@ class TestDbtV12MetricIngest(TestCase):
         assert result == []
 
 
-class TestDbtV12MetricAggregationAndCumulative(TestCase):
+class TestDbtV12MetricAggregationAndCumulative:
     """dbt 1.12+ inline metrics: aggregation carried onto the measure, and cumulative
     metrics resolved from cumulative_type_params.metric. The pre-1.12 (measure-based)
     paths must stay byte-for-byte unchanged, so each new behaviour is guarded on the
