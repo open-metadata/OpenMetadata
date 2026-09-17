@@ -32,10 +32,15 @@ jest.mock('../../platform/ai-shell/context/useRouteActivation', () => ({
   },
 }));
 
+// What each render passed usePaging. The stand-in below drops the URL/preference machinery, so
+// nothing else here can tell whether this page still declares the sizes its picker offers.
+const mockUsePagingArgs: unknown[][] = [];
+
 // Minimal stand-in for the real usePaging hook: mirrors its externally observable behavior
 // (current page, page size, reset-to-page-1 on resize) without its URL/user-preference machinery.
 jest.mock('../../../hooks/paging/usePaging', () => ({
-  usePaging: (defaultPageSize?: number) => {
+  usePaging: (defaultPageSize?: number, ...rest: unknown[]) => {
+    mockUsePagingArgs.push([defaultPageSize, ...rest]);
     const { useCallback, useState } = jest.requireActual('react');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(defaultPageSize ?? 10);
@@ -126,6 +131,7 @@ const renderConnections = (overrides: Partial<typeof defaultArgs> = {}) =>
 describe('useConnectionsData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUsePagingArgs.length = 0;
     queryClient.clear();
     routeActivationCallback = undefined;
     mockGetServicesOverview.mockResolvedValue(
@@ -297,6 +303,33 @@ describe('useConnectionsData', () => {
     );
 
     expect(mockGetServicesOverview).not.toHaveBeenCalled();
+  });
+
+  describe('page size', () => {
+    it('declares the picker sizes to usePaging, not just a starting size', () => {
+      renderConnections();
+
+      // The first argument is where the page starts; the second is what stops a size left in the
+      // shared URL param or preference by another page from becoming the size here.
+      expect(mockUsePagingArgs[0]).toEqual([
+        LIST_PAGE_SIZE_OPTIONS[0],
+        LIST_PAGE_SIZE_OPTIONS,
+      ]);
+    });
+
+    it('declares whichever set the caller is paging by', () => {
+      const gridSizes = [12, 24, 48];
+
+      renderHook(
+        () =>
+          useConnectionsData({ ...defaultArgs, pageSizeOptions: gridSizes }),
+        {
+          wrapper: withQueryClient,
+        }
+      );
+
+      expect(mockUsePagingArgs[0]).toEqual([gridSizes[0], gridSizes]);
+    });
   });
 
   describe('page reset', () => {

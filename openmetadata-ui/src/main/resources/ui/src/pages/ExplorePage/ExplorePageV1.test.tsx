@@ -116,13 +116,36 @@ describe('ExplorePageV1', () => {
       },
     });
     (useIsAiMode as jest.Mock).mockReturnValue(false);
+    // Reset here, not in the factory, so a case can change the page size without leaking it.
+    (usePaging as jest.Mock).mockReturnValue({
+      currentPage: 3,
+      handlePageChange: mockHandlePageChange,
+      handlePageSizeChange: mockHandlePageSizeChange,
+      pageSize: 25,
+    });
   });
 
   it('renders without crashing', async () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
-    expect(usePaging).toHaveBeenCalledWith(25);
+    expect(usePaging).toHaveBeenCalledWith(25, [15, 25, 50]);
+  });
+
+  it('leaves a page size it cannot offer to usePaging instead of writing its own back', async () => {
+    // 24 is the connections grid's size, reached here because `pageSize` is shared and app mode
+    // keeps this page mounted. Correcting it overwrote that page's selection as it was made.
+    (usePaging as jest.Mock).mockReturnValue({
+      currentPage: 1,
+      handlePageChange: mockHandlePageChange,
+      handlePageSizeChange: mockHandlePageSizeChange,
+      pageSize: 24,
+    });
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    expect(mockHandlePageSizeChange).not.toHaveBeenCalled();
   });
 
   it('stretches the AI search header wrapper across the Explore page', async () => {
