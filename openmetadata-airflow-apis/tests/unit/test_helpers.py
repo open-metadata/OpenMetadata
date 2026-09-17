@@ -18,6 +18,7 @@ import threading
 from unittest.mock import patch
 
 import filelock  # noqa: F401  installs the os.fork audit hook the API server runs under
+import pytest
 
 from openmetadata_managed_apis.api.utils import (
     ScanDagsTask,
@@ -84,6 +85,11 @@ def test_sanitize_task_id():
     assert sanitize_task_id("task$variable") == "task_variable"
 
 
+# get_all_start_methods() lists the platform default first, without pinning the context.
+@pytest.mark.skipif(
+    (multiprocessing.get_start_method(allow_none=True) or multiprocessing.get_all_start_methods()[0]) != "fork",
+    reason="The race is in os.fork, and a non-fork child would not inherit the no-op scan patch",
+)
 def test_concurrent_dag_scans_can_fork():
     """
     A bulk re-deploy runs one deploy per API-server thread, and each deploy forks a DAG scan.
