@@ -49,8 +49,11 @@ export const setOwnerHrefResolver = (
   ownerHrefResolver = resolver;
 };
 
-/** An explicit `href` on the ref wins; otherwise fall back to the registered
- * resolver. Returns undefined when neither is available (name renders as text). */
+/** The owner's in-app profile link comes solely from the registered resolver.
+ * (`Owner` normalises inputs before rendering, which strips any incoming `href`
+ * — e.g. the backend API self-link — so there is no ref-supplied href to honour
+ * here.) Returns undefined when no resolver is registered, so the name renders
+ * as plain text — the correct standalone default. */
 export const resolveOwnerHref = (
   owner: OwnerEntityReference
-): string | undefined => owner.href ?? ownerHrefResolver?.(owner);
+): string | undefined => ownerHrefResolver?.(owner);
