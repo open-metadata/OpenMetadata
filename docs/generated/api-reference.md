@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1878 endpoints** across 75 resource packages · 1868 carry a summary.
+**1863 endpoints** across 75 resource packages · 1853 carry a summary.
 
 ## (root)
 
@@ -732,19 +732,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/v1/dataQuality/dimensions` | List data quality dimensions |
-| `POST` | `/v1/dataQuality/dimensions` | Create a data quality dimension |
-| `PUT` | `/v1/dataQuality/dimensions` | Update a data quality dimension |
-| `DELETE` | `/v1/dataQuality/dimensions/name/{name}` | Delete a data quality dimension by name |
-| `GET` | `/v1/dataQuality/dimensions/name/{name}` | Get a data quality dimension by name |
-| `PUT` | `/v1/dataQuality/dimensions/restore` | Restore a soft deleted data quality dimension |
-| `GET` | `/v1/dataQuality/dimensions/testCaseCounts` | Count the test cases attached to each dimension |
-| `GET` | `/v1/dataQuality/dimensions/testDefinitionCounts` | Count the test definitions classified under each dimension |
-| `DELETE` | `/v1/dataQuality/dimensions/{id}` | Delete a data quality dimension |
-| `GET` | `/v1/dataQuality/dimensions/{id}` | Get a data quality dimension by Id |
-| `PATCH` | `/v1/dataQuality/dimensions/{id}` | Update a data quality dimension |
-| `GET` | `/v1/dataQuality/dimensions/{id}/versions` | List data quality dimension versions |
-| `GET` | `/v1/dataQuality/dimensions/{id}/versions/{version}` | Get a version of a data quality dimension |
 | `GET` | `/v1/dataQuality/testCases` | List test cases |
 | `POST` | `/v1/dataQuality/testCases` | Create a test case |
 | `PUT` | `/v1/dataQuality/testCases` | Update test case |
@@ -1228,7 +1215,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/lineage/getPaginationInfo` | Get lineage pagination information |
 | `GET` | `/v1/lineage/getPlatformLineage` | Get Platform Lineage |
 | `POST` | `/v1/lineage/hydrate` | Batch-hydrate lineage nodes into full entity objects |
-| `GET` | `/v1/lineage/scene` | Get semantic lineage scene |
 | `DELETE` | `/v1/lineage/source/name/{entityType}/{entityFQN}/type/{lineageSource}` | Delete lineage edges by type and entity FQN |
 | `DELETE` | `/v1/lineage/{entityType}/{entityId}/type/{lineageSource}` | Delete a lineage edge by Type |
 | `GET` | `/v1/lineage/{entity}/name/{fqn}` | Get lineage by fully qualified name |
@@ -1468,7 +1454,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/v1/lod/entity/{entityType}/{id}` | Dereference an OpenMetadata entity IRI |
-| `POST` | `/v1/rdf` | Execute a permissioned read-only SPARQL SELECT for agent tools |
 | `GET` | `/v1/rdf/debug/glossary-relations` | Debug glossary term relations in RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}` | Get entity as RDF |
 | `GET` | `/v1/rdf/entity/{entityType}/{id}/diff` | Diff two RDF entity versions |
