@@ -470,40 +470,43 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     await test.step('Delete created Role', async () => {
-      await settingClick(page, GlobalSettingOptions.ROLES);
-
-      // Wait for roles page to be ready
+      // Delete from the role's own detail page instead of paginating the
+      // shared roles list. The list carries every role in the environment
+      // (hundreds of leftover PW fixtures under a shared nightly backend) and
+      // getElementWithPagination gives up after 50 pages — the created role,
+      // sorted by name after all "PW%Roles-*" fixtures, now falls past that
+      // cap. The detail URL is deterministic from roleName, matching the
+      // pattern the edit steps above already use.
+      await page.goto(`/settings/access/roles/${roleName}`);
       await waitForAllLoadersToDisappear(page);
 
-      const roleLocator = page.locator(
-        `[data-testid="delete-action-${updatedRoleName}"]`
-      );
-      await getElementWithPagination(page, roleLocator);
+      const manageButton = page.getByTestId('manage-button');
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
 
-      // Wait for delete button to be visible and click it
-      await expect(roleLocator).toBeVisible();
+      const deleteButton = page.getByTestId('delete-button-title');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
 
       const confirmButton = page.locator('[data-testid="confirm-button"]');
       await expect(confirmButton).toBeVisible();
       await expect(confirmButton).toBeEnabled();
 
-      await Promise.all([
-        // Wait for API call to complete
-        page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/roles') &&
-            response.status() === 200
-        ),
-        confirmButton.click(),
-      ]);
+      const deleteResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/roles') &&
+          response.status() === 200
+      );
+      await confirmButton.click();
+      await deleteResponse;
 
-      // Wait for modal to close and UI to update
+      // Wait for redirect to the roles list and UI to settle
       await waitForAllLoadersToDisappear(page);
 
       // Validate deleted role is no longer visible
       await expect(
         page.locator(
-          `[data-testid="role-name"][href="/settings/access/roles/${updatedRoleName}"]`
+          `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
         )
       ).not.toBeVisible();
     });
