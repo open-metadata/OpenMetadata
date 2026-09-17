@@ -106,8 +106,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
       "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,incidentStatus,domains,tags,followers,dataProducts";
+  // dataQualityDimension stays excluded for documents indexed before the rename: they hold it as a
+  // string, which fails to deserialize into the EntityReference until testCase is reindexed.
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimensionName,testCaseType,originEntityFQN,followers";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,dataQualityDimensionName,testCaseType,originEntityFQN,followers";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
