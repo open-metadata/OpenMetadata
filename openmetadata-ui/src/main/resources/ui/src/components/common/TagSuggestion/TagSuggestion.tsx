@@ -13,8 +13,8 @@
 
 import {
   Autocomplete,
-  BadgeWithButton,
-  Dot,
+  ClassificationTag,
+  GlossaryTag,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
@@ -33,6 +33,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
@@ -252,23 +253,19 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
           t('label.select-field', { field: t('label.tag-plural') })
         }
         renderTag={(item, onRemove) => {
-          const tagColor = tagDataMap.current.get(String(item.id))?.style
-            ?.color;
+          const tagData = tagDataMap.current.get(String(item.id));
+          const TagComponent =
+            tagType === TagSource.Glossary ? GlossaryTag : ClassificationTag;
 
           return (
-            <BadgeWithButton
-              key={item.id}
-              size="sm"
-              type="color"
-              onButtonClick={onRemove}>
-              {tagColor && (
-                <Dot
-                  size="sm"
-                  style={{ color: tagColor, marginRight: '2px' }}
-                />
-              )}
-              {item.label ?? item.id}
-            </BadgeWithButton>
+            <TagComponent
+              color={tagData?.style?.color}
+              icon={tagData?.style?.iconURL}
+              key={String(item.id)}
+              label={getEntityName(tagData) || String(item.label ?? item.id)}
+              tooltip={getEntityName(tagData) || String(item.label ?? item.id)}
+              onDelete={onRemove}
+            />
           );
         }}
         selectedItems={selectedItems}

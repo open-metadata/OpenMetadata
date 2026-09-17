@@ -20,7 +20,9 @@ import {
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { getExploreTabPath } from '../../utils/RouterUtils';
 import ExplorePageV1 from './ExplorePageV1.component';
 
 const mockHandlePageChange = jest.fn();
@@ -48,6 +50,19 @@ jest.mock('../../hoc/withPageLayout', () => ({
 jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });
+
+jest.mock(
+  '../../components/discovery/explore/ExploreHeader/ExploreSearchCard',
+  () => ({
+    ExploreSearchCard: () => (
+      <div data-testid="explore-search-card">Explore search</div>
+    ),
+  })
+);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -100,6 +115,7 @@ describe('ExplorePageV1', () => {
         globalPageSize: 25,
       },
     });
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('renders without crashing', async () => {
@@ -107,6 +123,16 @@ describe('ExplorePageV1', () => {
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
     expect(usePaging).toHaveBeenCalledWith(25);
+  });
+
+  it('stretches the AI search header wrapper across the Explore page', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ExplorePageV1 {...mockProps} />);
+
+    expect(
+      (await screen.findByTestId('explore-search-card')).parentElement
+    ).toHaveClass('tw:w-full');
   });
 
   it('calls navigate exactly once with quickFilter when filter changes', async () => {
@@ -142,11 +168,57 @@ describe('ExplorePageV1', () => {
     };
 
     act(() => {
-      capturedCallback!(testFilter);
+      capturedCallback?.(testFilter);
     });
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
     expect(mockNavigate.mock.calls[0][0].search).toContain('quickFilter');
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
+  });
+
+  it('navigates with a pathname built from the route tab, not the current router location, when a quick filter changes', async () => {
+    // Regression guard for the bug this fix addresses: a stale/unrelated
+    // router location must not leak into the pathname a filter-change
+    // navigation targets.
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    (useCustomLocation as jest.Mock).mockReturnValue({
+      pathname: '/context-center/overview',
+      search: '',
+    });
+
+    let capturedCallback:
+      | ((filter?: Record<string, unknown>) => void)
+      | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeAdvancedSearchQuickFilters,
+      }: {
+        onChangeAdvancedSearchQuickFilters?: (
+          filter?: Record<string, unknown>
+        ) => void;
+      }) => {
+        capturedCallback = onChangeAdvancedSearchQuickFilters;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.({ query: { bool: { must: [] } } });
+    });
+
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
+    expect(mockNavigate.mock.calls[0][0].pathname).not.toEqual(
+      '/context-center/overview'
+    );
   });
 
   it('preserves currentPage and pageSize when quick filter changes', async () => {
@@ -245,6 +317,9 @@ describe('ExplorePageV1', () => {
 
     expect(searchParams.get('currentPage')).toBe('3');
     expect(searchParams.get('pageSize')).toBe('25');
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
   });
 
   it('resets currentPage when show deleted changes', async () => {
@@ -282,5 +357,80 @@ describe('ExplorePageV1', () => {
     expect(searchParams.get('currentPage')).toBe('1');
     expect(searchParams.get('pageSize')).toBe('25');
     expect(searchParams.get('showDeleted')).toBe('true');
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
+  });
+
+  it('navigates with a pathname built from the route tab when sort value changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+
+    let capturedCallback: ((sortVal: string) => void) | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeSortValue,
+      }: {
+        onChangeSortValue?: (sortVal: string) => void;
+      }) => {
+        capturedCallback = onChangeSortValue;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.('name.keyword');
+    });
+
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
+
+    const searchParams = new URLSearchParams(
+      mockNavigate.mock.calls[0][0].search
+    );
+
+    expect(searchParams.get('sort')).toBe('name.keyword');
+    expect(searchParams.get('currentPage')).toBe('1');
+  });
+
+  it('navigates with a pathname built from the route tab when sort order changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+
+    let capturedCallback: ((sortOrderVal: string) => void) | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeSortOder,
+      }: {
+        onChangeSortOder?: (sortOrderVal: string) => void;
+      }) => {
+        capturedCallback = onChangeSortOder;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.('asc');
+    });
+
+    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
+      getExploreTabPath('tables')
+    );
+
+    const searchParams = new URLSearchParams(
+      mockNavigate.mock.calls[0][0].search
+    );
+
+    expect(searchParams.get('sortOrder')).toBe('asc');
+    expect(searchParams.get('currentPage')).toBe('1');
   });
 });

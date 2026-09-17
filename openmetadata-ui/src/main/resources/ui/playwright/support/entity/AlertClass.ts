@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { createOrFetch } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 
 interface AlertConfig {
@@ -66,7 +67,12 @@ export class AlertClass {
       displayName,
       description: config.description ?? `Description for ${displayName}`,
       alertType: config.alertType,
-      resources: config.resources ?? ['all'],
+      // "all" is only a resource type for Notification alerts. An Observability alert
+      // sent with it is rejected with `Resource type all not found`, so default those
+      // to a concrete entity instead.
+      resources:
+        config.resources ??
+        (config.alertType === 'Observability' ? ['testCase'] : ['all']),
       input: {},
       destinations: config.destinations ?? [
         {
@@ -82,11 +88,12 @@ export class AlertClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const response = await apiContext.post('/api/v1/events/subscriptions', {
+    this.responseData = await createOrFetch(apiContext, {
+      label: 'AlertClass.create',
+      createPath: '/api/v1/events/subscriptions',
+      fqnSegments: [this.alertData.name],
       data: this.alertData,
     });
-
-    this.responseData = await response.json();
 
     return this.responseData;
   }

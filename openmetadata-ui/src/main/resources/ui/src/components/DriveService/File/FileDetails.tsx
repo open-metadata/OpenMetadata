@@ -24,7 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { File } from '../../../generated/entity/data/file';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -37,6 +38,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -50,6 +52,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import fileClassBase from '../../../utils/FileClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -163,6 +166,8 @@ function FileDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -170,6 +175,8 @@ function FileDetails({
           entity: t('label.file'),
         })
       );
+
+      return false;
     }
   };
 
@@ -263,18 +270,27 @@ function FileDetails({
   }, [decodedFileFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DRIVE_SERVICES,
+          getPartialNameFromTableFQN(decodedFileFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedFileFQN]
   );
 
+  // editAllPermission/viewAllPermission (raw filePermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -296,11 +312,9 @@ function FileDetails({
           filePermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: filePermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
-      viewAllPermission: filePermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         filePermissions,
         Operation.ViewCustomFields
@@ -377,8 +391,6 @@ function FileDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

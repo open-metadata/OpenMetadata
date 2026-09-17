@@ -16,7 +16,6 @@ import os
 import tempfile
 import uuid
 from dataclasses import dataclass
-from typing import Optional
 
 import pytest
 import yaml
@@ -35,7 +34,7 @@ class SftpContainerConfig:
     username: str = "testuser"
     password: str = "testpass"
     port: int = 22
-    container_name: Optional[str] = None  # noqa: UP045
+    container_name: str | None = None
     upload_dir: str = "upload"
 
 

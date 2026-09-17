@@ -18,12 +18,12 @@ that domain's own module so they load lazily; register each class with ``@om_set
 
 import importlib
 from pathlib import Path
-from typing import Type, TypeVar  # noqa: UP035
+from typing import TypeVar
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_REGISTRY: dict[str, Type["OMSettings"]] = {}  # noqa: UP006
+_REGISTRY: dict[str, type["OMSettings"]] = {}
 
 
 class OMSettings(BaseSettings):
@@ -41,12 +41,12 @@ def om_settings(cls: type[_OMSettingsT]) -> type[_OMSettingsT]:
     return cls
 
 
-def registered_settings() -> dict[str, Type["OMSettings"]]:  # noqa: UP006
+def registered_settings() -> dict[str, type["OMSettings"]]:
     """Return the registered settings classes keyed by import path."""
     return dict(_REGISTRY)
 
 
-def import_all_settings_modules() -> dict[str, Type[OMSettings]]:  # noqa: UP006
+def import_all_settings_modules() -> dict[str, type[OMSettings]]:
     """Import every OMSettings-defining ``settings.py`` under metadata; return the registry."""
     import metadata
 

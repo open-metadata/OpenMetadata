@@ -731,16 +731,11 @@ body .list-option.rdw-option-active {
 
 :root {
   --ant-navbar-height: 80px;
-  /* Viewport height available to a page below the shell chrome. Pages use
-   * var(--om-page-height) instead of repeating calc(100vh - navbar).
-   * NOTE: a nested var() in a custom property is substituted at the scope
-   * where the custom property is declared, not where it is used — so this
-   * MUST be re-declared in every scope that overrides --ant-navbar-height
-   * (below, and each app shell), or those scopes keep the 80px value. */
-  --om-page-height: calc(100vh - var(--ant-navbar-height));
 }
 
 :root .extra-banner {
   --ant-navbar-height: 144px;
+  /* Custom properties inherit their computed value, so a scope that changes
+   * the shell height must also recompute the available page height. */
   --om-page-height: calc(100vh - var(--ant-navbar-height));
 }

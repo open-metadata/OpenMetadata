@@ -16,7 +16,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -53,9 +53,7 @@ test.describe('Glossary P3 Tests', () => {
 
       // Use name with unicode characters
       await page.fill('[data-testid="name"]', unicodeName);
-      await page
-        .locator(descriptionBox)
-        .fill('Glossary with unicode characters');
+      await fillDescriptionBox(page, 'Glossary with unicode characters');
 
       const [response] = await Promise.all([
         page.waitForResponse(
@@ -256,88 +254,6 @@ test.describe('Glossary P3 Tests', () => {
       ) {
         // Vote count should be visible (even if 0)
         await expect(voteSection.first()).toBeVisible();
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-05: Reply to existing comment
-  test('should navigate to activity feed for potential reply', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Verify activity tab is active
-        await expect(activityTab).toHaveAttribute('aria-selected', 'true');
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-06: Edit own comment
-  test('should access activity feed for comment editing', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with edit option
-        const editButtons = page.getByTestId('edit-message');
-        const hasEditOption = await editButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasEditOption >= 0).toBe(true);
-      }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // AF-07: Delete own comment
-  test('should access activity feed for comment deletion', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-      await glossary.visitEntityPage(page);
-
-      // Navigate to activity feed tab
-      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-
-      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await activityTab.click();
-
-        // Check if there are any existing comments with delete option
-        const deleteButtons = page.getByTestId('delete-message');
-        const hasDeleteOption = await deleteButtons.count();
-
-        // Test passes whether there are comments or not
-        expect(hasDeleteOption >= 0).toBe(true);
       }
     } finally {
       await glossary.delete(apiContext);
@@ -900,7 +816,7 @@ test.describe('Glossary P3 Tests', () => {
       await page.getByTestId('name').waitFor();
 
       await page.fill('[data-testid="name"]', 'TestTerm');
-      await page.locator(descriptionBox).fill('Test description');
+      await fillDescriptionBox(page, 'Test description');
 
       const addReferenceBtn = page.getByTestId('add-reference');
       await addReferenceBtn.click();

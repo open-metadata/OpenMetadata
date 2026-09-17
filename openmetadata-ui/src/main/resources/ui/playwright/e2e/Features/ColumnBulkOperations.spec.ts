@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   fullUuid,
@@ -261,8 +262,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       );
 
       await page.getByRole('button', { name: 'Asset Type' }).click();
-      await page.getByRole('menuitem', { name: 'Table' }).click();
-      await page.getByRole('button', { name: 'Update' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Table' }).click();
+      await page.getByTestId('update-btn').click();
 
       const apiRequest = await apiCallPromise;
       expect(apiRequest.url()).toContain('entityTypes=table');

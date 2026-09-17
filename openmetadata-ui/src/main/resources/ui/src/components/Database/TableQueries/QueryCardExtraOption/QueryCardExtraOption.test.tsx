@@ -56,6 +56,15 @@ jest.mock('react-router-dom', () => {
 });
 
 describe('QueryCardExtraOption component test', () => {
+  beforeEach(() => {
+    mockUserData = {
+      id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
+      name: 'aaron_johnson0',
+      fullyQualifiedName: 'aaron_johnson0',
+      email: '',
+    };
+  });
+
   it('Component should render', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
@@ -130,7 +139,14 @@ describe('QueryCardExtraOption component test', () => {
     );
   });
 
-  it.skip('OnClick of Vote up it should un vote if logged-in user has already up voted', async () => {
+  it('OnClick of Vote up it should un vote if logged-in user has already up voted', async () => {
+    mockUserData = {
+      id: 'cdccaedd-ed02-4c89-bc1a-1c4cd679d1e3',
+      name: 'test-user',
+      fullyQualifiedName: 'test-user',
+      displayName: 'Test User',
+      email: '',
+    };
     render(<QueryCardExtraOption {...mockProps} />);
 
     const voteUp = await screen.findByTestId('up-vote-btn');
@@ -156,7 +172,13 @@ describe('QueryCardExtraOption component test', () => {
     );
   });
 
-  it.skip('OnClick of Vote down it should un vote if logged-in user has already down voted', async () => {
+  it('OnClick of Vote down it should un vote if logged-in user has already down voted', async () => {
+    mockUserData = {
+      id: '4f277812-6670-4f28-a11b-459d537b7ba9',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+      email: '',
+    };
     render(<QueryCardExtraOption {...mockProps} />);
 
     const voteDown = await screen.findByTestId('down-vote-btn');
@@ -172,9 +194,9 @@ describe('QueryCardExtraOption component test', () => {
   it('OnClick of Vote down it should vote down if logged-in user has already up voted', async () => {
     mockUserData = {
       id: 'cdccaedd-ed02-4c89-bc1a-1c4cd679d1e3',
-      name: 'shailesh.parmar',
-      fullyQualifiedName: 'shailesh.parmar',
-      displayName: 'ShaileshParmar',
+      name: 'test-user',
+      fullyQualifiedName: 'test-user',
+      displayName: 'Test User',
       email: '',
     };
     render(<QueryCardExtraOption {...mockProps} />);
@@ -248,10 +270,14 @@ describe('QueryCardExtraOption component test', () => {
   });
 
   it('onClick ofEdit dropdown option should call onEditClick', async () => {
+    // EditQueries (not EditAll) is the operation the edit action actually
+    // checks — getPrioritizedEditPermission/can(Operation.EditQueries)
+    // honors an explicit field-level value over EditAll (Task 6 Finding 1:
+    // explicit-deny-wins), so the field itself must be granted here.
     render(
       <QueryCardExtraOption
         {...mockProps}
-        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        permission={{ ...DEFAULT_ENTITY_PERMISSION, EditQueries: true }}
       />
     );
 

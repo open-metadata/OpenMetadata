@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.search.GenericClient.INDEX_TEMPLATE_FINGERPRINT_KEY;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +18,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
@@ -28,6 +30,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -74,6 +77,14 @@ public class IndexTemplateIT {
 
     JsonNode templateNode = templates.get(0).get("index_template");
     assertNotNull(templateNode);
+    assertFalse(
+        templateNode.path("_meta").path(INDEX_TEMPLATE_FINGERPRINT_KEY).asText().isBlank(),
+        "Template should carry the OpenMetadata definition fingerprint");
+    Map<String, String> liveFingerprints =
+        Entity.getSearchRepository().getSearchClient().getIndexTemplateFingerprints("om_*");
+    assertFalse(
+        liveFingerprints.getOrDefault(templateName, "").isBlank(),
+        "Search client should read the live template fingerprint");
 
     JsonNode indexPatterns = templateNode.get("index_patterns");
     assertNotNull(indexPatterns, "Template should have index_patterns");

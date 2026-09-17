@@ -15,6 +15,7 @@ import { map, startCase, values } from 'lodash';
 import { DateFilterType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -26,10 +27,7 @@ import {
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import {
-  DataQualityDimensions,
-  TestPlatform,
-} from '../generated/tests/testDefinition';
+import { TestPlatform } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
   getEndOfDayInMillis,
@@ -38,6 +36,8 @@ import {
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
+
+const OPERATION_METRICS = 'operation-metrics';
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -265,19 +265,19 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
       color: BLUE_800,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
       color: BLUE_500,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
       color: YELLOW_3,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
   ],
   data: [],

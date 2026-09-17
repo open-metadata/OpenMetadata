@@ -32,11 +32,10 @@ import { getEncodedFqn } from '../../../utils/StringUtils';
 import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 
 export interface UseLogStreamParams {
-  // Pipeline id or fullyQualifiedName — the endpoint accepts either.
-  fqn: string;
-  // Run to tail. A UUID on object storage, or the pipeline service's own run
-  // identifier (e.g. Airflow's `scheduled__<timestamp>`).
-  runId: string;
+  // Base URL of the SSE endpoint to tail, without a cursor — the hook appends
+  // its own `after` on reconnect. Any endpoint that emits LogStreamEvent frames
+  // can be tailed; `getIngestionLogStreamUrl` builds the ingestion one.
+  streamUrl: string;
   enabled: boolean;
 }
 
@@ -64,20 +63,35 @@ const RESUMABLE_END_REASONS = new Set<LogStreamEndReason>([
   LogStreamEndReason.MaxDuration,
 ]);
 
-export const getIngestionLogStreamUrl = (
-  fqn: string,
-  runId: string,
-  after?: string
-): string => {
-  const base = `${getBasePath()}/api/v1/services/ingestionPipelines/logs/${getEncodedFqn(
-    fqn
-  )}/stream/${encodeURIComponent(runId)}`;
+/**
+ * Adds the resume cursor to a stream URL. Uses `&` when the caller's URL already
+ * carries query parameters, so an endpoint that takes its own does not lose them
+ * — or silently drop the cursor — on reconnect.
+ */
+export const withLogStreamCursor = (base: string, after?: string): string => {
+  if (!after) {
+    return base;
+  }
 
-  return after ? `${base}?after=${encodeURIComponent(after)}` : base;
+  const separator = base.includes('?') ? '&' : '?';
+
+  return `${base}${separator}after=${encodeURIComponent(after)}`;
 };
 
 /**
- * Tails one ingestion run's logs over Server-Sent Events.
+ * Stream URL for one ingestion run's logs.
+ *
+ * @param fqn Pipeline id or fullyQualifiedName — the endpoint accepts either.
+ * @param runId Run to tail. A UUID on object storage, or the pipeline service's
+ *   own run identifier (e.g. Airflow's `scheduled__<timestamp>`).
+ */
+export const getIngestionLogStreamUrl = (fqn: string, runId: string): string =>
+  `${getBasePath()}/api/v1/services/ingestionPipelines/logs/${getEncodedFqn(
+    fqn
+  )}/stream/${encodeURIComponent(runId)}`;
+
+/**
+ * Tails one run's logs over Server-Sent Events.
  *
  * The backend reads from whichever log backend holds the run (object storage or
  * the pipeline service) and pushes one JSON {@link LogStreamEvent} per frame,
@@ -85,12 +99,15 @@ export const getIngestionLogStreamUrl = (
  * reconnects with `?after=<cursor>` on any drop, so a lost connection neither
  * re-reads nor skips content.
  *
+ * The endpoint is the caller's to choose: it takes a URL rather than a pipeline
+ * so any resource exposing the same event contract — an ingestion pipeline here,
+ * an entity that wraps one elsewhere — reuses this loop instead of copying it.
+ *
  * Native EventSource cannot send the Authorization header the JWT filter
  * requires, hence the fetch-based client.
  */
 export const useLogStream = ({
-  fqn,
-  runId,
+  streamUrl,
   enabled,
 }: UseLogStreamParams): UseLogStreamResult => {
   const [logs, setLogs] = useState('');
@@ -102,7 +119,7 @@ export const useLogStream = ({
   const [health, setHealth] = useState<StreamHealth>('connecting');
 
   useEffect(() => {
-    if (!enabled || !fqn || !runId) {
+    if (!enabled || !streamUrl) {
       return;
     }
 
@@ -130,13 +147,16 @@ export const useLogStream = ({
       }
     };
 
+    const setHealthLive = () => update(() => setHealth('live'));
+
     const handleLogs = (event: LogStreamEvent) => {
       if (event.truncated) {
         update(() => setTruncated(true));
       }
 
       if (event.logs) {
-        update(() => setLogs((prev) => prev + event.logs));
+        const appendChunk = (prev: string) => prev + event.logs;
+        update(() => setLogs(appendChunk));
       }
 
       update(() => setLoading(false));
@@ -207,13 +227,11 @@ export const useLogStream = ({
     const connectOnce = async () => {
       const token = await getOidcToken();
       await fetchEventSource(
-        getIngestionLogStreamUrl(fqn, runId, cursorRef.current),
+        withLogStreamCursor(streamUrl, cursorRef.current),
         {
           signal,
           headers: { Authorization: `Bearer ${token}` },
-          onopen: createStreamOpenHandler(retryState, () =>
-            update(() => setHealth('live'))
-          ),
+          onopen: createStreamOpenHandler(retryState, setHealthLive),
           onmessage: (message) => handleFrame(message.data),
           onerror: (streamError) => {
             // Rethrow so the loop below owns retry timing and token refresh.
@@ -264,7 +282,7 @@ export const useLogStream = ({
     return () => {
       controller.abort();
     };
-  }, [fqn, runId, enabled]);
+  }, [streamUrl, enabled]);
 
   return {
     logs,

@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { useCallback } from 'react';
-import { useLogStream } from '../components/common/LogViewerModal/useLogStream';
+import { useCallback, useMemo } from 'react';
+import {
+  getIngestionLogStreamUrl,
+  useLogStream,
+} from '../components/common/LogViewerModal/useLogStream';
 import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
@@ -47,6 +50,37 @@ export interface UseIngestionLogSourceResult {
   loadMore: () => void;
 }
 
+function computeAvailability(
+  enabled: boolean,
+  ingestionFqn: string,
+  runId?: string
+): { hasLog: boolean; canStream: boolean } {
+  const hasLog = enabled && Boolean(ingestionFqn);
+  const canStream = hasLog && Boolean(runId);
+
+  return { hasLog, canStream };
+}
+
+function computeLiveState(
+  runActive: boolean,
+  runFinishedOnStream: boolean,
+  canStream: boolean,
+  streamGaveUp: boolean
+): { isLive: boolean; isStreaming: boolean } {
+  const isLive = runActive && !runFinishedOnStream;
+  const isStreaming = canStream && isLive && !streamGaveUp;
+
+  return { isLive, isStreaming };
+}
+
+function pick<T>(
+  showStreamLogs: boolean,
+  streamValue: T,
+  paginatedValue: T
+): T {
+  return showStreamLogs ? streamValue : paginatedValue;
+}
+
 /**
  * Serves one ingestion run's log from whichever source fits its state: the SSE
  * tail while the run is live, the paginated REST endpoint for the backlog and
@@ -66,15 +100,23 @@ export const useIngestionLogSource = ({
   runId,
   runActive,
 }: UseIngestionLogSourceParams): UseIngestionLogSourceResult => {
-  const hasLog = enabled && Boolean(ingestionFqn);
-  const canStream = hasLog && Boolean(runId);
+  const { hasLog, canStream } = computeAvailability(
+    enabled,
+    ingestionFqn,
+    runId
+  );
+
+  const streamUrl = useMemo(
+    () =>
+      canStream ? getIngestionLogStreamUrl(ingestionFqn, runId ?? '') : '',
+    [canStream, ingestionFqn, runId]
+  );
 
   // The stream stops itself once it reaches a terminal frame, so it is safe to
   // leave `enabled` on for the whole active run — it will not reconnect after
   // the run finishes.
   const stream = useLogStream({
-    fqn: ingestionFqn,
-    runId: runId ?? '',
+    streamUrl,
     enabled: canStream && runActive,
   });
 
@@ -82,8 +124,12 @@ export const useIngestionLogSource = ({
     stream.endReason === LogStreamEndReason.RunFinished;
   const streamGaveUp = stream.streamDone && !runFinishedOnStream;
 
-  const isLive = runActive && !runFinishedOnStream;
-  const isStreaming = canStream && isLive && !streamGaveUp;
+  const { isLive, isStreaming } = computeLiveState(
+    runActive,
+    runFinishedOnStream,
+    canStream,
+    streamGaveUp
+  );
 
   const fetchPage = useCallback(
     (cursor?: string) =>
@@ -112,10 +158,10 @@ export const useIngestionLogSource = ({
     Boolean(stream.logs) && (isStreaming || !paginated.logs);
 
   return {
-    logs: showStreamLogs ? stream.logs : paginated.logs,
-    loading: showStreamLogs ? stream.loading : paginated.loading,
+    logs: pick(showStreamLogs, stream.logs, paginated.logs),
+    loading: pick(showStreamLogs, stream.loading, paginated.loading),
     loadingMore: paginated.loadingMore,
-    hasMore: showStreamLogs ? false : paginated.hasMore,
+    hasMore: pick(showStreamLogs, false, paginated.hasMore),
     isLive,
     isStreaming,
     runFinishedOnStream,

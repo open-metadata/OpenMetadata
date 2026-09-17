@@ -21,6 +21,7 @@ import { FC, useCallback, useMemo } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import type { ReactFlowInstance } from 'reactflow';
 import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
 import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';
@@ -38,9 +39,25 @@ import { centerNodePosition } from '../../../../utils/EntityLineageLayoutUtils';
 const LineageControlButtons: FC<{
   onToggleMiniMap: () => void;
   miniMapVisible?: boolean;
-}> = ({ onToggleMiniMap, miniMapVisible = false }) => {
+  reactFlowInstance?: ReactFlowInstance;
+  onFitView?: () => void;
+  onRearrange?: () => void;
+  onRefocusHome?: () => void;
+  onRefocusSelected?: () => void;
+}> = ({
+  onToggleMiniMap,
+  miniMapVisible = false,
+  reactFlowInstance: controlledReactFlowInstance,
+  onFitView,
+  onRearrange,
+  onRefocusHome,
+  onRefocusSelected,
+}) => {
   const { t } = useTranslation();
-  const { reactFlowInstance, redraw } = useLineageProvider();
+  const { reactFlowInstance: providerReactFlowInstance, redraw } =
+    useLineageProvider();
+  const reactFlowInstance =
+    controlledReactFlowInstance ?? providerReactFlowInstance;
   const navigate = useNavigate();
   const location = useCustomLocation();
 
@@ -67,28 +84,48 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
+    if (onFitView) {
+      onFitView();
+
+      return;
+    }
     reactFlowInstance?.fitView({ padding: 0.2, maxZoom: 1 });
-  }, [reactFlowInstance]);
+  }, [onFitView, reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
+    if (onRearrange) {
+      onRearrange();
+
+      return;
+    }
     redraw?.();
-  }, [redraw]);
+  }, [onRearrange, redraw]);
 
   const handleRefocusSelected = useCallback(() => {
+    if (onRefocusSelected) {
+      onRefocusSelected();
+
+      return;
+    }
     const selectedElement = reactFlowInstance
       ?.getNodes()
       .find((el) => el.selected);
 
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-  }, [reactFlowInstance]);
+  }, [onRefocusSelected, reactFlowInstance]);
 
   const handleRefocusHome = useCallback(() => {
+    if (onRefocusHome) {
+      onRefocusHome();
+
+      return;
+    }
     const selectedElement = reactFlowInstance
       ?.getNodes()
       .find((el) => el.data.isRootNode);
 
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-  }, [reactFlowInstance]);
+  }, [onRefocusHome, reactFlowInstance]);
 
   const handleMenuAction = useCallback(
     (key: Key) => {

@@ -59,6 +59,7 @@ const DIFF_TYPE_VALUES = {
 
 type SampleDataColumn = {
   id: string;
+  name: string;
   label: string;
 };
 
@@ -86,6 +87,11 @@ const FailedTestCaseSampleData = ({
         ? getColumnNameFromEntityLink(testCaseData?.entityLink)
         : undefined,
     [testCaseData]
+  );
+
+  const diffColumnId = useMemo(
+    () => sampleData?.columns.find((col) => col.name === DIFF_TYPE)?.id,
+    [sampleData]
   );
 
   const hasViewSampleDataPermission = useMemo(() => {
@@ -132,17 +138,20 @@ const FailedTestCaseSampleData = ({
   ];
 
   const getSampleDataWithType = (tableData: TableData): LocalSampleData => {
+    // Sample columns come from a query projection, so names can repeat; the Table
+    // collection requires unique column ids.
     const columns: SampleDataColumn[] = (tableData?.columns ?? []).map(
-      (column) => ({
-        id: column,
+      (column, index) => ({
+        id: `${index}-${column}`,
+        name: column,
         label: column === DIFF_TYPE ? '' : column,
       })
     );
 
     const rows = (tableData?.rows ?? []).map((item, index) => {
       const dataObject: Record<string, SampleDataType> = {};
-      (tableData?.columns ?? []).forEach((col, colIndex) => {
-        dataObject[col] = item[colIndex];
+      columns.forEach((col, colIndex) => {
+        dataObject[col.id] = item[colIndex];
       });
       dataObject[ROW_KEY] = index;
 
@@ -180,8 +189,6 @@ const FailedTestCaseSampleData = ({
         setIsLoading(false);
       }
     }
-
-    return;
   };
 
   const handleDeleteSampleData = async () => {
@@ -202,8 +209,6 @@ const FailedTestCaseSampleData = ({
         setIsDeleting(false);
       }
     }
-
-    return;
   };
 
   // Failed-rows samples are only ever stored for a failing test case, so the
@@ -296,7 +301,7 @@ const FailedTestCaseSampleData = ({
             {(col) => (
               <Table.Head
                 className={classNames('tw:px-2 tw:py-2', {
-                  'tw:min-w-52.5': col.id !== DIFF_TYPE,
+                  'tw:min-w-52.5': col.name !== DIFF_TYPE,
                 })}
                 id={col.id}
                 key={col.id}
@@ -306,7 +311,7 @@ const FailedTestCaseSampleData = ({
           </Table.Header>
           <Table.Body items={sampleData.rows}>
             {(record) => {
-              const diffType = record[DIFF_TYPE];
+              const diffType = record[diffColumnId ?? DIFF_TYPE];
 
               return (
                 <Table.Row
@@ -319,8 +324,8 @@ const FailedTestCaseSampleData = ({
                   id={record[ROW_KEY] as number}
                   key={record[ROW_KEY] as number}>
                   {(col) => {
-                    const isDiffCol = col.id === DIFF_TYPE;
-                    const isFailedCol = col.id === columnName;
+                    const isDiffCol = col.name === DIFF_TYPE;
+                    const isFailedCol = col.name === columnName;
 
                     return (
                       <Table.Cell

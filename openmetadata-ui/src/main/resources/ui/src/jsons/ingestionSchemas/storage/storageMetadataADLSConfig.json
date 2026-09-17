@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Storage Metadata ADLS Config",
+  "description": "Storage Metadata Manifest file ADLS path config.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
+  "type": "object",
+  "properties": {
+    "securityConfig": {
+      "title": "ADLS Security Config",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Azure Cloud Credentials",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+      "properties": {
+        "clientId": {
+          "title": "Client ID",
+          "description": "Your Service Principal App ID (Client ID)",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "Your Service Principal Password (Client Secret)",
+          "type": "string",
+          "format": "password"
+        },
+        "tenantId": {
+          "title": "Tenant ID",
+          "description": "Tenant ID of your Azure Subscription",
+          "type": "string"
+        },
+        "accountName": {
+          "title": "Storage Account Name",
+          "description": "Account Name of your storage account",
+          "type": "string"
+        },
+        "vaultName": {
+          "title": "Key Vault Name",
+          "description": "Key Vault Name",
+          "type": "string"
+        },
+        "scopes": {
+          "title": "Scopes",
+          "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "prefixConfig": {
+      "title": "Storage Metadata Prefix Config",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "description": "Details of the bucket where the storage metadata manifest file is stored",
+      "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
+      "type": "object",
+      "properties": {
+        "containerName": {
+          "title": "Storage Metadata Container Name",
+          "description": "Name of the top level container where the storage metadata file is stored",
+          "type": "string"
+        },
+        "objectPrefix": {
+          "title": "Storage Metadata Object Prefix",
+          "description": "Path of the folder where the storage metadata file is stored. If the file is at the root, you can keep it empty.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "containerName"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "prefixConfig"
+  ]
+}

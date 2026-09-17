@@ -16,7 +16,6 @@ To be used by OpenMetadata class
 
 import base64
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import TableData
@@ -61,7 +60,7 @@ class OMetaContainerMixin:
         for row in sample_data.rows:
             self._process_sample_data_row(row)
 
-    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> Optional[str]:  # noqa: UP045
+    def _serialize_sample_data(self, sample_data: TableData, container_fqn: str) -> str | None:
         """Serialize sample data to JSON, returning None on error"""
         try:
             return sample_data.model_dump_json()
@@ -70,7 +69,7 @@ class OMetaContainerMixin:
             logger.warning(f"Error serializing sample data for {container_fqn} please check if the data is valid")
             return None
 
-    def _parse_response(self, resp: dict, container_fqn: str) -> Optional[TableData]:  # noqa: UP045
+    def _parse_response(self, resp: dict, container_fqn: str) -> TableData | None:
         """Parse response into TableData, returning None on error"""
         try:
             return TableData(**resp["sampleData"])
@@ -79,7 +78,7 @@ class OMetaContainerMixin:
             logger.error(f"Cannot parse response from {container_fqn} due to {err}")
             return None
 
-    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> Optional[TableData]:  # noqa: UP045
+    def ingest_container_sample_data(self, container: Container, sample_data: TableData) -> TableData | None:
         """
         PUT sample data for a container
 
@@ -139,7 +138,7 @@ class OMetaContainerMixin:
             before=paging.get("before"),
         )
 
-    def get_container_sample_data(self, container: Container) -> Optional[Container]:  # noqa: UP045
+    def get_container_sample_data(self, container: Container) -> Container | None:
         """
         GET call for the /sampleData endpoint for a given Container
 

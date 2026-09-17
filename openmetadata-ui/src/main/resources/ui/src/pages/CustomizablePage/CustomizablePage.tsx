@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
@@ -44,7 +46,13 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
+import { docStoreQueryKey } from '../../rest/queries/docStoreQuery';
+import {
+  normalizePersonaDocument,
+  updatePersonaDocumentPage,
+} from '../../utils/CustomizePage/PersonaPage.utils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import { getOwnHandler } from '../../utils/RecordUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -72,14 +80,153 @@ const SettingsAppModePage = withSuspenseFallback(
   )
 );
 
-export const CustomizablePage = () => {
+const CustomizeAppModeSidebarPage = withSuspenseFallback(
+  lazy(
+    () => import('../CustomizeAppModeSidebarPage/CustomizeAppModeSidebarPage')
+  )
+);
+
+interface CustomizePageRenderContext {
+  personaDetails: Persona;
+  currentPage: Page | null;
+  backgroundColor?: string;
+  onSaveLayout: (newPage?: Page) => Promise<void>;
+  onNavigationSave: (
+    uiNavigation: UICustomization['navigation']
+  ) => Promise<void>;
+  onAppModeSave: (appMode: AppMode) => Promise<void>;
+  onBackgroundColorUpdate: (color?: string) => Promise<void>;
+}
+
+// Page types that all render the generic CustomizeDetailsPage.
+const DETAILS_PAGE_TYPES: PageType[] = [
+  PageType.Table,
+  PageType.Topic,
+  PageType.StoredProcedure,
+  PageType.DashboardDataModel,
+  PageType.Dashboard,
+  PageType.Pipeline,
+  PageType.DatabaseSchema,
+  PageType.Database,
+  PageType.Container,
+  PageType.SearchIndex,
+  PageType.Metric,
+  PageType.MlModel,
+  PageType.APIEndpoint,
+  PageType.APICollection,
+  PageType.Chart,
+  PageType.Directory,
+  PageType.File,
+  PageType.Spreadsheet,
+  PageType.Worksheet,
+];
+
+const getCustomizePageContent = (
+  pageFqn: string,
+  ctx: CustomizePageRenderContext
+): ReactElement => {
+  const {
+    personaDetails,
+    currentPage,
+    backgroundColor,
+    onSaveLayout,
+    onNavigationSave,
+    onAppModeSave,
+    onBackgroundColorUpdate,
+  } = ctx;
+
+  const renderLandingPage = () => (
+    <CustomizeMyData
+      backgroundColor={backgroundColor}
+      initialPageData={currentPage}
+      personaDetails={personaDetails}
+      onBackgroundColorUpdate={onBackgroundColorUpdate}
+      onSaveLayout={onSaveLayout}
+    />
+  );
+
+  const renderDetailsPage = () => (
+    <CustomizeDetailsPage
+      initialPageData={currentPage}
+      isGlossary={false}
+      personaDetails={personaDetails}
+      onSaveLayout={onSaveLayout}
+    />
+  );
+
+  const renderers: Record<string, () => ReactElement> = {
+    navigation: () => (
+      <SettingsNavigationPage
+        persona={personaDetails}
+        onSave={onNavigationSave}
+      />
+    ),
+    'app-mode': () => (
+      <SettingsAppModePage
+        personaDetails={personaDetails}
+        onSave={onAppModeSave}
+      />
+    ),
+    askCollateSidebar: () => <CustomizeAppModeSidebarPage />,
+    [PageType.LandingPage]: renderLandingPage,
+    homepage: renderLandingPage,
+    [PageType.DataMarketplace]: () => (
+      <CustomizableDataMarketplacePage
+        initialPageData={currentPage}
+        personaDetails={personaDetails}
+        onSaveLayout={onSaveLayout}
+      />
+    ),
+    [PageType.Domain]: () => (
+      <CustomizableDomainPage
+        initialPageData={currentPage}
+        personaDetails={personaDetails}
+        onSaveLayout={onSaveLayout}
+      />
+    ),
+    [PageType.DataProduct]: () => (
+      <CustomizableDataProductPage
+        initialPageData={currentPage}
+        personaDetails={personaDetails}
+        onSaveLayout={onSaveLayout}
+      />
+    ),
+    [PageType.Glossary]: () => (
+      <CustomizeGlossaryTermDetailPage
+        isGlossary
+        initialPageData={currentPage}
+        personaDetails={personaDetails}
+        onSaveLayout={onSaveLayout}
+      />
+    ),
+    [PageType.GlossaryTerm]: () => (
+      <CustomizeGlossaryTermDetailPage
+        initialPageData={currentPage}
+        isGlossary={false}
+        personaDetails={personaDetails}
+        onSaveLayout={onSaveLayout}
+      />
+    ),
+  };
+
+  DETAILS_PAGE_TYPES.forEach((type) => {
+    renderers[type] = renderDetailsPage;
+  });
+
+  const renderer = getOwnHandler(renderers, pageFqn);
+
+  return renderer ? renderer() : <ErrorPlaceHolder />;
+};
+
+const CustomizablePageContent = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { fqn: personaFQN } = useFqn();
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [personaDetails, setPersonaDetails] = useState<Persona>();
-  const { document, setDocument, currentPage, getPage, setCurrentPageType } =
+  const { document, setDocument, currentPage, setCurrentPageType } =
     useCustomizeStore();
 
   const backgroundColor = useMemo(
@@ -91,27 +238,28 @@ export const CustomizablePage = () => {
     [document, personaDetails]
   );
 
+  const syncSavedDocument = (response: Document) => {
+    const normalizedResponse = normalizePersonaDocument(response);
+
+    setDocument(normalizedResponse);
+    queryClient.setQueryData(
+      docStoreQueryKey(document?.fullyQualifiedName ?? ''),
+      normalizedResponse
+    );
+  };
+
   const handlePageCustomizeSave = async (newPage?: Page) => {
     if (!document) {
       return;
     }
+    const newDoc = updatePersonaDocumentPage(document, pageFqn, newPage);
+
+    if (newDoc === document) {
+      return;
+    }
+
     try {
       let response: Document;
-      const newDoc = cloneDeep(document);
-      const pageData = getPage(pageFqn);
-
-      if (pageData) {
-        newDoc.data.pages = newPage
-          ? newDoc.data?.pages?.map((p: Page) =>
-              p.pageType === pageFqn ? newPage : p
-            )
-          : newDoc.data?.pages.filter((p: Page) => p.pageType !== pageFqn);
-      } else {
-        newDoc.data = {
-          ...newDoc.data,
-          pages: [...(newDoc.data.pages ?? []), newPage],
-        };
-      }
 
       if (document.id) {
         const jsonPatch = compare(document, newDoc);
@@ -125,7 +273,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -169,7 +317,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -237,7 +385,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -297,7 +445,7 @@ export const CustomizablePage = () => {
             .filter(Boolean) as string[],
         });
       }
-      setDocument(response);
+      syncSavedDocument(response);
 
       showSuccessToast(
         t('server.page-layout-operation-success', {
@@ -394,99 +542,33 @@ export const CustomizablePage = () => {
     );
   }
 
-  switch (pageFqn) {
-    case 'navigation':
-      return (
-        <SettingsNavigationPage
-          persona={personaDetails}
-          onSave={handleNavigationSave}
-        />
-      );
+  return getCustomizePageContent(pageFqn, {
+    personaDetails,
+    currentPage,
+    backgroundColor,
+    onSaveLayout: handlePageCustomizeSave,
+    onNavigationSave: handleNavigationSave,
+    onAppModeSave: handleAppModeSave,
+    onBackgroundColorUpdate: handleBackgroundColorUpdate,
+  });
+};
 
-    case 'app-mode':
-      return (
-        <SettingsAppModePage
-          personaDetails={personaDetails}
-          onSave={handleAppModeSave}
-        />
-      );
+/**
+ * The content has many exits — a loader, a no-persona placeholder, a
+ * per-page-type customizer, and an unknown-page fallback — and only the
+ * customizers carry a title of their own. Setting one here, before the
+ * content, gives every branch a floor while letting a customizer that
+ * registers its own Helmet later still win.
+ */
+export const CustomizablePage = () => {
+  const { t } = useTranslation();
 
-    case PageType.LandingPage:
-    case 'homepage':
-      return (
-        <CustomizeMyData
-          backgroundColor={backgroundColor}
-          initialPageData={currentPage}
-          personaDetails={personaDetails}
-          onBackgroundColorUpdate={handleBackgroundColorUpdate}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-    case PageType.DataMarketplace:
-      return (
-        <CustomizableDataMarketplacePage
-          initialPageData={currentPage}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-    case PageType.Domain:
-      return (
-        <CustomizableDomainPage
-          initialPageData={currentPage}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-
-    case PageType.DataProduct:
-      return (
-        <CustomizableDataProductPage
-          initialPageData={currentPage}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-
-    case PageType.Glossary:
-    case PageType.GlossaryTerm:
-      return (
-        <CustomizeGlossaryTermDetailPage
-          initialPageData={currentPage}
-          isGlossary={pageFqn === PageType.Glossary}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-    case PageType.Table:
-    case PageType.Topic:
-    case PageType.StoredProcedure:
-    case PageType.DashboardDataModel:
-    case PageType.Dashboard:
-    case PageType.Pipeline:
-    case PageType.DatabaseSchema:
-    case PageType.Database:
-    case PageType.Container:
-    case PageType.SearchIndex:
-    case PageType.Metric:
-    case PageType.MlModel:
-    case PageType.APIEndpoint:
-    case PageType.APICollection:
-    case PageType.Chart:
-    case PageType.Directory:
-    case PageType.File:
-    case PageType.Spreadsheet:
-    case PageType.Worksheet:
-      return (
-        <CustomizeDetailsPage
-          initialPageData={currentPage}
-          isGlossary={false}
-          personaDetails={personaDetails}
-          onSaveLayout={handlePageCustomizeSave}
-        />
-      );
-
-    default:
-      return <ErrorPlaceHolder />;
-  }
+  return (
+    <>
+      <DocumentTitle
+        title={t('label.customize-entity', { entity: t('label.page') })}
+      />
+      <CustomizablePageContent />
+    </>
+  );
 };

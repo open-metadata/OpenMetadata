@@ -28,6 +28,22 @@
       "adminUrl": "http://localhost:8585"
     },
     {
+      "clientId": "openmetadata-oidc-public",
+      "name": "OpenMetadata OIDC (public)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": ["http://localhost:8585/*"],
+      "webOrigins": ["http://localhost:8585"],
+      "baseUrl": "http://localhost:8585",
+      "adminUrl": "http://localhost:8585"
+    },
+    {
       "clientId": "http://localhost:8585/api/v1/saml/metadata",
       "name": "OpenMetadata",
       "enabled": true,

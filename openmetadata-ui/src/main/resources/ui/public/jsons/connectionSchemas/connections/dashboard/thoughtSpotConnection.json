@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThoughtSpotConnection",
+  "description": "ThoughtSpot Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection",
+  "definitions": {
+    "thoughtSpotType": {
+      "description": "ThoughtSpot service type",
+      "type": "string",
+      "enum": [
+        "ThoughtSpot"
+      ],
+      "default": "ThoughtSpot"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "ThoughtSpot",
+      "type": "string",
+      "enum": [
+        "ThoughtSpot"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud",
+      "type": "string",
+      "format": "uri"
+    },
+    "authentication": {
+      "title": "Authentication",
+      "description": "ThoughtSpot authentication configuration",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "BasicAuth",
+          "description": "Basic Auth Credentials",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Username to access the service.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password to access the service.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "ApiAccessTokenAuth",
+          "description": "API Access Token Auth Credentials",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.ApiAccessTokenAuth",
+          "properties": {
+            "accessToken": {
+              "title": "Access Token",
+              "description": "Access Token for the API",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "accessToken"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "ThoughtSpot API version to use",
+      "type": "string",
+      "enum": [
+        "v1",
+        "v2"
+      ],
+      "default": "v2"
+    },
+    "orgId": {
+      "title": "Organization ID",
+      "description": "Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud only.",
+      "type": "string",
+      "default": null
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "authentication"
+  ]
+}

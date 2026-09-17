@@ -22,6 +22,7 @@ import {
 } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type { MlFeature } from '../generated/entity/data/mlmodel';
@@ -70,10 +71,10 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
 };
 
 export const isTierTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
+  tagFQN.startsWith(`${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`);
 
 export const isCertificationTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
+  tagFQN.startsWith(`${CERTIFICATION_CATEGORY}${FQN_SEPARATOR_CHAR}`);
 
 export const getTierTags = (tags: Array<TagLabel>) => {
   return tags.find((item) => isTierTag(item.tagFQN));
@@ -105,35 +106,30 @@ export const makeData = <T extends Column | SearchIndexField>(
   }));
 };
 
+const DATA_TYPE_STRING_MAP: Partial<Record<string, PrimaryTableDataTypes>> = {
+  [DataType.String]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Char]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Text]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Varchar]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Mediumtext]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Mediumblob]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Blob]: PrimaryTableDataTypes.VARCHAR,
+  [DataType.Timestamp]: PrimaryTableDataTypes.TIMESTAMP,
+  [DataType.Time]: PrimaryTableDataTypes.TIMESTAMP,
+  [DataType.Date]: PrimaryTableDataTypes.DATE,
+  [DataType.Int]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Float]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Smallint]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Bigint]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Numeric]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Tinyint]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Decimal]: PrimaryTableDataTypes.NUMERIC,
+  [DataType.Boolean]: PrimaryTableDataTypes.BOOLEAN,
+  [DataType.Enum]: PrimaryTableDataTypes.BOOLEAN,
+};
+
 export const getDataTypeString = (dataType: string): string => {
-  switch (upperCase(dataType)) {
-    case DataType.String:
-    case DataType.Char:
-    case DataType.Text:
-    case DataType.Varchar:
-    case DataType.Mediumtext:
-    case DataType.Mediumblob:
-    case DataType.Blob:
-      return PrimaryTableDataTypes.VARCHAR;
-    case DataType.Timestamp:
-    case DataType.Time:
-      return PrimaryTableDataTypes.TIMESTAMP;
-    case DataType.Date:
-      return PrimaryTableDataTypes.DATE;
-    case DataType.Int:
-    case DataType.Float:
-    case DataType.Smallint:
-    case DataType.Bigint:
-    case DataType.Numeric:
-    case DataType.Tinyint:
-    case DataType.Decimal:
-      return PrimaryTableDataTypes.NUMERIC;
-    case DataType.Boolean:
-    case DataType.Enum:
-      return PrimaryTableDataTypes.BOOLEAN;
-    default:
-      return dataType;
-  }
+  return DATA_TYPE_STRING_MAP[upperCase(dataType)] ?? dataType;
 };
 
 export const generateEntityLink = (fqn: string, includeColumn = false) => {
@@ -620,7 +616,7 @@ export const getParentKeysToExpand = <
         item.fullyQualifiedName ?? item.name ?? '',
       ];
       const result = getParentKeysToExpand(
-        item.children!,
+        item.children ?? [],
         targetFqn,
         newParentKeys
       );

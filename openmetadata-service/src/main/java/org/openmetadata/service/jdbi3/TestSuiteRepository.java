@@ -83,6 +83,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -156,10 +157,20 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public static Map<UUID, Long> getTestsRelationshipRevisions(List<UUID> testSuiteIds) {
+    return getTestsRelationshipRevisions(Entity.getCollectionDAO(), testSuiteIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction. See {@link
+   * TestCaseRepository#getTestSuiteRelationshipRevisions(CollectionDAO, List)} for why resolving the
+   * mutable global instead lets a write and its read-back land on two different connections.
+   */
+  public static Map<UUID, Long> getTestsRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testSuiteIds) {
     if (nullOrEmpty(testSuiteIds)) {
       return Map.of();
     }
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
       return Map.of();
     }
@@ -835,22 +846,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                deleteLogicalTestSuite(
-                    securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-            deleteFromSearch(deleteResponse.entity(), hardDelete);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            () -> {
+              try {
+                RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                    deleteLogicalTestSuite(
+                        securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
+                deleteFromSearch(deleteResponse.entity(), hardDelete);
 
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, testSuite, e.getMessage());
-          }
-        });
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId, securityContext, testSuite, e.getMessage());
+              }
+            });
     return Response.accepted()
         .entity(
             new DeleteEntityResponse(

@@ -18,9 +18,10 @@
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": [
+        "oracle+oracledb",
         "oracle+cx_oracle"
       ],
-      "default": "oracle+cx_oracle"
+      "default": "oracle+oracledb"
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
@@ -76,7 +77,7 @@
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/oracleScheme",
-      "default": "oracle+cx_oracle"
+      "default": "oracle+oracledb"
     },
     "username": {
       "title": "Username",

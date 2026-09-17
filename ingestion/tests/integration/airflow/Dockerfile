@@ -12,16 +12,16 @@
 # Airflow carrying the working tree's OpenMetadata lineage provider. Build context is
 # ingestion/, so src/metadata/generated must already exist (make generate).
 
-FROM apache/airflow:3.3.0-python3.10
+FROM apache/airflow:3.3.1-python3.10
 
 USER airflow
 COPY --chown=airflow:0 . /tmp/ingestion
 
-# airflow-constraints-3.3.0.txt is deliberately NOT applied: it pins chardet==6.0.0.post1
+# airflow-constraints-3.3.1.txt is deliberately NOT applied: it pins chardet==7.5.1
 # against openmetadata-ingestion's chardet==4.0.0. Dockerfile.ci installs the package
 # unconstrained for the same reason. apache-airflow is pinned so the resolver cannot move it.
 RUN pip install --no-cache-dir uv \
- && uv pip install --no-cache "apache-airflow==3.3.0" /tmp/ingestion \
+ && uv pip install --no-cache "apache-airflow==3.3.1" /tmp/ingestion \
  && rm -rf /tmp/ingestion
 
 # Migrating at build time keeps container start to a few seconds.

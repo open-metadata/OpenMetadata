@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -23,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -74,6 +76,35 @@ async function performRename(
 }
 
 /**
+ * Helper to edit a classification via the Edit drawer (rename option was
+ * replaced by an Edit action in PR #31299).
+ */
+async function performClassificationEdit(
+  page: Page,
+  newName: string
+): Promise<void> {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('edit-classification').click();
+
+  await expect(page.getByTestId('tags-form')).toBeVisible();
+
+  const nameField = page.getByTestId('name').getByRole('textbox');
+  await nameField.clear();
+  await nameField.fill(newName);
+
+  const patchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications/') &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('save-button').click();
+  const patchRes = await patchResponse;
+  expect(patchRes.status()).toBe(200);
+
+  await expect(page.getByTestId('tags-form')).not.toBeVisible();
+}
+
+/**
  * Helper to update description via UI
  */
 async function updateDescription(
@@ -82,11 +113,11 @@ async function updateDescription(
   apiEndpoint: string
 ): Promise<void> {
   await page.getByTestId('edit-description').click();
+  const editor = await resolveDescriptionBox(page);
 
-  const descriptionBox = '.om-block-editor[contenteditable="true"]';
-  await page.locator(descriptionBox).first().click();
-  await page.locator(descriptionBox).first().clear();
-  await page.locator(descriptionBox).first().fill(description);
+  await editor.click();
+  await editor.clear();
+  await editor.fill(description);
 
   const patchResponse = page.waitForResponse(
     (response) =>
@@ -327,9 +358,9 @@ test.describe(
         // Verify tag exists
         await expect(page.getByTestId(tag.data.name)).toBeVisible();
 
-        // Step 1: Rename the classification
+        // Step 1: Rename the classification via Edit drawer
         const newName = `renamed-class-${uuid()}`;
-        await performRename(page, newName, '/api/v1/classifications/');
+        await performClassificationEdit(page, newName);
         currentName = newName;
 
         // Step 2: Update description (triggers consolidation logic)
@@ -390,7 +421,7 @@ test.describe(
         // Perform 3 cycles of rename + update
         for (let i = 1; i <= 3; i++) {
           const newName = `renamed-class-cycle-${i}-${uuid()}`;
-          await performRename(page, newName, '/api/v1/classifications/');
+          await performClassificationEdit(page, newName);
           currentName = newName;
 
           await updateDescription(

@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
@@ -38,18 +46,28 @@ export const GenericAuthenticator = forwardRef(
       }
     };
 
-    const handleSilentSignIn = async () => {
+    const handleSilentSignIn = useCallback(async () => {
       const resp = await renewToken();
       await setOidcToken(resp.accessToken);
 
       return resp;
-    };
+    }, []);
 
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
       invokeLogin: handleLogin,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // confidential / SAML flows.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [handleSilentSignIn]);
 
     return <Fragment>{children}</Fragment>;
   }

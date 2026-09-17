@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -54,6 +55,7 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
   private static final Set<String> SKIP_ENTITY_TYPES =
       Set.of(
           Entity.THREAD,
+          Entity.CONVERSATION,
           Entity.TASK,
           Entity.BOT,
           Entity.INGESTION_PIPELINE,
@@ -83,6 +85,16 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
     try {
       // Skip internal entity types
       if (SKIP_ENTITY_TYPES.contains(changeEvent.getEntityType())) {
+        return;
+      }
+
+      // Hard delete (soft delete emits ENTITY_SOFT_DELETED): purge the entity's activity instead of
+      // recording a "deleted" event. Keyed by entity id so an entity later recreated with the same
+      // fully qualified name does not inherit the dead entity's history (#28923). This runs after
+      // the delete transaction commits, so it also supersedes this trailing delete event itself.
+      if (changeEvent.getEventType() == EventType.ENTITY_DELETED) {
+        activityStreamRepository.deleteByEntity(
+            changeEvent.getEntityType(), changeEvent.getEntityId());
         return;
       }
 

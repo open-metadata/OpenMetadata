@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import QueryString from 'qs';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { DIMENSIONS_DATA } from '../../../../constants/DataQuality.constants';
-import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
-import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
+import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   fetchTestCaseSummaryByDimension,
@@ -24,6 +23,7 @@ import {
 } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getDimensionIcon,
+  getTestCaseListPath,
   transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -33,9 +33,20 @@ import './status-by-dimension-card-widget.less';
 const StatusByDimensionCardWidget = ({
   chartFilter,
 }: PieChartWidgetCommonProps) => {
-  const [isDqByDimensionLoading, setIsDqByDimensionLoading] = useState(true);
-  const [dqByDimensionData, setDqByDimensionData] =
-    useState<DataQualityReport['data']>();
+  const { data: dqByDimensionData, isLoading: isDqByDimensionLoading } =
+    useQuery({
+      queryKey: ['dq-dashboard', 'status-by-dimension', chartFilter],
+      queryFn: async () => {
+        // Dimensioned and unclassified test cases are separate aggregations;
+        // fetch them together and merge them into one set of status cards.
+        const [{ data }, { data: noDimensionData }] = await Promise.all([
+          fetchTestCaseSummaryByDimension(chartFilter),
+          fetchTestCaseSummaryByNoDimension(chartFilter),
+        ]);
+
+        return [...data, ...noDimensionData];
+      },
+    });
 
   const dqDimensions = useMemo(
     () =>
@@ -50,37 +61,6 @@ const StatusByDimensionCardWidget = ({
         : transformToTestCaseStatusByDimension(dqByDimensionData),
     [dqByDimensionData]
   );
-
-  useEffect(() => {
-    let ignore = false;
-
-    const getStatusByDimension = async () => {
-      setIsDqByDimensionLoading(true);
-      try {
-        const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
-        const { data: noDimensionData } =
-          await fetchTestCaseSummaryByNoDimension(chartFilter);
-
-        if (!ignore) {
-          setDqByDimensionData([...data, ...noDimensionData]);
-        }
-      } catch {
-        if (!ignore) {
-          setDqByDimensionData(undefined);
-        }
-      } finally {
-        if (!ignore) {
-          setIsDqByDimensionLoading(false);
-        }
-      }
-    };
-
-    getStatusByDimension();
-
-    return () => {
-      ignore = true;
-    };
-  }, [chartFilter]);
 
   return (
     <div className="tw:@container">
@@ -97,12 +77,15 @@ const StatusByDimensionCardWidget = ({
             isLoading={isDqByDimensionLoading}
             key={dimension.title}
             redirectPath={{
+              // Preserve the complete dashboard slice, including its date range,
+              // and narrow only the clicked card to this dimension.
+              ...getTestCaseListPath({
+                ...chartFilter,
+                dataQualityDimension: dimension.title,
+              }),
               pathname: observabilityRouterClassBase.getDataQualityPagePath(
                 DataQualityPageTabs.TEST_CASES
               ),
-              search: QueryString.stringify({
-                dataQualityDimension: dimension.title,
-              }),
             }}
             statusData={dimension}
           />

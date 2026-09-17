@@ -13,8 +13,9 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { FeedbackType } from '../../../generated/entity/feed/thread';
+import { FeedbackType } from '../../../generated/type/recognizerFeedback';
 import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
+import { Task } from '../../../rest/tasksAPI';
 import FeedbackApprovalTask from './FeedbackApprovalTask';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -90,20 +91,25 @@ jest.mock('../../../utils/RouterUtils', () => ({
     .mockReturnValue('/table/sample_data.ecommerce_db.shopify.dim.shop'),
 }));
 
+jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () => ({
+  __esModule: true,
+  default: ({
+    displayName,
+    userName,
+    children,
+  }: {
+    displayName?: string;
+    userName?: string;
+    children?: ReactNode;
+  }) => <span>{displayName || userName || children}</span>,
+}));
+
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );
 
-const baseTask = {
-  ...MOCK_TASK_RECOGNIZER_FEEDBACK,
-  payload: {
-    feedback: MOCK_TASK_RECOGNIZER_FEEDBACK.feedback,
-    recognizer: MOCK_TASK_RECOGNIZER_FEEDBACK.recognizer,
-  },
-} as any;
-
 const mockProps = {
-  task: baseTask,
+  task: MOCK_TASK_RECOGNIZER_FEEDBACK,
 };
 
 describe('FeedbackApprovalTask', () => {
@@ -192,7 +198,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.IncorrectClassification,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithIncorrectClassification} />, {
       wrapper: Wrapper,
@@ -213,7 +219,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.OverlyBroad,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithOverlyBroad} />, {
       wrapper: Wrapper,
@@ -234,7 +240,7 @@ describe('FeedbackApprovalTask', () => {
           feedbackType: FeedbackType.ContextSpecific,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithContextSpecific} />, {
       wrapper: Wrapper,
@@ -255,7 +261,7 @@ describe('FeedbackApprovalTask', () => {
           userComments: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutComments} />, {
       wrapper: Wrapper,
@@ -274,7 +280,7 @@ describe('FeedbackApprovalTask', () => {
           createdBy: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedBy} />, {
       wrapper: Wrapper,
@@ -304,7 +310,7 @@ describe('FeedbackApprovalTask', () => {
           createdAt: undefined,
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedAt} />, {
       wrapper: Wrapper,
@@ -328,7 +334,7 @@ describe('FeedbackApprovalTask', () => {
           },
         },
       },
-    } as any;
+    } as unknown as Task;
 
     render(<FeedbackApprovalTask task={taskWithoutDisplayName} />, {
       wrapper: Wrapper,

@@ -42,13 +42,13 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
         </p>
         <hr className="tw:border-primary tw:my-2 tw:border-dashed" />
         <div className="tw:flex tw:flex-col tw:gap-1">
-          {payloadValue.map((entry, index) => {
+          {payloadValue.map((entry) => {
             const value = entry.value;
 
             return (
               <div
                 className="tw:flex tw:items-center tw:justify-between tw:gap-6 tw:pb-1 tw:text-sm"
-                key={`item-${index}`}>
+                key={`item-${entry.name ?? entry.dataKey}`}>
                 <span className="tw:flex tw:items-center">
                   <Surface
                     className="tw:mr-2"

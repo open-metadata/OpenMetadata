@@ -3,7 +3,6 @@
 import hashlib
 import re
 import traceback
-from typing import List, Optional, Tuple  # noqa: UP035
 
 import sqlalchemy.orm
 from pydantic import TypeAdapter
@@ -45,7 +44,7 @@ RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'(),]+)(?=\s|;|$)"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
@@ -55,13 +54,59 @@ def sha256_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-cache = LRUCache(LRU_CACHE_SIZE)
+_cache = LRUCache(LRU_CACHE_SIZE)
 
 
-@cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
-def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
-    """Parse snowflake queries to extract the identifiers"""
-    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+def _normalize_dml_sql(query: str) -> str:
+    """Normalize a SQL query before DML pattern matching.
+
+    Four-pass process:
+    1. Replace /* ... */ block comments with a single space so they act as a
+       token separator but do not expose their body to the regex.
+    2. Strip -- single-line comments (remove to end of line, leave the newline).
+    3. Strip leading/trailing whitespace so re.match() can find the DML keyword
+       at position 0.
+    4. Collapse whitespace after a dot so qualified names split by a block
+       comment are rejoined.
+
+    This prevents comment bodies (e.g. commented-out SQL snippets) from being
+    mistaken for actual DML operations.
+
+    Note: the comment-stripping regexes operate on the raw text and will
+    corrupt string literals that happen to contain \"--\" or \"/*\" sequences
+    (e.g. ``INSERT INTO t SELECT 'a--b'``). This is acceptable for DML-target
+    extraction because the corruption would only affect parts of the query
+    after the table identifier, which the caller does not use.  Do not reuse
+    this function for any purpose that requires preserving string literal
+    contents.
+    """
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    query = re.sub(r"--[^\n]*", "", query)
+    query = query.strip()
+    # Clean up whitespace inserted by block-comment removal inside qualified names,
+    # e.g. "my_schema./*c*/my_table" → "my_schema. my_table" → "my_schema.my_table"
+    return re.sub(r"\.\s+", ".", query)
+
+
+def _parse_query(query: str | None) -> str | None:
+    """Parse snowflake queries to extract the identifiers.
+
+    The query is first normalized (block comments, single-line comments, and
+    leading whitespace removed) so that re.match() can reliably find the DML
+    keyword at position 0 without being confused by commented-out SQL in the
+    query body.
+
+    Returns ``None`` if *query* is ``None`` or empty, or if the query is not a
+    recognized DML statement.
+    """
+    if not query:
+        return None
+    return _parse_cached(_normalize_dml_sql(query))
+
+
+@_cache.wrap(key_func=sha256_hash)
+def _parse_cached(normalized: str) -> str | None:
+    match = re.match(QUERY_PATTERN, normalized, re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
@@ -72,7 +117,9 @@ def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
         if internal_identifier:
             return internal_identifier
 
-        return identifier  # noqa: TRY300
+        # Anchored at the end so a quoted identifier containing parens ("my(table)")
+        # survives; the closing paren is optional as QUERY_PATTERN may stop mid-list.
+        return re.sub(r"\([^()]*\)?$", "", identifier)
     except (IndexError, AttributeError):
         logger.debug("Could not find identifier in query. Skipping row.")
         return None
@@ -130,9 +177,9 @@ class SnowflakeTableResovler:
     def resolve_implicit_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],  # noqa: UP045
+        context_schema: str | None,
         table_name: str,
-    ) -> Tuple[str, str, str]:  # noqa: UP006
+    ) -> tuple[str, str, str]:
         """Resolve the fully qualified name of the table from snowflake based on the following logic:
         1. If the schema is provided:
             a. search for the table in the schema
@@ -166,9 +213,9 @@ class SnowflakeTableResovler:
     def resolve_snowflake_fqn(
         self,
         context_database: str,
-        context_schema: Optional[str],  # noqa: UP045
+        context_schema: str | None,
         identifier: str,
-    ) -> Tuple[Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
+    ) -> tuple[str | None, str | None, str | None]:
         """Get query identifiers from the query text. If the schema is not provided in the query, we'll look for
         the table under "PUBLIC" in Snowflake.
         Database can be retrieved from the query or the query context.
@@ -233,7 +280,7 @@ class SnowflakeTableResovler:
 def get_snowflake_system_queries(
     query_log_entry: SnowflakeQueryLogEntry,
     resolver: SnowflakeTableResovler,
-) -> Optional[SnowflakeQueryResult]:  # noqa: UP045
+) -> SnowflakeQueryResult | None:
     """
     Run a regex lookup on the query to identify which operation ran against the table.
 
@@ -312,7 +359,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         """Check if the table is a dynamic table"""
         return self.table_entity.tableType == TableType.Dynamic
 
-    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_inserts(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_inserted", DmlOperationType.INSERT)
         return self.get_system_profile(
@@ -332,7 +379,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.INSERT,
         )
 
-    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_updates(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_updated", DmlOperationType.UPDATE)
         return self.get_system_profile(
@@ -352,7 +399,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             DmlOperationType.UPDATE,
         )
 
-    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
+    def get_deletes(self) -> list[SystemProfile]:
         if self.is_dynamic_table:
             return self._get_dynamic_table_system_profile("rows_deleted", DmlOperationType.DELETE)
         return self.get_system_profile(
@@ -373,7 +420,7 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
 
     def _get_dynamic_table_refresh_entries(
         self,
-    ) -> List[SnowflakeDynamicTableRefreshEntry]:  # noqa: UP006
+    ) -> list[SnowflakeDynamicTableRefreshEntry]:
         """Get dynamic table refresh history entries from cache or query"""
         return self.get_or_update_cache(
             self.table,
@@ -387,10 +434,10 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         self,
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:  # noqa: UP006
+    ) -> list[SystemProfile]:
         """Get system profile from dynamic table refresh history"""
         refresh_entries = self._get_dynamic_table_refresh_entries()
-        return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
+        return TypeAdapter(list[SystemProfile]).validate_python(
             [
                 {
                     "timestamp": datetime_to_timestamp(entry.start_time, milliseconds=True),
@@ -408,15 +455,15 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
         db: str,
         schema: str,
         table: str,
-        query_results: List[SnowflakeQueryResult],  # noqa: UP006
+        query_results: list[SnowflakeQueryResult],
         rows_affected_field: str,
         operation: DmlOperationType,
-    ) -> List[SystemProfile]:  # noqa: UP006
+    ) -> list[SystemProfile]:
         if not SnowflakeQueryResult.model_fields.get(rows_affected_field):
             raise ValueError(
                 f"rows_affected_field [{rows_affected_field}] is not a valid field in SnowflakeQueryResult."
             )
-        return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
+        return TypeAdapter(list[SystemProfile]).validate_python(
             [
                 {
                     "timestamp": datetime_to_timestamp(q.start_time, milliseconds=True),
@@ -439,11 +486,11 @@ class SnowflakeSystemMetricsComputer(SystemMetricsComputer, CacheProvider[Snowfl
             ]
         )
 
-    def get_queries_by_operation(self, table: str, operations: List[DatabaseDMLOperations]):  # noqa: UP006
+    def get_queries_by_operation(self, table: str, operations: list[DatabaseDMLOperations]):
         ops = [op.value for op in operations]
         yield from (query for query in self.get_queries(table) if query.query_type in ops)
 
-    def get_queries(self, table: str) -> List[SnowflakeQueryResult]:  # noqa: UP006
+    def get_queries(self, table: str) -> list[SnowflakeQueryResult]:
         queries = self.get_or_update_cache(
             table,
             SnowflakeQueryLogEntry.get_for_table,

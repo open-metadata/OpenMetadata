@@ -43,16 +43,21 @@ import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWid
 
 interface LineageNodeLabelProps {
   node: LineageNodeType;
+  onEntityClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
-const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+const EntityLabel = ({
+  node,
+  onEntityClick,
+}: Pick<LineageNodeLabelProps, 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
+        !node.deleted &&
         node.entityType === EntityType.TABLE &&
         (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
         (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
@@ -62,7 +67,7 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 
   const { childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
   const breadcrumbItems = useMemo(
@@ -79,6 +84,11 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
       })),
     [node]
   );
+  const serviceSubtitle = useMemo(
+    () => (breadcrumbItems.length === 0 ? node.serviceType : undefined),
+    [breadcrumbItems.length, node.serviceType]
+  );
+  const subtitle = node.lineageMapSubtitle ?? serviceSubtitle;
 
   const entityName = getEntityName(node);
 
@@ -103,18 +113,38 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             size="text-md"
             title={entityName}
             weight="medium">
-            {entityName}
+            {onEntityClick ? (
+              <Button
+                className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0 tw:truncate"
+                color="link-gray"
+                size="sm"
+                onClick={onEntityClick}>
+                {entityName}
+              </Button>
+            ) : (
+              entityName
+            )}
           </Typography>
 
-          <Breadcrumbs
-            autoCollapse
-            className="m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs"
-            items={breadcrumbItems}
-            size="xs"
-          />
+          {subtitle ? (
+            <Typography
+              as="span"
+              className="lineage-service-subtitle"
+              size="text-xs">
+              {subtitle}
+            </Typography>
+          ) : null}
+          {!subtitle && breadcrumbItems.length > 0 ? (
+            <Breadcrumbs
+              autoCollapse
+              className="m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs"
+              items={breadcrumbItems}
+              size="xs"
+            />
+          ) : null}
         </Box>
-        {!showDeletedIcon && showDbtIcon && (
+        {showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />
           </div>
@@ -197,7 +227,7 @@ const EntityFooter = ({
   const { isEditMode } = useLineageStore();
   const { childrenHeading, childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
   const childrenInfoDropdownLabel = useMemo(
@@ -279,6 +309,7 @@ const EntityFooter = ({
 
 const LineageNodeLabelV1 = ({
   node,
+  onEntityClick,
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
@@ -286,7 +317,7 @@ const LineageNodeLabelV1 = ({
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
-      <EntityLabel node={node} />
+      <EntityLabel node={node} onEntityClick={onEntityClick} />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
         isOnlyShowColumnsWithLineageFilterActive={

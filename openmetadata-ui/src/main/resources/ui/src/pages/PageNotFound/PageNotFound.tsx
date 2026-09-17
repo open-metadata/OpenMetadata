@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import notFoundImage from '../../assets/img/404-image.png';
 import notFoundNumber from '../../assets/svg/404-number.svg';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES } from '../../constants/constants';
 import './page-not-found.less';
 
@@ -24,6 +25,7 @@ const PageNotFound = () => {
 
   return (
     <Row className="page-not-found-container" data-testid="no-page-found">
+      <DocumentTitle title={t('label.page-not-found')} />
       <Col className="flex-center flex-column text-column" span={12}>
         <Typography.Text className="text-3xl font-bold text-grey-muted m-b-xs">
           {t('label.page-not-found')}

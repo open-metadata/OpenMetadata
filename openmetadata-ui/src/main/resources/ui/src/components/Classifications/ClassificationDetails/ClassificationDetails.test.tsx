@@ -11,29 +11,26 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import { getTags } from '../../../rest/tagAPI';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import ClassificationDetails from './ClassificationDetails';
 
 const mockNavigate = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Tooltip: ({
-    children,
-    title,
-  }: {
-    children: React.ReactNode;
-    title?: React.ReactNode;
-  }) => (
-    <div data-testid="tooltip" title={title as string}>
-      {children}
-    </div>
+  // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
+  // from here, and a wholesale mock leaves them undefined.
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Tooltip: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip">{children}</div>
   ),
   TooltipTrigger: ({
     children,
@@ -41,7 +38,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: React.ReactNode;
     className?: string;
-  }) => <button className={className}>{children}</button>,
+  }) => <span className={className}>{children}</span>,
   Badge: ({
     children,
     'data-testid': testId,
@@ -76,6 +73,51 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({ title }: { title?: string }) => (
     <div data-testid="empty-tags-placeholder">{title}</div>
   ),
+  Owner: ({ owners }: { owners?: unknown[] }) => (
+    <div data-testid="owner-label">{owners?.length ? 'Owner' : ''}</div>
+  ),
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+    profileUrl?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+    profileUrl: ref.profileUrl,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+      profileUrl?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+        profileUrl?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+        profileUrl: ref.profileUrl,
+      })
+    ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -85,6 +127,15 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'TestClassification' }),
+}));
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -107,6 +158,10 @@ jest.mock('../../../rest/tagAPI', () => ({
     data: [],
     paging: { total: 0 },
   }),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  postExactAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../common/EntityDescription/Description', () =>
@@ -158,7 +213,7 @@ jest.mock('../../Entity/EntityHeaderTitle/EntityHeaderTitle.component', () =>
   ))
 );
 
-jest.mock('../../common/Table/Table', () =>
+jest.mock('../../common/Table/TableV2', () =>
   jest.fn().mockImplementation(({ columns, dataSource, loading, locale }) => (
     <div data-testid="tags-table">
       {loading && <span data-testid="table-loading">Loading...</span>}
@@ -196,16 +251,23 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
+
 jest.mock('../../DataAssets/DomainLabelV2/DomainLabelV2', () => ({
   DomainLabelV2: jest
     .fn()
     .mockImplementation(() => <div data-testid="domain-label">Domain</div>),
-}));
-
-jest.mock('../../DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="owner-label">Owner</div>),
 }));
 
 jest.mock('../../common/Badge/Badge.component', () =>
@@ -255,6 +317,15 @@ const mockTags: Tag[] = [
 ];
 
 const mockGetTags = getTags as jest.MockedFunction<typeof getTags>;
+const mockPostExactAggregateFieldOptions =
+  postExactAggregateFieldOptions as jest.MockedFunction<
+    typeof postExactAggregateFieldOptions
+  >;
+
+const mockUsageAggregation = (buckets: { key: string; doc_count: number }[]) =>
+  ({
+    data: { aggregations: { 'sterms#tags.tagFQN': { buckets } } },
+  } as unknown as Awaited<ReturnType<typeof postExactAggregateFieldOptions>>);
 
 const defaultProps = {
   classificationPermissions: ENTITY_PERMISSIONS,
@@ -265,6 +336,7 @@ const defaultProps = {
   handleActionDeleteTag: jest.fn(),
   handleAddNewTagClick: jest.fn(),
   handleToggleDisable: jest.fn(),
+  handleEditClassificationClick: jest.fn(),
   deleteTags: undefined,
   isAddingTag: false,
   disableEditButton: false,
@@ -278,6 +350,93 @@ describe('ClassificationDetails', () => {
       data: mockTags,
       paging: { total: 2 },
     });
+    mockPostExactAggregateFieldOptions.mockResolvedValue(
+      mockUsageAggregation([{ key: 'testclassification.tag1', doc_count: 12 }])
+    );
+  });
+
+  it('should fetch every tag usage count on the page in a single aggregation', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledTimes(1)
+    );
+
+    expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledWith(
+      {
+        index: 'all',
+        fieldName: 'tags.tagFQN',
+        fieldValue: '(testclassification\\.tag1|testclassification\\.tag2)',
+        size: 2,
+        deleted: false,
+      },
+      expect.any(AbortSignal)
+    );
+  });
+
+  it('should not request usage counts for a classification with no tags', async () => {
+    mockGetTags.mockResolvedValueOnce({ data: [], paging: { total: 0 } });
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('empty-tags-placeholder')).toBeInTheDocument()
+    );
+
+    expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
+  });
+
+  it('should not request usage counts in version view', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} isVersionView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetTags).toHaveBeenCalled());
+
+    expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
+  });
+
+  it('should render the aggregated usage count against each tag', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('usage-count-Tag1')).toHaveTextContent('12')
+    );
+
+    // No bucket came back for Tag2, which means zero assets, not unknown
+    expect(screen.getByTestId('usage-count-Tag2')).toHaveTextContent('0');
+  });
+
+  it('should fall back to a placeholder when the aggregation fails', async () => {
+    mockPostExactAggregateFieldOptions.mockRejectedValueOnce(
+      new Error('search unavailable')
+    );
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('usage-count-Tag1')).toHaveTextContent('--')
+    );
+
+    expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
   });
 
   it('should display classification name, tags, and sidebar info', async () => {
@@ -347,7 +506,7 @@ describe('ClassificationDetails', () => {
     );
   });
 
-  it('should allow user to edit display name', async () => {
+  it('should trigger edit classification when edit option is clicked', async () => {
     render(
       <MemoryRouter>
         <ClassificationDetails {...defaultProps} />
@@ -355,14 +514,14 @@ describe('ClassificationDetails', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('edit-display-name')).toBeInTheDocument()
+      expect(
+        screen.getByTestId('edit-classification-button')
+      ).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByTestId('edit-display-name'));
+    fireEvent.click(screen.getByTestId('edit-classification-button'));
 
-    expect(defaultProps.handleUpdateClassification).toHaveBeenCalledWith(
-      expect.objectContaining({ displayName: 'New Display' })
-    );
+    expect(defaultProps.handleEditClassificationClick).toHaveBeenCalled();
   });
 
   it('should navigate to version history when version button is clicked', async () => {
@@ -421,6 +580,43 @@ describe('ClassificationDetails', () => {
     );
 
     expect(screen.getByTestId('disable-button')).toBeInTheDocument();
+  });
+
+  it('should hide import and export options for system classifications but show them for user classifications', async () => {
+    const systemClassification = {
+      ...mockClassification,
+      provider: ProviderType.System,
+    };
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <ClassificationDetails
+          {...defaultProps}
+          currentClassification={systemClassification}
+        />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('system-badge')).toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('export-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('export-button')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('import-button')).toBeInTheDocument();
   });
 
   it('should toggle classification enabled state when disable button is clicked', async () => {
@@ -488,6 +684,7 @@ describe('ClassificationDetails', () => {
       EditAll: false,
       Delete: false,
       EditDisplayName: false,
+      ViewAll: false,
     };
 
     render(

@@ -23,6 +23,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -35,6 +36,10 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  connectEdgeBetweenNodesViaAPI,
+  dismissLineageMapOnboarding,
+} from '../../utils/lineage';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -262,9 +267,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.getByTestId('insights').click();
       const response = await responsePromise;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton-active').first().waitFor({
-        state: 'detached',
-      });
+      await page
+        .getByTestId('total-data-assets-widget')
+        .locator('.ant-skeleton')
+        .first()
+        .waitFor({
+          state: 'detached',
+        });
 
       const databaseResponsePromise = page.waitForResponse((response) =>
         response.url().includes('/api/v1/databases')
@@ -343,13 +352,24 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Metrics page', () => {
+    const metrics: MetricClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
         const metric = new MetricClass();
         await metric.create(apiContext);
+        metrics.push(metric);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(metrics.map((metric) => metric.delete(apiContext)));
 
       await afterAction();
     });
@@ -360,6 +380,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Notification Alerts page', () => {
+    const notificationAlerts: AlertClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -382,7 +404,18 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         });
 
         await alert.create(apiContext);
+        notificationAlerts.push(alert);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(
+        notificationAlerts.map((alert) => alert.delete(apiContext))
+      );
 
       await afterAction();
     });
@@ -403,6 +436,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Observability Alerts page', () => {
+    const observabilityAlerts: AlertClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -425,7 +460,18 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         });
 
         await alert.create(apiContext);
+        observabilityAlerts.push(alert);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(
+        observabilityAlerts.map((alert) => alert.delete(apiContext))
+      );
 
       await afterAction();
     });
@@ -1007,6 +1053,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Pagination tests for Roles page', () => {
     let policy: PolicyClass;
+    const roles: RolesClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -1017,7 +1064,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         {
           name: 'pw-policy-rule',
           resources: ['all'],
-          operations: ['all'],
+          operations: ['All'],
           effect: 'allow',
         },
       ]);
@@ -1025,7 +1072,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Create Roles
       for (let i = 1; i <= 20; i++) {
         const role = new RolesClass();
-        await role.create(apiContext, [policy.responseData.id!]);
+        await role.create(apiContext, [policy.responseData.name]);
+        roles.push(role);
       }
 
       await afterAction();
@@ -1033,7 +1081,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+
+      // Roles reference the policy, so they have to go first.
+      await Promise.all(roles.map((role) => role.delete(apiContext)));
       await policy.delete(apiContext);
+
       await afterAction();
     });
 
@@ -1044,6 +1096,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Policies page', () => {
+    const policies: PolicyClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -1054,11 +1108,20 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           {
             name: `pw-policy-rule-${i}`,
             resources: ['all'],
-            operations: ['all'],
+            operations: ['All'],
             effect: 'allow',
           },
         ]);
+        policies.push(p);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(policies.map((policy) => policy.delete(apiContext)));
 
       await afterAction();
     });
@@ -1070,6 +1133,8 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Bots page', () => {
+    const bots: BotClass[] = [];
+
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -1077,7 +1142,16 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       for (let i = 1; i <= 20; i++) {
         const bot = new BotClass();
         await bot.create(apiContext);
+        bots.push(bot);
       }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all(bots.map((bot) => bot.delete(apiContext)));
 
       await afterAction();
     });
@@ -1108,6 +1182,14 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       pipeline.entity.tasks = tasks;
       await pipeline.create(apiContext);
       pipelineFqn = pipeline.entityResponseData.fullyQualifiedName;
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await pipeline.delete(apiContext);
 
       await afterAction();
     });
@@ -1246,6 +1328,171 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`
       );
       await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
+    });
+  });
+
+  test.describe('Pagination tests for Impact Analysis page', () => {
+    const sourceTable = new TableClass();
+    // 16 downstream tables exceed PAGE_SIZE_BASE (15), making two pages
+    // available when the URL carries ?pageSize=15.
+    const downstreamTables: TableClass[] = Array.from(
+      { length: 16 },
+      () => new TableClass()
+    );
+    let sourceFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all([
+        sourceTable.create(apiContext),
+        ...downstreamTables.map((t) => t.create(apiContext)),
+      ]);
+
+      sourceFqn = sourceTable.entityResponseData.fullyQualifiedName;
+
+      await Promise.all(
+        downstreamTables.map((t) =>
+          connectEdgeBetweenNodesViaAPI(
+            apiContext,
+            { id: sourceTable.entityResponseData.id, type: 'table' },
+            { id: t.entityResponseData.id, type: 'table' }
+          )
+        )
+      );
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all([
+        sourceTable.delete(apiContext),
+        ...downstreamTables.map((t) => t.delete(apiContext)),
+      ]);
+
+      await afterAction();
+    });
+
+    test('should reset Impact Analysis table pagination to page 1 on search change', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      // ?pageSize=15 makes showPagination=true (16 nodes > 15) and allows
+      // navigating to page 2 before applying the search.
+      const impactAnalysisUrl = `/table/${encodeURIComponent(
+        sourceFqn
+      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+
+      await page.goto(impactAnalysisUrl);
+      await page
+        .locator('[data-testid="lineage-card-table"]')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
+
+      // Navigate to page 2
+      const page2Response = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('next').click();
+      await page2Response;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeEnabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('2');
+
+      // Type in the search box — fix #32632: handleSearchValueChange calls
+      // handlePageChange(1) before setSearchValue so the fetch uses from=0.
+      const searchResetResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('searchbar').fill('pw-table');
+      await searchResetResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      // Pagination must have reset to page 1.
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
+    });
+
+    test('should reset Impact Analysis table pagination to page 1 on quick filter change', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const impactAnalysisUrl = `/table/${encodeURIComponent(
+        sourceFqn
+      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+
+      await page.goto(impactAnalysisUrl);
+      await page
+        .locator('[data-testid="lineage-card-table"]')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+      // Navigating straight to the lineage URL skips visitLineageTab, so the
+      // first-run onboarding modal is still up and its overlay swallows the
+      // pagination clicks below.
+      await dismissLineageMapOnboarding(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+
+      // Navigate to page 2
+      const page2Response = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('next').click();
+      await page2Response;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('2');
+
+      // Open quick filters and pick a service type — all 16 downstream tables
+      // share the same Mysql service, so results stay ≥15 after filtering.
+      // Fix #32632: handleQuickFiltersValueSelect calls onPageReset() which
+      // resets currentPage to 1 before the narrowed fetch is issued.
+      await page.getByTestId('filters-button').click();
+      await page.getByTestId('search-dropdown-Service Type').click();
+
+      // The option row's data-testid is the lowercased service-type key
+      // ('mysql'); the visible label is source-cased ('Mysql'), so match the
+      // stable testid rather than the label.
+      const mysqlOption = page
+        .getByTestId('drop-down-menu')
+        .getByTestId('mysql');
+      await expect(mysqlOption).toBeVisible();
+      await mysqlOption.click();
+
+      const filterResetResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          response.request().method() === 'GET'
+      );
+      await page.getByTestId('update-btn').click();
+      await filterResetResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      // Pagination must have reset to page 1.
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
     });
   });
 });

@@ -72,6 +72,47 @@ export interface UseEntityLogsResult {
   download: () => void;
 }
 
+type IngestionLogSource = ReturnType<typeof useIngestionLogSource>;
+
+const buildEntityLogsResult = ({
+  isApplicationType,
+  ingestion,
+  appLoading,
+  detailsLoading,
+  logs,
+  totalLines,
+  title,
+  progress,
+  isLive,
+  download,
+}: {
+  isApplicationType: boolean;
+  ingestion: IngestionLogSource;
+  appLoading: boolean;
+  detailsLoading: boolean;
+  logs: string;
+  totalLines: number;
+  title: string;
+  progress?: number;
+  isLive: boolean;
+  download: () => void;
+}): UseEntityLogsResult => ({
+  logs,
+  loading: isApplicationType ? appLoading : detailsLoading || ingestion.loading,
+  loadingMore: isApplicationType ? false : ingestion.loadingMore,
+  hasMore: isApplicationType ? false : ingestion.hasMore,
+  totalLines,
+  title,
+  downloading: Boolean(progress),
+  isLive,
+  isStreaming: ingestion.isStreaming,
+  streamHealth: ingestion.streamHealth,
+  streamTruncated: ingestion.streamTruncated,
+  streamError: ingestion.streamError,
+  loadMore: isApplicationType ? noop : ingestion.loadMore,
+  download,
+});
+
 export const useEntityLogs = ({
   logEntityType,
   fqn,
@@ -241,22 +282,16 @@ export const useEntityLogs = ({
     [logs]
   );
 
-  return {
-    logs,
-    loading: isApplicationType
-      ? appLoading
-      : detailsLoading || ingestion.loading,
-    loadingMore: isApplicationType ? false : ingestion.loadingMore,
-    hasMore: isApplicationType ? false : ingestion.hasMore,
-    totalLines,
-    title,
-    downloading: Boolean(progress),
-    isLive,
-    isStreaming: ingestion.isStreaming,
-    streamHealth: ingestion.streamHealth,
-    streamTruncated: ingestion.streamTruncated,
-    streamError: ingestion.streamError,
-    loadMore: isApplicationType ? noop : ingestion.loadMore,
+  return buildEntityLogsResult({
+    appLoading,
+    detailsLoading,
     download,
-  };
+    ingestion,
+    isApplicationType,
+    isLive,
+    logs,
+    progress,
+    title,
+    totalLines,
+  });
 };

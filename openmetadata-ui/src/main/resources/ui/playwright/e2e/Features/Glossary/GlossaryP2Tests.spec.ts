@@ -16,7 +16,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
@@ -49,9 +49,7 @@ test.describe('Glossary P2 Tests', () => {
 
       // Use name with underscores and hyphens
       await page.fill('[data-testid="name"]', specialName);
-      await page
-        .locator(descriptionBox)
-        .fill('Glossary with special characters');
+      await fillDescriptionBox(page, 'Glossary with special characters');
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
@@ -188,7 +186,7 @@ test.describe('Glossary P2 Tests', () => {
 
       const termName = `DraftTerm_${Date.now()}`;
       await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Test term for draft status');
+      await fillDescriptionBox(page, 'Test term for draft status');
 
       // Set up response listener before clicking save
       const termResponse = page.waitForResponse(

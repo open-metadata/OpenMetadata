@@ -101,7 +101,7 @@ public final class RdfTestUtils {
         entity.getName(),
         rdfType);
 
-    boolean exists = executeSparqlAsk(sparql);
+    boolean exists = awaitAsk(sparql);
 
     if (!exists) {
       logDebugInfo(entity, rdfType);
@@ -112,6 +112,22 @@ public final class RdfTestUtils {
         String.format(
             "Entity '%s' (FQN: %s) should exist in RDF as type %s",
             entity.getName(), entity.getFullyQualifiedName(), rdfType));
+  }
+
+  /**
+   * RDF projection writes run asynchronously after the database commit, so a single ASK races the
+   * projection queue. Poll until the statement appears or the bounded wait elapses.
+   */
+  private static boolean awaitAsk(final String sparql) {
+    try {
+      org.awaitility.Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofMillis(500))
+          .until(() -> executeSparqlAsk(sparql));
+      return true;
+    } catch (org.awaitility.core.ConditionTimeoutException e) {
+      return false;
+    }
   }
 
   /**
@@ -144,10 +160,11 @@ public final class RdfTestUtils {
     String sparql =
         String.format(
             "PREFIX om: <https://open-metadata.org/ontology/> "
+                + "PREFIX dct: <http://purl.org/dc/terms/> "
                 + "ASK { "
                 + "  GRAPH ?g { "
                 + "    ?entity om:fullyQualifiedName %s ; "
-                + "           om:version ?version . "
+                + "           dct:hasVersion ?version . "
                 + "  } "
                 + "}",
             escapeSparqlString(entity.getFullyQualifiedName()));

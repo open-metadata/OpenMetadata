@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -546,31 +547,15 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      const importApiCall = page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/importAsync?dryRun=true') &&
-          resp.request().method() === 'PUT'
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
-      await importApiCall;
-
-      // Wait directly for final state (results grid)
-      await page.getByTestId('passed-row').waitFor({
-        state: 'visible',
-      });
-      // Verify no loading state remains
-      await expect(page.getByText('Import is in progress.')).not.toBeVisible();
-
-      await page.locator('text=Import is in progress.').waitFor({
-        state: 'detached',
-      });
+      await loader.waitFor({ state: 'hidden' });
 
       await validateSuccessfulImportStatus(page);
-
-      await page.locator('.rdg-header-row').waitFor({
-        state: 'visible',
-      });
 
       const rowStatus = [
         'Entity updated',

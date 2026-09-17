@@ -67,7 +67,95 @@ describe('PipelineAction', () => {
     expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
   });
 
-  it('should not render PipelineActionsDropdown if both EditAll and delete permission is not present', async () => {
+  it('should render PipelineActionsDropdown if only Deploy permission is present', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Deploy: true,
+          }}
+          pipeline={{ ...mockPipelineActionsProps.pipeline, enabled: true }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
+  });
+
+  it('should render PipelineActionsDropdown if only Trigger permission is present', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Trigger: true,
+          }}
+          pipeline={{
+            ...mockPipelineActionsProps.pipeline,
+            deployed: true,
+            enabled: true,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.getByText('PipelineActionsDropdown')).toBeInTheDocument();
+  });
+
+  it('should not render PipelineActionsDropdown with only Deploy permission when pipeline is disabled', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Deploy: true,
+          }}
+          pipeline={{ ...mockPipelineActionsProps.pipeline, enabled: false }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.queryByText('PipelineActionsDropdown')).toBeNull();
+  });
+
+  it('should not render PipelineActionsDropdown with only Trigger permission when pipeline is not deployed', async () => {
+    await act(async () => {
+      render(
+        <PipelineActions
+          {...mockPipelineActionsProps}
+          ingestionPipelinePermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            Trigger: true,
+          }}
+          pipeline={{
+            ...mockPipelineActionsProps.pipeline,
+            deployed: false,
+            enabled: true,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(screen.queryByText('PipelineActionsDropdown')).toBeNull();
+  });
+
+  it('should not render PipelineActionsDropdown without an action permission', async () => {
     await act(async () => {
       render(
         <PipelineActions

@@ -56,7 +56,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
     test('Domain - Tier assign, update, and remove', async ({ page }) => {
       await domain.visitEntityPage(page);
       await addTierWidget(page, 'Tier1', domain.endpoint);
-      await addTierWidget(page, 'Tier3', domain.endpoint);
+      await addTierWidget(page, 'Tier3', domain.endpoint, true);
       await removeTierFromWidget(page, domain.endpoint);
     });
 
@@ -65,7 +65,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
     }) => {
       await domain.visitEntityPage(page);
       await addCertificationWidget(page, certTag1, domain.endpoint);
-      await addCertificationWidget(page, certTag2, domain.endpoint);
+      await addCertificationWidget(page, certTag2, domain.endpoint, true);
       await removeCertificationFromWidget(page, domain.endpoint);
     });
 
@@ -78,7 +78,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
     test('DataProduct - Tier assign, update, and remove', async ({ page }) => {
       await dataProduct.visitEntityPage(page);
       await addTierWidget(page, 'Tier1', dataProduct.endpoint);
-      await addTierWidget(page, 'Tier3', dataProduct.endpoint);
+      await addTierWidget(page, 'Tier3', dataProduct.endpoint, true);
       await removeTierFromWidget(page, dataProduct.endpoint);
     });
 
@@ -87,7 +87,7 @@ test.describe('Domain & DataProduct - Tier, Certification, and Voting', () => {
     }) => {
       await dataProduct.visitEntityPage(page);
       await addCertificationWidget(page, certTag1, dataProduct.endpoint);
-      await addCertificationWidget(page, certTag2, dataProduct.endpoint);
+      await addCertificationWidget(page, certTag2, dataProduct.endpoint, true);
       await removeCertificationFromWidget(page, dataProduct.endpoint);
     });
 

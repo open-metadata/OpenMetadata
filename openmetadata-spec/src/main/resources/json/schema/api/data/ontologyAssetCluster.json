@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyAssetCluster.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyAssetCluster",
+  "description": "A glossary term and its bounded asset preview for an ontology data graph.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyAssetCluster",
+  "properties": {
+    "term": {
+      "description": "Glossary term represented by the cluster.",
+      "$ref": "glossaryTermRelationGraphNode.json"
+    },
+    "assetCount": {
+      "description": "Total number of assets tagged with the term.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "assets": {
+      "description": "Bounded first page of asset references tagged with the term.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["term", "assetCount", "assets"],
+  "additionalProperties": false
+}

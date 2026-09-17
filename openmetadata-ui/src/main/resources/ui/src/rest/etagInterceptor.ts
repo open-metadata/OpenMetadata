@@ -141,6 +141,62 @@ type ConfigWithSnapshot = InternalAxiosRequestConfig & {
   [ETAG_REQUEST_SNAPSHOT]?: CachedEntry;
 };
 
+// Handle a 304 response by resolving the cached body that backs it — either the live cache
+// entry (re-populating LRU recency) or the per-request snapshot stashed at request time. The
+// snapshot covers two races: (1) LRU eviction pushed the entry out between request and
+// response, and (2) a concurrent mutation (or logout) cleared the entire cache. Either way the
+// cached body is still on `response.config` and we can hand it back as a 200.
+function handle304Response(
+  response: AxiosResponse,
+  key: string
+): AxiosResponse {
+  const liveEntry = etagCache.get(key);
+  const entry =
+    liveEntry ?? (response.config as ConfigWithSnapshot)[ETAG_REQUEST_SNAPSHOT];
+  if (!entry) {
+    // 304 with no cached body and no stashed snapshot — would only happen if the request
+    // interceptor didn't run (e.g. caller built the If-None-Match header directly). Bubble
+    // through; better than fabricating a fake 200.
+    return response;
+  }
+
+  // Only touch (re-insert) when the entry came from the live cache. If we're using the
+  // snapshot fallback the cache was intentionally cleared (mutation invalidation or logout),
+  // and re-inserting would resurrect a stale entry — the next GET for the same URL would hit
+  // it, attach If-None-Match, get 304 from a server that may have changed state in a
+  // non-version-bumping way (followers/votes), and serve the same stale body again. Returning
+  // the snapshot one-shot is fine; persisting it is not.
+  if (liveEntry) {
+    touch(key, entry);
+  }
+
+  // Deep-clone the cached body before handing it back. Consumers (UI components, utilities,
+  // edit handlers) sometimes mutate the entity object they receive — adding local UI state,
+  // normalising fields, stripping properties — and a shared reference would let those
+  // mutations leak back into the cache. We also clone on cache write (see
+  // `cacheSuccessfulResponse`), so this read-side clone is a defense-in-depth measure in case a
+  // future caller hands us back the same reference we stored.
+  return {
+    ...response,
+    status: 200,
+    statusText: 'OK (from ETag cache)',
+    data: structuredClone(entry.data),
+  };
+}
+
+// Clone on write so the cached entry is decoupled from the live response object the caller is
+// about to consume. Without this, a caller that mutates `response.data` (common pattern:
+// stamping UI-local fields onto an entity) would corrupt the cache, and the next 304 would
+// hand the next caller a clone of the already-mutated object. structuredClone is
+// sub-millisecond for typical OpenMetadata entities (5-50 KB JSON) and is available in all
+// supported browsers (Chrome 98+, Firefox 94+, Safari 15.4+).
+function cacheSuccessfulResponse(response: AxiosResponse, key: string): void {
+  const etag = readEtagHeader(response);
+  if (etag && response.data !== undefined) {
+    touch(key, { etag, data: structuredClone(response.data) });
+  }
+}
+
 /**
  * Wire ETag handling into the axios client. Idempotent — calling twice on the same client is
  * a no-op (guarded via a symbol marker on the instance). Callers that re-init axios from
@@ -220,58 +276,11 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
     const key = buildKey(response.config);
 
     if (response.status === 304) {
-      // Prefer the live cache entry (re-populating LRU recency) but fall back to the
-      // per-request snapshot stashed at request time. The snapshot covers two races:
-      // (1) LRU eviction pushed the entry out between request and response, and
-      // (2) a concurrent mutation (or logout) cleared the entire cache. Either way the
-      // cached body is still on `response.config` and we can hand it back as a 200.
-      const liveEntry = etagCache.get(key);
-      const entry =
-        liveEntry ??
-        (response.config as ConfigWithSnapshot)[ETAG_REQUEST_SNAPSHOT];
-      if (entry) {
-        // Only touch (re-insert) when the entry came from the live cache. If we're using
-        // the snapshot fallback the cache was intentionally cleared (mutation invalidation
-        // or logout), and re-inserting would resurrect a stale entry — the next GET for
-        // the same URL would hit it, attach If-None-Match, get 304 from a server that may
-        // have changed state in a non-version-bumping way (followers/votes), and serve the
-        // same stale body again. Returning the snapshot one-shot is fine; persisting it
-        // is not.
-        if (liveEntry) {
-          touch(key, entry);
-        }
-
-        // Deep-clone the cached body before handing it back. Consumers (UI components,
-        // utilities, edit handlers) sometimes mutate the entity object they receive — adding
-        // local UI state, normalising fields, stripping properties — and a shared reference
-        // would let those mutations leak back into the cache. We also clone on cache write
-        // (see the 200 branch), so this read-side clone is a defense-in-depth measure in
-        // case a future caller hands us back the same reference we stored.
-        return {
-          ...response,
-          status: 200,
-          statusText: 'OK (from ETag cache)',
-          data: structuredClone(entry.data),
-        };
-      }
-
-      // 304 with no cached body and no stashed snapshot — would only happen if the request
-      // interceptor didn't run (e.g. caller built the If-None-Match header directly). Bubble
-      // through; better than fabricating a fake 200.
-      return response;
+      return handle304Response(response, key);
     }
 
     if (response.status === 200) {
-      const etag = readEtagHeader(response);
-      if (etag && response.data !== undefined) {
-        // Clone on write so the cached entry is decoupled from the live response object the
-        // caller is about to consume. Without this, a caller that mutates `response.data`
-        // (common pattern: stamping UI-local fields onto an entity) would corrupt the cache,
-        // and the next 304 would hand the next caller a clone of the already-mutated object.
-        // structuredClone is sub-millisecond for typical OpenMetadata entities (5-50 KB JSON)
-        // and is available in all supported browsers (Chrome 98+, Firefox 94+, Safari 15.4+).
-        touch(key, { etag, data: structuredClone(response.data) });
-      }
+      cacheSuccessfulResponse(response, key);
     }
 
     return response;

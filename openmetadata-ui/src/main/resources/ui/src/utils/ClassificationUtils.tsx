@@ -16,19 +16,20 @@ import {
   Tooltip as UTTooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { TagUsageCount } from '../components/Classifications/TagUsageCount/TagUsageCount.component';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getDeleteButtonData } from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
@@ -87,11 +88,11 @@ export const getCommonColumns = (options?: {
       width: 200,
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
-          {record.style?.iconURL &&
-            renderIcon(record.style.iconURL, {
-              size: 18,
-              className: 'flex-shrink-0',
-            })}
+          <Icon
+            className="tw:shrink-0"
+            iconValue={record.style?.iconURL}
+            size={18}
+          />
           <Link
             className="m-b-0"
             data-testid={record.name}
@@ -126,6 +127,8 @@ export const getTagsTableColumn = ({
   isVersionView,
   disableEditButton,
   handleToggleDisable,
+  usageCounts,
+  isUsageCountsLoading,
 }: {
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
@@ -135,6 +138,8 @@ export const getTagsTableColumn = ({
   handleActionDeleteTag?: (record: Tag) => void;
   disableEditButton?: boolean;
   handleToggleDisable?: (tag: Tag) => void;
+  usageCounts?: Record<string, number>;
+  isUsageCountsLoading?: boolean;
 }): ColumnsType<Tag> => {
   const columns: ColumnsType<Tag> = getCommonColumns({
     handleToggleDisable,
@@ -143,6 +148,27 @@ export const getTagsTableColumn = ({
   });
 
   if (!isVersionView) {
+    // Sits right after the display name, ahead of the much wider description
+    const displayNameIndex = columns.findIndex(
+      ({ key }) => key === 'displayName'
+    );
+    const usageIndex =
+      displayNameIndex === -1 ? columns.length : displayNameIndex + 1;
+
+    columns.splice(usageIndex, 0, {
+      title: t('label.usage'),
+      key: 'usageCount',
+      width: 120,
+      align: 'center',
+      render: (_, record: Tag) => (
+        <TagUsageCount
+          isLoading={isUsageCountsLoading}
+          record={record}
+          usageCounts={usageCounts}
+        />
+      ),
+    });
+
     columns.push({
       title: t('label.action-plural'),
       dataIndex: 'actions',
@@ -219,8 +245,28 @@ export const getTagsTableColumn = ({
 export const getClassificationExtraDropdownContent = (
   showDisableOption: boolean,
   isClassificationDisabled: boolean,
-  handleEnableDisableClassificationClick: () => void
+  handleEnableDisableClassificationClick: () => void,
+  showEditOption = false,
+  handleEditClassificationClick: () => void = () => undefined
 ) => [
+  ...(showEditOption
+    ? [
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('label.update-entity', {
+                entity: t('label.classification'),
+              })}
+              icon={EditIcon}
+              id="edit-classification"
+              name={t('label.edit')}
+            />
+          ),
+          key: 'edit-classification-button',
+          onClick: handleEditClassificationClick,
+        },
+      ]
+    : []),
   ...(showDisableOption
     ? [
         {

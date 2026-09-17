@@ -17,20 +17,21 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Chart } from '../../../generated/entity/data/chart';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreChart } from '../../../rest/chartsAPI';
 import chartDetailsClassBase from '../../../utils/ChartDetailsClassBase';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -42,10 +43,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import {
   updateCertificationTag,
@@ -85,9 +83,6 @@ const ChartDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const [chartPermissions, setChartPermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const { followers = [], deleted } = useMemo(() => {
     return chartDetails;
@@ -99,29 +94,31 @@ const ChartDetails = ({
     };
   }, [followers, currentUser]);
 
-  const { getEntityPermission } = usePermissionProvider();
+  // Fetch-owner, by id (old code used getEntityPermission — id-based — not
+  // getEntityPermissionByFqn), matching the `{ id }` identifier form.
+  const {
+    permissions: chartPermissions,
+    error: permissionsError,
+    canEditAll: editAllPermission,
+    canEditLineage: editLineagePermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.CHART,
+    { id: chartDetails.id },
+    { deleted: Boolean(deleted), enabled: Boolean(chartDetails.id) }
+  );
 
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.CHART,
-        chartDetails.id
-      );
-      setChartPermissions(entityPermission);
-    } catch {
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.chart'),
         })
       );
     }
-  }, [chartDetails.id, getEntityPermission, setChartPermissions]);
-
-  useEffect(() => {
-    if (chartDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [chartDetails.id]);
+  }, [permissionsError]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -199,6 +196,8 @@ const ChartDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -206,6 +205,8 @@ const ChartDetails = ({
           entity: t('label.chart'),
         })
       );
+
+      return false;
     }
   };
 
@@ -214,31 +215,15 @@ const ChartDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
-  );
-
-  const {
-    editAllPermission,
-    editLineagePermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editAllPermission: chartPermissions.EditAll && !deleted,
-      editLineagePermission:
-        (chartPermissions.EditAll || chartPermissions.EditLineage) && !deleted,
-      editCustomAttributePermission:
-        (chartPermissions.EditAll || chartPermissions.EditCustomFields) &&
-        !deleted,
-      viewAllPermission: chartPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        chartPermissions,
-        Operation.ViewCustomFields
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DASHBOARD_SERVICES,
+          getPartialNameFromTableFQN(decodedChartFQN, [FqnPart.Service])
+        )
       ),
-    }),
-    [chartPermissions, deleted]
+    [decodedChartFQN, navigate]
   );
 
   const tabs = useMemo(() => {
@@ -306,7 +291,7 @@ const ChartDetails = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(chartDetails)} title="Table details">
+    <PageLayoutV1 pageTitle={getEntityName(chartDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader

@@ -615,4 +615,29 @@ describe('Test PropertyValue Component', () => {
       await screen.findByTestId('entity-reference-select')
     ).toBeInTheDocument();
   });
+
+  it('Should render edit icon alongside toggle when markdown property overflows', async () => {
+    // Regression test for #32477: edit icon must not be hidden inside the overflow container
+    const extension = { yNumber: 'some markdown value' };
+    const propertyType = {
+      ...mockData.property.propertyType,
+      name: 'markdown',
+    };
+    render(
+      <PropertyValue
+        {...mockData}
+        extension={extension}
+        property={{ ...mockData.property, propertyType: propertyType }}
+      />
+    );
+
+    // Both edit icon and expand toggle should be accessible when content overflows
+    const editIcon = await screen.findByTestId('edit-icon');
+    const toggleBtn = await screen.findByTestId(
+      `toggle-${mockData.property.name}`
+    );
+
+    expect(editIcon).toBeInTheDocument();
+    expect(toggleBtn).toBeInTheDocument();
+  });
 });

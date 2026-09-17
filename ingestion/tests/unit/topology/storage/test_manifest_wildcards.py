@@ -18,8 +18,6 @@ Covers the ``expand_entry`` / ``expand_entries`` helpers on
 pass through unchanged for backwards compatibility.
 """
 
-from typing import List, Tuple  # noqa: UP035
-
 import pytest
 
 from metadata.generated.schema.entity.data.table import DataType
@@ -39,10 +37,10 @@ class _Stub:
     without needing to instantiate the full Source, which requires a
     live workflow config and connection."""
 
-    def __init__(self, keys: List[Tuple[str, int]]):  # noqa: UP006
+    def __init__(self, keys: list[tuple[str, int]]):
         self._keys = keys
 
-    def list_keys(self, bucket, prefix):  # noqa: ARG002, RUF100
+    def list_keys(self, bucket, prefix):
         for key, size in self._keys:
             if key.startswith(prefix):
                 yield key, size
@@ -51,7 +49,7 @@ class _Stub:
     expand_entries = StorageServiceSource.expand_entries
 
 
-def _names(entries: List[MetadataEntry]) -> List[str]:  # noqa: UP006
+def _names(entries: list[MetadataEntry]) -> list[str]:
     return [e.dataPath for e in entries]
 
 

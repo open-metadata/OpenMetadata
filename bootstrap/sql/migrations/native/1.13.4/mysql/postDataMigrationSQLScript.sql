@@ -42,3 +42,10 @@ WHERE configType = 'workflowSettings'
   AND JSON_EXTRACT(json, '$.executorConfiguration') IS NOT NULL
   AND (CAST(JSON_EXTRACT(json, '$.executorConfiguration.asyncJobAcquisitionInterval') AS UNSIGNED) > 10000
     OR CAST(JSON_EXTRACT(json, '$.executorConfiguration.timerJobAcquisitionInterval') AS UNSIGNED) > 5000);
+
+-- Drop data product ports pointing at a column ('tableColumn' has no repository, so it 500s
+-- portsView). relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
+DELETE FROM entity_relationship
+WHERE fromEntity = 'dataProduct'
+  AND toEntity = 'tableColumn'
+  AND relation IN (23, 24);

@@ -404,8 +404,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../common/IconButtons/EditIconButton', () => ({
@@ -476,13 +477,14 @@ describe('TaskTabNew Component', () => {
         teams: [],
       },
     });
-    getResolvedTaskFormSchema.mockImplementation((taskType, taskCategory) =>
-      Promise.resolve(
-        actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
-          taskType,
-          taskCategory
+    getResolvedTaskFormSchema.mockImplementation(
+      (taskType: TaskEntityType, taskCategory: TaskCategory) =>
+        Promise.resolve(
+          actualTaskFormSchemaUtils.getDefaultTaskFormSchema(
+            taskType,
+            taskCategory
+          )
         )
-      )
     );
     isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
