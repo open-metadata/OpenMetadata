@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,8 +25,8 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.opentest4j.TestAbortedException;
+import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -64,8 +65,8 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * documents (Assigned and Resolved), because a mapping that only ever sees one branch can declare a
  * shape the other branch can never produce and nothing notices.
  */
-@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Slf4j
 class SearchConsumerFieldBehaviorIT {
 
   // Discovered from the schema-defined language registry (IndexMappingLanguage) that the loader
@@ -122,22 +123,22 @@ class SearchConsumerFieldBehaviorIT {
           "jp", new String[] {"東京タワーの売上", "東京"},
           "zh", new String[] {"北京大学的销售报表", "销售"});
 
-  @Container
-  static OpensearchContainer<?> opensearch =
-      new OpensearchContainer<>(
-              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
-          .withStartupTimeout(Duration.ofMinutes(5))
-          .withEnv("discovery.type", "single-node")
-          .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
-          .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-          .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-          .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
+  private static final String OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
+
+  /**
+   * Started by hand rather than through {@code @Container} so that a failure to build the
+   * plugin image can abort this suite instead of erroring it. The image is built in a field
+   * initializer under {@code @Container}, and a throw there surfaces as
+   * {@code ExceptionInInitializerError} before any assumption can run.
+   */
+  static OpensearchContainer<?> opensearch;
 
   private OpenSearchClient openSearchClient;
   private ObjectMapper mapper;
 
   @BeforeAll
   void setUp() throws Exception {
+    opensearch = startOpenSearchWithAnalysisPlugins();
     HttpHost httpHost = new HttpHost("http", opensearch.getHost(), opensearch.getMappedPort(9200));
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
@@ -175,6 +176,49 @@ class SearchConsumerFieldBehaviorIT {
     if (openSearchClient != null) {
       openSearchClient._transport().close();
     }
+    if (opensearch != null) {
+      opensearch.stop();
+    }
+  }
+
+  /**
+   * {@code analysis-ik} is third-party and ships only from {@code release.infinilabs.com}. When
+   * that host degrades, the archive cannot be fetched inside curl's budget and the image never
+   * builds -- a failure with nothing to do with the code under test. Because this suite brings its
+   * own OpenSearch container, it runs in every integration lane regardless of the lane's search
+   * backend, so an unreachable CDN otherwise fails all of them at once.
+   *
+   * <p>Only the image build is treated as a reason to skip. Starting the container, and everything
+   * after it, still fails loudly: those are the outcomes this suite exists to report.
+   */
+  private static OpensearchContainer<?> startOpenSearchWithAnalysisPlugins() {
+    DockerImageName image;
+    try {
+      image = SearchTestImages.openSearchWithAnalysisPlugins(OPENSEARCH_IMAGE);
+    } catch (RuntimeException e) {
+      // An aborted @BeforeAll reports as "Tests run: 0" with no reason attached, so the only
+      // record that this suite stopped running is what it logs here. Keep the marker greppable.
+      log.error(
+          "SKIPPED-ANALYSIS-PLUGIN-IMAGE: multi-language search coverage did not run because the "
+              + "OpenSearch analysis-plugin image could not be built",
+          e);
+      throw new TestAbortedException(
+          "Skipping the multi-language search suite: the OpenSearch analysis-plugin image could "
+              + "not be built. analysis-ik is fetched from release.infinilabs.com, which is "
+              + "outside this repository's control. Cause: "
+              + e.getMessage(),
+          e);
+    }
+    OpensearchContainer<?> container =
+        new OpensearchContainer<>(image)
+            .withStartupTimeout(Duration.ofMinutes(5))
+            .withEnv("discovery.type", "single-node")
+            .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
+            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
+            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
+    container.start();
+    return container;
   }
 
   @Test
