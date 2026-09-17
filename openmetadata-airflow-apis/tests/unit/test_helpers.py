@@ -12,7 +12,19 @@
 Test helper functions
 """
 
-from openmetadata_managed_apis.api.utils import clean_dag_id, sanitize_task_id
+import multiprocessing
+import sys
+import threading
+from unittest.mock import patch
+
+import filelock  # noqa: F401  installs the os.fork audit hook the API server runs under
+
+from openmetadata_managed_apis.api.utils import (
+    ScanDagsTask,
+    clean_dag_id,
+    sanitize_task_id,
+    scan_dags_job_background,
+)
 from openmetadata_managed_apis.workflows.ingestion.common import clean_name_tag
 
 
@@ -70,3 +82,37 @@ def test_sanitize_task_id():
     assert sanitize_task_id("task|pipe") == "task_pipe"
     assert sanitize_task_id("task&background") == "task_background"
     assert sanitize_task_id("task$variable") == "task_variable"
+
+
+def test_concurrent_dag_scans_can_fork():
+    """
+    A bulk re-deploy runs one deploy per API-server thread, and each deploy forks a DAG scan.
+    Two of those forks overlapping must not fail the deploy that lost the race (#33514).
+    """
+    errors = []
+
+    def deploy(barrier):
+        barrier.wait()
+        try:
+            scan_dags_job_background()
+        except RuntimeError as exc:
+            errors.append(exc)
+
+    switch_interval = sys.getswitchinterval()
+    # Switch threads as often as possible so the forks overlap on every round.
+    sys.setswitchinterval(1e-6)
+    try:
+        with patch.object(ScanDagsTask, "run", lambda self: None):
+            for _ in range(50):
+                barrier = threading.Barrier(2)
+                threads = [threading.Thread(target=deploy, args=(barrier,)) for _ in range(2)]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+    finally:
+        sys.setswitchinterval(switch_interval)
+        for child in multiprocessing.active_children():
+            child.join()
+
+    assert errors == []
