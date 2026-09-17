@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>2.0.2</version>
+  <version>2.0.3</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -1301,7 +1301,12 @@
         <configuration>
           <publishingServerId>central</publishingServerId>
           <autoPublish>true</autoPublish>
-          <waitUntil>published</waitUntil>
+          <!-- Return once Sonatype has validated the bundle; autoPublish still
+               publishes it afterwards. Waiting for the terminal 'published' state
+               polls Central's async publish queue, which is slow on busy days and
+               times out (~30m) as a false BUILD FAILURE even though the upload and
+               validation succeeded (e.g. the 1.13.6 release). -->
+          <waitUntil>validated</waitUntil>
         </configuration>
       </plugin>
     </plugins>
