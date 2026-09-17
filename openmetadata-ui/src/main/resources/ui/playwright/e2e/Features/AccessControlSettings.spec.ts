@@ -169,7 +169,8 @@ test.describe(
         await test.step('Submit and verify via toast', async () => {
           const responsePromise = page.waitForResponse(
             (r) =>
-              r.url().includes('/api/v1/roles') && r.request().method() === 'POST'
+              r.url().includes('/api/v1/roles') &&
+              r.request().method() === 'POST'
           );
           await page.getByTestId('submit-btn').click();
           const createResponse = await responsePromise;
@@ -288,7 +289,9 @@ test.describe(
       try {
         await test.step('Click edit description and fill', async () => {
           await page.getByTestId('edit-description-btn').click();
-          const editor = page.locator('.om-block-editor[contenteditable="true"]');
+          const editor = page.locator(
+            '.om-block-editor[contenteditable="true"]'
+          );
           await editor.waitFor({ state: 'visible' });
           await editor.clear();
           await editor.fill(updatedDescription);
@@ -561,7 +564,9 @@ test.describe(
               r.url().includes('/api/v1/users') &&
               r.request().method() === 'PATCH'
           );
-          await page.getByTestId(`remove-${testUser.responseData.name}`).click();
+          await page
+            .getByTestId(`remove-${testUser.responseData.name}`)
+            .click();
           await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
           await page.getByTestId('confirm-button').click();
           const patchResponse = await patchPromise;
@@ -908,7 +913,9 @@ test.describe(
       try {
         await test.step('Click edit description and fill new value', async () => {
           await page.getByTestId('edit-description-btn').click();
-          const editor = page.locator('.om-block-editor[contenteditable="true"]');
+          const editor = page.locator(
+            '.om-block-editor[contenteditable="true"]'
+          );
           await editor.waitFor({ state: 'visible' });
           await editor.clear();
           await editor.fill(updatedDescription);
@@ -1151,7 +1158,9 @@ test.describe(
         });
 
         await test.step('Verify updated rule card appears', async () => {
-          await expect(page.getByTestId(`rule-${updatedRuleName}`)).toBeVisible();
+          await expect(
+            page.getByTestId(`rule-${updatedRuleName}`)
+          ).toBeVisible();
           await expect(
             page.getByTestId(`rule-${existingRuleName}`)
           ).not.toBeVisible();
