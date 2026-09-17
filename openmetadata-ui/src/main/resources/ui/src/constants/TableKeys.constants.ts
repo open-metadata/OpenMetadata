@@ -35,6 +35,13 @@ export const TABLE_COLUMNS_KEYS = {
   ORDINAL_POSITION: 'ordinalPosition',
 };
 
+/**
+ * Column keys for per-custom-property columns are `extension.<propertyName>`,
+ * so each property can be toggled independently in the "Customize" dropdown
+ * and never collides with a built-in key.
+ */
+export const CUSTOM_PROPERTY_COLUMN_KEY_PREFIX = 'extension.';
+
 export const COMMON_STATIC_TABLE_VISIBLE_COLUMNS = [TABLE_COLUMNS_KEYS.NAME];
 
 export const DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS = [

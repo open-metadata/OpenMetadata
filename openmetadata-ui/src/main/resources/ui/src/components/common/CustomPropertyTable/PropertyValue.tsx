@@ -169,6 +169,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   hasEditPermissions,
   property,
   isRenderedInRightPanel = false,
+  hideLabel = false,
 }) => {
   const { propertyName, propertyType, value, isTableType } = useMemo(() => {
     const propertyName = property.name;
@@ -1255,26 +1256,28 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
   const customPropertyElement = (
     <div className="tw:flex tw:flex-col tw:gap-2" data-testid={propertyName}>
-      <div className="d-flex items-center gap-1">
-        <Typography.Text
-          className="text-grey-body property-name"
-          data-testid="property-name">
-          {getEntityName(property)}
-          {propertyCountSuffix}
-        </Typography.Text>
-        {property.description && (
-          <Tooltip
-            destroyTooltipOnHide
-            placement="top"
-            title={getTextFromHtmlString(property.description)}>
-            <InfoCircleOutlined
-              className="custom-property-description-icon"
-              data-testid="custom-property-description-icon"
-              style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
-            />
-          </Tooltip>
-        )}
-      </div>
+      {!hideLabel && (
+        <div className="d-flex items-center gap-1">
+          <Typography.Text
+            className="text-grey-body property-name"
+            data-testid="property-name">
+            {getEntityName(property)}
+            {propertyCountSuffix}
+          </Typography.Text>
+          {property.description && (
+            <Tooltip
+              destroyTooltipOnHide
+              placement="top"
+              title={getTextFromHtmlString(property.description)}>
+              <InfoCircleOutlined
+                className="custom-property-description-icon"
+                data-testid="custom-property-description-icon"
+                style={{ color: GRAYED_OUT_COLOR, fontSize: '14px' }}
+              />
+            </Tooltip>
+          )}
+        </div>
+      )}
 
       <div
         className={classNames(

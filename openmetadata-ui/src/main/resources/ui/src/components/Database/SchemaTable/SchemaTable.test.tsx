@@ -16,10 +16,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
+  updateTableColumn,
 } from '../../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
@@ -158,6 +162,65 @@ jest.mock('../../../rest/tableAPI', () => ({
     })
   ),
   updateTableColumn: jest.fn(),
+}));
+
+const mockColumnCustomProperties = [
+  {
+    name: 'businessOwner',
+    displayName: 'Business Owner',
+    description: 'Who owns this column from a business perspective.',
+    propertyType: {
+      id: 'string-type-id',
+      type: 'type',
+      name: 'string',
+      fullyQualifiedName: 'string',
+    },
+  },
+  {
+    name: 'piiCategory',
+    description: 'PII classification.',
+    propertyType: {
+      id: 'string-type-id',
+      type: 'type',
+      name: 'string',
+      fullyQualifiedName: 'string',
+    },
+  },
+];
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      name: 'tableColumn',
+      customProperties: mockColumnCustomProperties,
+    })
+  ),
+}));
+
+jest.mock('../../common/CustomPropertyTable/PropertyValue', () => ({
+  PropertyValue: jest
+    .fn()
+    .mockImplementation(
+      ({ property, extension, hasEditPermissions, onExtensionUpdate }) => (
+        <div data-testid={`property-value-${property.name}`}>
+          <span data-testid="property-cell-value">
+            {String(extension?.[property.name] ?? '')}
+          </span>
+          {hasEditPermissions && (
+            <button
+              data-testid={`property-cell-save-${property.name}`}
+              onClick={() =>
+                onExtensionUpdate({
+                  ...extension,
+                  [property.name]: 'updated',
+                })
+              }>
+              save
+            </button>
+          )}
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../../utils/FqnUtils', () => ({
@@ -704,6 +767,148 @@ describe('Test EntityTable Component', () => {
       expect(
         screen.queryByTestId('edit-displayName-button')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('column-level custom property columns', () => {
+    const columnsWithExtension = mockColumns.map((column, index) => ({
+      ...column,
+      extension: { businessOwner: `owner-${index}` },
+    }));
+
+    const setSelectedTableColumns = (selected: string[]) => {
+      useApplicationStore.setState({
+        currentUser: { id: 'test-user-id', name: 'test-user' },
+      } as never);
+      usePersistentStorage.setState({
+        preferences: {
+          'test-user': {
+            selectedEntityTableColumns: { table: selected },
+          },
+        },
+      } as never);
+    };
+
+    beforeEach(() => {
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: columnsWithExtension,
+        paging: { total: columnsWithExtension.length },
+      });
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: columnsWithExtension,
+      } as Table;
+    });
+
+    afterEach(() => {
+      mockGenericContextProps.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockGenericContextProps.data = {
+        ...MOCK_TABLE,
+        columns: mockColumns,
+        tableConstraints: mockTableConstraints,
+      } as Table;
+      (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+        data: mockColumns,
+        paging: { total: mockColumns.length },
+      });
+      useApplicationStore.setState({ currentUser: undefined } as never);
+      usePersistentStorage.setState({ preferences: {} } as never);
+    });
+
+    it('does not fetch the column type when the user cannot view custom fields', async () => {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(getTypeByFQN).not.toHaveBeenCalled();
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+    });
+
+    it('fetches the column type but keeps property columns hidden by default', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      await screen.findAllByTestId('column-name');
+
+      expect(getTypeByFQN).toHaveBeenCalledWith('tableColumn');
+      // Off by default: neither property header nor any cell is rendered.
+      expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
+      expect(screen.queryByText('piiCategory')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('property-value-businessOwner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders one toggleable column per property and shows only the selected ones', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+      };
+      setSelectedTableColumns([
+        'description',
+        'dataTypeDisplay',
+        'extension.businessOwner',
+      ]);
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(await screen.findByText('Business Owner')).toBeInTheDocument();
+      expect(screen.queryByText('piiCategory')).not.toBeInTheDocument();
+
+      const cells = await screen.findAllByTestId(
+        'property-value-businessOwner'
+      );
+
+      expect(cells).toHaveLength(columnsWithExtension.length);
+      expect(screen.getByText('owner-0')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('property-value-piiCategory')
+      ).not.toBeInTheDocument();
+      // Read-only without EditCustomFields.
+      expect(
+        screen.queryByTestId('property-cell-save-businessOwner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('updates the column extension inline when the user can edit custom fields', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+        EditCustomFields: true,
+      };
+      setSelectedTableColumns(['description', 'extension.businessOwner']);
+      (updateTableColumn as jest.Mock).mockResolvedValue({
+        ...columnsWithExtension[0],
+        extension: { businessOwner: 'updated' },
+      });
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      const saveButtons = await screen.findAllByTestId(
+        'property-cell-save-businessOwner'
+      );
+
+      await act(async () => {
+        fireEvent.click(saveButtons[0]);
+      });
+
+      expect(updateTableColumn).toHaveBeenCalledWith(
+        columnsWithExtension[0].fullyQualifiedName,
+        { extension: { businessOwner: 'updated' } }
+      );
+      expect(await screen.findByText('updated')).toBeInTheDocument();
     });
   });
 });

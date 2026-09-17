@@ -23,6 +23,7 @@ import {
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import { CUSTOM_PROPERTY_COLUMN_KEY_PREFIX } from '../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type { MlFeature } from '../generated/entity/data/mlmodel';
@@ -789,6 +790,14 @@ export const getHighlightedRowClassName = <
 
   return '';
 };
+
+/**
+ * Column key for a per-custom-property table column. Uses the
+ * `extension.<name>` prefix so each property is individually toggleable in the
+ * "Customize" dropdown and cannot collide with a built-in column key.
+ */
+export const getCustomPropertyColumnKey = (propertyName: string): string =>
+  `${CUSTOM_PROPERTY_COLUMN_KEY_PREFIX}${propertyName}`;
 
 export const getNestedSectionTitle = (
   entityType: EntityType | undefined
