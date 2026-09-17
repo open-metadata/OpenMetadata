@@ -16,6 +16,7 @@ Postgres SQLAlchemy util methods
 
 import re
 import traceback
+from typing import Optional
 
 from packaging import version
 from sqlalchemy import sql, text, util
@@ -521,3 +522,30 @@ def get_postgres_time_column_name(engine) -> str:
 def get_schema_names(self, connection, **kw):
     result = connection.execute(sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode))
     return [name for (name,) in result]
+
+
+DEFAULT_QUERY_STATEMENT_SOURCE = "pg_stat_statements"
+# An optionally schema-qualified identifier. Deliberately narrower than Postgres
+# allows - no quoted identifiers - because every documented value fits this shape.
+# Matched with fullmatch, not match: "$" would also accept a trailing newline.
+QUERY_STATEMENT_SOURCE_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_$]*(\.[A-Za-z_][A-Za-z0-9_$]*)?")
+
+
+def validate_query_statement_source(query_statement_source: Optional[str]) -> str:
+    """Return a relation name that is safe to interpolate into the query-history SQL.
+
+    queryStatementSource names a relation, so it is interpolated into the FROM
+    clause rather than bound as a parameter, and it was previously used verbatim -
+    which left the rest of the statement open to being rewritten. Constraining it
+    to an identifier keeps the documented custom-view support,
+    'my_schema.custom_pg_stat_statements', while leaving no room for that.
+    """
+    if not query_statement_source:
+        return DEFAULT_QUERY_STATEMENT_SOURCE
+    if not QUERY_STATEMENT_SOURCE_PATTERN.fullmatch(query_statement_source):
+        raise ValueError(
+            f"Invalid queryStatementSource [{query_statement_source}]: expected an optionally "
+            "schema-qualified identifier, such as 'pg_stat_statements' or "
+            "'my_schema.custom_pg_stat_statements'"
+        )
+    return query_statement_source
