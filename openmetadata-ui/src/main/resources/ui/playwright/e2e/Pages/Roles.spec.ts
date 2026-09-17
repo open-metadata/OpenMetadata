@@ -494,10 +494,13 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       const deleteResponse = page.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/roles') && response.status() === 200
+          response.url().includes('/api/v1/roles') &&
+          response.request().method() === 'DELETE'
       );
       await confirmButton.click();
-      await deleteResponse;
+      const response = await deleteResponse;
+
+      expect(response.status()).toBe(200);
 
       // Wait for redirect to the roles list and UI to settle
       await waitForAllLoadersToDisappear(page);
