@@ -96,7 +96,9 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     TemplateUpdateResult result =
         prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
     performRequest(
-        "PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
+        "PUT",
+        "/" + name + "/_mapping",
+        JsonUtils.pojoToJson(result.template().getTemplate().getMappings()));
     return result.changed();
   }
 
