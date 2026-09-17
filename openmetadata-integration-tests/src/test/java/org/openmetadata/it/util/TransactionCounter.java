@@ -1,6 +1,7 @@
 package org.openmetadata.it.util;
 
 import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.DelegatingTransactionHandler;
@@ -17,8 +18,8 @@ public final class TransactionCounter extends DelegatingTransactionHandler
     implements AutoCloseable {
   private final Jdbi jdbi;
   private final Thread owner = Thread.currentThread();
-  private int commits;
-  private int rollbacks;
+  private final AtomicInteger commits = new AtomicInteger();
+  private final AtomicInteger rollbacks = new AtomicInteger();
 
   public TransactionCounter(final Jdbi jdbi) {
     super(jdbi.getTransactionHandler());
@@ -32,27 +33,40 @@ public final class TransactionCounter extends DelegatingTransactionHandler
       @Override
       public void commit(final Handle committed) {
         super.commit(committed);
-        if (Thread.currentThread() == owner) {
-          commits++;
-        }
+        recordCommit();
       }
 
       @Override
       public void rollback(final Handle rolledBack) {
         super.rollback(rolledBack);
-        if (Thread.currentThread() == owner) {
-          rollbacks++;
-        }
+        recordRollback();
       }
     };
   }
 
+  /**
+   * Counts a commit if it happened on the installing thread. Separated from {@link #specialize} so
+   * the thread scoping can be exercised without a database connection.
+   */
+  void recordCommit() {
+    if (Thread.currentThread() == owner) {
+      commits.incrementAndGet();
+    }
+  }
+
+  /** @see #recordCommit() */
+  void recordRollback() {
+    if (Thread.currentThread() == owner) {
+      rollbacks.incrementAndGet();
+    }
+  }
+
   public int commits() {
-    return commits;
+    return commits.get();
   }
 
   public int rollbacks() {
-    return rollbacks;
+    return rollbacks.get();
   }
 
   @Override
