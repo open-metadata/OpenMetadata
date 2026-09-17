@@ -15,7 +15,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
+  waitForElementToBeRemoved,
 } from '@testing-library/react';
 import AddCustomProperty from './AddCustomProperty';
 
@@ -299,33 +299,42 @@ describe('Custom property name validation', () => {
     expect(await screen.findByText(NAME_LENGTH_ERROR)).toBeInTheDocument();
   });
 
-  it('should not show the name error for a valid name', async () => {
+  // Seed an invalid value and wait for the error before typing the valid one, so
+  // the assertion runs only after Ant Design's async validation has settled -
+  // asserting absence right after render would pass before validation even runs.
+  it('should clear the name error once a valid name replaces an invalid one', async () => {
     render(<AddCustomProperty />);
 
-    fireEvent.change(screen.getByTestId('name'), {
-      target: { value: 'validName_123' },
-    });
+    const nameInput = screen.getByTestId('name');
 
-    await waitFor(() =>
-      expect(
-        screen.queryByText(NAME_VALIDATION_ERROR)
-      ).not.toBeInTheDocument()
+    fireEvent.change(nameInput, { target: { value: 'name:with:colon' } });
+
+    await screen.findByText(NAME_VALIDATION_ERROR);
+
+    fireEvent.change(nameInput, { target: { value: 'validName_123' } });
+
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(NAME_VALIDATION_ERROR)
     );
 
     expect(screen.queryByText(NAME_LENGTH_ERROR)).not.toBeInTheDocument();
   });
 
-  it('should not show the name error for a valid name with allowed special characters', async () => {
+  it('should clear the name error for a valid name with allowed special characters', async () => {
     render(<AddCustomProperty />);
 
-    fireEvent.change(screen.getByTestId('name'), {
+    const nameInput = screen.getByTestId('name');
+
+    fireEvent.change(nameInput, { target: { value: 'name:with:colon' } });
+
+    await screen.findByText(NAME_VALIDATION_ERROR);
+
+    fireEvent.change(nameInput, {
       target: { value: "valid Name.!@#%`()_-=+{}[]|;',.?" },
     });
 
-    await waitFor(() =>
-      expect(
-        screen.queryByText(NAME_VALIDATION_ERROR)
-      ).not.toBeInTheDocument()
+    await waitForElementToBeRemoved(() =>
+      screen.queryByText(NAME_VALIDATION_ERROR)
     );
   });
 });

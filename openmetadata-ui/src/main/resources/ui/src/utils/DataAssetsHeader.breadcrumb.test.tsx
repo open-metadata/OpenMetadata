@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../generated/entity/type';
 import { EntityType } from '../enums/entity.enum';
+import { EntityReference } from '../generated/entity/type';
 import { getDataAssetsHeaderInfo } from './DataAssetsHeader.utils';
 
 // The DataAssetsHeader breadcrumb must never render the same crumb twice. This
@@ -42,15 +42,42 @@ const DATABASE_SCHEMA = {
   fullyQualifiedName: 'sample-service.sample-database.sample-schema',
 };
 
+const API_COLLECTION = {
+  id: 'api-collection-id',
+  name: 'sample-collection',
+  displayName: 'Sample Collection',
+  fullyQualifiedName: 'sample-service.sample-collection',
+};
+
+// Distinct ancestor containers so the CONTAINER trail actually exercises the
+// parent-mapping branch of getBreadcrumbForEntityWithParent.
+const PARENT_CONTAINERS: EntityReference[] = [
+  {
+    id: 'parent-container-1-id',
+    type: 'container',
+    name: 'parent-container-1',
+    displayName: 'Parent Container 1',
+    fullyQualifiedName: 'sample-service.parent-container-1',
+  },
+  {
+    id: 'parent-container-2-id',
+    type: 'container',
+    name: 'parent-container-2',
+    displayName: 'Parent Container 2',
+    fullyQualifiedName: 'sample-service.parent-container-1.parent-container-2',
+  },
+];
+
 const ENTITY_NAME = 'Sample Entity';
+const ENTITY_RAW_NAME = 'sample-entity';
 
 // A superset payload: each builder reads only the ancestor fields relevant to
 // its entity type. Distinct ancestor names mean a correct builder yields unique
-// crumbs; a builder that duplicated an ancestor or the current entity would
-// break the uniqueness assertion below.
+// crumbs; a builder that duplicated an ancestor would break the uniqueness
+// assertion below.
 const buildDataAsset = (entityType: EntityType) => ({
   id: 'entity-id',
-  name: 'sample-entity',
+  name: ENTITY_RAW_NAME,
   displayName: ENTITY_NAME,
   fullyQualifiedName:
     'sample-service.sample-database.sample-schema.sample-entity',
@@ -58,6 +85,7 @@ const buildDataAsset = (entityType: EntityType) => ({
   service: SERVICE,
   database: DATABASE,
   databaseSchema: DATABASE_SCHEMA,
+  apiCollection: API_COLLECTION,
 });
 
 const ENTITY_TYPES: Array<[string, EntityType]> = [
@@ -82,39 +110,44 @@ const ENTITY_TYPES: Array<[string, EntityType]> = [
   ['Worksheet', EntityType.WORKSHEET],
 ];
 
-const getRenderedCrumbLabels = (entityType: EntityType): string[] => {
+// The ancestor crumbs produced by the builder, before DataAssetsHeader appends
+// the current entity. Only the CONTAINER builder consumes parentContainers.
+const getAncestorCrumbNames = (entityType: EntityType): string[] => {
   const { breadcrumbs } = getDataAssetsHeaderInfo(
     entityType,
     buildDataAsset(entityType) as never,
     ENTITY_NAME,
-    [] as EntityReference[]
+    entityType === EntityType.CONTAINER
+      ? PARENT_CONTAINERS
+      : ([] as EntityReference[])
   );
 
-  // Mirrors DataAssetsHeader's breadcrumbItems: the ancestor crumbs followed by
-  // the current entity, dropping any empty labels the way the rendered list does.
-  return [...breadcrumbs.map((crumb) => crumb.name), ENTITY_NAME]
-    .map((label) => label?.trim())
-    .filter((label): label is string => Boolean(label && label.length > 0));
+  return breadcrumbs
+    .map((crumb) => crumb.name?.trim())
+    .filter((name): name is string => Boolean(name && name.length > 0));
 };
 
-describe('getDataAssetsHeaderInfo breadcrumb uniqueness', () => {
+describe('getDataAssetsHeaderInfo breadcrumbs', () => {
   it.each(ENTITY_TYPES)(
-    'should build unique, non-empty crumbs for %s',
+    'should build non-empty, unique ancestor crumbs for %s',
     (_, entityType) => {
-      const labels = getRenderedCrumbLabels(entityType);
+      const names = getAncestorCrumbNames(entityType);
 
-      expect(labels.length).toBeGreaterThan(0);
-      expect(new Set(labels).size).toBe(labels.length);
+      expect(names.length).toBeGreaterThan(0);
+      expect(new Set(names).size).toBe(names.length);
     }
   );
 
   it.each(ENTITY_TYPES)(
-    'should end the %s trail with the current entity exactly once',
+    'should not include the current entity in the %s ancestor crumbs',
     (_, entityType) => {
-      const labels = getRenderedCrumbLabels(entityType);
+      // DataAssetsHeader appends the current entity after these ancestor crumbs,
+      // so the builder must not already emit it under either its display name or
+      // its raw name - otherwise the rendered trail shows the entity twice.
+      const names = getAncestorCrumbNames(entityType);
 
-      expect(labels[labels.length - 1]).toBe(ENTITY_NAME);
-      expect(labels.filter((label) => label === ENTITY_NAME)).toHaveLength(1);
+      expect(names).not.toContain(ENTITY_NAME);
+      expect(names).not.toContain(ENTITY_RAW_NAME);
     }
   );
 });
