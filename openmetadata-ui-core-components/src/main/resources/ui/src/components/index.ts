@@ -118,8 +118,8 @@ export * from './application/tag/data-product-tag';
 export * from './application/tag/auto-classification-tag';
 export * from './application/tag/tag.types';
 export * from './application/tree/tree';
-export * from './application/filter-select/filter-tree-select.types';
-export * from './application/filter-select/filter-tree-select';
+export * from './application/tree-select/tree-select.types';
+export * from './application/tree-select/tree-select';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,

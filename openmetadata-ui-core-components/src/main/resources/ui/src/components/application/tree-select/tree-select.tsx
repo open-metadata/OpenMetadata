@@ -30,11 +30,8 @@ import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
-import { TreeSelectTreeItemContent } from './filter-tree-select-node';
-import type {
-  TreeSelectNode,
-  TreeSelectProps,
-} from './filter-tree-select.types';
+import { TreeSelectTreeItemContent } from './tree-select-node';
+import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
 import {
   getVisibleNodeIds,
@@ -501,14 +498,14 @@ export const TreeSelect = <T = unknown,>({
   const treeDropdown = (
     <div
       className={cx(
-        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
+        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:px-3',
         isButtonVariant ? 'tw:w-80' : 'tw:w-full tw:min-w-full',
         popoverClassName
       )}
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {isButtonVariant && searchable && (
-        <div className="tw:p-2">
+        <div className="tw:py-2">
           <Input
             icon={SearchInputIcon}
             placeholder={searchPlaceholder ?? t('label.search')}
@@ -520,7 +517,7 @@ export const TreeSelect = <T = unknown,>({
       )}
       {showSelectAllRow && (
         <div
-          className="tw:px-4 tw:py-2"
+          className="tw:pl-[10px] tw:py-2"
           onMouseDown={(event) => event.preventDefault()}>
           <Checkbox
             isIndeterminate={allSelectedCount > 0 && !allSelected}
@@ -532,7 +529,7 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:px-3 tw:py-1"
+        className="tw:max-h-64 tw:overflow-y-auto tw:py-1 tw:pl-[7px]"
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:p-4 tw:text-sm tw:text-tertiary">
@@ -548,7 +545,7 @@ export const TreeSelect = <T = unknown,>({
           </div>
         ) : (
           <Tree
-            aria-label={label ?? placeholder ?? t('label.tree-select')}
+            aria-label={label ?? placeholder ?? 'Tree select'}
             expandedKeys={filteredExpandedKeys}
             selectionMode="none"
             onAction={(key) => {
@@ -571,13 +568,25 @@ export const TreeSelect = <T = unknown,>({
       </div>
       {showStatusFooter && (
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-          <span
-            className="tw:text-xs tw:font-normal tw:text-tertiary"
-            data-testid="selected-count">
+          <button
+            className={cx(
+              'tw:cursor-pointer tw:outline-brand',
+              displayedSelectedCount > 0
+                ? 'tw:inline-flex tw:items-center tw:rounded-full tw:bg-utility-brand-50 tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:transition-colors tw:hover:bg-utility-brand-100'
+                : 'tw:text-xs tw:font-normal tw:text-tertiary tw:cursor-default'
+            )}
+            data-testid="selected-count"
+            disabled={displayedSelectedCount === 0}
+            type="button"
+            onClick={() => {
+              if (displayedSelectedCount > 0) {
+                setShowSelectedOnly((prev) => !prev);
+              }
+            }}>
             {displayedSelectedCount === 0
               ? t('label.none-selected')
               : t('label.count-selected', { count: displayedSelectedCount })}
-          </span>
+          </button>
           <Button
             color="tertiary"
             data-testid="clear-filter-btn"
@@ -663,7 +672,7 @@ export const TreeSelect = <T = unknown,>({
                   {node.label}
                 </p>
                 <button
-                  aria-label={t('label.remove-entity', { entity: node.label })}
+                  aria-label={`Remove ${node.label}`}
                   className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
                   disabled={disabled}
                   type="button"

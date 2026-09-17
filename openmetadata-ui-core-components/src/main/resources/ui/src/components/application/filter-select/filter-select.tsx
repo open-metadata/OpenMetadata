@@ -37,7 +37,7 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
-import { TreeSelect } from './filter-tree-select';
+import { TreeSelect } from '../tree-select/tree-select';
 
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that

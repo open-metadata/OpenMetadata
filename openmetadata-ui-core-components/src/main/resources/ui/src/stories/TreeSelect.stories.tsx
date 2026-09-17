@@ -17,7 +17,7 @@ import { FilterSelect } from '../components/application/filter-select/filter-sel
 import type {
   TreeSelectDataResponse,
   TreeSelectNode,
-} from '../components/application/filter-select/filter-tree-select.types';
+} from '../components/application/tree-select/tree-select.types';
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
