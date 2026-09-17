@@ -38,6 +38,12 @@ from metadata.utils.lru_cache import LRUCache
 SOURCE_LABEL = "test properties"
 
 
+def _definition(name: str, value: str | tuple[str, str | None]) -> dict:
+    """The server's shape for one custom property, from a bare data type or (data type, displayName)."""
+    data_type, display_name = value if isinstance(value, tuple) else (value, None)
+    return {"name": name, "propertyType": {"name": data_type}, "displayName": display_name}
+
+
 def _disambiguated(base: str, raw: str) -> str:
     """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
     that reduce to the same base stay distinct."""
@@ -56,7 +62,7 @@ class _FakeSource(CustomPropertyExtensionMixin):
         self.source_config = DatabaseServiceMetadataPipeline(includeCustomProperties=enabled)
         self.metadata = MagicMock()
         self.metadata.get_entity_custom_properties.return_value = [
-            {"name": name, "propertyType": {"name": data_type}} for name, data_type in (existing or {}).items()
+            _definition(name, value) for name, value in (existing or {}).items()
         ]
         self._init_custom_properties()
         if capacity is not None:
@@ -384,3 +390,80 @@ class TestExistingDefinitionsAreNotOverwritten:
 
         assert result == {"owner": "data-eng"}
         assert source.metadata.create_or_update_custom_property.call_count == 1
+
+
+class TestLegacyPropertyNamesAreReused:
+    """A name registered before rewritten names were disambiguated has to keep working. Switching
+    an upgraded install to the new name would orphan every value already ingested under the old one
+    and leave two custom properties for one source key."""
+
+    def test_a_legacy_definition_for_the_same_key_is_kept(self):
+        source = _FakeSource(existing={"owner__team": ("string", "owner/team")})
+
+        result = source.build_entity_extension({"owner/team": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {"owner__team": "data-eng"}
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+
+    def test_a_fresh_install_gets_the_disambiguated_name(self):
+        source = _FakeSource()
+
+        result = source.build_entity_extension({"owner/team": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {_disambiguated("owner__team", "owner/team"): "data-eng"}
+
+    def test_a_legacy_name_claimed_by_another_key_is_not_reused(self):
+        """The legacy definition holds `owner/team`'s values; `owner@team` must not write into it."""
+        source = _FakeSource(existing={"owner__team": ("string", "owner/team")})
+
+        result = source.build_entity_extension({"owner@team": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {_disambiguated("owner__team", "owner@team"): "data-eng"}
+
+    def test_both_keys_coexist_after_an_upgrade(self):
+        """The key that lost the collision on the old code finally gets a property of its own."""
+        source = _FakeSource(existing={"owner__team": ("string", "owner/team")})
+
+        result = source.build_entity_extension(
+            {"owner/team": "first", "owner@team": "second"}, source_label=SOURCE_LABEL
+        )
+
+        assert result == {
+            "owner__team": "first",
+            _disambiguated("owner__team", "owner@team"): "second",
+        }
+
+    def test_a_legacy_name_of_another_type_is_not_reused(self):
+        """Only a string definition could have come from this mixin, so anything else is a user's."""
+        source = _FakeSource(existing={"owner__team": ("integer", "owner/team")})
+
+        result = source.build_entity_extension({"owner/team": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {_disambiguated("owner__team", "owner/team"): "data-eng"}
+
+    def test_a_legacy_name_without_a_display_name_is_not_reused(self):
+        """Nothing ties it to this source key, so it is somebody else's property."""
+        source = _FakeSource(existing={"owner__team": "string"})
+
+        result = source.build_entity_extension({"owner/team": "data-eng"}, source_label=SOURCE_LABEL)
+
+        assert result == {_disambiguated("owner__team", "owner/team"): "data-eng"}
+
+    def test_a_name_that_was_never_rewritten_has_nothing_to_migrate(self):
+        source = _FakeSource(existing={"write.format.default": ("string", "write.format.default")})
+
+        result = source.build_entity_extension({"write.format.default": "parquet"}, source_label=SOURCE_LABEL)
+
+        assert result == {"write.format.default": "parquet"}
+        assert source.metadata.create_or_update_custom_property.call_count == 0
+
+    def test_an_over_long_name_hashed_the_same_way_before_and_after(self):
+        """Past the length limit both paths collapse to the md5 hex, so nothing moved."""
+        raw = "owner/" + ("a" * PROPERTY_NAME_MAX_LENGTH)
+        digest = hashlib.md5(raw.encode("utf-8"), usedforsecurity=False).hexdigest()
+        source = _FakeSource(existing={digest: ("string", raw)})
+
+        result = source.build_entity_extension({raw: "v"}, source_label=SOURCE_LABEL)
+
+        assert result == {digest: "v"}
+        assert source.metadata.create_or_update_custom_property.call_count == 0

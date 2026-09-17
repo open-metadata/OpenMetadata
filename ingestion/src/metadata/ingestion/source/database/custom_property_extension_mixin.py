@@ -62,7 +62,7 @@ class CustomPropertyExtensionMixin:
     metadata: OpenMetadata
     _string_property_type_ref: PropertyType | None
     _processed_prop: LRUCache[str]
-    _existing_properties: dict[str, dict[str, str]]
+    _existing_properties: dict[str, dict[str, tuple[str, str | None]]]
 
     def _init_custom_properties(self) -> None:
         """Set up the per-source custom property state. Call from the source's __init__."""
@@ -101,7 +101,7 @@ class CustomPropertyExtensionMixin:
             # so a parameter can arrive as 0 or False, and those are real values.
             if prop_value is None or prop_value == "":
                 continue
-            sanitized_name = self._sanitize_property_name(prop_name)
+            sanitized_name = self._resolve_property_name(prop_name, entity_type)
             if sanitized_name in self._processed_prop:
                 if not self._owns_property_name(sanitized_name, prop_name):
                     continue
@@ -115,10 +115,24 @@ class CustomPropertyExtensionMixin:
         return registered_properties or None
 
     @staticmethod
-    def _sanitize_property_name(prop_name: str) -> str:
+    def _base_property_name(prop_name: str) -> str:
+        """The name the server will accept, before it is disambiguated."""
         sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
         if not PROPERTY_NAME_LEADING_CHAR_PATTERN.match(sanitized_name):
             sanitized_name = f"{PROPERTY_NAME_LEADING_PREFIX}{sanitized_name}"
+        return sanitized_name
+
+    @staticmethod
+    def _legacy_property_name(prop_name: str) -> str:
+        """The name registered before rewritten names were disambiguated."""
+        base_name = CustomPropertyExtensionMixin._base_property_name(prop_name)
+        if len(base_name) > PROPERTY_NAME_MAX_LENGTH:
+            return CustomPropertyExtensionMixin._digest(prop_name)
+        return base_name
+
+    @staticmethod
+    def _sanitize_property_name(prop_name: str) -> str:
+        sanitized_name = CustomPropertyExtensionMixin._base_property_name(prop_name)
         if sanitized_name != prop_name:
             # Sanitizing is many to one: `a/b` and `a@b` both reduce to `a__b`, and `_x` reduces to
             # the `p__x` a source can send verbatim. Sharing one name means sharing one definition
@@ -131,6 +145,21 @@ class CustomPropertyExtensionMixin:
         # alphanumeric, so the hash needs no prefix of its own.
         if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
             return CustomPropertyExtensionMixin._digest(prop_name)
+        return sanitized_name
+
+    def _resolve_property_name(self, prop_name: str, entity_type: type) -> str:
+        """The custom property name this source key writes to."""
+        sanitized_name = self._sanitize_property_name(prop_name)
+        legacy_name = self._legacy_property_name(prop_name)
+        if legacy_name == sanitized_name:
+            return sanitized_name
+        data_type, display_name = self._existing_property(entity_type, legacy_name)
+        if data_type == CustomPropertyDataTypes.STRING.value and display_name == prop_name:
+            # An earlier release registered this exact source key under the undisambiguated name,
+            # and every table ingested since holds its values there. Moving to the disambiguated
+            # name would orphan them and leave two properties for one key. A legacy name claimed by
+            # a different key, or by a type this code never creates, is left alone.
+            return legacy_name
         return sanitized_name
 
     @staticmethod
@@ -168,7 +197,7 @@ class CustomPropertyExtensionMixin:
         property_type: PropertyType,
     ) -> bool:
         """Ensure a `string` definition exists. Returns False when the caller must skip this property."""
-        existing_type = self._existing_property_type(entity_type, sanitized_name)
+        existing_type, _ = self._existing_property(entity_type, sanitized_name)
         if existing_type is not None and existing_type != CustomPropertyDataTypes.STRING.value:
             # The definition is global to the entity type, so registering over it would retype a
             # property every other table shares and invalidate their values. A string value would
@@ -207,15 +236,15 @@ class CustomPropertyExtensionMixin:
         self._processed_prop.put(sanitized_name, prop_name)
         return True
 
-    def _existing_property_type(self, entity_type: type, sanitized_name: str) -> str | None:
-        """Data type of an already defined custom property, or None when the name is free."""
+    def _existing_property(self, entity_type: type, name: str) -> tuple[str | None, str | None]:
+        """(data type, display name) of an already defined custom property, (None, None) if free."""
         entity_key = entity_type.__name__
         if entity_key not in self._existing_properties:
             self._existing_properties[entity_key] = self._fetch_existing_properties(entity_type)
-        return self._existing_properties[entity_key].get(sanitized_name)
+        return self._existing_properties[entity_key].get(name, (None, None))
 
-    def _fetch_existing_properties(self, entity_type: type) -> dict[str, str]:
-        """Snapshot the entity type's custom property definitions as name -> data type.
+    def _fetch_existing_properties(self, entity_type: type) -> dict[str, tuple[str, str | None]]:
+        """Snapshot the entity type's definitions as name -> (data type, display name).
 
         One response held verbatim rather than a cache that accumulates: it is read only, sized by
         what the server already defines, and never added to as properties are registered.
@@ -228,10 +257,12 @@ class CustomPropertyExtensionMixin:
             logger.warning("Failed to list existing custom properties for [%s]: %s", entity_type.__name__, exc)
             logger.debug(traceback.format_exc())
             return {}
-        defined: dict[str, str] = {}
+        defined: dict[str, tuple[str, str | None]] = {}
         for prop in existing or []:
             name = prop.get("name")
             data_type = (prop.get("propertyType") or {}).get("name")
             if name and data_type:
-                defined[name] = data_type
+                # displayName carries the raw source key for anything this mixin registered, which
+                # is what lets _resolve_property_name recognise its own earlier work.
+                defined[name] = (data_type, prop.get("displayName"))
         return defined
