@@ -298,10 +298,13 @@ public class AttachmentResource {
     if (assets == null) {
       return Response.status(Response.Status.NOT_FOUND).build();
     }
-    if (!assets.isEmpty()) {
-      // Every asset here hangs off the same FQN, so one check covers the whole page.
-      authorizeViewOfAttachedEntity(securityContext, assets.getFirst().getEntityLink());
-    }
+    // Assets are looked up by FQN and asset type, neither of which pins the parent entity type,
+    // so one page can span more than one parent. Authorize each distinct parent rather than
+    // assuming the first one speaks for the rest.
+    assets.stream()
+        .map(Asset::getEntityLink)
+        .distinct()
+        .forEach(entityLink -> authorizeViewOfAttachedEntity(securityContext, entityLink));
     List<Asset> result = applySortAndPaginate(assets, sortBy, sortOrder, limit, offset);
     return Response.ok(result).build();
   }
