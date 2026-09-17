@@ -990,6 +990,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('creates an In Review metric through the UI when a reviewer is selected', async ({
     browser,
   }) => {
+    // The reviewer must be indexed in search before it is selectable; that poll
+    // alone allows up to 90s, which exceeds the 60s default test timeout.
+    test.setTimeout(180_000);
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
       navigate: true,
     });
@@ -1031,7 +1034,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(reviewerOption).toBeVisible();
       await reviewerOption.click();
       const reviewerGroup = reviewerField.locator(
-        'xpath=ancestor::div[@role="group"]'
+        'xpath=ancestor::*[contains(concat(" ", @class, " "), " react-aria-ComboBox ")][1]'
       );
       await expect(reviewerGroup.getByText(reviewerLabel)).toBeVisible();
 

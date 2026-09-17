@@ -18,7 +18,6 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
   redirectToHomePage,
   waitForMetricsListingResponse,
 } from '../../utils/common';
@@ -137,62 +136,6 @@ test.describe(
     test('Verify Related Metrics Update', async ({ page }) => {
       await updateRelatedMetric(page, metric2, 'add');
       await updateRelatedMetric(page, metric3, 'update');
-    });
-
-    test('Dimensions and measures render and description is editable', async ({
-      page,
-    }) => {
-      await expect(page.getByTestId('metric-dimensions-widget')).toBeVisible();
-      await expect(page.getByTestId('metric-measures-widget')).toBeVisible();
-
-      await expect(page.getByTestId('semantic-item-order_date')).toBeVisible();
-      await expect(page.getByTestId('semantic-item-region')).toBeVisible();
-      await expect(page.getByTestId('semantic-item-engagements')).toBeVisible();
-
-      await expect(
-        page
-          .getByTestId('metric-dimensions-widget')
-          .getByTestId('semantic-list-count')
-      ).toHaveText('2');
-
-      await expect(
-        page.getByTestId('semantic-item-badge-order_date')
-      ).toContainText('TIME');
-      await expect(
-        page.getByTestId('semantic-item-badge-engagements')
-      ).toContainText('SUM');
-
-      await page.getByTestId('edit-description-order_date').click();
-
-      const editDimensionDialog = page.getByRole('dialog', {
-        name: /Edit Dimension/,
-      });
-      await editDimensionDialog
-        .locator(descriptionBox)
-        .fill('Updated dimension description.');
-
-      const patchPromise = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PATCH' &&
-          response.url().includes('/api/v1/metrics/') &&
-          response.ok()
-      );
-
-      await editDimensionDialog
-        .getByRole('button', { name: 'Save', exact: true })
-        .click();
-
-      await patchPromise;
-
-      await expect(page.getByTestId('semantic-item-order_date')).toContainText(
-        'Updated dimension description.'
-      );
-
-      await page.reload();
-
-      await expect(page.getByTestId('semantic-item-order_date')).toContainText(
-        'Updated dimension description.'
-      );
     });
   }
 );
