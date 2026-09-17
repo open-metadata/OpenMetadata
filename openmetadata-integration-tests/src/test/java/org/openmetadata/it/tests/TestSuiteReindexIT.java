@@ -55,6 +55,9 @@ public class TestSuiteReindexIT {
   void reindexKeepsLogicalTestSuiteWithoutTestCases(TestNamespace ns) throws Exception {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "Reads the test suite index through the embedded search container, unsupported in external mode");
     TestSuite emptySuite =
         SdkClients.adminClient()
             .testSuites()
