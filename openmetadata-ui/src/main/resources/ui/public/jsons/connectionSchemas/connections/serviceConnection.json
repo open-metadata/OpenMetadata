@@ -133,7 +133,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -1237,7 +1238,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -1508,7 +1510,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -2257,7 +2260,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -2684,7 +2688,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -2855,7 +2860,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -3110,7 +3116,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -3594,7 +3601,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -4597,7 +4605,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -7031,7 +7040,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -7489,7 +7499,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -7729,7 +7740,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -8103,7 +8115,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -8363,7 +8376,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -8727,7 +8741,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -9073,7 +9088,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -9753,7 +9769,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -10153,7 +10170,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -10444,7 +10462,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -10862,7 +10881,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -10980,7 +11000,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -11185,7 +11206,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -11605,7 +11627,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -12032,7 +12055,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -12203,7 +12227,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -12458,7 +12483,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -12942,7 +12968,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -13214,7 +13241,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -13555,7 +13583,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -13895,7 +13924,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -14354,7 +14384,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -14541,7 +14572,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -14809,7 +14841,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -15064,7 +15097,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -15548,7 +15582,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -15889,7 +15924,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -16357,7 +16393,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -16523,7 +16560,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -16950,7 +16988,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -17121,7 +17160,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -17526,7 +17566,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -17862,7 +17903,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -18026,7 +18068,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -18417,7 +18460,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -19197,7 +19241,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -19656,7 +19701,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -20148,7 +20194,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -20484,7 +20531,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -20801,7 +20849,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -21109,7 +21158,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -21343,7 +21393,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -21577,7 +21628,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -22204,7 +22256,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -23012,7 +23065,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -23330,7 +23384,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -24299,7 +24354,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -24846,7 +24902,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -25471,7 +25528,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -26750,7 +26808,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -27438,7 +27497,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -28328,7 +28388,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -28845,7 +28906,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -30259,7 +30321,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -30686,7 +30749,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -30857,7 +30921,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -31112,7 +31177,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -31596,7 +31662,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -32533,7 +32600,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -32781,7 +32849,8 @@
                                             "awsSessionToken": {
                                               "title": "AWS Session Token",
                                               "description": "AWS Session Token.",
-                                              "type": "string"
+                                              "type": "string",
+                                              "format": "password"
                                             },
                                             "endPointURL": {
                                               "title": "Endpoint URL",
@@ -33014,7 +33083,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -33269,7 +33339,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -33753,7 +33824,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -33946,7 +34018,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -34373,7 +34446,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -34694,7 +34768,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -35224,7 +35299,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -35734,7 +35810,8 @@
                                             "awsSessionToken": {
                                               "title": "AWS Session Token",
                                               "description": "AWS Session Token.",
-                                              "type": "string"
+                                              "type": "string",
+                                              "format": "password"
                                             },
                                             "endPointURL": {
                                               "title": "Endpoint URL",
@@ -35863,7 +35940,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -36057,7 +36135,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -36185,7 +36264,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -36414,7 +36494,8 @@
                     "apiKey": {
                       "title": "Fivetran API Key",
                       "description": "Fivetran API Key.",
-                      "type": "string"
+                      "type": "string",
+                      "format": "password"
                     },
                     "hostPort": {
                       "expose": true,
@@ -37666,7 +37747,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -39460,7 +39542,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -39703,7 +39786,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -40010,7 +40094,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -40434,7 +40519,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -41104,7 +41190,8 @@
                             "awsSessionToken": {
                               "title": "AWS Session Token",
                               "description": "AWS Session Token.",
-                              "type": "string"
+                              "type": "string",
+                              "format": "password"
                             },
                             "endPointURL": {
                               "title": "Endpoint URL",
@@ -41647,7 +41734,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -43030,7 +43118,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -44134,7 +44223,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -44405,7 +44495,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -45154,7 +45245,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -45581,7 +45673,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -45752,7 +45845,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -46007,7 +46101,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -46491,7 +46586,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -47494,7 +47590,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -49928,7 +50025,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -50386,7 +50484,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -50626,7 +50725,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -51000,7 +51100,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -51260,7 +51361,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -51624,7 +51726,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -51970,7 +52073,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -52650,7 +52754,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -53050,7 +53155,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -53341,7 +53447,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -53759,7 +53866,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -53877,7 +53985,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -54082,7 +54191,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -54502,7 +54612,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -54929,7 +55040,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -55100,7 +55212,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -55355,7 +55468,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -55839,7 +55953,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -56111,7 +56226,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -56452,7 +56568,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -56792,7 +56909,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -57251,7 +57369,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -57438,7 +57557,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -57706,7 +57826,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -57961,7 +58082,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -58445,7 +58567,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -58786,7 +58909,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -59254,7 +59378,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -59420,7 +59545,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -59847,7 +59973,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -60018,7 +60145,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -60423,7 +60551,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -60759,7 +60888,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -60923,7 +61053,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -61314,7 +61445,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -62094,7 +62226,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -62553,7 +62686,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -63045,7 +63179,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -63381,7 +63516,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -63698,7 +63834,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -64006,7 +64143,8 @@
                                         "privateKeyId": {
                                           "title": "Private Key ID",
                                           "description": "Google Cloud private key id.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "privateKey": {
                                           "title": "Private Key",
@@ -64240,7 +64378,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -64474,7 +64613,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -65101,7 +65241,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -65909,7 +66050,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -66227,7 +66369,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -67196,7 +67339,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -67743,7 +67887,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -68368,7 +68513,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -69647,7 +69793,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -70335,7 +70482,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -71225,7 +71373,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -71742,7 +71891,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -73156,7 +73306,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -73583,7 +73734,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -73754,7 +73906,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -74009,7 +74162,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -74493,7 +74647,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -75430,7 +75585,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -75678,7 +75834,8 @@
                                             "awsSessionToken": {
                                               "title": "AWS Session Token",
                                               "description": "AWS Session Token.",
-                                              "type": "string"
+                                              "type": "string",
+                                              "format": "password"
                                             },
                                             "endPointURL": {
                                               "title": "Endpoint URL",
@@ -75911,7 +76068,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -76166,7 +76324,8 @@
                                                 "privateKeyId": {
                                                   "title": "Private Key ID",
                                                   "description": "Google Cloud private key id.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "privateKey": {
                                                   "title": "Private Key",
@@ -76650,7 +76809,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -76843,7 +77003,8 @@
                                         "awsSessionToken": {
                                           "title": "AWS Session Token",
                                           "description": "AWS Session Token.",
-                                          "type": "string"
+                                          "type": "string",
+                                          "format": "password"
                                         },
                                         "endPointURL": {
                                           "title": "Endpoint URL",
@@ -77270,7 +77431,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -77591,7 +77753,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -78121,7 +78284,8 @@
                                                 "awsSessionToken": {
                                                   "title": "AWS Session Token",
                                                   "description": "AWS Session Token.",
-                                                  "type": "string"
+                                                  "type": "string",
+                                                  "format": "password"
                                                 },
                                                 "endPointURL": {
                                                   "title": "Endpoint URL",
@@ -78631,7 +78795,8 @@
                                             "awsSessionToken": {
                                               "title": "AWS Session Token",
                                               "description": "AWS Session Token.",
-                                              "type": "string"
+                                              "type": "string",
+                                              "format": "password"
                                             },
                                             "endPointURL": {
                                               "title": "Endpoint URL",
@@ -78760,7 +78925,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -78954,7 +79120,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -79082,7 +79249,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -79311,7 +79479,8 @@
                     "apiKey": {
                       "title": "Fivetran API Key",
                       "description": "Fivetran API Key.",
-                      "type": "string"
+                      "type": "string",
+                      "format": "password"
                     },
                     "hostPort": {
                       "expose": true,
@@ -80563,7 +80732,8 @@
                                 "awsSessionToken": {
                                   "title": "AWS Session Token",
                                   "description": "AWS Session Token.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "endPointURL": {
                                   "title": "Endpoint URL",
@@ -82357,7 +82527,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -82600,7 +82771,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -82907,7 +83079,8 @@
                         "awsSessionToken": {
                           "title": "AWS Session Token",
                           "description": "AWS Session Token.",
-                          "type": "string"
+                          "type": "string",
+                          "format": "password"
                         },
                         "endPointURL": {
                           "title": "Endpoint URL",
@@ -83331,7 +83504,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
@@ -84001,7 +84175,8 @@
                             "awsSessionToken": {
                               "title": "AWS Session Token",
                               "description": "AWS Session Token.",
-                              "type": "string"
+                              "type": "string",
+                              "format": "password"
                             },
                             "endPointURL": {
                               "title": "Endpoint URL",
@@ -84544,7 +84719,8 @@
                                 "privateKeyId": {
                                   "title": "Private Key ID",
                                   "description": "Google Cloud private key id.",
-                                  "type": "string"
+                                  "type": "string",
+                                  "format": "password"
                                 },
                                 "privateKey": {
                                   "title": "Private Key",
