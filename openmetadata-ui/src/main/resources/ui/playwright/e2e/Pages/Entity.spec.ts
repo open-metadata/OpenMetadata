@@ -451,9 +451,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         // Open Tag Selector
         await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
 
-        await expect(
-          page.locator('[data-testid="selectable-list"]')
-        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();
@@ -470,15 +468,13 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .locator('[role="treegrid"]')
         ).toBeVisible();
         await expect(
-          page.locator('[data-testid="selectable-list"]')
+          page.locator('.async-select-list-dropdown')
         ).not.toBeVisible();
 
         // Re-open Tag Selector — should close Glossary Selector
         await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
 
-        await expect(
-          page.locator('[data-testid="selectable-list"]')
-        ).toBeVisible();
+        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();
@@ -750,13 +746,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             fullyQualifiedName:
               EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
           });
-          const glossaryCleanupResponse = page.waitForResponse(
-            (response) =>
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          await page.getByRole('button', { name: 'Update' }).click();
-          await glossaryCleanupResponse;
           await waitForAllLoadersToDisappear(page);
 
           // Remove tag

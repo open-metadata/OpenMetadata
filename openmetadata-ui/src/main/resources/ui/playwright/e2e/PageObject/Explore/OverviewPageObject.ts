@@ -289,11 +289,13 @@ export class OverviewPageObject extends RightPanelBase {
     await row.scrollIntoViewIfNeeded();
 
     // A parallel test may have added it already; clicking would deselect it.
-    if (!(await isGlossaryTermSelected(row))) {
+    const alreadySelected = await isGlossaryTermSelected(row);
+    if (!alreadySelected) {
       await row.click();
     }
 
-    await applyGlossaryPicker(this.page);
+    // Applying an unchanged selection sends no request, so nothing to await.
+    await applyGlossaryPicker(this.page, alreadySelected ? false : undefined);
 
     await this.glossaryTermListContainer.waitFor({ state: 'visible' });
 

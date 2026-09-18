@@ -107,18 +107,25 @@ const TagsContainerV2 = ({
     useGenericControls,
   ]);
 
-  // Helper function to handle external/internal control
   const handleExternalControl = useCallback(
     (isOpen: boolean) => {
-      if (useGenericControls) {
-        isOpen
-          ? updateActiveTagDropdownKey(dropdownKey)
-          : updateActiveTagDropdownKey(null);
-      } else {
+      if (!useGenericControls) {
         setInternalIsEditTags(isOpen);
+
+        return;
+      }
+      if (isOpen) {
+        updateActiveTagDropdownKey(dropdownKey);
+
+        return;
+      }
+      // Only clear the shared key while it is still ours: opening a sibling
+      // editor closes this one, and that close must not cancel the sibling.
+      if (isEditTags) {
+        updateActiveTagDropdownKey(null);
       }
     },
-    [useGenericControls, dropdownKey]
+    [useGenericControls, dropdownKey, isEditTags]
   );
 
   const {

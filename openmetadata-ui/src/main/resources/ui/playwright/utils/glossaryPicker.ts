@@ -104,7 +104,10 @@ export const applyGlossaryPicker = async (
     patchRequest = patchUrl
       ? page.waitForResponse(patchUrl)
       : page.waitForResponse(
-          (response) => response.request().method() === 'PATCH'
+          (response) =>
+            response.request().method() === 'PATCH' &&
+            response.url().includes('/api/v1/') &&
+            !response.url().includes('/api/v1/analytics')
         );
   }
 
