@@ -67,7 +67,11 @@ export interface UsePagingInterface {
  * may hold: it is read by pages that declare no options of their own, so a size from some page's
  * bespoke scale would land in a picker with no matching entry.
  */
-const GLOBAL_PAGE_SIZES = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
+const GLOBAL_PAGE_SIZES = new Set([
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+]);
 
 /**
  * @param defaultPageSize where to start when the URL carries no size; falls back to the app-wide
@@ -149,7 +153,7 @@ export const usePaging = (
   // and would overwrite whatever size the user had chosen on those pages.
   const persistGlobalPageSize = useCallback(
     (size: number) => {
-      if (GLOBAL_PAGE_SIZES.includes(size)) {
+      if (GLOBAL_PAGE_SIZES.has(size)) {
         setPreference({ globalPageSize: size });
       }
     },
