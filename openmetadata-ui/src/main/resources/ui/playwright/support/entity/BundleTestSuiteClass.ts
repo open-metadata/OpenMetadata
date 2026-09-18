@@ -34,6 +34,26 @@ export class BundleTestSuiteClass {
     return testSuiteData;
   }
 
+  async addTestCases(apiContext: APIRequestContext, testCaseIds: string[]) {
+    const response = await apiContext.put(
+      '/api/v1/dataQuality/testCases/logicalTestCases',
+      {
+        data: {
+          testSuiteId: this.bundleTestSuiteResponseData.id,
+          testCaseIds,
+        },
+      }
+    );
+
+    return response;
+  }
+
+  async delete(apiContext: APIRequestContext) {
+    return apiContext.delete(
+      `/api/v1/dataQuality/testSuites/${this.bundleTestSuiteResponseData.id}?recursive=true&hardDelete=true`
+    );
+  }
+
   async createBundleTestSuitePipeline(apiContext: APIRequestContext) {
     const testSuiteData = this.bundleTestSuiteResponseData;
     if (!testSuiteData?.id || !testSuiteData?.fullyQualifiedName) {

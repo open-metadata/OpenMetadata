@@ -2096,3 +2096,34 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     await option.click({ timeout: 5_000 });
   }).toPass({ timeout: 30_000 });
 };
+
+// React-aria closes a non-modal popover (Select, ComboBox) when an ancestor of
+// its trigger scrolls, and the browser delivers `scroll` a frame after the
+// scroll itself. If a trigger is even partly clipped by a scroll container,
+// Playwright's click scrolls it just before pointerdown; the event then lands
+// after pointerdown has opened the popover and closes it again. Centre the
+// element -- `scrollIntoViewIfNeeded` only reveals the minimum and can leave the
+// click point clipped, so Playwright scrolls again at click time -- and let two
+// frames run so the scroll is delivered before anything opens.
+export const scrollIntoViewAndSettle = async (locator: Locator) => {
+  await locator.evaluate(async (element) => {
+    element.scrollIntoView({ block: 'center', inline: 'nearest' });
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  });
+};
+
+export const selectOptionWithRetry = async (
+  trigger: Locator,
+  option: Locator
+) => {
+  await expect(async () => {
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(trigger);
+      await trigger.click();
+    }
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+};

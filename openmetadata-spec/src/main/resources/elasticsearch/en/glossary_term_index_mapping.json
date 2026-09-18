@@ -240,7 +240,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "docs",
+        "index_options": "positions",
         "term_vector": "with_positions_offsets"
       },
       "owners": {

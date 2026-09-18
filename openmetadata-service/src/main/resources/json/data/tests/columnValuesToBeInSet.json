@@ -5,7 +5,7 @@
   "description": "Checks column values against an allowed set according to the matchEnum mode.",
   "entityType": "COLUMN",
   "testPlatforms": ["OpenMetadata"],
-  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN", "LOWCARDINALITY"],
+  "supportedDataTypes": ["NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "NUMERIC", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT", "BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR", "BOOLEAN", "LOWCARDINALITY"],
   "parameterDefinition": [
     {
       "name": "allowedValues",

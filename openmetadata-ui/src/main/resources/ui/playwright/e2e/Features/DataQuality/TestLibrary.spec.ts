@@ -362,7 +362,9 @@ test.describe(
       await expect(page.getByTestId('test-definition-form-body')).toBeVisible();
     });
 
-    test('should require supported data types only when OpenMetadata platform is selected', async ({
+    // Leaving supported data types empty means "all data types", so the form must
+    // submit without them on any platform, OpenMetadata included. See issue #27718.
+    test('should create a test definition without supported data types', async ({
       page,
     }) => {
       test.slow();
@@ -377,8 +379,8 @@ test.describe(
             .waitFor({ state: 'visible' });
         });
 
-        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
-          // Fill required fields except supportedDataTypes
+        await test.step('Submit with the default OpenMetadata platform and no supported data types', async () => {
+          // Fill every required field, leaving supportedDataTypes untouched
           await page
             .getByTestId('test-definition-name')
             .locator('input')
