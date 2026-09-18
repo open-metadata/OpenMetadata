@@ -21,14 +21,12 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import { forwardRef, ReactNode, useCallback, useMemo } from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -46,8 +44,6 @@ import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
@@ -55,7 +51,6 @@ import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -691,31 +686,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       }
     }, [queryClient, source.entityType, source.fullyQualifiedName]);
 
-    const toOwnersWithHref = useCallback(
-      (refs: EntityReference[]) =>
-        toOwnerRefs(refs).map((o) => ({
-          ...o,
-          href: getOwnerPath({
-            id: o.id,
-            name: o.name,
-            type: o.type,
-          } as EntityReference),
-          icon: o.type === 'team' ? IconTeams : undefined,
-        })),
-      []
-    );
-
-    const renderOwnerContent = useCallback(
-      (owner: { name?: string; type?: string }, chip: ReactNode) => (
-        <UserPopOverCard
-          type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-          userName={owner.name ?? ''}>
-          {chip}
-        </UserPopOverCard>
-      ),
-      []
-    );
-
     const otherDetails = useMemo(() => {
       const buildColumnDetails = (): ExtraInfo[] => {
         const columnSource = source as TableColumnSearchSource;
@@ -744,13 +714,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Owner
               avatarSize={24}
               isCompactView={false}
-              owners={toOwnersWithHref(
-                (source as TableColumnSearchSource)?.owners ?? []
-              )}
+              owners={(source as TableColumnSearchSource)?.owners ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.owner-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           ),
@@ -817,13 +784,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <Owner
                 avatarSize={24}
                 isCompactView={false}
-                owners={toOwnersWithHref(
-                  (source?.owners as EntityReference[]) ?? []
-                )}
+                owners={(source?.owners as EntityReference[]) ?? []}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.owner-plural'),
                 })}
-                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             ),

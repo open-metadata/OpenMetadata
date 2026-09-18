@@ -50,7 +50,6 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -167,7 +166,7 @@ const buildGlossaryTermSavePayload = ({
 const OwnersBadge = ({ owners, testId }: OwnersBadgeProps) =>
   Boolean(owners.length) && (
     <Space wrap data-testid={testId} size={[8, 8]}>
-      <Owner isCompactView={false} owners={toOwnerRefs(owners)} />
+      <Owner isCompactView={false} owners={owners} showLabel={false} />
     </Space>
   );
 

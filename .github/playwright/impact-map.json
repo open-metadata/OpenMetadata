@@ -428,7 +428,6 @@
       "projects": ["chromium", "Basic"],
       "specs": [
         "playwright/e2e/Flow/Navbar.spec.ts",
-        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts"
       ]
     },
@@ -565,7 +564,6 @@
       "specs": [
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
-        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
