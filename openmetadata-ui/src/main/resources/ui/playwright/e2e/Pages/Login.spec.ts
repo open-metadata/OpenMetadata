@@ -94,11 +94,15 @@ test.describe(
 
       await page.locator('input[name="lastName"]').fill(CREDENTIALS.lastName);
 
-      await expect(page.locator('input[name="lastName"]')).toHaveValue(CREDENTIALS.lastName);
+      await expect(page.locator('input[name="lastName"]')).toHaveValue(
+        CREDENTIALS.lastName
+      );
 
       await page.locator('input[name="email"]').fill(CREDENTIALS.email);
 
-      await expect(page.locator('input[name="email"]')).toHaveValue(CREDENTIALS.email);
+      await expect(page.locator('input[name="email"]')).toHaveValue(
+        CREDENTIALS.email
+      );
 
       await page.locator('input[name="password"]').fill(CREDENTIALS.password);
 
@@ -107,7 +111,9 @@ test.describe(
         'password'
       );
 
-      await page.locator('input[name="confirmPassword"]').fill(CREDENTIALS.password);
+      await page
+        .locator('input[name="confirmPassword"]')
+        .fill(CREDENTIALS.password);
 
       const createUserResponse = page.waitForResponse(`/api/v1/users/signup`);
       // Click on create account button
