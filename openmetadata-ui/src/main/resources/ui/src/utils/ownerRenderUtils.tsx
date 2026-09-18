@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { OwnerType } from '../enums/user.enum';
+
+// `index.tsx` registers this util at startup, so a static import of
+// UserPopOverCard put the hover-card tree — and with it most of
+// ui-core-components — on the entry graph, costing ~95 KiB Brotli of first
+// paint. Lazy keeps the registration cheap: the chip paints immediately and
+// the card activates once its chunk lands, which is before anyone can hover.
+const UserPopOverCard = lazy(
+  () => import('../components/common/PopOverCard/UserPopOverCard')
+);
 
 /**
  * Wraps an owner chip in a UserPopOverCard so hovering the owner avatar/name
@@ -27,9 +35,11 @@ export const renderOwnerPopover = (
   owner: { name?: string; type?: string },
   chip: ReactNode
 ): ReactNode => (
-  <UserPopOverCard
-    type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-    userName={owner.name ?? ''}>
-    {chip}
-  </UserPopOverCard>
+  <Suspense fallback={chip}>
+    <UserPopOverCard
+      type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+      userName={owner.name ?? ''}>
+      {chip}
+    </UserPopOverCard>
+  </Suspense>
 );
