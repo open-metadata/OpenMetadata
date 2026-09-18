@@ -186,6 +186,10 @@ export const TreeSelect = <T = unknown,>({
   const prevValueRef = useRef<typeof value>(undefined);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
+  // Parents already opened for the current search, so a later result or lazy
+  // load never reopens a row the user collapsed.
+  const autoExpandedRef = useRef<Set<Key>>(new Set());
+  const lastSearchRef = useRef('');
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -252,20 +256,46 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [treeData, searchTerm]);
 
-  // Search results arrive nested inside collapsed rows, so open every branch
-  // once per result set. Written as state rather than derived so a row the
-  // user collapses stays collapsed; clearing the search restores whatever
-  // they had open before.
+  // Search results arrive nested inside collapsed rows, so each parent is
+  // opened as it first appears — never re-opened, so async results and lazy
+  // loads leave a row the user collapsed alone. Clearing the search restores
+  // whatever was open before it started.
   useEffect(() => {
-    if (searchTerm) {
-      if (preSearchExpandedRef.current === null) {
-        preSearchExpandedRef.current = expandedKeys;
+    if (!searchTerm) {
+      if (preSearchExpandedRef.current !== null) {
+        setExpandedKeys(preSearchExpandedRef.current);
+        preSearchExpandedRef.current = null;
+        autoExpandedRef.current = new Set();
+        lastSearchRef.current = '';
       }
-      setExpandedKeys(collectParentKeys(treeData, new Set()));
-    } else if (preSearchExpandedRef.current !== null) {
-      setExpandedKeys(preSearchExpandedRef.current);
-      preSearchExpandedRef.current = null;
+
+      return;
     }
+
+    if (preSearchExpandedRef.current === null) {
+      preSearchExpandedRef.current = expandedKeys;
+    }
+    // A different term is a fresh result set, so its branches open again.
+    if (lastSearchRef.current !== searchTerm) {
+      lastSearchRef.current = searchTerm;
+      autoExpandedRef.current = new Set();
+    }
+
+    const unopened = Array.from(collectParentKeys(treeData, new Set())).filter(
+      (id) => !autoExpandedRef.current.has(id)
+    );
+
+    if (unopened.length === 0) {
+      return;
+    }
+
+    unopened.forEach((id) => autoExpandedRef.current.add(id));
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      unopened.forEach((id) => next.add(id));
+
+      return next;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, treeData]);
 
