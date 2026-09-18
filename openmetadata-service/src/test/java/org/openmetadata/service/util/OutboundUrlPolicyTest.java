@@ -18,15 +18,19 @@ import org.junit.jupiter.api.Test;
  */
 class OutboundUrlPolicyTest {
   private static final Map<String, String> DNS =
-      Map.of(
-          "receiver.example.com", "93.184.216.34",
-          "fd123.okta.com", "93.184.216.34",
-          "fcdomain.com", "93.184.216.34",
-          "fe80-test.com", "93.184.216.34",
-          "n8n.internal", "10.20.0.5",
-          "elasticsearch", "172.18.0.2",
-          "local.test", "127.0.0.1",
-          "metadata.internal", "169.254.169.254");
+      Map.ofEntries(
+          Map.entry("receiver.example.com", "93.184.216.34"),
+          Map.entry("fd123.okta.com", "93.184.216.34"),
+          Map.entry("fcdomain.com", "93.184.216.34"),
+          Map.entry("fe80-test.com", "93.184.216.34"),
+          Map.entry("n8n.internal", "10.20.0.5"),
+          Map.entry("elasticsearch", "172.18.0.2"),
+          Map.entry("receiver.tailnet.ts.net", "100.101.102.103"),
+          Map.entry("local.test", "127.0.0.1"),
+          Map.entry("metadata.internal", "169.254.169.254"),
+          Map.entry("metadata.alibaba", "100.100.100.200"),
+          Map.entry("metadata.aws.v6", "fd00:ec2::254"),
+          Map.entry("nat64.example.com", "64:ff9b::7f00:1"));
 
   private final OutboundUrlPolicy policy = new OutboundUrlPolicy(OutboundUrlPolicyTest::resolve);
 
@@ -75,6 +79,28 @@ class OutboundUrlPolicyTest {
     assertThrows(
         BadRequestException.class,
         () -> policy.checkForSave("http://metadata.internal/computeMetadata/v1/"));
+  }
+
+  @Test
+  void hostnameResolvingToAMetadataServiceIsRejected() {
+    // These hand out the workload's own identity, which is what the operator cannot reach either.
+    assertThrows(
+        BadRequestException.class, () -> policy.checkForSave("http://metadata.alibaba/latest/"));
+    assertThrows(
+        BadRequestException.class, () -> policy.checkForSave("http://metadata.aws.v6/latest/"));
+  }
+
+  @Test
+  void nat64AddressWrappingLoopbackIsRejected() {
+    assertThrows(
+        BadRequestException.class, () -> policy.checkForSave("http://nat64.example.com/hook"));
+  }
+
+  @Test
+  void carrierGradeNatIsNotRefusedAsARange() {
+    // 100.64.0.0/10 is also where Tailscale puts tailnet addresses; only the metadata address in
+    // that range is refused.
+    assertDoesNotThrow(() -> policy.checkForSave("https://receiver.tailnet.ts.net/hook"));
   }
 
   @Test

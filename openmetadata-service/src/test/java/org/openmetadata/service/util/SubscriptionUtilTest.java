@@ -3,7 +3,6 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,7 +28,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -468,81 +466,6 @@ class SubscriptionUtilTest {
     TestDestinationStatus status = (TestDestinationStatus) statusDetails;
     assertEquals(TestDestinationStatus.Status.FAILED, status.getStatus());
     assertEquals(400, status.getStatusCode());
-  }
-
-  @Test
-  void externalDestinationFailureDoesNotReportTheTargetsAnswer() {
-    Destination<org.openmetadata.schema.type.ChangeEvent> destination =
-        mock(Destination.class, CALLS_REAL_METHODS);
-    SubscriptionDestination subscriptionDestination =
-        new SubscriptionDestination()
-            .withId(UUID.randomUUID())
-            .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
-    Invocation.Builder builder = mock(Invocation.Builder.class);
-    Response failureResponse = mock(Response.class);
-    Response.StatusType failureStatusInfo = mock(Response.StatusType.class);
-
-    when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
-    when(failureStatusInfo.getReasonPhrase()).thenReturn("Method Not Allowed");
-    when(failureResponse.getStatus()).thenReturn(405);
-    when(failureResponse.getStatusInfo()).thenReturn(failureStatusInfo);
-    when(failureResponse.getStringHeaders()).thenReturn(new MultivaluedHashMap<>());
-    when(failureResponse.hasEntity()).thenReturn(true);
-    when(failureResponse.readEntity(String.class)).thenReturn("no");
-    when(failureResponse.getMediaType()).thenReturn(MediaType.TEXT_PLAIN_TYPE);
-    when(builder.post(any())).thenReturn(failureResponse);
-
-    assertThrows(
-        EventPublisherException.class,
-        () -> SubscriptionUtil.postWebhookMessage(destination, builder, Map.of("ok", false)));
-
-    SubscriptionStatus failedStatus =
-        (SubscriptionStatus) destination.getSubscriptionDestination().getStatusDetails();
-    assertEquals(SubscriptionStatus.Status.AWAITING_RETRY, failedStatus.getStatus());
-    assertNull(failedStatus.getLastFailedStatusCode());
-    assertEquals("Delivery failed", failedStatus.getLastFailedReason());
-  }
-
-  @Test
-  void testDestinationDoesNotReturnAnInternalTargetsResponse() {
-    OutboundUrlPolicy.setInstance(
-        new OutboundUrlPolicy(
-            host ->
-                "receiver.internal".equals(host)
-                    ? InetAddress.getAllByName("10.20.0.5")
-                    : InetAddress.getAllByName(host)));
-    try {
-      Destination<org.openmetadata.schema.type.ChangeEvent> destination =
-          mock(Destination.class, CALLS_REAL_METHODS);
-      SubscriptionDestination subscriptionDestination =
-          new SubscriptionDestination()
-              .withId(UUID.randomUUID())
-              .withConfig(Map.of("endpoint", "http://receiver.internal:9200/"));
-      Invocation.Builder builder = mock(Invocation.Builder.class);
-      Response response = mock(Response.class);
-      Response.StatusType statusInfo = mock(Response.StatusType.class);
-
-      when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
-      when(statusInfo.getReasonPhrase()).thenReturn("Method Not Allowed");
-      when(response.getStatus()).thenReturn(405);
-      when(response.getStatusInfo()).thenReturn(statusInfo);
-      when(response.getStringHeaders()).thenReturn(new MultivaluedHashMap<>());
-      when(response.hasEntity()).thenReturn(true);
-      when(response.readEntity(String.class)).thenReturn("{\"cluster_name\":\"prod\"}");
-      when(response.getMediaType()).thenReturn(MediaType.APPLICATION_JSON_TYPE);
-      when(builder.post(any())).thenReturn(response);
-
-      SubscriptionUtil.deliverTestWebhookMessage(destination, builder, Map.of("ok", false));
-
-      TestDestinationStatus status =
-          (TestDestinationStatus) destination.getSubscriptionDestination().getStatusDetails();
-      assertEquals(TestDestinationStatus.Status.FAILED, status.getStatus());
-      assertEquals(405, status.getStatusCode());
-      assertNull(status.getEntity());
-      assertNull(status.getHeaders());
-    } finally {
-      OutboundUrlPolicy.resetInstance();
-    }
   }
 
   @Test

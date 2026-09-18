@@ -460,36 +460,7 @@ public class SubscriptionUtil {
                 jakarta.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
 
     StatusContext statusContext = createStatusContext(response);
-    handleTestDestinationStatus(destination, withoutInternalResponse(destination, statusContext));
-  }
-
-  /**
-   * Testing a destination returns the target's response so an operator can see why their receiver
-   * rejected a payload. For a target only this network can reach, that turns the endpoint into a way
-   * to read internal services, so the outcome is reported without the response itself.
-   */
-  private static StatusContext withoutInternalResponse(
-      Destination<ChangeEvent> destination, StatusContext statusContext) {
-    String endpoint = destinationEndpoint(destination);
-    if (endpoint == null || !OutboundUrlPolicy.getInstance().isInternalTarget(endpoint)) {
-      return statusContext;
-    }
-    return new StatusContext()
-        .withStatusCode(statusContext.getStatusCode())
-        .withStatusInfo(statusContext.getStatusInfo())
-        .withLocation(StringUtils.EMPTY)
-        .withTimestamp(statusContext.getTimestamp());
-  }
-
-  private static String destinationEndpoint(Destination<ChangeEvent> destination) {
-    SubscriptionDestination subscriptionDestination = destination.getSubscriptionDestination();
-    if (subscriptionDestination == null || subscriptionDestination.getConfig() == null) {
-      return null;
-    }
-    Webhook webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
-    return webhook == null || webhook.getEndpoint() == null
-        ? null
-        : webhook.getEndpoint().toString();
+    handleTestDestinationStatus(destination, statusContext);
   }
 
   private static void handleTestDestinationStatus(
@@ -506,33 +477,18 @@ public class SubscriptionUtil {
   private static void handleStatus(
       Destination<ChangeEvent> destination, long attemptTime, StatusContext statusContext) {
     int statusCode = statusContext.getStatusCode();
+    String statusInfo = statusContext.getStatusInfo();
+
     if (statusCode >= 200 && statusCode < 300) {
       // 2xx response codes are considered successful
       destination.setSuccessStatus(System.currentTimeMillis());
-      return;
-    }
-
-    // An external destination is chosen by whoever created the alert, so echoing the target's own
-    // status and reason back through the API turns a delivery record into a network probe.
-    // Deliveries the server addresses itself keep the detail operators debug with.
-    boolean external = isExternal(destination);
-    Integer reportedCode = external ? null : statusCode;
-    String reportedReason = external ? "Delivery failed" : statusContext.getStatusInfo();
-
-    if (statusCode >= 300 && statusCode < 400) {
+    } else if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      destination.setErrorStatus(attemptTime, reportedCode, reportedReason);
+      destination.setErrorStatus(attemptTime, statusCode, statusInfo);
     } else {
       // 4xx, 5xx response retry delivering events after timeout
-      destination.setAwaitingRetry(attemptTime, reportedCode, reportedReason);
+      destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
     }
-  }
-
-  private static boolean isExternal(Destination<ChangeEvent> destination) {
-    SubscriptionDestination subscriptionDestination = destination.getSubscriptionDestination();
-    return subscriptionDestination != null
-        && SubscriptionDestination.SubscriptionCategory.EXTERNAL.equals(
-            subscriptionDestination.getCategory());
   }
 
   private static StatusContext createStatusContext(Response response) {

@@ -25,8 +25,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -46,6 +49,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -152,20 +156,39 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
     }
 
-    validateDestinationEndpoints(entity);
+    validateDestinationEndpoints(entity, update);
     validateFilterRules(entity);
   }
 
   /**
    * Runs for create, PUT and PATCH alike, and for every category rather than only External, so an
-   * endpoint cannot be introduced through a path that skips the resource's own checks.
+   * endpoint cannot be introduced through a path that skips the resource's own checks. An endpoint
+   * already stored is left alone: refusing it here would make an existing subscription uneditable
+   * after an upgrade, and the request it would produce is refused when it is dispatched anyway.
    */
-  private void validateDestinationEndpoints(EventSubscription entity) {
+  private void validateDestinationEndpoints(EventSubscription entity, boolean update) {
+    Set<String> stored = update ? storedEndpoints(entity.getId()) : Set.of();
     for (SubscriptionDestination destination : listOrEmpty(entity.getDestinations())) {
       String endpoint = webhookEndpoint(destination);
-      if (endpoint != null) {
+      if (endpoint != null && !stored.contains(endpoint)) {
         URLValidator.validateURL(endpoint);
       }
+    }
+  }
+
+  private Set<String> storedEndpoints(UUID id) {
+    if (id == null) {
+      return Set.of();
+    }
+    try {
+      EventSubscription existing = find(id, Include.ALL);
+      return listOrEmpty(existing.getDestinations()).stream()
+          .map(EventSubscriptionRepository::webhookEndpoint)
+          .filter(Objects::nonNull)
+          .collect(Collectors.toSet());
+    } catch (EntityNotFoundException e) {
+      // Nothing stored to compare against, so every endpoint in the request is new.
+      return Set.of();
     }
   }
 

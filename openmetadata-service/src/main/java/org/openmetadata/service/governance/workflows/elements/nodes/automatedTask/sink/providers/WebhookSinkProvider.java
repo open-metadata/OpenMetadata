@@ -48,8 +48,8 @@ import org.openmetadata.service.util.SubscriptionUtil;
 @Slf4j
 public class WebhookSinkProvider implements SinkProvider {
 
-  private static final int SINK_CONNECT_TIMEOUT_SECONDS = 10;
-  private static final int SINK_READ_TIMEOUT_SECONDS = 30;
+  private static final int SINK_CONNECT_TIMEOUT_SECONDS = 30;
+  private static final int SINK_READ_TIMEOUT_SECONDS = 120;
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
   private static final ObjectMapper YAML_MAPPER = new ObjectMapper(new YAMLFactory());

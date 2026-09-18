@@ -57,7 +57,7 @@ public interface Destination<T> {
     setStatus(FAILED, attemptTime, statusCode, reason, null);
   }
 
-  default void setAwaitingRetry(Long attemptTime, Integer statusCode, String reason) {
+  default void setAwaitingRetry(Long attemptTime, int statusCode, String reason) {
     setStatus(AWAITING_RETRY, attemptTime, statusCode, reason, attemptTime + 10);
   }
 

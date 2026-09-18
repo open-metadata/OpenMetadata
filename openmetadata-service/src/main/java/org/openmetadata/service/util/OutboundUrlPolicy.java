@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +42,15 @@ public class OutboundUrlPolicy {
   }
 
   private static final List<String> ALLOWED_SCHEMES = List.of("http", "https");
+
+  /**
+   * Metadata services that hand out the workload's own identity and that the JDK predicates do not
+   * classify. Listed by address rather than by range on purpose: 100.64.0.0/10 is also where
+   * Tailscale puts tailnet addresses, and refusing the range would break receivers reached that way.
+   */
+  private static final List<InetAddress> METADATA_ADDRESSES =
+      metadataAddresses("100.100.100.200", "fd00:ec2::254");
+
   private static final OutboundUrlPolicy DEFAULT = new OutboundUrlPolicy(InetAddress::getAllByName);
 
   private static volatile OutboundUrlPolicy instance = DEFAULT;
@@ -89,23 +99,6 @@ public class OutboundUrlPolicy {
     }
   }
 
-  /**
-   * True when the URL leads somewhere only this network can reach. Used to decide what may be
-   * reflected back to the caller, not whether to send: an internal receiver is still delivered to.
-   */
-  public boolean isInternalTarget(String urlString) {
-    URL url = urlString == null ? null : parse(urlString);
-    if (url == null || url.getHost() == null || url.getHost().trim().isEmpty()) {
-      return false;
-    }
-    try {
-      return Arrays.stream(resolver.resolve(url.getHost().toLowerCase()))
-          .anyMatch(address -> isLocalAddress(address) || isPrivateAddress(address));
-    } catch (UnknownHostException e) {
-      return false;
-    }
-  }
-
   private String evaluate(String urlString, boolean rejectUnresolvable) {
     if (urlString == null || urlString.trim().isEmpty()) {
       return "URL cannot be empty";
@@ -146,8 +139,8 @@ public class OutboundUrlPolicy {
    * receiver that lives on the cluster network and is addressed by its name keeps working.
    */
   private static String addressRejection(String host, InetAddress address, boolean literal) {
-    if (isLocalAddress(address)) {
-      return String.format("%s resolves to a loopback or link-local address", host);
+    if (isLocalAddress(address) || isMetadataAddress(address) || isNat64Local(address)) {
+      return String.format("%s resolves to a loopback, link-local or metadata address", host);
     }
     if (literal && isPrivateAddress(address)) {
       return "URL targeting private/internal network not allowed";
@@ -163,6 +156,48 @@ public class OutboundUrlPolicy {
     return address.isLoopbackAddress()
         || address.isLinkLocalAddress()
         || address.isAnyLocalAddress();
+  }
+
+  private static boolean isMetadataAddress(InetAddress address) {
+    return METADATA_ADDRESSES.contains(address);
+  }
+
+  /** 64:ff9b::/96 can carry a loopback or metadata IPv4 address inside a public-looking IPv6 one. */
+  private static boolean isNat64Local(InetAddress address) {
+    byte[] bytes = address.getAddress();
+    if (!(address instanceof Inet6Address) || bytes[0] != 0 || bytes[1] != 0x64) {
+      return false;
+    }
+    if (bytes[2] != (byte) 0xff || bytes[3] != (byte) 0x9b) {
+      return false;
+    }
+    for (int i = 4; i < 12; i++) {
+      if (bytes[i] != 0) {
+        return false;
+      }
+    }
+    return embeddedIsLocal(Arrays.copyOfRange(bytes, 12, 16));
+  }
+
+  private static boolean embeddedIsLocal(byte[] ipv4) {
+    try {
+      InetAddress embedded = InetAddress.getByAddress(ipv4);
+      return isLocalAddress(embedded) || isMetadataAddress(embedded);
+    } catch (UnknownHostException e) {
+      return false;
+    }
+  }
+
+  private static List<InetAddress> metadataAddresses(String... literals) {
+    List<InetAddress> addresses = new ArrayList<>();
+    for (String literal : literals) {
+      try {
+        addresses.add(InetAddress.getByName(literal));
+      } catch (UnknownHostException e) {
+        LOG.warn("Could not parse metadata address {}", literal);
+      }
+    }
+    return List.copyOf(addresses);
   }
 
   private static boolean isPrivateAddress(InetAddress address) {
