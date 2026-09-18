@@ -27,6 +27,7 @@ from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
 )
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
 CATALOG, SCHEMA = "analytics", "sales"
 EVENT_LOG = f"{CATALOG}.{SCHEMA}.orders_event_log"
@@ -52,7 +53,10 @@ def _source(table_lineage_rows):
     source.client.get_column_lineage.return_value = []
     source.context = MagicMock()
     source.get_db_service_names = MagicMock(return_value=["unity"])
-    source._table_lookup_cache = {}
+    # the real cache type, so the test tracks the production lookup path. A stand-in
+    # only satisfies whichever calls the implementation makes when it is written, and
+    # diverges silently once that implementation changes.
+    source._table_lookup_cache = LRUCache(capacity=LRU_CACHE_SIZE)
     source._yield_kafka_lineage = MagicMock(return_value=iter(()))
 
     pipeline_entity = MagicMock()

@@ -241,7 +241,6 @@ public class K8sPipelineClientConfig {
     return parseKeyValuePairs(nodeSelectorStr);
   }
 
-  @SuppressWarnings("unchecked")
   private List<V1Toleration> parseTolerations(Object value) {
     if (value == null) {
       return List.of();
@@ -355,7 +354,6 @@ public class K8sPipelineClientConfig {
     return new K8sResources.ResourcesConfiguration(limitsConfig, requestsConfig);
   }
 
-  @SuppressWarnings("unchecked")
   private static List<String> parseListSafely(Object value) {
     if (value == null) {
       return List.of();

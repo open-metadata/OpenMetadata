@@ -55,6 +55,7 @@ import {
   DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK,
   GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY,
   LayoutType,
+  ONTOLOGY_HEALTH_PREVIEW_SIZE,
   ONTOLOGY_TERMS_PAGE_SIZE,
   withoutOntologyAutocompleteAll,
 } from '../OntologyExplorer.constants';
@@ -70,6 +71,10 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
+  getOntologyHealthSummary,
+  resolveOntologyTermLabel,
+} from '../OntologyStudio.utils';
+import {
   ASSET_BINDING_EDGE_KIND,
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
@@ -77,6 +82,7 @@ import {
   buildGraphFromOntologyData,
   getScopedTermNodes,
   isTermNode,
+  isValidUUID,
   mergeMetricsIntoGraph,
   METRIC_NODE_TYPE,
 } from '../utils/graphBuilders';
@@ -89,6 +95,12 @@ const MODEL_TERM_FIELDS = [
 ];
 
 const DATA_MODE_TERM_FIELDS = [TabSpecificField.PARENT];
+
+const toPartialGlossaryState = (
+  glossary: Glossary,
+  nextCursor?: string
+): { glossary: Glossary; afterCursor: string } | null =>
+  nextCursor ? { glossary, afterCursor: nextCursor } : null;
 
 export const DEFAULT_SETTINGS: GraphSettings = {
   layout: LayoutType.Hierarchical,
@@ -112,6 +124,21 @@ export interface UseOntologyExplorerOptions {
   onStatsChange?: (items: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
 }
+
+const resolveScopedGlossaryId = (
+  scope: OntologyExplorerProps['scope'],
+  glossaryId: string | undefined,
+  termGlossaryId: string | undefined
+): string | undefined => {
+  if (scope === 'glossary') {
+    return glossaryId;
+  }
+  if (scope === 'term') {
+    return termGlossaryId;
+  }
+
+  return undefined;
+};
 
 interface OntologyModelLoadResult {
   graphData: OntologyGraphData | null;
@@ -265,6 +292,76 @@ async function resolveRelatedTerms(terms: GlossaryTerm[]): Promise<void> {
   }
 }
 
+const mergeIncomingGraphResults = (
+  prev: OntologyGraphData | null,
+  results: OntologyGraphData[]
+): OntologyGraphData => {
+  const base = prev ?? { nodes: [], edges: [] };
+  const existingEdgeKeys = new Set(
+    base.edges.map(
+      (e) => `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`
+    )
+  );
+  const newNodes = [...base.nodes];
+  const newEdges = [...base.edges];
+  const nodeIndexes = new Map(newNodes.map((node, index) => [node.id, index]));
+
+  results.forEach((result) => {
+    result.nodes.forEach((node) => {
+      const existingIndex = nodeIndexes.get(node.id);
+      if (existingIndex === undefined) {
+        nodeIndexes.set(node.id, newNodes.length);
+        newNodes.push(node);
+      } else if (
+        node.isDataModeSeed &&
+        !newNodes[existingIndex].isDataModeSeed
+      ) {
+        newNodes[existingIndex] = {
+          ...newNodes[existingIndex],
+          ...node,
+          isDataModeSeed: true,
+        };
+      }
+    });
+    result.edges.forEach((e) => {
+      const key = `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
+      if (!existingEdgeKeys.has(key)) {
+        newEdges.push(e);
+        existingEdgeKeys.add(key);
+      }
+    });
+  });
+
+  return { nodes: newNodes, edges: newEdges };
+};
+
+const mergeLoadMorePage = (
+  prev: OntologyGraphData | null,
+  newPageData: OntologyGraphData
+): OntologyGraphData => {
+  if (!prev) {
+    return newPageData;
+  }
+  const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
+  const existingEdgeKeys = new Set(
+    prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
+  );
+
+  return {
+    ...prev,
+    nodes: [
+      ...prev.nodes,
+      ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
+    ],
+    edges: [
+      ...prev.edges,
+      ...newPageData.edges.filter(
+        (e) => !existingEdgeKeys.has(`${e.from}-${e.to}-${e.relationType}`)
+      ),
+    ],
+  };
+};
+
 export function useOntologyExplorer({
   scope,
   entityId,
@@ -307,6 +404,11 @@ export function useOntologyExplorer({
   const [dataModeTotalTermCount, setDataModeTotalTermCount] = useState(0);
   const [ontologySummary, setOntologySummary] =
     useState<OntologySummaryResponse>();
+  const [isOntologySummaryUnavailable, setIsOntologySummaryUnavailable] =
+    useState(false);
+  const [isolatedTermDetails, setIsolatedTermDetails] = useState<
+    GlossaryTerm[]
+  >([]);
 
   // --- Refs ---
 
@@ -416,22 +518,24 @@ export function useOntologyExplorer({
       }
 
       try {
-        let scopedGlossaryId: string | undefined;
-        if (scope === 'glossary') {
-          scopedGlossaryId = glossaryId;
-        } else if (scope === 'term') {
-          scopedGlossaryId = termGlossaryId;
-        }
+        const scopedGlossaryId = resolveScopedGlossaryId(
+          scope,
+          glossaryId,
+          termGlossaryId
+        );
         const termGlossaryIds = new Set(
           termNodes
             .map((termNode) => termNode.glossaryId)
             .filter((id): id is string => Boolean(id))
         );
-        const requestedGlossaryIds = scopedGlossaryId
-          ? [scopedGlossaryId]
-          : glossaryFilterIds.length > 0
-          ? glossaryFilterIds.filter((id) => termGlossaryIds.has(id))
-          : [];
+        let requestedGlossaryIds: string[] = [];
+        if (scopedGlossaryId) {
+          requestedGlossaryIds = [scopedGlossaryId];
+        } else if (glossaryFilterIds.length > 0) {
+          requestedGlossaryIds = glossaryFilterIds.filter((id) =>
+            termGlossaryIds.has(id)
+          );
+        }
         const glossaryFqnsToFetch = requestedGlossaryIds
           .map(
             (id) =>
@@ -622,9 +726,10 @@ export function useOntologyExplorer({
           fieldsToFetch
         );
         accumulated.push(...terms);
-        partialGlossaryRef.current = nextCursor
-          ? { glossary, afterCursor: nextCursor }
-          : null;
+        partialGlossaryRef.current = toPartialGlossaryState(
+          glossary,
+          nextCursor
+        );
       }
 
       while (
@@ -841,47 +946,7 @@ export function useOntologyExplorer({
   }, [filters.glossaryIds, scope, entityId, fetchTermAssetCounts]);
 
   const mergeGraphResults = useCallback((results: OntologyGraphData[]) => {
-    setGraphData((prev) => {
-      const base = prev ?? { nodes: [], edges: [] };
-      const existingEdgeKeys = new Set(
-        base.edges.map(
-          (e) => `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`
-        )
-      );
-      const newNodes = [...base.nodes];
-      const newEdges = [...base.edges];
-      const nodeIndexes = new Map(
-        newNodes.map((node, index) => [node.id, index])
-      );
-
-      results.forEach((result) => {
-        result.nodes.forEach((node) => {
-          const existingIndex = nodeIndexes.get(node.id);
-          if (existingIndex === undefined) {
-            nodeIndexes.set(node.id, newNodes.length);
-            newNodes.push(node);
-          } else if (
-            node.isDataModeSeed &&
-            !newNodes[existingIndex].isDataModeSeed
-          ) {
-            newNodes[existingIndex] = {
-              ...newNodes[existingIndex],
-              ...node,
-              isDataModeSeed: true,
-            };
-          }
-        });
-        result.edges.forEach((e) => {
-          const key = `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
-          if (!existingEdgeKeys.has(key)) {
-            newEdges.push(e);
-            existingEdgeKeys.add(key);
-          }
-        });
-      });
-
-      return { nodes: newNodes, edges: newEdges };
-    });
+    setGraphData((prev) => mergeIncomingGraphResults(prev, results));
   }, []);
 
   const loadMissingFilteredGlossaries = useCallback(
@@ -1050,12 +1115,72 @@ export function useOntologyExplorer({
     const parent = glossaries.find((glossary) =>
       selectedIds.includes(glossary.id)
     )?.fullyQualifiedName;
-    getOntologySummary({ limit: 5, offset: 0, parent }, controller.signal)
-      .then(setOntologySummary)
-      .catch(() => setOntologySummary(undefined));
+    setOntologySummary(undefined);
+    setIsOntologySummaryUnavailable(false);
+    setIsolatedTermDetails([]);
+    getOntologySummary(
+      { limit: ONTOLOGY_HEALTH_PREVIEW_SIZE, offset: 0, parent },
+      controller.signal
+    )
+      .then((summary) => {
+        if (!controller.signal.aborted) {
+          setOntologySummary(summary);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setOntologySummary(undefined);
+          setIsOntologySummaryUnavailable(true);
+        }
+      });
 
     return () => controller.abort();
   }, [filters.glossaryIds, glossaries, scope]);
+
+  const isolatedTermIdsToHydrate = useMemo(() => {
+    if (!isOntologySummaryUnavailable) {
+      return [];
+    }
+    const health = getOntologyHealthSummary(combinedGraphData, {
+      ...DEFAULT_FILTERS,
+      glossaryIds: filters.glossaryIds,
+    });
+
+    return health.isolatedTerms
+      .slice(0, ONTOLOGY_HEALTH_PREVIEW_SIZE)
+      .filter(
+        (term) =>
+          isValidUUID(term.id) && resolveOntologyTermLabel(term) === term.id
+      )
+      .map((term) => term.id);
+  }, [combinedGraphData, filters.glossaryIds, isOntologySummaryUnavailable]);
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+    if (isolatedTermIdsToHydrate.length === 0) {
+      setIsolatedTermDetails([]);
+
+      return () => {
+        isCurrentRequest = false;
+      };
+    }
+
+    getGlossaryTermsByIds(isolatedTermIdsToHydrate)
+      .then((terms) => {
+        if (isCurrentRequest) {
+          setIsolatedTermDetails(terms);
+        }
+      })
+      .catch(() => {
+        if (isCurrentRequest) {
+          setIsolatedTermDetails([]);
+        }
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [isolatedTermIdsToHydrate]);
 
   const resolvedStatsItems = useMemo(
     () =>
@@ -1317,30 +1442,7 @@ export function useOntologyExplorer({
     loadNextTermPage()
       .then((terms) => {
         const newPageData = buildGraphFromAllTermsCb(terms, glossaries);
-        setGraphData((prev) => {
-          if (!prev) {
-            return newPageData;
-          }
-          const existingNodeIds = new Set(prev.nodes.map((n) => n.id));
-          const existingEdgeKeys = new Set(
-            prev.edges.map((e) => `${e.from}-${e.to}-${e.relationType}`)
-          );
-
-          return {
-            ...prev,
-            nodes: [
-              ...prev.nodes,
-              ...newPageData.nodes.filter((n) => !existingNodeIds.has(n.id)),
-            ],
-            edges: [
-              ...prev.edges,
-              ...newPageData.edges.filter(
-                (e) =>
-                  !existingEdgeKeys.has(`${e.from}-${e.to}-${e.relationType}`)
-              ),
-            ],
-          };
-        });
+        setGraphData((prev) => mergeLoadMorePage(prev, newPageData));
       })
       .catch(() => {})
       .finally(() => {
@@ -1519,6 +1621,7 @@ export function useOntologyExplorer({
     exportableGlossaryId,
     hasMoreDataTerms,
     ontologySummary,
+    isolatedTermDetails,
     hasMoreTerms,
     loadedTermCount,
     totalTermCount,

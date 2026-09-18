@@ -14,7 +14,7 @@
 import { Button, Card } from '@openmetadata/ui-core-components';
 import { ArrowRight, ArrowUpRight, Check } from '@untitledui/icons';
 import classNames from 'classnames';
-import { KeyboardEvent, useState } from 'react';
+import { KeyboardEvent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
 import { OntologyPackInstallation } from '../../generated/type/ontologyPackInstallation';
@@ -40,6 +40,122 @@ const PACK_ICON_CLASSES: Record<string, string> = {
   'isa-95': 'tw:bg-utility-orange-600',
 };
 
+interface OntologyPackCardProps {
+  pack: OntologyPackManifest;
+  installation?: OntologyPackInstallation;
+  onSelect: (pack: OntologyPackManifest) => void;
+}
+
+const OntologyPackCard = ({
+  pack,
+  installation,
+  onSelect,
+}: OntologyPackCardProps) => {
+  const { t } = useTranslation();
+  const isInstalledBundledPack = Boolean(installation && pack.bundled);
+  const totals = selectedModuleTotals(
+    pack,
+    pack.modules.map((module) => module.id)
+  );
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect(pack);
+    }
+  };
+
+  const clickableCardProps = isInstalledBundledPack
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        onClick: () => onSelect(pack),
+        onKeyDown: handleKeyDown,
+      }
+    : {};
+
+  let actionButton: ReactNode = null;
+  if (!installation && pack.bundled) {
+    actionButton = (
+      <Button
+        className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
+        color="link-color"
+        data-testid={`ontology-pack-details-${pack.id}`}
+        iconTrailing={
+          <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
+        }
+        size="xs"
+        onPress={() => onSelect(pack)}>
+        {t('label.install')}
+      </Button>
+    );
+  } else if (!installation) {
+    actionButton = (
+      <Button
+        className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
+        color="link-color"
+        data-testid={`ontology-pack-source-${pack.id}`}
+        href={pack.sourceUrl}
+        iconTrailing={
+          <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
+        }
+        rel="noreferrer"
+        size="xs"
+        target="_blank">
+        {t('label.source')}
+      </Button>
+    );
+  }
+
+  return (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-[11px] tw:p-4 tw:shadow-xs"
+      data-testid={`ontology-pack-${pack.id}`}
+      isClickable={isInstalledBundledPack}
+      {...clickableCardProps}>
+      <div className="tw:flex tw:items-center tw:gap-[11px]">
+        <span
+          className={classNames(
+            'tw:grid tw:size-10 tw:shrink-0 tw:place-items-center tw:rounded-[10px] tw:px-1',
+            'tw:text-center tw:font-body tw:text-[11px] tw:leading-none tw:font-bold tw:tracking-[-0.02em] tw:text-white',
+            PACK_ICON_CLASSES[pack.id] ?? DEFAULT_PACK_ICON_CLASS
+          )}
+          data-testid={`ontology-pack-abbreviation-${pack.id}`}>
+          {pack.abbreviation}
+        </span>
+        <div className="tw:min-w-0 tw:flex-1">
+          <h2 className="tw:m-0 tw:truncate tw:font-body tw:text-sm tw:leading-normal tw:font-semibold tw:text-primary">
+            {pack.name}
+          </h2>
+          <p className="tw:m-0 tw:truncate tw:font-body tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
+            {pack.standard}
+          </p>
+        </div>
+        {installation ? (
+          <span className={INSTALLED_BADGE_CLASS}>
+            <Check aria-hidden="true" className="tw:size-2.5" />
+            {t('label.installed')}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="tw:m-0 tw:line-clamp-2 tw:min-h-9 tw:font-body tw:text-xs tw:leading-[18px] tw:font-normal tw:text-tertiary">
+        {pack.description}
+      </p>
+
+      <div className="tw:mt-auto tw:flex tw:items-center tw:gap-2 tw:pt-0.5">
+        <span className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-medium tw:text-quaternary">
+          {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()}{' '}
+          <span aria-hidden="true">·</span> {totals.relationships}{' '}
+          {t('label.relation-plural').toLocaleLowerCase()}
+        </span>
+        <span className="tw:flex-1" />
+        {actionButton}
+      </div>
+    </Card>
+  );
+};
+
 const OntologyLibraryCatalogue = ({
   installations,
   packs,
@@ -50,16 +166,6 @@ const OntologyLibraryCatalogue = ({
   const visiblePacks = selectedFilterId
     ? packs.filter((pack) => pack.id === selectedFilterId)
     : packs;
-
-  const handleInstalledPackKeyDown = (
-    event: KeyboardEvent<HTMLDivElement>,
-    pack: OntologyPackManifest
-  ) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSelect(pack);
-    }
-  };
 
   return (
     <div data-testid="ontology-pack-catalogue">
@@ -108,95 +214,14 @@ const OntologyLibraryCatalogue = ({
           const installation = installations.find(
             (candidate) => candidate.packId === pack.id
           );
-          const isInstalledBundledPack = Boolean(installation && pack.bundled);
-          const totals = selectedModuleTotals(
-            pack,
-            pack.modules.map((module) => module.id)
-          );
 
           return (
-            <Card
-              className="tw:flex tw:flex-col tw:gap-[11px] tw:p-4 tw:shadow-xs"
-              data-testid={`ontology-pack-${pack.id}`}
-              isClickable={isInstalledBundledPack}
+            <OntologyPackCard
+              installation={installation}
               key={pack.id}
-              role={isInstalledBundledPack ? 'button' : undefined}
-              tabIndex={isInstalledBundledPack ? 0 : undefined}
-              onClick={
-                isInstalledBundledPack ? () => onSelect(pack) : undefined
-              }
-              onKeyDown={
-                isInstalledBundledPack
-                  ? (event) => handleInstalledPackKeyDown(event, pack)
-                  : undefined
-              }>
-              <div className="tw:flex tw:items-center tw:gap-[11px]">
-                <span
-                  className={classNames(
-                    'tw:grid tw:size-10 tw:shrink-0 tw:place-items-center tw:rounded-[10px] tw:px-1',
-                    'tw:text-center tw:font-body tw:text-[11px] tw:leading-none tw:font-bold tw:tracking-[-0.02em] tw:text-white',
-                    PACK_ICON_CLASSES[pack.id] ?? DEFAULT_PACK_ICON_CLASS
-                  )}
-                  data-testid={`ontology-pack-abbreviation-${pack.id}`}>
-                  {pack.abbreviation}
-                </span>
-                <div className="tw:min-w-0 tw:flex-1">
-                  <h2 className="tw:m-0 tw:truncate tw:font-body tw:text-sm tw:leading-normal tw:font-semibold tw:text-primary">
-                    {pack.name}
-                  </h2>
-                  <p className="tw:m-0 tw:truncate tw:font-body tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                    {pack.standard}
-                  </p>
-                </div>
-                {installation ? (
-                  <span className={INSTALLED_BADGE_CLASS}>
-                    <Check aria-hidden="true" className="tw:size-2.5" />
-                    {t('label.installed')}
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="tw:m-0 tw:line-clamp-2 tw:min-h-9 tw:font-body tw:text-xs tw:leading-[18px] tw:font-normal tw:text-tertiary">
-                {pack.description}
-              </p>
-
-              <div className="tw:mt-auto tw:flex tw:items-center tw:gap-2 tw:pt-0.5">
-                <span className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-medium tw:text-quaternary">
-                  {totals.concepts}{' '}
-                  {t('label.concept-plural').toLocaleLowerCase()}{' '}
-                  <span aria-hidden="true">·</span> {totals.relationships}{' '}
-                  {t('label.relation-plural').toLocaleLowerCase()}
-                </span>
-                <span className="tw:flex-1" />
-                {!installation && pack.bundled ? (
-                  <Button
-                    className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
-                    color="link-color"
-                    data-testid={`ontology-pack-details-${pack.id}`}
-                    iconTrailing={
-                      <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
-                    }
-                    size="xs"
-                    onPress={() => onSelect(pack)}>
-                    {t('label.install')}
-                  </Button>
-                ) : !installation ? (
-                  <Button
-                    className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
-                    color="link-color"
-                    data-testid={`ontology-pack-source-${pack.id}`}
-                    href={pack.sourceUrl}
-                    iconTrailing={
-                      <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
-                    }
-                    rel="noreferrer"
-                    size="xs"
-                    target="_blank">
-                    {t('label.source')}
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
+              pack={pack}
+              onSelect={onSelect}
+            />
           );
         })}
       </div>

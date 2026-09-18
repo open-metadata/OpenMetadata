@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Button } from './button';
@@ -52,5 +53,45 @@ describe('Button', () => {
     );
 
     expect(ref.current).toBeInstanceOf(HTMLAnchorElement);
+  });
+});
+
+describe('Button — tooltip prop', () => {
+  it('shows a tooltip on hover when the tooltip prop is set', async () => {
+    const user = userEvent.setup();
+
+    // Establish pointer modality so react-aria treats hover as a valid trigger.
+    fireEvent.mouseMove(document);
+
+    render(<Button tooltip="Helpful hint">Click me</Button>);
+
+    expect(screen.queryByText('Helpful hint')).not.toBeInTheDocument();
+
+    await user.hover(screen.getByRole('button', { name: 'Click me' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Helpful hint')).toBeInTheDocument();
+    });
+  });
+
+  it('does not render a tooltip when the tooltip prop is omitted', () => {
+    render(<Button>Click me</Button>);
+
+    // The button should not be wrapped in a TooltipTrigger at all.
+    const btn = screen.getByRole('button', { name: 'Click me' });
+
+    expect(btn.closest('[data-rac]')).toBe(btn);
+  });
+
+  it('disables the tooltip when the button is disabled', () => {
+    render(
+      <Button isDisabled tooltip="Hint">
+        Click me
+      </Button>
+    );
+
+    // With isDisabled, Tooltip receives isDisabled={true} and should not render
+    // the tooltip overlay even when isOpen would normally show it.
+    expect(screen.queryByText('Hint')).not.toBeInTheDocument();
   });
 });

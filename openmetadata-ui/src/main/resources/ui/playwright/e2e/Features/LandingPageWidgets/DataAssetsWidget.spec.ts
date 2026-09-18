@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
 import { toLower } from 'lodash';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -19,6 +18,7 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test } from '../../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { checkDataAssetWidget } from '../../../utils/entity';
 

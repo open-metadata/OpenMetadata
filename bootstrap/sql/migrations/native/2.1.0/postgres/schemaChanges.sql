@@ -42,6 +42,12 @@ CREATE INDEX IF NOT EXISTS idx_test_case_id ON test_case (id);
 -- index and full-scanned the timeline at scale.
 CREATE INDEX IF NOT EXISTS idx_test_case_resolution_status_assignee ON test_case_resolution_status_time_series (assignee, timestamp);
 
+-- Column extension keys hash every FQN segment separately and join the hashes with dots.
+-- A fourth-level nested table column has eight segments and needs 263 characters.
+-- Keep the width aligned with MySQL: 512 supports eleven column levels after the four-part
+-- table FQN.
+ALTER TABLE entity_extension ALTER COLUMN extension TYPE VARCHAR(512);
+
 -- Incident summary table: one row per incident (stateId chain), maintained at write time so
 -- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
 -- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
@@ -267,9 +273,62 @@ SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracled
 WHERE serviceType = 'Oracle'
   AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
 
+-- Data quality dimensions become first class entities (issue #30362): test definitions and test
+-- cases point at them by relationship so that a dimension can be renamed, recoloured or added
+-- without touching the tests that use it. System dimensions are seeded from
+-- json/data/dataQualityDimension on startup.
+-- An earlier revision of this (unreleased) migration declared `id` as a plain column. Because
+-- EntityDAO.insert only writes fqnHash and json, every insert failed with "null value in column
+-- id". The table is dropped unconditionally rather than patched: it is new in this unreleased
+-- version, so any existing copy is either empty (the broken shape could not be inserted into) or
+-- holds nothing but the system dimensions, which are re-seeded from
+-- json/data/dataQualityDimension on the next startup.
+DROP TABLE IF EXISTS data_quality_dimension;
+CREATE TABLE data_quality_dimension (
+    -- EntityDAO.insert only writes fqnHash and json, so every other column has to be derived
+    -- from the json document, id included.
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    json jsonb NOT NULL,
+    fqnHash character varying(768) NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    provider character varying(32) GENERATED ALWAYS AS ((json ->> 'provider'::text)) STORED,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_data_quality_dimension_fqn_hash UNIQUE (fqnhash)
+);
+CREATE INDEX IF NOT EXISTS idx_data_quality_dimension_name ON data_quality_dimension (name);
+
 CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
   name VARCHAR(64) NOT NULL,
   json JSONB NOT NULL,
   updatedAt BIGINT NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- Restore the audit log full-text index where it is missing (see the MySQL counterpart).
+CREATE INDEX IF NOT EXISTS idx_audit_log_search_text
+  ON audit_log_event USING GIN (to_tsvector('english', coalesce(search_text, '')));
+
+-- event_type and entity_type are filterable on their own and pair with the event_ts ordering every
+-- list query uses; without them a filtered page scans every row in the time window.
+CREATE INDEX IF NOT EXISTS idx_audit_log_event_type_ts
+  ON audit_log_event (event_type, event_ts DESC);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
+  ON audit_log_event (entity_type, event_ts DESC);
+
+-- Index automations_workflow.updatedat for the DataRetention app's workflow cleanup, which
+-- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
+-- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
+-- test connection, query runner and reverse ingestion runs.
+CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
+  ON automations_workflow (updatedat);
+
+-- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
+-- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
+-- full table scan per login. Uniqueness is not restated here: user_entity already has UNIQUE
+-- constraints on email and name, and every write normalizes to lowercase, so the plain
+-- constraints already bound each lowercased value to one row.
+CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));

@@ -48,9 +48,11 @@ jest.mock('recharts', () => ({
     .mockImplementation(({ children, ...rest }) => (
       <div {...rest}>{children}</div>
     )),
-  ResponsiveContainer: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <div data-testid="responsive-container" {...rest}>
-      {children}
-    </div>
-  )),
+  ResponsiveContainer: jest
+    .fn()
+    .mockImplementation(({ children, minHeight: _minHeight, ...rest }) => (
+      <div data-testid="responsive-container" {...rest}>
+        {children}
+      </div>
+    )),
 }));

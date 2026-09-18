@@ -55,7 +55,7 @@ class UniqueCount(QueryMetric):
     def metric_type(self):
         return int
 
-    def query(self, sample: Optional[type], session: Optional[Session] = None):  # noqa: UP045
+    def query(self, sample: type | None, session: Session | None = None):
         """
         Build the Unique Count metric
         """

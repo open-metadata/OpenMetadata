@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import {
   navigateToAuditLogsPage,
   verifyAuditEntryHasValidUUIDs,
@@ -555,9 +555,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const avatar = firstItem.getByTestId('item-avatar');
       await expect(avatar).toBeVisible();
 
-      const profilePic = avatar.locator(
-        '.profile-image-container, .ant-avatar'
-      );
+      const profilePic = avatar.locator('[data-avatar]');
       await expect(profilePic).toBeVisible();
     });
 

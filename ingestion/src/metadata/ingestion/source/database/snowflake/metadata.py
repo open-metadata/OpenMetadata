@@ -12,17 +12,15 @@
 Snowflake source module
 """
 
-import json  # noqa: I001
+import json
 import threading
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import cast
 
 import sqlalchemy.types as sqltypes
 import sqlparse
-from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
-from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
@@ -39,7 +37,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import (
-    Column,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -68,6 +65,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -80,13 +78,15 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.snowflake.constants import (
     DEFAULT_STREAM_COLUMNS,
     PROCEDURE_TYPE_URL_MAP,
     SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
     SNOWFLAKE_TAG_DESCRIPTION,
     TABLE_TYPE_URL_MAP,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
 )
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -111,7 +111,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
-    set_session_tag_query,
 )
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_request,
@@ -161,6 +160,8 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_all_view_definitions,
 )
+from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 
 
 class MAP(StructuredType):
@@ -262,8 +263,8 @@ class SnowflakeSource(
         self.database_tags_map = {}
         self._semantic_catalog_local = threading.local()
 
-        self._account: Optional[str] = None  # noqa: UP045
-        self._org_name: Optional[str] = None  # noqa: UP045
+        self._account: str | None = None
+        self._org_name: str | None = None
         self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.pipeline_name = pipeline_name
@@ -277,7 +278,7 @@ class SnowflakeSource(
             )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
@@ -287,7 +288,7 @@ class SnowflakeSource(
         return cls(config, metadata, pipeline_name, incremental_config)
 
     @property
-    def account(self) -> Optional[str]:  # noqa: UP045
+    def account(self) -> str | None:
         """
         Query the account information
             ref https://docs.snowflake.com/en/sql-reference/functions/current_account_name
@@ -298,7 +299,7 @@ class SnowflakeSource(
         return self._account
 
     @property
-    def org_name(self) -> Optional[str]:  # noqa: UP045
+    def org_name(self) -> str | None:
         """
         Query the Organization information.
             ref https://docs.snowflake.com/en/sql-reference/functions/current_organization_name
@@ -307,25 +308,6 @@ class SnowflakeSource(
             self._org_name = self._get_org_name()
 
         return self._org_name
-
-    def set_session_query_tag(self) -> None:
-        """
-        Register a pool event on the engine so that every connection
-        checked out from the pool gets the QUERY_TAG set automatically.
-        In SA 2.0, each engine.connect() may return a different pooled
-        connection, so setting the tag on a single connection is not enough.
-
-        Called after set_inspector() which creates a new engine per database,
-        so we register the event on the current self.engine.
-        """
-        if self.service_connection.queryTag:
-            query_tag = self.service_connection.queryTag
-
-            @event.listens_for(self.engine, "connect")
-            def _set_query_tag(dbapi_connection, connection_record):
-                cursor = dbapi_connection.cursor()
-                cursor.execute(set_session_tag_query(query_tag))
-                cursor.close()
 
     def set_partition_details(self) -> None:
         self.partition_details.clear()
@@ -350,9 +332,14 @@ class SnowflakeSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
+            quoted_database_name = self.engine.dialect.identifier_preparer.quote_identifier(
+                fqn.unquote_name(database_name)
+            )
             self.external_location_map = {
                 (row.database_name, row.schema_name, row.name): row.location
-                for row in conn.execute(text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)))
+                for row in conn.execute(
+                    text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=quoted_database_name))
+                )
             }
 
     def set_schema_tags_map(self, database_name: str) -> None:
@@ -366,10 +353,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     schema_name = row.SCHEMA_NAME
                     if not row.TAG_VALUE:
@@ -397,10 +384,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_DATABASE_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     db_name = row.DATABASE_NAME
                     if db_name not in self.database_tags_map:
@@ -411,19 +398,19 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch database tags: {exc}")
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
         return self.schema_desc_map.get((self.context.get().database, schema_name))
 
-    def get_database_description(self, database_name: str) -> Optional[str]:  # noqa: UP045
+    def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         """
         return self.database_desc_map.get(database_name)
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.database
 
     def get_database_names_raw(self) -> Iterable[str]:
@@ -436,14 +423,14 @@ class SnowflakeSource(
         logger.debug("Databases visible to the ingestion role: %s", database_names)
         yield from database_names
 
-    def _compute_filtered_database_names(self) -> List[str]:  # noqa: UP006
+    def _compute_filtered_database_names(self) -> list[str]:
         """Database names that pass the filter pattern. Pure enumeration +
         filtering with no inspector/session setup, so the same list feeds both
         the progress denominator and the lazy, stateful producer."""
         configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
         if configured_db:
             return [configured_db]
-        names: List[str] = []  # noqa: UP006
+        names: list[str] = []
         for new_database in self.get_database_names_raw():
             database_fqn = fqn.build(
                 self.metadata,
@@ -465,7 +452,7 @@ class SnowflakeSource(
             names.append(new_database)
         return names
 
-    def _filtered_database_names(self) -> List[str]:  # noqa: UP006
+    def _filtered_database_names(self) -> list[str]:
         """Filtered database names, computed once per run (the filter emits
         status side effects, so it must not run twice)."""
         cached = self.__dict__.get("_filtered_database_names_cache")
@@ -475,12 +462,12 @@ class SnowflakeSource(
             )
         return cached
 
-    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
         """``{database: [schema_names]}`` for every filtered database, from a
         single account-wide ``SHOW SCHEMAS`` — one round-trip, no per-database
         reconnect. Returns ``None`` when the account-level SHOW is unavailable
         (e.g. role privileges) so the caller can fall back to reconcile-only."""
-        by_database: Dict[str, List[str]] = {db: [] for db in self._filtered_database_names()}  # noqa: UP006
+        by_database: dict[str, list[str]] = {db: [] for db in self._filtered_database_names()}
         try:
             rows = self.connection.execute(text(SNOWFLAKE_GET_SCHEMATA)).fetchall()
         except Exception as exc:  # pylint: disable=broad-except
@@ -520,7 +507,6 @@ class SnowflakeSource(
         for database_name in self._filtered_database_names():
             try:
                 self.set_inspector(database_name=database_name)
-                self.set_session_query_tag()
                 self.set_partition_details()
                 self.set_schema_description_map()
                 self.set_database_description_map()
@@ -532,7 +518,7 @@ class SnowflakeSource(
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error trying to connect to database {database_name}: {exc}")
 
-    def __clean_append(self, token: Token, result_list: List) -> None:  # noqa: UP006
+    def __clean_append(self, token: Token, result_list: list) -> None:
         """
         Appends the real name of the given token to the result list if it exists.
 
@@ -547,7 +533,7 @@ class SnowflakeSource(
         if name is not None:
             result_list.append(name)
 
-    def __get_identifier_from_function(self, function_token: Function) -> List:  # noqa: UP006
+    def __get_identifier_from_function(self, function_token: Function) -> list:
         identifiers = []
         for token in function_token.get_parameters():
             if isinstance(token, Function):
@@ -557,7 +543,7 @@ class SnowflakeSource(
                 self.__clean_append(token, identifiers)
         return identifiers
 
-    def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def parse_column_name_from_expr(self, cluster_key_expr: str) -> list[str] | None:
         try:
             parser = sqlparse.parse(cluster_key_expr)
             if not parser:
@@ -580,8 +566,8 @@ class SnowflakeSource(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-        partition_columns: Optional[List[str]],  # noqa: UP006, UP045
-    ) -> List[str]:  # noqa: UP006
+        partition_columns: list[str] | None,
+    ) -> list[str]:
         if partition_columns:
             columns = []
             table_columns = inspector.get_columns(table_name=table_name, schema=schema_name)
@@ -595,7 +581,7 @@ class SnowflakeSource(
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         cluster_key = self.partition_details.get(f"{schema_name}.{table_name}")
         if cluster_key:
             partition_columns = self.parse_column_name_from_expr(cluster_key)
@@ -624,25 +610,29 @@ class SnowflakeSource(
                 result = self.connection.execute(
                     text(
                         SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        "schema_name": schema_name,
+                    },
                 )
 
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
+                    logger.warning("Error fetching tags %s. Retrying with unquoted context names", exc)
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                                database_name=f'"{self.context.get().database}"',
-                                schema_name=f'"{self.context.get().database_schema}"',
-                                account_usage=self.service_connection.accountUsageSchema,
+                                account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                             )
-                        )
+                        ),
+                        {
+                            "database_name": fqn.unquote_name(self.context.get().database),  # pyright: ignore[reportAttributeAccessIssue]
+                            "schema_name": fqn.unquote_name(self.context.get().database_schema),  # pyright: ignore[reportAttributeAccessIssue]
+                        },
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())
@@ -672,21 +662,14 @@ class SnowflakeSource(
 
                 entity_fqn = fqn._build(self.context.get().database_service, *fqn_elements)  # pyright: ignore[reportAttributeAccessIssue]
                 try:
-                    classification = self.tag_canonicalizer.classification(
-                        row[0], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                    tag = self.define_tag(
+                        classification_name=row[0],
+                        tag_name=row[1],
+                        classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                        tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                     )
-                    tag = self.tag_canonicalizer.tag(
-                        classification.name, row[1], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                    )
-
-                    self.tags_registry.attach(
-                        scope_fqn=schema_fqn,
-                        entity_fqn=entity_fqn,
-                        classification_name=classification.name,
-                        tag_name=tag.name,
-                        classification_description=classification.description,
-                        tag_description=tag.description,
-                    )
+                    if tag is not None:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     yield Either(
@@ -702,23 +685,14 @@ class SnowflakeSource(
             if schema_name in self.schema_tags_map:
                 for tag_info in self.schema_tags_map[schema_name]:
                     try:
-                        classification = self.tag_canonicalizer.classification(
-                            tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                        tag = self.define_tag(
+                            classification_name=tag_info["tag_name"],
+                            tag_name=tag_info["tag_value"],
+                            classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                            tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                         )
-                        tag = self.tag_canonicalizer.tag(
-                            classification.name,
-                            tag_info["tag_value"],
-                            default_tag_description=SNOWFLAKE_TAG_DESCRIPTION,
-                        )
-
-                        self.tags_registry.attach(
-                            scope_fqn=schema_fqn,
-                            entity_fqn=schema_fqn,
-                            classification_name=classification.name,
-                            tag_name=tag.name,
-                            classification_description=classification.description,
-                            tag_description=tag.description,
-                        )
+                        if tag is not None:
+                            self.attach_tag(entity_fqn=schema_fqn, tag=tag)
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
                         yield Either(
@@ -729,7 +703,6 @@ class SnowflakeSource(
                             ),
                             right=None,
                         )
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yield database-level tags for the topology."""
@@ -750,21 +723,14 @@ class SnowflakeSource(
         )
         for tag_info in self.database_tags_map[database_name]:
             try:
-                classification = self.tag_canonicalizer.classification(
-                    tag_info["tag_name"], default_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION
+                tag = self.define_tag(
+                    classification_name=tag_info["tag_name"],
+                    tag_name=tag_info["tag_value"],
+                    classification_description=SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
+                    tag_description=SNOWFLAKE_TAG_DESCRIPTION,
                 )
-                tag = self.tag_canonicalizer.tag(
-                    classification.name, tag_info["tag_value"], default_tag_description=SNOWFLAKE_TAG_DESCRIPTION
-                )
-
-                self.tags_registry.attach(
-                    scope_fqn=database_fqn,
-                    entity_fqn=database_fqn,
-                    classification_name=classification.name,
-                    tag_name=tag.name,
-                    classification_description=classification.description,
-                    tag_description=tag.description,
-                )
+                if tag is not None:
+                    self.attach_tag(entity_fqn=database_fqn, tag=tag)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 yield Either(
@@ -775,11 +741,10 @@ class SnowflakeSource(
                     ),
                     right=None,
                 )
-        yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
-    ) -> List[TableNameAndType]:  # noqa: UP006
+    ) -> list[TableNameAndType]:
 
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
@@ -809,7 +774,7 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
 
-    def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+    def _get_stream_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         table_type = TableType.Stream
 
         snowflake_streams = self.inspector.get_stream_names(
@@ -833,7 +798,7 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stream.name, type_=table_type) for stream in snowflake_streams.get_not_deleted()]
 
-    def _get_stage_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+    def _get_stage_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         """Fetch named stages from the schema"""
         table_type = TableType.Stage
 
@@ -841,7 +806,7 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stage.name, type_=table_type) for stage in snowflake_stages.get_not_deleted()]
 
-    def _get_semantic_view_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+    def _get_semantic_view_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
         """Fetch semantic views from the schema"""
         table_type = TableType.SemanticView
 
@@ -878,7 +843,7 @@ class SnowflakeSource(
 
         return table_list
 
-    def _get_org_name(self) -> Optional[str]:  # noqa: UP045
+    def _get_org_name(self) -> str | None:
         try:
             with self.engine.connect() as conn:
                 res = conn.execute(text(SNOWFLAKE_GET_ORGANIZATION_NAME)).one()
@@ -889,7 +854,7 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch Organization name due to: {exc}")
         return None
 
-    def _get_current_account(self) -> Optional[str]:  # noqa: UP045
+    def _get_current_account(self) -> str | None:
         try:
             with self.engine.connect() as conn:
                 res = conn.execute(text(SNOWFLAKE_GET_CURRENT_ACCOUNT)).one()
@@ -900,7 +865,7 @@ class SnowflakeSource(
             logger.debug(f"Failed to fetch current account due to: {exc}")
         return None
 
-    def _get_source_url_root(self, database_name: Optional[str] = None, schema_name: Optional[str] = None) -> str:  # noqa: UP045
+    def _get_source_url_root(self, database_name: str | None = None, schema_name: str | None = None) -> str:
         url = (
             f"https://{self.service_connection.snowflakeSourceHost}/{self.org_name.lower()}"
             f"/{self.account.lower()}/#/data/databases/{database_name}"
@@ -912,11 +877,11 @@ class SnowflakeSource(
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         Method to get the source url for snowflake tables
         """
@@ -934,12 +899,12 @@ class SnowflakeSource(
 
     def get_procedure_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        procedure_name: Optional[str] = None,  # noqa: UP045
-        procedure_signature: Optional[str] = None,  # noqa: UP045
-        procedure_type: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        procedure_name: str | None = None,
+        procedure_signature: str | None = None,
+        procedure_type: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for snowflake stored procedures
         """
@@ -982,7 +947,7 @@ class SnowflakeSource(
                         query.format(
                             database_name=self.context.get().database,
                             schema_name=self.context.get().database_schema,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -1098,7 +1063,7 @@ class SnowflakeSource(
         else:
             yield from super().mark_tables_as_deleted()
 
-    def _get_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+    def _get_semantic_view_columns(self, schema_name: str, table_name: str) -> list[dict]:
         """Build columns for a semantic view from its dimensions, facts and metrics.
 
         Semantic views expose logical objects rather than physical columns; each
@@ -1114,7 +1079,7 @@ class SnowflakeSource(
             logger.debug(traceback.format_exc())
         return columns
 
-    def _fetch_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+    def _fetch_semantic_view_columns(self, schema_name: str, table_name: str) -> list[dict]:
         """Merge the schema's dimension/fact rows for one view (deduplicated by
         column name) into OpenMetadata column dicts."""
         schema = fqn.unquote_name(schema_name)
@@ -1139,7 +1104,7 @@ class SnowflakeSource(
             self._semantic_catalog_local.cache = LRUCache(SEMANTIC_CATALOG_CACHE_SIZE)
         return self._semantic_catalog_local.cache
 
-    def _semantic_catalog(self, schema: str) -> Optional[SemanticCatalog]:  # noqa: UP045
+    def _semantic_catalog(self, schema: str) -> SemanticCatalog | None:
         """Every semantic object in ``schema``, in three queries total.
 
         Replaces the previous three-queries-per-view pattern, which cost 3N
@@ -1150,10 +1115,10 @@ class SnowflakeSource(
         if schema in cache:
             return cache.get(schema)
 
-        catalog: Optional[SemanticCatalog] = {}  # noqa: UP045
+        catalog: SemanticCatalog | None = {}
         try:
             for catalog_view in SEMANTIC_CATALOG_VIEWS:
-                by_view: Dict[str, List[tuple]] = {}  # noqa: UP006
+                by_view: dict[str, list[tuple]] = {}
                 query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA.format(catalog_view=catalog_view, schema=schema)
                 for row in self._execute_semantic_query(query):
                     # SEMANTIC_VIEW_NAME leads the projection; strip it so the rest of
@@ -1174,12 +1139,12 @@ class SnowflakeSource(
         cache.put(schema, catalog)
         return catalog
 
-    def _execute_semantic_query(self, query: str) -> List[tuple]:  # noqa: UP006
+    def _execute_semantic_query(self, query: str) -> list[tuple]:
         """Run a semantic catalog query and materialize the rows as plain tuples."""
         cursor = self.connection.execute(text(query))
         return [tuple(row) for row in cursor]  # pyright: ignore[reportOptionalIterable]
 
-    def _semantic_rows(self, catalog_view: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
+    def _semantic_rows(self, catalog_view: str, schema: str, view: str) -> list[tuple]:
         """Rows of one catalog view for one semantic view, from the schema-wide
         batch when available, else from a single per-view query."""
         catalog = self._semantic_catalog(schema)
@@ -1190,7 +1155,7 @@ class SnowflakeSource(
         )
         return self._execute_semantic_query(query)
 
-    def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
+    def _semantic_view_reference(self, database: str, schema: str, view: str) -> EntityReference | None:
         view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]
         entity = self.metadata.get_by_name(entity=Table, fqn=view_fqn)
         reference = None
@@ -1200,7 +1165,7 @@ class SnowflakeSource(
 
     def yield_table_metrics(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[CreateMetricRequest]]:
         """Yield one Metric entity per Snowflake metric on a semantic view."""
         view, table_type = table_name_and_type
@@ -1267,8 +1232,10 @@ class SnowflakeSource(
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
+            quoted_schema = self.engine.dialect.identifier_preparer.quote_identifier(fqn.unquote_name(schema_name))
             cursor = self.connection.execute(
-                text(SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name))
+                text(SNOWFLAKE_GET_STREAM.format(schema=quoted_schema)),
+                {"stream_name": table_name},
             )
             try:
                 result = cursor.fetchone()
@@ -1317,7 +1284,7 @@ class SnowflakeSource(
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the DDL statement, View Definition or Stream Definition for a table
 
@@ -1366,10 +1333,10 @@ class SnowflakeSource(
         return self.life_cycle_query.format(
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
         """
         Method to process the table owners
 
@@ -1390,48 +1357,14 @@ class SnowflakeSource(
         parts = fqn.split(tag_fqn) if tag_fqn else []
         return parts[0] if parts else tag_fqn
 
-    def _has_classification(self, classification_name: str, tag_list: List[TagLabel]) -> bool:  # noqa: UP006
+    def _has_classification(self, classification_name: str, tag_list: list[TagLabel]) -> bool:
         """Check if a tag with the given classification name already exists"""
         for tag in tag_list:  # noqa: SIM110
             if self._get_classification_name(tag) == classification_name:
                 return True
         return False
 
-    def get_database_tag_labels(self, database_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
-        """Return tags for the database entity from registry."""
-        database_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=database_name,
-            ),
-        )
-        return self.tags_registry.labels_for(database_fqn) or None
-
-    def get_column_tag_labels(self, table_name: str, column: dict) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
-        """Return tags for a column entity from the registry.
-
-        Column tags don't inherit from parent entities (table/schema/database)
-        — those have separate semantic meaning at their own level. Direct
-        lookup is sufficient.
-        """
-        col_fqn = cast(
-            "str",
-            fqn.build(
-                self.metadata,
-                entity_type=Column,
-                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
-                table_name=table_name,
-                column_name=column["name"],
-            ),
-        )
-        return self.tags_registry.labels_for(col_fqn) or None
-
-    def get_schema_tag_labels(self, schema_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_schema_tag_labels(self, schema_name: str) -> list[TagLabel] | None:
         """
         Return tags for schema entity including:
         1. Snowflake schema-level tags
@@ -1466,7 +1399,7 @@ class SnowflakeSource(
 
         return schema_tags if schema_tags else None
 
-    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    def get_tag_labels(self, table_name: str) -> list[TagLabel] | None:
         """
         Override to include inherited tags from both schema and database levels.
         This method combines:

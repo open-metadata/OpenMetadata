@@ -14,8 +14,8 @@ Sample Usage source ingestion
 
 import csv
 import json
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Dict, Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
@@ -67,7 +67,7 @@ class SampleUsageSource(UsageSource):
         self.service = self.metadata.get_service_or_create(entity=DatabaseService, config=config)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.root.config
@@ -75,7 +75,7 @@ class SampleUsageSource(UsageSource):
             raise InvalidSourceException(f"Expected CustomDatabaseConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:  # noqa: UP006, UP045
+    def get_table_query(self) -> Iterable[dict[str, str]] | None:
         yield TableQueries(
             queries=[
                 TableQuery(

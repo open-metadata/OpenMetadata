@@ -24,9 +24,12 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
@@ -104,8 +107,11 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-i18n': openMetadataI18n,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-permissions': openMetadataPermissions,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -204,12 +210,10 @@ export default [
       // Promoted to error so CI blocks any regression.
       '@typescript-eslint/no-explicit-any': 'error',
 
-      // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
-      // for no longer reproduces — verified running against this config, where
-      // it reports ~367 findings in a 400-file sample. `warn` because of that
-      // backlog; the repo convention is no user-facing string literals, so this
-      // should reach `error` once the backlog is worked down.
-      'i18next/no-literal-string': 'warn',
+      // No user-facing string literals — all copy goes through `t()`. Cleared to
+      // zero (mock/fixture files exempted below; decorative glyphs carry a
+      // documented disable) and enforced at error so CI blocks new hardcoded copy.
+      'i18next/no-literal-string': 'error',
 
       // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
       // does not pixel-snap box-shadows, so a ring used as a border thins out and can
@@ -263,6 +267,29 @@ export default [
       'sonarjs/prefer-while': 'error',
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
+
+      // Design-system import discipline — warn while existing violations are
+      // migrated; promote to error once the backlog reaches zero.
+      //
+      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
+      // does not trigger the eslint --fix footgun in ui-checkstyle.
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {
+              group: ['@untitledui/icons', '@untitledui/icons/*'],
+              message:
+                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
+            },
+            {
+              group: ['**/assets/**/*.svg'],
+              message:
+                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
+            },
+          ],
+        },
+      ],
 
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
@@ -322,6 +349,12 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
+      // Error: production has zero raw native title= (PR #32916 migrated them to
+      // <Tooltip>), and the rule no longer false-positives on member-expression
+      // components or required <iframe> titles. Locked at error so new raw titles
+      // fail CI. Test/mock files are exempted below — their Tooltip mocks render
+      // <div title={title}> on purpose so tests can read the tooltip text.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -334,15 +367,27 @@ export default [
       // backlog at the time of writing; they only go down. Each is promoted to
       // error by its own cleanup PR once its violations reach zero.
       'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
-      'sonarjs/no-duplicate-string': 'warn', // 640
+      // Stock sonarjs flags i18n translation keys (t('label.…')), which must
+      // stay inline. Replaced by the i18n-aware variant below, which ignores
+      // t() keys and label./message./server. strings and is enforced at error.
+      'sonarjs/no-duplicate-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'error',
       'sonarjs/cognitive-complexity': ['warn', 15], // 85
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
-      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
-      'sonarjs/expression-complexity': 'warn', // 15
-      'sonarjs/no-nested-conditional': 'warn', // 16
-      'sonarjs/no-nested-functions': 'warn', // 18
+      'sonarjs/cyclomatic-complexity': 'error', // cleared tree-wide; blocks regressions
+      // Promoted to error: all 141 over-complex expressions refactored by
+      // extracting sub-expressions into named consts (short-circuit preserved);
+      // backlog is zero and this ratchets it.
+      'sonarjs/expression-complexity': 'error',
+      // Promoted to error: all nested-ternary violations refactored to
+      // intermediate variables / if-else; backlog is zero and this ratchets it.
+      'sonarjs/no-nested-conditional': 'error',
+      // Promoted to error: all 75 deeply-nested functions refactored by
+      // hoisting the innermost callback to a shallower named scope; backlog is
+      // zero and this ratchets it.
+      'sonarjs/no-nested-functions': 'error',
 
       // Security. Enforced in production code. Test fixtures, mock data, and
       // the sample-entity constants files legitimately embed http:// self-links,
@@ -402,6 +447,62 @@ export default [
     files: ['src/components/AppRouter/**/*.{ts,tsx}'],
     rules: {
       'openmetadata-performance/no-eager-page-imports': 'error',
+    },
+  },
+
+  // Permission access restrictions: components and pages must use permission
+  // utilities instead of raw access. Guides the permission-refactor sweep (#6036).
+  //
+  // no-raw-permission-access promoted to 'error': Tasks 6-9 drove this rule's
+  // findings (MemberExpression, and now ObjectPattern destructuring) to 0
+  // across src/components and src/pages — verified at promotion time.
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*'],
+    rules: {
+      'openmetadata-permissions/no-raw-permission-access': 'error',
+
+      // getPrioritizedEditPermission/getPrioritizedViewPermission are
+      // field-priority helpers meant to be consumed through the permission
+      // core (useEntityPermissions / getDerivedPermissionFlags), which
+      // expose the same prioritization as named canEditX/canViewX flags and
+      // a can(Operation.X) escape hatch. Calling the raw helpers directly
+      // from a component reimplements that logic ad hoc outside the core.
+      // DEFAULT_ENTITY_PERMISSION is deliberately NOT banned: it is the
+      // sanctioned fallback/placeholder object used throughout the already-
+      // converted code (e.g. before a permissions fetch resolves), unlike
+      // the two prioritization helpers.
+      //
+      // Deviation from the task brief: the brief assumed this would land at
+      // 'error', with the sweep having already driven direct call sites to
+      // (near) zero. Verification at promotion time found 40 files (45
+      // import specifiers) still importing these two functions directly
+      // from components/pages — not "a few, small" stragglers, and
+      // concentrated in a category the sweep never touched (the per-entity
+      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
+      // etc. — plus a handful of widgets and hooks). Converting 40 files'
+      // worth of permission derivation is its own sweep-scale task
+      // (mirroring Task 8), not something to fold silently into a
+      // lint-hardening/promotion task. Landing this specific restriction at
+      // 'warn' follows the repo's own documented convention (see the "warn
+      // tier" comment above) for a real, counted backlog that is not zero
+      // yet; promote to 'error' once a follow-up sweep clears it.
+      'no-restricted-imports': [
+        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        {
+          patterns: [
+            {
+              regex: '(^|/)utils/PermissionsUtils$',
+              importNames: [
+                'getPrioritizedEditPermission',
+                'getPrioritizedViewPermission',
+              ],
+              message:
+                'getPrioritizedEditPermission/getPrioritizedViewPermission are field-priority helpers for the permission core. Use the named canEditX/canViewX flags, or the can(Operation.X) escape hatch, from useEntityPermissions/getDerivedPermissionFlags instead.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -613,13 +714,52 @@ export default [
     },
   },
 
-  // Test fixtures use literal and repeated strings as selectors and controlled inputs,
-  // so production-facing string rules create noise without protecting user-visible copy.
+  // Test fixtures and mock data use literal and repeated strings as selectors and
+  // sample values, so production-facing string rules create noise without protecting
+  // user-visible copy.
   {
-    files: ['src/**/*.test.{ts,tsx}'],
+    files: [
+      'src/**/*.test.{ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
     rules: {
       'i18next/no-literal-string': 'off',
-      'sonarjs/no-duplicate-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // no-raw-title-attribute targets shipped UI (use <Tooltip>, not a raw DOM
+  // title). Test files legitimately render a native `title` — the standard jest
+  // mock of <Tooltip> is `({ title, children }) => <div title={title}>{children}
+  // </div>` so a test can read the tooltip text off the DOM — so exempt them.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/**/__mocks__/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+    },
+  },
+
+  // Mock and fixture data legitimately repeats sample strings; no-duplicate-string
+  // targets production maintainability, so scope it off for these files (production
+  // constants/utils are NOT exempt — their duplicates are extracted to constants).
+  {
+    files: [
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'openmetadata-i18n/no-duplicate-string': 'off',
     },
   },
 
@@ -629,6 +769,7 @@ export default [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/test/unit/mocks/**/*.{js,jsx,ts,tsx}',
       'playwright/**/*.spec.{js,jsx,ts,tsx}',
     ],
     rules: {

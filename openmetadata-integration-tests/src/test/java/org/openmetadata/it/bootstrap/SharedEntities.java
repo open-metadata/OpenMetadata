@@ -83,8 +83,10 @@ public final class SharedEntities {
 
   // Teams
   public final Team ORG_TEAM;
+  public final Team DEPARTMENT1;
   public final Team TEAM1;
   public final Team TEAM11;
+  public final Team DEPARTMENT2;
   public final Team TEAM2;
   public final Team TEAM21;
 
@@ -150,9 +152,11 @@ public final class SharedEntities {
     this.USER3_REF = user3.getEntityReference();
 
     this.ORG_TEAM = orgTeam;
-    this.TEAM1 = team1;
+    this.DEPARTMENT1 = team1;
+    this.TEAM1 = team11;
     this.TEAM11 = team11;
-    this.TEAM2 = team2;
+    this.DEPARTMENT2 = team2;
+    this.TEAM2 = team21;
     this.TEAM21 = team21;
 
     this.DATA_STEWARD_ROLE = dataStewardRole;
@@ -251,8 +255,8 @@ public final class SharedEntities {
       UserService userService = new UserService(adminClient.getHttpClient());
       User user1 =
           createUser(
-              userService, "shared_user1", List.of(team1.getId()), List.of(testAdminRole.getId()));
-      User user2 = createUser(userService, "shared_user2", List.of(team2.getId()), List.of());
+              userService, "shared_user1", List.of(team11.getId()), List.of(testAdminRole.getId()));
+      User user2 = createUser(userService, "shared_user2", List.of(team21.getId()), List.of());
       User user3 = createUser(userService, "shared_user3", List.of(), List.of());
 
       // Create domains

@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -44,14 +42,14 @@ class LightdashConnection(BaseConnection[LightdashConnectionConfig, LightdashApi
             logger.debug("creating a new Lightdash connection")
             return LightdashApiClient(connection)
         except Exception as exc:
-            msg = "Unknown error connecting with {connection}: {exc}."
+            msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg) from exc
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

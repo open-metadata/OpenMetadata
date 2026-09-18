@@ -68,12 +68,15 @@ const RESUMABLE_END_REASONS = new Set<LogStreamEndReason>([
  * carries query parameters, so an endpoint that takes its own does not lose them
  * — or silently drop the cursor — on reconnect.
  */
-export const withLogStreamCursor = (base: string, after?: string): string =>
-  after
-    ? `${base}${base.includes('?') ? '&' : '?'}after=${encodeURIComponent(
-        after
-      )}`
-    : base;
+export const withLogStreamCursor = (base: string, after?: string): string => {
+  if (!after) {
+    return base;
+  }
+
+  const separator = base.includes('?') ? '&' : '?';
+
+  return `${base}${separator}after=${encodeURIComponent(after)}`;
+};
 
 /**
  * Stream URL for one ingestion run's logs.
@@ -144,13 +147,16 @@ export const useLogStream = ({
       }
     };
 
+    const setHealthLive = () => update(() => setHealth('live'));
+
     const handleLogs = (event: LogStreamEvent) => {
       if (event.truncated) {
         update(() => setTruncated(true));
       }
 
       if (event.logs) {
-        update(() => setLogs((prev) => prev + event.logs));
+        const appendChunk = (prev: string) => prev + event.logs;
+        update(() => setLogs(appendChunk));
       }
 
       update(() => setLoading(false));
@@ -225,9 +231,7 @@ export const useLogStream = ({
         {
           signal,
           headers: { Authorization: `Bearer ${token}` },
-          onopen: createStreamOpenHandler(retryState, () =>
-            update(() => setHealth('live'))
-          ),
+          onopen: createStreamOpenHandler(retryState, setHealthLive),
           onmessage: (message) => handleFrame(message.data),
           onerror: (streamError) => {
             // Rethrow so the loop below owns retry timing and token refresh.

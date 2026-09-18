@@ -14,8 +14,8 @@ Deltalake Base Client
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -34,10 +34,10 @@ class TableInfo:
     schema: str
     name: str
     _type: TableType
-    location: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    columns: Optional[List[Column]] = None  # noqa: UP006, UP045
-    table_partitions: Optional[List[PartitionColumnDetails]] = None  # noqa: UP006, UP045
+    location: str | None = None
+    description: str | None = None
+    columns: list[Column] | None = None
+    table_partitions: list[PartitionColumnDetails] | None = None
 
 
 class DeltalakeBaseClient(ABC):

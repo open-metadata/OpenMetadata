@@ -231,7 +231,6 @@ describe('SearchClassBase', () => {
     const dataProductFilter = {
       label: 'label.data-product-plural',
       key: EntityFields.DATA_PRODUCT,
-      sourceFields: 'dataProducts.displayName',
     };
 
     expect(searchClassBase.getDropDownItems(SearchIndex.TABLE)).toContainEqual(

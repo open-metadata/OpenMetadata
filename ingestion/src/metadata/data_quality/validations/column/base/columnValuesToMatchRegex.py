@@ -15,7 +15,6 @@ Validator for column values to match regex test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -55,7 +54,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
+            column: SQALikeColumn | Column = self.get_column()
             count, match_count = self._run_results(
                 (Metrics.valuesCount, Metrics.regexCount),
                 column,
@@ -130,24 +129,25 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
-        """Evaluate the in-set test condition
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
+        """Evaluate the regex match test condition
 
-        For in-set test, behavior depends on match_enum flag:
-        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        Test passes if the values not matching the regex (valuesCount - regexCount) stay
+        within the failure threshold. Violations are counted against the non-null values,
+        not the table row count: a column that is half NULL and otherwise matches the regex
+        must not report half of its rows as failing. With the default threshold, that means
+        valuesCount == regexCount.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
-                          e.g., {"COUNT_IN_SET": 50, "ROW_COUNT": 100}
-            test_params: Dictionary with 'allowed_values' and 'match_enum'.
-                        Required for this validator.
+                          e.g., {"COUNT": 50, "REGEX_COUNT": 45, "ROW_COUNT": 100}
+            test_params: Dictionary with 'regex'. Required for this validator.
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed
-                - passed_rows: int - number of values in set
-                - failed_rows: int - number of values not in set (0 if not match_enum)
+                - matched: bool - whether the non-matching values are within the threshold
+                - passed_rows: int - number of values matching the regex
+                - failed_rows: int - number of values not matching the regex
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
@@ -156,7 +156,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         count = metric_values[Metrics.valuesCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = count == match_regex_count
+        matched = self._apply_row_threshold(count - match_regex_count, count)
         failed_count = count - match_regex_count
         passed_count = match_regex_count
 
@@ -170,8 +170,8 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
-        test_params: Optional[dict] = None,  # noqa: UP045
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for in-set test
 
@@ -194,7 +194,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         else:  # noqa: RET505
             return f"Found {match_count} value(s) matching regex pattern vs {count} value(s) in the column."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test
 
         Args:
@@ -211,11 +211,11 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
+    def compute_row_count(self, column: SQALikeColumn | Column):
         """Compute row count for the given column
 
         Args:

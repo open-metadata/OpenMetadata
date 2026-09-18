@@ -14,7 +14,6 @@ Test DBT with CLI
 """
 
 from abc import abstractmethod
-from typing import List  # noqa: UP035
 from unittest import TestCase
 
 import pytest
@@ -106,7 +105,7 @@ class CliDBTBase(TestCase):
 
         @staticmethod
         @abstractmethod
-        def fqn_dbt_tables() -> List[str]:  # noqa: UP006
+        def fqn_dbt_tables() -> list[str]:
             raise NotImplementedError()
 
         @abstractmethod

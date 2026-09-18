@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 
 /**
  * Issue #30522 — a long Russian "No Severity" placeholder made the nowrap chip
@@ -275,7 +276,10 @@ test.describe('Incident Manager table in a long-string locale', () => {
     );
 
     expect(labelOverflow).toBeGreaterThan(0);
-    await expect(severityLabel).toHaveAttribute('title', RU_NO_SEVERITY);
+    // The full text is surfaced on hover by the design-system Tooltip (a
+    // react-aria overlay with role="tooltip"), not a native title attribute.
+    await severityLabel.hover();
+    await expect(page.getByRole('tooltip')).toContainText(RU_NO_SEVERITY);
 
     // Truncation is visual only — the button's accessible name still carries
     // the whole string.

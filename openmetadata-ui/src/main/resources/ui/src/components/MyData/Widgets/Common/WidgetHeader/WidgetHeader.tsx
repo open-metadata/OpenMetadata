@@ -83,6 +83,14 @@ const WidgetHeader = ({
     }
   };
 
+  const sortFilter = sortOptions && selectedSortBy && (
+    <WidgetSortFilter
+      selectedSortBy={selectedSortBy}
+      sortOptions={sortOptions}
+      onSortChange={handleSortByClick}
+    />
+  );
+
   return (
     <Row
       className={`widget-header ${className}`}
@@ -128,14 +136,7 @@ const WidgetHeader = ({
               />
             </>
           ) : (
-            sortOptions &&
-            selectedSortBy && (
-              <WidgetSortFilter
-                selectedSortBy={selectedSortBy}
-                sortOptions={sortOptions}
-                onSortChange={handleSortByClick}
-              />
-            )
+            sortFilter
           )}
         </div>
       </Col>

@@ -55,6 +55,233 @@ import {
   SYSTEM_DEFAULT_TEMPLATES,
 } from './Template.constants';
 
+interface CustomTemplateFieldsProps {
+  areTemplateFieldsReadOnly: boolean;
+  customTemplateData?: ModifiedCreateEventSubscription['customNotificationTemplateData'];
+  customTemplateErrors: CustomTemplateErrors;
+  handleValidate: () => void;
+  selectedTemplate?: string;
+  templateBodyDoc: Record<string, unknown>;
+  templateFieldData?: ReturnType<typeof getCustomTemplateFieldData>;
+  templateFieldLabels: ReturnType<typeof getCustomTemplateFieldLabels>;
+  templateNameDoc: Record<string, unknown>;
+  templateSubjectDoc: Record<string, unknown>;
+  t: (key: string) => string;
+  updateCustomTemplateField: (
+    field: CustomTemplateField,
+    nextValue: string
+  ) => void;
+  validationResponse?: NotificationTemplateValidationResponse;
+}
+
+interface CustomTemplateBodyFieldProps {
+  areTemplateFieldsReadOnly: boolean;
+  customTemplateData?: ModifiedCreateEventSubscription['customNotificationTemplateData'];
+  customTemplateErrors: CustomTemplateErrors;
+  handleValidate: () => void;
+  selectedTemplate?: string;
+  templateBodyDoc: Record<string, unknown>;
+  templateFieldData?: ReturnType<typeof getCustomTemplateFieldData>;
+  templateFieldLabels: ReturnType<typeof getCustomTemplateFieldLabels>;
+  t: (key: string) => string;
+  updateCustomTemplateField: (
+    field: CustomTemplateField,
+    nextValue: string
+  ) => void;
+  validationResponse?: NotificationTemplateValidationResponse;
+}
+
+/** Renders the "template body" field, its editor/preview, and validation UI. */
+const CustomTemplateBodyField = ({
+  areTemplateFieldsReadOnly,
+  customTemplateData,
+  customTemplateErrors,
+  handleValidate,
+  selectedTemplate,
+  templateBodyDoc,
+  templateFieldData,
+  templateFieldLabels,
+  t,
+  updateCustomTemplateField,
+  validationResponse,
+}: CustomTemplateBodyFieldProps) => {
+  return (
+    <div
+      className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}
+      {...templateBodyDoc}>
+      <Typography as="label" size="text-sm" weight="medium">
+        {templateFieldLabels.templateBody}
+        {!areTemplateFieldsReadOnly && (
+          <span className={ALERT_AI_FORM_CLASS_NAMES.sectionRequiredMarker}>
+            *
+          </span>
+        )}
+      </Typography>
+      {areTemplateFieldsReadOnly ? (
+        <RichTextEditorPreviewerV1
+          className="bg-white p-md border rounded-4"
+          extensionOptions={{ enableHandlebars: true }}
+          markdown={templateFieldData?.templateBody ?? ''}
+        />
+      ) : (
+        <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateEditorFrame}>
+          <RichTextEditor
+            className={ALERT_AI_FORM_CLASS_NAMES.customTemplateBodyEditor}
+            data-testid="custom-template-body-input"
+            extensionOptions={{ enableHandlebars: true }}
+            initialValue={customTemplateData?.templateBody ?? ''}
+            key={selectedTemplate ?? CUSTOM_TEMPLATE_VALUE}
+            onTextChange={(value) =>
+              updateCustomTemplateField('templateBody', value)
+            }
+          />
+          <div
+            className="validate-button-container"
+            data-testid="custom-template-validate-container">
+            <div className="validate-button-grid tw:flex tw:items-center tw:justify-between tw:pr-3">
+              <div className="tw:flex tw:items-center tw:gap-2 tw:p-3">
+                <AlertCircle height={14} width={14} />
+                <Typography as="p" className="tw:text-sm tw:font-medium">
+                  {t('label.validate-template-syntax')}
+                </Typography>
+              </div>
+              <Button
+                className="tw:text-utility-blue-700! tw:no-underline! tw:hover:text-utility-blue-600!"
+                color="link-color"
+                data-testid="custom-template-validate-button"
+                size="sm"
+                type="button"
+                onPress={handleValidate}>
+                {t('label.validate')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {!areTemplateFieldsReadOnly && (
+        <>
+          <Typography as="p" className="tw:text-sm tw:text-gray-500">
+            {t('message.handlebar-helper-text')}
+          </Typography>
+          {customTemplateErrors.templateBody && (
+            <Typography
+              as="p"
+              className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFieldError}>
+              {customTemplateErrors.templateBody}
+            </Typography>
+          )}
+        </>
+      )}
+      <div className="tw:mt-2">
+        {getTemplateValidationAlert(validationResponse)}
+      </div>
+    </div>
+  );
+};
+
+/** Renders the "custom template" section of the notification template picker. */
+const CustomTemplateFields = ({
+  areTemplateFieldsReadOnly,
+  customTemplateData,
+  customTemplateErrors,
+  handleValidate,
+  selectedTemplate,
+  templateBodyDoc,
+  templateFieldData,
+  templateFieldLabels,
+  templateNameDoc,
+  templateSubjectDoc,
+  t,
+  updateCustomTemplateField,
+  validationResponse,
+}: CustomTemplateFieldsProps) => {
+  return (
+    <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
+      {!areTemplateFieldsReadOnly && (
+        <div
+          className={ALERT_AI_FORM_CLASS_NAMES.customTemplateInfoBanner}
+          data-testid="custom-template-info-banner">
+          <AlertCircle
+            className="tw:mt-0.5 tw:shrink-0"
+            height={16}
+            width={16}
+          />
+          <Typography as="p" className="tw:text-sm tw:text-tertiary">
+            {t('message.notification-template-help-text')}{' '}
+            <a
+              className="tw:text-utility-blue-700 tw:no-underline hover:tw:text-utility-blue-600 hover:tw:underline"
+              href={NOTIFICATION_TEMPLATES_DOCS}
+              rel="noopener noreferrer"
+              target="_blank">
+              {t('label.view-documentation')}
+            </a>
+          </Typography>
+        </div>
+      )}
+      <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
+        <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
+          <div {...templateNameDoc}>
+            <Input
+              data-testid="custom-template-name-input"
+              hint={customTemplateErrors.displayName}
+              isDisabled={areTemplateFieldsReadOnly}
+              isInvalid={Boolean(customTemplateErrors.displayName)}
+              isRequired={!areTemplateFieldsReadOnly}
+              label={templateFieldLabels.displayName}
+              placeholder={templateFieldLabels.displayName}
+              size="sm"
+              validationBehavior="aria"
+              value={templateFieldData?.displayName ?? ''}
+              onChange={(value) =>
+                updateCustomTemplateField('displayName', value)
+              }
+            />
+          </div>
+          <div {...templateSubjectDoc}>
+            <Input
+              data-testid="custom-template-subject-input"
+              hint={customTemplateErrors.templateSubject}
+              isDisabled={areTemplateFieldsReadOnly}
+              isInvalid={Boolean(customTemplateErrors.templateSubject)}
+              isRequired={!areTemplateFieldsReadOnly}
+              label={templateFieldLabels.templateSubject}
+              placeholder={templateFieldLabels.templateSubject}
+              size="sm"
+              validationBehavior="aria"
+              value={templateFieldData?.templateSubject ?? ''}
+              onChange={(value) =>
+                updateCustomTemplateField('templateSubject', value)
+              }
+            />
+            {!areTemplateFieldsReadOnly && (
+              <Typography
+                as="p"
+                className={
+                  ALERT_AI_FORM_CLASS_NAMES.customTemplateSubjectFooter
+                }>
+                {t('message.handlebar-helper-text')}
+              </Typography>
+            )}
+          </div>
+          <CustomTemplateBodyField
+            areTemplateFieldsReadOnly={areTemplateFieldsReadOnly}
+            customTemplateData={customTemplateData}
+            customTemplateErrors={customTemplateErrors}
+            handleValidate={handleValidate}
+            selectedTemplate={selectedTemplate}
+            t={t}
+            templateBodyDoc={templateBodyDoc}
+            templateFieldData={templateFieldData}
+            templateFieldLabels={templateFieldLabels}
+            updateCustomTemplateField={updateCustomTemplateField}
+            validationResponse={validationResponse}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /** Renders notification template selection and custom-template fields. */
 const AlertAiNotificationSection = ({
   isViewOnly,
@@ -210,160 +437,21 @@ const AlertAiNotificationSection = ({
           {renderSelectItem}
         </Select>
         {shouldRenderTemplateFields && (
-          <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
-            {!areTemplateFieldsReadOnly && (
-              <div
-                className={ALERT_AI_FORM_CLASS_NAMES.customTemplateInfoBanner}
-                data-testid="custom-template-info-banner">
-                <AlertCircle
-                  className="tw:mt-0.5 tw:shrink-0"
-                  height={16}
-                  width={16}
-                />
-                <Typography as="p" className="tw:text-sm tw:text-tertiary">
-                  {t('message.notification-template-help-text')}{' '}
-                  <a
-                    className="tw:text-utility-blue-700 tw:no-underline hover:tw:text-utility-blue-600 hover:tw:underline"
-                    href={NOTIFICATION_TEMPLATES_DOCS}
-                    rel="noopener noreferrer"
-                    target="_blank">
-                    {t('label.view-documentation')}
-                  </a>
-                </Typography>
-              </div>
-            )}
-            <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
-              <div className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}>
-                <div {...templateNameDoc}>
-                  <Input
-                    data-testid="custom-template-name-input"
-                    hint={customTemplateErrors.displayName}
-                    isDisabled={areTemplateFieldsReadOnly}
-                    isInvalid={Boolean(customTemplateErrors.displayName)}
-                    isRequired={!areTemplateFieldsReadOnly}
-                    label={templateFieldLabels.displayName}
-                    placeholder={templateFieldLabels.displayName}
-                    size="sm"
-                    validationBehavior="aria"
-                    value={templateFieldData?.displayName ?? ''}
-                    onChange={(value) =>
-                      updateCustomTemplateField('displayName', value)
-                    }
-                  />
-                </div>
-                <div {...templateSubjectDoc}>
-                  <Input
-                    data-testid="custom-template-subject-input"
-                    hint={customTemplateErrors.templateSubject}
-                    isDisabled={areTemplateFieldsReadOnly}
-                    isInvalid={Boolean(customTemplateErrors.templateSubject)}
-                    isRequired={!areTemplateFieldsReadOnly}
-                    label={templateFieldLabels.templateSubject}
-                    placeholder={templateFieldLabels.templateSubject}
-                    size="sm"
-                    validationBehavior="aria"
-                    value={templateFieldData?.templateSubject ?? ''}
-                    onChange={(value) =>
-                      updateCustomTemplateField('templateSubject', value)
-                    }
-                  />
-                  {!areTemplateFieldsReadOnly && (
-                    <Typography
-                      as="p"
-                      className={
-                        ALERT_AI_FORM_CLASS_NAMES.customTemplateSubjectFooter
-                      }>
-                      {t('message.handlebar-helper-text')}
-                    </Typography>
-                  )}
-                </div>
-                <div
-                  className={ALERT_AI_FORM_CLASS_NAMES.customTemplateFields}
-                  {...templateBodyDoc}>
-                  <Typography as="label" size="text-sm" weight="medium">
-                    {templateFieldLabels.templateBody}
-                    {!areTemplateFieldsReadOnly && (
-                      <span
-                        className={
-                          ALERT_AI_FORM_CLASS_NAMES.sectionRequiredMarker
-                        }>
-                        *
-                      </span>
-                    )}
-                  </Typography>
-                  {areTemplateFieldsReadOnly ? (
-                    <RichTextEditorPreviewerV1
-                      className="bg-white p-md border rounded-4"
-                      extensionOptions={{ enableHandlebars: true }}
-                      markdown={templateFieldData?.templateBody ?? ''}
-                    />
-                  ) : (
-                    <div
-                      className={
-                        ALERT_AI_FORM_CLASS_NAMES.customTemplateEditorFrame
-                      }>
-                      <RichTextEditor
-                        className={
-                          ALERT_AI_FORM_CLASS_NAMES.customTemplateBodyEditor
-                        }
-                        data-testid="custom-template-body-input"
-                        extensionOptions={{ enableHandlebars: true }}
-                        initialValue={customTemplateData?.templateBody ?? ''}
-                        key={selectedTemplate ?? CUSTOM_TEMPLATE_VALUE}
-                        onTextChange={(value) =>
-                          updateCustomTemplateField('templateBody', value)
-                        }
-                      />
-                      <div
-                        className="validate-button-container"
-                        data-testid="custom-template-validate-container">
-                        <div className="validate-button-grid tw:flex tw:items-center tw:justify-between tw:pr-3">
-                          <div className="tw:flex tw:items-center tw:gap-2 tw:p-3">
-                            <AlertCircle height={14} width={14} />
-                            <Typography
-                              as="p"
-                              className="tw:text-sm tw:font-medium">
-                              {t('label.validate-template-syntax')}
-                            </Typography>
-                          </div>
-                          <Button
-                            className="tw:text-utility-blue-700! tw:no-underline! tw:hover:text-utility-blue-600!"
-                            color="link-color"
-                            data-testid="custom-template-validate-button"
-                            size="sm"
-                            type="button"
-                            onPress={handleValidate}>
-                            {t('label.validate')}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {!areTemplateFieldsReadOnly && (
-                    <>
-                      <Typography
-                        as="p"
-                        className="tw:text-sm tw:text-gray-500">
-                        {t('message.handlebar-helper-text')}
-                      </Typography>
-                      {customTemplateErrors.templateBody && (
-                        <Typography
-                          as="p"
-                          className={
-                            ALERT_AI_FORM_CLASS_NAMES.customTemplateFieldError
-                          }>
-                          {customTemplateErrors.templateBody}
-                        </Typography>
-                      )}
-                    </>
-                  )}
-                  <div className="tw:mt-2">
-                    {getTemplateValidationAlert(validationResponse)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <CustomTemplateFields
+            areTemplateFieldsReadOnly={areTemplateFieldsReadOnly}
+            customTemplateData={customTemplateData}
+            customTemplateErrors={customTemplateErrors}
+            handleValidate={handleValidate}
+            selectedTemplate={selectedTemplate}
+            t={t}
+            templateBodyDoc={templateBodyDoc}
+            templateFieldData={templateFieldData}
+            templateFieldLabels={templateFieldLabels}
+            templateNameDoc={templateNameDoc}
+            templateSubjectDoc={templateSubjectDoc}
+            updateCustomTemplateField={updateCustomTemplateField}
+            validationResponse={validationResponse}
+          />
         )}
       </Box>
     </AlertAiSection>

@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 
+import type {
+  RDFIndexFailure as RdfIndexFailure,
+  RDFReindexFailuresResponse as RdfReindexFailuresResponse,
+} from '../generated/api/rdf/rdfReindexFailuresResponse';
 import { RDFStatus } from '../generated/api/rdf/rdfStatus';
 import {
   SavedSparqlQueries as SavedSparqlQueriesResponse,
@@ -33,6 +37,9 @@ import {
   GlossaryGraphParams,
   GraphData,
 } from './rdfAPI.interface';
+
+const MIME_TEXT_TURTLE = 'text/turtle';
+const MIME_APPLICATION_LD_JSON = 'application/ld+json';
 
 export type SparqlPlaygroundFormat = `${SparqlResultFormat}`;
 export type SparqlPlaygroundInference = `${SparqlInferenceLevel}`;
@@ -79,10 +86,10 @@ const SPARQL_RESULT_MIME: Record<SparqlPlaygroundFormat, string> = {
   xml: 'application/sparql-results+xml',
   csv: 'text/csv',
   tsv: 'text/tab-separated-values',
-  turtle: 'text/turtle',
+  turtle: MIME_TEXT_TURTLE,
   rdfxml: 'application/rdf+xml',
   ntriples: 'application/n-triples',
-  jsonld: 'application/ld+json',
+  jsonld: MIME_APPLICATION_LD_JSON,
 };
 
 const normalizeSparqlFormat = (format: string): SparqlPlaygroundFormat => {
@@ -237,8 +244,8 @@ export const runGlossarySparqlQuery = (
   executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
 
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
-  jsonld: 'application/ld+json',
-  turtle: 'text/turtle',
+  jsonld: MIME_APPLICATION_LD_JSON,
+  turtle: MIME_TEXT_TURTLE,
   rdfxml: 'application/rdf+xml',
   ntriples: 'application/n-triples',
 };
@@ -320,7 +327,7 @@ export const exportEntityGraph = async (
     },
     responseType: 'blob',
     headers: {
-      Accept: format === 'jsonld' ? 'application/ld+json' : 'text/turtle',
+      Accept: format === 'jsonld' ? MIME_APPLICATION_LD_JSON : MIME_TEXT_TURTLE,
     },
   });
 
@@ -394,7 +401,7 @@ export const exportGlossaryAsOntology = async (
 ): Promise<Blob> => {
   const { glossaryId, format = 'turtle', includeRelations = true } = params;
   const acceptHeader =
-    EXPORT_FORMAT_TO_ACCEPT_HEADER[format] || 'application/ld+json';
+    EXPORT_FORMAT_TO_ACCEPT_HEADER[format] || MIME_APPLICATION_LD_JSON;
 
   const response = await APIClient.get(`/rdf/glossary/${glossaryId}/export`, {
     params: {
@@ -406,6 +413,34 @@ export const exportGlossaryAsOntology = async (
       Accept: acceptHeader,
     },
   });
+
+  return response.data;
+};
+
+export type RdfIndexFailureRecord = RdfIndexFailure;
+export type { RdfReindexFailuresResponse };
+
+export interface GetRdfReindexFailuresParams {
+  offset?: number;
+  limit?: number;
+  entityType?: string;
+}
+
+export const getRdfReindexFailures = async (
+  params: GetRdfReindexFailuresParams = {}
+): Promise<RdfReindexFailuresResponse> => {
+  const { offset = 0, limit = 50, entityType } = params;
+
+  const response = await APIClient.get<RdfReindexFailuresResponse>(
+    '/rdf/reindex/failures',
+    {
+      params: {
+        offset,
+        limit,
+        entityType: entityType || undefined,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -455,7 +490,7 @@ export const validateOntologyShapes = async (params?: {
   const { entityUri, format = 'turtle' } = params ?? {};
   const response = await APIClient.post<string>('/rdf/validate', null, {
     headers: {
-      Accept: format === 'jsonld' ? 'application/ld+json' : 'text/turtle',
+      Accept: format === 'jsonld' ? MIME_APPLICATION_LD_JSON : MIME_TEXT_TURTLE,
     },
     params: { entityUri, format },
     responseType: 'text',

@@ -11,26 +11,16 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
 import type { PressEvent } from 'react-aria-components';
 
-// `TooltipTrigger` renders a react-aria `Button`, whose `usePress` hook stops
-// a completed press from propagating to ancestor DOM listeners by default
-// (react-aria's documented behavior: "the default for React Spectrum
-// components is not to propagate. This can be overridden by calling
-// continuePropagation() on the event" - see
-// node_modules/@react-types/shared/src/events.d.ts). For most `TooltipTrigger`
-// call sites that is desirable (e.g. a help-icon tooltip nested inside a
-// sortable table header should not also trigger the header's sort-on-click).
-// But Typography's ellipsis tooltip wraps *arbitrary, non-interactive* text
-// content: the wrapper is only there to host the hover/focus tooltip, so a
-// click on the truncated text should reach whatever ancestor `onClick` the
-// consumer attached (e.g. a selectable card, a persona-switcher row). Calling
-// `continuePropagation()` here restores that click, scoped to this call site
-// only - it does not change `TooltipTrigger`'s default for its other
-// consumers (form-item-label, input, table column header, avatar add button).
+// Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
+// whose usePress hook stops press events from propagating to ancestor DOM
+// listeners by default. For the ellipsis tooltip we wrap non-interactive text,
+// so a click should still reach any ancestor onClick (e.g. a selectable card).
+// Calling continuePropagation() restores that, scoped to this call site only.
 const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
   e.continuePropagation();
 };
@@ -91,6 +81,13 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   weight?: TypographyWeight;
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
+  tooltip?: ReactNode;
+  /**
+   * Render the element directly, without the block-level `prose` wrapper —
+   * for text inside buttons, flex rows, or other inline/phrasing contexts
+   * where a wrapping <div> is invalid or breaks the layout.
+   */
+  inline?: boolean;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
@@ -140,6 +137,8 @@ export const Typography = (props: TypographyProps) => {
     weight,
     color,
     ellipsis,
+    tooltip,
+    inline,
     style,
     ...otherProps
   } = props;
@@ -177,34 +176,44 @@ export const Typography = (props: TypographyProps) => {
     ellipsisClassName
   );
 
+  const element = (
+    <Component {...otherProps} className={innerClassName} style={style}>
+      {children}
+    </Component>
+  );
+
+  const content = inline ? (
+    element
+  ) : (
+    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
+      {element}
+    </div>
+  );
+
   if (ellipsisTooltip) {
     return (
-      <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger
-          className="tw:block tw:w-full tw:min-w-0"
-          onPress={allowEllipsisTooltipPressToPropagate}>
-          <div
-            className={cx(
-              'prose',
-              quoteStyles[quoteVariant],
-              ellipsisClassName
-            )}>
-            <Component {...otherProps} className={innerClassName} style={style}>
-              {children}
-            </Component>
-          </div>
-        </TooltipTrigger>
+      <Tooltip
+        title={ellipsisTooltip}
+        // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
+        // for being a button, which would beat a clickable ancestor's pointer.
+        triggerClassName="tw:block tw:w-full tw:min-w-0 tw:cursor-[inherit]"
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
       </Tooltip>
     );
   }
 
-  return (
-    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
-      <Component {...otherProps} className={innerClassName} style={style}>
-        {children}
-      </Component>
-    </div>
-  );
+  if (tooltip) {
+    return (
+      <Tooltip
+        title={tooltip}
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  return content;
 };
 
 export type {

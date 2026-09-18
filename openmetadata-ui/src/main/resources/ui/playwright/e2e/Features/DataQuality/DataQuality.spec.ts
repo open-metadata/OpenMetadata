@@ -1507,19 +1507,71 @@ test.describe(
           ).toContainText('1 of');
         });
 
+        await test.step('Searching from a later page resets to the first page', async () => {
+          const testCaseName = paginationTable.testCasesResponseData[0].name;
+          const searchBar = page.getByTestId('searchbar');
+          const isListResponse = (url: URL) =>
+            url.pathname.endsWith('/dataQuality/testCases/search/list');
+
+          const nextPageResponse = page.waitForResponse(
+            '/api/v1/dataQuality/testCases/search/list?*'
+          );
+          await page.getByTestId('next').click();
+          await nextPageResponse;
+
+          await expect(page.getByTestId('page-indicator')).toContainText(
+            '2 of'
+          );
+
+          const searchResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return (
+              isListResponse(url) && url.searchParams.get('q') === testCaseName
+            );
+          });
+          await searchBar.fill(testCaseName);
+          expect((await searchResponse).status()).toBe(200);
+          await waitForAllLoadersToDisappear(page);
+
+          // Keeping the page-2 offset for this single-result search rendered the
+          // "No matching test cases" empty state instead (issue #33322).
+          await expect(page.getByTestId(testCaseName)).toBeVisible();
+
+          const clearSearchResponse = page.waitForResponse((response) => {
+            const url = new URL(response.url());
+
+            return isListResponse(url) && !url.searchParams.has('q');
+          });
+          await searchBar.clear();
+          await clearSearchResponse;
+          await waitForAllLoadersToDisappear(page);
+
+          await expect(page.getByTestId('page-indicator')).toContainText(
+            '1 of'
+          );
+        });
+
         await test.step('Test page size dropdown', async () => {
           const pageSizeDropdown = page.getByTestId(
             'page-size-selection-dropdown'
           );
-          const pageSizeMenu = page.locator(
-            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
-          );
+          const pageSizeMenu = page
+            .getByRole('menu')
+            .filter({ hasText: '/ Page' });
 
           await expect(pageSizeDropdown).toBeVisible();
-          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
-          // button only runs its preventDefault handler and may not open the menu.
-          await pageSizeDropdown.hover();
-          await expect(pageSizeMenu).toBeVisible();
+
+          // Ant Dropdown opens on hover, so a re-render that shifts the footer out
+          // from under the pointer leaves the menu closed for good.
+          await expect(async () => {
+            await pageSizeDropdown.hover();
+            if (!(await pageSizeMenu.isVisible())) {
+              await pageSizeDropdown.click();
+            }
+            await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
+          }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {

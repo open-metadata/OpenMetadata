@@ -25,7 +25,6 @@ import traceback
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ValidationError
 
@@ -108,7 +107,7 @@ class MetadataUsageBulkSink(BulkSink):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = MetadataUsageSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -261,7 +260,7 @@ class MetadataUsageBulkSink(BulkSink):
         table_entities: Sequence[Table],
         table_usage: TableUsageCount,
         *,
-        resolver: Optional[EntityResolver] = None,  # noqa: UP045
+        resolver: EntityResolver | None = None,
     ):
         """
         For the list of tables, compute usage with already existing seen
@@ -316,7 +315,7 @@ class MetadataUsageBulkSink(BulkSink):
         self,
         table_entity: Table,
         table_usage: TableUsageCount,
-        resolver: Optional[EntityResolver],  # noqa: UP045
+        resolver: EntityResolver | None,
     ) -> TableJoins:
         """
         Method to get Table Joins
@@ -369,8 +368,8 @@ class MetadataUsageBulkSink(BulkSink):
         database: str | None,
         database_schema: str | None,
         table_column: TableColumn,
-        resolver: Optional[EntityResolver],  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        resolver: EntityResolver | None,
+    ) -> str | None:
         """
         Method to get column fqn
         """

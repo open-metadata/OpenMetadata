@@ -98,6 +98,11 @@ const fetchCountForIndex = async (
   }
 };
 
+const countOfBucket = (
+  buckets: Array<{ key: string; doc_count: number }>,
+  type: EntityType
+): number => buckets.find((bucket) => bucket.key === type)?.doc_count ?? 0;
+
 const MyDataPage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -159,13 +164,11 @@ const MyDataPage: React.FC = () => {
 
           return;
         }
-        const countOf = (type: EntityType) =>
-          buckets.find((bucket) => bucket.key === type)?.doc_count ?? 0;
         setAssetStats({
           total,
-          tables: countOf(EntityType.TABLE),
-          dashboards: countOf(EntityType.DASHBOARD),
-          pipelines: countOf(EntityType.PIPELINE),
+          tables: countOfBucket(buckets, EntityType.TABLE),
+          dashboards: countOfBucket(buckets, EntityType.DASHBOARD),
+          pipelines: countOfBucket(buckets, EntityType.PIPELINE),
         });
       } catch {
         setAssetStats(ZERO_STATS);

@@ -298,6 +298,28 @@ async function flushPendingPatch(
  * the one-shot migration call from `hydrateBackendSyncedPreferences`), the
  * last known server value is used instead.
  */
+function resolvePreviousValue(
+  key: string,
+  previous?: Partial<UserPreferences>
+): unknown {
+  const serverFallback = (serverKnown as Record<string, unknown>)[key] ?? null;
+
+  return previous && key in previous
+    ? (previous as Record<string, unknown>)[key] ?? null
+    : serverFallback;
+}
+
+function queuePatchKey(
+  key: string,
+  value: unknown,
+  previous?: Partial<UserPreferences>
+): void {
+  if (!previousValues.has(key)) {
+    previousValues.set(key, resolvePreviousValue(key, previous));
+  }
+  pendingPatch.set(key, value ?? null);
+}
+
 export function syncBackendKeys(
   userName: string,
   userId: string,
@@ -309,22 +331,10 @@ export function syncBackendKeys(
     if (!BACKEND_SYNCED_KEYS.has(key as keyof UserPreferences)) {
       continue;
     }
-    if (!previousValues.has(key)) {
-      const serverFallback =
-        (serverKnown as Record<string, unknown>)[key] ?? null;
-      const previousValue =
-        previous && key in previous
-          ? (previous as Record<string, unknown>)[key] ?? null
-          : serverFallback;
-      previousValues.set(key, previousValue);
-    }
-    pendingPatch.set(key, value ?? null);
+    queuePatchKey(key, value, previous);
     queued = true;
   }
-  if (!queued) {
-    return;
-  }
-  if (flushTimer !== null) {
+  if (!queued || flushTimer !== null) {
     return;
   }
   flushTimer = setTimeout(() => {

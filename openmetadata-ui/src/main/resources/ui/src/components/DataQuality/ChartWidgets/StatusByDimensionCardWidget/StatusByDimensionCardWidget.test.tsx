@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { act, render, screen, waitFor } from '@testing-library/react';
-import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
+import { act, screen, waitFor } from '@testing-library/react';
+import { DataQualityDimensions } from '../../../../enums/DataQuality.enum';
 import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   fetchTestCaseSummaryByDimension,
   fetchTestCaseSummaryByNoDimension,
 } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import StatusByDimensionCardWidget from './StatusByDimensionCardWidget.component';
 
 const mockStatusByDimensionWidgetTestId = 'status-by-dimension-widget';
@@ -134,12 +135,12 @@ describe('StatusByDimensionCardWidget', () => {
     const mockData = {
       data: [
         {
-          dataQualityDimension: DataQualityDimensions.Accuracy,
+          dataQualityDimensionName: DataQualityDimensions.Accuracy,
           document_count: '6',
           'testCaseResult.testCaseStatus': 'success',
         },
         {
-          dataQualityDimension: DataQualityDimensions.Completeness,
+          dataQualityDimensionName: DataQualityDimensions.Completeness,
           document_count: '6',
           'testCaseResult.testCaseStatus': 'success',
         },
@@ -152,7 +153,9 @@ describe('StatusByDimensionCardWidget', () => {
     });
 
     await act(async () => {
-      render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+      renderWithQueryClient(
+        <StatusByDimensionCardWidget chartFilter={chartFilter} />
+      );
     });
 
     await waitFor(() =>
@@ -175,7 +178,9 @@ describe('StatusByDimensionCardWidget', () => {
       data: [],
     });
 
-    render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+    renderWithQueryClient(
+      <StatusByDimensionCardWidget chartFilter={chartFilter} />
+    );
 
     await waitFor(() =>
       expect(fetchTestCaseSummaryByNoDimension).toHaveBeenCalledWith(
@@ -196,7 +201,9 @@ describe('StatusByDimensionCardWidget', () => {
       data: [],
     });
 
-    render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+    renderWithQueryClient(
+      <StatusByDimensionCardWidget chartFilter={chartFilter} />
+    );
 
     const firstDimension = (
       await screen.findAllByTestId(mockStatusByDimensionWidgetTestId)
@@ -230,7 +237,9 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     await act(async () => {
-      render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+      renderWithQueryClient(
+        <StatusByDimensionCardWidget chartFilter={chartFilter} />
+      );
     });
 
     await waitFor(() =>
@@ -264,7 +273,7 @@ describe('StatusByDimensionCardWidget', () => {
       data: [],
     });
 
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <StatusByDimensionCardWidget chartFilter={chartFilter} />
     );
 
@@ -274,7 +283,7 @@ describe('StatusByDimensionCardWidget', () => {
       newerResponse.resolve({
         data: [
           {
-            dataQualityDimension: DataQualityDimensions.Accuracy,
+            dataQualityDimensionName: DataQualityDimensions.Accuracy,
             document_count: '2',
             'testCaseResult.testCaseStatus': 'success',
           },
@@ -292,7 +301,7 @@ describe('StatusByDimensionCardWidget', () => {
       olderResponse.resolve({
         data: [
           {
-            dataQualityDimension: DataQualityDimensions.Accuracy,
+            dataQualityDimensionName: DataQualityDimensions.Accuracy,
             document_count: '1',
             'testCaseResult.testCaseStatus': 'success',
           },
@@ -315,7 +324,7 @@ describe('StatusByDimensionCardWidget', () => {
       data: [],
     });
 
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <StatusByDimensionCardWidget chartFilter={chartFilter} />
     );
 

@@ -13,6 +13,16 @@
 import { render, screen } from '@testing-library/react';
 import CsvCellPreview from './CsvCellPreview.component';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Tooltip: ({
+    title,
+    children,
+  }: {
+    title?: React.ReactNode;
+    children: React.ReactNode;
+  }) => <span aria-label={String(title ?? '')}>{children}</span>,
+}));
+
 describe('CsvCellPreview', () => {
   it('should render an avatar chip for an owner', () => {
     render(<CsvCellPreview column="owners" value="user:admin" />);
@@ -47,7 +57,7 @@ describe('CsvCellPreview', () => {
       screen.getByText('BusinessGlossary / Revenue / NetSales')
     ).toBeInTheDocument();
     expect(
-      screen.getByTitle('BusinessGlossary.Revenue.NetSales')
+      screen.getByLabelText('BusinessGlossary.Revenue.NetSales')
     ).toBeInTheDocument();
   });
 
@@ -86,8 +96,10 @@ describe('CsvCellPreview', () => {
       />
     );
 
-    expect(screen.getByTitle('Cost Center: FIN-204')).toBeInTheDocument();
-    expect(screen.getByTitle('Review Cadence: Quarterly')).toBeInTheDocument();
+    expect(screen.getByLabelText('Cost Center: FIN-204')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Review Cadence: Quarterly')
+    ).toBeInTheDocument();
   });
 
   it('should render an em-dash when empty', () => {

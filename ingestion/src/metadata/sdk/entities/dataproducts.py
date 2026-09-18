@@ -2,7 +2,7 @@
 DataProducts entity SDK with fluent API
 """
 
-from typing import Any, Dict, List, Type, cast  # noqa: UP035
+from typing import Any, cast
 
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
@@ -16,7 +16,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     """DataProducts SDK class - plural to avoid conflict with generated DataProduct entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[DataProduct]:  # noqa: UP006
+    def entity_type(cls) -> type[DataProduct]:
         """Return the DataProduct entity type"""
         return DataProduct
 
@@ -24,7 +24,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     # Input Ports operations
     # ------------------------------------------------------------------
     @classmethod
-    def add_input_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def add_input_ports(cls, name: str, ports: list[EntityReference]) -> dict[str, Any]:
         """
         Add input ports to a data product.
 
@@ -38,7 +38,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         return cls._handle_ports_operation(name, ports, "inputPorts", "add")
 
     @classmethod
-    def remove_input_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def remove_input_ports(cls, name: str, ports: list[EntityReference]) -> dict[str, Any]:
         """
         Remove input ports from a data product.
 
@@ -55,7 +55,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     # Output Ports operations
     # ------------------------------------------------------------------
     @classmethod
-    def add_output_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def add_output_ports(cls, name: str, ports: list[EntityReference]) -> dict[str, Any]:
         """
         Add output ports to a data product.
 
@@ -69,7 +69,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         return cls._handle_ports_operation(name, ports, "outputPorts", "add")
 
     @classmethod
-    def remove_output_ports(cls, name: str, ports: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def remove_output_ports(cls, name: str, ports: list[EntityReference]) -> dict[str, Any]:
         """
         Remove output ports from a data product.
 
@@ -86,7 +86,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     # Assets operations
     # ------------------------------------------------------------------
     @classmethod
-    def add_assets(cls, name: str, assets: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def add_assets(cls, name: str, assets: list[EntityReference]) -> dict[str, Any]:
         """
         Add assets to a data product.
 
@@ -100,7 +100,7 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         return cls._handle_assets_operation(name, assets, "add")
 
     @classmethod
-    def remove_assets(cls, name: str, assets: List[EntityReference]) -> Dict[str, Any]:  # noqa: UP006
+    def remove_assets(cls, name: str, assets: list[EntityReference]) -> dict[str, Any]:
         """
         Remove assets from a data product.
 
@@ -120,10 +120,10 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
     def _handle_ports_operation(
         cls,
         name: str,
-        ports: List[EntityReference],  # noqa: UP006
+        ports: list[EntityReference],
         port_type: str,
         operation: str,
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         """
         Handle adding or removing ports from a data product.
 
@@ -146,15 +146,15 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
             ]
         }
         response = rest_client.put(path, json=payload)
-        return cast(Dict[str, Any], response)  # noqa: TC006, UP006
+        return cast(dict[str, Any], response)  # noqa: TC006
 
     @classmethod
     def _handle_assets_operation(
         cls,
         name: str,
-        assets: List[EntityReference],  # noqa: UP006
+        assets: list[EntityReference],
         operation: str,
-    ) -> Dict[str, Any]:  # noqa: UP006
+    ) -> dict[str, Any]:
         """
         Handle adding or removing assets from a data product.
 
@@ -176,4 +176,4 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
             ]
         }
         response = rest_client.put(path, json=payload)
-        return cast(Dict[str, Any], response)  # noqa: TC006, UP006
+        return cast(dict[str, Any], response)  # noqa: TC006

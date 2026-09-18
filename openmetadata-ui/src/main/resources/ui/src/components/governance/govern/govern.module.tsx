@@ -19,16 +19,15 @@ import { ReactComponent as GovernIcon } from '../../../assets/svg/ask-collate-na
 import { ReactComponent as GovernActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/governance-active.svg';
 import { ReactComponent as MetricsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-active.svg';
 import { ReactComponent as MetricsIcon } from '../../../assets/svg/ask-collate-nav-bar/metrics-default.svg';
-import { ReactComponent as OntologyActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/ontology-active.svg';
-import { ReactComponent as OntologyIcon } from '../../../assets/svg/ask-collate-nav-bar/ontology-default.svg';
 import { ReactComponent as WorkflowsActiveIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-active.svg';
 import { ReactComponent as WorkflowsIcon } from '../../../assets/svg/ask-collate-nav-bar/workflows-default.svg';
 import { ROUTES } from '../../../constants/constants';
+import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
  * Govern module — mirrors the classic "Govern" left-sidebar section (Glossary,
- * Ontology Explorer, Classifications, Metrics, Workflows). Owns no routes of
+ * Ontology Studio, Classifications, Metrics, Workflows). Owns no routes of
  * its own: every target is a canonical OM path served by the shell's page-table
  * fallback (`applicationRoutesClass.getRouteElements()`). This module provides
  * the sidebar entry and the sub-nav panel only.
@@ -64,9 +63,8 @@ export const governModule: AppModule = {
           },
           {
             key: 'ontology-explorer',
-            icon: OntologyIcon,
-            activeIcon: OntologyActiveIcon,
-            labelKey: 'label.ontology-explorer',
+            icon: OntologyStudioIcon,
+            labelKey: 'label.ontology-studio',
             path: ROUTES.ONTOLOGY_EXPLORER,
           },
           {

@@ -14,9 +14,37 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { DriveServiceType } from '../generated/entity/services/driveService';
-import customDriveConnection from '../jsons/connectionSchemas/connections/drive/customDriveConnection.json';
-import googleDriveConnection from '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json';
 import { getDriveConfig } from './DriveServiceUtils';
+
+const customDriveConnection = {
+  $id: 'https://open-metadata.org/schema/entity/services/connections/drive/customDriveConnection.json',
+  title: 'CustomDriveConnection',
+  type: 'object',
+  properties: {
+    type: {
+      title: 'Service Type',
+      description: 'Service Type',
+      type: 'string',
+      enum: ['CustomDrive'],
+      default: 'CustomDrive',
+    },
+  },
+};
+
+const googleDriveConnection = {
+  $id: 'https://open-metadata.org/schema/entity/services/connections/drive/googleDriveConnection.json',
+  title: 'GoogleDriveConnection',
+  type: 'object',
+  properties: {
+    type: {
+      title: 'Service Type',
+      description: 'Service Type',
+      type: 'string',
+      enum: ['GoogleDrive'],
+      default: 'GoogleDrive',
+    },
+  },
+};
 
 jest.mock('lodash', () => ({
   cloneDeep: jest.fn(),
@@ -31,41 +59,44 @@ jest.mock('../constants/ServiceUISchema.constant', () => ({
   },
 }));
 
-jest.mock(
-  '../jsons/connectionSchemas/connections/drive/customDriveConnection.json',
-  () => ({
-    $id: 'https://open-metadata.org/schema/entity/services/connections/drive/customDriveConnection.json',
-    title: 'CustomDriveConnection',
-    type: 'object',
-    properties: {
-      type: {
-        title: 'Service Type',
-        description: 'Service Type',
-        type: 'string',
-        enum: ['CustomDrive'],
-        default: 'CustomDrive',
-      },
-    },
-  })
-);
+jest.mock('./loadConnectionSchema', () => ({
+  loadConnectionSchema: jest.fn((relativePath: string) => {
+    if (relativePath === 'connections/drive/customDriveConnection.json') {
+      return Promise.resolve({
+        $id: 'https://open-metadata.org/schema/entity/services/connections/drive/customDriveConnection.json',
+        title: 'CustomDriveConnection',
+        type: 'object',
+        properties: {
+          type: {
+            title: 'Service Type',
+            description: 'Service Type',
+            type: 'string',
+            enum: ['CustomDrive'],
+            default: 'CustomDrive',
+          },
+        },
+      });
+    }
+    if (relativePath === 'connections/drive/googleDriveConnection.json') {
+      return Promise.resolve({
+        $id: 'https://open-metadata.org/schema/entity/services/connections/drive/googleDriveConnection.json',
+        title: 'GoogleDriveConnection',
+        type: 'object',
+        properties: {
+          type: {
+            title: 'Service Type',
+            description: 'Service Type',
+            type: 'string',
+            enum: ['GoogleDrive'],
+            default: 'GoogleDrive',
+          },
+        },
+      });
+    }
 
-jest.mock(
-  '../jsons/connectionSchemas/connections/drive/googleDriveConnection.json',
-  () => ({
-    $id: 'https://open-metadata.org/schema/entity/services/connections/drive/googleDriveConnection.json',
-    title: 'GoogleDriveConnection',
-    type: 'object',
-    properties: {
-      type: {
-        title: 'Service Type',
-        description: 'Service Type',
-        type: 'string',
-        enum: ['GoogleDrive'],
-        default: 'GoogleDrive',
-      },
-    },
-  })
-);
+    return Promise.resolve({});
+  }),
+}));
 
 const mockedCloneDeep = cloneDeep as jest.MockedFunction<typeof cloneDeep>;
 

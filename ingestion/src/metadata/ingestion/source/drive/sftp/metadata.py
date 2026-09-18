@@ -16,7 +16,8 @@ import io
 import mimetypes
 import stat
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -92,12 +93,12 @@ class SftpSource(DriveServiceSource):
         self.client: SftpClient = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
 
-        self._directories_cache: Dict[str, SftpDirectoryInfo] = {}  # noqa: UP006
-        self._files_by_parent_cache: Dict[str, List[SftpFileInfo]] = {}  # noqa: UP006
-        self._directory_fqn_cache: Dict[str, str] = {}  # noqa: UP006
-        self._current_directory_context: Optional[str] = None  # noqa: UP045
+        self._directories_cache: dict[str, SftpDirectoryInfo] = {}
+        self._files_by_parent_cache: dict[str, list[SftpFileInfo]] = {}
+        self._directory_fqn_cache: dict[str, str] = {}
+        self._current_directory_context: str | None = None
         self._root_files_processed: bool = False
-        self._root_directory_prefixes: List[str] = []  # noqa: UP006
+        self._root_directory_prefixes: list[str] = []
 
         with close_on_failure(self._connection):
             self.test_connection()
@@ -107,7 +108,7 @@ class SftpSource(DriveServiceSource):
         cls,
         config_dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SftpConnection = config.serviceConnection.root.config
@@ -115,7 +116,7 @@ class SftpSource(DriveServiceSource):
             raise InvalidSourceException(f"Expected SftpConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _build_directory_path(self, full_path: str) -> List[str]:  # noqa: UP006
+    def _build_directory_path(self, full_path: str) -> list[str]:
         """Build directory path as list of components, stripping root directory prefix."""
         clean_path = full_path.strip("/")
         if not clean_path:
@@ -128,7 +129,7 @@ class SftpSource(DriveServiceSource):
                 break
         return components
 
-    def _get_full_path_for_stripped(self, stripped_path: List[str]) -> Optional[str]:  # noqa: UP006, UP045
+    def _get_full_path_for_stripped(self, stripped_path: list[str]) -> str | None:
         """Reconstruct the full SFTP path from stripped path components."""
         if not stripped_path:
             return None
@@ -162,8 +163,8 @@ class SftpSource(DriveServiceSource):
     def _fetch_directories_recursive(
         self,
         path: str,
-        directories: Dict[str, SftpDirectoryInfo],  # noqa: UP006
-        parent_path: Optional[str] = None,  # noqa: UP045
+        directories: dict[str, SftpDirectoryInfo],
+        parent_path: str | None = None,
     ) -> None:
         """Recursively fetch directories starting from given path."""
         try:
@@ -271,9 +272,9 @@ class SftpSource(DriveServiceSource):
             logger.debug(traceback.format_exc())
             self._files_by_parent_cache = {}
 
-    def _sort_directories_by_hierarchy(self) -> List[str]:  # noqa: UP006
+    def _sort_directories_by_hierarchy(self) -> list[str]:
         """Sort directories hierarchically (parents before children)."""
-        children_map: Dict[str, List[str]] = {}  # noqa: UP006
+        children_map: dict[str, list[str]] = {}
         root_directories = []
 
         for full_path, directory_info in self._directories_cache.items():
@@ -463,7 +464,7 @@ class SftpSource(DriveServiceSource):
     def register_record_file(
         self,
         file_request: CreateFileRequest,
-        directory_path: List[str] | None = None,  # noqa: UP006
+        directory_path: list[str] | None = None,
     ) -> None:
         """
         Record the file FQN exactly as the create request will be stored.
@@ -712,7 +713,7 @@ class SftpSource(DriveServiceSource):
     def _ingest_sample_data_for_file(
         self,
         file_name: str,
-        directory_path: Optional[List[str]],  # noqa: UP006, UP045
+        directory_path: list[str] | None,
         sample_data: TableData,
     ) -> None:
         """
@@ -753,7 +754,7 @@ class SftpSource(DriveServiceSource):
 
     def _extract_csv_schema(
         self, file_path: str, filename: str, extract_sample_data: bool = False
-    ) -> tuple[Optional[List[Column]], Optional[TableData]]:  # noqa: UP006, UP045
+    ) -> tuple[list[Column] | None, TableData | None]:
         """
         Extract column schema and optionally sample data from CSV file.
 

@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Col, Row, Space, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -28,11 +30,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Description from '../../components/common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import Table from '../../components/common/Table/Table';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -48,7 +49,6 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -56,10 +56,8 @@ import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -219,9 +217,13 @@ function ServiceMainTabContent({
     const currentPermission =
       servicePermissions[serviceCategory as keyof typeof servicePermissions];
 
-    return (
-      currentPermission?.EditAll || currentPermission?.EditDisplayName || false
-    );
+    // Resource-level permission (usePermissionProvider().permissions.<resourceType>) — itself
+    // OperationPermission-shaped, so it runs through the same derivation as an entity-level or
+    // consumer-prop permission object (Task 8 Batch 3 precedent, DatabaseSchemaTable.tsx). No
+    // `deleted` argument: the old expression never gated on it.
+    return getDerivedPermissionFlags(
+      currentPermission ?? DEFAULT_ENTITY_PERMISSION
+    ).canEditDisplayName;
   }, [permissions, serviceCategory, isVersionPage]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -332,6 +334,19 @@ function ServiceMainTabContent({
     });
   };
 
+  // Consumer via the `servicePermission: OperationPermission` prop (Task 8 rule 2) — derive
+  // named flags once instead of five separate raw/prioritized calls. `deleted` is passed
+  // through: every edit flag here was already ANDed with `!serviceDetails.deleted` in the old
+  // code (view flags are never deleted-gated by design, matching the old ViewCustomFields read).
+  const flags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        servicePermission,
+        Boolean(serviceDetails.deleted)
+      ),
+    [servicePermission, serviceDetails.deleted]
+  );
+
   const {
     editTagsPermission,
     viewCustomPropertiesPermission,
@@ -340,27 +355,13 @@ function ServiceMainTabContent({
     editDataProductPermission,
   } = useMemo(
     () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(servicePermission, Operation.EditTags) &&
-        !serviceDetails.deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditGlossaryTerms
-        ) && !serviceDetails.deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditDescription
-        ) && !serviceDetails.deleted,
-      editDataProductPermission:
-        servicePermission.EditAll && !serviceDetails.deleted,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        servicePermission,
-        Operation.ViewCustomFields
-      ),
+      editTagsPermission: flags.canEditTags,
+      editGlossaryTermsPermission: flags.canEditGlossaryTerms,
+      editDescriptionPermission: flags.canEditDescription,
+      editDataProductPermission: flags.canEditAll,
+      viewCustomPropertiesPermission: flags.canViewCustomFields,
     }),
-    [servicePermission, serviceDetails]
+    [flags]
   );
 
   useEffect(() => {
@@ -431,15 +432,39 @@ function ServiceMainTabContent({
 
                           {entityType === EntityType.DATABASE_SERVICE &&
                             getBulkEditButton(
-                              servicePermission.EditAll &&
-                                !serviceDetails.deleted,
+                              flags.canEditAll,
                               handleEditTable
                             )}
                         </>
                       }
                       loading={isServiceLoading}
                       locale={{
-                        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                        emptyText: (
+                          <div className="tw:relative tw:min-h-42">
+                            {searchValue ? (
+                              <EmptyPlaceholder
+                                description={t(
+                                  'message.check-spelling-or-try-shorter-term'
+                                )}
+                                icon={
+                                  <NoSearch className="tw:text-secondary" />
+                                }
+                                title={t('label.no-matching-result-plural')}
+                                variant="blank"
+                              />
+                            ) : (
+                              <EmptyPlaceholder
+                                icon={
+                                  <Assets className="tw:text-utility-gray-600" />
+                                }
+                                title={t('message.no-entity-data-available', {
+                                  entity: getCountLabel(serviceCategory),
+                                })}
+                                variant="blank"
+                              />
+                            )}
+                          </div>
+                        ),
                       }}
                       pagination={false}
                       rowKey="id"

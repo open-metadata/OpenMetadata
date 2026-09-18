@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   ENTITY_TYPE_OPTIONS,
   FILTER_LABELS,
   TEST_PLATFORM_OPTIONS,
 } from '../../../constant/testDefinitionFilter';
+import { expect, test } from '../../../support/fixtures/base';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   closeFilterDropdown,
@@ -64,8 +64,10 @@ test.describe(
       await test.step('Verify radio button is checked', async () => {
         await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
-        const tableRadio = page.getByTestId('TABLE-radio');
-        await expect(tableRadio).toBeChecked();
+        await expect(page.getByTestId('TABLE')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await closeFilterDropdown(page);
       });
@@ -95,11 +97,15 @@ test.describe(
       await test.step('Verify previous selection is cleared', async () => {
         await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
-        const tableRadioAfterChange = page.getByTestId('TABLE-radio');
-        await expect(tableRadioAfterChange).not.toBeChecked();
+        await expect(page.getByTestId('TABLE')).toHaveAttribute(
+          'aria-checked',
+          'false'
+        );
 
-        const columnRadio = page.getByTestId('COLUMN-radio');
-        await expect(columnRadio).toBeChecked();
+        await expect(page.getByTestId('COLUMN')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await closeFilterDropdown(page);
       });
@@ -120,15 +126,19 @@ test.describe(
       await test.step('Verify filters are pre-selected', async () => {
         await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
-        const tableRadio = page.getByTestId('TABLE-radio');
-        await expect(tableRadio).toBeChecked();
+        await expect(page.getByTestId('TABLE')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await closeFilterDropdown(page);
 
         await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
-        const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
-        await expect(openMetadataRadio).toBeChecked();
+        await expect(page.getByTestId('OpenMetadata')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await closeFilterDropdown(page);
       });
@@ -152,12 +162,10 @@ test.describe(
       await test.step('Verify radio button rendering', async () => {
         await openFilterDropdown(page, FILTER_LABELS.ENTITY_TYPE);
 
-        const tableRadio = page.getByTestId('TABLE-radio');
-        await expect(tableRadio).toBeVisible();
-        await expect(tableRadio).toHaveAttribute('type', 'radio');
-
-        const tableCheckbox = page.getByTestId('TABLE-checkbox');
-        await expect(tableCheckbox).not.toBeVisible();
+        const tableRow = page.getByTestId('TABLE');
+        await expect(tableRow).toBeVisible();
+        // Single-select renders radio semantics on the menu row itself.
+        await expect(tableRow).toHaveRole('menuitemradio');
 
         await closeFilterDropdown(page);
       });
@@ -169,13 +177,17 @@ test.describe(
         await expect(tableOption).toBeVisible();
         await tableOption.click();
 
-        const tableRadioAfterClick = page.getByTestId('TABLE-radio');
-        await expect(tableRadioAfterClick).toBeChecked();
+        await expect(page.getByTestId('TABLE')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await tableOption.click();
 
-        const tableRadioAfterDeselect = page.getByTestId('TABLE-radio');
-        await expect(tableRadioAfterDeselect).not.toBeChecked();
+        await expect(page.getByTestId('TABLE')).toHaveAttribute(
+          'aria-checked',
+          'false'
+        );
 
         await closeFilterDropdown(page);
       });
@@ -364,9 +376,10 @@ test.describe(
 
         await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
-        const openMetadataRadio = page.getByTestId('OpenMetadata-radio');
-
-        await expect(openMetadataRadio).toBeChecked();
+        await expect(page.getByTestId('OpenMetadata')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
 
         await closeFilterDropdown(page);
       });
@@ -385,9 +398,10 @@ test.describe(
       await test.step('Verify final selection persists', async () => {
         await openFilterDropdown(page, FILTER_LABELS.TEST_PLATFORMS);
 
-        const dbtRadio = page.getByTestId('dbt-radio');
-
-        await expect(dbtRadio).toBeChecked();
+        await expect(page.getByTestId('dbt')).toHaveAttribute(
+          'aria-checked',
+          'true'
+        );
         expect(page.url()).toContain('testPlatforms=dbt');
 
         await closeFilterDropdown(page);

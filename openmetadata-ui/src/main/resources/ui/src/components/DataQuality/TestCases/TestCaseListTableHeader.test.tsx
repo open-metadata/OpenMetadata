@@ -44,6 +44,28 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: React.PropsWithChildren<{ 'data-testid'?: string }>) => (
     <span data-testid={testId}>{children}</span>
   ),
+  Toggle: ({
+    isSelected,
+    label,
+    onChange,
+    ...rest
+  }: {
+    isSelected?: boolean;
+    label?: string;
+    onChange?: (value: boolean) => void;
+    [key: string]: unknown;
+  }) => (
+    <label htmlFor="show-deleted-toggle">
+      {label}
+      <input
+        checked={isSelected}
+        id="show-deleted-toggle"
+        type="checkbox"
+        {...rest}
+        onChange={(event) => onChange?.(event.target.checked)}
+      />
+    </label>
+  ),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -60,11 +82,14 @@ jest.mock('../../common/ManageMenuButton/ManageMenuButton.component', () => ({
 }));
 
 const mockOnSearch = jest.fn();
+const mockOnShowDeletedChange = jest.fn();
 
 const defaultProps = {
   searchValue: '',
   onSearch: mockOnSearch,
   extraDropdownContent: [],
+  showDeleted: false,
+  onShowDeletedChange: mockOnShowDeletedChange,
 };
 
 describe('TestCaseListTableHeader component', () => {
@@ -145,5 +170,21 @@ describe('TestCaseListTableHeader component', () => {
     expect(screen.getByTestId('manage-button')).toHaveTextContent(
       'manage-button-2'
     );
+  });
+
+  it('should reflect and update the deleted-test-case visibility', () => {
+    const { rerender } = render(<TestCaseListTableHeader {...defaultProps} />);
+
+    const toggle = screen.getByTestId('show-deleted');
+
+    expect(toggle).not.toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(mockOnShowDeletedChange).toHaveBeenCalledWith(true);
+
+    rerender(<TestCaseListTableHeader {...defaultProps} showDeleted />);
+
+    expect(screen.getByTestId('show-deleted')).toBeChecked();
   });
 });

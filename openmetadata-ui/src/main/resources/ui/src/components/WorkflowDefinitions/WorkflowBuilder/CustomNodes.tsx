@@ -22,6 +22,8 @@ import { CustomNodeData } from '../../../interface/WorkflowBuilder.interface';
 import { getCanvasNodeIcon } from '../../../utils/NodeIconUtils';
 import { getDisplayLabelFromSubType } from '../../../utils/NodeUtils';
 
+const TRANSLATE_Y_CENTER = 'translateY(-50%)';
+
 const HANDLE_CLASS_NAME =
   'tw:!w-2.5 tw:!h-2.5 tw:!border-2 tw:!border-brand-solid tw:!bg-primary';
 
@@ -52,7 +54,7 @@ export const StartNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -73,7 +75,7 @@ export const EndNode: React.FC<NodeProps<CustomNodeData>> = () => {
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -120,7 +122,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -153,7 +155,7 @@ export const AutomatedTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />
@@ -186,7 +188,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           left: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="target"
       />
@@ -219,7 +221,7 @@ export const UserTaskNode: React.FC<NodeProps<CustomNodeData>> = ({
         style={{
           right: -12,
           top: '50%',
-          transform: 'translateY(-50%)',
+          transform: TRANSLATE_Y_CENTER,
         }}
         type="source"
       />

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,8 +15,12 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
 
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,16 +30,20 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,8 +51,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -57,6 +68,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.OidcConfiguration;
+import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -676,6 +688,57 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
+  void handleLogin_mcpFlow_dropsPromptNone() throws Exception {
+    // prompt=none tells the IdP to fail rather than interact. An MCP client just opened a fresh
+    // browser context so the user can log in, so propagating it guarantees login_required and
+    // the MCP OAuth flow can never complete (#32671).
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
+
+    handler.handleLogin(request, response);
+
+    assertFalse(capturedLoginRedirect().contains("prompt=none"));
+  }
+
+  @Test
+  void handleLogin_webFlow_keepsPromptNone() throws Exception {
+    // Silent auth stays available to the browser app, where the /signin fallback handles a
+    // login_required response.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "none");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=none"));
+  }
+
+  @Test
+  void handleLogin_mcpFlow_keepsNonSilentPromptValues() throws Exception {
+    // prompt=login/consent are deliberate admin policy (force re-auth or re-consent). Only the
+    // silent-auth value is suppressed for MCP; suppressing all of them would silently bypass a
+    // compliance setting.
+    stubOidcConfigForLogin();
+    stubProviderMetadataForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    setField(handler, "promptType", "consent");
+
+    handler.handleLogin(request, response);
+
+    assertTrue(capturedLoginRedirect().contains("prompt=consent"));
+  }
+
+  @Test
   void isMcpRedirectUri_matchesOnlyTheMcpCallback() throws Exception {
     AuthenticationCodeFlowHandler handler = createLoginHandler();
     Method method =
@@ -689,6 +752,26 @@ class AuthenticationCodeFlowHandlerTest {
     assertFalse((Boolean) method.invoke(handler, (Object) null));
   }
 
+  @Test
+  void resolveProviderMetadata_initializesResolverAndReturnsLoadedMetadata() throws Exception {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "resolveProviderMetadata", OidcConfiguration.class);
+    method.setAccessible(true);
+
+    Object result = method.invoke(null, oidcConfiguration);
+
+    // pac4j 6 removed getProviderMetadata(); the helper must initialize the resolver, then load().
+    assertEquals(metadata, result);
+    verify(oidcConfiguration).ensuresMetadataResolverInitialized();
+    verify(resolver).load();
+  }
+
   private void stubOidcConfigForLogin() {
     when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
     when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
@@ -699,6 +782,23 @@ class AuthenticationCodeFlowHandlerTest {
     when(oidcConfiguration.isWithState()).thenReturn(true);
     when(oidcConfiguration.isUseNonce()).thenReturn(true);
     when(oidcConfiguration.isDisablePkce()).thenReturn(false);
+  }
+
+  /** Lets handleLogin() build the provider authorize URL and reach resp.sendRedirect(). */
+  private void stubProviderMetadataForLogin() {
+    IOidcOpMetadataResolver resolver = mock(IOidcOpMetadataResolver.class);
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(resolver);
+    when(resolver.load()).thenReturn(metadata);
+    when(metadata.getAuthorizationEndpointURI())
+        .thenReturn(URI.create("https://idp.example.com/authorize"));
+  }
+
+  /** The provider authorize URL handleLogin() redirected the browser to. */
+  private String capturedLoginRedirect() throws IOException {
+    ArgumentCaptor<String> location = ArgumentCaptor.forClass(String.class);
+    verify(response).sendRedirect(location.capture());
+    return location.getValue();
   }
 
   /** Handler wired up far enough to drive handleLogin() through state generation. */
@@ -717,6 +817,185 @@ class AuthenticationCodeFlowHandlerTest {
    * Allocates an AuthenticationCodeFlowHandler without invoking its constructor (which requires a
    * real OIDC provider for discovery), then injects the mocked collaborators via reflection.
    */
+
+  // Regression coverage for issue #32960: the callback mints an OpenMetadata token
+  // carrying OpenMetadata's own roles, so unless the provider's roles are applied here they are
+  // never seen again and the downstream sync just compares the database against itself.
+
+  @Test
+  void syncRolesFromProvider_assignsProviderRolesToTheUser() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_revokesRolesWhenProviderSendsAnEmptyClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of()));
+
+      verify(userRepository).patch(eq(null), eq(user.getId()), eq("alice"), any());
+    }
+
+    assertEquals(List.of(), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_replacesStaleRolesWhenTheProviderChangesThem() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of("DataConsumer")));
+    }
+
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_leavesRolesAloneWhenTheTokenHasNoRolesClaim() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("email", "alice@om.test"));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_doesNothingWhenUseRolesFromProviderIsOff() throws Exception {
+    User user = userWithRoles("alice", "DataSteward");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataConsumer");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(false), user, claims("roles", List.of("DataConsumer")));
+
+      verifyNoInteractions(userRepository);
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_matchesTheRolesClaimCaseInsensitively() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository, "DataSteward");
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("Roles", List.of("DataSteward")));
+    }
+
+    assertEquals(List.of("DataSteward"), roleNames(user));
+  }
+
+  @Test
+  void syncRolesFromProvider_promotesToAdminWhenTheProviderSendsTheAdminRole() throws Exception {
+    User user = userWithRoles("alice");
+    UserRepository userRepository = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubRoleLookup(mockedEntity, userRepository);
+
+      invokeSyncRolesFromProvider(
+          handlerWithRolesFromProvider(true), user, claims("roles", List.of(ADMIN_ROLE)));
+    }
+
+    assertTrue(user.getIsAdmin());
+  }
+
+  private AuthenticationCodeFlowHandler handlerWithRolesFromProvider(boolean useRolesFromProvider)
+      throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(
+        handler,
+        "authorizerConfiguration",
+        new AuthorizerConfiguration().withUseRolesFromProvider(useRolesFromProvider));
+    return handler;
+  }
+
+  private static void invokeSyncRolesFromProvider(
+      AuthenticationCodeFlowHandler handler, User user, Map<String, Object> claims)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "syncRolesFromProvider", User.class, Map.class);
+    method.setAccessible(true);
+    try {
+      method.invoke(handler, user, claims);
+    } catch (InvocationTargetException e) {
+      throw (Exception) e.getCause();
+    }
+  }
+
+  // The callback builds its claims map case-insensitively; mirror that here so the tests exercise
+  // the same lookup behaviour the real flow has.
+  private static Map<String, Object> claims(String key, Object value) {
+    Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.put(key, value);
+    return claims;
+  }
+
+  private static void stubRoleLookup(
+      MockedStatic<Entity> mockedEntity, UserRepository userRepository, String... roleNames) {
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+    for (String roleName : roleNames) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.ROLE, roleName, "id", NON_DELETED, true))
+          .thenReturn(
+              new Role()
+                  .withId(java.util.UUID.randomUUID())
+                  .withName(roleName)
+                  .withFullyQualifiedName(roleName));
+    }
+  }
+
+  private static User userWithRoles(String name, String... roleNames) {
+    return new User()
+        .withId(java.util.UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withIsAdmin(false)
+        .withRoles(
+            java.util.Arrays.stream(roleNames)
+                .map(roleName -> new EntityReference().withName(roleName))
+                .toList());
+  }
+
+  private static List<String> roleNames(User user) {
+    return user.getRoles().stream().map(EntityReference::getName).toList();
+  }
+
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
       SessionService sessionService, OidcClient client) throws Exception {
     sun.misc.Unsafe unsafe = getUnsafe();
@@ -770,5 +1049,150 @@ class AuthenticationCodeFlowHandlerTest {
     String getCapturedOutput() {
       return buffer.toString(java.nio.charset.StandardCharsets.UTF_8);
     }
+  }
+
+  @Test
+  void resolveOidcIdentity_fallsBackToLegacyClaimsWhenEmailClaimMissing() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "claimsMapping", Map.of());
+    setField(handler, "claimsOrder", List.of("preferred_username"));
+    setField(handler, "principalDomain", "openmetadata.org");
+
+    Object identity =
+        invokePrivateMethod(
+            handler, "resolveOidcIdentity", Map.class, Map.of("preferred_username", "legacy-user"));
+
+    assertFalse((Boolean) readRecordComponent(identity, "emailFirstFlow"));
+    assertEquals("legacy-user", readRecordComponent(identity, "userName"));
+    assertEquals("legacy-user@openmetadata.org", readRecordComponent(identity, "email"));
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_looksUpExistingUserByExactEmail() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    User existing =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("john_a1b2")
+            .withEmail("john@y.com")
+            .withDisplayName("John Y");
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(eq("john@y.com"), any()))
+          .thenReturn(existing);
+
+      User resolved = invokeGetOrCreateEmailFirstOidcUser(handler, "john@y.com", "John Y");
+
+      assertSame(existing, resolved);
+      verify(userRepository).getActiveUserByEmailForAuth(eq("john@y.com"), any());
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsUnregisteredUserWhenSelfSignupDisabled()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+    setField(handler, "authenticationConfiguration", selfSignupDisabledAuthConfig());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () ->
+                  invokeGetOrCreateEmailFirstOidcUser(handler, "newuser@company.com", "New User"));
+
+      assertTrue(exception.getMessage().contains("User not registered"));
+    }
+  }
+
+  @Test
+  void getOrCreateEmailFirstOidcUser_rejectsDisallowedRegistrationDomain() throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(Set.of("company.com"));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      UserRepository userRepository = mock(UserRepository.class);
+      mockedEntity.when(Entity::getUserRepository).thenReturn(userRepository);
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      org.openmetadata.service.security.AuthenticationException exception =
+          assertThrows(
+              org.openmetadata.service.security.AuthenticationException.class,
+              () -> invokeGetOrCreateEmailFirstOidcUser(handler, "intruder@other.org", "Intruder"));
+
+      assertTrue(exception.getMessage().contains("not allowed for self-signup"));
+    }
+  }
+
+  private AuthenticationConfiguration selfSignupDisabledAuthConfig() {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(false);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+    return authConfig;
+  }
+
+  private AuthenticationCodeFlowHandler createEmailFirstHandler(Set<String> registrationDomains)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getEnableSelfSignup()).thenReturn(true);
+    when(authConfig.getEmailClaim()).thenReturn("email");
+
+    AuthorizerConfiguration authzConfig = mock(AuthorizerConfiguration.class);
+    when(authzConfig.getAdminPrincipals()).thenReturn(Set.of());
+    when(authzConfig.getAllowedEmailRegistrationDomains()).thenReturn(registrationDomains);
+    when(authzConfig.getDefaultOAuthRole()).thenReturn(null);
+
+    sun.misc.Unsafe unsafe = getUnsafe();
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            unsafe.allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "authorizerConfiguration", authzConfig);
+    return handler;
+  }
+
+  private User invokeGetOrCreateEmailFirstOidcUser(
+      AuthenticationCodeFlowHandler handler, String email, String displayName) throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "getOrCreateEmailFirstOidcUser", String.class, String.class, Map.class);
+    method.setAccessible(true);
+    try {
+      return (User) method.invoke(handler, email, displayName, new HashMap<String, Object>());
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object invokePrivateMethod(
+      Object target, String methodName, Class<?> paramType, Object arg) throws Exception {
+    Method method = target.getClass().getDeclaredMethod(methodName, paramType);
+    method.setAccessible(true);
+    try {
+      return method.invoke(target, arg);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+  }
+
+  private Object readRecordComponent(Object record, String component) throws Exception {
+    Method accessor = record.getClass().getDeclaredMethod(component);
+    accessor.setAccessible(true);
+    return accessor.invoke(record);
   }
 }
