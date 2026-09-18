@@ -17,7 +17,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelPureUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -36,7 +35,6 @@ const DataProductSummary = ({
   highlights,
 }: DataProductSummaryProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const experts = useMemo(() => entityDetails.experts ?? [], [entityDetails]);
 
@@ -82,8 +80,7 @@ const DataProductSummary = ({
           <Col span={24}>
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(entityDetails.owners ?? [])}
-              renderOwnerContent={renderOwnerContent}
+              owners={entityDetails.owners ?? []}
               showLabel={false}
             />
           </Col>
@@ -99,12 +96,7 @@ const DataProductSummary = ({
           </Col>
           <Col span={24}>
             {experts.length > 0 ? (
-              <Owner
-                isCompactView={false}
-                owners={toOwnersWithHref(experts)}
-                renderOwnerContent={renderOwnerContent}
-                showLabel={false}
-              />
+              <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
               <Typography.Text
                 className="text-grey-body"

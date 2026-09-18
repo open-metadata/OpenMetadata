@@ -378,7 +378,7 @@
           "entityType": {
             "type": "keyword"
           },
-          "dataQualityDimension": {
+          "dataQualityDimensionName": {
             "type": "keyword"
           }
         }

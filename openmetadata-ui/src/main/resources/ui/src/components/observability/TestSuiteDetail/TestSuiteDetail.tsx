@@ -33,7 +33,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
@@ -171,7 +170,6 @@ const getTabBadge = (count?: number) => toString(count) || undefined;
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -444,8 +442,7 @@ const TestSuiteDetail = () => {
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                owners={toOwnersWithHref(testOwners ?? [])}
-                renderOwnerContent={renderOwnerContent}
+                owners={testOwners ?? []}
                 selectorContent={
                   <UserTeamSelectableList
                     hasPermission={Boolean(permissions.hasEditOwnerPermission)}
