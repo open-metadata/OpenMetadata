@@ -17,6 +17,7 @@ import {
 } from '../filter-select/filter-select';
 import {
   type ReactElement,
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -25,8 +26,8 @@ import {
 } from 'react';
 import { FocusScope } from 'react-aria';
 import type { Key, Selection } from 'react-aria-components';
-import { Popover as AriaPopover } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { HintText } from '@/components/base/input/hint-text';
 import { Input } from '@/components/base/input/input';
@@ -43,6 +44,51 @@ import {
   useTreeSelectSearch,
 } from './use-tree-select-search';
 import { useTreeSelectSelection } from './use-tree-select-selection';
+
+/** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
+const DROPDOWN_CHROME_WIDTH = 320;
+/** Matches react-aria's default overlay `containerPadding`. */
+const VIEWPORT_PADDING = 12;
+
+type DropdownPlacement = 'bottom left' | 'bottom right';
+
+/**
+ * Anchors the dropdown to the trigger's left edge, mirroring it to the
+ * trigger's right edge when there is no room on the right. Without this
+ * react-aria keeps the dropdown on screen by shifting it off its anchor, so it
+ * no longer starts at the trigger.
+ */
+const useDropdownPlacement = (
+  triggerRef: RefObject<HTMLElement | null>,
+  isOpen: boolean,
+  width?: number
+): DropdownPlacement => {
+  const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const measure = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return;
+      }
+      const needed = (width ?? rect.width) + VIEWPORT_PADDING;
+      const fitsRight = window.innerWidth - rect.left >= needed;
+      const fitsLeft = rect.right >= needed;
+      setPlacement(!fitsRight && fitsLeft ? 'bottom right' : 'bottom left');
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    return () => window.removeEventListener('resize', measure);
+  }, [isOpen, width, triggerRef]);
+
+  return placement;
+};
 
 const shouldLazyLoad = <T,>(
   node: TreeSelectNode<T> | undefined,
@@ -199,6 +245,11 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
+  const placement = useDropdownPlacement(
+    triggerRef,
+    isOpen,
+    usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
+  );
 
   const setOpen = useCallback(
     (open: boolean) => {
@@ -640,7 +691,7 @@ export const TreeSelect = <T = unknown,>({
         className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
-          <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:p-4 tw:text-sm tw:text-tertiary">
+          <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
             <RefreshCw01
               aria-hidden="true"
               className="tw:size-4 tw:animate-spin"
@@ -648,7 +699,7 @@ export const TreeSelect = <T = unknown,>({
             {resolvedLoadingMessage}
           </div>
         ) : filteredTreeData.length === 0 ? (
-          <div className="tw:p-4 tw:text-center tw:text-sm tw:text-tertiary">
+          <div className="tw:px-4 tw:py-2 tw:text-center tw:text-xs tw:text-tertiary">
             {resolvedNoDataMessage}
           </div>
         ) : (
@@ -732,24 +783,21 @@ export const TreeSelect = <T = unknown,>({
 
   // Portaled: an absolute dropdown gets clipped by a card or drawer.
   const treeDropdown = (
-    <AriaPopover
+    <Dropdown.Popover
       isNonModal
       className={cx(
-        'tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
         // `w-full` would size against the portal root.
         usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
         popoverClassName
       )}
-      containerPadding={0}
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
-      offset={4}
-      placement="bottom left"
+      placement={placement}
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}
-    </AriaPopover>
+    </Dropdown.Popover>
   );
 
   if (renderTrigger) {
