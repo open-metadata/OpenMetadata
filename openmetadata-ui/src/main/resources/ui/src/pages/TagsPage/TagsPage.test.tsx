@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   findAllByTestId,
   findByTestId,
@@ -57,13 +58,20 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
+// ClassificationDetails reads tag usage counts through React Query
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter>{children}</MemoryRouter>
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
 );
 
 // TagsPage now fetches the classification's own permission via useEntityPermissions rather
 // than the raw PermissionProvider.getEntityPermission REST boundary — mock the hook directly
-// (TableDetailsPageV1.test.tsx pattern) since this test file never wraps a QueryClientProvider.
+// (TableDetailsPageV1.test.tsx pattern) rather than the REST boundary.
 const mockUseEntityPermissions = jest.fn();
 
 const setMockClassificationPermissions = (
