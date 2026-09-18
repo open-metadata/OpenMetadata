@@ -122,6 +122,25 @@ class EntityResourceBulkAssetsAuthorizationTest {
   }
 
   @Test
+  void deniesCallerWithExplicitDenyOnAssetType() {
+    callerIs(ANALYST, false, false);
+    when(authorizer.listPermissions(any(SecurityContext.class), eq(ANALYST)))
+        .thenReturn(
+            List.of(
+                new ResourcePermission()
+                    .withResource(Entity.TABLE)
+                    .withPermissions(
+                        List.of(
+                            new Permission()
+                                .withOperation(OPERATION)
+                                .withAccess(Permission.Access.DENY)))));
+
+    assertThrows(
+        AuthorizationException.class,
+        () -> authorize(List.of(asset(Entity.TABLE, "svc.db.schema.table1"))));
+  }
+
+  @Test
   void allowsCallerWithEditGlossaryTermsOnAssetType() {
     callerIs(ANALYST, false, false);
     allowEditGlossaryTermsOn(ANALYST, Entity.TABLE);

@@ -13,6 +13,7 @@
 package org.openmetadata.service.resources.glossary;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -71,6 +72,11 @@ class GlossaryTermResourcePermissionAssetsTest {
     assertEquals(Entity.TABLE, mapped.getFirst().getType());
     assertEquals("svc.db.schema.table1.col1", mapped.getFirst().getFullyQualifiedName());
     assertSame(table, mapped.get(1));
+
+    // The column mapping must not mutate the caller's reference in place: the original
+    // column (which reaches the repository unchanged) stays a distinct TABLE_COLUMN.
+    assertNotSame(column, mapped.getFirst());
+    assertEquals(Entity.TABLE_COLUMN, column.getType());
   }
 
   @Test

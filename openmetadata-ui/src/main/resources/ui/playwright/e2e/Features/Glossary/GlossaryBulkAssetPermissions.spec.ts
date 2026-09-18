@@ -34,30 +34,38 @@ test.describe(
   'Glossary Term Bulk Asset Permissions',
   { tag: `${DOMAIN_TAGS.GOVERNANCE}:Glossary` },
   () => {
-    // Serial so all tests share one beforeAll/worker and run in declaration order:
-    // the deny tests must run before the untouched-state check for that check to be meaningful.
+    // Serial so the tests share one beforeAll/worker and run in declaration order;
+    // the admin test edits the shared table, so it must run after the deny tests.
     test.describe.configure({ mode: 'serial' });
 
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
     const table = new TableClass();
+    // A second asset the term is never associated with, so a denied *add* has an
+    // observable postcondition (re-adding to `table` would be idempotent).
+    const unassociatedTable = new TableClass();
     const viewOnlyUser = new UserClass();
     const viewOnlyPolicy = new PolicyClass();
     const viewOnlyRole = new RolesClass();
 
-    const assetsPayload = () => ({
+    const assetsPayloadFor = (targetTable: TableClass) => ({
       assets: [
         {
-          id: table.entityResponseData?.id,
+          id: targetTable.entityResponseData?.id,
           type: 'table',
         },
       ],
       dryRun: false,
     });
 
-    const tableHasGlossaryTerm = async (apiContext: APIRequestContext) => {
+    const assetsPayload = () => assetsPayloadFor(table);
+
+    const tableHasGlossaryTerm = async (
+      apiContext: APIRequestContext,
+      targetTable: TableClass = table
+    ) => {
       const response = await apiContext.get(
-        `/api/v1/tables/${table.entityResponseData?.id}?fields=tags`
+        `/api/v1/tables/${targetTable.entityResponseData?.id}?fields=tags`
       );
       const tableData = await response.json();
 
@@ -75,6 +83,7 @@ test.describe(
         await glossary.create(apiContext);
         await glossaryTerm.create(apiContext);
         await table.create(apiContext);
+        await unassociatedTable.create(apiContext);
 
         // Positive control: an admin can associate the term via the bulk endpoint.
         const addResponse = await apiContext.put(
@@ -118,6 +127,7 @@ test.describe(
       try {
         await glossary.delete(apiContext);
         await table.delete(apiContext);
+        await unassociatedTable.delete(apiContext);
         await viewOnlyUser.delete(apiContext);
         await viewOnlyRole.delete(apiContext);
         await viewOnlyPolicy.delete(apiContext);
@@ -140,6 +150,8 @@ test.describe(
         );
 
         expect(response.status()).toBe(403);
+        // Postcondition checked immediately: the denied remove left the term in place.
+        expect(await tableHasGlossaryTerm(apiContext)).toBe(true);
       } finally {
         await afterAction();
         await page.close();
@@ -156,25 +168,17 @@ test.describe(
       try {
         const response = await apiContext.put(
           `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/assets/add`,
-          { data: assetsPayload() }
+          { data: assetsPayloadFor(unassociatedTable) }
         );
 
         expect(response.status()).toBe(403);
+        // Denied add on an unassociated asset must leave it unassociated.
+        expect(await tableHasGlossaryTerm(apiContext, unassociatedTable)).toBe(
+          false
+        );
       } finally {
         await afterAction();
         await page.close();
-      }
-    });
-
-    test('denied bulk requests leave the asset association untouched', async ({
-      browser,
-    }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      try {
-        expect(await tableHasGlossaryTerm(apiContext)).toBe(true);
-      } finally {
-        await afterAction();
       }
     });
 
