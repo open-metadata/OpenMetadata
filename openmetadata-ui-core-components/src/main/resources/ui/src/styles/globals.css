@@ -1558,12 +1558,12 @@
     --tw-text-color-warning-primary: var(--color-text-warning-primary);
 
     /* ─── PAGE SHELL ───────────────────────────────────────────────────────
-     * Depth hierarchy mirrors light, one ramp step per nesting level:
-     *   viewport 950 → nav card / canvas 900 → main nav / header / body 800
-     * Two invariants light holds too, and the reason the main nav and the sub
-     * nav do not share a token: the main nav must read as a distinct surface
-     * from the sub nav beside it, and the canvas must read as distinct from
-     * the viewport behind it. Header and body share one colour by design.
+     * Same structure as light, one ramp step per nesting level:
+     *   app ground 950 → nav card / canvas 900 → main nav / header / body 800
+     * The main nav insets itself from the nav card so it reads as a distinct
+     * surface from the sub nav beside it; the canvas is a bordered 900 panel
+     * on the ground, its edge 800 — one step lighter than the 700 card edges
+     * inside it, so the outer panel reads softer than the cards.
      * ───────────────────────────────────────────────────────────────────── */
 
     /* SHELL BACKGROUND COLORS */
@@ -1585,7 +1585,7 @@
 
     /* SHELL BORDER COLORS */
     --color-border-shell-nav: theme(--color-gray-700);
-    --color-border-shell-canvas: theme(--color-gray-700);
+    --color-border-shell-canvas: theme(--color-gray-800);
     --color-border-shell-header: theme(--color-gray-700);
     --color-border-shell-card: theme(--color-gray-700);
     --color-border-shell-row: theme(--color-gray-700);
