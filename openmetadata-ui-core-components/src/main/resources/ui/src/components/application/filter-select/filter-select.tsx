@@ -784,25 +784,28 @@ const FilterSelect = ({
           {showFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
               <Button
+                className="tw:px-0 tw:py-1.5"
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={staged.length === 0}
-                size="xs"
+                size="sm"
                 onPress={() => setStaged([])}>
                 {t('label.clear-all')}
               </Button>
               <div className="tw:flex tw:items-center tw:gap-2">
                 <Button
+                  className="tw:py-1.5"
                   color="secondary"
                   data-testid="close-btn"
-                  size="xs"
+                  size="sm"
                   onPress={() => handleOpenChange(false)}>
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  className="tw:py-1.5"
                   color="primary"
                   data-testid="update-btn"
-                  size="xs"
+                  size="sm"
                   onPress={handleApply}>
                   {staged.length > 0
                     ? t('label.apply-count', { count: staged.length })
@@ -824,10 +827,11 @@ const FilterSelect = ({
                   : t('label.count-selected', { count: selectedValues.length })}
               </Typography>
               <Button
+                className="tw:px-0 tw:py-1.5"
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={selectedValues.length === 0}
-                size="xs"
+                size="sm"
                 onPress={() => onChange([])}>
                 {t('label.clear-all')}
               </Button>
