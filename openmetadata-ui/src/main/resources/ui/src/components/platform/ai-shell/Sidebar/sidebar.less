@@ -120,8 +120,13 @@
 // surface / gray-blue-page values (frozen); only dark collapses to canvas.
 .dark-mode {
   .ask-sidebar,
-  .ask-main-panel,
-  .ask-rail {
+  .ask-main-panel {
+    background: var(--color-bg-canvas);
+  }
+  // The rail is styled at `.ask-sidebar .ask-rail` (0,2,0); match that depth so
+  // this override wins (a bare `.dark-mode .ask-rail` would tie and lose to the
+  // later nested rule, leaving the collapsed/sub rail two-tone).
+  .ask-sidebar .ask-rail {
     background: var(--color-bg-canvas);
   }
 }
