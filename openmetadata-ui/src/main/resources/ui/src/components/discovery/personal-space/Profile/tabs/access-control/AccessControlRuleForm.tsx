@@ -86,7 +86,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
     []
   );
   const [validationError, setValidationError] = useState('');
-  const [isValidatingCondition, setIsValidating] = useState(false);
+  const [isValidatingCondition, setIsValidatingCondition] = useState(false);
   const [isValidCondition, setIsValidCondition] = useState(false);
   const currentConditionRef = useRef<string>('');
 
@@ -179,7 +179,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
         }
 
         if (condition) {
-          setIsValidating(true);
+          setIsValidatingCondition(true);
           try {
             const response = await validateRuleCondition(condition);
             if (condition !== currentConditionRef.current) {
@@ -202,7 +202,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
             setIsValidCondition(false);
           } finally {
             if (condition === currentConditionRef.current) {
-              setIsValidating(false);
+              setIsValidatingCondition(false);
             }
           }
         } else {

@@ -95,6 +95,11 @@ const DescriptionCell: FC<{ value: string | undefined }> = ({ value }) => {
 
 // ─── Cell renderer (outside component to keep component complexity low) ────────
 
+interface RenderEntityCellContext {
+  t: ReturnType<typeof useTranslation>['t'];
+  onNavigateToDetail?: (item: EntityReference) => void;
+}
+
 const renderEntityCell = (
   item: EntityReference,
   colId: DetailColumnId,
@@ -102,9 +107,9 @@ const renderEntityCell = (
   canEditAll: boolean,
   isLoadingOnSave: boolean,
   onRemove: (item: EntityReference) => void,
-  t: ReturnType<typeof useTranslation>['t'],
-  onNavigateToDetail?: (item: EntityReference) => void
+  ctx: RenderEntityCellContext
 ) => {
+  const { t, onNavigateToDetail } = ctx;
   if (colId === 'name') {
     const name = getEntityName(item);
     if (onNavigateToDetail) {
@@ -223,8 +228,7 @@ const EntityTable: FC<EntityTableProps> = ({
                   canEditAll,
                   isLoadingOnSave,
                   onRemove,
-                  t,
-                  onNavigateToDetail
+                  { t, onNavigateToDetail }
                 )}
               </Table.Cell>
             )}

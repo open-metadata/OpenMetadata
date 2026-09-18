@@ -315,9 +315,12 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         }}
         onSearch={(text) => {
           const filtered = text
-            ? allEntityTypeOptions.filter((option) =>
-                String(option.label).toLowerCase().includes(text.toLowerCase())
-              )
+            ? allEntityTypeOptions.filter((option) => {
+                const label =
+                  typeof option.label === 'string' ? option.label : '';
+
+                return label.toLowerCase().includes(text.toLowerCase());
+              })
             : allEntityTypeOptions;
           setFilteredEntityTypeOptions(filtered);
         }}

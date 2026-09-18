@@ -161,10 +161,9 @@ const AccessControlDebuggerPanel: FC = () => {
       : 'tw:text-error-primary';
 
     return (
-      <>
-        <Card
-          className="tw:mt-4 tw:overflow-hidden"
-          data-testid="evaluation-result">
+      <Card
+        className="tw:mt-4 tw:overflow-hidden"
+        data-testid="evaluation-result">
           <Box
             className={`tw:px-6 tw:py-4 tw:border-b-2 ${
               evaluationInfo.allowed
@@ -355,8 +354,7 @@ const AccessControlDebuggerPanel: FC = () => {
               </Box>
             )}
           </Box>
-        </Card>
-      </>
+      </Card>
     );
   };
 

@@ -352,6 +352,11 @@ const RuleCard: FC<RuleCardProps> = ({
 
 // ─── Role/team cell ───────────────────────────────────────────────────────────
 
+interface RenderRoleOrTeamCellContext {
+  t: ReturnType<typeof useTranslation>['t'];
+  onNavigateToDetail?: (item: EntityReference) => void;
+}
+
 const renderRoleOrTeamCell = (
   item: EntityReference,
   colId: DetailColumnId,
@@ -359,9 +364,9 @@ const renderRoleOrTeamCell = (
   canEditAll: boolean,
   isLoadingOnSave: boolean,
   onRemove: (item: EntityReference, kind: 'role' | 'team') => void,
-  t: ReturnType<typeof useTranslation>['t'],
-  onNavigateToDetail?: (item: EntityReference) => void
+  ctx: RenderRoleOrTeamCellContext
 ) => {
+  const { t, onNavigateToDetail } = ctx;
   if (colId === 'name') {
     const name = getEntityName(item);
     if (onNavigateToDetail) {
@@ -472,8 +477,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
                     canEditAll,
                     isLoadingOnSave,
                     onRemove,
-                    t,
-                    onNavigateToDetail
+                    { t, onNavigateToDetail }
                   )}
                 </Table.Cell>
               )}

@@ -85,7 +85,7 @@ function trimCursorCache(cache: Record<number, string>) {
 
   if (pages.length > MAX_PAGE_CURSORS) {
     pages
-      .sort((a, b) => a - b)
+      .toSorted((a, b) => a - b)
       .slice(0, pages.length - MAX_PAGE_CURSORS)
       .forEach((p) => delete cache[p]);
   }
