@@ -84,8 +84,8 @@ function trimCursorCache(cache: Record<number, string>) {
   const pages = Object.keys(cache).map(Number);
 
   if (pages.length > MAX_PAGE_CURSORS) {
-    pages
-      .toSorted((a, b) => a - b)
+    [...pages]
+      .sort((a, b) => a - b)
       .slice(0, pages.length - MAX_PAGE_CURSORS)
       .forEach((p) => delete cache[p]);
   }
