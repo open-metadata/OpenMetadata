@@ -82,10 +82,6 @@ export interface PropertyValueProps {
   versionDataKeys?: string[];
   isVersionView?: boolean;
   isRenderedInRightPanel?: boolean;
-  /**
-   * Skip the property name header. Used when the surrounding UI already labels
-   * the value — e.g. a table column whose header is the property name.
-   */
   hideLabel?: boolean;
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
 }

@@ -26,11 +26,6 @@ export interface ColumnCustomPropertyCellProps {
   ) => Promise<void>;
 }
 
-/**
- * One cell of a per-custom-property column in the schema table. The column
- * header already names the property, so the value renders without its label
- * and edits inline through the shared PropertyValue editor.
- */
 export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
   property,
   record,

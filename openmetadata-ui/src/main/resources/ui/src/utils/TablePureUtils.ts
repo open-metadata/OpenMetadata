@@ -791,11 +791,6 @@ export const getHighlightedRowClassName = <
   return '';
 };
 
-/**
- * Column key for a per-custom-property table column. Uses the
- * `extension.<name>` prefix so each property is individually toggleable in the
- * "Customize" dropdown and cannot collide with a built-in column key.
- */
 export const getCustomPropertyColumnKey = (propertyName: string): string =>
   `${CUSTOM_PROPERTY_COLUMN_KEY_PREFIX}${propertyName}`;
 

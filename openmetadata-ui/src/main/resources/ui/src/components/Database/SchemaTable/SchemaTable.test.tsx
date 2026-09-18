@@ -839,7 +839,6 @@ describe('Test EntityTable Component', () => {
       await screen.findAllByTestId('column-name');
 
       expect(getTypeByFQN).toHaveBeenCalledWith('tableColumn');
-      // Off by default: neither property header nor any cell is rendered.
       expect(screen.queryByText('Business Owner')).not.toBeInTheDocument();
       expect(screen.queryByText('piiCategory')).not.toBeInTheDocument();
       expect(
@@ -855,7 +854,7 @@ describe('Test EntityTable Component', () => {
       setSelectedTableColumns([
         'description',
         'dataTypeDisplay',
-        'extension.businessOwner',
+        'columnCustomProperty.businessOwner',
       ]);
 
       await act(async () => {
@@ -874,7 +873,6 @@ describe('Test EntityTable Component', () => {
       expect(
         screen.queryByTestId('property-value-piiCategory')
       ).not.toBeInTheDocument();
-      // Read-only without EditCustomFields.
       expect(
         screen.queryByTestId('property-cell-save-businessOwner')
       ).not.toBeInTheDocument();
@@ -886,7 +884,10 @@ describe('Test EntityTable Component', () => {
         ViewCustomFields: true,
         EditCustomFields: true,
       };
-      setSelectedTableColumns(['description', 'extension.businessOwner']);
+      setSelectedTableColumns([
+        'description',
+        'columnCustomProperty.businessOwner',
+      ]);
       (updateTableColumn as jest.Mock).mockResolvedValue({
         ...columnsWithExtension[0],
         extension: { businessOwner: 'updated' },

@@ -63,7 +63,7 @@ test.describe('Schema table column-level custom property columns', () => {
   test('property column is hidden by default, toggleable, inline editable and persisted', async ({
     page,
   }) => {
-    const columnKey = `extension.${propertyName}`;
+    const columnKey = `columnCustomProperty.${propertyName}`;
     const propertyHeader = page
       .getByTestId('entity-table')
       .getByRole('columnheader', { name: propertyName });

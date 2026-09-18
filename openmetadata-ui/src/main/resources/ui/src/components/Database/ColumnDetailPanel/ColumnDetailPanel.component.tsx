@@ -615,9 +615,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       }
     };
 
-    // `tableColumn` is the only column-level metadata type, and the custom
-    // properties tab is only offered for table columns, so skip the lookup
-    // for every other entity type.
     if (canViewCustomFields && entityType === EntityType.TABLE) {
       fetchEntityTypeDetail();
     }

@@ -179,8 +179,6 @@ const SchemaTable = () => {
   const [editConstraint, setEditConstraint] = useState<
     Constraint | undefined
   >();
-  // Column-level custom property definitions (the `column` metadata type).
-  // Drives one toggleable table column per defined property.
   const [columnTypeDetail, setColumnTypeDetail] = useState<Type>();
 
   const {
@@ -253,8 +251,6 @@ const SchemaTable = () => {
           setColumnTypeDetail(res);
         }
       } catch {
-        // Custom property columns are optional; fall back to the built-in
-        // columns rather than blocking the schema table.
         if (!cancelled) {
           setColumnTypeDetail(undefined);
         }
@@ -577,8 +573,6 @@ const SchemaTable = () => {
         return;
       }
 
-      // Errors are surfaced by PropertyValue's own catch/toast, so let them
-      // propagate rather than swallowing them here.
       await updateColumnDetails(
         record.fullyQualifiedName,
         { extension: updatedExtension },
@@ -847,9 +841,6 @@ const SchemaTable = () => {
     [testCaseCounts]
   );
 
-  // One table column per column-level custom property. All are hidden by
-  // default (not in DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS) and toggled on via
-  // the "Customize" dropdown; TableV2 persists the selection per entity type.
   const customPropertyColumns: ColumnsType<Column> = useMemo(
     () =>
       (columnTypeDetail?.customProperties ?? []).map(
