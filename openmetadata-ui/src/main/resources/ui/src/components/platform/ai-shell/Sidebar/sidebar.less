@@ -67,19 +67,21 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Use shared roles already defined by Gate 0. The palette-backed page,
-// selected, brand, and badge roles remain pending #6564.
+// Shared Gate 0 roles. The selected/brand roles use the semantic brand-selected
+// tokens so they flip in dark mode — the previous raw palette steps
+// (gray-blue-100, brand-800, brand-50) never dark-flipped, leaving the active
+// nav a light pill with dark-blue text in dark mode.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
 @ask-bg-card: var(--om-color-bg-surface);
-@ask-bg-active: var(--tw-color-gray-blue-100);
+@ask-bg-active: var(--om-color-interactive-selected);
 @ask-bg-hover: var(--om-color-bg-secondary-hover);
 @ask-text-primary: var(--om-color-text-primary);
 @ask-text-secondary: var(--om-color-text-secondary);
 @ask-text-tertiary: var(--om-color-text-tertiary);
 @ask-text-quaternary: var(--om-color-text-quaternary);
 @ask-brand: var(--tw-color-brand-600);
-@ask-brand-active: var(--tw-color-brand-800);
-@ask-brand-50: var(--tw-color-brand-50);
+@ask-brand-active: var(--om-color-link);
+@ask-brand-50: var(--om-color-bg-brand);
 @ask-border-secondary: var(--om-color-border-secondary);
 
 // Utility palette — used by the count badges on nav items.
