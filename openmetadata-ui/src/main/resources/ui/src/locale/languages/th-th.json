@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "คุณแน่ใจหรือไม่ว่าต้องการลบข้อความนี้อย่างถาวร?",
     "confirm-delete-orphan-indexes": "คุณแน่ใจหรือไม่ว่าต้องการลบดัชนีกำพร้า {{count}} รายการ? การดำเนินการนี้ไม่สามารถยกเลิกได้",
     "connected-to-host": "เชื่อมต่อกับ {{host}} แล้ว",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "แต่ละบริการมีชุดข้อกำหนดมาตรฐานของตัวเอง และนี่คือพื้นฐานที่คุณต้องการเชื่อมต่อ ข้อกำหนดการเชื่อมต่อจะถูกสร้างจาก JSON schema สำหรับบริการนั้น ๆ ฟิลด์ที่จำเป็นจะถูกทำเครื่องหมายด้วยเครื่องหมายดอกจัน",
     "connection-doc-description": "บัญชี ชื่อผู้ใช้ และคลังข้อมูลคือข้อมูลขั้นต่ำที่ {{brandName}} ต้องใช้ในการเปิดเซสชัน ส่วนบทบาทและฐานข้อมูลเป็นขอบเขตเสริม",
     "connection-doc-title": "เชื่อมต่อกับคลังข้อมูลของคุณ",

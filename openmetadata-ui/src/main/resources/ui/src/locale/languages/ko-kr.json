@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "이 메시지를 영구적으로 삭제하시겠습니까?",
     "confirm-delete-orphan-indexes": "{{count}}개의 고아 인덱스를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
     "connected-to-host": "{{host}}에 연결되었습니다",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "모든 서비스에는 표준 요구 사항 세트가 있으며, 여기에는 연결에 필요한 기본 사항이 있습니다. 연결 요구 사항은 해당 서비스의 JSON 스키마에서 생성됩니다. 필수 필드는 별표로 표시됩니다.",
     "connection-doc-description": "계정, 사용자 이름, 웨어하우스는 {{brandName}}이(가) 세션을 여는 데 필요한 최소 정보입니다. 역할과 데이터베이스는 선택적 범위입니다.",
     "connection-doc-title": "웨어하우스에 연결하기",

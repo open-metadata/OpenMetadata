@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "您確定要永久刪除此訊息嗎？",
     "confirm-delete-orphan-indexes": "確定要刪除 {{count}} 個孤立索引嗎？此動作無法復原。",
     "connected-to-host": "已連線至 {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "每個服務都有其標準要求集，以下是您需要連線的基本要素。連線要求是根據該服務的 JSON 結構產生的。必填欄位標有星號。",
     "connection-doc-description": "帳號、使用者名稱與資料倉儲是 {{brandName}} 建立工作階段所需的最少資訊。角色與資料庫為選填範圍。",
     "connection-doc-title": "連線至您的資料倉儲",

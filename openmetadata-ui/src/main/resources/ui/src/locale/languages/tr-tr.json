@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "Bu mesajı kalıcı olarak silmek istediğinizden emin misiniz?",
     "confirm-delete-orphan-indexes": "{{count}} yetim dizini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
     "connected-to-host": "{{host}} adresine bağlandı",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Her servis kendi standart gereksinimleriyle birlikte gelir ve işte bağlanmanız gereken temel bilgiler. Bağlantı gereksinimleri, o servis için JSON şemasından oluşturulur. Zorunlu alanlar bir yıldız işaretiyle işaretlenmiştir.",
     "connection-doc-description": "Hesap, kullanıcı adı ve ambar, {{brandName}}'in bir oturum açması için gereken en az bilgidir. Rol ve veritabanı isteğe bağlı kapsamlardır.",
     "connection-doc-title": "Ambarınıza ulaşın",

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
+import { Button, Col, Row, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase, toString } from 'lodash';
@@ -51,6 +51,7 @@ import { useApplicationsProvider } from '../../components/Settings/Applications/
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceAttributesCard from '../../components/Settings/Services/ServiceAttributes/ServiceAttributesCard';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import ServiceSectionCard from '../../components/Settings/Services/ServiceSectionCard/ServiceSectionCard';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -1797,57 +1798,61 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const testConnectionTab = useMemo(() => {
     return (
       <div className="connection-tab-content">
-        <div className="flex items-center justify-between">
-          <AirflowMessageBanner />
+        <AirflowMessageBanner />
 
-          <Space className="w-full justify-end">
-            <Tooltip
-              title={
-                flags.canEditAll
-                  ? t('label.edit-entity', {
-                      entity: t('label.connection'),
-                    })
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                ghost
-                data-testid="edit-connection-button"
-                disabled={!flags.canEditAll}
-                type="primary"
-                onClick={goToEditConnection}>
-                {t('label.edit-entity', {
-                  entity: t('label.connection'),
-                })}
-              </Button>
-            </Tooltip>
-            {allowTestConn && (
-              <TestConnection
-                connectionType={serviceDetails?.serviceType ?? ''}
-                extraInfo={extraInfoData?.name}
-                getData={() => connectionDetails}
-                hostIp={hostIp}
-                isTestingDisabled={isTestingDisabled}
-                serviceCategory={serviceCategory as ServiceCategory}
-                serviceName={serviceDetails?.name}
-                // validation is not required as we have all the data available and not in edit mode
-                shouldValidateForm={false}
-                showDetails={false}
-              />
-            )}
-          </Space>
-        </div>
+        <ServiceSectionCard
+          actions={
+            <>
+              <Tooltip
+                title={
+                  flags.canEditAll
+                    ? t('label.edit-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Button
+                  ghost
+                  data-testid="edit-connection-button"
+                  disabled={!flags.canEditAll}
+                  type="primary"
+                  onClick={goToEditConnection}>
+                  {t('label.edit-entity', {
+                    entity: t('label.connection'),
+                  })}
+                </Button>
+              </Tooltip>
+              {allowTestConn && (
+                <TestConnection
+                  connectionType={serviceDetails?.serviceType ?? ''}
+                  extraInfo={extraInfoData?.name}
+                  getData={() => connectionDetails}
+                  hostIp={hostIp}
+                  isTestingDisabled={isTestingDisabled}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceName={serviceDetails?.name}
+                  // validation is not required as we have all the data available and not in edit mode
+                  shouldValidateForm={false}
+                  showDetails={false}
+                />
+              )}
+            </>
+          }
+          description={t('message.connection-configuration-description')}
+          testId="connection-details-card"
+          title={t('label.connection-details')}>
+          <ServiceConnectionDetails
+            connectionDetails={connectionDetails ?? {}}
+            extraInfo={extraInfoData}
+            serviceCategory={serviceCategory}
+            serviceFQN={serviceDetails?.serviceType || ''}
+          />
+        </ServiceSectionCard>
 
         <ServiceAttributesCard
           hasEditPermission={flags.canEditAll}
           serviceAttributes={serviceDetails?.serviceAttributes}
           onSave={handleUpdateServiceAttributes}
-        />
-
-        <ServiceConnectionDetails
-          connectionDetails={connectionDetails ?? {}}
-          extraInfo={extraInfoData}
-          serviceCategory={serviceCategory}
-          serviceFQN={serviceDetails?.serviceType || ''}
         />
       </div>
     );

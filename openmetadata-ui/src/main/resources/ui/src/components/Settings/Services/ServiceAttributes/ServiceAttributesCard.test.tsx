@@ -50,10 +50,50 @@ describe('ServiceAttributesCard', () => {
     );
   });
 
-  it('should say so when nothing is set, rather than rendering empty rows', () => {
-    render(<ServiceAttributesCard hasEditPermission onSave={onSave} />);
+  /**
+   * The three attributes are a fixed set shown side by side, so an unset one reads as a dash
+   * under its own heading rather than disappearing and leaving the columns misaligned.
+   */
+  it('should render every attribute, dashing the ones that are unset', () => {
+    render(
+      <ServiceAttributesCard
+        hasEditPermission
+        serviceAttributes={{ region: 'us-east-1' }}
+        onSave={onSave}
+      />
+    );
 
-    expect(screen.getByTestId('no-service-attributes')).toBeInTheDocument();
+    expect(screen.getByTestId('service-region-value')).toHaveTextContent(
+      'us-east-1'
+    );
+    expect(screen.getByTestId('service-environment-value')).toHaveTextContent(
+      '-'
+    );
+    expect(screen.getByTestId('service-deployment-value')).toHaveTextContent(
+      '-'
+    );
+  });
+
+  /** The heading actions swap to Cancel/Save while editing, per the agreed layout. */
+  it('should move the header actions into edit mode and back', () => {
+    render(
+      <ServiceAttributesCard
+        hasEditPermission
+        serviceAttributes={{ region: 'us-east-1' }}
+        onSave={onSave}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('edit-service-attributes'));
+
+    expect(screen.queryByTestId('edit-service-attributes')).toBeNull();
+    expect(screen.getByTestId('save-service-attributes')).toBeInTheDocument();
+    expect(screen.getByTestId('cancel-service-attributes')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('cancel-service-attributes'));
+
+    expect(screen.getByTestId('edit-service-attributes')).toBeInTheDocument();
+    expect(screen.queryByTestId('save-service-attributes')).toBeNull();
   });
 
   it('should hide the edit action without permission', () => {

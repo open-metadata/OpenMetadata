@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "האם אתה בטוח שברצונך למחוק הודעה זו לצמיתות?",
     "confirm-delete-orphan-indexes": "האם אתה בטוח שברצונך למחוק {{count}} אינדקס(ים) יתומים? פעולה זו אינה ניתנת לביטול.",
     "connected-to-host": "מחובר אל {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "כל שירות מגיע עם סט סטנדרטי של דרישות, ולהלן היסודות שתצטרך להתחבר. דרישות החיבור נוצרות מתוך הסכמת JSON עבור השירות הזה. שדות החובה מסומנים בכוכבית.",
     "connection-doc-description": "חשבון, שם משתמש ומחסן נתונים הם המינימום ש-{{brandName}} צריך כדי לפתוח סשן. תפקיד ומסד נתונים הם היקפים אופציונליים.",
     "connection-doc-title": "הגיעו אל מחסן הנתונים שלכם",

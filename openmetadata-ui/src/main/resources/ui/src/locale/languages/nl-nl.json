@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "Weet u zeker dat u dit bericht permanent wilt verwijderen?",
     "confirm-delete-orphan-indexes": "Weet u zeker dat u {{count}} weesindex(en) wilt verwijderen?Deze actie kan niet ongedaan worden gemaakt.",
     "connected-to-host": "Verbonden met {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Elke service heeft zijn standaard set vereisten en hier zijn de basisprincipes van wat u nodig zou hebben om een connectie te maken. De connectievereisten worden gegenereerd uit het JSON-schema voor die service. De verplichte velden zijn gemarkeerd met een asterisk.",
     "connection-doc-description": "Account, gebruikersnaam en warehouse zijn het minimum dat {{brandName}} nodig heeft om een sessie te openen. Rol en database zijn optionele scopes.",
     "connection-doc-title": "Bereik je warehouse",

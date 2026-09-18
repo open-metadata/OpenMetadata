@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "Êtes-vous sûr de vouloir supprimer de manière permanente ce message ?",
     "confirm-delete-orphan-indexes": "Êtes-vous sûr de vouloir supprimer le ou les index orphelins {{count}} ?Cette action ne peut pas être annulée.",
     "connected-to-host": "Connecté à {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Chaque service a son propre ensemble de conditions et voici les bases de ce dont vous avez besoin pour vous connecter. Les conditions de connexion sont générées à partir du schéma JSON pour ce service. Les champs obligatoires sont marqués d'un astérisque.",
     "connection-doc-description": "Le compte, le nom d’utilisateur et l’entrepôt sont le minimum dont {{brandName}} a besoin pour ouvrir une session. Le rôle et la base de données sont des périmètres facultatifs.",
     "connection-doc-title": "Atteignez votre entrepôt de données",

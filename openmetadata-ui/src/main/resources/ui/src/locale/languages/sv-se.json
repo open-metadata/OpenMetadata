@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "Är du säker på att du vill ta bort detta meddelande permanent?",
     "confirm-delete-orphan-indexes": "Är du säker på att du vill ta bort {{count}} föräldralösa index? Den här åtgärden kan inte ångras.",
     "connected-to-host": "Ansluten till {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Varje tjänst har sin egen standarduppsättning krav, och här är grunderna för vad du behöver för att ansluta. Anslutningskraven genereras från JSON-schemat för den tjänsten. De obligatoriska fälten är markerade med en asterisk.",
     "connection-doc-description": "Konto, användarnamn och datalager är det minsta {{brandName}} behöver för att öppna en session. Roll och databas är valfria avgränsningar.",
     "connection-doc-title": "Nå ditt datalager",

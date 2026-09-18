@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "तुम्हाला खात्री आहे का की तुम्ही हा संदेश कायमचा हटवू इच्छिता?",
     "confirm-delete-orphan-indexes": "आपण निश्चितच {{count}} अनाथ निर्देशांक हटवू इच्छिता? ही क्रिया पूर्ववत केली जाऊ शकत नाही.",
     "connected-to-host": "{{host}} शी जोडलेले",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "प्रत्येक सेवेसाठी त्याच्या मानक आवश्यकता असतात आणि कनेक्ट करण्यासाठी तुम्हाला आवश्यक असलेल्या मूलभूत गोष्टी येथे आहेत. कनेक्शन आवश्यकता त्या सेवेसाठी JSON स्कीमामधून व्युत्पन्न केल्या जातात. अनिवार्य फील्ड तारेने चिन्हांकित केलेले आहेत.",
     "connection-doc-description": "खाते, वापरकर्तानाव आणि वेअरहाऊस हे {{brandName}} ला सत्र सुरू करण्यासाठी आवश्यक किमान तपशील आहेत. रोल आणि डेटाबेस हे ऐच्छिक आहेत.",
     "connection-doc-title": "तुमच्या वेअरहाऊसशी जोडणी करा",

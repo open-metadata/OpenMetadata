@@ -19,6 +19,7 @@ import {
   Environment,
   ServiceAttributes,
 } from '../../../../generated/entity/services/serviceAttributes';
+import ServiceSectionCard from '../ServiceSectionCard/ServiceSectionCard';
 
 export interface ServiceAttributesCardProps {
   serviceAttributes?: ServiceAttributes;
@@ -45,7 +46,7 @@ const ServiceAttributesCard = ({
 
   const environmentOptions = useMemo(() => Object.values(Environment), []);
 
-  const displayRows = useMemo(
+  const displayColumns = useMemo(
     () => [
       {
         key: 'environment',
@@ -65,8 +66,6 @@ const ServiceAttributesCard = ({
     ],
     [serviceAttributes, t]
   );
-
-  const hasAnyValue = displayRows.some((row) => !isEmpty(row.value));
 
   const startEditing = useCallback(() => {
     setDraft(serviceAttributes ?? {});
@@ -96,35 +95,47 @@ const ServiceAttributesCard = ({
     }
   }, [draft, onSave]);
 
+  const actions = isEditing ? (
+    <>
+      <Button
+        color="secondary"
+        data-testid="cancel-service-attributes"
+        isDisabled={isSaving}
+        size="sm"
+        onClick={cancelEditing}>
+        {t('label.cancel')}
+      </Button>
+      <Button
+        data-testid="save-service-attributes"
+        isLoading={isSaving}
+        size="sm"
+        onClick={handleSave}>
+        {t('label.save')}
+      </Button>
+    </>
+  ) : (
+    hasEditPermission && (
+      <Button
+        color="secondary"
+        data-testid="edit-service-attributes"
+        size="sm"
+        onClick={startEditing}>
+        {t('label.edit')}
+      </Button>
+    )
+  );
+
   return (
-    <div
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-5 tw:shadow-xs"
-      data-testid="service-attributes-card">
-      <div className="tw:flex tw:items-start tw:justify-between tw:gap-4">
-        <div>
-          <div className="tw:text-sm tw:font-semibold tw:leading-6 tw:text-primary">
-            {t('label.service-attribute-plural')}
-          </div>
-          <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">
-            {t('message.service-attributes-description')}
-          </div>
-        </div>
-        {hasEditPermission && !isEditing && (
-          <Button
-            data-testid="edit-service-attributes"
-            size="sm"
-            onClick={startEditing}>
-            {t('label.edit')}
-          </Button>
-        )}
-      </div>
-
-      <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
-
+    <ServiceSectionCard
+      actions={actions}
+      description={t('message.service-attributes-description')}
+      testId="service-attributes-card"
+      title={t('label.service-attribute-plural')}>
       {isEditing ? (
-        <div className="tw:flex tw:flex-col tw:gap-4">
+        <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-3">
           <Select
             data-testid="service-environment-select"
+            isRequired={true}
             label={t('label.environment')}
             value={draft.environment}
             onChange={(key) =>
@@ -155,49 +166,32 @@ const ServiceAttributesCard = ({
               setDraft((previous) => ({ ...previous, deployment: value }))
             }
           />
-          <div className="tw:flex tw:justify-end tw:gap-2">
-            <Button
-              color="secondary"
-              data-testid="cancel-service-attributes"
-              isDisabled={isSaving}
-              size="sm"
-              onClick={cancelEditing}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="save-service-attributes"
-              isLoading={isSaving}
-              size="sm"
-              onClick={handleSave}>
-              {t('label.save')}
-            </Button>
-          </div>
         </div>
       ) : (
         <div
-          className="tw:flex tw:flex-col tw:gap-2"
+          className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-3 tw:md:gap-0"
           data-testid="service-attributes-values">
-          {hasAnyValue ? (
-            displayRows.map((row) => (
-              <div className="tw:flex tw:gap-2 tw:text-sm" key={row.key}>
-                <span className="tw:text-tertiary">{row.label}</span>
-                <span
-                  className="tw:text-primary"
-                  data-testid={`service-${row.key}-value`}>
-                  {isEmpty(row.value) ? '-' : row.value}
-                </span>
-              </div>
-            ))
-          ) : (
+          {displayColumns.map((column, index) => (
             <div
-              className="tw:text-sm tw:text-tertiary"
-              data-testid="no-service-attributes">
-              {t('message.no-service-attributes-set')}
+              className={
+                // Dividers between columns, not before the first one, and only once the
+                // columns actually sit side by side.
+                index === 0
+                  ? 'tw:md:pr-6'
+                  : 'tw:md:border-l tw:md:border-secondary tw:md:px-6'
+              }
+              key={column.key}>
+              <div className="tw:text-xs tw:text-tertiary">{column.label}</div>
+              <div
+                className="tw:mt-1 tw:text-sm tw:font-medium tw:text-primary"
+                data-testid={`service-${column.key}-value`}>
+                {isEmpty(column.value) ? '-' : column.value}
+              </div>
             </div>
-          )}
+          ))}
         </div>
       )}
-    </div>
+    </ServiceSectionCard>
   );
 };
 

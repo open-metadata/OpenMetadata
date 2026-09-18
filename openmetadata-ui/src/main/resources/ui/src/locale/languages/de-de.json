@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "Sind Sie sicher, dass Sie diese Nachricht dauerhaft löschen möchten?",
     "confirm-delete-orphan-indexes": "Sind Sie sicher, dass Sie {{count}} verwaiste Indizes löschen möchten?Diese Aktion kann nicht rückgängig gemacht werden.",
     "connected-to-host": "Verbunden mit {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Jeder Dienst hat seine Standardanforderungen, und hier sind die Grundlagen, die Sie zum Verbinden benötigen. Die Verbindungsanforderungen werden aus dem JSON-Schema für diesen Dienst generiert. Die Pflichtfelder sind mit einem Sternchen markiert.",
     "connection-doc-description": "Konto, Benutzername und Warehouse sind das Minimum, das {{brandName}} benötigt, um eine Sitzung zu öffnen. Rolle und Datenbank sind optionale Eingrenzungen.",
     "connection-doc-title": "Erreichen Sie Ihr Warehouse",

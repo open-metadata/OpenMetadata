@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "هل أنت متأكد أنك تريد حذف هذه الرسالة نهائيًا؟",
     "confirm-delete-orphan-indexes": "هل تريد بالتأكيد حذف {{count}} من الفهارس اليتيمة؟ لا يمكن التراجع عن هذا الإجراء.",
     "connected-to-host": "متصل بـ {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "تأتي كل خدمة مع مجموعة متطلباتها القياسية، وفيما يلي أساسيات ما ستحتاجه للاتصال. يتم إنشاء متطلبات الاتصال من مخطط JSON لتلك الخدمة. يتم تمييز الحقول الإلزامية بعلامة نجمة.",
     "connection-doc-description": "الحساب واسم المستخدم والمستودع هي الحد الأدنى الذي يحتاجه {{brandName}} لفتح جلسة. الدور وقاعدة البيانات نطاقان اختياريان.",
     "connection-doc-title": "الوصول إلى مستودع البيانات",

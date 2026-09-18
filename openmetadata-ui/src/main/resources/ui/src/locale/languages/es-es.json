@@ -3518,6 +3518,7 @@
     "confirm-delete-message": "¿Está seguro de que desea eliminar permanentemente este mensaje?",
     "confirm-delete-orphan-indexes": "¿Está seguro de que desea eliminar {{count}} índice(s) huérfano(s)?Esta acción no se puede deshacer.",
     "connected-to-host": "Conectado a {{host}}",
+    "connection-configuration-description": "Configuration details used to connect to this service.",
     "connection-details-description": "Cada servicio viene con su conjunto de requisitos y aquí están los conceptos básicos de lo que necesitaría para conectarse. Los requisitos de conexión se generan a partir del esquema JSON para ese servicio. Los campos obligatorios están marcados con un asterisco.",
     "connection-doc-description": "La cuenta, el usuario y el almacén son lo mínimo que {{brandName}} necesita para abrir una sesión. El rol y la base de datos son ámbitos opcionales.",
     "connection-doc-title": "Conecta con tu almacén de datos",
