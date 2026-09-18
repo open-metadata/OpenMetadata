@@ -53,6 +53,7 @@ import type { DataProduct } from '../generated/entity/domains/dataProduct';
 import type { Domain } from '../generated/entity/domains/domain';
 import type { EntityReference } from '../generated/tests/testCase';
 import { getEntityName } from './EntityNameUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 import {
   getHighlightOfListItem,
   getMapOfListHighlights,
@@ -63,7 +64,6 @@ import {
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
-import { renderHighlightedText } from './EntitySearchUtils';
 
 const APIEndpointSummary = withSuspenseFallback(
   lazy(

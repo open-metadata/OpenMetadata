@@ -55,12 +55,12 @@ import {
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { renderHighlightedText } from './EntitySearchUtils';
 import { bytesToSize } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
 

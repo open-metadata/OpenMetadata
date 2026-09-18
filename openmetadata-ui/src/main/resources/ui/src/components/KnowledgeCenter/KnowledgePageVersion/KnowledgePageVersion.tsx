@@ -34,6 +34,7 @@ import {
 } from '../../../utils/EntityDiffPureUtils';
 import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -43,7 +44,6 @@ import {
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;

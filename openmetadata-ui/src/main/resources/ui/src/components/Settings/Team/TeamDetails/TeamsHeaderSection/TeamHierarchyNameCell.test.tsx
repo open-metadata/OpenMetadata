@@ -15,9 +15,11 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { renderHighlightedText } from '../../../../../utils/EntitySearchUtils';
 import { TeamHierarchyNameCell } from './TeamHierarchyNameCell';
 
 jest.mock('antd', () => {

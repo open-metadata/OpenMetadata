@@ -64,11 +64,11 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,

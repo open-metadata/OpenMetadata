@@ -39,6 +39,7 @@ import {
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -46,7 +47,6 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';

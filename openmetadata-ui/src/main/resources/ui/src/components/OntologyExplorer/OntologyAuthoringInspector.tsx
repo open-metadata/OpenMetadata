@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, SanitizedInput } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Button,
+  SanitizedInput,
+} from '@openmetadata/ui-core-components';
 import { Edit03, Plus, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

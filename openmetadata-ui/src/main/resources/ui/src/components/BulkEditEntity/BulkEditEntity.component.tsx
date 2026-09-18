@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithIcon, Button, SanitizedInput } from '@openmetadata/ui-core-components';
+import {
+  BadgeWithIcon,
+  Button,
+  SanitizedInput,
+} from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,

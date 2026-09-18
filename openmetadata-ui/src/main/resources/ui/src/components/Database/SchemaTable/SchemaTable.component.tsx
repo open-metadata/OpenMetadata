@@ -79,10 +79,10 @@ import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,

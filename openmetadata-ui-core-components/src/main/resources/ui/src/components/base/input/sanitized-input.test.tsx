@@ -23,9 +23,7 @@ describe('SanitizedInput', () => {
 
   it('strips script tags before bubbling onChange', () => {
     const handleChange = vi.fn();
-    render(
-      <SanitizedInput onChange={handleChange} placeholder="Enter text" />
-    );
+    render(<SanitizedInput placeholder="Enter text" onChange={handleChange} />);
 
     fireEvent.change(screen.getByPlaceholderText('Enter text'), {
       target: { value: 'safe<script>alert(1)</script>' },
@@ -37,9 +35,7 @@ describe('SanitizedInput', () => {
 
   it('preserves entity-link syntax through sanitization', () => {
     const handleChange = vi.fn();
-    render(
-      <SanitizedInput onChange={handleChange} placeholder="Enter text" />
-    );
+    render(<SanitizedInput placeholder="Enter text" onChange={handleChange} />);
 
     const link = '<#E::table::db.schema.tbl>';
     fireEvent.change(screen.getByPlaceholderText('Enter text'), {

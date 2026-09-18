@@ -62,7 +62,10 @@ import {
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -73,7 +76,6 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
@@ -844,7 +846,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : renderHighlightedText(highlightSearchText(prunedColumnName, searchValue))}
+            : renderHighlightedText(
+                highlightSearchText(prunedColumnName, searchValue)
+              )}
         </span>
       );
     },

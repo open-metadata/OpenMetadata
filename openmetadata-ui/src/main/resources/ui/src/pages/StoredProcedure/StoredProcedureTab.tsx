@@ -37,10 +37,12 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { renderHighlightedText } from '../../utils/EntitySearchUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -182,7 +184,9 @@ const StoredProcedureTab = () => {
               EntityType.STORED_PROCEDURE,
               record.fullyQualifiedName ?? ''
             )}
-            name={renderHighlightedText(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
           />
         ),
       },

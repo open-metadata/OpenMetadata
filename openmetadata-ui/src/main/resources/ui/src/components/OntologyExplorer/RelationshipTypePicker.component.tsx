@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, ButtonUtility, SanitizedInput } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  SanitizedInput,
+} from '@openmetadata/ui-core-components';
 import { ArrowRight, SearchMd, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';

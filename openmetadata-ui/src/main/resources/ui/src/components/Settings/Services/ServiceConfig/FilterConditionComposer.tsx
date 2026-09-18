@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, SanitizedInput, Select } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  SanitizedInput,
+  Select,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { KeyboardEvent, useCallback, useState } from 'react';

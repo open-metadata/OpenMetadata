@@ -45,10 +45,12 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { renderHighlightedText } from '../../../../utils/EntitySearchUtils';
 import {
   dataProductTableObject,
   descriptionTableObject,

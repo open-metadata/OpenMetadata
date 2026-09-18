@@ -54,13 +54,15 @@ import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsU
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { renderHighlightedText } from '../../../../utils/EntitySearchUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -284,7 +286,9 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={renderHighlightedText(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),

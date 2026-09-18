@@ -43,9 +43,11 @@ import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
+import {
+  highlightEntityNameAndDescription,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';

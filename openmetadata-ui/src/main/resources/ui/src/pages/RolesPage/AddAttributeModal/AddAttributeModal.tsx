@@ -28,8 +28,10 @@ import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../../utils/EntitySearchUtils';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../utils/EntitySearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './add-attribute-modal.less';
 

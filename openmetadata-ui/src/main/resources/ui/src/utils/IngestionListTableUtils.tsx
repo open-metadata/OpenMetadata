@@ -25,9 +25,11 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
 import { getEntityName } from './EntityNameUtils';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
-import { renderHighlightedText } from './EntitySearchUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>
@@ -35,7 +37,9 @@ export const renderNameField =
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-name">
-        {renderHighlightedText(highlightSearchText(getEntityName(record), searchText))}
+        {renderHighlightedText(
+          highlightSearchText(getEntityName(record), searchText)
+        )}
       </Typography.Text>
     );
 

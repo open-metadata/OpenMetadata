@@ -284,9 +284,9 @@ describe('EntitySearchUtils unit tests', () => {
         </>
       );
 
-      expect(container.querySelector('span.text-highlighter')?.textContent).toBe(
-        'hit'
-      );
+      expect(
+        container.querySelector('span.text-highlighter')?.textContent
+      ).toBe('hit');
     });
 
     it('escapes content inside the wrapper (no nested HTML interpretation)', () => {
@@ -301,6 +301,52 @@ describe('EntitySearchUtils unit tests', () => {
 
       expect(span?.textContent).toBe('<img src=x onerror=alert(1)>');
       expect(container.querySelector('img')).toBeNull();
+    });
+
+    it('preserves the version-diff wrapper with its class and data-testid', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            '<span data-diff="true" class="diff-added text-underline" data-testid="diff-added">test-case-version-changed</span>'
+          )}
+        </>
+      );
+      const diff = container.querySelector('[data-testid="diff-added"]');
+
+      expect(diff).not.toBeNull();
+      expect(diff?.textContent).toBe('test-case-version-changed');
+      expect(diff?.getAttribute('class')).toBe('diff-added text-underline');
+    });
+
+    it('drops unrecognized attributes on the outer span', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            '<span data-diff="true" class="diff-added" data-testid="diff-added" onmouseover="alert(1)" style="color:red">hit</span>'
+          )}
+        </>
+      );
+      const diff = container.querySelector('[data-testid="diff-added"]');
+
+      expect(diff).not.toBeNull();
+      // style + onmouseover were dropped — only class + data-testid survived.
+      expect(diff?.getAttribute('style')).toBeNull();
+      expect(diff?.getAttribute('onmouseover')).toBeNull();
+    });
+
+    it('renders unrecognized spans as literal text', () => {
+      const { container } = render(
+        <>
+          {renderHighlightedText(
+            'foo <span class="not-a-known-wrapper">bar</span> baz'
+          )}
+        </>
+      );
+
+      expect(container.querySelector('span.not-a-known-wrapper')).toBeNull();
+      expect(container.textContent).toBe(
+        'foo <span class="not-a-known-wrapper">bar</span> baz'
+      );
     });
   });
 });

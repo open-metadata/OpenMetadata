@@ -140,30 +140,66 @@ export const highlightSearchArrayElement = (
   );
 };
 
-// Matches ONLY the search-highlight wrapper the backend Elastic profile emits
-// (EntityBuilderConstant.PRE_TAG) and that the client-side `highlightSearchText`
-// helper injects. `[^>]*` inside the opening tag tolerates the client-side
-// helper's extra `data-highlight="true"` attribute without accepting anything
-// interesting from a security standpoint — the outer tag never reaches the DOM,
-// only the captured inner text does.
-const HIGHLIGHT_TAG_RE =
-  /<span\b[^>]*\bclass="text-highlighter"[^>]*>([\s\S]*?)<\/span>/gi;
+// Scans every `<span ...>` opening tag; the caller decides which ones are
+// recognized wrappers (see `getRecognizedSpanProps`). Anything that isn't a
+// recognized wrapper stays literal text — the outer tag never reaches the
+// DOM, only the captured inner text.
+const SPAN_TAG_RE = /<span\b([^>]*)>([\s\S]*?)<\/span>/gi;
+
+const CLASS_ATTR_RE = /\bclass="([^"]*)"/;
+const DATA_TESTID_ATTR_RE = /\bdata-testid="([^"]*)"/;
+
+interface RecognizedSpan {
+  className: string;
+  dataTestId?: string;
+}
+
+// Recognize:
+//   - `<span class="text-highlighter" ...>...</span>` — the search-highlight
+//     wrapper the backend Elastic profile (EntityBuilderConstant.PRE_TAG) and
+//     the client-side `highlightSearchText` helper both emit.
+//   - `<span data-diff="true" class="..." data-testid="diff-added|diff-removed">…</span>`
+//     — the version-diff wrapper `getDiffValue`/`getEntityVersionByField` emit
+//     around old/new values on version pages (EntityDiffUtils).
+// Only the whitelisted `class` and `data-testid` attributes carry through to
+// the DOM; any other attribute on the outer tag is silently dropped.
+const getRecognizedSpanProps = (attrs: string): RecognizedSpan | null => {
+  const isHighlight = /\bclass="[^"]*\btext-highlighter\b[^"]*"/.test(attrs);
+  const isDiff = /\bdata-diff="true"/.test(attrs);
+
+  if (!isHighlight && !isDiff) {
+    return null;
+  }
+
+  const className = attrs.match(CLASS_ATTR_RE)?.[1] ?? '';
+  const dataTestId = attrs.match(DATA_TESTID_ATTR_RE)?.[1];
+
+  return { className, dataTestId };
+};
 
 /**
- * Render a name/displayName that may carry search-highlight wrappers as a
- * ReactNode. ONLY `<span class="text-highlighter">…</span>` (the wrapper both
- * the backend Elastic profile and the client-side highlighter emit) is
- * recognized — its inner text becomes a real `<span class="text-highlighter">`
- * React node. **Every other character in the input renders as literal text**:
- * no HTML parsing, no DOMPurify allowlist, no `dangerouslySetInnerHTML`.
+ * Render a name/displayName that may carry a search-highlight wrapper (from
+ * Elastic or the client-side highlighter) or a version-diff wrapper (from
+ * `getDiffValue`/`getEntityVersionByField`) as a ReactNode. ONLY these two
+ * wrappers are recognized:
  *
- * Use this instead of `stringToHTML` when all a caller ever needs from the
- * input is the highlight wrapper (entity name, displayName, tag values, ...).
- * `stringToHTML` runs DOMPurify's default profile, which keeps a wide set of
- * benign tags (<a>, <b>, <i>, <img>, ...) — a broader surface than a name
- * ever needs, and the exact class of sink flagged by GHSA-59gm-6h39-397f.
+ *   - `<span class="text-highlighter">…</span>`
+ *   - `<span data-diff="true" class="…" data-testid="…">…</span>`
  *
- * Fast path: if the input contains no highlight wrapper the plain string is
+ * Each becomes a real `<span>` React node with **only** the wrapper's
+ * whitelisted `class` and `data-testid` attributes carried through — any other
+ * attribute on the outer tag is dropped. **Every other character in the input
+ * renders as literal text**: no HTML parsing, no DOMPurify allowlist, no
+ * `dangerouslySetInnerHTML`. Inner text is always a plain React child (safe
+ * against nested `<script>`/`<img>`/`javascript:`-URL injection).
+ *
+ * Use this instead of `stringToHTML` when all a caller ever needs is those
+ * two wrappers (entity name, displayName, tag values, ...). `stringToHTML`
+ * runs DOMPurify's default profile, which keeps a wide set of benign tags
+ * (`<a>`, `<b>`, `<i>`, `<img>`, ...) — a broader surface than a name ever
+ * needs, and the exact class of sink flagged by GHSA-59gm-6h39-397f.
+ *
+ * Fast path: if the input contains no recognized wrapper the plain string is
  * returned as-is (memo-friendly, avoids allocating an array).
  */
 export const renderHighlightedText = (input?: string | null): ReactNode => {
@@ -172,25 +208,38 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
   }
 
   interface Segment {
-    kind: 'text' | 'hl';
+    kind: 'text' | 'span';
     value: string;
+    className?: string;
+    dataTestId?: string;
   }
 
-  HIGHLIGHT_TAG_RE.lastIndex = 0;
+  SPAN_TAG_RE.lastIndex = 0;
   const segments: Segment[] = [];
   let cursor = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = HIGHLIGHT_TAG_RE.exec(input)) !== null) {
+  while ((match = SPAN_TAG_RE.exec(input)) !== null) {
+    const props = getRecognizedSpanProps(match[1]);
+    if (!props) {
+      // Not a recognized wrapper — keep scanning; the unrecognized span stays
+      // in the input and will be emitted as literal text.
+      continue;
+    }
     if (match.index > cursor) {
       segments.push({ kind: 'text', value: input.slice(cursor, match.index) });
     }
-    segments.push({ kind: 'hl', value: match[1] });
+    segments.push({
+      kind: 'span',
+      value: match[2],
+      className: props.className,
+      dataTestId: props.dataTestId,
+    });
     cursor = match.index + match[0].length;
   }
 
-  // No wrapper found — return the raw string so callers get a plain-string
-  // type rather than a wrapped node.
+  // No recognized wrapper found — return the raw string so callers get a
+  // plain-string type rather than a wrapped node.
   if (cursor === 0) {
     return input;
   }
@@ -208,7 +257,9 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
     return only.kind === 'text' ? (
       only.value
     ) : (
-      <span className="text-highlighter">{only.value}</span>
+      <span className={only.className} data-testid={only.dataTestId}>
+        {only.value}
+      </span>
     );
   }
 
@@ -216,8 +267,11 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
     segment.kind === 'text' ? (
       segment.value
     ) : (
-      // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
-      <span className="text-highlighter" key={`hl-${index}`}>
+      <span
+        className={segment.className}
+        data-testid={segment.dataTestId}
+        // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
+        key={`hl-${index}`}>
         {segment.value}
       </span>
     )

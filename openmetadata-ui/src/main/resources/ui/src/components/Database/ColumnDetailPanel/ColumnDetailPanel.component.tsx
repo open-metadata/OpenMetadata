@@ -39,9 +39,9 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,

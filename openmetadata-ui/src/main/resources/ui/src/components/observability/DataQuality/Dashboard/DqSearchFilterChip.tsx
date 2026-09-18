@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Dropdown, SanitizedInput } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Dropdown,
+  SanitizedInput,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, SearchLg } from '@untitledui/icons';
 import { Key, useMemo, useState } from 'react';
 import type { Selection } from 'react-aria-components';
