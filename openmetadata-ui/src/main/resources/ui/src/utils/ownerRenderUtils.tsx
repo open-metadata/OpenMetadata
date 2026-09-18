@@ -23,21 +23,37 @@ const loadUserPopOverCard = () =>
 
 const UserPopOverCard = lazy(loadUserPopOverCard);
 
-// Warm the chunk once the browser goes idle. `import()` is still a split point,
-// so this keeps the card out of the entry bundle, but it resolves the lazy
-// component during startup — before any owner chip exists to point at. Without
-// it a pointer already resting on the fallback would miss the `mouseenter` that
-// the real trigger needs, and the card would stay shut until the pointer left
-// and came back.
+// Warm the chunk, but never against first paint. Resolving the lazy component
+// before any owner chip exists is what keeps the first hover working: a pointer
+// already resting on the fallback when the boundary resolves would miss the
+// `mouseenter` the real trigger needs, and the card would stay shut until the
+// pointer left and came back.
+//
+// `import()` is still a split point, so this costs the entry bundle nothing
+// (measured: 4 bytes). The scheduling is what matters — `requestIdleCallback`
+// where it exists, and otherwise only once `load` has fired, so browsers
+// without it (Safari 16) still cannot race this fetch against the page's own
+// resources.
 if (typeof window !== 'undefined') {
   const warm = () => void loadUserPopOverCard().catch(() => undefined);
   const idle = (
     window as typeof window & {
-      requestIdleCallback?: (callback: () => void) => number;
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number }
+      ) => number;
     }
   ).requestIdleCallback;
 
-  idle ? idle(warm) : window.setTimeout(warm, 0);
+  if (idle) {
+    idle(warm, { timeout: 2000 });
+  } else if (document.readyState === 'complete') {
+    window.setTimeout(warm, 500);
+  } else {
+    window.addEventListener('load', () => window.setTimeout(warm, 500), {
+      once: true,
+    });
+  }
 }
 
 /**
