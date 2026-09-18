@@ -207,24 +207,6 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('feed-actions')).toBeVisible();
   });
 
-  it('hands the card-scoped hover reveal to the root actions', () => {
-    render(
-      <MemoryRouter>
-        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
-      </MemoryRouter>
-    );
-
-    // Named group, not a bare `tw:group`: a conversation card contains its
-    // reply cards, so an unnamed one would reveal every reply's actions at
-    // once when the conversation is hovered.
-    expect(screen.getByTestId('feed-card-v2-sidebar').className).toContain(
-      'tw:group/feed-card'
-    );
-    expect(screen.getByTestId('feed-actions').className).toContain(
-      'tw:group-hover/feed-card:opacity-100'
-    );
-  });
-
   it('renders activity replies in the open side panel', () => {
     mockProviderValue.activityReplies = [activityReply];
 

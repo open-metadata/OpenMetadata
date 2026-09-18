@@ -12,6 +12,30 @@
  */
 @import '../../../styles/variables.less';
 
+// Hidden until the card is hovered, or until focus lands inside. Declared once
+// here against the actions' own class rather than handed down as utility
+// classes: the behaviour is identical on every card, so only the hover trigger
+// below has to know which card it belongs to.
+.feed-actions.ant-space {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--om-duration-300);
+
+  &:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+// The one part that cannot be shared: which card's hover reveals which bar.
+// A conversation card contains reply cards, so each trigger is anchored to its
+// own card rather than to any ancestor.
+.activity-feed-card-new:hover > .feed-actions.ant-space,
+.reply-card:hover .feed-actions.ant-space {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .feed-actions.ant-space {
   position: absolute;
   right: 10px;

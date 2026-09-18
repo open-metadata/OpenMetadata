@@ -266,21 +266,6 @@ describe('CommentCard', () => {
       // Hiding them until hover is CSS's job, and it leaves them focusable.
       expect(screen.getByTestId('feed-actions')).toBeInTheDocument();
     });
-
-    it('should hand the comment-scoped hover reveal to the actions', () => {
-      renderCommentCard();
-
-      expect(screen.getByTestId('feed-reply-card').className).toContain(
-        'tw:group/comment'
-      );
-      expect(mockActivityFeedActions).toHaveBeenCalledWith(
-        expect.objectContaining({
-          className: expect.stringContaining(
-            'tw:group-hover/comment:opacity-100'
-          ),
-        })
-      );
-    });
   });
 
   describe('Edit Mode', () => {

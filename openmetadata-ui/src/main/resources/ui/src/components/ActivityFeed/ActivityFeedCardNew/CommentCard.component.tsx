@@ -35,7 +35,6 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-import { COMMENT_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
@@ -175,7 +174,7 @@ const CommentCard = ({
   return (
     <div
       className={classNames(
-        'd-flex items-start justify-start relative reply-card gap-2 tw:group/comment',
+        'd-flex items-start justify-start relative reply-card gap-2',
         {
           'reply-card-border-bottom': !isLastReply,
         }
@@ -220,7 +219,6 @@ const CommentCard = ({
             isReply
             canDelete={canDelete}
             canEdit={canEdit}
-            className={COMMENT_ACTIONS_HOVER_REVEAL}
             onDelete={onDelete}
             onEditPost={onEditPost}
           />

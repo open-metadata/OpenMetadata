@@ -50,7 +50,6 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-import { FEED_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -297,7 +296,6 @@ const ActivityFeedCardNew = ({
   const feedActions =
     !isActivityEvent && !isPost && feed ? (
       <ActivityFeedActions
-        className={FEED_ACTIONS_HOVER_REVEAL}
         conversation={feed}
         conversationId={feed.id}
         isReply={false}
@@ -391,7 +389,7 @@ const ActivityFeedCardNew = ({
   const renderWidgetCard = () => (
     <Card
       className={getFeedCardWrapperClassName(
-        'activity-feed-card-new tw:group/feed-card',
+        'activity-feed-card-new',
         showThread,
         isPost,
         isOpenInDrawer,
@@ -556,7 +554,7 @@ const ActivityFeedCardNew = ({
   const renderFullCard = () => (
     <Card
       className={getFeedCardWrapperClassName(
-        'relative activity-feed-card-new tw:group/feed-card',
+        'relative activity-feed-card-new',
         showThread,
         isPost,
         isOpenInDrawer,
