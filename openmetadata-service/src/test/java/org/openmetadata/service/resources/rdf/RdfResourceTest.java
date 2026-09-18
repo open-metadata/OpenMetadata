@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +27,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 
@@ -111,5 +113,43 @@ class RdfResourceTest {
 
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
     verify(repository).getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true);
+  }
+
+  @Test
+  void rejectsMultipleWhereBearingUpdateOperationsBeforeRepositoryExecution() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    setRdfRepository(repository);
+    String update =
+        "DELETE WHERE { <urn:first> ?predicate ?object }; "
+            + "DELETE WHERE { <urn:second> ?predicate ?object }";
+
+    Response response =
+        rdfResource.updateSparql(
+            securityContext,
+            new SparqlQuery().withQuery(update).withFormat(SparqlQuery.Format.JSON));
+
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+    assertTrue(
+        String.valueOf(response.getEntity()).contains("at most one WHERE-bearing operation"));
+    verify(repository, never()).executeSparqlUpdate(update);
+  }
+
+  @Test
+  void allowsOneWhereBearingOperationWithDataOnlyOperations() throws Exception {
+    RdfRepository repository = Mockito.mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    setRdfRepository(repository);
+    String update =
+        "DELETE WHERE { <urn:first> ?predicate ?object }; "
+            + "INSERT DATA { <urn:first> <urn:predicate> <urn:object> }";
+
+    Response response =
+        rdfResource.updateSparql(
+            securityContext,
+            new SparqlQuery().withQuery(update).withFormat(SparqlQuery.Format.JSON));
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(repository).executeSparqlUpdate(update);
   }
 }

@@ -153,6 +153,20 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.parameterItems).toBeNull();
   });
 
+  it('should disable all widget edit permissions for a deleted test case', () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    } as TestCase;
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.hasEditPermission).toBe(false);
+    expect(result.current.hasEditDescriptionPermission).toBe(false);
+    expect(result.current.hasEditTagsPermission).toBe(false);
+    expect(result.current.hasEditGlossaryTermsPermission).toBe(false);
+  });
+
   it('should build parameter items with compute row count when supported', async () => {
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
@@ -240,6 +254,27 @@ describe('useTestCaseResultTab', () => {
         expect.objectContaining({ path: '/dataProducts' }),
       ])
     );
+  });
+
+  it('should ignore widget mutations for a deleted test case', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    } as TestCase;
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    await act(async () => {
+      await result.current.handleDescriptionChange('updated description');
+      await result.current.handleTagSelection([
+        { tagFQN: 'PII.Sensitive', source: 'Classification' },
+      ]);
+      await result.current.handleDataProductsSave([
+        { id: 'dp-id', name: 'dp-name' } as never,
+      ]);
+    });
+
+    expect(updateTestCaseById).not.toHaveBeenCalled();
   });
 
   it('should toggle the parameter edit state', () => {

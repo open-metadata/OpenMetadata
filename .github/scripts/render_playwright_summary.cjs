@@ -210,6 +210,32 @@ async function renderPlaywrightSummary({ github, context, core }) {
 
   const shardResults = [];
   const resultsDir = 'results';
+
+  // actions/download-artifact@v5+ flattens the archive contents directly
+  // into `resultsDir` when the `pattern:` matches only ONE artifact —
+  // typical for impact-selected / spec-only PRs that plan a single
+  // chromium shard. The loops below assume the per-artifact subdirectory
+  // layout (`resultsDir/playwright-results-json-<shardId>/results.json`),
+  // so migrate the flat files into the expected subdirectory when we
+  // detect it. Multi-shard runs are untouched because they always land
+  // in the per-subdirectory layout.
+  if (
+    fs.existsSync(path.join(resultsDir, 'results.json')) &&
+    expectedShards.length === 1
+  ) {
+    const subDir = path.join(
+      resultsDir,
+      `playwright-results-json-${expectedShards[0]}`
+    );
+    fs.mkdirSync(subDir, { recursive: true });
+    for (const file of ['results.json', 'ci-status.json']) {
+      const from = path.join(resultsDir, file);
+      if (fs.existsSync(from)) {
+        fs.renameSync(from, path.join(subDir, file));
+      }
+    }
+  }
+
   if (fs.existsSync(resultsDir)) {
     for (const dir of fs.readdirSync(resultsDir).sort()) {
       const jsonPath = path.join(resultsDir, dir, 'results.json');

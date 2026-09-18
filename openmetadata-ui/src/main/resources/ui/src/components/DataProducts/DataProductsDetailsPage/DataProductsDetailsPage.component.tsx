@@ -56,10 +56,10 @@ import { ContractExecutionStatus } from '../../../generated/type/contractExecuti
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
   AnnouncementEntity,
   getActiveAnnouncements,
@@ -151,6 +151,14 @@ const DataProductsDetailsPage = ({
     version: string;
   }>();
   const { fqn: dataProductFqn } = useFqn();
+  // The "Data Product Domain Validation" rule is a cross-cutting data-asset
+  // rule; read it against TABLE as a representative asset type since the "Add
+  // Assets" picker spans every asset type. Hold the strict domain-scoped
+  // default until the rules actually load (an empty rule set from the backend
+  // is indistinguishable from "not fetched yet").
+  const { entityRules, isRulesLoaded } = useEntityRules(EntityType.TABLE);
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
@@ -1001,14 +1009,13 @@ const DataProductsDetailsPage = ({
         })}
         entityFqn={dataProductFqn}
         open={isAssetDrawerOpen}
-        queryFilter={
-          getQueryFilterToIncludeDomain(
-            dataProduct.domains
-              ?.map((domain) => domain.fullyQualifiedName)
-              .join(', ') ?? '',
-            dataProduct.fullyQualifiedName ?? ''
-          ) as QueryFilterInterface
-        }
+        queryFilter={getQueryFilterToIncludeDomain(
+          dataProduct.domains
+            ?.map((domain) => domain.fullyQualifiedName ?? '')
+            .filter(Boolean) ?? [],
+          dataProduct.fullyQualifiedName ?? '',
+          requireDomainForDataProduct
+        )}
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={closeAssetDrawer}
         onSave={() => {

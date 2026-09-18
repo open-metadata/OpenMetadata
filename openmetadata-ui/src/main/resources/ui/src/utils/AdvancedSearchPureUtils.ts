@@ -22,6 +22,7 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
   TAG_ASSETS_DROPDOWN_ITEMS,
+  TEAM_ASSETS_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import {
@@ -61,6 +62,9 @@ export const getAssetsPageQuickFilters = (
 
     case AssetsOfEntity.LINEAGE:
       return [...LINEAGE_DROPDOWN_ITEMS];
+
+    case AssetsOfEntity.TEAM:
+      return [...TEAM_ASSETS_DROPDOWN_ITEMS];
 
     default:
       return [...COMMON_DROPDOWN_ITEMS];

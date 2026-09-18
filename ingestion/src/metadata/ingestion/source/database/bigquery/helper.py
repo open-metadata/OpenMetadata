@@ -25,6 +25,10 @@ from sqlalchemy import inspect, text
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
+    GcpCredentialsPath,
+)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
@@ -68,7 +72,10 @@ def clone_connection_for_project(database_name: str, service_connection: BigQuer
     project in a multi-project connection can be inspected/tested independently.
     """
     new_service_connection = deepcopy(service_connection)
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+    if isinstance(
+        new_service_connection.credentials.gcpConfig,
+        (GcpCredentialsValues, GcpADC, GcpCredentialsPath),
+    ):
         new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
     return new_service_connection
 

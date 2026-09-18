@@ -41,6 +41,7 @@ public class OmAppJobListener implements JobListener {
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
   public static final String SERVICES_FIELD = "services";
   public static final String APP_ID = "appId";
+  public static final String TRIGGER_TYPE_KEY = "triggerType";
   private static final String APP_RUN_LOG_ID = "appRunLogId";
 
   protected OmAppJobListener() {
@@ -104,7 +105,7 @@ public class OmAppJobListener implements JobListener {
     PerRequestContextCleaner.clear();
     try {
       String runType =
-          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp =
           repository.getByName(

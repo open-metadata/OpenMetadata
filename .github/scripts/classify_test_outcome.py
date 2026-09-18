@@ -11,7 +11,9 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 HANG_EXIT_CODES = {124}
+DIAGNOSTIC_SCAN_BYTES = 2 * 1024 * 1024
 HANG_PATTERN = re.compile(
+    r"\bTimeout\s+\(>\d+(?:\.\d+)?s\)\s+from\s+pytest-timeout\b|"
     r"(?:\bfork(?:ed)?(?:\s+(?:process|vm))?\b|\btest process\b|\bcommand\b|\bprocess\b)"
     r".{0,80}\b(?:timed out|timeout)\b|"
     r"\b(?:timed out|timeout)\b.{0,80}"
@@ -83,9 +85,17 @@ def _contains_process_timeout(diagnostic_files: list[Path]) -> bool:
     for diagnostic_file in diagnostic_files:
         try:
             with diagnostic_file.open("rb") as file_handle:
-                content = file_handle.read(2 * 1024 * 1024).decode(
-                    "utf-8", errors="replace"
-                )
+                file_handle.seek(0, os.SEEK_END)
+                size = file_handle.tell()
+                file_handle.seek(0)
+                if size <= DIAGNOSTIC_SCAN_BYTES:
+                    raw_content = file_handle.read()
+                else:
+                    segment_size = DIAGNOSTIC_SCAN_BYTES // 2
+                    head = file_handle.read(segment_size)
+                    file_handle.seek(-segment_size, os.SEEK_END)
+                    raw_content = head + file_handle.read(segment_size)
+                content = raw_content.decode("utf-8", errors="replace")
         except OSError:
             continue
         if HANG_PATTERN.search(content):

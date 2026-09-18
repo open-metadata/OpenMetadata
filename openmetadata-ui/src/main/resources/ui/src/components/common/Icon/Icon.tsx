@@ -79,7 +79,6 @@ export const Icon: FC<IconProps> = ({
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
         className={imageClassName}

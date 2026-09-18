@@ -52,7 +52,6 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
     get_connection_options_dict,
-    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.custom_pydantic import _CustomSecretStr
@@ -481,30 +480,31 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
         Create connection
         """
         connection = self.service_connection
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
+        connect_args = dict(get_connection_args_common(connection))
 
         if private_key := self._get_private_key():
-            connection.connectionArguments.root["private_key"] = private_key
+            connect_args["private_key"] = private_key
 
         if keep_alive := self._get_client_session_keep_alive():
-            connection.connectionArguments.root["client_session_keep_alive"] = keep_alive
+            connect_args["client_session_keep_alive"] = keep_alive
 
         # Bound the Snowflake socket so a silently-severed TCP connection
         # (NAT/LB idle reaping in K8s/hybrid runners) surfaces as a network
         # error within 10 minutes instead of hanging the worker indefinitely.
         # User-supplied connectionArguments win via setdefault.
-        if connection.connectionArguments.root is not None:
-            connection.connectionArguments.root.setdefault("network_timeout", 600)
+        connect_args.setdefault("network_timeout", 600)
 
-        engine = create_generic_db_connection(
+        session_parameters = dict(connect_args.get("session_parameters") or {})
+        if connection.queryTag:
+            session_parameters["QUERY_TAG"] = connection.queryTag
+        if session_parameters:
+            connect_args["session_parameters"] = session_parameters
+
+        return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+            get_connection_args_fn=lambda _: connect_args,
         )
-        if connection.connectionArguments.root and connection.connectionArguments.root.get("private_key"):
-            del connection.connectionArguments.root["private_key"]
-        return engine
 
     def checks(self) -> ChecksProvider:
         return SnowflakeChecks(

@@ -66,6 +66,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     streamableLogsMetrics = new StreamableLogsMetrics(prometheusMeterRegistry);
 
     ReindexingMetrics.initialize(prometheusMeterRegistry);
+    OntologyMetrics.initialize(prometheusMeterRegistry);
 
     // Create IngestionProgressTracker instance for real-time progress updates
     ingestionProgressTracker = new IngestionProgressTracker(prometheusMeterRegistry);

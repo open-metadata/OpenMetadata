@@ -114,6 +114,17 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
   }
 );
+jest.mock('../../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockReturnValue({
+    entityRules: {
+      canAddMultipleDataProducts: true,
+      requireDomainForDataProduct: false,
+    },
+    rules: [],
+    isRulesLoaded: true,
+    isLoading: false,
+  }),
+}));
 jest.mock('../../AddDataQualityTest/components/TestCaseFormDrawer', () => {
   return jest.fn().mockImplementation(({ open, onUpdate, testCase, onClose }) =>
     open ? (
@@ -171,6 +182,7 @@ describe('TestCaseResultTab', () => {
     );
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
+    mockUseTestCaseStore.testCase.deleted = undefined;
   });
 
   it('Should render component', async () => {
@@ -219,6 +231,19 @@ describe('TestCaseResultTab', () => {
     fireEvent.click(cancelButton);
 
     expect(queryByText(container, 'EditTestCaseModal')).not.toBeInTheDocument();
+  });
+
+  it('should close the parameter editor when the test case becomes deleted', async () => {
+    const { rerender } = render(<TestCaseResultTab />);
+
+    fireEvent.click(await screen.findByTestId('edit-parameter-icon'));
+
+    expect(await screen.findByTestId('test-case-form-v1')).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.deleted = true;
+    rerender(<TestCaseResultTab />);
+
+    expect(screen.queryByTestId('test-case-form-v1')).not.toBeInTheDocument();
   });
 
   it('onTestCaseUpdate should be called while updating params', async () => {

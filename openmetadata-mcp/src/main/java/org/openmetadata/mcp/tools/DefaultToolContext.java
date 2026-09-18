@@ -87,9 +87,6 @@ public class DefaultToolContext {
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
           break;
-        case "get_asset_context":
-          result = new GetAssetContextTool().execute(authorizer, securityContext, params);
-          break;
         case "get_persona_context":
           result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
           break;
@@ -99,26 +96,14 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
-        case "get_knowledge_content":
-          result = new GetKnowledgeContentTool().execute(authorizer, securityContext, params);
+        case "company_context":
+          result = new CompanyContextTool().execute(authorizer, securityContext, params);
           break;
-        case "search_company_context":
-          result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
+        case "create_entity":
+          result = new CreateEntityTool().execute(authorizer, limits, securityContext, params);
           break;
-        case "get_company_context":
-          result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_context_memory":
-          result =
-              new CreateContextMemoryTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary":
-          tool = new GlossaryTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_glossary_term":
-          tool = new GlossaryTermTool();
-          result = tool.execute(authorizer, limits, securityContext, params);
+        case "describe_entity_type":
+          result = new DescribeEntityTypeTool().execute(authorizer, securityContext, params);
           break;
         case "patch_entity":
           tool = new PatchEntityTool();
@@ -139,22 +124,6 @@ public class DefaultToolContext {
           break;
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
-          break;
-        case "create_metric":
-          result = new CreateMetricTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_classification":
-          result =
-              new CreateClassificationTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_tag":
-          result = new CreateTagTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_domain":
-          result = new CreateDomainTool().execute(authorizer, limits, securityContext, params);
-          break;
-        case "create_data_product":
-          result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
         default:
           return new CallToolOutcome(

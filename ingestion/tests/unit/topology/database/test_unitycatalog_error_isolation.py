@@ -101,7 +101,19 @@ def _raising_listing(items, exc):
 
 @pytest.fixture
 def uc_source():
-    with patch.object(UnitycatalogSource, "test_connection", return_value=False):
+    # The source eagerly resolves both API and SQL clients. Mock their owning
+    # connection so these unit tests cannot trigger OAuth discovery or SQL retry backoff.
+    connection = MagicMock()
+    connection.client = MagicMock()
+    connection.api.client = MagicMock()
+    connection.sql.client = MagicMock()
+    with (
+        patch(
+            "metadata.ingestion.source.database.unitycatalog.metadata.create_connection",
+            return_value=connection,
+        ),
+        patch.object(UnitycatalogSource, "test_connection", return_value=False),
+    ):
         config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
         source = UnitycatalogSource.create(
             mock_unitycatalog_config["source"],
@@ -111,7 +123,8 @@ def uc_source():
     source.context.get().__dict__["database_service"] = "local_unitycatalog"
     source.context.get().__dict__["database_schema"] = "default"
     source.client = MagicMock()
-    return source
+    yield source
+    source.close()
 
 
 class TestListingErrorIsolation:

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -209,21 +210,63 @@ class SearchMetadataToolTest {
       params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
 
       when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
-      Response mockResponse = mock(Response.class);
-      when(mockResponse.getEntity()).thenReturn("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}");
-      when(searchRepository.searchWithDirectQuery(any(), any(SubjectContext.class)))
-          .thenReturn(mockResponse);
+      stubEmptySearch();
 
       Map<String, Object> result = searchMetadataTool.execute(authorizer, securityContext, params);
 
       assertNotNull(result);
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-      verify(searchRepository).searchWithDirectQuery(captor.capture(), any(SubjectContext.class));
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
       assertEquals(
           "table",
           JsonUtils.readTree(captor.getValue().getQueryFilter())
               .at("/query/term/entityType")
               .asText());
+    }
+  }
+
+  @Test
+  void testQueryFilterKeepsTextQueryAndDeletedFlag() throws Exception {
+    // A caller-supplied queryFilter used to route through searchWithDirectQuery, which reads
+    // neither the text query nor the deleted flag, so both were silently dropped.
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "customer orders");
+      params.put("includeDeleted", true);
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals("customer orders", captor.getValue().getQuery());
+      assertEquals(true, captor.getValue().getDeleted());
+      verify(searchRepository, never()).searchWithDirectQuery(any(), any(SubjectContext.class));
+    }
+  }
+
+  @Test
+  void testMissingQueryDefaultsToMatchAnything() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("queryFilter", Map.of("query", Map.of("term", Map.of("entityType", "table"))));
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(
+          "*", captor.getValue().getQuery(), "a filter-only call must still match anything");
     }
   }
 

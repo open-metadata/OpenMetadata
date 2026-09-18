@@ -112,7 +112,6 @@ describe('Test TagsViewer Component', () => {
   it('activates "+n more" from the keyboard', () => {
     const onParentClick = jest.fn();
     render(
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
       <div onClick={onParentClick}>
         <TagsViewer tags={tags} />
       </div>

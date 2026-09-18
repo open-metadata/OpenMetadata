@@ -39,7 +39,10 @@ export const authenticateAdminPage = async (page: Page) => {
     await admin.login(page);
   }
 
-  await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
+  );
   await waitForAllLoadersToDisappear(page);
 };
 

@@ -546,31 +546,15 @@ test.describe('Bulk Import Export', () => {
         page
       );
 
-      const importApiCall = page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/importAsync?dryRun=true') &&
-          resp.request().method() === 'PUT'
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
-      await importApiCall;
-
-      // Wait directly for final state (results grid)
-      await page.getByTestId('passed-row').waitFor({
-        state: 'visible',
-      });
-      // Verify no loading state remains
-      await expect(page.getByText('Import is in progress.')).not.toBeVisible();
-
-      await page.locator('text=Import is in progress.').waitFor({
-        state: 'detached',
-      });
+      await loader.waitFor({ state: 'hidden' });
 
       await validateSuccessfulImportStatus(page);
-
-      await page.locator('.rdg-header-row').waitFor({
-        state: 'visible',
-      });
 
       const rowStatus = [
         'Entity updated',

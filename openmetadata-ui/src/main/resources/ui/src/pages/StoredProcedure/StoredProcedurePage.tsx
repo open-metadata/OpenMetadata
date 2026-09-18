@@ -27,6 +27,7 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -36,7 +37,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
   StoredProcedure,
@@ -71,6 +72,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -452,6 +454,8 @@ const StoredProcedurePage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -459,6 +463,8 @@ const StoredProcedurePage = () => {
           entity: t('label.stored-procedure-plural'),
         })
       );
+
+      return false;
     }
   };
 
@@ -478,8 +484,19 @@ const StoredProcedurePage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          getPartialNameFromTableFQN(
+            decodedStoredProcedureFQN,
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [decodedStoredProcedureFQN, navigate]
   );
 
   const afterDomainUpdateAction = useCallback(

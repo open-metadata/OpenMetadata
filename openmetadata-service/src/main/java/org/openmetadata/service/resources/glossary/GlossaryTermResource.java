@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -891,6 +892,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeBulkAssetsPermission(
+        securityContext,
+        permissionAssets(request.getAssets()),
+        MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
@@ -941,7 +946,33 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
+    authorizeBulkAssetsPermission(
+        securityContext,
+        permissionAssets(request.getAssets()),
+        MetadataOperation.EDIT_GLOSSARY_TERMS);
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
+  }
+
+  /**
+   * Table columns are surfaced as {@code tableColumn} assets (e.g. on a glossary term's Assets page)
+   * but are edited through their parent table — they are not a resource with their own permissions.
+   * Present them as tables for the type-level permission check so a caller who may edit the table's
+   * glossary terms may edit its columns' too. The original references reach the repository unchanged,
+   * so the tag is still applied to / removed from the column itself.
+   */
+  private List<EntityReference> permissionAssets(List<EntityReference> assets) {
+    if (nullOrEmpty(assets)) {
+      return assets;
+    }
+    return assets.stream()
+        .map(
+            asset ->
+                Entity.TABLE_COLUMN.equals(asset.getType())
+                    ? new EntityReference()
+                        .withType(Entity.TABLE)
+                        .withFullyQualifiedName(asset.getFullyQualifiedName())
+                    : asset)
+        .toList();
   }
 
   @GET

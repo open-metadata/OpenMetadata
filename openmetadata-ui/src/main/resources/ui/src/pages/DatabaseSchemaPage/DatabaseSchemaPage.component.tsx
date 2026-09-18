@@ -36,6 +36,7 @@ import ProfilerSettings from '../../components/Database/Profiler/ProfilerSetting
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -53,6 +54,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -94,6 +96,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -454,6 +457,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -461,6 +466,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           entity: t('label.database-schema'),
         })
       );
+
+      return false;
     }
   }, [databaseSchemaId, handleToggleDelete]);
 
@@ -477,8 +484,19 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE,
+          getPartialNameFromTableFQN(
+            decodedDatabaseSchemaFQN,
+            [FqnPart.Service, FqnPart.Database],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [decodedDatabaseSchemaFQN]
   );
 
   const afterDomainUpdateAction = useCallback(

@@ -227,17 +227,7 @@ public class McpSdkUpgradeTest {
     }
   }
 
-  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
-      List.of(
-          "create_glossary_term",
-          "create_glossary",
-          "create_tag",
-          "create_metric",
-          "create_classification",
-          "create_domain",
-          "create_data_product",
-          "create_test_case",
-          "create_context_memory");
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS = List.of("create_test_case");
 
   @Test
   void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {

@@ -48,8 +48,8 @@ inputs:
     required: false
     default: "false"
   install-test-dependencies:
-    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
-    # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
+    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi, and nox
+    # are only used by py-tests / py-cli-e2e / py-operator
     # workflows that invoke Python on the runner. Playwright E2E workflows drive
     # the browser and let the ingestion Docker container run its own installs, so
     # they can pass "false" here to shave ~3-4 minutes per shard off setup.
@@ -118,10 +118,18 @@ runs:
         source env/bin/activate
         uv pip install "setuptools<81"
         uv pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3"
         uv pip install "${{ github.workspace }}/ingestion[all]"
         uv pip install "${{ github.workspace }}/ingestion[test]"
         uv pip install nox
+        # Airflow core owns the airflow package. Repair only that distribution if an
+        # exact-key cache restored inconsistent package files. Bypass uv's cache because
+        # installed files can share hardlinks with its cached wheel payload.
+        if ! python -c "import airflow; from airflow.models import Connection"; then
+          airflow_version="$(python -c 'from importlib.metadata import version; print(version("apache-airflow"))')"
+          uv pip install --no-cache --reinstall-package apache-airflow-core "apache-airflow-core==${airflow_version}"
+        fi
+        python -c "import airflow; from airflow.models import Connection; print(f'Airflow {airflow.__version__}: {Connection.__module__}.Connection')"
       shell: bash
     # ------------------------------------------------------------------------------
 

@@ -380,26 +380,32 @@ public class DistributedRdfIndexCoordinator {
     return toPartition(record);
   }
 
-  public void updatePartitionProgress(RdfIndexPartition partition) {
-    collectionDAO
-        .rdfIndexPartitionDAO()
-        .updateProgress(
-            partition.getId().toString(),
-            partition.getCursor(),
-            partition.getProcessedCount(),
-            partition.getSuccessCount(),
-            partition.getFailedCount(),
-            System.currentTimeMillis());
+  public boolean updatePartitionProgress(RdfIndexPartition partition) {
+    return collectionDAO
+            .rdfIndexPartitionDAO()
+            .updateProgress(
+                partition.getId().toString(),
+                partition.getCursor(),
+                partition.getProcessedCount(),
+                partition.getSuccessCount(),
+                partition.getFailedCount(),
+                partition.getReaderTimeMs(),
+                partition.getProcessTimeMs(),
+                partition.getSinkTimeMs(),
+                System.currentTimeMillis(),
+                partition.getAssignedServer(),
+                partition.getClaimedAt())
+        > 0;
   }
 
-  public void completePartition(
-      UUID partitionId,
+  public boolean completePartition(
+      RdfIndexPartition partition,
       long cursor,
       long processedCount,
       long successCount,
       long failedCount,
       String lastError) {
-    RdfIndexPartition partition = getPartition(partitionId);
+    final UUID partitionId = partition.getId();
     long now = System.currentTimeMillis();
     int updated =
         collectionDAO
@@ -419,27 +425,24 @@ public class DistributedRdfIndexCoordinator {
                 lastError,
                 partition.getRetryCount());
     if (updated == 0) {
-      // Stop or another participant already moved the row out of PROCESSING
-      // (typically to CANCELLED). Don't bump server stats and don't overwrite
-      // the authoritative status — the partition is done as far as this
-      // worker is concerned.
       LOG.info(
-          "Skipping completion of RDF partition {} — no longer PROCESSING (status overridden by stop/reclaim)",
+          "Skipping completion of RDF partition {} because its claim is no longer active",
           partitionId);
-      return;
+      return false;
     }
     incrementServerStats(partition, processedCount, successCount, failedCount, 1, 0);
     refreshAggregatedJob(jobIdFrom(partition));
+    return true;
   }
 
-  public void failPartition(
-      UUID partitionId,
+  public boolean failPartition(
+      RdfIndexPartition partition,
       long cursor,
       long processedCount,
       long successCount,
       long failedCount,
       String errorMessage) {
-    RdfIndexPartition partition = getPartition(partitionId);
+    final UUID partitionId = partition.getId();
     long now = System.currentTimeMillis();
     int updated =
         collectionDAO
@@ -460,12 +463,13 @@ public class DistributedRdfIndexCoordinator {
                 partition.getRetryCount() + 1);
     if (updated == 0) {
       LOG.info(
-          "Skipping failure of RDF partition {} — no longer PROCESSING (status overridden by stop/reclaim)",
+          "Skipping failure of RDF partition {} because its claim is no longer active",
           partitionId);
-      return;
+      return false;
     }
     incrementServerStats(partition, processedCount, successCount, failedCount, 0, 1);
     refreshAggregatedJob(jobIdFrom(partition));
+    return true;
   }
 
   public int reclaimStalePartitions(UUID jobId) {
@@ -703,6 +707,9 @@ public class DistributedRdfIndexCoordinator {
                             .processedRecords(record.processedRecords())
                             .successRecords(record.successRecords())
                             .failedRecords(record.failedRecords())
+                            .readerTimeMs(record.readerTimeMs())
+                            .processTimeMs(record.processTimeMs())
+                            .sinkTimeMs(record.sinkTimeMs())
                             .totalPartitions(record.totalPartitions())
                             .completedPartitions(record.completedPartitions())
                             .failedPartitions(record.failedPartitions())
@@ -875,15 +882,6 @@ public class DistributedRdfIndexCoordinator {
             job.getErrorMessage());
   }
 
-  private RdfIndexPartition getPartition(UUID partitionId) {
-    RdfIndexPartitionRecord record =
-        collectionDAO.rdfIndexPartitionDAO().findById(partitionId.toString());
-    if (record == null) {
-      throw new IllegalStateException("RDF partition not found: " + partitionId);
-    }
-    return toPartition(record);
-  }
-
   private UUID jobIdFrom(RdfIndexPartition partition) {
     return partition.getJobId();
   }
@@ -938,6 +936,9 @@ public class DistributedRdfIndexCoordinator {
         .processedCount(record.processedCount())
         .successCount(record.successCount())
         .failedCount(record.failedCount())
+        .readerTimeMs(record.readerTimeMs())
+        .processTimeMs(record.processTimeMs())
+        .sinkTimeMs(record.sinkTimeMs())
         .assignedServer(record.assignedServer())
         .claimedAt(record.claimedAt())
         .startedAt(record.startedAt())

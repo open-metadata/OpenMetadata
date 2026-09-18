@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -13,6 +15,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
@@ -30,9 +33,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class RdfPropertyMapper {
 
+  private static final int MAX_UNMAPPED_JSON_LITERAL_CHARS = 32_768;
+  private static final int MAX_MERGED_CONTEXT_ENTRIES = 50;
   private final String baseUri;
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
+  private final Cache<String, Map<String, Object>> mergedContextCache =
+      Caffeine.newBuilder().maximumSize(MAX_MERGED_CONTEXT_ENTRIES).build();
   private final Cache<String, UUID> glossaryTermIdCache =
       Caffeine.newBuilder().maximumSize(1000).build();
   private final Cache<String, UUID> classificationTagIdCache =
@@ -65,13 +72,18 @@ public class RdfPropertyMapper {
   private static final Set<String> LINEAGE_PROPERTIES =
       Set.of("upstreamEdges", "downstreamEdges", "lineage");
 
+  static {
+    // Jena 6.2.0 must be initialized before vocabulary constants trigger NodeFactory startup.
+    JenaSystem.init();
+  }
+
   // Direct URI-valued predicates the translator emits from an entity. These
   // are the predicates whose VALUE can change (or shrink to empty) between
   // writes of the same entity — e.g. tags removed, owner changed, domain
   // unset — without any relationship-hook firing. JenaFusekiStorage.storeEntity
   // uses this set (unioned with the predicates actually emitted in the current
   // model) to scope its DELETE, so old values get cleaned up while
-  // hook-managed predicates (om:UPSTREAM, om:owns/contains/…, etc.) stay
+  // hook-managed predicates (om:upstream/om:downstream, om:owns/contains/…, etc.) stay
   // intact. Add to this set when a new URI-valued direct predicate is
   // introduced in this class; the unit test
   // RdfTranslatorManagedPredicatesTest will fail otherwise.
@@ -122,11 +134,12 @@ public class RdfPropertyMapper {
 
       // Get the appropriate context for this entity type
       String entityType = entity.getEntityReference().getType();
-      Object context = contextCache.get(getContextName(entityType));
+      String contextName = getContextName(entityType);
+      Object context = contextCache.get(contextName);
 
-      if (context instanceof java.util.List) {
+      if (context instanceof java.util.List<?> contextArray) {
         // Process array context (includes base + specific mappings)
-        processArrayContext((java.util.List<Object>) context, entityJson, entityResource, model);
+        processArrayContext(contextName, contextArray, entityJson, entityResource, model);
       } else if (context instanceof Map) {
         // Process single context object
         processContextMappings((Map<String, Object>) context, entityJson, entityResource, model);
@@ -141,10 +154,19 @@ public class RdfPropertyMapper {
   }
 
   private void processArrayContext(
-      java.util.List<Object> contextArray,
+      String contextName,
+      java.util.List<?> contextArray,
       JsonNode entityJson,
       Resource entityResource,
       Model model) {
+    processContextMappings(
+        mergedContextCache.get(contextName, ignored -> flattenContext(contextArray)),
+        entityJson,
+        entityResource,
+        model);
+  }
+
+  private static Map<String, Object> flattenContext(java.util.List<?> contextArray) {
     // Flatten all context maps in the array into one combined map BEFORE iterating
     // entity fields, so each field gets resolved against the union of mappings
     // exactly once. Without this, processContextMappings runs per-context-map and
@@ -156,11 +178,16 @@ public class RdfPropertyMapper {
     // JSON-LD context-merge semantics).
     Map<String, Object> mergedContext = new java.util.HashMap<>();
     for (Object contextItem : contextArray) {
-      if (contextItem instanceof Map) {
-        mergedContext.putAll((Map<String, Object>) contextItem);
+      if (contextItem instanceof Map<?, ?> contextMap) {
+        contextMap.forEach(
+            (key, value) -> {
+              if (key instanceof String name) {
+                mergedContext.put(name, value);
+              }
+            });
       }
     }
-    processContextMappings(mergedContext, entityJson, entityResource, model);
+    return mergedContext;
   }
 
   // Fields that are handled separately with typed predicates (not via JSON-LD context)
@@ -326,9 +353,17 @@ public class RdfPropertyMapper {
     } else if (fieldValue.isBoolean()) {
       entityResource.addProperty(property, model.createTypedLiteral(fieldValue.asBoolean()));
     } else if (fieldValue.isArray() || fieldValue.isObject()) {
-      // Store complex types as JSON
+      String serialized = fieldValue.toString();
+      if (serialized.length() > MAX_UNMAPPED_JSON_LITERAL_CHARS) {
+        LOG.debug(
+            "Skipping unmapped field {} - serialized JSON is {} chars, above the {} cap",
+            fieldName,
+            serialized.length(),
+            MAX_UNMAPPED_JSON_LITERAL_CHARS);
+        return;
+      }
       entityResource.addProperty(
-          property, model.createTypedLiteral(fieldValue.toString(), XSDDatatype.XSDstring));
+          property, model.createTypedLiteral(serialized, XSDDatatype.XSDstring));
     }
   }
 
@@ -727,32 +762,25 @@ public class RdfPropertyMapper {
     }
   }
 
-  /**
-   * Converts CustomProperty to structured RDF triples. Enables SPARQL queries like: "Find all
-   * entities with custom property 'costCenter' = 'Engineering'"
-   */
+  /** Projects a custom-property definition with a stable identity for rebuilds and live replay. */
   private void addCustomProperty(
       JsonNode customProp, Resource entityResource, Property linkProperty, Model model) {
     if (customProp == null || customProp.isNull()) {
       return;
     }
 
-    // Create a resource for the custom property
+    String propertyName = customProp.required("name").asText();
     String propUri =
-        baseUri + "customProperty/" + entityResource.getLocalName() + "/" + UUID.randomUUID();
+        baseUri
+            + "customProperty/"
+            + entityId(entityResource)
+            + "/"
+            + URLEncoder.encode(propertyName, StandardCharsets.UTF_8);
     Resource propNode = model.createResource(propUri);
 
-    // Link entity to custom property
     entityResource.addProperty(linkProperty, propNode);
-
-    // Add type
     propNode.addProperty(RDF.type, model.createResource(OM_NS + "CustomProperty"));
-
-    // Add property name
-    if (customProp.has("name")) {
-      propNode.addProperty(
-          model.createProperty(OM_NS, "propertyName"), customProp.get("name").asText());
-    }
+    propNode.addProperty(model.createProperty(OM_NS, "propertyName"), propertyName);
 
     // Add property value (convert to string for queryability)
     if (customProp.has("value") && !customProp.get("value").isNull()) {
@@ -780,8 +808,7 @@ public class RdfPropertyMapper {
       return;
     }
 
-    // Create a resource for the extension
-    String extUri = baseUri + "extension/" + entityResource.getLocalName();
+    String extUri = baseUri + "extension/" + entityId(entityResource);
     Resource extNode = model.createResource(extUri);
 
     // Link entity to extension
@@ -791,30 +818,29 @@ public class RdfPropertyMapper {
     // Add type
     extNode.addProperty(RDF.type, model.createResource(OM_NS + "Extension"));
 
-    // Iterate through extension fields and add them as key-value pairs
-    Iterator<Map.Entry<String, JsonNode>> fields = extension.fields();
-    while (fields.hasNext()) {
-      Map.Entry<String, JsonNode> field = fields.next();
-      String key = field.getKey();
-      JsonNode value = field.getValue();
+    extension.fields().forEachRemaining(field -> addExtensionValue(extNode, field, model));
+  }
 
-      // Create a property for each extension key in the om: namespace
-      Property extKeyProp = model.createProperty(OM_NS, "ext_" + key);
+  private static String entityId(Resource entityResource) {
+    String entityUri = entityResource.getURI();
+    return entityUri.substring(entityUri.lastIndexOf('/') + 1);
+  }
 
-      if (value.isTextual()) {
-        extNode.addProperty(extKeyProp, value.asText());
-      } else if (value.isNumber()) {
-        if (value.isInt()) {
-          extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asInt()));
-        } else if (value.isDouble()) {
-          extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asDouble()));
-        }
-      } else if (value.isBoolean()) {
-        extNode.addProperty(extKeyProp, model.createTypedLiteral(value.asBoolean()));
-      } else {
-        // For complex values, store as string representation
-        extNode.addProperty(extKeyProp, value.toString());
-      }
+  private void addExtensionValue(
+      Resource extension, Map.Entry<String, JsonNode> field, Model model) {
+    String key = URLEncoder.encode(field.getKey(), StandardCharsets.UTF_8);
+    Resource entry = model.createResource(extension.getURI() + "/property/" + key);
+    extension.addProperty(model.createProperty(OM_NS, "hasExtensionProperty"), entry);
+    entry.addProperty(RDF.type, model.createResource(OM_NS + "ExtensionProperty"));
+    entry.addProperty(model.createProperty(OM_NS, "extensionKey"), field.getKey());
+    Property valueProperty = model.createProperty(OM_NS, "extensionValue");
+    JsonNode value = field.getValue();
+    if (value.isNumber()) {
+      entry.addLiteral(valueProperty, model.createTypedLiteral(value.numberValue()));
+    } else if (value.isBoolean()) {
+      entry.addLiteral(valueProperty, value.booleanValue());
+    } else {
+      entry.addProperty(valueProperty, value.isTextual() ? value.asText() : value.toString());
     }
   }
 
@@ -1245,32 +1271,7 @@ public class RdfPropertyMapper {
   }
 
   private String getContextName(String entityType) {
-    return switch (entityType.toLowerCase()) {
-      case "table",
-          "database",
-          "databaseschema",
-          "storedprocedure",
-          "pipeline",
-          "topic",
-          "dashboard",
-          "dashboarddatamodel",
-          "chart",
-          "mlmodel",
-          "container",
-          "searchindex",
-          "apiendpoint",
-          "apicollection",
-          "report" -> "dataAsset-complete";
-      case "databaseservice",
-          "dashboardservice",
-          "messagingservice",
-          "pipelineservice",
-          "mlmodelservice",
-          "storageservice" -> "service";
-      case "user", "team", "role" -> "team";
-      case "glossary", "glossaryterm", "tag", "classification" -> "governance";
-      default -> "base";
-    };
+    return RdfContextRegistry.contextNameFor(entityType);
   }
 
   private String getRdfType(String entityType) {

@@ -156,6 +156,7 @@ describe('CommonEntitySummaryInfoV1', () => {
 
     expect(anchor).toBeInTheDocument();
     expect(anchor).toHaveAttribute('href', 'https://open-metadata.org');
+    expect(anchor).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getByTestId('external-link-icon')).toBeInTheDocument();
   });
 

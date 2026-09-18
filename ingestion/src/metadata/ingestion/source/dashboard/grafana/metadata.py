@@ -13,7 +13,8 @@ Grafana source module
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Set, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -46,8 +47,8 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.grafana.client import (  # noqa: TC001
-    GrafanaApiClient,
+from metadata.ingestion.source.dashboard.grafana.client import (
+    GrafanaApiClient,  # noqa: TC001
 )
 from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
@@ -81,17 +82,17 @@ class GrafanaSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.client: GrafanaApiClient = cast("GrafanaApiClient", self.client)
-        self.folders: List[GrafanaFolder] = []  # noqa: UP006
-        self.datasources: Dict[str, GrafanaDatasource] = {}  # noqa: UP006
-        self.dashboards: List[GrafanaSearchResult] = []  # noqa: UP006
-        self.tags: Set[str] = set()  # noqa: UP006
+        self.folders: list[GrafanaFolder] = []
+        self.datasources: dict[str, GrafanaDatasource] = {}
+        self.dashboards: list[GrafanaSearchResult] = []
+        self.tags: set[str] = set()
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GrafanaConnection = config.serviceConnection.root.config
@@ -108,9 +109,9 @@ class GrafanaSource(DashboardServiceSource):
         for ds in datasources:
             self.datasources[ds.uid] = ds
             self.datasources[ds.name] = ds
-        logger.info(f"Found {len(datasources)} datasources")
+        logger.info("Found %s datasources", len(datasources))
 
-    def get_dashboards_list(self) -> Optional[List[dict]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[dict] | None:
         """Get list of dashboards"""
         dashboards_list = self.client.search_dashboards()
         return dashboards_list  # noqa: RET504
@@ -119,22 +120,22 @@ class GrafanaSource(DashboardServiceSource):
         """Get dashboard name"""
         return dashboard.uid
 
-    def get_dashboard_details(self, dashboard: dict) -> Optional[GrafanaDashboardResponse]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: dict) -> GrafanaDashboardResponse | None:
         """Get detailed dashboard information"""
         try:
             return self.client.get_dashboard(dashboard.uid)
         except Exception as exc:
-            logger.warning(f"Failed to get dashboard details for {dashboard['uid']}: {exc}")
+            logger.warning("Failed to get dashboard details for %s: %s", dashboard["uid"], exc)
             return None
 
-    def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: GrafanaDashboardResponse) -> EntityReferenceList | None:
         """Get owner reference from dashboard metadata"""
         try:
             if dashboard_details.meta.createdBy:
                 # Try to get user by email if available
                 return self.metadata.get_reference_by_email(dashboard_details.meta.createdBy)
         except Exception as err:
-            logger.debug(f"Could not fetch owner data: {err}")
+            logger.debug("Could not fetch owner data: %s", err)
         return None
 
     def yield_dashboard(self, dashboard_details: GrafanaDashboardResponse) -> Iterable[Either[CreateDashboardRequest]]:
@@ -187,6 +188,25 @@ class GrafanaSource(DashboardServiceSource):
                 )
             )
 
+    @staticmethod
+    def _flatten_panels(
+        panels: list[GrafanaPanel],
+    ) -> list[GrafanaPanel]:
+        """Flatten top-level panels, recursing into collapsed row panels.
+
+        When a Grafana row is collapsed the API moves child panels from the
+        top-level ``dashboard.panels`` list into the row panel's own ``panels``
+        field.  Expanded rows keep their children at the top level, so in that
+        case the row's ``panels`` list is empty and nothing extra is yielded.
+        """
+        result: list[GrafanaPanel] = []
+        for panel in panels or []:
+            if panel.type == "row" and panel.collapsed and panel.panels:
+                result.extend(panel.panels)
+            else:
+                result.append(panel)
+        return result
+
     def yield_dashboard_chart(
         self, dashboard_details: GrafanaDashboardResponse
     ) -> Iterable[Either[CreateChartRequest]]:
@@ -194,7 +214,7 @@ class GrafanaSource(DashboardServiceSource):
         if not dashboard_details.dashboard.panels:
             return
 
-        for panel in dashboard_details.dashboard.panels:
+        for panel in self._flatten_panels(dashboard_details.dashboard.panels):
             try:
                 # Skip row panels and panels without visualizations
                 if panel.type in ["row", "text"]:
@@ -238,7 +258,7 @@ class GrafanaSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: GrafanaDashboardResponse,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -261,8 +281,8 @@ class GrafanaSource(DashboardServiceSource):
             if not to_entity:
                 return
 
-            # Extract lineage from panels
-            for panel in dashboard_details.dashboard.panels:
+            # Extract lineage from panels (including those inside collapsed rows)
+            for panel in self._flatten_panels(dashboard_details.dashboard.panels):
                 if not panel.targets:
                     continue
 
@@ -288,7 +308,7 @@ class GrafanaSource(DashboardServiceSource):
         target: GrafanaTarget,
         panel: GrafanaPanel,
         to_entity: LineageDashboard,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Process lineage for a single panel target"""
         try:
@@ -377,10 +397,10 @@ class GrafanaSource(DashboardServiceSource):
 
         except Exception as exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
-            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
+            logger.debug("%sError processing panel lineage: %s", hash_prefix, exc)
             logger.error(traceback.format_exc())
 
-    def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> Optional[str]:  # noqa: UP045
+    def _extract_datasource_name(self, target: GrafanaTarget, panel: GrafanaPanel) -> str | None:
         """Extract datasource name from target or panel"""
         try:
             # Try target datasource first
@@ -399,10 +419,10 @@ class GrafanaSource(DashboardServiceSource):
 
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error extracting datasource name: {exc}")
+            logger.debug("Error extracting datasource name: %s", exc)
             return None
 
-    def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> Optional[str]:  # noqa: UP045
+    def _extract_sql_query(self, target: GrafanaTarget, datasource: GrafanaDatasource) -> str | None:
         """Extract SQL query from target based on datasource type"""
         try:
             # Handle different datasource types
@@ -420,7 +440,7 @@ class GrafanaSource(DashboardServiceSource):
                 # Try generic query field
                 return target.query
         except Exception as exc:
-            logger.debug(f"Error extracting SQL query: {exc}")
+            logger.debug("Error extracting SQL query: %s", exc)
             return None
 
     def _map_panel_type_to_chart_type(self, panel_type: str) -> str:

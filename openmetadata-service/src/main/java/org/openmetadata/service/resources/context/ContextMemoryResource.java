@@ -392,7 +392,13 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ContextMemory memory = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    ContextMemory memory =
+        getInternal(
+            uriInfo,
+            securityContext,
+            id,
+            ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+            include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
     return memory;
   }
@@ -424,7 +430,13 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ContextMemory memory = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    ContextMemory memory =
+        getByNameInternal(
+            uriInfo,
+            securityContext,
+            fqn,
+            ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+            include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
     return memory;
   }

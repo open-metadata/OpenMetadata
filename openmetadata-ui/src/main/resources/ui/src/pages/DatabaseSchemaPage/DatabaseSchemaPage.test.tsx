@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -70,7 +70,27 @@ jest.mock(
   () => ({
     DataAssetsHeader: jest
       .fn()
-      .mockImplementation(() => <p>testDataAssetsHeader</p>),
+      .mockImplementation(
+        ({
+          afterDeleteAction,
+        }: {
+          afterDeleteAction: (isSoftDelete?: boolean) => void;
+        }) => (
+          <div>
+            <p>testDataAssetsHeader</p>
+            <button
+              data-testid="hard-delete"
+              onClick={() => afterDeleteAction(false)}>
+              hardDelete
+            </button>
+            <button
+              data-testid="soft-delete"
+              onClick={() => afterDeleteAction(true)}>
+              softDelete
+            </button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -99,6 +119,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 
 jest.mock('../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../utils/StringUtils'),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
@@ -133,6 +154,8 @@ jest.mock('../../utils/TagsUtils', () => ({
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
+  // Keep the real route builders so the post-delete redirect resolves an actual URL.
+  ...jest.requireActual('../../utils/RouterUtils'),
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
@@ -231,12 +254,14 @@ const API_FIELDS = [
 const mockLocationPathname =
   '/databaseSchema/sample_data.ecommerce_db.shopify/table';
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),
   useParams: jest.fn().mockImplementation(() => mockParams),
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -491,5 +516,39 @@ describe('Tests for DatabaseSchemaPage', () => {
       }),
       expect.anything()
     );
+  });
+
+  // A hard-deleted schema no longer exists, so the page sends the user to the
+  // database it belonged to — the parent FQN sliced off the schema's own FQN.
+  describe('post-delete redirect', () => {
+    beforeEach(() => {
+      mockNavigate.mockClear();
+      jest.requireMock('react-router-dom').useParams.mockReturnValue({
+        fqn: 'sample_data.ecommerce_db.shopify',
+        tab: 'table',
+      });
+    });
+
+    it('should land on the parent database after a hard delete', async () => {
+      await act(async () => {
+        renderWithQueryClient(<DatabaseSchemaPageComponent />);
+      });
+
+      fireEvent.click(screen.getByTestId('hard-delete'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/database/sample_data.ecommerce_db'
+      );
+    });
+
+    it('should stay on the schema page after a soft delete', async () => {
+      await act(async () => {
+        renderWithQueryClient(<DatabaseSchemaPageComponent />);
+      });
+
+      fireEvent.click(screen.getByTestId('soft-delete'));
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
   });
 });

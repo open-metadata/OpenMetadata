@@ -46,6 +46,7 @@ import {
 } from '../../../generated/type/tagLabel';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -236,6 +237,7 @@ jest.mock('../../../utils/Domain/DomainClassBase', () => ({
   __esModule: true,
   default: {
     getCoverImageField: jest.fn().mockReturnValue(null),
+    getReviewersField: jest.fn().mockReturnValue(null),
   },
 }));
 
@@ -329,6 +331,11 @@ const AddDomainFormHarness = ({
     />
   );
 };
+
+// `clearMocks` clears calls, not return values, so opt-ins would leak.
+beforeEach(() => {
+  (domainClassBase.getReviewersField as jest.Mock).mockReturnValue(null);
+});
 
 describe('AddDomainForm', () => {
   beforeEach(() => {
@@ -450,6 +457,25 @@ describe('AddDomainForm', () => {
     const form = document.querySelector('form');
 
     expect(form).toBeInTheDocument();
+  });
+
+  it('hides the reviewers field when the class base provides none', () => {
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    expect(screen.queryByTestId('root/reviewers')).not.toBeInTheDocument();
+  });
+
+  it('renders the reviewers field when the class base provides one', () => {
+    (domainClassBase.getReviewersField as jest.Mock).mockReturnValue({
+      id: 'root/reviewers',
+      label: 'Reviewers',
+      name: 'reviewers',
+      type: 'user_team_select_input',
+    });
+
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    expect(screen.getByTestId('root/reviewers')).toBeInTheDocument();
   });
 
   it('wires the configured entity-reference and hyperlink intake fields', async () => {
@@ -798,6 +824,37 @@ describe('transformDomainFormData', () => {
     );
 
     expect(result).toHaveProperty('domains', ['Finance']);
+  });
+
+  it('omits reviewers from the DATA_PRODUCT payload when the field is hidden', () => {
+    const result = transformDomainFormData(
+      {
+        ...baseForm,
+        reviewers: [buildItem('reviewer-1', expertRef)],
+      },
+      DomainFormType.DATA_PRODUCT
+    );
+
+    expect(result).not.toHaveProperty('reviewers');
+  });
+
+  it('includes reviewers in the DATA_PRODUCT payload when the field is shown', () => {
+    (domainClassBase.getReviewersField as jest.Mock).mockReturnValue({
+      id: 'root/reviewers',
+      label: 'Reviewers',
+      name: 'reviewers',
+      type: 'user_team_select_input',
+    });
+
+    const result = transformDomainFormData(
+      {
+        ...baseForm,
+        reviewers: [buildItem('reviewer-1', expertRef)],
+      },
+      DomainFormType.DATA_PRODUCT
+    );
+
+    expect(result).toHaveProperty('reviewers', [expertRef]);
   });
 
   it('omits domains when DATA_PRODUCT has neither selection nor parent FQN', () => {

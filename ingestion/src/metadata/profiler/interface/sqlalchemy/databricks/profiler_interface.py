@@ -65,24 +65,6 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         )
         return instance.get_system_metrics()
 
-    def visit_column(self, *args, **kwargs):
-        result = SQLCompiler.visit_column(self, *args, **kwargs)  # pyright: ignore[reportArgumentType, reportUnknownArgumentType]
-        # the `result` here would be `db.schema.table` or `db.schema.table.column`
-        # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
-        # the logic is to add the backticks to nested children.
-        if "`" not in result:
-            # Databricks only quotes identifiers that need it, so an all-lowercase
-            # schema.table.column arrives unquoted with no struct path to repair.
-            return result
-        dot_count = result.count(".")
-        if dot_count > 1 and "." in result.split("`.`")[-1]:
-            splitted_result = result.split("`.")[-1].split(".")
-            result = "`.".join(result.split("`.")[:-1])
-            if result:
-                result += "`."
-            result += "`.`".join(splitted_result)
-        return result
-
     def visit_table(self, *args, **kwargs):
         result = SQLCompiler.visit_table(self, *args, **kwargs)  # pyright: ignore[reportArgumentType, reportUnknownMemberType, reportUnknownArgumentType]
         # Handle table references with hyphens in database/schema names
@@ -105,7 +87,7 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
 
     @staticmethod
     def _patch_databricks_statement_compiler():
-        """Override visit_column/visit_table on the Databricks statement compiler.
+        """Override visit_table on the Databricks statement compiler.
 
         Resolve the compiler via the public `DatabricksDialect.statement_compiler`
         attribute rather than importing from `databricks.sqlalchemy._ddl`, which is a
@@ -119,7 +101,6 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             if statement_compiler is None:
                 logger.warning("DatabricksDialect.statement_compiler not found; skipping Databricks compiler patches.")
                 return
-            statement_compiler.visit_column = DatabricksProfilerInterface.visit_column  # pyright: ignore[reportUnknownMemberType]
             statement_compiler.visit_table = DatabricksProfilerInterface.visit_table  # pyright: ignore[reportUnknownMemberType]
         except Exception as exc:
             logger.warning(

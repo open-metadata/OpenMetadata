@@ -31,6 +31,7 @@ export class MetricClass extends EntityClass {
     metricType: string;
     displayName: string;
     unitOfMeasurement: string;
+    customUnitOfMeasurement?: string;
     dimensions?: {
       name: string;
       type: string;

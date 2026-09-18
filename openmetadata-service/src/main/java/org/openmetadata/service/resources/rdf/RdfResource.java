@@ -27,10 +27,18 @@ import java.util.Set;
 import java.util.UUID;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.sparql.modify.request.UpdateDeleteWhere;
+import org.apache.jena.sparql.modify.request.UpdateModify;
+import org.apache.jena.update.Update;
+import org.apache.jena.update.UpdateException;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver.ProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
@@ -110,6 +118,11 @@ public class RdfResource {
     boolean enabled = getRdfRepository() != null && getRdfRepository().isEnabled();
     boolean inferenceEnabled = enabled && getRdfRepository().isInferenceEnabledByDefault();
     String defaultInferenceLevel = enabled ? getRdfRepository().getDefaultInferenceLevel() : "NONE";
+    ProjectionState projectionState =
+        enabled
+            ? new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao())
+                .resolve()
+            : ProjectionState.DISABLED;
 
     String statusJson =
         String.format(
@@ -121,13 +134,15 @@ public class RdfResource {
                 "defaultLevel": "%s",
                 "availableLevels": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"]
               },
-              "storageType": "%s"
+              "storageType": "%s",
+              "projectionState": "%s"
             }
             """,
             enabled,
             inferenceEnabled,
             defaultInferenceLevel,
-            enabled ? getRdfRepository().getConfig().getStorageType() : "N/A");
+            enabled ? getRdfRepository().getConfig().getStorageType() : "N/A",
+            projectionState);
 
     return Response.ok().entity(statusJson).type(MediaType.APPLICATION_JSON).build();
   }
@@ -476,27 +491,38 @@ public class RdfResource {
     }
 
     try {
-      String query = sparqlQuery.getQuery().trim().toUpperCase();
-      if (!query.startsWith("INSERT")
-          && !query.startsWith("DELETE")
-          && !query.startsWith("LOAD")
-          && !query.startsWith("CLEAR")
-          && !query.startsWith("CREATE")
-          && !query.startsWith("DROP")) {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity("Only SPARQL UPDATE operations are allowed on this endpoint")
-            .build();
-      }
-
+      validateSparqlUpdate(sparqlQuery.getQuery());
       getRdfRepository().executeSparqlUpdate(sparqlQuery.getQuery());
       return Response.ok().entity("{\"status\": \"success\"}").build();
-
+    } catch (IllegalArgumentException exception) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(exception.getMessage()).build();
     } catch (Exception e) {
       LOG.error("Error executing SPARQL update", e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity("{\"error\": \"An internal error occurred\"}")
           .build();
     }
+  }
+
+  private static void validateSparqlUpdate(String sparql) {
+    UpdateRequest request;
+    try {
+      request = UpdateFactory.create(sparql);
+    } catch (UpdateException exception) {
+      throw new IllegalArgumentException(
+          "Invalid SPARQL UPDATE: " + exception.getMessage(), exception);
+    }
+    long whereBearingOperations =
+        request.getOperations().stream().filter(RdfResource::hasWhereClause).count();
+    if (whereBearingOperations > 1) {
+      throw new IllegalArgumentException(
+          "SPARQL UPDATE accepts at most one WHERE-bearing operation per request; "
+              + "combine patterns with VALUES or UNION, or submit separate requests");
+    }
+  }
+
+  private static boolean hasWhereClause(Update update) {
+    return update instanceof UpdateModify || update instanceof UpdateDeleteWhere;
   }
 
   private Response executeSparqlQuery(String query, String format, String inference) {
@@ -600,10 +626,11 @@ public class RdfResource {
           """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
-            ?entity om:name ?name .
+            <%s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
           }
@@ -615,10 +642,11 @@ public class RdfResource {
           """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
-            ?entity om:name ?name .
+            <%s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?entity .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
           }
@@ -630,16 +658,17 @@ public class RdfResource {
           """
           PREFIX om: <https://open-metadata.org/ontology/>
           PREFIX prov: <http://www.w3.org/ns/prov#>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
           SELECT DISTINCT ?entity ?name ?type ?relationship
           WHERE {
             {
-              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
+              <%s> (om:upstream|^om:downstream|prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
               BIND("upstream" as ?relationship)
             } UNION {
-              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
+              <%s> (om:downstream|^om:upstream|^prov:wasDerivedFrom|om:UPSTREAM)+ ?entity .
               BIND("downstream" as ?relationship)
             }
-            ?entity om:name ?name .
+            ?entity (rdfs:label|om:name) ?name .
             ?entity a ?type .
           }
           ORDER BY ?relationship ?name

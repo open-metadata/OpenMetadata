@@ -20,6 +20,7 @@ import {
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -1244,5 +1245,65 @@ describe('buildEnumAsyncFetch', () => {
 
     expect(result.values).toHaveLength(2);
     expect(result.values.map((v) => v.value)).toEqual(['Active', 'ACTIVE']);
+  });
+});
+
+describe('tag-like field autocomplete casing (#31999)', () => {
+  // Terms aggregations on lowercase_normalizer fields return lowercased bucket
+  // keys; without a sourceFields top-hits sub-aggregation the option label falls
+  // back to that lowercased key. These configs must request fullyQualifiedName.
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+    jest.useFakeTimers();
+    (getAggregateFieldOptions as jest.Mock).mockClear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const expectSourceFieldsRequested = (field: {
+    fieldSettings?: { asyncFetch?: unknown };
+  }) => {
+    const asyncFetch = field.fieldSettings?.asyncFetch as (
+      search: string
+    ) => Promise<unknown>;
+    asyncFetch('pii');
+    jest.advanceTimersByTime(300);
+
+    expect(getAggregateFieldOptions).toHaveBeenCalledWith(
+      expect.anything(),
+      EntityFields.FULLY_QUALIFIED_NAME,
+      'pii',
+      expect.anything(),
+      'fullyQualifiedName'
+    );
+  };
+
+  it.each([
+    EntityFields.TAG,
+    EntityFields.GLOSSARY_TERMS,
+    EntityFields.CERTIFICATION,
+    EntityFields.TIER,
+  ])('%s config should request fullyQualifiedName source field', (key) => {
+    const config = advancedSearchClassBase.getCommonConfig({});
+
+    expectSourceFieldsRequested(
+      config[key] as { fieldSettings?: { asyncFetch?: unknown } }
+    );
+  });
+
+  it('column tag config should request fullyQualifiedName source field', () => {
+    const config = advancedSearchClassBase.getColumnTagConfig([
+      SearchIndex.TABLE,
+    ]);
+
+    expectSourceFieldsRequested(
+      config[EntityFields.COLUMN_TAG] as {
+        fieldSettings?: { asyncFetch?: unknown };
+      }
+    );
   });
 });

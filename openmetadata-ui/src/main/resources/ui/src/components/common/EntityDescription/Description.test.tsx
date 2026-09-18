@@ -335,6 +335,7 @@ describe('Description', () => {
   it('should render the authored-by footer when change metadata is present', () => {
     mockUseGenericContext.mockReturnValue({
       isVersionView: false,
+      type: EntityType.TABLE,
       changeSummary: {
         description: {
           changeSource: ChangeSource.Manual,
@@ -348,6 +349,27 @@ describe('Description', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.getByTestId('authored-by-footer')).toBeInTheDocument();
+  });
+
+  it('should not inherit the page-level change summary when entityType differs from the context entity', () => {
+    // Regression test for #32256: a Query rendered on a Table page must not pick up the
+    // table's description-provenance from the GenericProvider context.
+    mockUseGenericContext.mockReturnValue({
+      isVersionView: false,
+      type: EntityType.TABLE,
+      changeSummary: {
+        description: {
+          changeSource: ChangeSource.Suggested,
+          changedBy: 'admin',
+          changedAt: 1700000000000,
+        },
+      },
+      onThreadLinkSelect: mockOnThreadLinkSelect,
+    });
+
+    render(<Description {...defaultProps} entityType={EntityType.QUERY} />);
+
+    expect(screen.queryByTestId('authored-by-footer')).not.toBeInTheDocument();
   });
 
   it('should not render the authored-by footer when change metadata is absent', () => {

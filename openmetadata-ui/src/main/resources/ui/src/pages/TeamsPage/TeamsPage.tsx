@@ -274,6 +274,7 @@ const TeamsPage = () => {
             TabSpecificField.DEFAULT_PERSONA,
             TabSpecificField.POLICIES,
             TabSpecificField.CHILDREN_COUNT,
+            TabSpecificField.DESCENDANT_TEAMS,
             TabSpecificField.DOMAINS,
           ],
           include: Include.All,

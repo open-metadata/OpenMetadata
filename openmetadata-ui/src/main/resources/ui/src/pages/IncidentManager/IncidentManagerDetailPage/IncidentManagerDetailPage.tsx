@@ -80,6 +80,7 @@ const IncidentManagerDetailPage = ({
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -97,6 +98,7 @@ const IncidentManagerDetailPage = ({
     handleCancelDimension,
     extraDropdownContent,
     handleDisplayNameChange,
+    handleRestore,
     handleOwnerChange,
     getEntityFeedCount,
     setTestCase,
@@ -350,8 +352,9 @@ const IncidentManagerDetailPage = ({
                       observabilityRouterClassBase.getIncidentManagerPath()
                     )
                   }
-                  allowSoftDelete={false}
                   canDelete={hasDeletePermission}
+                  canRestore={canRestorePermission}
+                  deleted={testCase.deleted}
                   displayName={testCase.displayName}
                   editDisplayNamePermission={editDisplayNamePermission}
                   entityFQN={testCase.fullyQualifiedName}
@@ -360,6 +363,7 @@ const IncidentManagerDetailPage = ({
                   entityType={EntityType.TEST_CASE}
                   extraDropdownContent={extraDropdownContent}
                   onEditDisplayName={handleDisplayNameChange}
+                  onRestoreEntity={handleRestore}
                 />
               )}
             </Box>

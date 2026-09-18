@@ -21,7 +21,9 @@ import { TableType } from '../../generated/entity/data/table';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
 const mockEntityPermissionByFqn = jest
@@ -126,14 +128,26 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest.fn().mockImplementation(({ breadcrumbData }) => (
-      <div>
-        testDataAssetsHeader
-        <span data-testid="header-breadcrumb-data">
-          {JSON.stringify(breadcrumbData)}
-        </span>
-      </div>
-    )),
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(({ breadcrumbData, afterDeleteAction }) => (
+        <div>
+          testDataAssetsHeader
+          <span data-testid="header-breadcrumb-data">
+            {JSON.stringify(breadcrumbData)}
+          </span>
+          <button
+            data-testid="hard-delete"
+            onClick={() => afterDeleteAction(false)}>
+            hardDelete
+          </button>
+          <button
+            data-testid="soft-delete"
+            onClick={() => afterDeleteAction(true)}>
+            softDelete
+          </button>
+        </div>
+      )),
   })
 );
 
@@ -769,6 +783,75 @@ describe('TestDetailsPageV1 component', () => {
           expect.objectContaining({ count: 0, isLoading: false })
         )
       );
+    });
+  });
+
+  // A hard-deleted table no longer exists, so the page sends the user to the
+  // schema it belonged to — the parent FQN sliced off the table's own FQN.
+  describe('post-delete redirect', () => {
+    const mockUseParams = jest.requireMock('react-router-dom').useParams;
+    // This suite stubs both route helpers with fixed strings for its other cases;
+    // the redirect must be asserted against the URL the real helpers build.
+    const realGetPartialNameFromTableFQN = jest.requireActual(
+      '../../utils/FqnUtils'
+    ).getPartialNameFromTableFQN;
+    const realGetEntityDetailsPath = jest.requireActual(
+      '../../utils/RouterUtils'
+    ).getEntityDetailsPath;
+
+    const renderTablePage = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      mockNavigate.mockClear();
+      mockUseParams.mockReturnValue({
+        fqn: 'sample_data.ecommerce_db.shopify.dim_address',
+        tab: 'schema',
+      });
+      (getPartialNameFromTableFQN as jest.Mock).mockImplementation(
+        realGetPartialNameFromTableFQN
+      );
+      (getEntityDetailsPath as jest.Mock).mockImplementation(
+        realGetEntityDetailsPath
+      );
+    });
+
+    afterAll(() => {
+      (getPartialNameFromTableFQN as jest.Mock).mockImplementation(() => 'fqn');
+      (getEntityDetailsPath as jest.Mock).mockReturnValue(
+        '/table/fqn/sample_data'
+      );
+    });
+
+    it('should land on the parent schema after a hard delete', async () => {
+      await renderTablePage();
+
+      fireEvent.click(await screen.findByTestId('hard-delete'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/databaseSchema/sample_data.ecommerce_db.shopify'
+      );
+    });
+
+    it('should stay on the table page after a soft delete', async () => {
+      await renderTablePage();
+
+      fireEvent.click(await screen.findByTestId('soft-delete'));
+
+      expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 });

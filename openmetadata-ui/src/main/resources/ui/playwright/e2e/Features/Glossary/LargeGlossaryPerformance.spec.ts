@@ -162,31 +162,46 @@ test.describe('Large Glossary Performance Tests', () => {
 
     expect(initialTerms).toBe(50);
 
-    const infiniteScrollRequest = page.waitForResponse(
+    // First page: Previous is disabled, Next is enabled.
+    const pagination = page.getByTestId('pagination');
+
+    await expect(pagination).toBeVisible();
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
+    await expect(pagination.getByTestId('next')).toBeEnabled();
+
+    // Next fetches the following page using a cursor (directChildrenOf + after).
+    const nextPageRequest = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/glossaryTerms') &&
         response.url().includes('directChildrenOf=') &&
         response.url().includes('after=')
     );
 
-    await scrollGlossaryTermsToBottom(page);
+    await pagination.getByTestId('next').click();
 
-    // Wait for more terms to load
-    const infiniteScrollResponse = await infiniteScrollRequest;
-    expect(infiniteScrollResponse.status()).toBe(200);
+    const nextPageResponse = await nextPageRequest;
+    expect(nextPageResponse.status()).toBe(200);
     await page
       .locator(
         '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
       )
       .waitFor({ state: 'detached' });
 
-    // Verify more terms are loaded
+    // Cursor pagination replaces the page rather than appending, so the second
+    // page still shows 50 rows and Previous is now enabled.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBe(50);
+    await expect(pagination.getByTestId('previous')).toBeEnabled();
 
-    const afterScrollTerms = await page
-      .locator('tbody tr[data-row-key]')
-      .count();
-
-    expect(afterScrollTerms).toBe(100);
+    // Going back returns to the first page.
+    await pagination.getByTestId('previous').click();
+    await page
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
+      .waitFor({ state: 'detached' });
+    await expect(pagination.getByTestId('previous')).toBeDisabled();
   });
 
   test('should search and filter glossary terms', async ({ page }) => {

@@ -276,6 +276,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -1791,8 +1792,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return bundle;
     }
 
-    boolean onlyNonDeleted = isReadPlanNonDeletedOnly(readPlan);
-    CachedReadBundle bundleCache = onlyNonDeleted ? CacheBundle.getCachedReadBundle() : null;
+    boolean cacheReadBundle =
+        isReadPlanNonDeletedOnly(readPlan) && isCacheableEntityType(entityType);
+    CachedReadBundle bundleCache = cacheReadBundle ? CacheBundle.getCachedReadBundle() : null;
 
     java.util.concurrent.locks.Lock loadLock = null;
     CachedReadBundle.Dto initialDto = null;
@@ -4155,8 +4157,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityUpdater.update();
       }
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFields")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -4193,8 +4194,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("putEntityUpdateImport")) {
       entityUpdater.updateForImport();
     }
-    EventType change =
-        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFieldsImport")) {
       setInheritedFields(updated, new Fields(allowedFields));
     }
@@ -4398,10 +4398,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
-    if (entityUpdater.incrementalFieldsChanged()) {
-      return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_UPDATED);
-    }
-    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), ENTITY_NO_CHANGE);
+    return new PatchResponse<>(
+        Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
   }
 
   /**
@@ -5103,9 +5101,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean ownsLineageEs;
     private boolean ownsSearchWrite;
     private boolean ownsCache;
+    private boolean ownsPostCommitActions;
     private int rdfCheckpoint;
     private int lineageEsCheckpoint;
     private int searchWriteCheckpoint;
+    private int postCommitActionCheckpoint;
 
     private void reopenForAttempt() {
       if (opened) {
@@ -5121,10 +5121,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       rdfCheckpoint = RdfTagUpdater.checkpoint();
       lineageEsCheckpoint = LineageUtil.checkpoint();
       searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
+      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
       ownsRdf = RdfTagUpdater.beginDeferral();
       ownsLineageEs = LineageUtil.beginLineageDeferral();
       ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
       ownsCache = beginCacheInvalidationDeferral();
+      ownsPostCommitActions = PostCommitActionQueue.begin();
     }
 
     /**
@@ -5157,6 +5159,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         clearCacheInvalidations();
         beginCacheInvalidationDeferral();
       }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
+        PostCommitActionQueue.begin();
+      } else {
+        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
+      }
     }
 
     private void finish(boolean committed) {
@@ -5182,12 +5190,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
       List<SearchRepository.DeferredSearchWrite> searchClosures =
           ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
+      List<Runnable> postCommitActions =
+          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
       if (ownsCache) {
         runGuarded(EntityRepository::drainCacheInvalidations);
       }
       runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
       runGuarded(() -> runLineageEsClosures(lineageClosures));
       runGuarded(() -> runSearchWriteClosures(searchClosures));
+      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
     }
 
     private void clear() {
@@ -5202,6 +5213,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       if (ownsCache) {
         clearCacheInvalidations();
+      }
+      if (ownsPostCommitActions) {
+        PostCommitActionQueue.clear();
       }
     }
   }
@@ -8616,7 +8630,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
     private boolean versionChanged = false;
     private boolean entityStored = false;
+
+    /**
+     * Diff produced by THIS request. Every {@code EntityUpdater} entry point must populate this
+     * before its caller classifies the change: {@link #getChangeType()} reads it, and a null value
+     * is indistinguishable from "nothing changed", which silently drops the ChangeEvent (see
+     * #32092).
+     */
     @Getter protected ChangeDescription incrementalChangeDescription = null;
+
     private final ChangeSource changeSource;
     @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
@@ -8980,12 +9002,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>Skips consolidateChanges/revert — those are for interactive user sessions where the same
      * user edits the same entity multiple times within a session window. Bulk API is used by
      * ingestion connectors where each run is a distinct update.
+     *
+     * <p>Still captures the incremental change description: skipping consolidation does not mean
+     * skipping the per-request diff, which is what the caller classifies the change event from.
+     * Omitting it made every bulk update look like ENTITY_NO_CHANGE (see #32092).
      */
     @Transaction
     public final void updateWithDeferredStore() {
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
+      }
+      try (var ignored = phase("entityUpdateIncrementalChangeDeferred")) {
+        captureIncrementalFromCurrentChange();
       }
 
       versionChanged = updateVersion(original.getVersion());
@@ -9380,8 +9409,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
 
-      if (operation.isPut()) {
-        // PUT operation merges tags in the request with what already exists
+      boolean shouldMergeTags =
+          operation.isPut() && (!overrideMetadata || nullOrEmpty(updatedTags));
+      if (shouldMergeTags) {
+        // A regular PUT merges tags in the request with what already exists.
         // Calculate what needs to be added (tags in updatedTags but not in origTags)
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> origTagKeys = createTagKeySet(origTags);
@@ -9395,7 +9426,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityUtil.mergeTags(updatedTags, origTags);
         checkMutuallyExclusive(updatedTags);
       } else {
-        // PATCH operation replaces tags
+        // PATCH and an explicit PUT override replace tags.
         // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
         Set<String> updatedTagKeys = createTagKeySet(updatedTags);
         Set<String> origTagKeys = createTagKeySet(origTags);
@@ -9969,6 +10000,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return !incrementalChangeDescription.getFieldsAdded().isEmpty()
           || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
           || !incrementalChangeDescription.getFieldsDeleted().isEmpty();
+    }
+
+    /** Event type produced by this update: ENTITY_UPDATED when this request changed any field. */
+    public final EventType getChangeType() {
+      return incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
     }
 
     public final <K> boolean recordChange(String field, K orig, K updated) {
@@ -10687,7 +10723,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (nullOrEmpty(addedColumn.getDescription())) {
             addedColumn.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedColumn.getTags()) && nullOrEmpty(deleted.getTags())) {
+          // Carry the tags forward only when the re-added column has none of its own and the
+          // deleted one actually had some. A column is re-added rather than updated whenever its
+          // dataType changes (see EntityUtil.columnMatch), and the deleteTagsByTarget below would
+          // otherwise drop user-applied tags from a column that still exists under the same FQN.
+          if (nullOrEmpty(addedColumn.getTags()) && !nullOrEmpty(deleted.getTags())) {
             addedColumn.setTags(deleted.getTags());
           }
         }
@@ -12444,6 +12484,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities.stream().map(EntityInterface::getId).toList();
   }
 
+  protected Map<UUID, EntityReference> batchResolveRefs(String entityType, List<UUID> ids) {
+    List<UUID> distinctIds = ids.stream().distinct().toList();
+    Map<UUID, EntityReference> refsById = new HashMap<>();
+    if (!distinctIds.isEmpty()) {
+      for (EntityReference ref :
+          Entity.getEntityReferencesByIds(entityType, distinctIds, Include.ALL)) {
+        refsById.put(ref.getId(), ref);
+      }
+      for (UUID id : distinctIds) {
+        if (!refsById.containsKey(id)) {
+          throw EntityNotFoundException.byMessage(
+              CatalogExceptionMessage.entityNotFound(entityType, id));
+        }
+      }
+    }
+    return refsById;
+  }
+
   private boolean isEntityNotFoundError(EntityError error) {
     if (error == null || error.getMessage() == null) {
       return false;
@@ -12858,7 +12916,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           for (var updater : changedUpdaters) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
@@ -12913,7 +12971,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (updater.isVersionChanged() || updater.isEntityChanged()) {
             postUpdate(updater.getOriginal(), updater.getUpdated());
             updater.runDeferredReactOperations();
-            var changeType = updater.incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
+            var changeType = updater.getChangeType();
             buildChangeEventJsonForBulkOperation(updater.getUpdated(), changeType, userName)
                 .ifPresent(changeEventJsons::add);
           }
@@ -13143,7 +13201,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * response filter that records change events for synchronous operations. Without this, async
    * deletes and restores are invisible to audit logs, alerts, and webhooks. Recursive deletes pass
    * a single root event here; cascaded descendants are intentionally not recorded individually (see
-   * {@link #persistBulkUpdaters}).
+   * {@link #persistBulkUpdaters}). Writes that never produce a single-entity REST response, such as
+   * internal workflow transitions or per-item bulk updates, record their events here too.
    */
   public final void storeChangeEventForAsyncOperation(
       T entity, EventType eventType, boolean recursive, String userName) {
@@ -13166,7 +13225,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private Optional<String> buildChangeEventJsonForBulkOperation(
+  Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
     return buildChangeEventJsonForBulkOperation(entity, eventType, userName, false);
   }
@@ -13205,7 +13264,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void insertChangeEventsBatch(List<String> changeEvents) {
+  void insertChangeEventsBatch(List<String> changeEvents) {
     if (changeEvents == null || changeEvents.isEmpty()) {
       return;
     }

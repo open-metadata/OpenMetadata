@@ -22,6 +22,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
   // Base recommended configs
@@ -262,8 +264,15 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    // The local plugin lives under playwright/ but is a linter, not a test:
+    // applying rules like no-positional-locator to its own source is
+    // meaningless, and its RuleTester fixtures deliberately contain the exact
+    // anti-patterns those rules look for.
+    ignores: ['**/playwright/eslint-rules/**'],
     plugins: {
+      'openmetadata-playwright': openMetadataPlaywright,
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -281,14 +290,54 @@ export default [
       // Playwright rules — aspirational (warn): existing violations to fix over time
       'playwright/missing-playwright-await': 'warn',
       'playwright/valid-expect': 'warn',
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
       'playwright/no-element-handle': 'warn',
       'playwright/no-eval': 'warn',
-      'playwright/no-skipped-test': 'warn',
       'playwright/prefer-web-first-assertions': 'warn',
       'playwright/no-useless-await': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/no-awaited-wait-for-response': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
+      'om-playwright/no-positional-locator': 'error',
+      'om-playwright/justified-rule-disable': 'error',
+
+      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+    },
+  },
+
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
+  // Local ESLint plugins (eslint-rules/**, playwright/eslint-rules/**): plain
+  // ESM run by node:test and by ESLint itself, so they need the Node globals
+  // their RuleTester usage relies on. scripts/*.mjs is build-time tooling that
+  // runs under Node directly and needs the same.
+  {
+    files: [
+      'eslint-rules/**/*.mjs',
+      'playwright/eslint-rules/**/*.mjs',
+      'scripts/**/*.mjs',
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 

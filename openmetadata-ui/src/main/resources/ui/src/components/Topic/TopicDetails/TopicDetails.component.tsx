@@ -20,7 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
 import type { Topic } from '../../../generated/entity/data/topic';
 import type { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -33,6 +34,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -45,6 +47,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
@@ -240,6 +243,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -247,6 +252,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           entity: t('label.topic'),
         })
       );
+
+      return false;
     }
   };
 
@@ -340,8 +347,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [decodedTopicFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.MESSAGING_SERVICES,
+          getPartialNameFromTableFQN(decodedTopicFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedTopicFQN]
   );
 
   const {
