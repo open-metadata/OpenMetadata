@@ -101,6 +101,12 @@ export const useIncidentGroups = () => {
 
   useEffect(() => {
     fetchIncidentGroups();
+
+    // Invalidates the in-flight request so a response landing after the view is
+    // gone cannot raise a toast the user has no context for.
+    return () => {
+      latestRequest.current += 1;
+    };
   }, [fetchIncidentGroups]);
 
   const handleGroupByChange = useCallback(

@@ -15,13 +15,19 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
 import { listIncidentGroups } from '../../../../rest/incidentGroupsAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { IncidentGroupByDropdownProps } from './IncidentGroups.types';
 import IncidentGroupsView from './IncidentGroupsView';
 
 const mockListIncidentGroups = listIncidentGroups as jest.Mock;
+const mockShowErrorToast = showErrorToast as jest.Mock;
 
 jest.mock('../../../../rest/incidentGroupsAPI', () => ({
   listIncidentGroups: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../../common/Loader/Loader', () =>
@@ -142,6 +148,25 @@ describe('IncidentGroupsView', () => {
     expect(
       screen.queryByTestId('incident-groups-table')
     ).not.toBeInTheDocument();
+  });
+
+  it('should not raise an error toast for a request that settles after unmount', async () => {
+    let rejectGroups: (reason: unknown) => void = jest.fn();
+    mockListIncidentGroups.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectGroups = reject;
+      })
+    );
+
+    const { unmount } = renderView();
+
+    unmount();
+
+    await act(async () => {
+      rejectGroups(new Error('failure'));
+    });
+
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 
   it('should fetch with the default dimension when the URL carries none', async () => {

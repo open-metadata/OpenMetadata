@@ -12,7 +12,11 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, LayersTwo01 } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+// LayersTwo01 has no counterpart in the core-components icon barrel, which only
+// re-exports the design team's own SVG set.
+// eslint-disable-next-line no-restricted-imports
+import { LayersTwo01 } from '@untitledui/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
