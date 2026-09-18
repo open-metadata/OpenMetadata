@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
@@ -67,22 +73,50 @@ jest.mock('../ActivityFeedCardV2/FeedCardFooter/ActivityEventFooter', () =>
   jest.fn(() => <div data-testid="activity-footer" />)
 );
 
-const mockActivityFeedActionsProps: Record<string, string>[] = [];
-jest.mock('../Shared/ActivityFeedActions', () =>
-  jest.fn((props) => {
-    mockActivityFeedActionsProps.push(props);
-
-    return <div data-testid="conversation-root-actions" />;
-  })
+// CommentCard and ActivityFeedActions are deliberately NOT mocked: the point
+// of these tests is that a user can actually edit, delete and react through
+// the rendered reply. Only true boundaries are stubbed below - the Quill
+// editor, the tiptap-backed previewer, the emoji element and the lazily
+// imported confirmation modal.
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest.fn(({ markdown }) => <div data-testid="reply-message">{markdown}</div>)
 );
 
-const mockCommentCardProps: Record<string, unknown>[] = [];
-jest.mock('./CommentCard.component', () =>
-  jest.fn((props) => {
-    mockCommentCardProps.push(props);
+jest.mock('../ActivityFeedEditor/ActivityFeedEditorNew', () =>
+  jest.fn(({ onSave, onTextChange }) => (
+    <div data-testid="reply-editor">
+      <input
+        aria-label="edit"
+        data-testid="reply-editor-input"
+        onChange={(e) => onTextChange?.(e.target.value)}
+      />
+      <button data-testid="reply-editor-save" onClick={() => onSave?.()}>
+        save
+      </button>
+    </div>
+  ))
+);
 
-    return <div data-testid="feed-reply-card">{props.message}</div>;
-  })
+jest.mock('../Reactions/Reactions', () =>
+  jest.fn(({ onReactionSelect }) => (
+    <button
+      data-testid="reply-reactions"
+      onClick={() =>
+        onReactionSelect(ReactionType.ThumbsUp, ReactionOperation.ADD)
+      }>
+      react
+    </button>
+  ))
+);
+
+jest.mock('../../Modals/ConfirmationModal/ConfirmationModal', () =>
+  jest.fn(({ visible, onConfirm }) =>
+    visible ? (
+      <button data-testid="confirm-delete" onClick={onConfirm}>
+        confirm
+      </button>
+    ) : null
+  )
 );
 
 jest.mock('../../common/PopOverCard/EntityPopOverCard', () =>
@@ -151,8 +185,6 @@ describe('ActivityFeedCardNew', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockProviderValue.activityReplies = [];
-    mockCommentCardProps.length = 0;
-    mockActivityFeedActionsProps.length = 0;
   });
 
   it('keeps root reactions and management actions available in the drawer', () => {
@@ -167,11 +199,12 @@ describe('ActivityFeedCardNew', () => {
     // Mounted before any pointer interaction: hiding these behind a hover
     // state put them out of reach of the keyboard and of screen readers. The
     // hover reveal is presentational, applied by CSS on the owning card.
-    expect(screen.getByTestId('conversation-root-actions')).toBeVisible();
+    expect(screen.getByTestId('feed-actions')).toBeVisible();
+    expect(screen.getByTestId('edit-message')).toBeVisible();
 
     fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
 
-    expect(screen.getByTestId('conversation-root-actions')).toBeVisible();
+    expect(screen.getByTestId('feed-actions')).toBeVisible();
   });
 
   it('hands the card-scoped hover reveal to the root actions', () => {
@@ -187,7 +220,7 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('feed-card-v2-sidebar').className).toContain(
       'tw:group/feed-card'
     );
-    expect(mockActivityFeedActionsProps.at(-1)?.className).toContain(
+    expect(screen.getByTestId('feed-actions').className).toContain(
       'tw:group-hover/feed-card:opacity-100'
     );
   });
@@ -206,8 +239,10 @@ describe('ActivityFeedCardNew', () => {
     );
   });
 
-  describe('reply wiring', () => {
-    const renderWithReply = () => {
+  describe('reply actions', () => {
+    // Drives the real CommentCard / ActivityFeedActions the user sees, and
+    // asserts what the feed provider is asked to do as a result.
+    const renderReply = () => {
       mockProviderValue.activityReplies = [activityReply];
 
       render(
@@ -216,57 +251,66 @@ describe('ActivityFeedCardNew', () => {
         </MemoryRouter>
       );
 
-      return mockCommentCardProps[mockCommentCardProps.length - 1];
+      return within(screen.getByTestId('feed-reply-card'));
     };
 
-    it('grants edit and delete to the reply author', () => {
-      expect(renderWithReply()).toEqual(
-        expect.objectContaining({ canDelete: true, canEdit: true })
-      );
+    it('offers edit and delete on the authors own reply', () => {
+      const reply = renderReply();
+
+      expect(reply.getByTestId('edit-message')).toBeInTheDocument();
+      expect(reply.getByTestId('delete-message')).toBeInTheDocument();
     });
 
-    it('patches the reply through updateFeed on edit', async () => {
-      const props = renderWithReply();
+    it('patches the reply through updateFeed when the user saves an edit', async () => {
+      const reply = renderReply();
 
-      await (props.onEdit as (message: string) => Promise<void>)('edited');
+      fireEvent.click(reply.getByTestId('edit-message'));
 
-      expect(mockProviderValue.updateFeed).toHaveBeenCalledWith(
-        activity.id,
-        activityReply.id,
-        false,
-        [{ op: 'replace', path: '/message', value: 'edited' }]
-      );
+      const editor = await reply.findByTestId('reply-editor');
+      fireEvent.change(within(editor).getByTestId('reply-editor-input'), {
+        target: { value: 'edited' },
+      });
+      fireEvent.click(within(editor).getByTestId('reply-editor-save'));
+
+      await waitFor(() => {
+        expect(mockProviderValue.updateFeed).toHaveBeenCalledWith(
+          activity.id,
+          activityReply.id,
+          false,
+          [{ op: 'replace', path: '/message', value: 'edited' }]
+        );
+      });
     });
 
-    it('removes the reply through deleteFeed on delete', async () => {
-      const props = renderWithReply();
+    it('removes the reply through deleteFeed when the user confirms', async () => {
+      const reply = renderReply();
 
-      await (props.onDelete as () => Promise<void>)();
+      fireEvent.click(reply.getByTestId('delete-message'));
+      fireEvent.click(await screen.findByTestId('confirm-delete'));
 
-      expect(mockProviderValue.deleteFeed).toHaveBeenCalledWith(
-        activity.id,
-        activityReply.id,
-        false
-      );
+      await waitFor(() => {
+        expect(mockProviderValue.deleteFeed).toHaveBeenCalledWith(
+          activity.id,
+          activityReply.id,
+          false
+        );
+      });
     });
 
-    it('forwards reactions to updateReactions', async () => {
-      const props = renderWithReply();
+    it('forwards a reaction on the reply to updateReactions', async () => {
+      const reply = renderReply();
 
-      await (
-        props.onReaction as (
-          type: ReactionType,
-          operation: ReactionOperation
-        ) => Promise<void>
-      )(ReactionType.ThumbsUp, ReactionOperation.ADD);
+      fireEvent.click(reply.getByTestId('reply-reactions'));
 
-      expect(mockProviderValue.updateReactions).toHaveBeenCalledWith(
-        activityReply,
-        activity.id,
-        false,
-        ReactionType.ThumbsUp,
-        ReactionOperation.ADD
-      );
+      await waitFor(() => {
+        expect(mockProviderValue.updateReactions).toHaveBeenCalledWith(
+          activityReply,
+          activity.id,
+          false,
+          ReactionType.ThumbsUp,
+          ReactionOperation.ADD
+        );
+      });
     });
   });
 });
