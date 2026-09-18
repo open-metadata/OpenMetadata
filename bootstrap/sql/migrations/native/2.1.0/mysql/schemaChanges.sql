@@ -369,3 +369,40 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- `TagUsageDAO.deleteTagLabelsByTargetPrefix` runs on every entity hard delete --
+-- EntityRepository.cleanup() calls it whenever shouldCleanupFqnDependents() is true, which
+-- is the default for every entity type, including types whose schema has no `tags` property
+-- and so can never have a row here. Its predicate is
+-- `targetFQNHash = ? OR targetFQNHash LIKE ?`, and every existing index on tag_usage either
+-- leads with `source` (tag_usage_key, idx_tag_usage_target_exact_composite,
+-- idx_tag_usage_target_prefix_composite, idx_tag_usage_tagfqn_prefix_composite) or indexes
+-- the generated `*_lower` columns, so none of them is a candidate: EXPLAIN reports
+-- type=ALL, possible_keys=NULL, scanning the whole table.
+--
+-- That is a locking problem, not just a slow one. InnoDB takes next-key locks on every row
+-- a DELETE scans, so a delete that removes nothing still locks the table -- measured on
+-- MySQL 8.0: with the table unindexed for this predicate, one session deleting a
+-- non-existent hash blocks a second session deleting an unrelated row until it commits.
+-- Concurrent entity deletes therefore deadlock, and the API returns 500 for what MySQL
+-- reports as a retryable "Deadlock found when trying to get lock".
+--
+-- Indexing targetFQNHash makes the same statement a range scan (type=range, rows 4714 -> 2
+-- on a 5k-row table) and the cross-session contention above disappears. 255 chars matches
+-- the prefix length the sibling composites already use.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'tag_usage'
+        AND index_name = 'idx_tag_usage_targetfqnhash'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_tag_usage_targetfqnhash ON tag_usage (targetFQNHash(255))'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

@@ -332,3 +332,14 @@ CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
 -- constraints already bound each lowercased value to one row.
 CREATE INDEX IF NOT EXISTS idx_user_entity_email_lower ON user_entity (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_user_entity_name_lower ON user_entity (LOWER(name));
+
+-- Mirror of the MySQL index: `TagUsageDAO.deleteTagLabelsByTargetPrefix` filters on
+-- `targetFQNHash = ? OR targetFQNHash LIKE ?`, and every existing tag_usage index either
+-- leads with `source` or covers the generated `targetfqnhash_lower` column, so the raw
+-- column has nothing to use and the delete scans the table on every entity hard delete.
+-- Postgres does not gap-lock a scan the way InnoDB does, so this is not the deadlock
+-- source here that it is on MySQL, but the scan is the same and the engines should not
+-- diverge on which statements are indexed. `text_pattern_ops` so the LIKE 'prefix%' half
+-- of the predicate can use it under non-C collations.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tag_usage_targetfqnhash
+  ON tag_usage (targetFQNHash text_pattern_ops);
