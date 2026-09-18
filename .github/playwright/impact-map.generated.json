@@ -224,6 +224,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/constant/dataQuality.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/dataQualityPermissions.ts"
       ],
       "specs": [
