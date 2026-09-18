@@ -1317,9 +1317,11 @@ describe('TaskTabNew Component', () => {
 
       expect(lastCommentCardProps()).toEqual(
         expect.objectContaining({
-          author: expect.objectContaining({ name: 'alice' }),
-          createdAt: 1735732800000,
-          message: 'A comment on the incident',
+          reply: expect.objectContaining({
+            author: expect.objectContaining({ name: 'alice' }),
+            createdAt: 1735732800000,
+            message: 'A comment on the incident',
+          }),
         })
       );
     });

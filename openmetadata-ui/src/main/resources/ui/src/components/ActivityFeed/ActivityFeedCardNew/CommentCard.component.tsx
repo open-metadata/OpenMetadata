@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -32,19 +32,32 @@ import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
-import '../ActivityFeedTab/activity-feed-tab.less';
 import { COMMENT_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
 
-interface CommentCardProps {
+/**
+ * The comment being rendered. Declared structurally rather than as
+ * ConversationReply or TaskComment so one card serves both: the activity feed
+ * passes a conversation reply, the task and incident tabs pass a task comment,
+ * and these four fields are all this component reads from either. There is no
+ * `conversation` counterpart because a task comment has none - anything that
+ * needs the surrounding thread is handled by the caller through the callbacks
+ * below.
+ */
+export interface CommentCardReply {
   author: EntityReference;
   createdAt: number;
   message: string;
   reactions?: Reaction[];
+}
+
+interface CommentCardProps {
+  reply: CommentCardReply;
   isLastReply: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -64,10 +77,7 @@ interface CommentCardProps {
 }
 
 const CommentCard = ({
-  author,
-  createdAt,
-  message,
-  reactions,
+  reply,
   isLastReply,
   canEdit,
   canDelete,
@@ -76,6 +86,9 @@ const CommentCard = ({
   onReaction,
   closeFeedEditor,
 }: CommentCardProps) => {
+  // Unpacked once here so the rest of the component reads the same field names
+  // regardless of which comment shape the caller handed over.
+  const { author, createdAt, message, reactions } = reply;
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
@@ -176,59 +189,57 @@ const CommentCard = ({
         </UserPopOverCard>
       </div>
       <div className="w-full">
-        <div className="d-flex items-center gap-2 flex-wrap">
-          <Typography.Text className="activity-feed-user-name reply-card-user-name">
-            <UserPopOverCard userName={authorName}>
-              <Link
-                className="reply-card-user-name"
-                to={getUserPath(authorName)}>
-                {getEntityName(user)}
-              </Link>
-            </UserPopOverCard>
-          </Typography.Text>
-          <Typography.Text className="seperator m-b-xss">
-            {seperator}
-          </Typography.Text>
-          <Typography.Text>
-            <Tooltip
-              color="white"
-              overlayClassName="timestamp-tooltip"
-              title={formatDateTime(createdAt)}>
-              <Typography.Text
-                className="feed-card-header-v2-timestamp mr-2"
-                data-testid="timestamp">
-                {getRelativeTime(createdAt)}
-              </Typography.Text>
-            </Tooltip>
-          </Typography.Text>
+        <div className="d-flex items-center gap-2 tw:justify-between">
+          <div className="d-flex items-center gap-2 flex-wrap">
+            <Typography.Text className="activity-feed-user-name reply-card-user-name">
+              <UserPopOverCard userName={authorName}>
+                <Link
+                  className="reply-card-user-name"
+                  to={getUserPath(authorName)}>
+                  {getEntityName(user)}
+                </Link>
+              </UserPopOverCard>
+            </Typography.Text>
+            <Typography.Text className="seperator m-b-xss">
+              {seperator}
+            </Typography.Text>
+            <Typography.Text>
+              <Tooltip
+                color="white"
+                overlayClassName="timestamp-tooltip"
+                title={formatDateTime(createdAt)}>
+                <Typography.Text
+                  className="feed-card-header-v2-timestamp mr-2"
+                  data-testid="timestamp">
+                  {getRelativeTime(createdAt)}
+                </Typography.Text>
+              </Tooltip>
+            </Typography.Text>
+          </div>
+          <ActivityFeedActions
+            isReply
+            canDelete={canDelete}
+            canEdit={canEdit}
+            className={COMMENT_ACTIONS_HOVER_REVEAL}
+            onDelete={onDelete}
+            onEditPost={onEditPost}
+          />
         </div>
         {feedBodyRender}
 
         {onReaction && (
-          <Row align="top" className="m-y-md">
-            <Col
-              className="reply-card-footer"
-              data-testid="feed-card-footer"
-              span={24}>
+          <div className="m-y-md">
+            <div className="w-full" data-testid="feed-card-footer">
               <div className="d-flex items-center gap-2 w-full">
                 <Reactions
                   reactions={reactions ?? []}
                   onReactionSelect={onReaction}
                 />
               </div>
-            </Col>
-          </Row>
+            </div>
+          </div>
         )}
       </div>
-
-      <ActivityFeedActions
-        isReply
-        canDelete={canDelete}
-        canEdit={canEdit}
-        className={COMMENT_ACTIONS_HOVER_REVEAL}
-        onDelete={onDelete}
-        onEditPost={onEditPost}
-      />
     </div>
   );
 };

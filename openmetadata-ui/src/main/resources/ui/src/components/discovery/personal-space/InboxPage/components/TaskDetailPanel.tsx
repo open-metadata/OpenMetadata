@@ -77,6 +77,7 @@ import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import ActivityFeedEditorNew from '../../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { getTaskStatusBadge } from '../taskResolution.utils';
 import {
   buildResolveBody,
@@ -84,7 +85,6 @@ import {
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitle } from '../taskTitle.utils';
-import ActivityFeedEditorNew from '../../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import InboxCommentComposer from './InboxCommentComposer';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';

@@ -35,3 +35,17 @@
   align-items: center;
   justify-content: center;
 }
+
+// ButtonUtility ships tw:p-1.5 (6px), which makes each control 28px and the
+// bar noticeably taller than the 16px glyphs it replaced. Trim it back so the
+// bar keeps its original height while the controls stay real, focusable
+// buttons. Written here rather than passed as a class because a Tailwind
+// utility would tie on specificity with p-1.5 and win or lose on stylesheet
+// order.
+.feed-actions.ant-space .toolbar-button {
+  padding: var(--om-space-2);
+  // ButtonUtility's `tertiary` colour paints the glyph tw:text-quaternary, a
+  // mid grey. Fall back to the bar's own text colour, which is what these
+  // icons inherited before they became buttons.
+  color: @text-color;
+}

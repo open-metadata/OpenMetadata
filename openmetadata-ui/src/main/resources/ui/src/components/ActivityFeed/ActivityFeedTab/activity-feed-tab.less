@@ -497,14 +497,20 @@
   border-bottom: 0.5px solid var(--om-legacy-color-e4e4e4);
 }
 
-// A reply's footer carries the add-reaction control on its own, without the
-// post toolbar's sibling controls to frame it. Give it the same bordered box
-// the feed actions use so it reads as a control rather than a loose glyph.
-.reply-card-footer {
-  [data-testid='add-reactions'] {
-    border: 0.5px solid var(--om-color-gray-blue-100);
-    background: var(--tw-color-bg-primary);
-  }
+// .feed-actions is absolutely positioned at a fixed top: 24px, which only
+// lined up while this card's padding was also 24px. It now uses 16px, so pull
+// the bar up to match - otherwise it hangs below the author row and covers the
+// first line of the comment. Scoped to the reply card so the conversation
+// card, which keeps its own spacing, is unaffected.
+// A reply renders its actions inside the author row rather than floating them
+// over the card, so undo the shared absolute positioning here. Keeping them in
+// normal flow is what stops the bar overlapping the comment text - it can no
+// longer be mispositioned relative to a padding or line-height it doesn't know
+// about.
+.reply-card .feed-actions.ant-space {
+  position: static;
+  padding-top: var(--om-space-2);
+  padding-bottom: var(--om-space-2);
 }
 
 // Tooltips render into a portal on document.body, so this has to sit in a

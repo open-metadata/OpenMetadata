@@ -109,9 +109,11 @@ const renderCommentCard = (
   props?: Partial<React.ComponentProps<typeof CommentCard>>
 ) => {
   const defaultProps: React.ComponentProps<typeof CommentCard> = {
-    author: { id: 'user-1', type: 'user', name: 'testuser' },
-    createdAt: 1234567890,
-    message: 'Test comment message',
+    reply: {
+      author: { id: 'user-1', type: 'user', name: 'testuser' },
+      createdAt: 1234567890,
+      message: 'Test comment message',
+    },
     isLastReply: false,
     canEdit: true,
     canDelete: true,
@@ -173,7 +175,15 @@ describe('CommentCard', () => {
 
     it('should fall back to the fully qualified name when author has no name', () => {
       renderCommentCard({
-        author: { id: 'user-1', type: 'user', fullyQualifiedName: 'fqn-user' },
+        reply: {
+          author: {
+            id: 'user-1',
+            type: 'user',
+            fullyQualifiedName: 'fqn-user',
+          },
+          createdAt: 1234567890,
+          message: 'Test comment message',
+        },
       });
 
       expect(screen.getByTestId('profile-fqn-user')).toBeInTheDocument();
@@ -191,10 +201,12 @@ describe('CommentCard', () => {
           <CommentCard
             canDelete
             canEdit
-            author={{ id: 'user-1', type: 'user', name: 'testuser' }}
-            createdAt={1234567890}
             isLastReply={false}
-            message="Test comment message"
+            reply={{
+              author: { id: 'user-1', type: 'user', name: 'testuser' },
+              createdAt: 1234567890,
+              message: 'Test comment message',
+            }}
             onDelete={onDelete}
             onEdit={onEdit}
             onReaction={onReaction}
@@ -206,7 +218,7 @@ describe('CommentCard', () => {
     });
 
     it('should forward the reaction selection to onReaction', () => {
-      renderCommentCard({ onReaction, reactions: [] });
+      renderCommentCard({ onReaction });
 
       fireEvent.click(screen.getByTestId('reactions'));
 

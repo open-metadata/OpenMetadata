@@ -1845,14 +1845,12 @@ export const TaskTabNew = ({
 
           return (
             <CommentCard
-              author={comment.author}
               canDelete={canDelete}
               canEdit={canEdit}
               closeFeedEditor={closeFeedEditor}
-              createdAt={comment.createdAt}
               isLastReply={index === arr.length - 1}
               key={comment.id}
-              message={comment.message}
+              reply={comment}
               onDelete={async () => {
                 try {
                   await deleteTaskComment(task.id, comment.id);

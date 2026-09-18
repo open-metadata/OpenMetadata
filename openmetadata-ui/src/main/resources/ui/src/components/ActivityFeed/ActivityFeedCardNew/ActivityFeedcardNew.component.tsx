@@ -336,15 +336,12 @@ const ActivityFeedCardNew = ({
 
           return (
             <CommentCard
-              author={reply.author}
               canDelete={canManage}
               canEdit={canManage}
               closeFeedEditor={closeFeedEditor}
-              createdAt={reply.createdAt}
               isLastReply={index === arr.length - 1}
               key={reply.id}
-              message={reply.message}
-              reactions={reply.reactions}
+              reply={reply}
               onDelete={() => deleteFeed(conversationId, reply.id, false)}
               onEdit={async (message) => {
                 await updateFeed(
