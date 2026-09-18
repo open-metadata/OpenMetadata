@@ -39,9 +39,6 @@ import type {
 } from './filter-select.types';
 import { TreeSelect } from '../tree-select/tree-select';
 
-// Narrow wrapper so the icon prop's type doesn't widen to the raw
-// `@untitledui/icons` FC, whose `children` type clashes with consumers that
-// augment ReactNode globally (e.g. react-i18next).
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);

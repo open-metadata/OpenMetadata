@@ -24,6 +24,9 @@ import { SearchLg } from '@untitledui/icons';
 import type { HTMLAttributes } from 'react';
 import { Typography } from '@/components/foundations/typography';
 
+// Narrow wrapper so the icon prop's type doesn't widen to the raw
+// `@untitledui/icons` FC, whose `children` type clashes with consumers that
+// augment ReactNode globally (e.g. react-i18next).
 export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <SearchLg aria-hidden="true" {...props} />
 );
