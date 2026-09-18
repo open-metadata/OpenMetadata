@@ -151,7 +151,10 @@ export const Tooltip = ({
   })();
 
   const disabledWrapClassName =
-    'tw:inline-flex tw:w-max tw:cursor-not-allowed tw:*:pointer-events-none';
+    // No `w-max`: that pinned the wrapper to max-content, so a disabled
+    // full-width trigger shrank where the same trigger enabled would not.
+    // `triggerClassName` still wins via cx if a consumer needs to set width.
+    'tw:inline-flex tw:cursor-not-allowed tw:*:pointer-events-none';
 
   const trigger_ = shouldWrap ? (
     isDisabledChild ? (

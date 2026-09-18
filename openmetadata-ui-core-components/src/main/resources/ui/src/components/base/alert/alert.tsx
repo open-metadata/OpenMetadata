@@ -143,11 +143,14 @@ export const Alert = ({
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
         {hasTitle && (
-          <p
+          // A div rather than a p: `title` takes a ReactNode now, and block
+          // content inside a <p> is invalid nesting that React will warn on
+          // and the parser will silently restructure.
+          <div
             className="tw:font-semibold tw:text-secondary"
             data-testid="alert-title">
             {title}
-          </p>
+          </div>
         )}
 
         {children && (
