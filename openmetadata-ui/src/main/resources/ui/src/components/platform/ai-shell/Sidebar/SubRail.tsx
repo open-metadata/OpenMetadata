@@ -36,7 +36,11 @@ const SubRail: React.FC<SubRailProps> = ({ items, onExpand }) => {
           data-testid="ask-sub-rail-expand-btn"
           type="button"
           onClick={onExpand}>
-          <ExpandPanelIcon height={20} width={20} />
+          <ExpandPanelIcon
+            className="tw:text-fg-quaternary"
+            height={20}
+            width={20}
+          />
         </button>
       </div>
 
