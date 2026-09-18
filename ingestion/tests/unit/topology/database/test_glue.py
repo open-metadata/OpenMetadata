@@ -17,6 +17,7 @@ import base64
 import json
 import logging
 import textwrap
+import time
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
@@ -874,3 +875,24 @@ class TestGlueViewDefinitionEdges:
 
         assert request.fileFormat is None
         assert request.schemaDefinition.root == "CREATE VIEW default.sample_view AS SELECT 1"
+
+    def test_a_comment_heavy_definition_does_not_hang_the_header_check(self):
+        """A repeated group whose body can also match the "*/" that ends it backtracks
+        exponentially: this input took ~1s at 98 chars and doubled every 8 more, so a view
+        definition of a couple of hundred characters would have hung the ingestion worker."""
+        adversarial = "/*" + "*//*" * 400
+
+        start = time.perf_counter()
+        definition = get_schema_definition(_view(original=adversarial), "default", "sample_view")
+        elapsed = time.perf_counter() - start
+
+        assert elapsed < 5
+        # The trailing "/*" is never closed, so this is not comment-only and gets wrapped.
+        assert definition.startswith("CREATE VIEW default.sample_view AS /*")
+
+    def test_create_viewsomething_is_not_read_as_a_header(self):
+        table = _view(original="CREATE VIEWS FROM whatever")
+
+        assert get_schema_definition(table, "default", "sample_view") == (
+            "CREATE VIEW default.sample_view AS CREATE VIEWS FROM whatever"
+        )

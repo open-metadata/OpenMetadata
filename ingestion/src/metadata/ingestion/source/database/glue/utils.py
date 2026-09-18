@@ -31,14 +31,14 @@ PRESTO_VIEW_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 SQL_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
-# Anchored to the head of the statement, past any leading comment, the way the SAP HANA and
-# ClickHouse readers do it. An unanchored search would read the CREATE VIEW inside a string
-# literal as a header already being there and leave a bare SELECT unwrapped, which costs the
-# lineage parser its target table.
-CREATE_VIEW_PATTERN = re.compile(
-    r"^\s*(?:/\*.*?\*/\s*|--[^\n]*\n\s*)*CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\b",
-    re.IGNORECASE | re.DOTALL,
-)
+# Anchored to the head of the statement, the way the SAP HANA and ClickHouse readers do it.
+# An unanchored search would read the CREATE VIEW inside a string literal as a header already
+# being there and leave a bare SELECT unwrapped, which costs the lineage parser its target.
+# Leading comments are stepped over one at a time rather than by a repeated group: a group
+# whose body can also match the "*/" that ends it backtracks exponentially on input like
+# "/*" + "*//*" * n, which a view definition is free to contain.
+LEADING_COMMENT_PATTERN = re.compile(r"\s*(?:/\*.*?\*/|--[^\n]*)", re.DOTALL)
+CREATE_VIEW_PATTERN = re.compile(r"\s*CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\b", re.IGNORECASE)
 SIMPLE_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -92,8 +92,16 @@ def _decode_presto_view(payload: str, table_name: str) -> str | None:
     return original_sql.strip()
 
 
+def _starts_with_create_view(definition: str) -> bool:
+    """Whether the statement already opens with a CREATE VIEW header, past any leading comment."""
+    position = 0
+    while (comment := LEADING_COMMENT_PATTERN.match(definition, position)) is not None:
+        position = comment.end()
+    return CREATE_VIEW_PATTERN.match(definition, position) is not None
+
+
 def _as_create_view(definition: str, schema_name: str, table_name: str) -> str:
-    if CREATE_VIEW_PATTERN.search(definition):
+    if _starts_with_create_view(definition):
         return definition
     # The Glue database is an AWS catalog id rather than a SQL catalog, so it is left out.
     return f"CREATE VIEW {_quote(schema_name)}.{_quote(table_name)} AS {definition}"
