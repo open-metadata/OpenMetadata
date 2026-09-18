@@ -11,16 +11,34 @@
  *  limitations under the License.
  */
 import { lazy, Suspense, type ReactNode } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { OwnerType } from '../enums/user.enum';
 
 // `index.tsx` registers this util at startup, so a static import of
 // UserPopOverCard put the hover-card tree — and with it most of
 // ui-core-components — on the entry graph, costing ~95 KiB Brotli of first
-// paint. Lazy keeps the registration cheap: the chip paints immediately and
-// the card activates once its chunk lands, which is before anyone can hover.
-const UserPopOverCard = lazy(
-  () => import('../components/common/PopOverCard/UserPopOverCard')
-);
+// paint for a card nobody has hovered yet.
+const loadUserPopOverCard = () =>
+  import('../components/common/PopOverCard/UserPopOverCard');
+
+const UserPopOverCard = lazy(loadUserPopOverCard);
+
+// Warm the chunk once the browser goes idle. `import()` is still a split point,
+// so this keeps the card out of the entry bundle, but it resolves the lazy
+// component during startup — before any owner chip exists to point at. Without
+// it a pointer already resting on the fallback would miss the `mouseenter` that
+// the real trigger needs, and the card would stay shut until the pointer left
+// and came back.
+if (typeof window !== 'undefined') {
+  const warm = () => void loadUserPopOverCard().catch(() => undefined);
+  const idle = (
+    window as typeof window & {
+      requestIdleCallback?: (callback: () => void) => number;
+    }
+  ).requestIdleCallback;
+
+  idle ? idle(warm) : window.setTimeout(warm, 0);
+}
 
 /**
  * Wraps an owner chip in a UserPopOverCard so hovering the owner avatar/name
@@ -35,11 +53,16 @@ export const renderOwnerPopover = (
   owner: { name?: string; type?: string },
   chip: ReactNode
 ): ReactNode => (
-  <Suspense fallback={chip}>
-    <UserPopOverCard
-      type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-      userName={owner.name ?? ''}>
-      {chip}
-    </UserPopOverCard>
-  </Suspense>
+  // A hover card that fails to load must not take the page with it: a
+  // `React.lazy` rejection otherwise reaches the app-level boundary. Both
+  // fallbacks are the chip itself, so the owner name survives either way.
+  <ErrorBoundary fallbackRender={() => <>{chip}</>}>
+    <Suspense fallback={chip}>
+      <UserPopOverCard
+        type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
+        {chip}
+      </UserPopOverCard>
+    </Suspense>
+  </ErrorBoundary>
 );
