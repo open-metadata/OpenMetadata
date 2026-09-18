@@ -163,7 +163,7 @@ const ComboBoxValue = ({
               interaction and must stay transparent in every state. */}
           <AriaInput
             className={cx(
-              'tw:absolute tw:inset-0 tw:z-10 tw:size-full tw:appearance-none tw:rounded-[inherit] tw:bg-transparent tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:placeholder:text-disabled',
+              'tw:absolute tw:inset-0 tw:z-10 tw:size-full tw:appearance-none tw:rounded-[inherit] tw:bg-transparent tw:text-transparent tw:caret-primary tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:placeholder:text-disabled',
               inputPadding,
               fontSizeClass[fontSize]
             )}

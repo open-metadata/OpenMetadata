@@ -168,7 +168,7 @@ export const PageHeader = ({
         // the Card `default` variant's border-secondary. Dark mode drops the
         // gradient and restores the neutral border on the bg-primary surface.
         variant === 'gradient' &&
-          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
+          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none',
         className
       )}
       data-testid={dataTestId}
