@@ -78,6 +78,9 @@ export const useTreeSelectSelection = <T = unknown>({
     Map<string, TreeSelectNode<T>>
   >(new Map());
   const parentOfSelected = useRef<Map<string, string>>(new Map());
+  // Read inside stable callbacks, so their identity never depends on the tree.
+  const treeDataRef = useRef(treeData);
+  treeDataRef.current = treeData;
 
   const notify = useCallback(
     (next: Map<string, TreeSelectNode<T>>) => {
@@ -108,8 +111,15 @@ export const useTreeSelectSelection = <T = unknown>({
           }
         });
         if (parent) {
-          parentOfSelected.current.forEach((parentId, selectedId) => {
-            if (parentId === parent.id && selectedId !== node.id) {
+          // Seeded values have no recorded parent, so fall back to the tree.
+          next.forEach((_selected, selectedId) => {
+            if (selectedId === node.id) {
+              return;
+            }
+            const selectedParent =
+              parentOfSelected.current.get(selectedId) ??
+              findParentNode(selectedId, treeDataRef.current)?.id;
+            if (selectedParent === parent.id) {
               next.delete(selectedId);
             }
           });
@@ -139,7 +149,15 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const setSelection = useCallback((nodes: TreeSelectNode<T>[]) => {
-    parentOfSelected.current = new Map();
+    // Rebuild the parents so a seeded value keeps its exclusivity on reopen.
+    const parents = new Map<string, string>();
+    nodes.forEach((node) => {
+      const parent = findParentNode(node.id, treeDataRef.current);
+      if (parent) {
+        parents.set(node.id, parent.id);
+      }
+    });
+    parentOfSelected.current = parents;
     setSelectedNodes(new Map(nodes.map((node) => [node.id, node])));
   }, []);
 

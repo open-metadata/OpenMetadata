@@ -188,8 +188,7 @@ const renderTagsContainerInsideClickableParent = (props: {
   );
 };
 
-// The card header and the inline slot each render an edit icon; either opens
-// the same editor, so the first one is as good as the other.
+// Header and inline slot both render an edit icon; either opens the editor.
 const enterEditMode = async () => {
   fireEvent.click(screen.getAllByTestId('edit-button')[0]);
   await screen.findByTestId('mock-tag-select-form');

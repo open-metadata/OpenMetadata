@@ -48,7 +48,9 @@ import {
 import { searchAndClickOnOption } from './explore';
 import {
   applyGlossaryPicker,
+  glossaryWidgetTrigger,
   openGlossaryPicker,
+  pickGlossaryTerm,
   toggleGlossaryTermInPicker,
 } from './glossaryPicker';
 import { sidebarClick } from './sidebar';
@@ -1127,16 +1129,15 @@ export const assignGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add',
   entityEndpoint: string
 ) => {
-  await openGlossaryPicker(
+  await pickGlossaryTerm(
     page,
-    page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container')
-      .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    glossaryWidgetTrigger(
+      page.getByTestId('KnowledgePanel.GlossaryTerms'),
+      action
+    ),
+    glossaryTerm,
+    `/api/v1/${entityEndpoint}/*`
   );
-
-  await toggleGlossaryTermInPicker(page, glossaryTerm);
-  await applyGlossaryPicker(page, `/api/v1/${entityEndpoint}/*`);
 
   await expect(
     page
@@ -1250,16 +1251,12 @@ export const assignGlossaryTermToChildren = async ({
   await expect(rowLocator).toBeVisible();
   await rowLocator.scrollIntoViewIfNeeded();
 
-  await openGlossaryPicker(
+  await pickGlossaryTerm(
     page,
-    rowLocator
-      .getByTestId('glossary-container')
-      .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-      .first()
+    glossaryWidgetTrigger(rowLocator, action).first(),
+    glossaryTerm,
+    childPatchUrl(entityEndpoint)
   );
-
-  await toggleGlossaryTermInPicker(page, glossaryTerm);
-  await applyGlossaryPicker(page, childPatchUrl(entityEndpoint));
 
   await waitForAllLoadersToDisappear(page);
 

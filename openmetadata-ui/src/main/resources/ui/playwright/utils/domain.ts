@@ -1256,8 +1256,7 @@ export const addTagsAndGlossaryToDomain = async (
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
-    // Searched for in the picker. Taken from the term, never split out of the
-    // FQN — a generated term name can itself contain dots.
+    // From the term, never split out of the FQN: a name can contain dots.
     glossaryTermName: string;
     isDomain?: boolean;
   }

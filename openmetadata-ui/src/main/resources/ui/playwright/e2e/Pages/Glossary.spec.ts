@@ -571,8 +571,7 @@ test.describe('Glossary tests', () => {
             res.request().method() === 'PATCH'
         );
 
-        // The staged draft is seeded when the picker opens, so the applied
-        // term must be on the widget before reopening it.
+        // The draft is seeded on open, so wait for the applied term first.
         await expect(
           page
             .getByTestId('KnowledgePanel.GlossaryTerms')

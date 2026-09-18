@@ -732,8 +732,7 @@ export class OverviewPageObject extends RightPanelBase {
     await openGlossaryPicker(this.page, this.editGlossaryTermsIcon);
     await searchGlossaryPicker(this.page, termName);
 
-    // Scoped to the picker: a page-wide match also hits the entity's still
-    // assigned chip, whose removal after a hard delete is eventually consistent.
+    // Scoped to the picker; a page-wide match also hits the assigned chip.
     return glossaryPickerRow(this.page, termName);
   }
 

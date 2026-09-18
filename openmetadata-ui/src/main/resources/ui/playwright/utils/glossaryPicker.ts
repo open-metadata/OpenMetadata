@@ -55,8 +55,7 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
-// In slower CI environments the first click can land before the react-aria
-// trigger is fully interactive, so retry once if the popover doesn't appear.
+// Retry once: on slow CI the first click can precede the trigger being ready.
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
@@ -91,6 +90,15 @@ export const toggleGlossaryTermInPicker = async (
   await row.click();
 };
 
+// The add/edit control of a glossary widget, inside `scope`.
+export const glossaryWidgetTrigger = (
+  scope: Page | Locator,
+  action: 'Add' | 'Edit' = 'Add'
+) =>
+  scope
+    .getByTestId('glossary-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
+
 // One PATCH however many terms toggled; `false` where Apply only updates state.
 export const applyGlossaryPicker = async (
   page: Page,
@@ -115,4 +123,16 @@ export const applyGlossaryPicker = async (
   await patchRequest;
 
   await expect(page.getByTestId('update-btn')).not.toBeVisible();
+};
+
+// Open, pick one term, apply — the whole flow for a single-term assignment.
+export const pickGlossaryTerm = async (
+  page: Page,
+  trigger: Locator,
+  term: GlossaryTermRef,
+  patchUrl?: string | ((response: Response) => boolean) | false
+) => {
+  await openGlossaryPicker(page, trigger);
+  await toggleGlossaryTermInPicker(page, term);
+  await applyGlossaryPicker(page, patchUrl);
 };

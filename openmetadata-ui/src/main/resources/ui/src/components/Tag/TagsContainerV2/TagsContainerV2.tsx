@@ -119,8 +119,7 @@ const TagsContainerV2 = ({
 
         return;
       }
-      // Only clear the shared key while it is still ours: opening a sibling
-      // editor closes this one, and that close must not cancel the sibling.
+      // Clear only while the key is ours, so a sibling's open is not cancelled.
       if (isEditTags) {
         updateActiveTagDropdownKey(null);
       }

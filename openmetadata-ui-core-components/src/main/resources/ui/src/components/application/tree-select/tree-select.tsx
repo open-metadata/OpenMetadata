@@ -52,12 +52,7 @@ const VIEWPORT_PADDING = 12;
 
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
-/**
- * Anchors the dropdown to the trigger's left edge, mirroring it to the
- * trigger's right edge when there is no room on the right. Without this
- * react-aria keeps the dropdown on screen by shifting it off its anchor, so it
- * no longer starts at the trigger.
- */
+// Left edge of the trigger, mirrored right when there is no room on screen.
 const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
@@ -232,8 +227,7 @@ export const TreeSelect = <T = unknown,>({
   const prevValueRef = useRef<typeof value>(undefined);
   // What was expanded before a search took over, restored when it clears.
   const preSearchExpandedRef = useRef<Set<Key> | null>(null);
-  // Parents already opened for the current search, so a later result or lazy
-  // load never reopens a row the user collapsed.
+  // Parents already opened for this search, so a later result never reopens one.
   const autoExpandedRef = useRef<Set<Key>>(new Set());
   const lastSearchRef = useRef('');
   // Stable root IDs captured before any search replaces treeData, so
@@ -307,10 +301,7 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [treeData, searchTerm]);
 
-  // Search results arrive nested inside collapsed rows, so each parent is
-  // opened as it first appears — never re-opened, so async results and lazy
-  // loads leave a row the user collapsed alone. Clearing the search restores
-  // whatever was open before it started.
+  // Each parent opens once as it appears; clearing the search restores the old set.
   useEffect(() => {
     if (!searchTerm) {
       if (preSearchExpandedRef.current !== null) {
@@ -806,8 +797,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       placement={placement}
-      // No DialogTrigger, so react-aria would read the opening click as an
-      // outside one; the pointerdown effect above owns dismissal instead.
+      // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       triggerRef={triggerRef}
       onOpenChange={setOpen}>

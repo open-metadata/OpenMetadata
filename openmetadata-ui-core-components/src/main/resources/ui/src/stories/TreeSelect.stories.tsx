@@ -146,8 +146,7 @@ const fetchGlossaryTerms = async ({
 }): Promise<TreeSelectDataResponse> => {
   await wait(300);
 
-  // Mirrors the server: a search returns each glossary with its matching terms
-  // already nested, rather than a flat list of hits.
+  // Mirrors the server: a search returns each glossary with its terms nested.
   if (searchTerm) {
     const query = searchTerm.toLowerCase();
 
@@ -230,9 +229,7 @@ export const GlossaryTermFilter: StoryObj = {
   },
 };
 
-// How the entity-page widgets use it: the card's own edit icon is the trigger,
-// the picked terms stay visible behind the popover, and nothing is saved until
-// Apply — so a selection costs one request rather than one per checkbox.
+// The entity-widget shape: edit icon as trigger, terms visible, one PATCH on Apply.
 export const WidgetEditPopover: StoryObj = {
   render: () => {
     const [terms, setTerms] = useState<TreeSelectNode[]>([]);
