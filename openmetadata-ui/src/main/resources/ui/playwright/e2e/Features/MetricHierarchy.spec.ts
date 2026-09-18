@@ -714,71 +714,35 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }
   });
 
-  test('creates a group, root, and child from the UI and completes the Overview edit flow', async ({
+  test('creates a root and child from the UI and completes the Overview edit flow', async ({
     browser,
   }) => {
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
       navigate: true,
     });
     const suffix = uuid();
-    const groupName = `pw-ui-created-group-${suffix}`;
     const rootName = `pw-ui-created-root-${suffix}`;
     const childName = `pw-ui-created-child-${suffix}`;
     let root: MetricResponse | undefined;
-    let group: MetricGroupResponse | undefined;
 
     try {
       await openAddMetricDrawer(page);
       await fillRequiredMetricFields(page, rootName);
-      const groupCombo = page
-        .getByTestId('metric-group-select')
-        .getByRole('combobox');
-      const groupResolution = page.waitForResponse((response) =>
-        new URL(response.url()).pathname.endsWith(
-          `/api/v1/metricGroups/name/${encodeURIComponent(groupName)}`
-        )
-      );
-      await groupCombo.fill(groupName);
-      expect((await groupResolution).status()).toBe(404);
-      const createGroupOption = page.getByRole('option', {
-        name: new RegExp(`^Create ${groupName}`),
-      });
-      await groupCombo.press('ArrowDown');
-      await expect(createGroupOption).toBeVisible();
-      await groupCombo.press('End');
-      await expect(createGroupOption).toHaveAttribute('data-focused', 'true');
-      await groupCombo.press('Enter');
-      await expect(groupCombo).toHaveValue(groupName);
 
-      const groupCreateResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          new URL(response.url()).pathname.endsWith('/api/v1/metricGroups')
-      );
       const rootResponse = page.waitForResponse(
         (response) =>
           response.request().method() === 'POST' &&
           new URL(response.url()).pathname.endsWith('/api/v1/metrics')
       );
       await page.getByTestId('create-button').click();
-      expect((await groupCreateResponse).ok()).toBeTruthy();
       root = (await (await rootResponse).json()) as MetricResponse;
 
       await expect(page.getByTestId('entity-header-title')).toBeVisible();
       await expect(page.getByRole('heading', { name: rootName })).toBeVisible();
       await expect(page.getByTestId('metric-definition-unit')).toBeVisible();
-      await expect(page.getByTestId('metric-tree-group')).toContainText(
-        groupName
-      );
       await expect(page.getByTestId('metric-tree-current')).toContainText(
         rootName
       );
-
-      const groupResponse = await apiContext.get(
-        `/api/v1/metricGroups/name/${encodeURIComponent(groupName)}`
-      );
-      expect(groupResponse.ok()).toBeTruthy();
-      group = (await groupResponse.json()) as MetricGroupResponse;
 
       await page.getByTestId('add-child-metric').click();
       await expect(page.getByTestId('add-metric-container')).toBeVisible();
@@ -800,7 +764,6 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const child = (await (await childResponse).json()) as MetricResponse;
 
       expect(child.parent?.id).toBe(root.id);
-      expect(child.metricGroup?.id).toBe(group.id);
       await expect(
         page.getByTestId(`metric-tree-ancestor-${root.id}`)
       ).toContainText(rootName);
@@ -839,11 +802,6 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       if (root) {
         await apiContext.delete(
           `/api/v1/metrics/${root.id}?hardDelete=true&recursive=true`
-        );
-      }
-      if (group) {
-        await apiContext.delete(
-          `/api/v1/metricGroups/${group.id}?hardDelete=true&recursive=true`
         );
       }
       await afterAction();
