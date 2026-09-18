@@ -15,6 +15,7 @@ Validator for table column count to be equal test case
 
 import traceback
 from abc import abstractmethod
+from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
@@ -62,7 +63,10 @@ class BaseTableColumnCountToEqualValidator(BaseTestValidator):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(self.matches_expected(count, expected_count, "the expected columnCount")),
+            # The parameter reader is loosely typed; an unset `columnCount` reads as None.
+            self.get_test_case_status(
+                self.matches_expected(count, cast("float | None", expected_count), "the expected columnCount")
+            ),
             f"Found {count} columns vs. the expected {expected_count}",
             [TestResultValue(name=COLUMN_COUNT, value=str(count))],
         )

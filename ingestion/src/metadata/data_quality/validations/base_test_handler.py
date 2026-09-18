@@ -388,6 +388,16 @@ class BaseTestValidator(ABC):
         # parameter set and tolerates no deviation.
         threshold = raw_threshold if isinstance(raw_threshold, float) else 0.0
 
+        if not thresholds.is_usable(threshold):
+            logger.warning(
+                "Out of range %s '%s' for %s. A threshold is a tolerance, so it has to be a finite, "
+                "non-negative number. Tolerating no deviation.",
+                THRESHOLD_PARAM,
+                threshold,
+                self.test_case.fullyQualifiedName,
+            )
+            return FailureThreshold()
+
         raw_unit = self.get_test_case_param_value(
             param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
         )

@@ -61,6 +61,19 @@ class FailureThreshold(BaseModel):
     unit: ThresholdUnit = ThresholdUnit.ABSOLUTE
 
 
+def is_usable(threshold: float) -> bool:
+    """Whether `threshold` is a deviation that can actually be tolerated
+
+    A threshold is what a test case accepts *before* it is reported as failed, so it has to be a
+    finite, non-negative number. The three values that are not fail the test case in ways the user
+    never asked for: a negative threshold narrows the bounds instead of widening them and fails a
+    test case that has no violation at all, NaN makes every comparison false, and infinity makes
+    every test case pass unconditionally. A caller reading a rejected threshold tolerates no
+    deviation instead, which is the verdict the test case had before thresholds were introduced.
+    """
+    return math.isfinite(threshold) and threshold >= 0
+
+
 def _is_finite(value: float | None) -> TypeGuard[float]:
     """Whether a tolerance can be computed against `value`
 

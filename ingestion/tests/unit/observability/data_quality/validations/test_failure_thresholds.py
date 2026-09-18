@@ -28,6 +28,7 @@ from metadata.data_quality.validations.thresholds import (
     ThresholdUnit,
     _warn_zero_reference,
     apply_bound_tolerance,
+    is_usable,
     within_deviation,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
@@ -113,6 +114,22 @@ def test_within_deviation(observed, expected_value, threshold, unit, expected):
     assert within_deviation(observed, expected_value, threshold, unit) is expected
 
 
+@pytest.mark.parametrize(
+    "threshold,expected",
+    [
+        (0, True),
+        (5, True),
+        (150, True),  # a percentage above 100 is a tolerance, validation happens upstream
+        (-0.1, False),  # narrows the bounds instead of widening them
+        (float("nan"), False),  # never compares, so every test case fails
+        (INF, False),  # every test case passes unconditionally
+        (-INF, False),
+    ],
+)
+def test_is_usable(threshold, expected):
+    assert is_usable(threshold) is expected
+
+
 def test_percentage_of_a_zero_bound_is_surfaced(caplog):
     """A zero bound silently reverts to strict: warn rather than substitute a floor."""
     # The warning is emitted once per message, so drop what the other cases already logged
@@ -160,6 +177,26 @@ def _validator(failure_threshold=0, threshold_unit=ABSOLUTE) -> _MockValidator:
         TestCaseParameterValue(name="maxValue", value="20"),
     ] + _threshold_params(failure_threshold, threshold_unit)
     return _MockValidator(MagicMock(), _test_case(parameter_values), int(datetime.now().timestamp()))
+
+
+@pytest.mark.parametrize("raw_threshold", ["-5", "nan", "inf", "-inf"])
+def test_a_threshold_that_is_not_a_tolerance_is_rejected(raw_threshold, caplog):
+    """A negative threshold narrows, NaN never compares and infinity always passes."""
+    parameter_values = [
+        TestCaseParameterValue(name="minValue", value="10"),
+        TestCaseParameterValue(name="maxValue", value="20"),
+        TestCaseParameterValue(name="threshold", value=raw_threshold),
+    ]
+    validator = _MockValidator(MagicMock(), _test_case(parameter_values), int(datetime.now().timestamp()))
+
+    with caplog.at_level(logging.WARNING, logger="TestSuite"):
+        threshold = validator.get_failure_threshold()
+
+    assert (threshold.value, threshold.unit) == (0.0, ABSOLUTE)
+    assert "has to be a finite, non-negative number" in caplog.text
+    # ... and the rejected threshold leaves every verdict the one it was before thresholds
+    assert validator.get_bounds("minValue", "maxValue") == (10, 20)
+    assert validator.matches_expected(101, 100) is False
 
 
 def test_get_bounds_without_threshold_is_a_no_op():

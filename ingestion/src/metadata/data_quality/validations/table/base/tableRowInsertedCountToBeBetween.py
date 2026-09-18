@@ -87,7 +87,9 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
             int,
             float("inf"),
         )
-        min_bound, max_bound = self.apply_bound_tolerance(min_bound, max_bound)
+        # Both bounds default to an infinity, so neither is ever None despite what the
+        # loosely typed parameter reader declares.
+        min_bound, max_bound = self.apply_bound_tolerance(cast("float", min_bound), cast("float", max_bound))
 
         return self.get_test_case_result_object(
             self.execution_date,
