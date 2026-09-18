@@ -15,19 +15,19 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
+import { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
   type FC,
-  type HTMLAttributes,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -42,24 +42,9 @@ import { TreeSelect } from '../tree-select/tree-select';
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that
 // augment ReactNode globally (e.g. react-i18next).
-export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
-  <SearchLg aria-hidden="true" {...props} />
-);
-
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
-
-export const TriggerCountBadge = ({ count }: { count: number }) => (
-  <Typography
-    inline
-    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
-    data-testid="filter-count-badge"
-    size="text-xs"
-    weight="medium">
-    {count}
-  </Typography>
-);
 
 export const TriggerButton = ({
   hasSelection,
@@ -862,4 +847,5 @@ const _FilterSelect = FilterSelect as typeof FilterSelect & {
 };
 _FilterSelect.Tree = TreeSelect;
 
+export { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 export { _FilterSelect as FilterSelect };
