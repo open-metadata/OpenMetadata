@@ -117,6 +117,8 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      bundle_build_result: ${{ steps.bundle_build.outcome }}
+      bundle_build_changed_files: ${{ steps.bundle_build.outputs.changed_files }}
       bundle_budget_result: ${{ steps.bundle_budget.outcome }}
       bundle_budget_changed_files: ${{ steps.bundle_budget.outputs.changed_files }}
       eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
@@ -509,22 +511,33 @@ jobs:
       # The budget used to be chained onto `yarn build`, so a breach failed
       # every workflow that builds the UI — visual regression, the RDF e2e
       # suite, the maven builds — each reporting it under its own build step's
-      # name rather than anything mentioning bundles. It runs here instead, as
-      # one named check. `vite build` is ~15s since #32384 moved to Rolldown,
-      # so owning the build here is cheap.
-      - name: Bundle Budget (entry chunk size)
-        id: bundle_budget
+      # name rather than anything mentioning bundles. It runs here instead.
+      #
+      # Build and measurement are separate steps on purpose: the point of this
+      # change is that a check says what actually went wrong, so a compile
+      # error must not report as a budget breach. `vite build` is ~14s since
+      # #32384 moved to Rolldown, so owning the build here is cheap.
+      - name: UI Build (for the bundle budget)
+        id: bundle_build
         if: steps.changed-src-files.outputs.any_changed == 'true'
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
-          yarn build > /tmp/bundle-build.out 2>&1 || {
-            tail -30 /tmp/bundle-build.out
+          if ! yarn build > /tmp/bundle-build.out 2>&1; then
+            tail -40 /tmp/bundle-build.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-build.out | grep -iE 'error' | head -10 | sed 's/^/  /')
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "  The UI build failed, so the bundle could not be measured." >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
             exit 1
-          }
+          fi
+
+      - name: Bundle Budget (entry chunk size)
+        id: bundle_budget
+        if: steps.bundle_build.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
           if ! yarn bundle:check > /tmp/bundle-check.out 2>&1; then
             cat /tmp/bundle-check.out
             OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-check.out | grep -E 'Bundle budget' | head -5 | sed 's/^/  /')
@@ -622,6 +635,12 @@ jobs:
                 reason:  'Hardcoded Tailwind values found. Use a design-system utility (run `yarn tw-audit:report` for the token each value maps to).',
                 result:  '${{ needs.checkstyle.outputs.tw_audit_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.tw_audit_changed_files) }} || '',
+              },
+              {
+                name:    'UI Build',
+                reason:  'The UI failed to compile, so the bundle could not be measured.',
+                result:  '${{ needs.checkstyle.outputs.bundle_build_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.bundle_build_changed_files) }} || '',
               },
               {
                 name:    'Bundle Budget',
@@ -751,6 +770,7 @@ jobs:
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.bundle_build_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ]; then
             echo "One or more checks failed."
             exit 1
