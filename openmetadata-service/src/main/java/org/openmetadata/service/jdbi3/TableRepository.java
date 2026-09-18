@@ -167,14 +167,20 @@ public class TableRepository extends EntityRepository<Table> {
       Set.of("description", "owners", "columns.description");
 
   public TableRepository() {
+    this(RepositoryDependencies.legacy());
+    Entity.registerEntity(Table.class, TABLE, this);
+  }
+
+  public TableRepository(RepositoryDependencies dependencies) {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        Entity.getCollectionDAO().tableDAO(),
+        dependencies.daoCollection().tableDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS,
-        CHANGE_SUMMARY_FIELDS);
+        CHANGE_SUMMARY_FIELDS,
+        dependencies);
     supportsSearch = true;
     // A recursive hard-delete of an ancestor (database service / database / schema) removes table
     // docs from search (deleteOrUpdateChildren by service.id / database.id / databaseSchema.id) and

@@ -51,15 +51,22 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   protected ChartRepository(boolean registerEntity) {
+    this(RepositoryDependencies.legacy());
+    if (registerEntity) {
+      Entity.registerEntity(Chart.class, Entity.CHART, this);
+    }
+  }
+
+  public ChartRepository(RepositoryDependencies dependencies) {
     super(
         ChartResource.COLLECTION_PATH,
         Entity.CHART,
         Chart.class,
-        Entity.getCollectionDAO().chartDAO(),
+        dependencies.daoCollection().chartDAO(),
         CHART_PATCH_FIELDS,
         CHART_UPDATE_FIELDS,
         Set.of(),
-        registerEntity);
+        dependencies);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by

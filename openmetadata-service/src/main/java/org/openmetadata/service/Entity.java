@@ -67,6 +67,7 @@ import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.RepositoryDependencies;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
@@ -399,28 +400,54 @@ public final class Entity {
       tokenRepository = new TokenRepository();
       policyRepository = new PolicyRepository();
       roleRepository = new RoleRepository();
+      final var dependencies =
+          new RepositoryDependencies(
+              collectionDAO, jobDAO, searchRepository, entityRelationshipRepository);
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
         }
         try {
-          clz.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-          try {
-            clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
-          } catch (Exception ex) {
-            try {
-              clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
-            } catch (Exception exception) {
-              LOG.warn("Exception encountered", exception);
-            }
+          final Object repository = constructRepository(clz, dependencies, config, jdbi);
+          if (repository instanceof EntityRepository<?> entityRepository) {
+            registerConstructedRepository(entityRepository);
           }
+        } catch (ReflectiveOperationException e) {
+          LOG.warn("Failed to construct repository {}", clz.getName(), e);
         }
       }
       registerDomainSyncHandler();
       validateIndexMappingsAgainstCapabilities();
       initializedRepositories = true;
+    }
+  }
+
+  static Object constructRepository(
+      Class<?> type,
+      RepositoryDependencies dependencies,
+      OpenMetadataApplicationConfig config,
+      Jdbi jdbi)
+      throws ReflectiveOperationException {
+    final Class<?>[][] signatures = {
+      {RepositoryDependencies.class}, {}, {OpenMetadataApplicationConfig.class}, {Jdbi.class}
+    };
+    final Object[][] arguments = {{dependencies}, {}, {config}, {jdbi}};
+    final var constructors = type.getDeclaredConstructors();
+    for (int index = 0; index < signatures.length; index++) {
+      for (var constructor : constructors) {
+        if (Arrays.equals(constructor.getParameterTypes(), signatures[index])) {
+          return constructor.newInstance(arguments[index]);
+        }
+      }
+    }
+    throw new NoSuchMethodException("No supported repository constructor: " + type.getName());
+  }
+
+  private static <T extends EntityInterface> void registerConstructedRepository(
+      EntityRepository<T> repository) {
+    if (ENTITY_REPOSITORY_MAP.get(repository.getEntityType()) != repository) {
+      registerEntity(repository.getEntityClass(), repository.getEntityType(), repository);
     }
   }
 

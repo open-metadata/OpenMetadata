@@ -183,17 +183,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected GlossaryTermRepository(boolean registerEntity) {
+    this(RepositoryDependencies.legacy());
+    if (registerEntity) {
+      Entity.registerEntity(GlossaryTerm.class, GLOSSARY_TERM, this);
+    }
+  }
+
+  public GlossaryTermRepository(RepositoryDependencies dependencies) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
-        Entity.getCollectionDAO().glossaryTermDAO(),
+        dependencies.daoCollection().glossaryTermDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS,
         Set.of(),
-        registerEntity);
-    relationshipTypeResolver =
-        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+        dependencies);
+    relationshipTypeResolver = new RelationshipTypeResolver(daoCollection.relationshipTypeDAO());
     supportsSearch = true;
     renameAllowed = true;
     // One fetcher, two fields: fetchAndSetParentOrGlossary populates BOTH parent and glossary, and
