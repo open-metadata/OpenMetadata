@@ -4985,59 +4985,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     cleanup(entityInterface.getUpdatedBy(), entityInterface);
   }
 
+  /**
+   * Delete every trace of {@code entityInterface} in one transaction, wrapped in deadlock retry.
+   *
+   * <p>Routed through {@link #flushInOneTransaction} rather than a bare {@code inTransaction} for
+   * two reasons. A hard delete rewrites the hottest rows in the schema (entity_relationship,
+   * tag_usage) and loses deadlock races against concurrent writers; with no retry the rollback
+   * surfaced as a raw 500, because {@link org.openmetadata.service.exception
+   * .CatalogGenericExceptionMapper} maps {@code UnableToExecuteStatementException} to 409 only for
+   * an integrity-constraint cause, so SQLState 40001 fell through to the generic handler. And the
+   * deferral scope opened there is what lets the search/RDF/lineage/post-commit side effects issued
+   * by {@link #entitySpecificCleanup} and by the nested cascade deletes be captured rather than run
+   * inline: inline they would hold a pooled DB connection for a network round trip, and a replay
+   * would re-issue them.
+   */
   protected final void cleanup(String deletedBy, T entityInterface) {
-    Entity.getJdbi()
-        .inTransaction(
-            handle -> {
-              // Perform Entity Specific Cleanup
-              entitySpecificCleanup(deletedBy, entityInterface);
-
-              UUID id = entityInterface.getId();
-
-              // Must run before the relationship delete below: the Task 2.0 artifacts
-              // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
-              // which deleteAll() removes, so collecting them afterwards would orphan them.
-              deleteFeedArtifactsAbout(id);
-
-              // Delete all the relationships to other entities
-              daoCollection.relationshipDAO().deleteAll(id, entityType);
-
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-              }
-
-              // Delete all the extensions of entity
-              daoCollection.entityExtensionDAO().deleteAll(id);
-
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-              }
-              // Delete all the usage data
-              daoCollection.usageDAO().delete(id);
-
-              // Delete the extension data storing custom properties
-              removeExtension(entityInterface);
-
-              Entity.getConversationRepository()
-                  .deleteByEntity(entityType, List.of(entityInterface.getId()));
-
-              // Drop cached state before the DB row goes away. A concurrent read arriving
-              // between this invalidate and the dao.delete below would still observe the
-              // entity in the DB; the post-commit invalidate below closes that window.
-              invalidate(entityInterface);
-
-              // Finally, delete the entity
-              dao.delete(id);
-
-              return null;
-            });
+    flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
     // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
     // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
     // workflow queries out of the entity transaction's lock-hold time.
@@ -5048,6 +5011,52 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
     markEntityNotFound(entityInterface);
+  }
+
+  private void cleanupFlushBody(String deletedBy, T entityInterface) {
+    // Perform Entity Specific Cleanup
+    entitySpecificCleanup(deletedBy, entityInterface);
+
+    UUID id = entityInterface.getId();
+
+    // Must run before the relationship delete below: the Task 2.0 artifacts
+    // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
+    // which deleteAll() removes, so collecting them afterwards would orphan them.
+    deleteFeedArtifactsAbout(id);
+
+    // Delete all the relationships to other entities
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
+
+    if (shouldCleanupFqnDependents()) {
+      daoCollection
+          .fieldRelationshipDAO()
+          .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+    }
+
+    // Delete all the extensions of entity
+    daoCollection.entityExtensionDAO().deleteAll(id);
+
+    if (shouldCleanupFqnDependents()) {
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+      daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+    }
+    // Delete all the usage data
+    daoCollection.usageDAO().delete(id);
+
+    // Delete the extension data storing custom properties
+    removeExtension(entityInterface);
+
+    Entity.getConversationRepository().deleteByEntity(entityType, List.of(entityInterface.getId()));
+
+    // Drop cached state before the DB row goes away. A concurrent read arriving
+    // between this invalidate and the dao.delete below would still observe the
+    // entity in the DB; the post-commit invalidate below closes that window.
+    invalidate(entityInterface);
+
+    // Finally, delete the entity
+    dao.delete(id);
   }
 
   private void markEntityNotFound(T entity) {
@@ -5158,14 +5167,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * cache write-through likewise happens post-commit on the request thread (read-your-write safe).
    */
   private void runInTransactionWithRetry(Runnable flushBody) {
-    DeadlockRetry.execute(
-        () ->
-            Entity.getJdbi()
-                .inTransaction(
-                    handle -> {
-                      flushBody.run();
-                      return null;
-                    }));
+    boolean ownsRetry = enterRetryableBoundary();
+    try {
+      if (!ownsRetry) {
+        flushBody.run();
+        return;
+      }
+      DeadlockRetry.execute(
+          () ->
+              Entity.getJdbi()
+                  .inTransaction(
+                      handle -> {
+                        flushBody.run();
+                        return null;
+                      }));
+    } finally {
+      exitRetryableBoundary(ownsRetry);
+    }
+  }
+
+  /**
+   * True while a retryable transaction boundary is already open on this thread.
+   *
+   * <p>JDBI joins a nested {@code inTransaction} to the handle already bound to the thread instead
+   * of opening a savepoint, so the inner and outer boundaries are one database transaction. A
+   * deadlock rolls that whole transaction back, which makes a nested {@link DeadlockRetry} actively
+   * harmful: it would replay only the inner body against a transaction the database has already
+   * discarded, committing a fragment of the unit of work while the outer writes stay lost. Only the
+   * outermost boundary retries, and it replays everything. Nesting is reachable — a hard delete runs
+   * {@link #entitySpecificCleanup} inside its own boundary, and those hooks cascade into full entity
+   * deletes of their own (ingestion pipelines for an app, residual test cases for a table).
+   */
+  private static final ThreadLocal<Boolean> RETRYABLE_BOUNDARY_OPEN =
+      ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+  /** {@code true} when this call opened the outermost boundary and therefore owns the retry. */
+  static boolean enterRetryableBoundary() {
+    if (Boolean.TRUE.equals(RETRYABLE_BOUNDARY_OPEN.get())) {
+      return false;
+    }
+    RETRYABLE_BOUNDARY_OPEN.set(Boolean.TRUE);
+    return true;
+  }
+
+  static void exitRetryableBoundary(boolean ownsRetry) {
+    if (ownsRetry) {
+      RETRYABLE_BOUNDARY_OPEN.remove();
+    }
   }
 
   protected T createNewEntity(T entity) {
@@ -5239,23 +5287,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final <R> R executeInTransaction(final Supplier<R> work) {
     final DeferralScope scope = new DeferralScope();
     boolean committed = false;
+    final boolean ownsRetry = enterRetryableBoundary();
     try {
       final R result =
-          DeadlockRetry.execute(
-              () ->
-                  daoCollection.inTransaction(
-                      ignored -> {
-                        scope.reopenForAttempt();
-                        return work.get();
-                      }));
+          ownsRetry ? retryingInTransaction(scope, work) : joinOpenTransaction(scope, work);
       committed = true;
       return result;
     } finally {
+      exitRetryableBoundary(ownsRetry);
       scope.finish(committed);
       if (!committed) {
         storedEntityJson.remove();
       }
     }
+  }
+
+  private <R> R retryingInTransaction(final DeferralScope scope, final Supplier<R> work) {
+    return DeadlockRetry.execute(
+        () ->
+            daoCollection.inTransaction(
+                ignored -> {
+                  scope.reopenForAttempt();
+                  return work.get();
+                }));
+  }
+
+  /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */
+  private <R> R joinOpenTransaction(final DeferralScope scope, final Supplier<R> work) {
+    return daoCollection.inTransaction(
+        ignored -> {
+          scope.reopenForAttempt();
+          return work.get();
+        });
   }
 
   /**
@@ -7128,18 +7191,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void bulkDeleteReferencesAndRows(List<T> entities) {
-    var jdbi = Entity.getJdbi();
-    if (jdbi == null) {
+    if (Entity.getJdbi() == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
       cancelWorkflowInstances(entityIds(entities));
       return;
     }
-    jdbi.inTransaction(
-        handle -> {
+    // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
+    // the same hot relationship rows and the per-entity hooks it runs defer search writes.
+    flushInOneTransaction(
+        () -> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
-          return null;
         });
     // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
     cancelWorkflowInstances(entityIds(entities));
