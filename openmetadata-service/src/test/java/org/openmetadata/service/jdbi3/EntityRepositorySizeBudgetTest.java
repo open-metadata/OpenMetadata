@@ -21,6 +21,14 @@ class EntityRepositorySizeBudgetTest {
   private static final int PROTECTED_HOOK_BUDGET = 141;
   private static final int IMPORT_METHOD_BUDGET = 13;
 
+  /**
+   * Lines move by a few on edits that are not extractions — a reformat, an added import — so the
+   * lower bound on the line budget carries slack. Hooks and {@code *ForImport} methods are sets of
+   * distinct names: they change only when a method is genuinely added or removed, so their lower
+   * bound is exact.
+   */
+  private static final int LINE_SLACK = 50;
+
   @Test
   void repositoryAndExtensionSurfaceOnlyShrink() throws IOException {
     final Path source = sourcePath();
@@ -28,11 +36,46 @@ class EntityRepositorySizeBudgetTest {
     final var imports = new HashSet<String>();
     collectMethods(source, hooks, imports);
     assertAll(
-        () -> assertTrue(Files.readAllLines(source).size() <= LINE_BUDGET, "Line budget exceeded"),
-        () -> assertTrue(hooks.size() <= PROTECTED_HOOK_BUDGET, "Protected hooks: " + hooks.size()),
+        () -> assertRatchet("Lines", Files.readAllLines(source).size(), LINE_BUDGET, LINE_SLACK),
+        () -> assertRatchet("Protected hooks", hooks.size(), PROTECTED_HOOK_BUDGET, 0),
+        () -> assertRatchet("*ForImport methods", imports.size(), IMPORT_METHOD_BUDGET, 0));
+  }
+
+  /**
+   * A ratchet, not a ceiling. The upper bound stops the class growing; the lower bound is what makes
+   * it a ratchet — shrink the class and you must lower the constant in the same diff, so the
+   * headroom you created cannot be spent silently by the next PR.
+   *
+   * <p>The lower bound matters most for the hook count. #28778 "shrank" this class by moving code
+   * into collaborators that kept a back-reference to it, which reduces lines while leaving the
+   * coupling surface exactly where it was. A hook budget that is only ever an upper bound records
+   * that as progress; one that must be lowered to match forces the question of whether the surface
+   * actually shrank.
+   */
+  private static void assertRatchet(
+      final String label, final int actual, final int budget, final int slack) {
+    assertTrue(
+        actual <= budget,
         () ->
-            assertTrue(
-                imports.size() <= IMPORT_METHOD_BUDGET, "Import methods: " + imports.size()));
+            label
+                + " grew to "
+                + actual
+                + ", above the budget of "
+                + budget
+                + ". EntityRepository only shrinks: extract the addition rather than raising the"
+                + " budget to fit it.");
+    assertTrue(
+        actual >= budget - slack,
+        () ->
+            label
+                + " fell to "
+                + actual
+                + ", below the budget of "
+                + budget
+                + (slack > 0 ? " (slack " + slack + ")" : "")
+                + ". Lower the constant to "
+                + actual
+                + " in this same diff so the ratchet keeps its grip.");
   }
 
   private static Path sourcePath() {
