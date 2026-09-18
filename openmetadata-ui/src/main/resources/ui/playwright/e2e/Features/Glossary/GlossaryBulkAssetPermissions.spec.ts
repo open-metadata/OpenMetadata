@@ -34,6 +34,10 @@ test.describe(
   'Glossary Term Bulk Asset Permissions',
   { tag: `${DOMAIN_TAGS.GOVERNANCE}:Glossary` },
   () => {
+    // Serial so all tests share one beforeAll/worker and run in declaration order:
+    // the deny tests must run before the untouched-state check for that check to be meaningful.
+    test.describe.configure({ mode: 'serial' });
+
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
     const table = new TableClass();
