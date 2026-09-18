@@ -13,8 +13,10 @@
 Test Glue using the topology
 """
 
+import base64
 import json
 import logging
+import textwrap
 from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
@@ -48,6 +50,7 @@ from metadata.ingestion.source.database.glue.models import (
     TablePage,
     TableParameters,
 )
+from metadata.ingestion.source.database.glue.utils import get_schema_definition
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
 with open(mock_file_path) as file:  # noqa: PTH123
@@ -426,6 +429,26 @@ class GlueUnitTest(TestCase):
         )
 
 
+@pytest.fixture
+def glue_source():
+    with patch.object(GlueSource, "test_connection", return_value=False):
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+        source = GlueSource.create(
+            mock_glue_config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    # The topology context is process wide, so a leftover Glue table_data here would be
+    # picked up by the next connector's tests. Restore whatever was there afterwards.
+    context = source.context.get().__dict__
+    original_context = context.copy()
+    context["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    context["database"] = MOCK_DATABASE.name.root
+    context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    yield source
+    context.clear()
+    context.update(original_context)
+
+
 class TestGlueColumnDeduplication:
     """Glue may return a partition key in StorageDescriptor.Columns as well as in PartitionKeys.
 
@@ -434,23 +457,8 @@ class TestGlueColumnDeduplication:
     """
 
     @pytest.fixture
-    def source(self):
-        with patch.object(GlueSource, "test_connection", return_value=False):
-            workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
-            glue_source = GlueSource.create(
-                mock_glue_config["source"],
-                workflow_config.workflowConfig.openMetadataServerConfig,
-            )
-        # The topology context is process wide, so a leftover Glue table_data here would be
-        # picked up by the next connector's tests. Restore whatever was there afterwards.
-        context = glue_source.context.get().__dict__
-        original_context = context.copy()
-        context["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        context["database"] = MOCK_DATABASE.name.root
-        context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-        yield glue_source
-        context.clear()
-        context.update(original_context)
+    def source(self, glue_source):
+        return glue_source
 
     @staticmethod
     def _glue_table(columns, partition_keys, is_iceberg=False) -> GlueTable:
@@ -535,3 +543,275 @@ class TestGlueColumnDeduplication:
             assert self._column_names(source, table) == ["event_id", "load_date"]
 
         assert caplog.records == []
+
+
+class TestGlueViewModel:
+    """The view text has to survive parsing before anything downstream can use it.
+
+    GlueTable leaves pydantic's extra="ignore" default in place, so a field the model does not
+    declare is dropped without a word when boto3's response is fed in.
+    """
+
+    def test_view_text_survives_model_parsing(self):
+        page = TablePage(
+            TableList=[
+                {
+                    "Name": "hive_view",
+                    "TableType": "VIRTUAL_VIEW",
+                    "ViewOriginalText": "SELECT id FROM events",
+                    "ViewExpandedText": "SELECT `events`.`id` FROM `default`.`events`",
+                }
+            ]
+        )
+
+        table = page.TableList[0]
+        assert table.ViewOriginalText == "SELECT id FROM events"
+        assert table.ViewExpandedText == "SELECT `events`.`id` FROM `default`.`events`"
+
+
+def _blob(sql: str, **extra) -> str:
+    """The base64 document a Presto/Trino view carries, built the way Athena builds it."""
+    return base64.b64encode(json.dumps({"originalSql": sql, **extra}).encode()).decode()
+
+
+def _view(original=None, expanded=None, name="sample_view") -> GlueTable:
+    return GlueTable(
+        Name=name,
+        TableType="VIRTUAL_VIEW",
+        ViewOriginalText=original,
+        ViewExpandedText=expanded,
+    )
+
+
+class TestGlueSchemaDefinition:
+    """Glue stores a Hive view as plain SQL and a Presto/Trino view as a comment wrapping a
+    base64 document, and hands back only the raw text either way, so the source has to work
+    out which one it is holding."""
+
+    @pytest.mark.parametrize(
+        "table,expected",
+        [
+            (
+                _view(original=f"/* Presto View: {_blob('SELECT id FROM events')} */"),
+                "CREATE VIEW default.sample_view AS SELECT id FROM events",
+            ),
+            (
+                _view(original=f"/* Trino View: {_blob('SELECT 1')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original=f"/* Presto Materialized View: {_blob('SELECT 2')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 2",
+            ),
+            (
+                _view(original=f"/* Presto View: {_blob('SELECT 3').rstrip('=')} */"),
+                "CREATE VIEW default.sample_view AS SELECT 3",
+            ),
+            (
+                _view(original="/* Presto View: " + "\n".join(textwrap.wrap(_blob("SELECT 4"), 8)) + " */"),
+                "CREATE VIEW default.sample_view AS SELECT 4",
+            ),
+            (
+                _view(original="SELECT id FROM events"),
+                "CREATE VIEW default.sample_view AS SELECT id FROM events",
+            ),
+            (
+                _view(original="CREATE VIEW default.sample_view AS SELECT 1"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original="CREATE OR REPLACE VIEW default.sample_view AS SELECT 1"),
+                "CREATE OR REPLACE VIEW default.sample_view AS SELECT 1",
+            ),
+            (
+                _view(original="", expanded="SELECT `events`.`id` FROM `default`.`events`"),
+                "CREATE VIEW default.sample_view AS SELECT `events`.`id` FROM `default`.`events`",
+            ),
+            (
+                _view(original="   \n\t ", expanded="SELECT 1"),
+                "CREATE VIEW default.sample_view AS SELECT 1",
+            ),
+            (_view(original=None, expanded="/* Presto View */"), None),
+            (_view(), None),
+        ],
+        ids=[
+            "presto_blob",
+            "trino_blob",
+            "presto_materialized_blob",
+            "blob_padding_stripped",
+            "blob_wrapped_lines",
+            "hive_plain_select_wrapped",
+            "already_create_view",
+            "create_or_replace_view",
+            "original_empty_uses_expanded",
+            "original_whitespace_uses_expanded",
+            "expanded_marker_only_is_not_a_definition",
+            "both_absent",
+        ],
+    )
+    def test_schema_definition(self, table, expected):
+        assert get_schema_definition(table, "default") == expected
+
+    def test_hyphenated_names_are_quoted(self):
+        """Glue allows a hyphen in a database name, and an unquoted one is not parseable SQL."""
+        table = _view(original="SELECT 1", name="my-view")
+
+        assert get_schema_definition(table, "zipcode-db") == 'CREATE VIEW "zipcode-db"."my-view" AS SELECT 1'
+
+    def test_quote_in_a_name_is_doubled(self):
+        table = _view(original="SELECT 1", name='odd"name')
+
+        assert get_schema_definition(table, "default") == 'CREATE VIEW default."odd""name" AS SELECT 1'
+
+
+class TestGlueSchemaDefinitionWarnings:
+    """Text Glue simply does not hold needs no operator action, so only a payload we were
+    handed and could not read is worth a warning."""
+
+    @pytest.mark.parametrize(
+        "original",
+        [
+            "/* Presto View: bm90IGpzb24= */",
+            "/* Presto View: " + base64.b64encode(json.dumps({"foo": "bar"}).encode()).decode() + " */",
+            "/* Presto View: " + base64.b64encode(b"\xff\xfe").decode() + " */",
+            "/* Presto View: not!valid!base64 */",
+        ],
+        ids=["not_json", "no_original_sql", "not_utf8", "not_base64"],
+    )
+    def test_unreadable_payload_warns(self, original, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert get_schema_definition(_view(original=original), "default") is None
+
+        assert len(caplog.records) == 1
+
+    def test_missing_definition_is_not_a_warning(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert get_schema_definition(_view(expanded="/* Presto View */"), "default") is None
+
+        assert caplog.records == []
+
+
+class TestGlueViewRequest:
+    """The definition has to reach CreateTableRequest, and only for views."""
+
+    @staticmethod
+    def _request(source, table, table_type):
+        source.context.get().__dict__["table_data"] = table
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return next(source.yield_table((table.Name, table_type))).right
+
+    def test_view_request_carries_the_schema_definition(self, glue_source):
+        table = _view(original=f"/* Presto View: {_blob('SELECT id FROM events')} */", name="presto_view")
+
+        request = self._request(glue_source, table, TableType.View)
+
+        assert request.tableType is TableType.View
+        assert request.schemaDefinition.root == "CREATE VIEW default.presto_view AS SELECT id FROM events"
+
+    def test_view_without_a_definition_is_still_ingested(self, glue_source):
+        request = self._request(glue_source, _view(expanded="/* Presto View */"), TableType.View)
+
+        assert request is not None
+        assert request.schemaDefinition is None
+        assert glue_source.status.failures == []
+
+    def test_view_with_a_null_storage_descriptor_is_still_ingested(self, glue_source):
+        table = _view(original="SELECT 1")
+        table.StorageDescriptor = None
+
+        request = self._request(glue_source, table, TableType.View)
+
+        assert request.schemaDefinition.root == "CREATE VIEW default.sample_view AS SELECT 1"
+        assert request.locationPath is None
+
+    @pytest.mark.parametrize(
+        "table_type",
+        [TableType.Regular, TableType.External, TableType.Iceberg],
+        ids=["regular", "external", "iceberg"],
+    )
+    def test_non_view_tables_get_no_schema_definition(self, glue_source, table_type):
+        """View text on a table Glue did not type as a view must not change what we send."""
+        table = _view(original="SELECT 1", name="ordinary_table")
+        table.TableType = "EXTERNAL_TABLE"
+
+        assert self._request(glue_source, table, table_type).schemaDefinition is None
+
+
+class TestGlueIcebergView:
+    """Glue types an Iceberg view as VIRTUAL_VIEW and also stamps table_type=ICEBERG on it, and
+    the Iceberg branch wins the type ladder, so keying the definition off TableType.View alone
+    would leave exactly this shape without one."""
+
+    @staticmethod
+    def _iceberg_view() -> GlueTable:
+        return GlueTable(
+            Name="iceberg_view",
+            TableType="VIRTUAL_VIEW",
+            Parameters=TableParameters(table_type="ICEBERG"),
+            ViewOriginalText="SELECT id FROM events",
+        )
+
+    def test_iceberg_view_is_typed_iceberg(self, glue_source):
+        glue_source._get_glue_tables = lambda: [TablePage(TableList=[self._iceberg_view()])]
+
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            assert list(glue_source.get_tables_name_and_type()) == [("iceberg_view", TableType.Iceberg)]
+
+    def test_iceberg_view_still_carries_its_definition(self, glue_source):
+        request = TestGlueViewRequest._request(glue_source, self._iceberg_view(), TableType.Iceberg)
+
+        assert request.tableType is TableType.Iceberg
+        assert request.schemaDefinition.root == "CREATE VIEW default.iceberg_view AS SELECT id FROM events"
+
+    def test_an_iceberg_table_is_still_left_alone(self, glue_source):
+        """The Iceberg branch is reached by ordinary tables too, which must stay unchanged."""
+        table = GlueTable(
+            Name="iceberg_table",
+            TableType="EXTERNAL_TABLE",
+            Parameters=TableParameters(table_type="ICEBERG"),
+            ViewOriginalText="SELECT 1",
+        )
+
+        request = TestGlueViewRequest._request(glue_source, table, TableType.Iceberg)
+
+        assert request.schemaDefinition is None
+
+
+class TestGlueIncludeFlags:
+    """Glue ingested every table and view whatever these flags said, unlike the generic path and
+    unlike Delta Lake, which is the other source that hand-builds its requests."""
+
+    @staticmethod
+    def _tables() -> list[GlueTable]:
+        return [
+            GlueTable(Name="ordinary_table", TableType="EXTERNAL_TABLE"),
+            GlueTable(Name="a_view", TableType="VIRTUAL_VIEW", ViewOriginalText="SELECT 1"),
+            GlueTable(
+                Name="iceberg_view",
+                TableType="VIRTUAL_VIEW",
+                Parameters=TableParameters(table_type="ICEBERG"),
+            ),
+        ]
+
+    def _names(self, source, **flags):
+        for flag, value in flags.items():
+            setattr(source.source_config, flag, value)
+        tables = self._tables()
+        source._get_glue_tables = lambda: [TablePage(TableList=tables)]
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            return [name for name, _ in source.get_tables_name_and_type()]
+
+    def test_both_flags_on_is_the_default_and_keeps_everything(self, glue_source):
+        assert self._names(glue_source) == ["ordinary_table", "a_view", "iceberg_view"]
+
+    def test_include_views_off_drops_every_view_format(self, glue_source):
+        assert self._names(glue_source, includeViews=False) == ["ordinary_table"]
+
+    def test_include_tables_off_keeps_only_views(self, glue_source):
+        assert self._names(glue_source, includeTables=False) == ["a_view", "iceberg_view"]
+
+    def test_both_off_yields_nothing(self, glue_source):
+        assert self._names(glue_source, includeTables=False, includeViews=False) == []

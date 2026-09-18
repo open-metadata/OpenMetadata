@@ -53,6 +53,8 @@ class GlueTable(BaseModel):
     Description: str | None = None
     StorageDescriptor: StorageDetails | None = StorageDetails()
     PartitionKeys: list[Column] | None = []
+    ViewOriginalText: str | None = None
+    ViewExpandedText: str | None = None
 
 
 class TablePage(BaseModel):
