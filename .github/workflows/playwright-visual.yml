@@ -41,14 +41,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether UI code was touched. `pull_request` needs no checkout —
+  # paths-filter enumerates changed files through the API — but `merge_group`
+  # has no PR context, so it needs the repo and an explicit base, and
+  # `workflow_dispatch` has no diff at all and forces the job to run. Mirrors
+  # the same job in playwright-knowledge-graph-postgresql-e2e.yml.
   check-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      ui: ${{ steps.filter.outputs.ui }}
+      ui: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.ui }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
               - 'openmetadata-ui/**'
