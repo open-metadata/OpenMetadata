@@ -1,0 +1,69 @@
+{
+  "events" : [ ],
+  "history" : [ ],
+  "stored" : [ {
+    "columns" : [ {
+      "children" : [ ],
+      "customMetrics" : [ ],
+      "dataType" : "BIGINT",
+      "dataTypeDisplay" : "bigint",
+      "fullyQualifiedName" : "service.database.schema.golden_bulk0.id",
+      "name" : "id"
+    } ],
+    "customMetrics" : [ ],
+    "database" : {
+      "deleted" : false,
+      "displayName" : "database",
+      "fullyQualifiedName" : "service.database",
+      "id" : "generated-id-1",
+      "name" : "database",
+      "type" : "database"
+    },
+    "databaseSchema" : {
+      "deleted" : false,
+      "displayName" : "schema",
+      "fullyQualifiedName" : "service.database.schema",
+      "id" : "generated-id-2",
+      "name" : "schema",
+      "type" : "databaseSchema"
+    },
+    "deleted" : false,
+    "description" : "bulk",
+    "entityStatus" : "Unprocessed",
+    "fullyQualifiedName" : "service.database.schema.golden_bulk0",
+    "id" : "entity-id",
+    "joins" : {
+      "columnJoins" : [ ],
+      "dayCount" : 30,
+      "directTableJoins" : [ ],
+      "startDate" : "<date>"
+    },
+    "name" : "golden_bulk0",
+    "processedLineage" : false,
+    "serviceType" : "Postgres",
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "usageSummary" : {
+      "dailyStats" : {
+        "count" : 0,
+        "percentileRank" : 0.0
+      },
+      "date" : "<date>",
+      "monthlyStats" : {
+        "count" : 0,
+        "percentileRank" : 0.0
+      },
+      "weeklyStats" : {
+        "count" : 0,
+        "percentileRank" : 0.0
+      }
+    },
+    "version" : 0.1,
+    "votes" : {
+      "downVoters" : [ ],
+      "downVotes" : 0,
+      "upVoters" : [ ],
+      "upVotes" : 0
+    }
+  } ]
+}

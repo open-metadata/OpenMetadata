@@ -1,0 +1,51 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"columns\":[{\"children\":[],\"dataType\":\"BIGINT\",\"dataTypeDisplay\":\"bigint\",\"fullyQualifiedName\":\"service.database.schema.golden_entity.id\",\"name\":\"id\",\"tags\":[]}],\"database\":{\"deleted\":false,\"displayName\":\"database\",\"fullyQualifiedName\":\"service.database\",\"href\":\"http://localhost:8585/api/v1/databases/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"database\",\"type\":\"database\"},\"databaseSchema\":{\"deleted\":false,\"displayName\":\"schema\",\"fullyQualifiedName\":\"service.database.schema\",\"href\":\"http://localhost:8585/api/v1/databaseSchemas/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"schema\",\"type\":\"databaseSchema\"},\"deleted\":false,\"description\":\"created\",\"domains\":[],\"entityStatus\":\"Unprocessed\",\"fullyQualifiedName\":\"service.database.schema.golden_entity\",\"href\":\"http://localhost:8585/api/v1/tables/entity-id\",\"id\":\"entity-id\",\"name\":\"golden_entity\",\"owners\":[],\"processedLineage\":false,\"service\":{\"deleted\":false,\"description\":\"Test Postgres service\",\"displayName\":\"service\",\"fullyQualifiedName\":\"service\",\"href\":\"http://localhost:8585/api/v1/services/databaseServices/generated-id-3\",\"id\":\"generated-id-3\",\"name\":\"service\",\"type\":\"databaseService\"},\"serviceType\":\"Postgres\",\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.1}",
+    "entityFullyQualifiedName" : "service.database.schema.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "table",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-4",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ ],
+  "stored" : [ {
+    "columns" : [ {
+      "children" : [ ],
+      "dataType" : "BIGINT",
+      "dataTypeDisplay" : "bigint",
+      "fullyQualifiedName" : "service.database.schema.golden_entity.id",
+      "name" : "id"
+    } ],
+    "database" : {
+      "deleted" : false,
+      "displayName" : "database",
+      "fullyQualifiedName" : "service.database",
+      "id" : "generated-id-1",
+      "name" : "database",
+      "type" : "database"
+    },
+    "databaseSchema" : {
+      "deleted" : false,
+      "displayName" : "schema",
+      "fullyQualifiedName" : "service.database.schema",
+      "id" : "generated-id-2",
+      "name" : "schema",
+      "type" : "databaseSchema"
+    },
+    "deleted" : false,
+    "description" : "created",
+    "entityStatus" : "Unprocessed",
+    "fullyQualifiedName" : "service.database.schema.golden_entity",
+    "id" : "entity-id",
+    "name" : "golden_entity",
+    "processedLineage" : false,
+    "serviceType" : "Postgres",
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1
+  } ]
+}

@@ -1,0 +1,35 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"attributes\":[],\"conceptMappings\":[],\"conceptType\":\"BOTH\",\"deleted\":false,\"description\":\"cascade child\",\"domains\":[],\"effectiveAttributes\":[],\"entityStatus\":\"Approved\",\"fullyQualifiedName\":\"glossary.golden_renamed.golden_child\",\"glossary\":{\"deleted\":false,\"description\":\"Test glossary\",\"displayName\":\"glossary\",\"fullyQualifiedName\":\"glossary\",\"href\":\"http://localhost:8585/api/v1/glossaries/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"glossary\",\"type\":\"glossary\"},\"href\":\"http://localhost:8585/api/v1/glossaryTerms/entity-id\",\"id\":\"entity-id\",\"mutuallyExclusive\":false,\"name\":\"golden_child\",\"owners\":[],\"parent\":{\"deleted\":false,\"description\":\"replayed\",\"displayName\":\"golden_renamed\",\"fullyQualifiedName\":\"glossary.golden_renamed\",\"href\":\"http://localhost:8585/api/v1/glossaryTerms/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"golden_renamed\",\"type\":\"glossaryTerm\"},\"provider\":\"user\",\"realizedIn\":[],\"references\":[],\"reviewers\":[],\"synonyms\":[],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.1}",
+    "entityFullyQualifiedName" : "glossary.golden_renamed.golden_child",
+    "entityId" : "entity-id",
+    "entityType" : "glossaryTerm",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-3",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ ],
+  "stored" : [ {
+    "attributes" : [ ],
+    "conceptMappings" : [ ],
+    "conceptType" : "BOTH",
+    "deleted" : false,
+    "description" : "cascade child",
+    "effectiveAttributes" : [ ],
+    "entityStatus" : "Approved",
+    "fullyQualifiedName" : "glossary.golden_renamed.golden_child",
+    "id" : "entity-id",
+    "mutuallyExclusive" : false,
+    "name" : "golden_child",
+    "provider" : "user",
+    "realizedIn" : [ ],
+    "references" : [ ],
+    "synonyms" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1
+  } ]
+}
