@@ -530,7 +530,7 @@
   },
   "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 2
     }
   },
   "playwright/e2e/Flow/CustomizeLandingPage.spec.ts": {

@@ -14,7 +14,7 @@
 import { Locator, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage, selectOptionWithRetry } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
@@ -52,19 +52,6 @@ const getGridColumnCount = async (locator: Locator) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean)
         .length
   );
-
-const chooseSelectOption = async (
-  page: Page,
-  select: Locator,
-  optionName: string
-) => {
-  const trigger = select.getByRole('button');
-  const option = page
-    .locator('.core-one-of-field-select-popover')
-    .getByRole('option', { name: optionName, exact: true });
-
-  await selectOptionWithRetry(trigger, option);
-};
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
   const workflowId = 'pw-snowflake-test-workflow';
@@ -197,17 +184,20 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
     await advancedSection.waitFor({ state: 'visible' });
   }
 
-  const sampleStorageSelect = page.locator(
-    '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
+  // Anchored on the advanced grid rather than on the sample-data storage selector: that
+  // widget is hidden through DEF_UI_SCHEMA now that external S3 storage is gone
+  // (collate#5995), so waiting for it to appear would never return.
+  const advancedPrimaryGrid = advancedSection.locator(
+    '.connection-advanced-primary-grid'
   );
 
-  if (!(await sampleStorageSelect.isVisible())) {
+  if (!(await advancedPrimaryGrid.isVisible())) {
     await advancedSection
       .getByRole('button', { name: /Advanced Config/i })
       .click();
   }
 
-  await sampleStorageSelect.waitFor({ state: 'visible' });
+  await advancedPrimaryGrid.waitFor({ state: 'visible' });
 };
 
 const openAddDatabaseServicePage = async (page: Page) => {
@@ -291,7 +281,7 @@ test.describe('Connection config layout', () => {
       .toBeGreaterThan(0);
   });
 
-  test('should align nested sample data storage config fields without overlap', async ({
+  test('should hide the fieldless sample data storage config and keep advanced fields aligned', async ({
     page,
   }) => {
     await openSnowflakeConnectionConfig(page);
@@ -352,9 +342,6 @@ test.describe('Connection config layout', () => {
       '[data-field-name="connectionOptions"]'
     );
     const addConnectionOption = page.getByTestId('add-item-Connection Options');
-    const sampleStorageSelect = page.locator(
-      '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
-    );
 
     expect(await getGridColumnCount(primaryGrid)).toBe(3);
     await expectNoOverlap(
@@ -362,10 +349,6 @@ test.describe('Connection config layout', () => {
       accessHistoryChunk,
       'Use Access History and chunk size fields overlap'
     );
-
-    const sampleSelectBox = await getBox(sampleStorageSelect);
-
-    expect(sampleSelectBox.width).toBeLessThanOrEqual(530);
 
     const addButtonCenter = await addConnectionOption.evaluate((button) => {
       const icon = button.querySelector('[data-icon]');
@@ -402,163 +385,19 @@ test.describe('Connection config layout', () => {
       )
     ).toBeHidden();
 
-    await chooseSelectOption(
-      page,
-      sampleStorageSelect,
-      'Sample Data Storage Config'
-    );
-
-    const samplePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config"]'
-    );
-    const sampleBody = samplePanel
-      .locator('.core-object-field-template-body-grid')
-      .first();
-    const sampleField = (name: string) =>
-      sampleBody.locator(`:scope > [data-field-name="${name}"]`);
-
-    await expect(samplePanel).toBeVisible();
-    expect(await getGridColumnCount(sampleBody)).toBe(2);
-
-    const bucket = sampleField('bucketName');
-    const prefix = sampleField('prefix');
-    const filePathPattern = sampleField('filePathPattern');
-    const overwriteData = sampleField('overwriteData');
-    const storageConfig = sampleField('storageConfig');
-
-    const bucketBox = await getBox(bucket);
-    const prefixBox = await getBox(prefix);
-    const filePathBox = await getBox(filePathPattern);
-    const overwriteBox = await getBox(overwriteData);
-
-    expect(Math.abs(bucketBox.y - prefixBox.y)).toBeLessThan(8);
-    expect(filePathBox.y).toBeGreaterThan(
-      Math.max(bucketBox.y + bucketBox.height, prefixBox.y + prefixBox.height)
-    );
-    expect(filePathBox.width).toBeGreaterThan(
-      bucketBox.width + prefixBox.width
-    );
-    expect(overwriteBox.y).toBeGreaterThan(filePathBox.y + filePathBox.height);
-
-    await expectNoOverlap(bucket, prefix, 'Bucket and prefix fields overlap');
-    await expectNoOverlap(
-      prefix,
-      filePathPattern,
-      'Prefix and file path fields overlap'
-    );
-    await expectNoOverlap(
-      filePathPattern,
-      overwriteData,
-      'File path and overwrite fields overlap'
-    );
-    await expectNoOverlap(
-      overwriteData,
-      storageConfig,
-      'Overwrite and storage config fields overlap'
-    );
-
-    await chooseSelectOption(
-      page,
+    // External S3 sample-data storage was removed (collate#5995). OpenMetadata-hosted
+    // storage has no settable fields, so the whole sampleDataStorageConfig group is
+    // hidden from every connection form (ServiceUISchema DEF_UI_SCHEMA) — no selector,
+    // no config panel, and none of the former bucket / prefix / file-path / overwrite /
+    // AWS credential fields render.
+    await expect(
       page.locator(
-        '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'
-      ),
-      'AWS S3 Storage Config'
-    );
-
-    const storagePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config/storageConfig"]'
-    );
-    const storageBody = storagePanel
-      .locator('.core-object-field-template-credential-field-grid')
-      .first();
-    const storageField = (name: string) =>
-      storagePanel.locator(`[data-field-name="${name}"]`);
-
-    await expect(storagePanel).toBeVisible();
-    await expect(
-      storagePanel.getByTestId('storage-config-title-icon')
-    ).toBeVisible();
-    expect(await getGridColumnCount(storageBody)).toBe(2);
-
-    const enabled = storageField('enabled');
-    const accessKey = storageField('awsAccessKeyId');
-    const secretKey = storageField('awsSecretAccessKey');
-    const region = storageField('awsRegion');
-    const accessKeyInput = accessKey.locator('input');
-
-    const enabledBox = await getBox(enabled);
-    const accessKeyBox = await getBox(accessKey);
-    const secretKeyBox = await getBox(secretKey);
-    const regionBox = await getBox(region);
-
-    expect(accessKeyBox.y).toBeGreaterThan(enabledBox.y + enabledBox.height);
-    expect(Math.abs(accessKeyBox.y - secretKeyBox.y)).toBeLessThan(8);
-    expect(regionBox.y).toBeGreaterThan(
-      Math.max(
-        accessKeyBox.y + accessKeyBox.height,
-        secretKeyBox.y + secretKeyBox.height
+        '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
       )
-    );
-
-    await expectNoOverlap(
-      enabled,
-      accessKey,
-      'IAM auth and access key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      secretKey,
-      'AWS access key and secret key fields overlap'
-    );
-    await expectNoOverlap(
-      accessKey,
-      region,
-      'AWS access key and region fields overlap'
-    );
-
-    await storagePanel
-      .getByRole('button', { name: /Show Advanced Config/ })
-      .click();
-
-    const sessionToken = storageField('awsSessionToken');
-    const endpoint = storageField('endPointURL');
-    const profile = storageField('profileName');
-    const currentRegionBox = await getBox(region);
-    const sessionTokenBox = await getBox(sessionToken);
-
-    expect(sessionTokenBox.y).toBeGreaterThan(
-      currentRegionBox.y + currentRegionBox.height
-    );
-    await expectNoOverlap(
-      region,
-      sessionToken,
-      'AWS region and session token fields overlap'
-    );
-    await expectNoOverlap(
-      endpoint,
-      profile,
-      'AWS endpoint and profile fields overlap'
-    );
-
-    await accessKeyInput.focus();
-
-    await enabled
-      .locator(
-        '[for="root/sampleDataStorageConfig/config/storageConfig/enabled"]'
-      )
-      .click();
-
+    ).toHaveCount(0);
     await expect(
-      enabled
-        .locator('[data-selected="true"]')
-        .locator(
-          String.raw`#root\/sampleDataStorageConfig\/config\/storageConfig\/enabled`
-        )
-    ).toBeAttached();
-    await expect(accessKeyInput).toBeDisabled();
-    await expect(secretKey.locator('input')).toBeDisabled();
-    await expect(sessionToken.locator('input')).toBeDisabled();
-    await expect(accessKey).toHaveAttribute('aria-disabled', 'true');
+      page.locator('[data-field-id$="/sampleDataStorageConfig"]')
+    ).toHaveCount(0);
   });
 
   test('should clear inactive Snowflake auth fields before test connection and unlock ingestion filters', async ({

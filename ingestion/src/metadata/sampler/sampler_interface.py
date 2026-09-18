@@ -25,7 +25,6 @@ from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.types import ClassifiableEntityType
-from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.sampler_config import SamplerConfig
 from metadata.utils.constants import (
@@ -58,7 +57,6 @@ class SamplerInterface(ABC):
         self.service_connection_config = service_connection_config
         self.sample_config = resolved_config.sample_config
         self.sample_limit = resolved_config.sample_data_count or SAMPLE_DATA_DEFAULT_COUNT
-        self.upload_sample_storage_config = resolved_config.upload_sample_storage_config
         self._columns: list[SQALikeColumn] = []
         self._row_count = None
         self._sample_config: StaticSamplingConfig | None = None
@@ -175,12 +173,6 @@ class SamplerInterface(ABC):
                     [self._truncate_cell(cell) for cell in row]
                     for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
                 ]
-                if self.upload_sample_storage_config and sample_data_config.storeSampleData:
-                    upload_sample_data(
-                        data=table_data,
-                        entity=self.entity,
-                        sample_storage_config=self.upload_sample_storage_config,
-                    )
                 return table_data
 
             return TableData(rows=[], columns=[])

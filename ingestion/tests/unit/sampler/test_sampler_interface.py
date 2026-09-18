@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -70,7 +70,6 @@ class TestGenerateSampleData:
         sampler.entity.fullyQualifiedName.root = "test_service.db.schema.table"
         sampler.columns = [MagicMock(name="col1"), MagicMock(name="col2")]
         sampler.sample_limit = 50
-        sampler.upload_sample_storage_config = None
 
         sample_table_data = TableData(
             columns=["col1", "col2"],
@@ -117,21 +116,3 @@ class TestGenerateSampleData:
 
         assert len(result.rows) == 2
         sampler.fetch_sample_data.assert_called_once()
-
-    def test_store_enabled_with_storage_config_uploads(self, sampler):
-        sampler.upload_sample_storage_config = MagicMock()
-        config = SampleDataIngestionConfig(storeSampleData=True, readSampleData=True)
-        with patch("metadata.sampler.sampler_interface.upload_sample_data") as mock_upload:
-            result = sampler.generate_sample_data(config)
-
-            mock_upload.assert_called_once()
-            assert len(result.rows) == 2
-
-    def test_store_disabled_with_storage_config_does_not_upload(self, sampler):
-        sampler.upload_sample_storage_config = MagicMock()
-        config = SampleDataIngestionConfig(storeSampleData=False, readSampleData=True)
-        with patch("metadata.sampler.sampler_interface.upload_sample_data") as mock_upload:
-            result = sampler.generate_sample_data(config)
-
-            mock_upload.assert_not_called()
-            assert len(result.rows) == 2
