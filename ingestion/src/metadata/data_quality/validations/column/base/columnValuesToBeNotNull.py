@@ -59,7 +59,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
                 Metrics.nullCount.name: null_count,
             }
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -99,7 +99,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
             Metrics.nullCount.name: Metrics.nullCount,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
@@ -107,7 +107,8 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the not null test condition
 
-        Test passes if null_count == 0 (no null values found)
+        Test passes if the null values stay within the failure threshold, counted against
+        the table row count. With the default threshold, that means null_count == 0.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -116,7 +117,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed (null_count == 0)
+                - matched: bool - whether the null values are within the threshold
                 - passed_rows: int - number of non-null values
                 - failed_rows: int - number of null values
                 - total_rows: int - total row count for reporting
@@ -124,7 +125,7 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
         null_count = metric_values[Metrics.nullCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = null_count == 0
+        matched = self._apply_row_threshold(null_count, total_rows)
         failed_count = null_count
         passed_count = total_rows - null_count if total_rows else 0
 
