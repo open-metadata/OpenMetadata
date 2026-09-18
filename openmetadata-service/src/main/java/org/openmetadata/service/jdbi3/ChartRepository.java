@@ -254,32 +254,14 @@ public class ChartRepository extends EntityRepository<Chart> {
       compareAndUpdate(
           "dashboards",
           () ->
-              update(
-                  Entity.DASHBOARD,
+              updateFromRelationships(
                   "dashboards",
+                  Entity.DASHBOARD,
+                  listOrEmpty(original.getDashboards()),
                   listOrEmpty(updated.getDashboards()),
-                  listOrEmpty(original.getDashboards())));
-    }
-
-    private void update(
-        String entityType,
-        String field,
-        List<EntityReference> updEntities,
-        List<EntityReference> oriEntities) {
-
-      // Remove all entity type associated with this dashboard
-      deleteTo(updated.getId(), Entity.CHART, Relationship.HAS, entityType);
-
-      // Add relationship from dashboard to chart type
-      for (EntityReference entity : updEntities) {
-        addRelationship(
-            entity.getId(), updated.getId(), entityType, Entity.CHART, Relationship.HAS);
-      }
-
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
-          field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
+                  Relationship.HAS,
+                  Entity.CHART,
+                  updated.getId()));
     }
   }
 
