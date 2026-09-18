@@ -65,6 +65,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.RelationCategory;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -396,6 +397,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#1570ef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -409,6 +411,7 @@ public class SettingsCache {
                   RelationCategory.EQUIVALENCE,
                   true,
                   "#b42318",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -422,6 +425,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#b54708",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -435,6 +439,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#067647",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -448,6 +453,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#4e5ba6",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -461,6 +467,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#026aa2",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -474,6 +481,7 @@ public class SettingsCache {
                   RelationCategory.HIERARCHICAL,
                   true,
                   "#155eef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -487,6 +495,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#6938ef",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -500,6 +509,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#ba24d5",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null),
               createRelationType(
@@ -513,6 +523,7 @@ public class SettingsCache {
                   RelationCategory.ASSOCIATIVE,
                   true,
                   "#c11574",
+                  RelationCardinality.MANY_TO_MANY,
                   null,
                   null));
 
@@ -578,6 +589,7 @@ public class SettingsCache {
       RelationCategory category,
       boolean isSystemDefined,
       String color,
+      RelationCardinality cardinality,
       Integer sourceMax,
       Integer targetMax) {
     return new GlossaryTermRelationType()
@@ -591,6 +603,7 @@ public class SettingsCache {
         .withCategory(category)
         .withIsSystemDefined(isSystemDefined)
         .withColor(color)
+        .withCardinality(cardinality)
         .withSourceMax(sourceMax)
         .withTargetMax(targetMax);
   }
