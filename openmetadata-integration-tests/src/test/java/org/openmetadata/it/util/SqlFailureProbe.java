@@ -3,12 +3,13 @@ package org.openmetadata.it.util;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 /**
  * Fails a real SQL operation after execution, once, without affecting background jobs.
@@ -16,16 +17,13 @@ import org.jdbi.v3.core.statement.StatementContext;
  * <p>The failure is thrown from {@code logAfterExecution}, so the statement really did run before
  * the caller sees the error — which is what makes it usable for atomicity tests: the rollback has
  * something to undo.
- *
- * <p>Scoped to the installing thread. The probe sits on the application-wide Jdbi, so without a
- * scope it would fire on whichever background job happened to run a matching statement first.
  */
 public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
   private final Jdbi jdbi;
   private final SqlLogger delegate;
   private final String fragment;
   private final Supplier<RuntimeException> failure;
-  private final BooleanSupplier inScope;
+  private final Predicate<StatementContext> inScope;
 
   /**
    * Exactly-once is a contract, not an optimisation: a probe that fires twice fails an operation the
@@ -35,16 +33,51 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
    */
   private final AtomicBoolean injected = new AtomicBoolean();
 
+  /** Fails the first matching statement issued on the calling thread. */
   public SqlFailureProbe(
       final Jdbi jdbi, final String fragment, final Supplier<RuntimeException> failure) {
     this(jdbi, fragment, failure, callingThread());
+  }
+
+  /**
+   * Fails the first matching statement issued while serving an HTTP request, for tests that drive
+   * the server over REST and so cannot use the calling thread as the scope.
+   *
+   * <p>The caller supplies {@code statement} to identify the request under test. {@link
+   * RequestLatencyContext} carries no test identity, so scoping on "some request is in flight"
+   * alone would let a concurrent request consume the injection and leave the target request
+   * succeeding — pass a predicate that inspects the statement's SQL, bindings or attributes.
+   */
+  public static SqlFailureProbe forRequests(
+      final Jdbi jdbi,
+      final String fragment,
+      final Supplier<RuntimeException> failure,
+      final Predicate<StatementContext> statement) {
+    return new SqlFailureProbe(
+        jdbi,
+        fragment,
+        failure,
+        context -> RequestLatencyContext.getContext() != null && statement.test(context));
+  }
+
+  /**
+   * Injects a deadlock (SQLSTATE 40001 / MySQL 1213) after the first matching statement, the shape
+   * {@code DeadlockRetry} is expected to replay.
+   */
+  public static SqlFailureProbe deadlockOnce(final Jdbi jdbi, final String fragment) {
+    return new SqlFailureProbe(
+        jdbi,
+        fragment,
+        () ->
+            new RuntimeException(
+                "Injected deadlock after SQL write", new SQLException("Deadlock", "40001", 1213)));
   }
 
   SqlFailureProbe(
       final Jdbi jdbi,
       final String fragment,
       final Supplier<RuntimeException> failure,
-      final BooleanSupplier inScope) {
+      final Predicate<StatementContext> inScope) {
     this.jdbi = jdbi;
     this.delegate = jdbi.getConfig(SqlStatements.class).getSqlLogger();
     this.fragment = fragment.toLowerCase(Locale.ROOT);
@@ -63,15 +96,23 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
    * #logAfterExecution} so the match, the scope and the exactly-once claim can be exercised without
    * a database.
    */
-  boolean claimInjection(final String renderedSql) {
-    return inScope.getAsBoolean()
+  boolean claimInjection(final StatementContext context, final String renderedSql) {
+    return inScope.test(context)
         && renderedSql.toLowerCase(Locale.ROOT).contains(fragment)
         && injected.compareAndSet(false, true);
   }
 
-  private static BooleanSupplier callingThread() {
+  /**
+   * The failure this probe would raise for a statement, or {@code null} when it declines to claim
+   * it. Lets a test assert on the configured failure without a database to trigger it.
+   */
+  RuntimeException failureFor(final StatementContext context, final String renderedSql) {
+    return claimInjection(context, renderedSql) ? failure.get() : null;
+  }
+
+  private static Predicate<StatementContext> callingThread() {
     final Thread owner = Thread.currentThread();
-    return () -> Thread.currentThread() == owner;
+    return ignored -> Thread.currentThread() == owner;
   }
 
   @Override
@@ -82,8 +123,9 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
   @Override
   public void logAfterExecution(final StatementContext context) {
     delegate.logAfterExecution(context);
-    if (claimInjection(context.getRenderedSql())) {
-      throw failure.get();
+    final RuntimeException injectedFailure = failureFor(context, context.getRenderedSql());
+    if (injectedFailure != null) {
+      throw injectedFailure;
     }
   }
 
