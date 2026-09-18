@@ -174,7 +174,7 @@ describe('DataQualityDashboard', () => {
 
     expect(cards[1]).toHaveClass(
       'tw:[&_.status-card-widget-container]:border-0',
-      'tw:[&_.status-card-widget-container]:bg-utility-gray-blue-50'
+      'tw:[&_.status-card-widget-container]:bg-secondary_subtle'
     );
     expect(cards[2]).not.toHaveClass(
       'tw:[&_.status-card-widget-container]:border-0',
@@ -182,7 +182,7 @@ describe('DataQualityDashboard', () => {
     );
     expect(cards[3]).toHaveClass(
       'tw:[&_.custom-chart-background]:border-0',
-      'tw:[&_.custom-chart-background]:bg-utility-gray-blue-50'
+      'tw:[&_.custom-chart-background]:bg-secondary_subtle'
     );
   });
 
