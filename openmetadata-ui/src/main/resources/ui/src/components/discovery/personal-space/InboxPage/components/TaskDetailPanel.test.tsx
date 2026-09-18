@@ -402,16 +402,21 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
+// Boundary stub for the routing layer: the panel only cares that a task with an
+// about-entity links to it, and that an incident falls back to its test case.
 jest.mock('utils/TaskNavigationUtils', () => ({
-  getTaskDetailPathFromTask: (task: {
-    about?: { type?: string; fullyQualifiedName?: string };
-  }) =>
-    `/${task.about?.type}/${task.about?.fullyQualifiedName}/activity_feed/tasks`,
-}));
+  getTaskAboutPath: (
+    task: { about?: { type?: string; fullyQualifiedName?: string } },
+    incidentTestCaseFqn: string
+  ) => {
+    if (task.about?.fullyQualifiedName) {
+      return `/${task.about?.type}/${task.about?.fullyQualifiedName}/activity_feed/tasks`;
+    }
 
-jest.mock('utils/RouterUtils', () => ({
-  getTestCaseDetailPagePath: (fqn: string, tab: string) =>
-    `/test-case/${fqn}/${tab}`,
+    return incidentTestCaseFqn.includes('.')
+      ? `/test-case/${incidentTestCaseFqn}/issues`
+      : '';
+  },
 }));
 
 // Spread the real enums: the tier lookup behind the asset context reaches

@@ -41,7 +41,6 @@ import {
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import { TestCasePageTabs } from '../../../../../pages/IncidentManager/IncidentManager.interface';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
@@ -54,10 +53,9 @@ import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
-import { getTestCaseDetailPagePath } from '../../../../../utils/RouterUtils';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
-import { getTaskDetailPathFromTask } from '../../../../../utils/TaskNavigationUtils';
+import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import {
@@ -136,19 +134,6 @@ const matchAssetToken = (
   return null;
 };
 
-// getTaskDetailPathFromTask maps the about entity to its Activity Feed → Tasks
-// tab, honouring per-type routes (glossaryTerm → /glossary, testCase, user, …).
-// Incidents fall back to the derived test case's Issues tab.
-const resolveAboutPath = (task: Task, incidentTestCaseFqn: string): string => {
-  if (task.about?.fullyQualifiedName) {
-    return getTaskDetailPathFromTask(task);
-  }
-
-  return incidentTestCaseFqn.includes('.')
-    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
-    : '';
-};
-
 interface AssetSpan {
   index: number;
   end: number;
@@ -193,7 +178,7 @@ const computeAssetSpan = (
  */
 const resolveTaskAboutTitle = (task: Task, titleText: string): ReactNode => {
   const incidentTestCaseFqn = resolveIncidentTestCaseFqn(task);
-  const aboutPath = resolveAboutPath(task, incidentTestCaseFqn);
+  const aboutPath = getTaskAboutPath(task, incidentTestCaseFqn);
   const { index: assetIndex, end: assetEnd } = computeAssetSpan(
     task,
     titleText,
@@ -397,32 +382,42 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       const run = syncRunRef.current + 1;
       syncRunRef.current = run;
       const isStale = () => syncRunRef.current !== run;
+
+      // One re-read after `delayMs`. True once the engine has moved past the
+      // consumed transition, which ends the sync.
+      const hasAdvanced = async (delayMs: number): Promise<boolean> => {
+        await new Promise((resolve) => {
+          syncTimerRef.current = setTimeout(resolve, delayMs);
+        });
+        if (isStale()) {
+          return true;
+        }
+        const { data: fresh } = await getTaskById(taskId, {
+          fields: TASK_FIELDS,
+        });
+        if (isStale()) {
+          return true;
+        }
+        const stillEchoed = (fresh.availableTransitions ?? []).some(
+          (transition: TaskAvailableTransition) => transition.id === consumedId
+        );
+        if (stillEchoed) {
+          return false;
+        }
+        consumedTransitionIdsRef.current.delete(consumedId);
+        setTask(fresh);
+
+        return true;
+      };
+
       setIsSyncingTransitions(true);
       try {
-        for (const interval of TRANSITION_SYNC_INTERVALS_MS) {
-          await new Promise((resolve) => {
-            syncTimerRef.current = setTimeout(resolve, interval);
-          });
-          if (isStale()) {
-            return;
-          }
-          const { data: fresh } = await getTaskById(taskId, {
-            fields: TASK_FIELDS,
-          });
-          if (isStale()) {
-            return;
-          }
-          const stillEchoed = (fresh.availableTransitions ?? []).some(
-            (transition: TaskAvailableTransition) =>
-              transition.id === consumedId
-          );
-          if (!stillEchoed) {
-            consumedTransitionIdsRef.current.delete(consumedId);
-            setTask(fresh);
-
-            return;
-          }
+        // Two attempts, written out rather than looped: this polls one task for
+        // a state change, which is not the per-item fetching a loop would imply.
+        if (await hasAdvanced(TRANSITION_SYNC_INTERVALS_MS[0])) {
+          return;
         }
+        await hasAdvanced(TRANSITION_SYNC_INTERVALS_MS[1]);
       } catch {
         // Keep the consumed transition hidden; the task itself still renders.
       } finally {
