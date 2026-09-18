@@ -100,7 +100,12 @@
   .CodeMirror-cursor {
     border-left-color: var(--om-color-text-primary);
   }
-  .CodeMirror-selected {
+  // Include the focused state: CodeMirror's own
+  // `.CodeMirror-focused .CodeMirror-selected` (light lavender) has equal
+  // specificity and loads with the editor CSS, so it would otherwise win during
+  // active editing.
+  .CodeMirror-selected,
+  .CodeMirror-focused .CodeMirror-selected {
     background: var(--om-color-bg-secondary-hover);
   }
   .CodeMirror-activeline-background {
