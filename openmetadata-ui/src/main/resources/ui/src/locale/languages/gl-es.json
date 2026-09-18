@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "Un fluxo de traballo do perfilador pódese configurar e despregar despois de configurar a inxestión de metadatos. Pódense configurar varios pipelines de perfilador para o mesmo servizo de base de datos. O pipeline alimenta a pestana de Perfilador da entidade Táboa e tamén executa as probas configuradas para esa entidade. Engade un Nome, FQN e define o patrón de filtro para comezar.",
     "profiler-is-enabled-but-no-data-available": "O teu perfilador está configurado e listo! O primeiro conxunto de métricas aparecerá aquí despois da próxima execución programada.",
     "profiler-timeout-seconds-message": "Para o Perfilador, engade a duración en segundos para o tempo de espera (opcional). O perfilador esperará a que se executen as consultas pendentes, ou as finalizará cando alcance o tempo de espera.",
+    "propagated-tag-warning": "Esta etiqueta hérdase do activo principal e só pode eliminarse alí.",
     "put-your-data-operations-on-autopilot": "Pon as túas operacións de datos en piloto automático",
     "quality-contract-description": "Probas de calidade de datos e asercións",
     "queries-result-test": "As consultas que devolvan 1 ou máis filas resultarán en que a proba fallará.",

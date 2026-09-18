@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "Bir profilleyici iş akışı, bir metadata alımı ayarlandıktan sonra yapılandırılabilir ve dağıtılabilir. Aynı veritabanı servisi için birden fazla profilleyici iş akışı ayarlanabilir. İş akışı, Tablo varlığının Profilleyici sekmesini besler ve ayrıca o varlık için yapılandırılmış testleri çalıştırır. Başlamak için bir Ad, FQN ekleyin ve filtre desenini tanımlayın.",
     "profiler-is-enabled-but-no-data-available": "Profilleyiciniz ayarlandı ve hazır! İlk metrik seti bir sonraki planlanmış çalışmadan sonra burada görünecektir.",
     "profiler-timeout-seconds-message": "Profilleyici için, saniye cinsinden zaman aşımı süresini ekleyin (isteğe bağlı). Profilleyici, bekleyen sorguların yürütülmesini bekleyecek veya zaman aşımına ulaştığında bunları sonlandıracaktır.",
+    "propagated-tag-warning": "Bu etiket üst varlıktan devralınır ve yalnızca orada kaldırılabilir.",
     "put-your-data-operations-on-autopilot": "Veri operasyonlarınızı otomatik pilota alın",
     "quality-contract-description": "Veri kalitesi testleri ve onaylar",
     "queries-result-test": "1 veya daha fazla satır döndüren sorgular testin başarısız olmasına neden olacaktır.",

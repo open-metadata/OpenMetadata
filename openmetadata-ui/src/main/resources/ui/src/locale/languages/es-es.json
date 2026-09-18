@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "Se puede configurar y desplegar un workflow para el perfilador después de haber configurado una ingesta de metadatos.",
     "profiler-is-enabled-but-no-data-available": "¡Tu perfilador está configurado y listo! El primer conjunto de métricas aparecerá aquí después de la próxima ejecución programada.",
     "profiler-timeout-seconds-message": "Para el perfilador, agrega la duración en segundos para el tiempo de espera (opcional).",
+    "propagated-tag-warning": "Esta etiqueta se hereda del activo principal y solo puede eliminarse allí.",
     "put-your-data-operations-on-autopilot": "Pon tus operaciones de datos en piloto automático",
     "quality-contract-description": "Pruebas de calidad de datos y aserciones",
     "queries-result-test": "Las consultas que devuelvan 1 o más filas darán como resultado un fallo en el test.",

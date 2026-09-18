@@ -344,8 +344,14 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
     const tagLabel = getEntityName(tag) || tagDisplayName || tag.tagFQN;
 
-    const isDerived =
-      (selectedTag?.data as TagLabel)?.labelType === LabelType.Derived;
+    // A propagated label is inherited from a parent, so it cannot be removed here — allowing the
+    // × would delete nothing server-side and the label would reappear on the next read.
+    const labelType = (selectedTag?.data as TagLabel).labelType;
+    const isDerived = labelType === LabelType.Derived;
+    const isSystemApplied = isDerived || labelType === LabelType.Propagated;
+    const systemTagTooltipKey = isDerived
+      ? 'message.derived-tag-warning'
+      : 'message.propagated-tag-warning';
     const isGlossaryTerm =
       (selectedTag?.data as TagLabel)?.source === TagSource.Glossary ||
       (selectedTag?.data as { entityType?: EntityType })?.entityType ===
@@ -360,9 +366,9 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
-        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
+        tooltip={isSystemApplied ? t(systemTagTooltipKey) : undefined}
         onDelete={
-          isDerived
+          isSystemApplied
             ? undefined
             : (e) => {
                 e.stopPropagation();

@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "Un workflow de profilage peut être configuré et déployé après qu'une ingestion de métadonnées a été configurée. Plusieurs pipelines de profilage peuvent être configurés pour le même service de base de données. Le pipeline alimente l'onglet Profiler de l'entité Table, et exécute également les tests configurés pour cette entité. Ajoutez un nom, un FQN et définissez le modèle de filtre pour commencer.",
     "profiler-is-enabled-but-no-data-available": "Votre profiler est configuré et prêt! Le premier ensemble de métriques apparaîtra ici après la prochaine exécution programmée.",
     "profiler-timeout-seconds-message": "Le délai d'attente en seconde est optionnel pour le profilage. Si le délai d'attente est atteint, le profilage attendra la fin de l'exécution des requêtes qui ont débuté pour terminer son exécution.",
+    "propagated-tag-warning": "Cette étiquette est héritée de l'actif parent et ne peut être supprimée que depuis celui-ci.",
     "put-your-data-operations-on-autopilot": "Mettez vos opérations de données en pilote automatique",
     "quality-contract-description": "Tests et assertions de qualité des données",
     "queries-result-test": "Une requête dont le résultat retourne 1 ou plusieurs lignes entraînera l'échec du test.",

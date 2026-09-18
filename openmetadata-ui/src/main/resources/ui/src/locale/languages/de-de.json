@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "Ein Profiler-Workflow kann nach der Einrichtung einer Metadaten-Ingestion konfiguriert und bereitgestellt werden. Es können mehrere Profiler-Pipelines für denselben Datenbankdienst eingerichtet werden. Die Pipeline speist das Profiler-Tab der Tabellenentität und führt auch die für diese Entität konfigurierten Tests aus. Gib einen Namen, FQN und definiere das Filtermuster an, um zu starten.",
     "profiler-is-enabled-but-no-data-available": "Ihr Profiler ist eingerichtet und bereit! Die ersten Metriken erscheinen hier nach dem nächsten geplanten Lauf.",
     "profiler-timeout-seconds-message": "Für den Profiler füge optional die Dauer in Sekunden für den Timeout hinzu. Der Profiler wartet auf ausstehende Abfragen oder bricht sie ab, sobald der Timeout erreicht ist.",
+    "propagated-tag-warning": "Dieses Tag wird vom übergeordneten Asset geerbt und kann nur dort entfernt werden.",
     "put-your-data-operations-on-autopilot": "Bringen Sie Ihre Datenprozesse auf Autopilot",
     "quality-contract-description": "Datenqualitätstests und -überprüfungen",
     "queries-result-test": "Abfragen, die 1 oder mehr Zeilen zurückgeben, führen zum Scheitern des Tests.",

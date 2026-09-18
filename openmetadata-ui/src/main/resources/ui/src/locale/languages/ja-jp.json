@@ -4625,6 +4625,7 @@
     "profiler-ingestion-description": "プロファイラーワークフローは、メタデータの取り込みが構成された後に設定・デプロイできます。同じデータベースサービスに複数のプロファイラーパイプラインを設定可能です。パイプラインはテーブルエンティティのプロファイラタブを更新し、設定されたテストも実行します。名前、FQN、フィルターパターンを指定して開始してください。",
     "profiler-is-enabled-but-no-data-available": "プロファイラーは設定済みで準備が整っています！次回のスケジュール実行後に最初のメトリクスがここに表示されます。",
     "profiler-timeout-seconds-message": "プロファイラーでのタイムアウト時間（秒）を指定します（オプション）。指定時間を超えると保留中のクエリを終了します。",
+    "propagated-tag-warning": "このタグは親アセットから継承されているため、親アセットでのみ削除できます。",
     "put-your-data-operations-on-autopilot": "データ操作を自動運転に",
     "quality-contract-description": "データ品質テストとアサーション",
     "queries-result-test": "1件以上の行を返すクエリはテスト失敗と見なされます。",

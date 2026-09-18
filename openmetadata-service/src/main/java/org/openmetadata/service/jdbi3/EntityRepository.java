@@ -3215,7 +3215,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       List<TagLabel> nonDerivedTags =
           listOrEmpty(entity.getTags()).stream()
-              .filter(t -> !t.getLabelType().equals(TagLabel.LabelType.DERIVED))
+              .filter(t -> !TagLabelUtil.isSystemGenerated(t))
               .toList();
       if (nonDerivedTags.isEmpty()) {
         continue;
@@ -6064,7 +6064,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
       String targetFQN = entry.getKey();
       for (TagLabel tagLabel : entry.getValue()) {
-        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+        if (!TagLabelUtil.isSystemGenerated(tagLabel)) {
           org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
         }
       }
@@ -6107,7 +6107,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void applyTags(
       List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+      if (!TagLabelUtil.isSystemGenerated(tagLabel)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -6145,10 +6145,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -6179,10 +6180,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
-    // Filter out DERIVED tags as they are system-generated
+    // Filter out system-generated tags (DERIVED, PROPAGATED) — they are projections, not the
+    // entity's own labels, so they must never reach tag_usage.
     List<TagLabel> nonDerivedTags =
         tagLabels.stream()
-            .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
+            .filter(tag -> !TagLabelUtil.isSystemGenerated(tag))
             .collect(Collectors.toList());
 
     if (!nonDerivedTags.isEmpty()) {
@@ -9760,9 +9762,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (nullOrEmpty(tags)) {
         return Collections.emptyList();
       }
-      return tags.stream()
-          .filter(tag -> !tag.getLabelType().equals(TagLabel.LabelType.DERIVED))
-          .toList();
+      return tags.stream().filter(tag -> !TagLabelUtil.isSystemGenerated(tag)).toList();
     }
 
     protected final void applyTagsAddInFlushAndDeferRdf(
