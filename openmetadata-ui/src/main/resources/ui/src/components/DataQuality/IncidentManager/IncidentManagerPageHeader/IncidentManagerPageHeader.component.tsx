@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
@@ -78,7 +77,6 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const {
     testCaseData,
     testCaseStatusData,
@@ -150,11 +148,8 @@ const IncidentManagerPageHeader = ({
             className="header-owner-heading"
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
-            owners={toOwnersWithHref(
-              details?.assignee ? [details.assignee] : []
-            )}
+            owners={details?.assignee ? [details.assignee] : []}
             placeHolder={t('label.assignee')}
-            renderOwnerContent={renderOwnerContent}
             selectorContent={
               <UserTeamSelectableList
                 hasPermission={Boolean(hasEditStatusPermission)}
@@ -223,8 +218,7 @@ const IncidentManagerPageHeader = ({
         isCompactView={false}
         maxVisibleOwners={3}
         ownerDisplayName={ownerDisplayName}
-        owners={toOwnersWithHref(testCaseData?.owners ?? ownerRef)}
-        renderOwnerContent={renderOwnerContent}
+        owners={testCaseData?.owners ?? ownerRef}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}

@@ -14,4 +14,4 @@
 // Re-exported from core-components so both OpenMetadata and Collate import
 // from the same canonical location: @openmetadata/ui-core-components.
 export { toOwnerRef, toOwnerRefs } from '@openmetadata/ui-core-components';
-export type { OwnerLike } from '@openmetadata/ui-core-components';
+export type { OwnerDetails } from '@openmetadata/ui-core-components';
