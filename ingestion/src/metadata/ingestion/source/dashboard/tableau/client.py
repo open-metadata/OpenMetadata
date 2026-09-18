@@ -50,9 +50,10 @@ from metadata.utils.ssl_manager import SSLManager
 logger = ometa_logger()
 
 # Safety cap on the number of projects cached to resolve project hierarchies.
-# Real Tableau sites rarely have more than a few thousand projects; this bounds
-# memory on pathological sites without affecting hierarchy resolution in practice.
-MAX_CACHED_PROJECTS = 10_000
+# A ProjectItem is small, so this is set high enough to never truncate real
+# hierarchies even on very large sites, while still bounding memory against
+# a pathological/corrupted response.
+MAX_CACHED_PROJECTS = 200_000
 
 # GetSourceTables samples a few workbooks rather than reading the whole site. Every test
 # connection step shares one timeout, so the sample is capped. Breadth matters more than
