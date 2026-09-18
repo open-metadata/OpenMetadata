@@ -50,6 +50,7 @@ import {
   fitToScreen,
   getEntityColumns,
   openImpactAnalysisTab,
+  openLineageNodeDrawer,
   rearrangeNodes,
   removeColumnLineage,
   verifyColumnLineageInCSV,
@@ -217,18 +218,10 @@ test.describe('Data asset lineage', () => {
           const { fullyQualifiedName, displayName, name } =
             entity.entityResponseData;
           // Opening the drawer narrows the canvas and closing it widens it
-          // again, so every node has moved since the last iteration. Re-fit
-          // before clicking: React Flow transforms the canvas rather than
-          // scrolling it, so a node the camera has drifted away from cannot be
-          // reached by Playwright's own scrollIntoViewIfNeeded -- it logs
-          // "done scrolling" and then "element is outside of the viewport"
-          // until the test times out.
-          await fitToScreen(page);
-          await page
-            .getByTestId(`lineage-node-${fullyQualifiedName}`)
-            .getByTestId('entity-header-display-name')
-            .getByRole('button')
-            .click();
+          // again, so every node has moved since the last iteration. A single
+          // re-fit is not reliably enough -- see openLineageNodeDrawer, which
+          // bounds the click and re-fits between attempts.
+          await openLineageNodeDrawer(page, fullyQualifiedName);
 
           const drawer = page.getByTestId('lineage-entity-panel');
           await expect(drawer.getByTestId('entity-header-title')).toHaveText(

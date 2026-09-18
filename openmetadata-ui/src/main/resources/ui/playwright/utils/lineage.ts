@@ -712,6 +712,43 @@ export const expectLineageNodeVisible = async (
   }).toPass({ timeout: 60_000 });
 };
 
+/**
+ * Opens a lineage node's side drawer, re-fitting the canvas until the click
+ * actually lands.
+ *
+ * `fitToScreen` on its own is not enough. LineageMap renders with React Flow's
+ * `onlyRenderVisibleElements` and the camera drifts every time a drawer opens
+ * and closes, so a node can be attached to the DOM and still sit outside the
+ * viewport. Playwright cannot rescue that: React Flow transforms the canvas
+ * rather than scrolling it, so `scrollIntoViewIfNeeded` logs "done scrolling"
+ * and the click retries on "element is outside of the viewport" until the test
+ * dies. One Mlmodel run spent 367s of its 480s budget on a single such click,
+ * 682 retries, and then reported only that the browser had closed.
+ *
+ * Bounding the click and re-fitting between attempts turns that into either a
+ * successful click or a fast, legible failure.
+ */
+export const openLineageNodeDrawer = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  // A node testid built from `undefined` matches nothing, and the retry below
+  // would spend its whole budget re-fitting for it. Say so immediately.
+  if (!fqn) {
+    throw new Error('openLineageNodeDrawer called without a node FQN');
+  }
+
+  const trigger = page
+    .getByTestId(`lineage-node-${fqn}`)
+    .getByTestId('entity-header-display-name')
+    .getByRole('button');
+
+  await expect(async () => {
+    await fitToScreen(page);
+    await trigger.click({ timeout: 10_000 });
+  }).toPass({ timeout: 90_000 });
+};
+
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name =

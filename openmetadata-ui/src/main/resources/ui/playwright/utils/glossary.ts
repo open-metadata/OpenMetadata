@@ -38,6 +38,7 @@ import {
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
+  dismissToasts,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -394,6 +395,7 @@ export const createGlossary = async (
   );
 
   // Perform glossary creation steps
+  await dismissToasts(page);
   await page.click('[data-testid="save-glossary"]');
 
   if (bValidateForm) {
@@ -452,6 +454,11 @@ export const createGlossary = async (
       );
     }
   }
+
+  // Save sits under the fixed bottom-center toast region, and an error toast
+  // left over from the Glossary landing page never drains on its own -- see
+  // dismissToasts. Every caller of this helper reaches Save the same way.
+  await dismissToasts(page);
 
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
   await page.click('[data-testid="save-glossary"]');

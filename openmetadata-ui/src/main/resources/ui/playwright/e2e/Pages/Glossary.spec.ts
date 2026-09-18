@@ -39,6 +39,7 @@ import {
 import {
   clickOutside,
   descriptionBox,
+  dismissToasts,
   fillDescriptionBox,
   getAuthContext,
   getRandomLastName,
@@ -2142,6 +2143,9 @@ test.describe('Glossary tests', () => {
 
       await test.step('Save glossary and verify creation with domain', async () => {
         const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
+        // Save sits under the fixed bottom-center toast region; an error toast left
+        // over from the Glossary landing page never drains on its own.
+        await dismissToasts(page1);
         await page1.click('[data-testid="save-glossary"]');
         await glossaryResponse;
 
@@ -2443,6 +2447,9 @@ test.describe('Glossary tests', () => {
           response.url().includes('/api/v1/glossaries') &&
           response.request().method() === 'POST'
       );
+      // Save sits under the fixed bottom-center toast region; an error toast left
+      // over from the Glossary landing page never drains on its own.
+      await dismissToasts(page);
       await page.click('[data-testid="save-glossary"]');
       await glossaryResponse;
 

@@ -106,11 +106,35 @@ export const waitForSearchIndexed = async (
     );
   }
 
-  const expectedMetadata = options?.queryFilter
-    ? ' with the expected search metadata'
-    : '';
+  if (!options?.queryFilter) {
+    throw new Error(
+      `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
+    );
+  }
+
+  // A filtered wait that times out has two very different causes and the same
+  // message for both: the entity never got indexed, or it is indexed and the
+  // filter never matched (the write that was supposed to change the document
+  // did not land). Re-ask once without the filter so the error says which --
+  // otherwise every owner/tag indexing race reads as an unexplained 60s hang.
+  const unfiltered = await apiContext
+    .get(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        query
+      )}&index=${index}&from=0&size=10`
+    )
+    .then((res) => (res.ok() ? res.json() : undefined))
+    .catch(() => undefined);
+  const indexedDoc = unfiltered?.hits?.hits?.find(
+    (hit: { _source?: { fullyQualifiedName?: string } }) =>
+      hit._source?.fullyQualifiedName === entityFqn
+  );
+  const diagnosis = indexedDoc
+    ? 'the document is indexed, so the filter did not match it -- check that the write landed'
+    : 'the document is not in the index at all';
+
   throw new Error(
-    `Entity "${entityFqn}" not found${expectedMetadata} in index "${index}" after ${timeout}ms`
+    `Entity "${entityFqn}" not found with the expected search metadata in index "${index}" after ${timeout}ms (${diagnosis}). Filter: ${options.queryFilter}`
   );
 };
 
