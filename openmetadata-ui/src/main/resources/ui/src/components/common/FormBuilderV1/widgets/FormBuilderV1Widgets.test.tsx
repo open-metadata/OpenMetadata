@@ -277,50 +277,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       )
     ),
-    SanitizedInput: jest.fn(
-      ({
-        autoFocus,
-        hint,
-        id,
-        isDisabled,
-        isInvalid,
-        isRequired,
-        label,
-        onBlur,
-        onChange,
-        onFocus,
-        placeholder,
-        type,
-        value,
-      }: Record<string, unknown>) => (
-        <div>
-          {label ? (
-            // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
-            <label htmlFor={id as string}>{label as string}</label>
-          ) : null}
-          {hint ? <span>{hint as string}</span> : null}
-          <input
-            aria-invalid={isInvalid as boolean}
-            aria-label={label as string}
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- mock passes through the autoFocus prop under test
-            autoFocus={autoFocus as boolean}
-            data-required={String(Boolean(isRequired))}
-            disabled={isDisabled as boolean}
-            id={id as string}
-            placeholder={placeholder as string}
-            type={type as string}
-            value={value as string}
-            onBlur={() => (onBlur as (() => void) | undefined)?.()}
-            onChange={(event) =>
-              (onChange as ((v: string) => void) | undefined)?.(
-                event.target.value
-              )
-            }
-            onFocus={() => (onFocus as (() => void) | undefined)?.()}
-          />
-        </div>
-      )
-    ),
     Select: Object.assign(
       jest.fn(
         ({

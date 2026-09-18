@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SanitizedInput } from '@openmetadata/ui-core-components';
+import { Input } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -41,7 +41,7 @@ const IngestionNameCard = ({
         {t('message.name-this-ingestion-description')}
       </div>
       <div className="tw:my-3 tw:h-px tw:bg-border-secondary" />
-      <SanitizedInput
+      <Input
         isRequired
         id="ingestion-display-name"
         inputDataTestId="ingestion-display-name"

@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BadgeWithIcon,
-  Button,
-  SanitizedInput,
-} from '@openmetadata/ui-core-components';
+import { BadgeWithIcon, Button, Input } from '@openmetadata/ui-core-components';
 import {
   Edit03,
   Lock01,
@@ -642,7 +638,7 @@ const BulkEditEntity = ({
       {invalidNewMetricRowCount > 0 && renderInvalidRowBadge()}
       {changedCellCount > 0 && renderEditedBadge()}
       <div className="bulk-edit-toolbar-actions">
-        <SanitizedInput
+        <Input
           className="bulk-edit-search"
           data-testid="bulk-edit-search"
           icon={BulkEditSearchIcon}

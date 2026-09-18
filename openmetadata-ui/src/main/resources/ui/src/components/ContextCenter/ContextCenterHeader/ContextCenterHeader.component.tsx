@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  PageLayout,
-  SanitizedInput,
-} from '@openmetadata/ui-core-components';
+import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus, SearchMd } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,7 +79,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   const actionsEl = (
     <div className="tw:flex tw:items-center tw:gap-3">
       {onSearch && (
-        <SanitizedInput
+        <Input
           data-testid="search-input"
           icon={SearchMd}
           inputClassName="tw:w-75"

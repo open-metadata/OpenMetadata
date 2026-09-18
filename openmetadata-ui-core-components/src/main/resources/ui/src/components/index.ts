@@ -67,7 +67,6 @@ export * from './base/input/input';
 export * from './base/input/input-group';
 export * from './base/input/label';
 export * from './base/input/password-input';
-export * from './base/input/sanitized-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
 export * from './base/progress-indicators/simple-circle';

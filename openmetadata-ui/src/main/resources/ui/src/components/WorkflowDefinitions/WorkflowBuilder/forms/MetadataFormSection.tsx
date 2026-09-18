@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SanitizedInput, TextArea } from '@openmetadata/ui-core-components';
+import { Input, TextArea } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
@@ -35,7 +35,7 @@ export const MetadataFormSection: React.FC<MetadataFormSectionProps> = ({
   return (
     <div data-testid="metadata-form-section">
       <div className="tw:mb-6" data-testid="workflow-name-section">
-        <SanitizedInput
+        <Input
           isRequired
           data-testid="workflow-name-input"
           isDisabled={nameDisabled}

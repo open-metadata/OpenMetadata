@@ -107,7 +107,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Input: InputMock,
-    SanitizedInput: InputMock,
     Skeleton: () => (
       <span aria-hidden="true" data-testid="table-loading-skeleton" />
     ),

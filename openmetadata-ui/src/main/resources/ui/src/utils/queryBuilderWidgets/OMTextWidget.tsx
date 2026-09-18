@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SanitizedInput } from '@openmetadata/ui-core-components';
+import { Input } from '@openmetadata/ui-core-components';
 import type { TextWidgetProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 
@@ -20,7 +20,7 @@ const OMTextWidget: FC<TextWidgetProps> = ({
   placeholder,
   readonly,
 }) => (
-  <SanitizedInput
+  <Input
     inputDataTestId="advanced-search-value-text"
     isDisabled={readonly}
     placeholder={placeholder}

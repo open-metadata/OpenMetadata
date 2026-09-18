@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SanitizedInput, Select } from '@openmetadata/ui-core-components';
+import { Input, Select } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -193,7 +193,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         />
 
         <div className="tw:mt-5">
-          <SanitizedInput
+          <Input
             isRequired
             data-testid="repository-url-input"
             isDisabled={isFormDisabled}
@@ -205,7 +205,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         </div>
 
         <div className="tw:mt-5">
-          <SanitizedInput
+          <Input
             data-testid="branch-input"
             isDisabled={isFormDisabled}
             label={t('label.branch')}
@@ -216,7 +216,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         </div>
 
         <div className="tw:mt-5">
-          <SanitizedInput
+          <Input
             data-testid="base-path-input"
             isDisabled={isFormDisabled}
             label={t('label.base-path')}
@@ -227,7 +227,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         </div>
 
         <div className="tw:mt-5">
-          <SanitizedInput
+          <Input
             isRequired
             data-testid="token-input"
             isDisabled={isFormDisabled}
@@ -255,7 +255,7 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
         </div>
 
         <div className="tw:mt-5">
-          <SanitizedInput
+          <Input
             data-testid="commit-message-input"
             isDisabled={isFormDisabled}
             label={t('label.commit-message-template')}

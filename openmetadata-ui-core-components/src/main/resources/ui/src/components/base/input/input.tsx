@@ -2,6 +2,7 @@ import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
+import { getSanitizeContent } from '@/utils/sanitize';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { HelpCircle, InfoCircle } from '@untitledui/icons';
 import {
@@ -10,6 +11,7 @@ import {
   type ReactNode,
   type Ref,
   createContext,
+  useCallback,
   useContext,
 } from 'react';
 import type {
@@ -257,7 +259,23 @@ interface TextFieldProps
   ref?: Ref<HTMLDivElement>;
 }
 
-export const TextField = ({ className, ...props }: TextFieldProps) => {
+export const TextField = ({
+  className,
+  onChange,
+  ...props
+}: TextFieldProps) => {
+  // Every user-typed value is scrubbed through DOMPurify before it reaches
+  // the caller's onChange, so an attacker cannot land raw HTML in any field
+  // whose value is later re-rendered as markup — see security advisory
+  // GHSA-59gm-6h39-397f. For a plain string this is a no-op; for HTML input
+  // (e.g. `<img onerror=alert(1)>`) the tag is stripped on the way in.
+  const handleChange = useCallback(
+    (value: string) => {
+      onChange?.(getSanitizeContent(value));
+    },
+    [onChange]
+  );
+
   return (
     <TextFieldContext.Provider value={props}>
       <AriaTextField
@@ -269,6 +287,7 @@ export const TextField = ({ className, ...props }: TextFieldProps) => {
             typeof className === 'function' ? className(state) : className
           )
         }
+        onChange={handleChange}
       />
     </TextFieldContext.Provider>
   );

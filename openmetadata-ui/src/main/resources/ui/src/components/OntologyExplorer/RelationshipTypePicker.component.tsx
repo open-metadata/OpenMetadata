@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  ButtonUtility,
-  SanitizedInput,
-} from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import { ArrowRight, SearchMd, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -213,7 +209,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
       </div>
 
       <div className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
-        <SanitizedInput
+        <Input
           aria-label={t('label.filter-relationships')}
           icon={SearchInputIcon}
           inputClassName="tw:text-xs"

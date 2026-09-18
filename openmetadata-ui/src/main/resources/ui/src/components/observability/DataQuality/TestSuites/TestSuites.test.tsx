@@ -81,23 +81,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(e: any) => onChange(e.target.value)}
       />
     ),
-    SanitizedInput: ({
-      value,
-      onChange,
-      placeholder,
-    }: {
-      value?: string;
-      onChange: (...args: unknown[]) => void;
-      placeholder?: string;
-    }) => (
-      <input
-        aria-label="suite-search-input"
-        data-testid="suite-search-input"
-        placeholder={placeholder}
-        value={value}
-        onChange={(e: any) => onChange(e.target.value)}
-      />
-    ),
     Tabs,
   };
 });

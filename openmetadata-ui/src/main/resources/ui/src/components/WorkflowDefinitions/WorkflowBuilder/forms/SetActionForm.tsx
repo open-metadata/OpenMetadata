@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SanitizedInput, Select } from '@openmetadata/ui-core-components';
+import { Input, Select } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -254,7 +254,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     }
 
     return (
-      <SanitizedInput
+      <Input
         data-testid="field-value-input"
         isDisabled={isFormDisabled}
         label={t('label.field-value')}
