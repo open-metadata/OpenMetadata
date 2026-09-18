@@ -8330,13 +8330,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
     Set<String> existing =
         merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
+    Set<String> ownParents =
+        merged.stream()
+            .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
+            .collect(Collectors.toSet());
     for (TagLabel tag : inherited) {
       // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
-      if (existing.add(tag.getTagFQN())) {
-        merged.add(tag);
+      if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
+        continue;
       }
+      existing.add(tag.getTagFQN());
+      merged.add(tag);
     }
     entity.setTags(merged);
+  }
+
+  /**
+   * Whether an inherited label would put the entity in two classes at once. Under a mutually
+   * exclusive classification an entity may carry only one tag -- {@code Tier.Tier1} or
+   * {@code Tier.Tier2}, never both -- and the asset's own, more specific choice is the one to keep.
+   *
+   * <p>Inheritance runs on the read path, where {@code checkMutuallyExclusive} never does: that
+   * guard validates writes. Without this, a table tagged {@code Tier.Tier2} under a database tagged
+   * {@code Tier.Tier1} reports both, a combination the write path would have rejected. {@code Tier}
+   * is a system classification and mutually exclusive out of the box, so this needs no unusual
+   * setup to reach.
+   *
+   * <p>The cheap string comparison comes first so the classification lookup behind {@link
+   * TagLabelUtil#mutuallyExclusive} only happens for a label that actually collides.
+   */
+  private static boolean conflictsWithOwnTag(TagLabel inherited, Set<String> ownParents) {
+    return ownParents.contains(FullyQualifiedName.getParentFQN(inherited.getTagFQN()))
+        && TagLabelUtil.mutuallyExclusive(inherited);
   }
 
   /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */

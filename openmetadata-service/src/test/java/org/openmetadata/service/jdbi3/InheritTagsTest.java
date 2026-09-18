@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.TagPropagation;
@@ -132,6 +134,66 @@ class InheritTagsTest {
           table, Fields.EMPTY_FIELDS, parentWithTags("PII.Sensitive"));
 
       assertTrue(tagFqns(table).isEmpty());
+    }
+  }
+
+  /**
+   * Under a mutually exclusive classification an entity may hold only one tag. Inheritance runs on
+   * the read path, where {@code checkMutuallyExclusive} does not, so without a guard a table tagged
+   * {@code Tier.Tier2} beneath a database tagged {@code Tier.Tier1} reports both -- a combination
+   * the write path rejects outright. The asset's own choice is the more specific one and wins.
+   */
+  @Test
+  void inheritTags_doesNotAddATagExcludedByTheAssetsOwnChoice() {
+    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
+        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
+      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+      tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(true);
+      Table table = table();
+      table.setTags(new ArrayList<>(List.of(manual("Tier.Tier2"))));
+
+      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("Tier.Tier1"));
+
+      assertEquals(
+          List.of("Tier.Tier2"),
+          tagFqns(table),
+          "the asset keeps its own tier and does not also inherit the parent's");
+    }
+  }
+
+  /** A different classification is not excluded by the asset's tier, so it still propagates. */
+  @Test
+  void inheritTags_stillAddsATagFromAnUnrelatedClassification() {
+    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
+        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
+      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+      tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(true);
+      Table table = table();
+      table.setTags(new ArrayList<>(List.of(manual("Tier.Tier2"))));
+
+      EntityRepository.applyInheritedTags(table, TAG_FIELDS, parentWithTags("PII.Sensitive"));
+
+      assertEquals(List.of("Tier.Tier2", "PII.Sensitive"), tagFqns(table));
+    }
+  }
+
+  /**
+   * A non-exclusive classification keeps merge semantics: two Environment values on one asset are
+   * allowed, so the parent's still arrives.
+   */
+  @Test
+  void inheritTags_mergesSiblingsOfANonExclusiveClassification() {
+    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class);
+        MockedStatic<TagLabelUtil> tagLabels = mockStatic(TagLabelUtil.class)) {
+      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+      tagLabels.when(() -> TagLabelUtil.mutuallyExclusive(any())).thenReturn(false);
+      Table table = table();
+      table.setTags(new ArrayList<>(List.of(manual("Environment.Staging"))));
+
+      EntityRepository.applyInheritedTags(
+          table, TAG_FIELDS, parentWithTags("Environment.Development"));
+
+      assertEquals(List.of("Environment.Staging", "Environment.Development"), tagFqns(table));
     }
   }
 
