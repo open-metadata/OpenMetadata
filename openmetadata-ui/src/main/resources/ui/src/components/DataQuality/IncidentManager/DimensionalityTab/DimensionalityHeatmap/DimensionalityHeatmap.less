@@ -205,7 +205,7 @@
         transform: translateY(-50%) rotate(180deg);
         width: 14px;
         height: 14px;
-        color: var(--color-text-quaternary);
+        color: @grey-7;
         z-index: var(--om-z-1);
       }
     }
@@ -246,7 +246,7 @@
         transform: translateY(-50%);
         width: 14px;
         height: 14px;
-        color: var(--color-text-quaternary);
+        color: @grey-7;
         z-index: var(--om-z-1);
       }
     }
@@ -280,26 +280,26 @@
 
   &__cell--success,
   &__legend-box--success {
-    border: 1px solid var(--tw-color-utility-success-500);
-    background: var(--tw-color-utility-success-50);
+    border: 1px solid @green-500;
+    background: @green-9;
   }
 
   &__cell--failed,
   &__legend-box--failed {
-    border: 1px solid var(--tw-color-utility-error-500);
-    background: var(--tw-color-utility-error-100);
+    border: 1px solid @red-22;
+    background: @alert-error-icon-bg-1;
   }
 
   &__cell--aborted,
   &__legend-box--aborted {
-    border: 1px solid var(--tw-color-utility-warning-400);
-    background: var(--tw-color-utility-warning-100);
+    border: 1px solid @warning-400;
+    background: @warning-100;
   }
 
   &__cell--no-data,
   &__legend-box--no-data {
     border: 1px solid @grey-400;
-    background: var(--color-bg-secondary_subtle);
+    background: @grey-9;
   }
 
   &__empty {
