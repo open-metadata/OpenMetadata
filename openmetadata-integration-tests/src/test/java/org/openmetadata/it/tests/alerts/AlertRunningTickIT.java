@@ -20,6 +20,8 @@ import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
+import org.quartz.Trigger;
 
 /**
  * What happens to an alert while one of its ticks is running. The tick keeps no state of its own
@@ -41,6 +43,24 @@ class AlertRunningTickIT {
       assertTrue(
           held.copyForOlderServers().contains("edited while running"),
           "an older server must not be handed the alert as it was before the edit");
+    }
+  }
+
+  // A server that is asked to stop lets the event in progress finish, commits, and starts nothing.
+  @Test
+  void stoppingFlagEndsTickAfterCurrentEvent(TestNamespace ns) throws Exception {
+    try (HeldTick held = HeldTick.of(ns, "stopping_during_tick")) {
+      ServerStopping.set(true);
+
+      held.finish();
+
+      assertEquals(held.openedAt + 1, AlertFixtures.offsetOf(held.alert.getId()));
+      assertEquals(
+          Trigger.TriggerState.NORMAL,
+          AlertFixtures.scheduler().getTriggerState(AlertFixtures.triggerKey(held.alert.getId())),
+          "no run at once was asked for: the next server start carries on from the position");
+    } finally {
+      ServerStopping.set(false);
     }
   }
 
@@ -105,12 +125,14 @@ class AlertRunningTickIT {
   private static final class HeldTick implements AutoCloseable {
     private final EventSubscription alert;
     private final LatchedConsumer.Gate gate;
+    private final long openedAt;
     private final Thread tick;
     private final boolean reachedTheNamedConsumer;
 
     private HeldTick(EventSubscription alert) throws InterruptedException {
       this.alert = alert;
       QuietAlert.settle(alert);
+      this.openedAt = AlertFixtures.offsetOf(alert.getId());
       this.gate = LatchedConsumer.arm(alert.getId());
       FixtureEvents.insert(FixtureEvents.tableEvents());
       this.tick = new Thread(() -> DirectTick.run(alert), "held-tick");

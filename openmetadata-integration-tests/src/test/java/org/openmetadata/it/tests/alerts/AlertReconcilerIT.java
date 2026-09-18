@@ -36,8 +36,8 @@ class AlertReconcilerIT {
     EventSubscription frozen = alert(ns, "trigger_frozen", null);
     QuietAlert.settle(inError);
     QuietAlert.settle(frozen);
-    updateTrigger("TRIGGER_STATE = 'ERROR'", inError.getId());
-    updateTrigger("NEXT_FIRE_TIME = " + LONG_AGO, frozen.getId());
+    AlertFixtures.updateTrigger("TRIGGER_STATE = 'ERROR'", inError.getId());
+    AlertFixtures.updateTrigger("NEXT_FIRE_TIME = " + LONG_AGO, frozen.getId());
 
     EventSubscriptionScheduler.getInstance().reconcileNow();
 
@@ -73,7 +73,7 @@ class AlertReconcilerIT {
       FixtureEvents.insert(FixtureEvents.tableEvents());
       AlertFixtures.scheduler().triggerJob(AlertFixtures.jobKey(alert.getId()));
       assertTrue(gate.awaitReached());
-      updateTrigger("NEXT_FIRE_TIME = " + LONG_AGO, alert.getId());
+      AlertFixtures.updateTrigger("NEXT_FIRE_TIME = " + LONG_AGO, alert.getId());
       Date armedAt = startTimeOf(alert);
 
       EventSubscriptionScheduler.getInstance().reconcileNow();
@@ -130,15 +130,6 @@ class AlertReconcilerIT {
   private static EventSubscription alert(TestNamespace ns, String name, String className) {
     return AlertFixtures.tableAlert(
         ns, name, className, List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused")));
-  }
-
-  private static void updateTrigger(String assignment, UUID alertId) {
-    Entity.getJdbi()
-        .useHandle(
-            handle ->
-                handle.execute(
-                    "UPDATE QRTZ_TRIGGERS SET " + assignment + " WHERE TRIGGER_NAME = ?",
-                    alertId.toString()));
   }
 
   private static Trigger.TriggerState stateOf(EventSubscription alert) throws Exception {

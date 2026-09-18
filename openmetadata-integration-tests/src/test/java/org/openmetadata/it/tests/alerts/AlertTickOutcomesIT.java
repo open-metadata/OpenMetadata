@@ -16,7 +16,6 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.AlertEventInProgress;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -169,8 +168,7 @@ class AlertTickOutcomesIT {
   }
 
   private static long positionOf(EventSubscription alert) {
-    return JsonUtils.readValue(AlertFixtures.position(alert.getId()), EventSubscriptionOffset.class)
-        .getCurrentOffset();
+    return AlertFixtures.offsetOf(alert.getId());
   }
 
   private static List<FailedEventResponse> failuresOf(EventSubscription alert) {

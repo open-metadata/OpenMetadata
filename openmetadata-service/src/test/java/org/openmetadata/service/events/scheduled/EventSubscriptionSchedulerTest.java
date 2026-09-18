@@ -38,6 +38,21 @@ import org.quartz.impl.StdSchedulerFactory;
 
 class EventSubscriptionSchedulerTest {
 
+  // Quartz cannot acquire a trigger later than the threshold, and a waiting alert can be later
+  // than a time budget plus one slow event.
+  @Test
+  void misfireThresholdIsTenMinutes() {
+    DataSourceFactory database = new DataSourceFactory();
+    database.setDriverClass("org.postgresql.Driver");
+    database.setUrl("jdbc:postgresql://localhost/openmetadata_db");
+    database.setUser("openmetadata_user");
+    database.setPassword("openmetadata_password");
+
+    Properties quartz = EventSubscriptionScheduler.quartzProperties(database);
+
+    assertEquals("600000", quartz.get("org.quartz.jobStore.misfireThreshold"));
+  }
+
   @Test
   void configuresClusteredJdbcStore() {
     DataSourceFactory postgres = new DataSourceFactory();

@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -51,9 +52,11 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.apps.bundles.changeEvent.CopyForOlderServers;
+import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -87,7 +90,9 @@ public class EventSubscriptionScheduler {
   private final AlertReconciler reconciler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   private static final int SCHEDULER_THREAD_COUNT = 10;
-  private static final long MISFIRE_THRESHOLD_MS = 60_000;
+  // Quartz cannot acquire a trigger that is later than this, and a tick may hold a thread for a
+  // time budget plus one slow event. Ticks are polls, so misfire handling protects nothing here.
+  static final long MISFIRE_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
   // Quartz asks for the worker threads plus three; a tick reads and rewrites its job data too.
   private static final int JOB_STORE_CONNECTIONS_BESIDE_WORKERS = 3;
 
@@ -111,6 +116,8 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
+    AlertingSettings.use(AlertingSettings.from(config.getAlertingConfiguration()));
+    ServerStopping.registerShutdownHook();
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(quartzProperties(config.getDataSourceFactory()));
     this.alertsScheduler = factory.getScheduler();

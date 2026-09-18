@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -75,6 +78,33 @@ class GoldenDispatchCorpusTest {
     }
   }
 
+  // Every tick of this test stops after one event and runs again at once. What the ticks send
+  // and record together must be what the single tick above sends and records.
+  @Test
+  void ticksStoppedByTheBudgetAddUpToTheSameGoldenFiles(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = createAlert(ns, "golden_small_budget", everyChannel(receiver));
+      QuietAlert.settle(alert);
+      AlertMetrics before = counters(alert);
+      long openedAt = AlertFixtures.offsetOf(alert.getId());
+      List<String> events = tableEvents();
+      AlertingSettings.use(new AlertingSettings(Duration.ofNanos(1), false));
+
+      insert(events);
+      DirectTick.run(alert);
+      Awaitility.await("the ticks that run at once")
+          .atMost(Duration.ofSeconds(60))
+          .until(() -> AlertFixtures.offsetOf(alert.getId()) == openedAt + events.size());
+      QuietAlert.awaitScheduledTickIsOver(alert);
+
+      GoldenFiles golden = goldenFor(alert, receiver);
+      golden.assertMatches("all-channels.sends", sends(receiver, golden));
+      golden.assertMatches("all-channels.record", record(alert, before));
+    } finally {
+      AlertingSettings.use(new AlertingSettings(Duration.ofSeconds(60), false));
+    }
+  }
+
   @Test
   void oneDeadEndpointMatchesGoldenFiles(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -87,11 +117,8 @@ class GoldenDispatchCorpusTest {
       DirectTick.run(alert);
 
       GoldenFiles golden = goldenFor(alert, receiver);
-      treatDestinationsAsInterchangeable(alert, golden);
       golden.assertMatches("dead-endpoint.sends", sends(receiver, golden));
-      Map<String, Object> record = record(alert, before);
-      sortByStatus(record);
-      golden.assertMatches("dead-endpoint.record", record);
+      golden.assertMatches("dead-endpoint.record", record(alert, before));
     }
   }
 
@@ -188,22 +215,7 @@ class GoldenDispatchCorpusTest {
     return golden;
   }
 
-  // Which of two destinations of one type sends, and so holds the status and names the failure,
-  // is not defined until destinations are walked in the order the alert declares them.
-  private static void treatDestinationsAsInterchangeable(
-      EventSubscription alert, GoldenFiles golden) {
-    alert
-        .getDestinations()
-        .forEach(destination -> golden.token(destination.getId().toString(), "destination"));
-  }
-
-  @SuppressWarnings("unchecked")
-  private static void sortByStatus(Map<String, Object> record) {
-    List<Map<String, Object>> status = (List<Map<String, Object>>) record.get("destinationStatus");
-    status.sort(Comparator.comparing(entry -> JsonUtils.pojoToJson(entry.get("status"))));
-  }
-
-  // Sorted, because today's send order inside one batch is not defined.
+  // Sorted, so the files do not depend on the order channels are walked in.
   private static List<Map<String, Object>> sends(RecordingReceiver receiver, GoldenFiles golden)
       throws IOException {
     List<Map<String, Object>> sends = new ArrayList<>();

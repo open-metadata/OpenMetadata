@@ -1,9 +1,12 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
+import java.io.IOException;
 import java.util.Collection;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertTelemetry;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 
 /** Attempts every target of one channel, so one failing endpoint cannot silence the rest. */
 @Slf4j
@@ -27,12 +30,28 @@ public final class IsolatedSends {
   }
 
   private static <T> void attempt(T target, Send<T> send, Failures failures) {
-    try {
-      send.to(target);
-    } catch (Exception e) {
-      // Cause-agnostic on purpose: whatever one target throws must not cost the others.
-      failures.add(e);
+    if (givenUpForThisTick(target)) {
+      failures.add(new IOException("Not attempted: unreachable earlier in this tick"));
+    } else {
+      try {
+        send.to(target);
+      } catch (Exception e) {
+        // Cause-agnostic on purpose: whatever one target throws must not cost the others.
+        failures.add(e);
+        if (ConnectionFailures.neverReachedTheTarget(e)) {
+          TickMemory.rememberUnreachable(target);
+        }
+      }
     }
+  }
+
+  private static boolean givenUpForThisTick(Object target) {
+    boolean failedBefore = TickMemory.isUnreachable(target);
+    boolean skip = failedBefore && AlertingSettings.current().skipUnreachableTargetWithinTick();
+    if (failedBefore) {
+      AlertTelemetry.attemptOnUnreachableTarget(skip);
+    }
+    return skip;
   }
 
   private static final class Failures {

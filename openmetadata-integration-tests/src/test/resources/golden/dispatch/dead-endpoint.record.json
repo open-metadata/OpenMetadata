@@ -6,19 +6,19 @@
   },
   "deliveredEventIds" : [ ],
   "destinationStatus" : [ {
-    "destination" : "<destination>",
-    "status" : {
-      "status" : "active",
-      "timestamp" : "<time>"
-    }
-  }, {
-    "destination" : "<destination>",
+    "destination" : "<destination-0>",
     "status" : {
       "lastFailedAt" : "<time>",
       "lastFailedReason" : "Internal Server Error",
       "lastFailedStatusCode" : 500,
       "nextAttempt" : "<time>",
       "status" : "awaitingRetry",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination-1>",
+    "status" : {
+      "status" : "active",
       "timestamp" : "<time>"
     }
   } ],
@@ -35,7 +35,7 @@
       "timestamp" : "<time>",
       "userName" : "admin"
     },
-    "failingSubscriptionId" : "<destination>",
+    "failingSubscriptionId" : "<destination-0>",
     "reason" : "Failed to publish event of destination type Webhook due to 1 of 2 recipients failed: Webhook delivery failed with HTTP 500: Internal Server Error ",
     "source" : "SUBSCRIBER",
     "timestamp" : "<time>"
@@ -62,7 +62,7 @@
       "timestamp" : "<time>",
       "userName" : "admin"
     },
-    "failingSubscriptionId" : "<destination>",
+    "failingSubscriptionId" : "<destination-0>",
     "reason" : "Failed to publish event of destination type Webhook due to 1 of 2 recipients failed: Webhook delivery failed with HTTP 500: Internal Server Error ",
     "source" : "SUBSCRIBER",
     "timestamp" : "<time>"

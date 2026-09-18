@@ -9,9 +9,11 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
@@ -73,6 +75,20 @@ final class AlertFixtures {
 
   static String position(UUID alertId) {
     return dao().getSubscriberExtension(alertId.toString(), LedgerKeys.POSITION);
+  }
+
+  static long offsetOf(UUID alertId) {
+    return JsonUtils.readValue(position(alertId), EventSubscriptionOffset.class).getCurrentOffset();
+  }
+
+  // Straight into the job store, for states no API call produces.
+  static void updateTrigger(String assignment, UUID alertId) {
+    Entity.getJdbi()
+        .useHandle(
+            handle ->
+                handle.execute(
+                    "UPDATE QRTZ_TRIGGERS SET " + assignment + " WHERE TRIGGER_NAME = ?",
+                    alertId.toString()));
   }
 
   static Scheduler scheduler() {
