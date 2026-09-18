@@ -95,6 +95,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
       "Data Product Domain Validation";
 
+  // Max descendants whose domains/data-products are hydrated at once while reconciling a level.
+  // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
+  // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
+  // otherwise load the whole level into the heap in one shot).
+  private static final int DESCENDANT_RECONCILE_CHUNK_SIZE = 200;
+
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DataProductRepository() {
@@ -1234,40 +1240,62 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     // or via a containment cycle, so the walk always terminates.
     Set<UUID> visited = new HashSet<>(inheritedByParent.keySet());
     while (!frontier.isEmpty()) {
-      List<CollectionDAO.EntityRelationshipObject> childRows =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(refIds(frontier), Relationship.CONTAINS.ordinal(), NON_DELETED);
-      if (childRows.isEmpty()) {
+      // Discover this level's children, reduced to lightweight (id, type) refs; the heavy
+      // relationship rows are released before the per-chunk work below.
+      Map<UUID, UUID> parentOf = new HashMap<>();
+      List<EntityReference> candidates = fetchUnvisitedChildren(frontier, visited, parentOf);
+      if (candidates.isEmpty()) {
         return;
       }
-      List<String> childIds =
-          childRows.stream()
-              .map(CollectionDAO.EntityRelationshipObject::getToId)
-              .distinct()
-              .toList();
-      // Children that carry their own explicit domain (and their subtrees) are unaffected.
-      Map<UUID, Set<UUID>> childExplicitDomains = batchFetchDomainIds(childIds);
-
       List<EntityReference> nextFrontier = new ArrayList<>();
       Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
-      for (CollectionDAO.EntityRelationshipObject row : childRows) {
-        UUID childId = UUID.fromString(row.getToId());
-        if (!visited.add(childId) // already seen via another parent or a cycle
-            || !childExplicitDomains.getOrDefault(childId, Set.of()).isEmpty()) {
-          continue;
+      // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
+      // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
+      for (int start = 0; start < candidates.size(); start += DESCENDANT_RECONCILE_CHUNK_SIZE) {
+        List<EntityReference> chunk =
+            candidates.subList(
+                start, Math.min(start + DESCENDANT_RECONCILE_CHUNK_SIZE, candidates.size()));
+        Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
+        List<EntityReference> inheritingChunk = new ArrayList<>();
+        Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
+        for (EntityReference child : chunk) {
+          // A child with its own explicit domain (and its subtree) is unaffected by the move.
+          if (!chunkOwnDomains.getOrDefault(child.getId(), Set.of()).isEmpty()) {
+            continue;
+          }
+          Set<UUID> inheritedSet = inherited.getOrDefault(parentOf.get(child.getId()), Set.of());
+          inheritingChunk.add(child);
+          chunkEffective.put(child.getId(), inheritedSet);
+          nextInherited.put(child.getId(), inheritedSet);
         }
-        Set<UUID> inheritedSet = inherited.getOrDefault(UUID.fromString(row.getFromId()), Set.of());
-        nextFrontier.add(new EntityReference().withId(childId).withType(row.getToEntity()));
-        nextInherited.put(childId, inheritedSet);
+        reconcileConflicts(inheritingChunk, chunkEffective, reindexQueue);
+        nextFrontier.addAll(inheritingChunk);
       }
-      if (nextFrontier.isEmpty()) {
-        return;
-      }
-      reconcileConflicts(nextFrontier, nextInherited, reindexQueue);
       frontier = nextFrontier;
       inherited = nextInherited;
     }
+  }
+
+  /**
+   * One query for the CONTAINS children of {@code frontier}, returned as lightweight (id, type)
+   * references with each child's parent recorded in {@code parentOf} for inheritance. Children
+   * already in {@code visited} (reached via another parent or a cycle) are skipped. The heavy
+   * relationship rows are consumed inline and not retained.
+   */
+  private List<EntityReference> fetchUnvisitedChildren(
+      List<EntityReference> frontier, Set<UUID> visited, Map<UUID, UUID> parentOf) {
+    List<EntityReference> candidates = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipObject row :
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(refIds(frontier), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
+      UUID childId = UUID.fromString(row.getToId());
+      if (visited.add(childId)) {
+        candidates.add(new EntityReference().withId(childId).withType(row.getToEntity()));
+        parentOf.put(childId, UUID.fromString(row.getFromId()));
+      }
+    }
+    return candidates;
   }
 
   /**
