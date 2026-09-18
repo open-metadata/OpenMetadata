@@ -59,7 +59,10 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - uses: dorny/paths-filter@v4
+        # Pinned rather than floating on the tag: this job gates a required
+        # check, so a moved tag would run unreviewed code on every PR and
+        # merge-queue entry. Same SHA the Python workflows already pin.
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
