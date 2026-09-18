@@ -132,6 +132,55 @@ describe('FilterSelect', () => {
     expect(onChange).toHaveBeenCalledWith(['snowflake']);
   });
 
+  it('keeps a staged click when selectedValues is re-derived while open', () => {
+    // Consumers pass `selectedValues` as a memo over server-fetched options, so
+    // a late suggestions response hands over a new array holding the same
+    // values. Re-syncing on that would discard the row just clicked.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    fireEvent.click(screen.getByText('Snowflake'));
+
+    // The late fetch resolves: same values, brand new array identity.
+    rerender(<FilterSelect {...props} selectedValues={['redshift']} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.arrayContaining(['redshift', 'snowflake'])
+    );
+  });
+
+  it('applies an external selectedValues change that arrives while open', () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation, so a filter cleared that way must reach the staged set —
+    // otherwise Apply writes the stale value back.
+    const onChange = vi.fn();
+    const props = {
+      commitMode: 'staged' as const,
+      isOpen: true,
+      label: 'Service',
+      options: OPTIONS,
+      onChange,
+    };
+    const { rerender } = render(
+      <FilterSelect {...props} selectedValues={['redshift']} />
+    );
+
+    rerender(<FilterSelect {...props} selectedValues={[]} />);
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
   it('does not commit staged toggles on cancel', () => {
     const { onChange } = renderFilter({ commitMode: 'staged' });
 
