@@ -12,11 +12,12 @@
 """FQN entity resolution with state owned by one execution run."""
 
 import re
-from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 from threading import Lock
 from typing import Generic, TypeVar
+
+from cachetools import LRUCache
 
 from metadata.ingestion.models.entity_interface import EntityInterface
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -72,9 +73,8 @@ class EntityResolver:
         if cache_capacity < 1 or max_plan_candidates < 1:
             raise ValueError("Resolver capacities must be positive")
         self._metadata = metadata
-        self._capacity = cache_capacity
         self._max_plan_candidates = max_plan_candidates
-        self._cache = OrderedDict()
+        self._cache = LRUCache(maxsize=cache_capacity)
         self._lock = Lock()
         self._closed = False
 
@@ -85,7 +85,6 @@ class EntityResolver:
             if sum(len(tier.candidates) for tier in plan.tiers) > self._max_plan_candidates:
                 raise ValueError("Too many candidates in resolution plan")
             if plan in self._cache:
-                self._cache.move_to_end(plan)
                 return self._cache[plan]
 
         result = ()
@@ -107,9 +106,6 @@ class EntityResolver:
             self._ensure_open()
             if result:
                 self._cache[plan] = result
-                self._cache.move_to_end(plan)
-                if len(self._cache) > self._capacity:
-                    self._cache.popitem(last=False)
         return result
 
     def _lookup(self, plan: EntityResolutionPlan[T], candidate: FqnCandidate) -> list[T]:

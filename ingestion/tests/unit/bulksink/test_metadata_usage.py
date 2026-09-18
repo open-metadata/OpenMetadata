@@ -14,8 +14,10 @@ Unit tests for MetadataUsageBulkSink error handling
 
 import json
 import os
+import sys
 import tempfile
 from io import StringIO
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -26,7 +28,8 @@ from metadata.entity_resolution.engine import EntityResolver
 from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.workflow import BulkSink
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
@@ -43,6 +46,7 @@ from metadata.ingestion.bulksink.metadata_usage import (
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.mixins.es_mixin import FqnSearchResult
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.workflow.usage import UsageWorkflow
 
 
 def create_api_error(status_code: int, message: str) -> APIError:
@@ -388,10 +392,7 @@ def _usage_record_line() -> str:
 
 def _metadata_for_usage_resolution(table: Table):
     metadata = MagicMock()
-    service = DatabaseService(
-        id=uuid4(), name="test_service", fullyQualifiedName="test_service", serviceType="Postgres"
-    )
-    entities = {"test_service": service, table.fullyQualifiedName.root: table}
+    entities = {table.fullyQualifiedName.root: table}
     published = []
     joins = []
 
@@ -509,20 +510,80 @@ def test_usage_join_targets_use_the_same_run_resolution():
     assert not sink.status.failures
 
 
-@pytest.mark.parametrize("service_type,expected_count", [("Clickhouse", 1), ("Postgres", 0)])
-def test_usage_preserves_service_specific_database_normalization(service_type, expected_count):
+@pytest.mark.parametrize(
+    "source_type,service_type,expected_count",
+    [
+        ("clickhouse-usage", "Clickhouse", 1),
+        ("postgres-usage", "Postgres", 0),
+        ("custom-database", "CustomDatabase", 0),
+        ("query-log-usage", "Clickhouse", 1),
+    ],
+)
+def test_usage_preserves_service_specific_database_normalization(source_type, service_type, expected_count):
     table = Table(
         id=uuid4(), name="test_table", fullyQualifiedName="test_service.default.test_schema.test_table", columns=[]
     )
-    metadata, entities, published, _ = _metadata_for_usage_resolution(table)
-    entities["test_service"] = DatabaseService(
-        id=uuid4(),
-        name="test_service",
-        fullyQualifiedName="test_service",
-        serviceType=service_type,
-    )
+    metadata, _, published, _ = _metadata_for_usage_resolution(table)
     metadata.search_fqn_candidates.return_value = FqnSearchResult((table.fullyQualifiedName.root,), 1, True)
-    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    workflow = UsageWorkflow.__new__(UsageWorkflow)
+    workflow.metadata = metadata
+    workflow.service_type = ServiceType.Database
+    workflow.config = SimpleNamespace(
+        source=SimpleNamespace(
+            type=source_type,
+            serviceName="test_service",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value=service_type)))
+            ),
+        ),
+        bulkSink=BulkSink(type="metadata-usage", config={"filename": "/tmp/test_usage"}),
+    )
+    with patch.dict(sys.modules, {"metadata.ingestion.source.database.clickhouse.service_spec": None}):
+        sink = workflow._get_bulk_sink()
     sink.iterate_files = lambda: iter([StringIO(_usage_record_line())])
     sink.handle_table_usage()
     assert published == ([(table.id, 1)] if expected_count else [])
+
+
+@pytest.mark.parametrize("failure", ["api", "overflow", "incomplete"])
+def test_failed_join_lookup_preserves_usage_queries_lifecycle_and_other_joins(failure):
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata, _, published, joins = _metadata_for_usage_resolution(table)
+    queries, lifecycles = [], []
+    metadata.ingest_entity_queries_data.side_effect = lambda *, entity, queries: published_queries(entity, queries)
+
+    def published_queries(entity, records):
+        queries.append((entity.id, [query.query.root for query in records]))
+
+    metadata.patch_life_cycle.side_effect = lambda *, entity, life_cycle: lifecycles.append((entity.id, life_cycle))
+    if failure == "api":
+        metadata.search_fqn_candidates.side_effect = create_api_error(503, "temporarily unavailable")
+    else:
+        metadata.search_fqn_candidates.return_value = FqnSearchResult((), 11 if failure == "overflow" else 1, True)
+    record = create_table_usage_with_queries().model_dump()
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "missing", "column": "id"}, {"table": "test_table", "column": "id"}],
+        }
+    ]
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+    assert published == [(table.id, 1)]
+    assert queries == [(table.id, ["SELECT * FROM test_table"])]
+    assert len(lifecycles) == 1
+    assert lifecycles[0][0] == table.id
+    assert lifecycles[0][1].accessed.timestamp.root == 1702000000000
+    assert len(joins) == 1
+    assert [join.fullyQualifiedName.root for join in joins[0][1].columnJoins[0].joinedWith] == [
+        "test_service.test_db.test_schema.test_table.id"
+    ]
+    assert not sink.status.failures

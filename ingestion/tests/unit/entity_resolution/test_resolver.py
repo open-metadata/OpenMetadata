@@ -28,12 +28,13 @@ from metadata.entity_resolution.engine import (
     FqnLookupMode,
     ResolutionTier,
 )
-from metadata.entity_resolution.table import TableResolver
+from metadata.entity_resolution.table import TableResolver, TableServiceBinding
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.clickhouse.naming import normalize_table_reference as clickhouse_reference
 
 EXACT = FqnLookupMode.EXACT
 CI = FqnLookupMode.CASE_INSENSITIVE_EXACT
@@ -372,6 +373,40 @@ def test_table_facade_service_priority_and_explicit_schema_fallback(sdk):
     del transport.entities[preferred.fullyQualifiedName.root]
     assert TableResolver(EntityResolver(metadata)).resolve(**kwargs) == ()
     assert ids(TableResolver(EntityResolver(metadata)).resolve(**kwargs, schema_fallback=True)) == [fallback.id]
+
+
+def test_connector_bindings_preserve_priority_and_do_not_leak_normalization(sdk):
+    metadata, transport = sdk
+    clickhouse = table("first.catalog.my_schema.my_table")
+    postgres = table("second.my_db.my_schema.my_table")
+    wrong_database = table("second.other_db.my_schema.my_table")
+    fallback = table("first.catalog.other_schema.my_table")
+    transport.entities = {
+        item.fullyQualifiedName.root: item for item in (clickhouse, postgres, wrong_database, fallback)
+    }
+    transport.hits = list(transport.entities)
+    bindings = (TableServiceBinding("first", clickhouse_reference), TableServiceBinding("second"))
+    kwargs = {"database_name": "ignored", "database_schema": "ignored", "table_name": "my_db.my_schema.my_table"}
+
+    def resolve():
+        return TableResolver(EntityResolver(metadata), bindings).resolve(**kwargs, schema_fallback=True)
+
+    assert ids(resolve()) == [clickhouse.id]
+    del transport.entities[clickhouse.fullyQualifiedName.root]
+    assert ids(resolve()) == [postgres.id]
+    del transport.entities[postgres.fullyQualifiedName.root]
+    assert ids(resolve()) == [fallback.id]
+
+
+def test_wildcard_service_uses_canonical_names_without_connector_normalization(sdk):
+    metadata, transport = sdk
+    expected, wrong = table("first.my_db.my_schema.my_table"), table("second.other_db.my_schema.my_table")
+    transport.entities = {item.fullyQualifiedName.root: item for item in (expected, wrong)}
+    transport.hits = list(transport.entities)
+    facade = TableResolver(EntityResolver(metadata), (TableServiceBinding("*", clickhouse_reference),))
+    assert ids(facade.resolve(database_name="my_db", database_schema="my_schema", table_name="my_table")) == [
+        expected.id
+    ]
 
 
 def test_table_facade_wildcard_service_unions_matches(sdk):
