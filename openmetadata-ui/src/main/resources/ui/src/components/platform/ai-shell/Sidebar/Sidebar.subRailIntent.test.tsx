@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -47,6 +47,13 @@ jest.mock('./MainPanel', () => ({
   default: () => <div data-testid="ask-main-panel" />,
 }));
 
+// The main nav is railed inside a sub-context; stub the Rail so this focused
+// test doesn't pull in the app-mode extension registry it depends on.
+jest.mock('./Rail', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ask-rail" />,
+}));
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
@@ -58,19 +65,25 @@ const permissionsWith = (testSuiteCreate: boolean): UIPermission =>
     [ResourceEntity.TEST_SUITE]: { [Operation.Create]: testSuiteCreate },
   } as unknown as UIPermission);
 
-const renderSidebar = () =>
-  render(
+const renderSidebar = () => {
+  const result = render(
     <MemoryRouter initialEntries={[DATA_QUALITY_PATH]}>
       <Sidebar />
     </MemoryRouter>
   );
+
+  // The submenu now opens expanded on entering a sub-context; collapse it to
+  // the sub-rail, which is what these tests exercise.
+  fireEvent.click(screen.getByTestId('ask-sub-panel-collapse-btn'));
+
+  return result;
+};
 
 describe('Sidebar collapsed sub-rail', () => {
   beforeEach(() => {
     mockModules = [observabilityModule];
     mockPermissions = permissionsWith(true);
     useActiveModuleStore.setState({ activeModule: 'observability' });
-    // The sub-panel defaults to collapsed, so the sub-rail is what renders.
     localStorage.clear();
   });
 

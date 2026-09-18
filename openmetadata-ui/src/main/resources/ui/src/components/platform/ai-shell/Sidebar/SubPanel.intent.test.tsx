@@ -26,7 +26,6 @@ import { AppModule, Intent } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { emitIntent } from '../useIntent';
 import Sidebar from './Sidebar';
-import { SUB_COLLAPSED_STORAGE_KEY } from './useSidebarState';
 
 // Module-scoped values read by the hoisted jest.mock factories at call time
 // (i.e. during render), so per-test reassignment takes effect.
@@ -48,6 +47,13 @@ jest.mock('./useContextCenterBadges', () => ({
 jest.mock('./MainPanel', () => ({
   __esModule: true,
   default: () => <div data-testid="ask-main-panel" />,
+}));
+
+// The main nav is railed inside a sub-context; stub the Rail so this focused
+// test doesn't pull in the app-mode extension registry it depends on.
+jest.mock('./Rail', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ask-rail" />,
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -109,9 +115,8 @@ describe('SubPanel Quick Action intent CTAs (expanded panel)', () => {
     mockPermissions = permissionsWith(true);
     useActiveModuleStore.setState({ activeModule: 'observability' });
     localStorage.clear();
-    // The sub-panel defaults to collapsed; expand it so the Quick Actions
-    // section — the only place these CTAs render — is on screen.
-    localStorage.setItem(SUB_COLLAPSED_STORAGE_KEY, 'false');
+    // The sub-panel now opens expanded by default on entering a sub-context
+    // (not persisted), which is where these Quick Actions render.
     lastPathname = '';
   });
 

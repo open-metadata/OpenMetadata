@@ -16,8 +16,9 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { PageType } from '../../../generated/system/ui/page';
@@ -39,6 +40,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
@@ -201,9 +203,24 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   }, [decodedApiEndpointFqn]);
 
+  // The endpoint FQN is service.collection.endpoint, so the positional
+  // Service+Database parts yield the collection FQN when the loaded entity
+  // doesn't carry its apiCollection reference.
+  const apiCollectionFqn =
+    apiEndpointDetails.apiCollection?.fullyQualifiedName ??
+    getPartialNameFromTableFQN(
+      decodedApiEndpointFqn,
+      [FqnPart.Service, FqnPart.Database],
+      FQN_SEPARATOR_CHAR
+    );
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(EntityType.API_COLLECTION, apiCollectionFqn)
+      ),
+    [apiCollectionFqn, navigate]
   );
 
   // Consumer via prop (`apiEndpointPermissions: OperationPermission`, raw contract kept — fed
