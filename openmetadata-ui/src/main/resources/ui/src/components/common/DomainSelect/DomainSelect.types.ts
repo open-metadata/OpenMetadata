@@ -51,6 +51,9 @@ export interface DomainSelectProps {
    */
   commitMode?: 'immediate' | 'staged';
   renderTrigger?: TreeSelectProps<EntityReference>['renderTrigger'];
+  /** Controls the dropdown open state (omit to let the picker own it). */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
   label?: string;
   placeholder?: string;
 

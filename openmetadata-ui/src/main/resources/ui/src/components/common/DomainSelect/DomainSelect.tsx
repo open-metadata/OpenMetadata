@@ -45,6 +45,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
   bordered,
   commitMode,
   renderTrigger,
+  isOpen,
+  onOpenChange,
   label,
   placeholder,
   onCreate,
@@ -156,6 +158,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       disabled={disabled || !hasPermission}
       fetchData={fetchData}
       filterNode={skipClientFilter}
+      isOpen={isOpen}
       label={label}
       multiple={multiple}
       placeholder={
@@ -170,6 +173,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       value={value}
       onChange={handleChange}
       onCreate={onCreate}
+      onOpenChange={onOpenChange}
     />
   );
 };
