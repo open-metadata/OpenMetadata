@@ -247,7 +247,14 @@ const GlossaryPage = () => {
     [glossaryFqn]
   );
 
-  const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
+  const { isTermView, isGlossaryView } = useMemo(() => {
+    const hasFqn = Boolean(glossaryFqn);
+
+    return {
+      isTermView: !isGlossaryActive && hasFqn,
+      isGlossaryView: isGlossaryActive && hasFqn,
+    };
+  }, [isGlossaryActive, glossaryFqn]);
 
   const {
     data: glossaryTermDetails,
@@ -257,6 +264,19 @@ const GlossaryPage = () => {
     queryKey: glossaryTermCacheKey,
     queryFn: glossaryTermQueryFn(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
     enabled: isTermView,
+  });
+
+  // Resolve the active glossary by FQN so a nonexistent FQN produces a real
+  // 404 instead of silently rendering the first glossary from the list.
+  const {
+    data: glossaryDetails,
+    isFetching: glossaryFetching,
+    error: glossaryError,
+  } = useQuery({
+    queryKey: ['glossary', glossaryFqn] as const,
+    queryFn: () =>
+      getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
+    enabled: isGlossaryView,
   });
 
   const setGlossaryTermDetails = useCallback(
@@ -280,12 +300,13 @@ const GlossaryPage = () => {
   );
 
   useEffect(() => {
-    const status = (glossaryTermError as AxiosError | undefined)?.response
-      ?.status;
+    const status = (
+      (glossaryTermError ?? glossaryError) as AxiosError | undefined
+    )?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
     }
-  }, [glossaryTermError, navigate]);
+  }, [glossaryTermError, glossaryError, navigate]);
 
   // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
   // store is also written to by the glossary-list code path below, so the two writers
@@ -296,21 +317,25 @@ const GlossaryPage = () => {
     }
   }, [isTermView, glossaryTermDetails, setActiveGlossary]);
 
+  // Sync the FQN-resolved glossary into the store. Only a real glossary lands
+  // here; a nonexistent FQN errors out and falls through to the not-found state.
   useEffect(() => {
-    if (glossaries.length && isGlossaryActive) {
-      setActiveGlossary(
-        glossaries.find(
-          (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        ) || glossaries[0]
-      );
+    if (isGlossaryView && glossaryDetails) {
+      setActiveGlossary(glossaryDetails as ModifiedGlossary);
+    }
+  }, [isGlossaryView, glossaryDetails, setActiveGlossary]);
 
-      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+  // No FQN in the URL: land on the first glossary from the list.
+  useEffect(() => {
+    if (glossaries.length && isGlossaryActive && isEmpty(glossaryFqn)) {
+      setActiveGlossary(glossaries[0]);
+      if (glossaries[0].fullyQualifiedName) {
         navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
           replace: true,
         });
       }
     }
-  }, [isGlossaryActive, glossaryFqn, glossaries]);
+  }, [isGlossaryActive, glossaryFqn, glossaries, navigate, setActiveGlossary]);
 
   const isRightPanelLoading = useMemo(() => {
     if (!glossaries.length) {
@@ -319,15 +344,31 @@ const GlossaryPage = () => {
     if (isTermView) {
       return glossaryTermFetching;
     }
+    if (isGlossaryView) {
+      return glossaryFetching;
+    }
 
     return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
+  }, [
+    glossaries.length,
+    isTermView,
+    glossaryTermFetching,
+    isGlossaryView,
+    glossaryFetching,
+  ]);
 
   const isTermNotFound = useMemo(
     () =>
       isTermView &&
       (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
     [isTermView, glossaryTermError]
+  );
+
+  const isGlossaryNotFound = useMemo(
+    () =>
+      isGlossaryView &&
+      (glossaryError as AxiosError | undefined)?.response?.status === 404,
+    [isGlossaryView, glossaryError]
   );
 
   const updateGlossary = useCallback(
@@ -563,12 +604,14 @@ const GlossaryPage = () => {
     if (isRightPanelLoading) {
       return <Loader />;
     }
-    if (isTermNotFound) {
+    if (isTermNotFound || isGlossaryNotFound) {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
             description={getEntityMissingMessage(
-              t('label.glossary-term'),
+              isGlossaryNotFound
+                ? t('label.glossary')
+                : t('label.glossary-term'),
               glossaryFqn
             )}
           />
