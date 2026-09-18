@@ -317,6 +317,33 @@ describe('CommentCard', () => {
       });
     });
 
+    it('should not fire a second save while one is in flight', async () => {
+      let settle: () => void = () => undefined;
+      onEdit.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        })
+      );
+      renderCommentCard();
+
+      await hoverCard();
+
+      fireEvent.click(screen.getByTestId('edit-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('send-button'));
+      fireEvent.click(screen.getByTestId('send-button'));
+
+      await waitFor(() => {
+        expect(onEdit).toHaveBeenCalledTimes(1);
+      });
+
+      settle();
+    });
+
     it('should keep the editor open when the save fails', async () => {
       onEdit.mockRejectedValueOnce(new Error('boom'));
       renderCommentCard();

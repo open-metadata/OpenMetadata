@@ -292,6 +292,29 @@ describe('ActivityFeedActions', () => {
     expect(mockDeleteFeed).not.toHaveBeenCalled();
   });
 
+  it('does not fire a second delete while one is in flight', async () => {
+    let settle: () => void = () => undefined;
+    const onDelete = jest.fn().mockReturnValue(
+      new Promise<void>((resolve) => {
+        settle = resolve;
+      })
+    );
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    fireEvent.click(screen.getByTestId('delete-message'));
+
+    // Double click while the request is still outstanding. Without the guard
+    // the second click deletes again and 404s against the missing comment.
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalledTimes(1);
+    });
+
+    settle();
+  });
+
   it('keeps the confirmation open when onDelete rejects', async () => {
     const onDelete = jest.fn().mockRejectedValue(new Error('boom'));
 

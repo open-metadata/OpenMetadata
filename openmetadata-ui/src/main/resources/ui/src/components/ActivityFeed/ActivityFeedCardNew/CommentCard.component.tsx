@@ -78,6 +78,7 @@ const CommentCard = ({
 }: CommentCardProps) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
   const seperator = '.';
   const editorRef = useRef<HTMLDivElement>(null);
   const authorName = author.name ?? author.fullyQualifiedName ?? '';
@@ -111,14 +112,23 @@ const CommentCard = ({
   };
 
   const handleSave = useCallback(async () => {
+    // The editor stays open while the save is in flight, so guard against a
+    // second submit firing a concurrent edit.
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
     try {
       await onEdit(postMessage ?? '');
       setIsEditPost(false);
     } catch {
       // Keep the editor open and the draft intact so the edit can be retried.
       // The caller owns reporting the failure.
+    } finally {
+      setIsSaving(false);
     }
-  }, [onEdit, postMessage]);
+  }, [isSaving, onEdit, postMessage]);
 
   const defaultValue = useMemo(
     () => MarkdownToHTMLConverter.makeHtml(getFrontEndFormat(message)),

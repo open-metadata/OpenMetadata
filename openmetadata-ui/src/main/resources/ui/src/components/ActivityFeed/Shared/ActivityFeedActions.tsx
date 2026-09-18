@@ -122,6 +122,7 @@ const ActivityFeedActions = ({
   const { currentUser } = useApplicationStore();
   const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
     useActivityFeedProvider();
 
@@ -136,12 +137,23 @@ const ActivityFeedActions = ({
 
   const handleDelete = async () => {
     if (onDelete) {
+      // The confirmation stays open for the length of the request, so without
+      // this the button remains clickable and a second click fires a
+      // concurrent delete - the first succeeds, the second 404s, and the user
+      // is shown a failure for a delete that actually worked.
+      if (isDeleting) {
+        return;
+      }
+
+      setIsDeleting(true);
       try {
         await onDelete();
         setShowDeleteDialog(false);
       } catch {
         // Leave the confirmation open so the delete can be retried. The caller
         // owns reporting the failure.
+      } finally {
+        setIsDeleting(false);
       }
 
       return;
@@ -248,6 +260,7 @@ const ActivityFeedActions = ({
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
         header={t('message.delete-message-question-mark')}
+        isLoading={isDeleting}
         visible={showDeleteDialog}
         onCancel={() => setShowDeleteDialog(false)}
         onConfirm={handleDelete}
