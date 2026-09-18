@@ -92,7 +92,7 @@ triage regardless of which literal mapping is chosen (example:
 | `shape="round"` (pill, 1 usage) | GAP — no pill variant. Example: `components/ActivityFeed/Reactions/Emoji.tsx:116` |
 | `block` (25 usages, all R1) | `className="tw:w-full"` — mechanical move, but needs visual QA since it's no longer a first-class prop. Example: `components/NotificationBox/NotificationBox.component.tsx:271` |
 | `Button.Group` (5 legacy sites: `ClassificationDetails.tsx:1038`, `GlossaryHeader.component.tsx`, `DataProductsDetailsPage.component.tsx`, `GithubStarCard.component.tsx`, `DomainDetails.component.tsx:1038`) | These group **independent action buttons** (vote/star controls), not single-select toggle state. Core `ButtonGroup`/`ButtonGroupItem` is a react-aria `ToggleButtonGroup` (single-select) — semantic mismatch, not a drop-in. Replace with a plain flex row of `Button`s (`className="tw:flex tw:gap-*"`), one per site, by hand. (5 *already-migrated* core `ButtonGroup` usages exist as precedent in R1 lineage components and 2 in R2 — those are genuine toggle groups and are correct as-is; do not touch) |
-| `ref={...}` (5 live usages) | core `Button` is now `forwardRef`-wrapped — **landed in main** (ui-core-components). `<Button ref={...}>` passes through directly; these 5 call sites are unblocked and safe to convert. Sites: `components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem.tsx:238`, `components/common/AvatarCarouselItem/AvatarCarouselItem.tsx:62`, plus 3 more (see gap-check §1.9/§4.6) |
+| `ref={...}` (4 live usages) | core `Button` is now `forwardRef`-wrapped — **landed in main** (ui-core-components). `<Button ref={...}>` passes through directly; these 4 call sites are unblocked and safe to convert. Sites: `components/common/AvatarCarouselItem/AvatarCarouselItem.tsx:62`, plus 3 more (see gap-check §1.9/§4.6) |
 
 ## Before / after examples
 
@@ -242,7 +242,7 @@ written ones.
 - **`Button.Group`** — 5 legacy sites (file:line list above) — semantic
   mismatch with core's single-select `ButtonGroup`, redesign per site as a
   flex row of `Button`s
-- **`ref`** — 5 live usages — unblocked (ui-core-components `forwardRef`
+- **`ref`** — 4 live usages — unblocked (ui-core-components `forwardRef`
   landed in main); convert directly, per-site
 - **`block`** — 25 usages (R1) — mechanical `tw:w-full` move but every site
   needs visual QA
