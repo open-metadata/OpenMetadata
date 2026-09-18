@@ -90,7 +90,22 @@ public class OpenSearchVectorService implements VectorIndexService {
     // root cause of production "I/O reactor has been shut down" errors.
   }
 
-  public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+  /**
+   * The RRF hybrid-ranking pipeline body. Usable two ways, and identical either way: as the body
+   * of {@code PUT /_search/pipeline/hybrid-rrf}, or inlined into a search request's {@code
+   * search_pipeline} field as an ad-hoc pipeline.
+   *
+   * <p>Inlining is what lets hybrid search work on a deployment whose search role is confined to
+   * its own {@code <clusterAlias>*} prefix: creating a named pipeline needs {@code
+   * cluster:admin/search/pipeline/put}, which no index-scoped role has, whereas an ad-hoc pipeline
+   * is carried by the search request itself and needs no cluster privilege at all. It also fixes
+   * the weights: a named pipeline is one cluster-global object, so on a shared cluster every
+   * tenant's reindex overwrote the previous tenant's keyword/semantic weights. Ad-hoc pipelines
+   * accept phase-results processors exactly as stored ones do — OpenSearch builds both through
+   * the same processor factories.
+   */
+  public static String buildHybridRrfPipelineDefinition(
+      double keywordWeight, double semanticWeight) {
     var weights = MAPPER.createArrayNode().add(keywordWeight).add(semanticWeight);
     var combination =
         MAPPER
@@ -107,8 +122,20 @@ public class OpenSearchVectorService implements VectorIndexService {
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
+    return pipeline.toString();
+  }
 
-    executeGenericRequest("PUT", "/_search/pipeline/" + HYBRID_PIPELINE_NAME, pipeline.toString());
+  /**
+   * Best-effort creation of the named pipeline, kept for deployments still reading hybrid results
+   * through {@code ?search_pipeline=hybrid-rrf}. Callers must treat failure as non-fatal: the PUT
+   * is a cluster-scoped write that a prefix-scoped search role cannot make, and the query path no
+   * longer depends on it.
+   */
+  public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
+    executeGenericRequest(
+        "PUT",
+        "/_search/pipeline/" + HYBRID_PIPELINE_NAME,
+        buildHybridRrfPipelineDefinition(keywordWeight, semanticWeight));
     LOG.info(
         "Hybrid search pipeline '{}' created/updated with weights keyword={}, semantic={}",
         HYBRID_PIPELINE_NAME,
