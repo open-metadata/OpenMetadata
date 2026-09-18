@@ -297,7 +297,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
-        "index_options": "docs"
+        "index_options": "positions"
       },
       "expression": {
         "properties": {
