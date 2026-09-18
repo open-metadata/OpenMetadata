@@ -259,3 +259,43 @@ export const buildResolveBody = (
       : {}),
   };
 };
+
+export interface TaskActionLayout {
+  /** The affirmative action, rendered as the header's filled button. */
+  primary?: TaskResolveAction;
+  /** The counterpart action, rendered as the header's outlined button. */
+  secondary?: TaskResolveAction;
+  /** Everything else, rendered in the header's overflow menu. */
+  overflow: TaskResolveAction[];
+}
+
+/**
+ * Splits a task's actions into the header's two buttons plus an overflow menu.
+ *
+ * Approve/reject take the two slots when present. A task that has neither —
+ * an incident resolving through `resolve`, a granted access request offering
+ * only `revoke` — promotes its first transitions instead, so its real action is
+ * never buried in the menu. A reassign only takes a slot once nothing else
+ * claims it.
+ */
+export const splitTaskActions = (
+  actions: TaskResolveAction[]
+): TaskActionLayout => {
+  const approve = actions.find((action) => action.kind === 'approve');
+  const reject = actions.find((action) => action.kind === 'reject');
+  const assignee = actions.find((action) => action.kind === 'assignee');
+  const others = actions.filter((action) => action.kind === 'other');
+
+  const primary = approve ?? others[0];
+  const secondary =
+    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee;
+  const promoted = new Set(
+    [primary?.id, secondary?.id].filter(Boolean) as string[]
+  );
+
+  return {
+    primary,
+    secondary,
+    overflow: actions.filter((action) => !promoted.has(action.id)),
+  };
+};

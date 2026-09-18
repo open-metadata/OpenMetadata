@@ -18,8 +18,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
-import { formatInboxDate } from '../inbox.utils';
-import { formatEntityType } from '../taskList.utils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTaskTitle } from '../taskTitle.utils';
 
 export interface InboxTaskListItemProps {
@@ -32,10 +31,52 @@ const Dot: React.FC = () => (
   <span className="tw:h-1 tw:w-1 tw:shrink-0 tw:rounded-full tw:bg-utility-gray-blue-300" />
 );
 
+/** The card's second line: task id, who raised it, and the asset it concerns. */
+const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
+  const requester = task.createdBy;
+  const requesterName = requester?.displayName ?? requester?.name;
+  const assetName = task.about ? getEntityName(task.about) : '';
+
+  return (
+    <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
+      <Typography
+        className="tw:font-mono tw:text-utility-blue-dark-500"
+        size="text-xs"
+        weight="medium">
+        {`#${task.taskId ?? ''}`}
+      </Typography>
+      {requesterName && (
+        <>
+          <Dot />
+          <ProfilePicture
+            displayName={requester?.name}
+            name={requester?.name ?? ''}
+            width="18"
+          />
+          <Typography
+            className="tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {requesterName}
+          </Typography>
+        </>
+      )}
+      {assetName && (
+        <Badge
+          className="tw:ml-auto tw:shrink-0 tw:font-mono"
+          size="sm"
+          type="modern">
+          {assetName}
+        </Badge>
+      )}
+    </Box>
+  );
+};
+
 /**
- * Compact task card in the Inbox Tasks tab: the title + comment count on top,
- * then a single meta row of id · type · requester · date. Cards are spaced,
- * lightly bordered, and highlight when selected (matches the figma).
+ * Compact task card in the Inbox Tasks tab: the title and comment count on top,
+ * then a meta row of id · requester · the asset it concerns. The task's type is
+ * carried by the list's group header rather than repeated on every card.
  */
 const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   task,
@@ -43,8 +84,6 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const entityType = formatEntityType(task.about?.type);
-  const createdByName = task.createdBy?.displayName ?? task.createdBy?.name;
   const commentCount = task.commentCount ?? task.comments?.length ?? 0;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitle composes a title from the task type and the entity it is about
@@ -75,7 +114,7 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
         {taskTitle && (
           <Typography
             className="tw:text-left tw:text-primary-900"
-            ellipsis={{ rows: 1 }}
+            ellipsis={{ rows: 2 }}
             size="text-sm"
             weight="medium">
             {taskTitle}
@@ -95,39 +134,7 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
         </Box>
       </Box>
 
-      <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
-        <Typography
-          className="tw:text-utility-blue-dark-500"
-          size="text-xs"
-          weight="medium">
-          {`#${task.taskId ?? ''}`}
-        </Typography>
-        {entityType && (
-          <Badge className="tw:shrink-0" size="sm" type="modern">
-            {entityType}
-          </Badge>
-        )}
-        {createdByName && (
-          <>
-            <Dot />
-            <ProfilePicture
-              displayName={task.createdBy?.name}
-              name={task.createdBy?.name ?? ''}
-              width="18"
-            />
-            <Typography
-              className="tw:text-secondary"
-              size="text-xs"
-              weight="medium">
-              {createdByName}
-            </Typography>
-          </>
-        )}
-        <Dot />
-        <Typography className="tw:text-secondary" size="text-xs">
-          {formatInboxDate(task.createdAt)}
-        </Typography>
-      </Box>
+      <TaskCardMeta task={task} />
     </Box>
   );
 };

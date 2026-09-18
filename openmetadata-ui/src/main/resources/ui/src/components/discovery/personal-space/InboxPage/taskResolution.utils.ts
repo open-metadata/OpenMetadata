@@ -15,10 +15,12 @@ import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import {
   EntityReference,
   Task,
+  TaskCategory,
   TaskStatus,
 } from '../../../../generated/entity/tasks/task';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { isTaskOpen } from './inbox.utils';
+import { TaskResolveAction } from './taskResolve.utils';
 
 export type TaskStatusTone = 'success' | 'error' | 'warning' | 'gray';
 
@@ -108,5 +110,64 @@ export const getTaskResolutionSummary = (
     comment: comment || NO_DATA_PLACEHOLDER,
     commentLabelKey: COMMENT_LABEL_KEY[task.status] ?? 'label.comment',
     hasResolution: Boolean(resolution),
+  };
+};
+
+// An open task's state reads as what the viewer has to do about it, which the
+// server does not model — Open covers "nobody has it", "it is yours to approve"
+// and "someone else is reviewing" alike.
+const REVIEW_CATEGORIES: ReadonlySet<TaskCategory> = new Set([
+  TaskCategory.Approval,
+  TaskCategory.Review,
+]);
+
+/**
+ * The state shown beside the task title. A closed task shows its terminal
+ * status; an open one shows what it is waiting on, which is why it needs the
+ * viewer's identity and the actions available to them.
+ *
+ * Precedence, most specific to the viewer first: nobody holds it, the viewer
+ * can act on it, the workflow named its own stage, and finally the generic
+ * "somebody else is reviewing this". The first two deliberately outrank the
+ * stage name: they tell the viewer whether the task is theirs to move, which a
+ * stage label does not.
+ *
+ * @param currentUserIds the viewer's own id plus their teams', since a task
+ * assigned to a team is equally the viewer's to act on.
+ */
+export const getTaskStatusLabel = (
+  task: Task,
+  actions: TaskResolveAction[],
+  currentUserIds: ReadonlySet<string>,
+  t: (key: string) => string
+): TaskStatusBadge | undefined => {
+  if (!task.status) {
+    return undefined;
+  }
+  if (!isTaskOpen(task)) {
+    return getTaskStatusBadge(task, t);
+  }
+
+  const assignees = task.assignees ?? [];
+  if (assignees.length === 0) {
+    return { label: t('label.unassigned'), tone: 'gray' };
+  }
+
+  const isMine = assignees.some((assignee) => currentUserIds.has(assignee.id));
+  const canApprove = actions.some((action) => action.kind === 'approve');
+  if (isMine && canApprove) {
+    return { label: t('label.pending-your-approval'), tone: 'warning' };
+  }
+  // Nobody can act on it yet: the workflow's own stage name beats a generic
+  // "assigned", which says nothing a viewer can use.
+  if (task.workflowStageDisplayName) {
+    return { label: task.workflowStageDisplayName, tone: 'warning' };
+  }
+
+  return {
+    label: REVIEW_CATEGORIES.has(task.category)
+      ? t('label.awaiting-review')
+      : t('label.assigned'),
+    tone: 'warning',
   };
 };

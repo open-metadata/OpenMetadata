@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import type { Task } from '../../../../../generated/entity/tasks/task';
 
@@ -66,6 +66,40 @@ jest.mock('rest/tasksAPI', () => ({
 jest.mock('../components/InboxFilterBar', () => ({
   __esModule: true,
   default: ({ left }: { left?: ReactNode }) => <div>{left}</div>,
+}));
+
+// The toolbar has its own suite; here it only has to report what the user
+// chose, so the tab's own contract (a searched query reaching the server, a
+// type narrowing the list) can be asserted.
+jest.mock('../components/InboxTaskListToolbar', () => ({
+  __esModule: true,
+  default: ({
+    onSearchChange,
+    onGroupingChange,
+    onTypeFilterChange,
+  }: {
+    onSearchChange: (value: string) => void;
+    onGroupingChange: (value: string) => void;
+    onTypeFilterChange: (value: string[]) => void;
+  }) => (
+    <div>
+      <button
+        data-testid="toolbar-search"
+        onClick={() => onSearchChange('customer')}>
+        search
+      </button>
+      <button
+        data-testid="toolbar-group-none"
+        onClick={() => onGroupingChange('none')}>
+        group none
+      </button>
+      <button
+        data-testid="toolbar-filter-tag"
+        onClick={() => onTypeFilterChange(['TagUpdate'])}>
+        filter tag
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../components/InboxTaskListItem', () => ({
@@ -161,6 +195,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <div className={className} data-testid={props['data-testid']}>
         {children}
       </div>
+    ),
+    Badge: ({ children }: { children?: ReactNode }) => (
+      <span data-testid="count-badge">{children}</span>
     ),
     Skeleton: () => <div data-testid="skeleton" />,
     Typography: ({ children }: { children?: ReactNode }) => (
@@ -398,6 +435,87 @@ describe('TasksTab', () => {
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-open-task-count'],
+    });
+  });
+
+  describe('shaping the queue', () => {
+    const TAG_TASK = {
+      id: 't1',
+      type: 'TagUpdate',
+    } as unknown as Task;
+    const INCIDENT_TASK = {
+      id: 't2',
+      type: 'TestCaseResolution',
+    } as unknown as Task;
+
+    beforeEach(() => {
+      hookState = {
+        items: [TAG_TASK, INCIDENT_TASK],
+        isLoading: false,
+        total: 2,
+      };
+    });
+
+    it('groups the loaded tasks by type, most urgent type first', () => {
+      renderTab();
+
+      const headers = screen.getAllByTestId('inbox-task-group');
+
+      expect(headers).toHaveLength(2);
+      expect(headers[0]).toHaveTextContent('label.incident');
+      expect(headers[1]).toHaveTextContent('label.tag');
+    });
+
+    it('drops the group headers when grouping is turned off', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-group-none'));
+
+      expect(screen.queryByTestId('inbox-task-group')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+    });
+
+    // The scoped list endpoints have no `type` param, so the chosen types
+    // narrow the pages already loaded.
+    it('narrows the list to the chosen type without refetching', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
+      expect(mockReload).not.toHaveBeenCalled();
+    });
+
+    it('sends the search text to the server once typing settles', () => {
+      jest.useFakeTimers();
+      try {
+        renderTab();
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('toolbar-search'));
+        });
+        act(() => {
+          jest.advanceTimersByTime(300);
+        });
+        capturedFetchPage();
+
+        expect(mockListVisibleTasks).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'customer' })
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('asks for everything again when the search is cleared', () => {
+      renderTab();
+      capturedFetchPage();
+
+      expect(mockListVisibleTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ q: undefined })
+      );
     });
   });
 });

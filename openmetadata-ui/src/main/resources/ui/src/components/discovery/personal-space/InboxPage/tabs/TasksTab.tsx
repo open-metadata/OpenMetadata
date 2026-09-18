@@ -21,16 +21,19 @@ import {
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Inbox01 } from '@untitledui/icons';
 import classNames from 'classnames';
+import { debounce } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, {
   ReactNode,
   RefObject,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { TaskType } from '../../../../../generated/entity/tasks/task';
 import {
   listMyVisibleTasks,
   listTasks,
@@ -41,13 +44,19 @@ import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 import InboxFilterBar from '../components/InboxFilterBar';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
+import InboxTaskListToolbar, {
+  InboxTaskGrouping,
+} from '../components/InboxTaskListToolbar';
 import TaskDetailPanel from '../components/TaskDetailPanel';
 import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
 import { InboxDateRange, isTaskOpen } from '../inbox.utils';
+import { getTaskTypeBadge } from '../taskDetail.utils';
+import { filterTasksByTypes, groupTasksByType } from '../taskList.utils';
 import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 
 const TASK_LIMIT = 25;
+const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
@@ -92,6 +101,7 @@ interface TasksTabBodyProps {
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
+  grouping: InboxTaskGrouping;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -107,6 +117,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   isLoading,
   isLoadingMore,
   tasks,
+  grouping,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -134,6 +145,38 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     </Box>
   );
 
+  const renderRow = (task: Task) => (
+    <InboxTaskListItem
+      isActive={selectedTaskId === task.id}
+      key={task.id}
+      task={task}
+      onClick={(selected) => setSelectedTaskId(selected.id)}
+    />
+  );
+
+  // Grouping covers the pages loaded so far: the server paginates by cursor,
+  // not by type, so a later page can reopen a group that already appeared.
+  const groupedList = groupTasksByType(tasks).map((group) => (
+    <Box direction="col" gap={3} key={group.type}>
+      <Box
+        align="center"
+        className="tw:gap-2 tw:px-1"
+        data-testid="inbox-task-group">
+        <Typography
+          className="tw:uppercase tw:text-quaternary tw:tracking-wide"
+          size="text-xs"
+          weight="semibold">
+          {getTaskTypeBadge({ type: group.type } as Task, t).label}
+        </Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {group.count}
+        </Badge>
+        <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+      </Box>
+      {group.items.map(renderRow)}
+    </Box>
+  ));
+
   return (
     <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
       <div
@@ -144,14 +187,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-3 tw:p-3">
-            {tasks.map((task) => (
-              <InboxTaskListItem
-                isActive={selectedTaskId === task.id}
-                key={task.id}
-                task={task}
-                onClick={(selected) => setSelectedTaskId(selected.id)}
-              />
-            ))}
+            {grouping === 'type' ? groupedList : tasks.map(renderRow)}
           </div>
         )}
 
@@ -186,6 +222,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
+  const [search, setSearch] = useState('');
+  // The query the server is filtering on. Kept apart from `search` so typing
+  // stays responsive while the request trails it.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
+  const [typeFilter, setTypeFilter] = useState<TaskType[]>([]);
 
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active
@@ -216,6 +258,24 @@ const TasksTab: React.FC<TasksTabProps> = ({
   });
   const statusCounts = getStatusCounts(countQueries);
 
+  // One trailing commit per pause, so a typed word costs one request, not one
+  // per keystroke. Recreated only if the component remounts.
+  const commitSearch = useMemo(
+    () =>
+      debounce((value: string) => setSearchQuery(value), SEARCH_DEBOUNCE_MS),
+    []
+  );
+
+  useEffect(() => () => commitSearch.cancel(), [commitSearch]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearch(value);
+      commitSearch(value);
+    },
+    [commitSearch]
+  );
+
   const fetchPage = useCallback(
     (after?: string) => {
       const params = {
@@ -225,6 +285,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         after,
         startTs: dateRange?.startTs,
         endTs: dateRange?.endTs,
+        q: searchQuery || undefined,
       };
 
       // aboutEntity = entity-page mode (all tasks about that entity); otherwise
@@ -233,7 +294,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? listTasks({ ...params, aboutEntity })
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, dateRange?.startTs, dateRange?.endTs]
+    [status, aboutEntity, dateRange?.startTs, dateRange?.endTs, searchQuery]
   );
 
   const {
@@ -260,13 +321,22 @@ const TasksTab: React.FC<TasksTabProps> = ({
     });
   }, [queryClient]);
 
+  // The server has no `type` filter on the scoped lists, so the chosen types
+  // narrow the loaded pages here; search and status stay server-side.
+  const visibleTasks = useMemo(
+    () => filterTasksByTypes(tasks, typeFilter),
+    [tasks, typeFilter]
+  );
+
   // Keep a valid selection: default to the first task and recover if the
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && tasks.some((task) => task.id === prev) ? prev : tasks[0]?.id
+      prev && visibleTasks.some((task) => task.id === prev)
+        ? prev
+        : visibleTasks[0]?.id
     );
-  }, [tasks]);
+  }, [visibleTasks]);
 
   // The Activity/Tasks tab badges and the sidebar inbox bubble are separate
   // react-query fetches under their own keys, so a mutation here would otherwise
@@ -413,10 +483,23 @@ const TasksTab: React.FC<TasksTabProps> = ({
         onDateRangeChange={onDateRangeChange}
       />
 
-      {!isLoading && tasks.length === 0 ? (
+      <Box className="tw:border-b tw:border-secondary tw:px-3 tw:py-2">
+        <InboxTaskListToolbar
+          grouping={grouping}
+          search={search}
+          tasks={tasks}
+          typeFilter={typeFilter}
+          onGroupingChange={setGrouping}
+          onSearchChange={handleSearchChange}
+          onTypeFilterChange={setTypeFilter}
+        />
+      </Box>
+
+      {!isLoading && visibleTasks.length === 0 ? (
         <Box className="tw:relative tw:min-h-0 tw:flex-1">{emptyState}</Box>
       ) : (
         <TasksTabBody
+          grouping={grouping}
           handleCommentsChanged={handleCommentsChanged}
           handleResolved={handleResolved}
           handleTaskUpdated={handleTaskUpdated}
@@ -426,7 +509,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           selectedTaskId={selectedTaskId}
           sentinelRef={sentinelRef}
           setSelectedTaskId={setSelectedTaskId}
-          tasks={tasks}
+          tasks={visibleTasks}
         />
       )}
     </Box>

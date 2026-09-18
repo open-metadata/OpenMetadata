@@ -1,0 +1,113 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import React, { ComponentType } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { EntityType } from '../../../../../enums/entity.enum';
+import { Task } from '../../../../../generated/entity/tasks/task';
+import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
+import { getEntityLinkFromType } from '../../../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTagDisplay } from '../../../../../utils/TagsPureUtils';
+import { TaskAboutEntity, TaskStatTilesProps } from '../taskDetail.types';
+import { formatEntityType } from '../taskList.utils';
+import TaskStatTiles from './TaskStatTiles';
+
+export interface TaskAssetCardProps {
+  task: Task;
+  about?: TaskAboutEntity;
+  isLoading: boolean;
+  /** Replaces the default stat tiles for a plugin-owned task type. */
+  StatTiles?: ComponentType<TaskStatTilesProps>;
+}
+
+/**
+ * The asset a task is about: what it is, how it is classified, a way into it,
+ * and the few numbers that tell a reviewer whether the change matters.
+ *
+ * Renders nothing when the task names no entity — an incident carries its
+ * failing test case in the title instead.
+ */
+const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
+  task,
+  about,
+  isLoading,
+  StatTiles = TaskStatTiles,
+}) => {
+  const { t } = useTranslation();
+  const aboutRef = task.about;
+
+  if (!aboutRef?.fullyQualifiedName || !aboutRef.type) {
+    return null;
+  }
+
+  const parentPath = aboutRef.fullyQualifiedName
+    .split('.')
+    .slice(0, -1)
+    .join('.');
+
+  return (
+    <Box
+      className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+      data-testid="task-asset-card"
+      direction="col">
+      <Box align="start" className="tw:justify-between tw:gap-3 tw:p-4">
+        <Box align="start" className="tw:min-w-0" gap={3}>
+          <span className="tw:mt-0.5 tw:shrink-0">
+            {getEntityIcon(aboutRef.type)}
+          </span>
+          <Box className="tw:min-w-0" direction="col" gap={1}>
+            <Box align="center" className="tw:flex-wrap" gap={2}>
+              <Typography
+                className="tw:font-mono tw:break-all"
+                size="text-sm"
+                weight="semibold">
+                {getEntityName(aboutRef)}
+              </Typography>
+              {about?.tier && (
+                <Badge color="blue" size="sm" type="color">
+                  {getTagDisplay(about.tier.tagFQN)}
+                </Badge>
+              )}
+              {Boolean(about?.piiColumnCount) && (
+                <Badge color="error" size="sm" type="color">
+                  {t('label.pii-uppercase')}
+                </Badge>
+              )}
+            </Box>
+            <Typography className="tw:text-secondary" size="text-xs">
+              {[formatEntityType(aboutRef.type), parentPath]
+                .filter(Boolean)
+                .join(' · ')}
+            </Typography>
+          </Box>
+        </Box>
+        <Link
+          className="tw:shrink-0 tw:font-medium! tw:text-utility-blue-dark-500 tw:no-underline! tw:hover:underline!"
+          data-testid="task-open-asset"
+          to={getEntityLinkFromType(
+            aboutRef.fullyQualifiedName,
+            aboutRef.type as EntityType
+          )}>
+          {t('label.open-asset')}
+        </Link>
+      </Box>
+
+      <StatTiles about={about} isLoading={isLoading} task={task} />
+    </Box>
+  );
+};
+
+export default TaskAssetCard;

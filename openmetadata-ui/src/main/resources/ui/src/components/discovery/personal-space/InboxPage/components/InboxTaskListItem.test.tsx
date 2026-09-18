@@ -20,10 +20,6 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   default: () => <div />,
 }));
 
-jest.mock('../taskList.utils', () => ({
-  formatEntityType: (type?: string) => type ?? '',
-}));
-
 jest.mock('../taskTitle.utils', () => ({
   getTaskTitle: (task: {
     displayName?: string;
@@ -38,8 +34,9 @@ jest.mock('../taskTitle.utils', () => ({
   },
 }));
 
-jest.mock('../inbox.utils', () => ({
-  formatInboxDate: () => '13 May, 2026',
+jest.mock('utils/EntityNameUtils', () => ({
+  getEntityName: (ref: { displayName?: string; name?: string }) =>
+    ref?.displayName ?? ref?.name ?? '',
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -81,7 +78,7 @@ const task = {
   id: 't1',
   taskId: '11345',
   displayName: 'Data Access Request for RF3',
-  about: { type: 'Table' },
+  about: { type: 'Table', name: 'dim_customers' },
   createdBy: { id: 'u1', name: 'olivia', displayName: 'Olivia Rhye' },
   assignees: [
     { id: 'a1', name: 'one' },
@@ -92,15 +89,33 @@ const task = {
 } as unknown as Task;
 
 describe('InboxTaskListItem', () => {
-  it('renders id, type, title, requester, date and comment count', () => {
+  it('renders the id, title, requester, asset and comment count', () => {
     render(<InboxTaskListItem task={task} onClick={jest.fn()} />);
 
     expect(screen.getByText('#11345')).toBeInTheDocument();
-    expect(screen.getByText('Table')).toBeInTheDocument();
     expect(screen.getByText('Data Access Request for RF3')).toBeInTheDocument();
     expect(screen.getByText('Olivia Rhye')).toBeInTheDocument();
-    expect(screen.getByText('13 May, 2026')).toBeInTheDocument();
+    expect(screen.getByText('dim_customers')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  // The type is carried by the list's group header, so repeating it on every
+  // card would be noise.
+  it('does not repeat the task type on the card', () => {
+    render(<InboxTaskListItem task={task} onClick={jest.fn()} />);
+
+    expect(screen.queryByText('Table')).not.toBeInTheDocument();
+  });
+
+  it('leaves the asset chip off a task that names no entity', () => {
+    render(
+      <InboxTaskListItem
+        task={{ ...task, about: undefined } as Task}
+        onClick={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByText('dim_customers')).not.toBeInTheDocument();
   });
 
   it('composes a title for a task whose name is only the taskId', () => {

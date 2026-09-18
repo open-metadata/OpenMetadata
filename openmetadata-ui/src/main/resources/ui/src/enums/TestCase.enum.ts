@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { TestCasePageTabs } from '../../enums/TestCase.enum';
-import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
-
-// Moved to `enums/TestCase.enum` so lower layers can name a tab without
-// importing this page; re-exported here for the modules that already do.
-export { TestCasePageTabs };
-export interface TestCaseIncidentStatusData {
-  data: TestCaseResolutionStatus[];
-  isLoading: boolean;
+/**
+ * Tabs of the test case detail page. Lives here rather than beside the page so
+ * the routing utilities that build these URLs — a lower layer — do not have to
+ * import a route-level module to name a tab.
+ */
+export enum TestCasePageTabs {
+  TEST_CASE_RESULTS = 'test-case-results',
+  DIMENSIONALITY = 'dimensionality',
+  SQL_QUERY = 'sql-query',
+  ISSUES = 'issues',
 }

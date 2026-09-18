@@ -39,6 +39,9 @@ import {
   LEGACY_APPROVE_ACTION_ID,
   LEGACY_REJECT_ACTION_ID,
   needsTaskActionInput,
+  splitTaskActions,
+  TaskActionKind,
+  TaskResolveAction,
 } from './taskResolve.utils';
 
 const LABELS = { approve: 'Approve', reject: 'Reject' };
@@ -419,6 +422,67 @@ describe('getTaskActionInput', () => {
       requiresComment: true,
       requiresAssignee: false,
       requiresRootCause: true,
+    });
+  });
+});
+
+describe('splitTaskActions', () => {
+  const action = (
+    id: string,
+    kind: TaskActionKind,
+    label = id
+  ): TaskResolveAction => ({ id, kind, label, requiresComment: false });
+
+  it('puts approve in front and reject beside it', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reject', 'reject'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reject');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['reassign']);
+  });
+
+  // An incident has no approve/reject: its real action is a plain transition,
+  // which must stay a button rather than hiding in the menu.
+  it('promotes the first plain transitions when there is no approve or reject', () => {
+    const layout = splitTaskActions([
+      action('resolve', 'other'),
+      action('acknowledge', 'other'),
+      action('escalate', 'other'),
+    ]);
+
+    expect(layout.primary?.id).toBe('resolve');
+    expect(layout.secondary?.id).toBe('acknowledge');
+    expect(layout.overflow.map((a) => a.id)).toEqual(['escalate']);
+  });
+
+  it('keeps a lone transition visible, with nothing beside it', () => {
+    const layout = splitTaskActions([action('revoke', 'other')]);
+
+    expect(layout.primary?.id).toBe('revoke');
+    expect(layout.secondary).toBeUndefined();
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('gives a reassign the free slot when only an approve competes for one', () => {
+    const layout = splitTaskActions([
+      action('approve', 'approve'),
+      action('reassign', 'assignee'),
+    ]);
+
+    expect(layout.primary?.id).toBe('approve');
+    expect(layout.secondary?.id).toBe('reassign');
+    expect(layout.overflow).toEqual([]);
+  });
+
+  it('offers nothing for a task with no actions', () => {
+    expect(splitTaskActions([])).toEqual({
+      primary: undefined,
+      secondary: undefined,
+      overflow: [],
     });
   });
 });

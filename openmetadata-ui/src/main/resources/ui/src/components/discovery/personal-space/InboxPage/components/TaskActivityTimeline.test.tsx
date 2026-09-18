@@ -12,7 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ComponentProps, ReactNode } from 'react';
 
 // Boundary stub: the real chip renders the OSS user popover.
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
@@ -21,7 +21,7 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
 }));
 
 jest.mock('../inbox.utils', () => ({
-  formatActivityTime: () => '13 days ago',
+  formatInboxDateTime: (ts?: number) => `at-${ts}`,
 }));
 
 jest.mock('utils/EntityNameUtils', () => ({
@@ -29,59 +29,130 @@ jest.mock('utils/EntityNameUtils', () => ({
     ref?.displayName ?? ref?.name ?? '',
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
+// The comment bubble is covered by its own suite; here only its placement in
+// the stream matters.
+jest.mock('./TaskCommentRow', () => ({
+  __esModule: true,
+  default: ({ comment }: { comment: { message: string } }) => (
+    <div data-testid="task-comment-card">{comment.message}</div>
   ),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Box: ({
+    children,
+    ...rest
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <div data-testid={rest['data-testid']}>{children}</div>,
+  Typography: ({
+    children,
+    ...rest
+  }: {
+    children?: ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={rest['data-testid']}>{children}</span>,
 }));
 
-import { Task } from '../../../../../generated/entity/tasks/task';
+jest.mock(
+  '@untitledui/icons',
+  () =>
+    new Proxy(
+      {},
+      {
+        get: (_target, name: string) =>
+          name === '__esModule'
+            ? false
+            : (props: ComponentProps<'span'>) => <span {...props} />,
+      }
+    )
+);
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    // Echo the interpolated user so a test can tell the events apart.
+    t: (key: string, options?: { user?: string }) =>
+      options?.user ? `${key}:${options.user}` : key,
+  }),
+}));
+
+import { Task, TaskCategory } from '../../../../../generated/entity/tasks/task';
 import TaskActivityTimeline from './TaskActivityTimeline';
 
 const task = {
+  id: 'task-1',
   comments: [
     {
       id: 'c1',
       author: { name: 'pb', displayName: 'Phoenix Baker' },
-      createdAt: 1,
+      createdAt: 30,
       message: 'hi',
     },
   ],
   assignees: [{ id: 'a1', name: 'as', displayName: 'Assignee One' }],
   createdBy: { id: 'u1', name: 'oy', displayName: 'Olivia Rhye' },
-  createdAt: 2,
+  createdAt: 10,
 } as unknown as Task;
 
-describe('TaskActivityTimeline', () => {
-  it('renders comment, assignment and creation events', () => {
-    render(<TaskActivityTimeline task={task} />);
+const renderTimeline = (value: Task) =>
+  render(<TaskActivityTimeline task={value} onCommentChanged={jest.fn()} />);
 
-    expect(screen.getByText('Phoenix Baker')).toBeInTheDocument();
-    expect(screen.getByText('label.added-a-comment')).toBeInTheDocument();
-    expect(screen.getByText('Assignee One')).toBeInTheDocument();
-    expect(screen.getByText('label.assigned-to')).toBeInTheDocument();
-    expect(screen.getByText('Olivia Rhye')).toBeInTheDocument();
-    expect(screen.getByText('label.request-created-by')).toBeInTheDocument();
+describe('TaskActivityTimeline', () => {
+  it('renders creation and comment entries in one stream', () => {
+    renderTimeline(task);
+
+    expect(
+      screen.getByText('message.task-event-created:Olivia Rhye')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('task-comment-card')).toHaveTextContent('hi');
   });
 
-  it('renders only the creation event when there are no comments/assignees', () => {
-    render(
-      <TaskActivityTimeline
-        task={
-          {
-            createdBy: { name: 'x', displayName: 'X' },
-            createdAt: 1,
-          } as unknown as Task
-        }
-      />
+  // The task records who holds it but never when they were given it, so dating
+  // an assignment to creation would misorder it against comments.
+  it('does not invent an assignment event', () => {
+    renderTimeline(task);
+
+    expect(
+      screen.queryByText(/message.task-event-assigned/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('orders entries oldest first, so a comment follows the events it answers', () => {
+    renderTimeline(task);
+
+    const rendered = screen.getAllByTestId(
+      /task-timeline-event|task-comment-card/
     );
 
-    expect(screen.getByText('label.request-created-by')).toBeInTheDocument();
-    expect(screen.queryByText('label.added-a-comment')).not.toBeInTheDocument();
+    expect(rendered[0]).toHaveTextContent('message.task-event-created');
+    expect(rendered[rendered.length - 1]).toHaveTextContent('hi');
+  });
+
+  it('renders only the creation event when there is nothing else to show', () => {
+    renderTimeline({
+      id: 'task-2',
+      createdBy: { name: 'x', displayName: 'X' },
+      createdAt: 1,
+    } as unknown as Task);
+
+    expect(
+      screen.getByText('message.task-event-created:X')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('task-comment-card')).not.toBeInTheDocument();
+  });
+
+  it('reads an incident as opened rather than created', () => {
+    renderTimeline({
+      id: 'task-3',
+      category: TaskCategory.Incident,
+      createdBy: { name: 'monitor', displayName: 'Collate monitor' },
+      createdAt: 5,
+    } as unknown as Task);
+
+    expect(
+      screen.getByText('message.task-event-incident-opened:Collate monitor')
+    ).toBeInTheDocument();
   });
 });
