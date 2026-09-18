@@ -73,7 +73,6 @@ import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
-import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
@@ -420,7 +419,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   // Fields whose change rewrites a glossary term's FQN during move operations.
-  private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
@@ -511,18 +509,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFieldFetchPoolSize(DEFAULT_FIELD_FETCH_POOL_SIZE);
   }
 
-  private static final LoadingCache<String, Integer> COUNT_CACHE =
+  private static final Cache<String, Integer> COUNT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(500)
           .expireAfterWrite(5, TimeUnit.MINUTES)
           .recordStats()
-          .build(
-              new CacheLoader<String, Integer>() {
-                @Override
-                public Integer load(String key) {
-                  throw new UnsupportedOperationException("Use get() method with a custom loader");
-                }
-              });
+          .build();
 
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
@@ -10085,37 +10077,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
       LifeCycle origLifeCycle = original.getLifeCycle();
-      LifeCycle updatedLifeCycle = updated.getLifeCycle();
-
-      if (operation == Operation.PUT && updatedLifeCycle == null) {
-        updatedLifeCycle = origLifeCycle;
-        updated.setLifeCycle(origLifeCycle);
-      }
-
-      if (origLifeCycle == updatedLifeCycle) return;
-
-      if (origLifeCycle != null && updatedLifeCycle != null) {
-        if (origLifeCycle.getCreated() != null
-            && (updatedLifeCycle.getCreated() == null
-                || updatedLifeCycle.getCreated().getTimestamp()
-                    < origLifeCycle.getCreated().getTimestamp())) {
-          updatedLifeCycle.setCreated(origLifeCycle.getCreated());
-        }
-
-        if (origLifeCycle.getAccessed() != null
-            && (updatedLifeCycle.getAccessed() == null
-                || updatedLifeCycle.getAccessed().getTimestamp()
-                    < origLifeCycle.getAccessed().getTimestamp())) {
-          updatedLifeCycle.setAccessed(origLifeCycle.getAccessed());
-        }
-
-        if (origLifeCycle.getUpdated() != null
-            && (updatedLifeCycle.getUpdated() == null
-                || updatedLifeCycle.getUpdated().getTimestamp()
-                    < origLifeCycle.getUpdated().getTimestamp())) {
-          updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
-        }
-      }
+      LifeCycle updatedLifeCycle =
+          EntityDiff.lifeCycle(origLifeCycle, updated.getLifeCycle(), operation == Operation.PUT);
+      updated.setLifeCycle(updatedLifeCycle);
       // Use updateVersion=false to prevent version pollution from lifecycle-only changes
       // See: https://github.com/open-metadata/OpenMetadata/issues/21326
       recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true, objectMatch, false);
@@ -10182,12 +10146,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final boolean updateVersion(Double oldVersion) {
-      Double newVersion = oldVersion;
-      if (majorVersionChange) {
-        newVersion = nextMajorVersion(oldVersion);
-      } else if (fieldsChanged()) {
-        newVersion = nextVersion(oldVersion);
-      }
+      final Double newVersion =
+          EntityVersionPolicy.next(oldVersion, changeDescription, majorVersionChange);
       LOG.debug(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
@@ -10203,21 +10163,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final boolean fieldsChanged() {
-      if (changeDescription == null) {
-        return false;
-      }
-      return !changeDescription.getFieldsAdded().isEmpty()
-          || !changeDescription.getFieldsUpdated().isEmpty()
-          || !changeDescription.getFieldsDeleted().isEmpty();
+      return EntityVersionPolicy.hasChanges(changeDescription);
     }
 
     public final boolean incrementalFieldsChanged() {
-      if (incrementalChangeDescription == null) {
-        return false;
-      }
-      return !incrementalChangeDescription.getFieldsAdded().isEmpty()
-          || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
-          || !incrementalChangeDescription.getFieldsDeleted().isEmpty();
+      return EntityVersionPolicy.hasChanges(incrementalChangeDescription);
     }
 
     /** Event type produced by this update: ENTITY_UPDATED when this request changed any field. */
@@ -10248,34 +10198,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!shouldCompare(field)) {
         return false;
       }
-      if (orig == updated) {
-        return false;
-      }
       if (!updateVersion && entityChanged) {
         return false;
       }
-      Object oldValue = jsonValue ? JsonUtils.pojoToJson(orig) : orig;
-      Object newValue = jsonValue ? JsonUtils.pojoToJson(updated) : updated;
-      if (orig == null) {
-        entityChanged = true;
-        if (updateVersion) {
-          fieldAdded(changeDescription, field, newValue);
-        }
-        return true;
-      } else if (updated == null) {
-        entityChanged = true;
-        if (updateVersion) {
-          fieldDeleted(changeDescription, field, oldValue);
-        }
-        return true;
-      } else if (!typeMatch.test(orig, updated)) {
-        entityChanged = true;
-        if (updateVersion) {
-          fieldUpdated(changeDescription, field, oldValue, newValue);
-        }
-        return true;
-      }
-      return false;
+      final boolean changed =
+          EntityDiff.value(
+              changeDescription, field, orig, updated, jsonValue, typeMatch, updateVersion);
+      entityChanged |= changed;
+      return changed;
     }
 
     public final <K> boolean recordListChange(
@@ -10288,41 +10218,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!shouldCompare(field)) {
         return false;
       }
-      origList = listOrEmpty(origList);
-      updatedList = listOrEmpty(updatedList);
-      List<K> updatedItems = new ArrayList<>();
-
-      for (K stored : origList) {
-        // If an entry in the original list is not in updated list, then it is deleted during update
-        K u = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
-        if (u == null) {
-          deletedItems.add(stored);
-        }
-      }
-
-      for (K U : updatedList) {
-        // If an entry in the updated list is not in original list, then it is added during update
-        K stored = origList.stream().filter(c -> typeMatch.test(c, U)).findAny().orElse(null);
-        if (stored == null) { // New entry added
-          addedItems.add(U);
-        } else if (!typeMatch.test(stored, U)) {
-          updatedItems.add(U);
-        }
-      }
-      if (!addedItems.isEmpty()) {
-        fieldAdded(changeDescription, field, JsonUtils.pojoToJson(addedItems));
-      }
-      if (!updatedItems.isEmpty()) {
-        fieldUpdated(
-            changeDescription,
-            field,
-            JsonUtils.pojoToJson(origList),
-            JsonUtils.pojoToJson(updatedItems));
-      }
-      if (!deletedItems.isEmpty()) {
-        fieldDeleted(changeDescription, field, JsonUtils.pojoToJson(deletedItems));
-      }
-      return !addedItems.isEmpty() || !deletedItems.isEmpty();
+      return EntityDiff.list(
+          changeDescription, field, origList, updatedList, addedItems, deletedItems, typeMatch);
     }
 
     /**
@@ -10799,95 +10696,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     protected boolean consolidateChanges(T original, T updated, Operation operation) {
-      // Skip consolidation if optimistic locking is being used
-      if (useOptimisticLocking) {
-        return false;
-      }
-
-      // Skip consolidation if the name is being changed in this update.
-      // Renaming updates FQN and related entity references (assets, relationships).
-      // Consolidation would revert to a previous version with the old name/FQN,
-      // causing inconsistencies with already-updated references.
-      if (!original.getName().equals(updated.getName())) {
-        LOG.debug("Skipping consolidation for {} - name change detected", original.getId());
-        return false;
-      }
-
-      // Skip consolidation if a previous session update changed the FQN. The previous version
-      // would have the stale FQN, and reverting to it would strand already-repointed references.
-      if (wasRenamedInSession(original)) {
-        LOG.debug(
-            "Skipping consolidation for {} - entity FQN changed in session", original.getId());
-        return false;
-      }
-
-      ChangeDescription changeDescription = original.getChangeDescription();
-      if (changeDescription == null || changeDescription.getPreviousVersion() == null) {
-        LOG.debug(
-            "Skipping consolidation for {} - missing previous change version", original.getId());
-        return false;
-      }
-
-      // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
-          && operation == Operation.PATCH
-          && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
-          && !operation.isDelete() // Operation must be an update
-          && original
-              .getUpdatedBy()
-              .equals(updated.getUpdatedBy()) // Must be updated by the same user
-          && updated.getUpdatedAt() - original.getUpdatedAt()
-              <= sessionTimeoutMillis // With in session timeout
-          && diffChangeSource();
-      // changes to children
-    }
-
-    private boolean wasRenamedInSession(T original) {
-      return hasFqnAffectingChange(original.getChangeDescription())
-          || hasFqnAffectingChange(original.getIncrementalChangeDescription());
-    }
-
-    private boolean hasFqnAffectingChange(ChangeDescription changeDescription) {
-      boolean affected = false;
-      if (changeDescription != null) {
-        affected =
-            Stream.of(
-                    listOrEmpty(changeDescription.getFieldsAdded()),
-                    listOrEmpty(changeDescription.getFieldsUpdated()),
-                    listOrEmpty(changeDescription.getFieldsDeleted()))
-                .flatMap(List::stream)
-                .anyMatch(
-                    fieldChange ->
-                        "name".equals(fieldChange.getName())
-                            || (Entity.GLOSSARY_TERM.equals(entityType)
-                                && GLOSSARY_TERM_MOVE_FIELDS.contains(fieldChange.getName())));
-      }
-      return affected;
-    }
-
-    /**
-     * Check if the change source is different from the latest change source in the entity.
-     * Will return true if the latest change source is different from the current change source or
-     * if the latest change source is not present in the entity (effectively ignoring the change source in this case).
-     */
-    private boolean diffChangeSource() {
-      return Optional.ofNullable(original.getChangeDescription())
-          .map(ChangeDescription::getChangeSummary)
-          .map(ChangeSummaryMap::getAdditionalProperties)
-          .map(this::latestChangeSource)
-          .map(latestChangeSource -> !Objects.equals(latestChangeSource, changeSource))
-          .orElse(true);
-    }
-
-    private ChangeSource latestChangeSource(Map<String, ChangeSummary> changeSummary) {
-      return Optional.ofNullable(changeSummary)
-          .flatMap(
-              summary ->
-                  summary.values().stream()
-                      .map(c -> Pair.of(c.getChangeSource(), c.getChangedAt()))
-                      .reduce((p1, p2) -> p1.getRight() > p2.getRight() ? p1 : p2)
-                      .map(Pair::getLeft))
-          .orElse(null);
+      return EntityVersionPolicy.consolidates(
+          original,
+          updated,
+          entityType,
+          operation,
+          changeSource,
+          useOptimisticLocking,
+          sessionTimeoutMillis);
     }
 
     private T getPreviousVersion(T original) {
