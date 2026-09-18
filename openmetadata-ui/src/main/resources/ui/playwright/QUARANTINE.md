@@ -64,9 +64,28 @@ Re-run `npx playwright test --list` after changing this file and update the
 default-lane count here. It is **4601 of 4618**; the quarantined lane lists 24,
 which is 17 quarantined tests plus the 7 fixture projects above. The 17 are the 2
 entries in the table and the whole `e2e/Pages/Lineage/LineageFilters.spec.ts`
-describe (15 tests), tagged in #33357 without an entry here yet.
+describe (15 tests), tagged in #33357 and root-caused below.
 (It was 4586 of 4605 with 4 entries plus LineageFilters, 4575 of 4580 with 5
 entries, 4576 of 4580 with 4, and 4543 of 4555 when the list held 13.)
+
+### `e2e/Pages/Lineage/LineageFilters.spec.ts`, root-caused 2026-09-18
+
+Not a flake. Seven tests timed out in the 2026-09-17 nightly (run 35269115219),
+all on the same locator shape:
+
+    waiting for getByTestId('drop-down-menu').getByLabel('pw-database-e909cdde')
+
+`getByLabel` matches `aria-label`, `aria-labelledby` or an associated `<label>` —
+never text content. The legacy dropdown rendered each option through an AntD
+`Checkbox`, i.e. `<label><input type="checkbox"><span>name</span></label>`, so
+the label matched. `FilterSelect` rows are React Aria `MenuItem`s
+(`role="menuitemcheckbox"`) whose tick is a purely visual `CheckboxBase` with no
+input and no label, so nothing matches and the click waits out the full timeout.
+
+#33021 migrated this file's `getByTestId(\`${x}-checkbox\`)` call sites but not
+its five `getByLabel` ones. Those now go through a `filterOption` helper that
+matches the row by text. The tag stays until a nightly confirms the fix — these
+tests need a seeded stack, so local runs prove nothing about them.
 
 ## Not quarantined — fixed instead
 

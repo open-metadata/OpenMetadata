@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import type { AggregationRequest } from '../../../../src/generated/search/aggregationRequest';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
@@ -62,6 +62,16 @@ type EntityClassUnion =
   | FileClass
   | SpreadsheetClass
   | WorksheetClass;
+
+// FilterSelect renders each option as a `menuitemcheckbox` whose accessible
+// name is the option's label, optionally followed by a count badge. The legacy
+// dropdown wrapped that label in a real <label>, which is what `getByLabel`
+// matched; no row carries an accessible label any more, so match on the text.
+const filterOption = (page: Page, label: string) =>
+  page
+    .getByTestId('drop-down-menu')
+    .getByRole('menuitemcheckbox')
+    .filter({ hasText: label });
 
 interface LineageFilterConfig {
   filterName: string;
@@ -368,10 +378,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page
-            .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
-            .click();
+          await filterOption(page, filterValue).click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
           await page.getByTestId('update-btn').click();
@@ -415,10 +422,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
             .getByTestId('drop-down-menu')
             .getByTestId('loader')
             .waitFor({ state: 'hidden' });
-          await page
-            .getByTestId('drop-down-menu')
-            .getByLabel(filterValue)
-            .click();
+          await filterOption(page, filterValue).click();
 
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineageByEntityCount?*'
@@ -906,7 +910,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.database.name',
         ''
       );
-      await page.getByTestId('drop-down-menu').getByLabel(databaseName).click();
+      await filterOption(page, databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
@@ -951,10 +955,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page
-        .getByTestId('drop-down-menu')
-        .getByLabel(databaseSchemaName)
-        .click();
+      await filterOption(page, databaseSchemaName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
@@ -999,7 +1000,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page.getByTestId('drop-down-menu').getByLabel(columnName).click();
+      await filterOption(page, columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('update-btn').click();
