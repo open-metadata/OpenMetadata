@@ -24,8 +24,11 @@ import { deriveTaskAboutEntity } from './taskDetail.utils';
 export const TASK_ABOUT_ENTITY_QUERY_KEY = 'inbox-task-about-entity';
 const ABOUT_STALE_TIME = 60_000;
 
-// Tier and owners come back for every entity type; columns and usage only exist
-// on tables, and asking an entity handler for a field it does not know can 400.
+// Owners come back for every entity type. Tags — and so the tier badge — only
+// for the types whose fetch handler honours the requested fields: several
+// (database, database schema, glossary term, domain, container) hardcode owners
+// and drop the rest, so those assets simply render no tier. Columns and usage
+// exist only on tables, and asking another handler for them can 400.
 const COMMON_FIELDS = 'tags,owners';
 const TABLE_FIELDS = 'tags,owners,columns,usageSummary';
 

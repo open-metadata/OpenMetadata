@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "{{persona}}向けに最適化された体験をカスタマイズしてご利用ください！",
     "take-quick-product-tour": "クイックツアーで製品を体験しましょう！",
     "task-event-approved": "{{user}} がこのタスクを承認しました",
-    "task-event-assigned": "{{user}} に割り当てられました",
     "task-event-cancelled": "{{user}} がこのタスクをキャンセルしました",
     "task-event-completed": "{{user}} がこのタスクを完了しました",
     "task-event-created": "{{user}} がこのタスクを作成しました",

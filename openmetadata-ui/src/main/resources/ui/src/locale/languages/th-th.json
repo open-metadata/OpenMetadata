@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "ปรับแต่งประสบการณ์เฉพาะสำหรับบุคลิกภาพ {{persona}} ลองดูสิ!",
     "take-quick-product-tour": "เข้าร่วมทัวร์ผลิตภัณฑ์เพื่อเริ่มต้น!",
     "task-event-approved": "{{user}} อนุมัติงานนี้",
-    "task-event-assigned": "มอบหมายให้ {{user}}",
     "task-event-cancelled": "{{user}} ยกเลิกงานนี้",
     "task-event-completed": "{{user}} ทำงานนี้เสร็จสมบูรณ์",
     "task-event-created": "{{user}} สร้างงานนี้",

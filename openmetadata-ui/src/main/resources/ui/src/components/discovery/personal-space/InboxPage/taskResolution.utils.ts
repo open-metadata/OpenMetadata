@@ -126,6 +126,12 @@ const REVIEW_CATEGORIES: ReadonlySet<TaskCategory> = new Set([
  * status; an open one shows what it is waiting on, which is why it needs the
  * viewer's identity and the actions available to them.
  *
+ * Precedence, most specific to the viewer first: nobody holds it, the viewer
+ * can act on it, the workflow named its own stage, and finally the generic
+ * "somebody else is reviewing this". The first two deliberately outrank the
+ * stage name: they tell the viewer whether the task is theirs to move, which a
+ * stage label does not.
+ *
  * @param currentUserIds the viewer's own id plus their teams', since a task
  * assigned to a team is equally the viewer's to act on.
  */
@@ -152,7 +158,8 @@ export const getTaskStatusLabel = (
   if (isMine && canApprove) {
     return { label: t('label.pending-your-approval'), tone: 'warning' };
   }
-  // The workflow's own stage name is more specific than anything derived here.
+  // Nobody can act on it yet: the workflow's own stage name beats a generic
+  // "assigned", which says nothing a viewer can use.
   if (task.workflowStageDisplayName) {
     return { label: task.workflowStageDisplayName, tone: 'warning' };
   }

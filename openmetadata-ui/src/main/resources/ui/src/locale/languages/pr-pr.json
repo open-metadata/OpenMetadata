@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "تجربه را به‌طور خاص برای شخصیت {{persona}} تنظیم کنید، حتماً امتحانش کنید!",
     "take-quick-product-tour": "یک تور محصولی برای شروع بگذارید!",
     "task-event-approved": "{{user}} این وظیفه را تأیید کرد",
-    "task-event-assigned": "واگذارشده به {{user}}",
     "task-event-cancelled": "{{user}} این وظیفه را لغو کرد",
     "task-event-completed": "{{user}} این وظیفه را کامل کرد",
     "task-event-created": "{{user}} این وظیفه را ایجاد کرد",

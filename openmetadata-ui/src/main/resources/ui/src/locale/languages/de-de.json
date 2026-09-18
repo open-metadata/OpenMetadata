@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "Passen Sie die Erfahrung speziell für das {{persona}}-Persona an, probieren Sie es aus!",
     "take-quick-product-tour": "Machen Sie eine Produkttour, um loszulegen!",
     "task-event-approved": "{{user}} hat diese Aufgabe genehmigt",
-    "task-event-assigned": "Zugewiesen an {{user}}",
     "task-event-cancelled": "{{user}} hat diese Aufgabe abgebrochen",
     "task-event-completed": "{{user}} hat diese Aufgabe abgeschlossen",
     "task-event-created": "{{user}} hat diese Aufgabe erstellt",

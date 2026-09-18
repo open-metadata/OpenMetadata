@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "專為 {{persona}} 角色量身打造體驗，試試看吧！",
     "take-quick-product-tour": "進行產品導覽以開始！",
     "task-event-approved": "{{user}} 核准了此任務",
-    "task-event-assigned": "已指派給 {{user}}",
     "task-event-cancelled": "{{user}} 取消了此任務",
     "task-event-completed": "{{user}} 完成了此任務",
     "task-event-created": "{{user}} 建立了此任務",

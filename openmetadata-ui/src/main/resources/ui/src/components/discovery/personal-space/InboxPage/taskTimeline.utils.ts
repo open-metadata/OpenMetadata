@@ -25,7 +25,6 @@ export type TaskTimelineTone = 'default' | 'error' | 'success';
 /** Icon slot for an event row; the renderer maps the key to a component. */
 export type TaskTimelineIcon =
   | 'approved'
-  | 'assigned'
   | 'created'
   | 'incident'
   | 'rejected'
@@ -113,27 +112,6 @@ const getCreatedEvent = (task: Task): TaskTimelineEvent => {
   };
 };
 
-const getAssignedEvent = (task: Task): TaskTimelineEvent[] => {
-  const assignee = task.assignees?.[0];
-  if (!assignee) {
-    return [];
-  }
-
-  // The task carries no assignment timestamp, so this pins to creation — the
-  // task's own version history is the only record of later reassignments.
-  return [
-    {
-      kind: 'event',
-      id: `assigned-${assignee.id}`,
-      actor: assignee,
-      textKey: 'message.task-event-assigned',
-      icon: 'assigned',
-      timestamp: task.createdAt,
-      tone: 'default',
-    },
-  ];
-};
-
 // `approvedBy` marks an approval the task survived (a granted access request is
 // approved first, granted later). Skipped when the terminal event already says
 // "approved", which would otherwise render the same moment twice.
@@ -184,8 +162,13 @@ const getResolutionEvent = (task: Task): TaskTimelineEvent[] => {
 /**
  * The task's lifecycle as one oldest-first stream of events and comments,
  * synthesized from the task's own fields — there is no per-task event endpoint.
- * Status changes the task did not stamp (a later reassignment, a reopen) are
- * therefore not represented; only `GET /v1/tasks/{id}/versions` records those.
+ *
+ * Only moments the task actually timestamps appear. Assignment is deliberately
+ * absent: the task records who holds it but never when they were given it, and
+ * dating that to creation would place a reassignment before comments that
+ * really came first. The current assignee is shown in the summary rows instead.
+ * Reassignments and reopens are likewise unrepresented; only
+ * `GET /v1/tasks/{id}/versions` records those.
  */
 export const buildTaskTimeline = (task: Task): TaskTimelineEntry[] => {
   const comments: TaskTimelineEntry[] = (task.comments ?? []).map(
@@ -201,7 +184,6 @@ export const buildTaskTimeline = (task: Task): TaskTimelineEntry[] => {
 
   return [
     getCreatedEvent(task),
-    ...getAssignedEvent(task),
     ...getApprovalEvent(task, resolutionEvents),
     ...resolutionEvents,
     ...comments,

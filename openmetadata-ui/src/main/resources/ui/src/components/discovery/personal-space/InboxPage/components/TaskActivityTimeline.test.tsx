@@ -100,16 +100,23 @@ const renderTimeline = (value: Task) =>
   render(<TaskActivityTimeline task={value} onCommentChanged={jest.fn()} />);
 
 describe('TaskActivityTimeline', () => {
-  it('renders creation, assignment and comment entries in one stream', () => {
+  it('renders creation and comment entries in one stream', () => {
     renderTimeline(task);
 
     expect(
       screen.getByText('message.task-event-created:Olivia Rhye')
     ).toBeInTheDocument();
-    expect(
-      screen.getByText('message.task-event-assigned:Assignee One')
-    ).toBeInTheDocument();
     expect(screen.getByTestId('task-comment-card')).toHaveTextContent('hi');
+  });
+
+  // The task records who holds it but never when they were given it, so dating
+  // an assignment to creation would misorder it against comments.
+  it('does not invent an assignment event', () => {
+    renderTimeline(task);
+
+    expect(
+      screen.queryByText(/message.task-event-assigned/)
+    ).not.toBeInTheDocument();
   });
 
   it('orders entries oldest first, so a comment follows the events it answers', () => {
@@ -123,7 +130,7 @@ describe('TaskActivityTimeline', () => {
     expect(rendered[rendered.length - 1]).toHaveTextContent('hi');
   });
 
-  it('renders only the creation event when there are no comments or assignees', () => {
+  it('renders only the creation event when there is nothing else to show', () => {
     renderTimeline({
       id: 'task-2',
       createdBy: { name: 'x', displayName: 'X' },

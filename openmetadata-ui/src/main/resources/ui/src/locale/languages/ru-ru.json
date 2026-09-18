@@ -4819,7 +4819,6 @@
     "tailor-experience-for-persona": "Настройте опыт специально для персонажа {{persona}}, попробуйте!",
     "take-quick-product-tour": "Ознакомьтесь с продуктом, чтобы начать работу!",
     "task-event-approved": "{{user}} подтвердил эту задачу",
-    "task-event-assigned": "Назначено: {{user}}",
     "task-event-cancelled": "{{user}} отменил эту задачу",
     "task-event-completed": "{{user}} завершил эту задачу",
     "task-event-created": "{{user}} создал эту задачу",
