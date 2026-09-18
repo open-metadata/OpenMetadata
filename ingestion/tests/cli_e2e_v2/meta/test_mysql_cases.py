@@ -33,10 +33,12 @@ from ..features.database.catalog.types import (
     ExpectedService,
     ExpectedTable,
 )
+from ..features.database.entities import table_query
+from ..features.database.pipelines import cli_subcommand_for
 from ..features.database.samples import sample_query
-from ..mysql.cases import mysql_catalog_matches, native_sample_rows, native_samples_match
+from ..mysql.checks import mysql_catalog_matches, native_sample_rows, native_samples_match
 from ..mysql.expected import mysql_expected
-from ..mysql.test_mysql import test_reingest_replaces_persisted_samples as sample_replacement_scenario
+from ..mysql.test_samples import test_reingest_replaces_persisted_samples as sample_replacement_scenario
 from ..runtime import expect
 from ..runtime.cli import CliRunner, WorkflowInvocation
 from ..runtime.expect import Query
@@ -352,6 +354,7 @@ def test_sample_replacement_scenario_requires_both_persisted_states(
             "CREATE TABLE all_types (id INTEGER PRIMARY KEY, int_col INTEGER);"
             "INSERT INTO all_types VALUES (1, 123456);"
             "CREATE TABLE persisted_sample (int_col INTEGER);"
+            "CREATE TABLE persisted_table (id TEXT PRIMARY KEY);"
         )
     script = tmp_path / "sampler.py"
     script.write_text("""
@@ -362,14 +365,21 @@ from pathlib import Path
 import yaml
 
 config = yaml.safe_load(Path(sys.argv[sys.argv.index("-c") + 1]).read_text())
+subcommand = sys.argv[1]
 with sqlite3.connect(config["database"]) as connection:
-    value = connection.execute("SELECT int_col FROM all_types WHERE id = 1").fetchone()[0]
-    previous = connection.execute("SELECT int_col FROM persisted_sample").fetchone()
-    if config["sampler"] != "write-once" or previous is None:
-        connection.execute("DELETE FROM persisted_sample")
-        connection.execute("INSERT INTO persisted_sample VALUES (?)",
-                           (654321 if config["sampler"] == "wrong-initial" else value,))
-status = {"pipeline_type": "autoClassification", "success": True,
+    if subcommand == "ingest":
+        connection.execute("INSERT INTO persisted_table VALUES ('00000000-0000-0000-0000-000000000001')")
+    elif subcommand == "classify":
+        assert connection.execute("SELECT id FROM persisted_table").fetchone() is not None
+        value = connection.execute("SELECT int_col FROM all_types WHERE id = 1").fetchone()[0]
+        previous = connection.execute("SELECT int_col FROM persisted_sample").fetchone()
+        if config["sampler"] != "write-once" or previous is None:
+            connection.execute("DELETE FROM persisted_sample")
+            connection.execute("INSERT INTO persisted_sample VALUES (?)",
+                               (654321 if config["sampler"] == "wrong-initial" else value,))
+    else:
+        raise AssertionError(f"unexpected subcommand: {subcommand}")
+status = {"pipeline_type": "metadata" if subcommand == "ingest" else "autoClassification", "success": True,
           "steps": [{"name": "Sampler", "records": 1, "updated_records": 0,
                      "warnings": 0, "errors": 0, "filtered": 0, "failures": []}]}
 Path(sys.argv[sys.argv.index("--status-file") + 1]).write_text(json.dumps(status))
@@ -397,22 +407,28 @@ Path(sys.argv[sys.argv.index("--status-file") + 1]).write_text(json.dumps(status
 
     def get_table(*, entity, fqn, fields, include):
         assert entity is Table and fqn == "svc.default.demo.all_types"
-        return native_sample_table
+        with sqlite3.connect(database) as connection:
+            if connection.execute("SELECT id FROM persisted_table").fetchone() is None:
+                return None
+            assert connection.execute("SELECT int_col FROM persisted_sample").fetchone() is None
+        return native_sample_table.model_copy(update={"sampleData": None})
 
     def run():
+        om = SimpleNamespace(
+            get_by_name=get_table,
+            client=SimpleNamespace(get=get_sample),
+            get_suffix=OpenMetadata.get_suffix,
+        )
         sample_replacement_scenario(
             cli=cli,
-            om=SimpleNamespace(
-                get_by_name=get_table,
-                client=SimpleNamespace(get=get_sample),
-                get_suffix=OpenMetadata.get_suffix,
+            mysql=SimpleNamespace(
+                om=om,
+                invocation=lambda options, *, filters: WorkflowInvocation(
+                    cli_subcommand_for(options), {"database": str(database), "sampler": sampler}
+                ),
+                table_query=lambda name: table_query(om, f"svc.default.demo.{name}"),
+                source=SimpleNamespace(schema="demo", set_value=set_value),
             ),
-            mysql_run=lambda options, filters: WorkflowInvocation(
-                "classify", {"database": str(database), "sampler": sampler}
-            ),
-            mysql_source=SimpleNamespace(schema="demo", set_value=set_value),
-            service_name="svc",
-            mysql_metadata=None,
         )
 
     if sampler == "replace":

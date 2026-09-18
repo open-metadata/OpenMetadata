@@ -18,7 +18,8 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 
-from ..mysql.test_mysql import test_error_containment_one_broken_view as error_containment_scenario
+from ..features.database.entities import table_query
+from ..mysql.test_metadata import test_error_containment_one_broken_view as error_containment_scenario
 from ..runtime.cli import CliExecutionError, CliRunner, WorkflowInvocation
 from .test_cli import PROBE
 
@@ -33,7 +34,7 @@ from .test_cli import PROBE
         (1, [{"name": "my_other_table", "error": "unrelated failure"}], AssertionError),
     ],
 )
-def test_error_containment_rejects_unexpected_execution(tmp_path, monkeypatch, exit_code, failures, expected_error):
+def test_error_containment_rejects_unexpected_execution(tmp_path, exit_code, failures, expected_error):
     with pytest.raises(expected_error):
         _run_scenario(tmp_path, exit_code, failures)
 
@@ -67,11 +68,28 @@ def _run_scenario(tmp_path, exit_code, failures):
         begin=lambda: nullcontext(connection),
         dialect=SimpleNamespace(identifier_preparer=SimpleNamespace(quote_identifier=lambda name: name)),
     )
-    healthy = Table(id="00000000-0000-0000-0000-000000000001", name="my_table", columns=[], deleted=False)
+
+    def get_by_name(*, entity, fqn, fields, include):
+        assert entity is Table
+        assert fqn in {
+            "my_service.default.my_schema.customers",
+            "my_service.default.my_schema.transactions",
+            "my_service.default.my_schema.all_types",
+        }
+        return Table(
+            id="00000000-0000-0000-0000-000000000001",
+            name=fqn.rsplit(".", 1)[1],
+            fullyQualifiedName=fqn,
+            columns=[],
+            deleted=False,
+        )
+
+    om = SimpleNamespace(get_by_name=get_by_name)
     error_containment_scenario(
         cli=cli,
-        om=SimpleNamespace(get_by_name=lambda **kwargs: healthy),
-        mysql_run=invocation,
-        mysql_source=SimpleNamespace(schema="my_schema", admin_engine=engine),
-        service_name="my_service",
+        mysql=SimpleNamespace(
+            source=SimpleNamespace(schema="my_schema", admin_engine=engine),
+            invocation=invocation,
+            table_query=lambda name: table_query(om, f"my_service.default.my_schema.{name}"),
+        ),
     )

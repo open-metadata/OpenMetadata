@@ -20,8 +20,11 @@ from sqlalchemy import Table as SqlTable
 
 from metadata.generated.schema.entity.data.table import Table
 
-from ..features.database.pipelines import ProfilerPipeline
-from ..mysql.test_mysql import test_profile_null_duplicates_and_freshness as freshness_scenario
+from ..features.database.entities import table_query
+from ..features.database.pipelines import cli_subcommand_for
+from ..features.database.profiles import profile_query
+from ..mysql.test_profiles import test_profile_column_freshness as column_freshness_scenario
+from ..mysql.test_profiles import test_profile_row_freshness as row_freshness_scenario
 from ..runtime.cli import CliRunner, WorkflowInvocation
 from .test_cli import PROBE
 
@@ -80,19 +83,24 @@ def run_scenario(tmp_path, polling_clock):
     script.write_text(PROBE)
     cli = CliRunner(tmp_path / "cli", command=(sys.executable, str(script)))
 
-    def invocation(options, filters):
-        subcommand = "profile" if isinstance(options, ProfilerPipeline) else "ingest"
+    def invocation(options, *, filters):
+        subcommand = cli_subcommand_for(options)
         return WorkflowInvocation(subcommand, {"probe": {"subcommand": subcommand}})
 
-    def run(observation, snapshots):
+    def run(scenario, snapshots):
         responses = chain(snapshots, repeat(snapshots[-1]))
-        freshness_scenario(
-            observation=observation,
+        om = SimpleNamespace(
+            get_by_name=lambda **kwargs: _profile(),
+            get_latest_table_profile=lambda fqn: next(responses),
+        )
+        scenario(
             cli=cli,
-            om=SimpleNamespace(get_latest_table_profile=lambda fqn: next(responses)),
-            mysql_run=invocation,
-            mysql_source=SimpleNamespace(admin_engine=engine, schema="my_schema"),
-            service_name="my_service",
+            mysql=SimpleNamespace(
+                source=SimpleNamespace(admin_engine=engine, schema="my_schema"),
+                invocation=invocation,
+                table_query=lambda name: table_query(om, f"my_service.default.my_schema.{name}"),
+                profile_query=lambda name: profile_query(om, f"my_service.default.my_schema.{name}"),
+            ),
             mysql_profile_table=table,
         )
         with engine.connect() as connection:
@@ -111,7 +119,7 @@ def run_scenario(tmp_path, polling_clock):
 
 
 def test_row_freshness_does_not_require_column_profiles(run_scenario):
-    run_scenario("row-count-freshness", [_profile(missing="column"), _profile(updated=True, missing="column")])
+    run_scenario(row_freshness_scenario, [_profile(missing="column"), _profile(updated=True, missing="column")])
 
 
 @pytest.mark.parametrize("missing", ["table", "column"])
@@ -120,7 +128,7 @@ def test_column_freshness_waits_for_required_profiles(run_scenario, missing, pha
     snapshots = [_profile(), _profile(updated=True)]
     index = 0 if phase == "initial" else 1
     snapshots.insert(index, _profile(updated=phase == "updated", missing=missing))
-    run_scenario("column-freshness", snapshots)
+    run_scenario(column_freshness_scenario, snapshots)
 
 
 @pytest.mark.parametrize("stale", ["table", "column"])
@@ -129,11 +137,11 @@ def test_column_freshness_rejects_stale_timestamps(run_scenario, stale):
     profile = updated.profile if stale == "table" else updated.columns[0].profile
     profile.timestamp.root = 1
     with pytest.raises(AssertionError, match="no match after"):
-        run_scenario("column-freshness", [_profile(), updated])
+        run_scenario(column_freshness_scenario, [_profile(), updated])
 
 
 def test_row_freshness_rejects_stale_row_count(run_scenario):
     updated = _profile(updated=True, missing="column")
     updated.profile.rowCount = 4
     with pytest.raises(AssertionError, match="row count: expected 5, got 4"):
-        run_scenario("row-count-freshness", [_profile(missing="column"), updated])
+        run_scenario(row_freshness_scenario, [_profile(missing="column"), updated])

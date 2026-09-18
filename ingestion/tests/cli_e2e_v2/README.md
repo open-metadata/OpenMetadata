@@ -21,7 +21,7 @@ The MySQL fixture owns a disposable container, ingestion account, and unique per
 Focused runs do not require completeness checking:
 
 ```bash
-python -m pytest ingestion/tests/cli_e2e_v2/mysql/test_mysql.py::test_mark_deleted_tables_on_reingest -v
+python -m pytest ingestion/tests/cli_e2e_v2/mysql/test_metadata.py::test_mark_deleted_tables_on_reingest -v
 ```
 
 Framework meta-tests require no Docker, server credentials, or network access:
@@ -42,18 +42,26 @@ manual Python workflow runs include it. The live connector workflow remains manu
 cli_e2e_v2/
   runtime/             subprocess, typed status, polling, three-field cases
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
-  contracts/           imported workflow test and coverage-inventory schema/loader
-  mysql/               owned source, expectations, coverage inventory, cases, custom scenarios
+  contracts/           coverage-inventory schema/loader and optional shared workflow test
+  mysql/               owned source, context, expectations, checks, named feature tests
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
   conftest.py          shared fixtures and collection validation
 ```
 
-`WorkflowCase(invocation, persisted, check)` runs the CLI once, then polls fresh observations. Only checker `AssertionError` mismatches retry. SDK, transport, parsing, and checker programming errors fail immediately. Every polling assertion gets a fresh budget; increasing that budget cannot cancel a blocking SDK read or repair an incorrect expectation.
+MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while tests show the actions and assertions in execution order. `WorkflowCase(invocation, persisted, check)` remains an optional shared helper, not a required authoring pattern.
+
+Only checker `AssertionError` mismatches retry. SDK, transport, parsing, and checker programming errors fail immediately. Every polling assertion gets a fresh budget; increasing that budget cannot cancel a blocking SDK read or repair an incorrect expectation.
 
 `CliRunner(work_dir: Path, *, command=("metadata",))` writes an isolated temporary `config.yaml` and requires the CLI to produce `status.json` for each invocation. It returns `RunResult(exit_code, status)` only after validating the expected exit code, typed status success, and exact total record-error count independently. Normal runs require zero errors, even when the workflow's success threshold accepts partial failures. Negative cases must explicitly set `expected_errors` as well as the expected exit and success. Missing or malformed status is a failure, even with exit code zero. CLI timeouts fail the test; on POSIX, process-group cleanup also terminates child processes after completion or cancellation.
 
 Read [CONNECTORS.md](CONNECTORS.md) for source ownership, complete SQL case wiring, custom scenarios, and an illustrative dashboard extension. New connectors do not need a runtime subclass, mutable fluent assertion object, or enforcer hierarchy.
+
+The MySQL scenarios are grouped into `test_metadata.py`, `test_profiles.py`, and `test_samples.py`. `test_fixture_safety.py` checks isolation, least privilege, and failure-path cleanup against real MySQL without an OpenMetadata server. These safeguards are distinct from feature assertions: successful ingestion cannot prove that teardown removed a container. Run them independently with:
+
+```bash
+python -m pytest ingestion/tests/cli_e2e_v2/mysql/test_fixture_safety.py -v
+```
 
 ## Coverage and known failures
 

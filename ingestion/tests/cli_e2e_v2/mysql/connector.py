@@ -12,12 +12,22 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from metadata.utils.fqn import quote_name
+
+from ..features.database.catalog.snapshot import CatalogSnapshot, read_catalog
 from ..features.database.config import database_invocation
+from ..features.database.entities import table_query
+from ..features.database.profiles import profile_query
+from ..runtime.expect import Query
 from ..server import Env
 
 if TYPE_CHECKING:
+    from metadata.generated.schema.entity.data.table import Table
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
     from ..features.database.pipelines import PipelineOptions
     from ..runtime.cli import WorkflowInvocation
     from ..server import ServerConfig
@@ -68,3 +78,41 @@ def mysql_invocation(
         server=server,
         options=filtered_options,
     )
+
+
+@dataclass(frozen=True)
+class MySqlContext:
+    source: MySqlSource
+    service_name: str
+    server: ServerConfig
+    om: OpenMetadata
+
+    def invocation(
+        self,
+        options: PipelineOptions,
+        *,
+        filters: dict[str, Any] | None = None,
+        sources: tuple[MySqlSource, ...] | None = None,
+    ) -> WorkflowInvocation:
+        return mysql_invocation(
+            service_name=self.service_name,
+            sources=(self.source,) if sources is None else sources,
+            options=options,
+            filters={} if filters is None else filters,
+            server=self.server,
+        )
+
+    def table_fqn(self, name: str) -> str:
+        return ".".join(quote_name(part) for part in (self.service_name, "default", self.source.schema, name))
+
+    def column_fqn(self, table: str, column: str) -> str:
+        return f"{self.table_fqn(table)}.{quote_name(column)}"
+
+    def table_query(self, name: str) -> Query[Table | None]:
+        return table_query(self.om, self.table_fqn(name))
+
+    def profile_query(self, name: str) -> Query[Table | None]:
+        return profile_query(self.om, self.table_fqn(name))
+
+    def catalog_query(self) -> Query[CatalogSnapshot]:
+        return Query(f"catalog for {self.service_name}", lambda: read_catalog(self.om, self.service_name))

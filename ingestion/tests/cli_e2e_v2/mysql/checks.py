@@ -8,20 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""MySQL cases and fixture-specific persisted-state checks."""
+"""Pure MySQL fixture-specific persisted-state checks."""
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.ingestion.ometa.utils import model_str
 
 from ..features.database.catalog.differ import catalog_matches
-from ..features.database.catalog.snapshot import read_catalog
 from ..features.database.catalog.types import MatchMode
 from ..features.database.entities import column, entity_exists, procedure_has_code
-from ..features.database.pipelines import MetadataPipeline
-from ..runtime.case import WorkflowCase
-from ..runtime.expect import Query
-from .connector import mysql_invocation
-from .expected import mysql_expected
 
 
 def mysql_catalog_matches(expected):
@@ -52,21 +46,6 @@ def mysql_catalog_matches(expected):
                             )
 
     return check
-
-
-def catalog_case(*, source, service_name, server, om, filters=None, tables=None):
-    expected = mysql_expected(service_name, schema=source.schema, tables=tables)
-    return WorkflowCase(
-        mysql_invocation(
-            service_name=service_name,
-            sources=(source,),
-            options=MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
-            filters=filters or {},
-            server=server,
-        ),
-        Query(f"catalog for {service_name}", lambda: read_catalog(om, service_name)),
-        mysql_catalog_matches(expected),
-    )
 
 
 def procedures_have_bodies(snapshot):

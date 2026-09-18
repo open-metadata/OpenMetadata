@@ -1,6 +1,6 @@
 # Authoring connector E2Es
 
-Own the source in fixtures, describe a complete workflow, and assert persisted behavior using ordinary functions. `mysql/` is the runnable SQL reference. The dashboard example below is illustrative, not shipped Metabase coverage.
+Own the source in fixtures, run workflows explicitly in named pytest tests, and assert persisted behavior using ordinary functions. `mysql/` is the runnable SQL reference. The dashboard example below is illustrative, not shipped Metabase coverage.
 
 ## Ownership and layout
 
@@ -8,61 +8,54 @@ Own the source in fixtures, describe a complete workflow, and assert persisted b
 <connector>/
   baseline.py          independently authored source schema and seeds
   source.py            provision, validate, mutate, and tear down owned resources
-  connector.py         build complete WorkflowInvocation values
+  connector.py         build WorkflowInvocation values; bind repeated context locally
   expected.py          independently authored expected OM entities and values
-  cases.py             WorkflowCase values and connector-specific checks
+  checks.py            pure connector-specific persisted-state checks
   inventory.py         reviewed contract IDs and generated capability declarations
-  conftest.py          source, service_entity, workflow_case fixtures
-  test_<connector>.py  imported workflow test and ordinary custom tests
+  conftest.py          resource ownership, service_entity, connector context fixture
+  test_metadata.py     named metadata and mutation scenarios
+  test_profiles.py     named profile scenarios, where supported
+  test_samples.py      named sample scenarios, where supported
+  test_fixture_safety.py  focused infrastructure safeguards, where needed
 ```
 
 This is a guide, not a required file count. Small connectors can combine declarations. Add the standard full ingestion CCL header to every new Python file, including package initializers.
 
-The source fixture must allocate a unique namespace, register cleanup before fallible setup, validate actual seeded values, and remove only its own resources. A failed test must not contaminate the next test. Mark credential-bearing dataclass fields `repr=False`; do not dump workflow configs, connection strings, passwords, or tokens. Register actual configured/generated secrets with the CI provider's native masking facility before commands can expose them. Do not silently skip missing setup or accept an unmanaged source for mutation tests.
+The source fixture must allocate a unique namespace, register cleanup before fallible setup, create the declared source data, and remove only its own resources. A failed test must not contaminate the next test. Feature tests assert independently expected persisted values; a second exhaustive seed audit is not required. Check source preconditions when they prevent a false positive, such as proving both schemas are populated and readable before testing exclusion. Mark credential-bearing dataclass fields `repr=False`; do not dump workflow configs, connection strings, passwords, or tokens. Register actual configured/generated secrets with the CI provider's native masking facility before commands can expose them. Do not silently skip missing setup or accept an unmanaged source for mutation tests.
 
 The root `service_name` fixture owns one unique OM service. A connector supplies `service_entity` (`DatabaseService` for SQL); cleanup uses that entity class for lookup and recursive hard deletion. Do not maintain a second service registry or swallow cleanup exceptions. The OM server itself is external and remains running.
 
 ## A complete SQL case
 
-The following is a complete test module when placed under `mysql/`: existing MySQL fixtures supply an owned source and service class. It expands the reference `catalog_case` rather than hiding fixture/config wiring. Use this as a replacement/example, not an additional duplicate `catalog.metadata` contract in the same suite.
+The following is a complete test module when placed under `mysql/`: the `mysql` fixture composes the owned source, service identity, server configuration, and SDK. Use this as a replacement/example, not an additional duplicate `catalog.metadata` contract in the same suite.
 
 ```python
 import pytest
 
-from ingestion.tests.cli_e2e_v2.contracts.workflow import test_workflow  # noqa: F401
-from ingestion.tests.cli_e2e_v2.features.database.catalog.snapshot import read_catalog
 from ingestion.tests.cli_e2e_v2.features.database.pipelines import MetadataPipeline
-from ingestion.tests.cli_e2e_v2.mysql.cases import mysql_catalog_matches
-from ingestion.tests.cli_e2e_v2.mysql.connector import mysql_invocation
+from ingestion.tests.cli_e2e_v2.mysql.checks import mysql_catalog_matches
 from ingestion.tests.cli_e2e_v2.mysql.expected import mysql_expected
-from ingestion.tests.cli_e2e_v2.runtime.case import WorkflowCase
-from ingestion.tests.cli_e2e_v2.runtime.expect import Query
+from ingestion.tests.cli_e2e_v2.runtime import expect
 
 
-@pytest.fixture(params=[pytest.param("catalog", marks=pytest.mark.e2e_contract("catalog.metadata"))])
-def workflow_case(request, mysql_source, service_name, om_server_config, om):
-    expected = mysql_expected(service_name, schema=mysql_source.schema)
-    return WorkflowCase(
-        invocation=mysql_invocation(
-            service_name=service_name,
-            sources=(mysql_source,),
-            options=MetadataPipeline(includeDDL=True, includeStoredProcedures=True),
-            filters={},
-            server=om_server_config,
-        ),
-        persisted=Query(
-            f"catalog for {service_name}",
-            lambda: read_catalog(om, service_name),
-        ),
-        check=mysql_catalog_matches(expected),
+@pytest.mark.e2e_contract("catalog.metadata")
+def test_catalog(cli, mysql):
+    cli.run(mysql.invocation(
+        MetadataPipeline(includeDDL=True, includeStoredProcedures=True)
+    ))
+    expected = mysql_expected(mysql.service_name, schema=mysql.source.schema)
+    expect.poll(mysql.catalog_query()).satisfies(
+        mysql_catalog_matches(expected)
     )
 ```
 
-The three fields are deliberately independent:
+The three operations are deliberately independent:
 
-- `invocation`: CLI subcommand plus the entire workflow config, including sink and server settings. Database helpers serialize generated pipeline models and own database-specific dispatch; the runtime does not infer connector family.
-- `persisted`: a labeled zero-argument read of actual OM state. Inventory queries must consume every page. Do not filter observations down to the expected result.
-- `check`: a callable that validates one fresh snapshot. Raise `AssertionError` for a mismatching observation, not for transport/authentication failures. Validate bad checker options before polling.
+- `mysql.invocation(options)`: builds the CLI subcommand and entire workflow config, including sink and server settings. It does not execute it. Database helpers serialize generated pipeline models and own database-specific dispatch; the runtime does not infer connector family.
+- `mysql.catalog_query()`: binds a labeled zero-argument read of actual OM state. Each polling attempt reads fresh data. Inventory queries must consume every page. Do not filter observations down to the expected result.
+- `mysql_catalog_matches(expected)`: returns a callable that validates one snapshot. Raise `AssertionError` for a mismatching observation, not for transport/authentication failures. Validate bad checker options before polling.
+
+The connector context is a local convenience, not a required interface or base class. Keep provisioning and cleanup in fixtures, mutations on the owned source, and execution in the test. Use existing feature helpers directly for less common operations rather than wrapping every SDK method. A new connector needs no shared-core changes to follow this pattern.
 
 The shared `cli` fixture supplies `CliRunner(work_dir: Path, *, command=("metadata",))`. Each invocation uses temporary `config.yaml` and `status.json` files and returns only `RunResult(exit_code, status)` after strict exit/status validation and an exact record-error count check (zero by default). Subprocess stdout/stderr flow into ordinary pytest file-descriptor capture. Persisted checks and the final polling mismatch remain ordinary assertions; they do not need a diagnostics recorder.
 
@@ -70,27 +63,31 @@ Expected native types, values, inventory, and relationships come from authored s
 
 ## Feature checks and custom tests
 
-Import `contracts.workflow.test_workflow` to run a local `workflow_case`. For scenarios needing more than one action, write ordinary pytest tests. There is no scenario DSL or global connector auto-discovery.
+Write named pytest tests for both single-action and multi-action scenarios. `WorkflowCase` and `run_and_check` remain optional helpers for cases that benefit from bundling an invocation, query, and check; importing a shared test is not required. There is no scenario DSL or global connector auto-discovery.
 
 This custom MySQL module checks exact row count after metadata and profiling:
 
 ```python
-from ingestion.tests.cli_e2e_v2.features.database.pipelines import ProfilerPipeline
-from ingestion.tests.cli_e2e_v2.features.database.profiles import profile_query, table_has_row_count
+from ingestion.tests.cli_e2e_v2.features.database.entities import entity_exists
+from ingestion.tests.cli_e2e_v2.features.database.pipelines import MetadataPipeline, ProfilerPipeline
+from ingestion.tests.cli_e2e_v2.features.database.profiles import table_has_row_count
 from ingestion.tests.cli_e2e_v2.runtime import expect
 
 
-def test_customer_count(cli, om, mysql_run, mysql_source, service_name, mysql_metadata):
-    cli.run(mysql_run(ProfilerPipeline(useStatistics=False)))
-    query = profile_query(om, f"{service_name}.default.{mysql_source.schema}.customers")
-    expect.poll(query).satisfies(table_has_row_count(5))
+def test_customer_count(cli, mysql):
+    cli.run(mysql.invocation(MetadataPipeline()))
+    expect.poll(mysql.table_query("customers")).satisfies(entity_exists)
+    cli.run(mysql.invocation(ProfilerPipeline(useStatistics=False)))
+    expect.poll(mysql.profile_query("customers")).satisfies(table_has_row_count(5))
 ```
 
 `useStatistics=False` is an input, not permission to relax expected row count. This example can expose the same product behavior as the strict reference tests.
 
 Other reusable checks live in `features/database/entities.py`, `samples.py`, `profiles.py`, `lineage.py`, and `catalog/`. Compose related checks inside one checker when they must hold on the same observation. Keep independent feature scenarios in separate test items so one product failure cannot mask another.
 
-For multi-step scenarios, follow `test_mark_deleted_tables_on_reingest` and `test_repeat_ingest_preserves_ids_and_updates_metadata` in `mysql/test_mysql.py`:
+Metadata prerequisites check only the entities required by the feature. Keep whole-catalog equality in its own test so an unrelated catalog mismatch does not prevent a profiler or sample scenario from executing.
+
+For multi-step scenarios, follow `test_mark_deleted_tables_on_reingest` and `test_repeat_ingest_preserves_ids_and_updates_metadata` in `mysql/test_metadata.py`:
 
 1. Ingest the fixture's source and assert initial persisted entities; retain UUIDs.
 2. Mutate only the owned source; verify the mutation directly against that source.
@@ -116,7 +113,7 @@ The reference containment test creates an invalid view in its owned schema and s
 
 Offline design validation exercised generic case execution, generated models, SDK pagination, relationship checks, and `DashboardService` cleanup routing. It did **not** exercise a live Metabase server, actual connector ingestion, source provisioning, or live server cleanup. No Metabase fixture, dashboard feature module, or executable Metabase E2E is shipped here.
 
-The example below shows complete invocation/query/case wiring for a future connector. `seeded_source` and `dashboard_catalog_matches` are proposed connector/feature-local authoring, **not existing imports or fixtures**. Their required contracts follow the example.
+The example below shows explicit invocation/query/check wiring for a future connector without SQL helpers or a context base class. `seeded_source` and `dashboard_catalog_matches` are proposed connector/feature-local authoring, **not existing imports or fixtures**. Their required contracts follow the example.
 
 ```python
 from dataclasses import dataclass
@@ -130,8 +127,7 @@ from metadata.generated.schema.entity.services.dashboardService import Dashboard
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
-from ingestion.tests.cli_e2e_v2.contracts.workflow import test_workflow  # noqa: F401
-from ingestion.tests.cli_e2e_v2.runtime.case import WorkflowCase
+from ingestion.tests.cli_e2e_v2.runtime import expect
 from ingestion.tests.cli_e2e_v2.runtime.cli import WorkflowInvocation
 from ingestion.tests.cli_e2e_v2.runtime.expect import Query
 
@@ -147,8 +143,8 @@ def service_entity():
     return DashboardService
 
 
-@pytest.fixture
-def workflow_case(om, service_name, om_server_config, seeded_source):
+@pytest.mark.e2e_contract("dashboard.metadata")
+def test_dashboard_catalog(cli, om, service_name, om_server_config, seeded_source):
     kept = seeded_source.kept_dashboard
     assert kept.source_name and seeded_source.expected_dashboards
     options = DashboardServiceMetadataPipeline(
@@ -175,9 +171,8 @@ def workflow_case(om, service_name, om_server_config, seeded_source):
             tuple(om.list_all_entities(entity=Chart, params={"service": service_name})),
         )
 
-    return WorkflowCase(
-        invocation,
-        Query(f"dashboard-service[{service_name}]", read),
+    cli.run(invocation)
+    expect.poll(Query(f"dashboard-service[{service_name}]", read)).satisfies(
         dashboard_catalog_matches(
             expected_dashboards=seeded_source.expected_dashboards,
             expected_charts=seeded_source.expected_charts,

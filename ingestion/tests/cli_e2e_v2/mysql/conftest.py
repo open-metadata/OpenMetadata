@@ -17,10 +17,7 @@ from sqlalchemy import Column, Integer, Table
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 
-from ..features.database.entities import table_has_foreign_key, table_query
-from ..runtime.case import WorkflowCase, run_and_check
-from .cases import catalog_case, procedures_have_bodies
-from .connector import mysql_invocation
+from .connector import MySqlContext
 from .source import fresh_mysql_instance, fresh_mysql_source
 
 
@@ -59,62 +56,8 @@ def service_entity():
 
 
 @pytest.fixture
-def mysql_case(mysql_source, service_name, om_server_config, om):
-    return catalog_case(source=mysql_source, service_name=service_name, server=om_server_config, om=om)
-
-
-@pytest.fixture(
-    params=[
-        pytest.param("catalog", marks=pytest.mark.e2e_contract("catalog.metadata")),
-        pytest.param("procedure-bodies", marks=pytest.mark.e2e_contract("procedure.code")),
-        pytest.param("foreign-key", marks=pytest.mark.e2e_contract("fk.relationships")),
-    ]
-)
-def workflow_case(request, mysql_case, mysql_source, service_name, om):
-    if request.param == "catalog":
-        return mysql_case
-    if request.param == "procedure-bodies":
-        return WorkflowCase(mysql_case.invocation, mysql_case.persisted, procedures_have_bodies)
-    base = f"{service_name}.default.{mysql_source.schema}"
-    return WorkflowCase(
-        mysql_case.invocation,
-        table_query(om, f"{base}.transactions"),
-        table_has_foreign_key(("customer_id",), (f"{base}.customers.id",)),
-    )
-
-
-@pytest.fixture
-def mysql_filter_case(mysql_source, service_name, om_server_config, om):
-    def build(filters, expected_tables):
-        return catalog_case(
-            source=mysql_source,
-            service_name=service_name,
-            server=om_server_config,
-            om=om,
-            filters=filters,
-            tables=expected_tables,
-        )
-
-    return build
-
-
-@pytest.fixture
-def mysql_run(mysql_source, service_name, om_server_config):
-    def invocation(options, filters=None):
-        return mysql_invocation(
-            service_name=service_name,
-            sources=(mysql_source,),
-            options=options,
-            filters=filters or {},
-            server=om_server_config,
-        )
-
-    return invocation
-
-
-@pytest.fixture
-def mysql_metadata(cli, mysql_case):
-    run_and_check(cli, mysql_case)
+def mysql(mysql_source, service_name, om_server_config, om):
+    return MySqlContext(source=mysql_source, service_name=service_name, server=om_server_config, om=om)
 
 
 @pytest.fixture
