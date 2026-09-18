@@ -28,7 +28,6 @@ import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
@@ -88,7 +87,6 @@ export const TestSuitesTable = ({
   emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
@@ -163,8 +161,7 @@ export const TestSuitesTable = ({
         <Owner
           isCompactView={false}
           maxVisibleOwners={4}
-          owners={toOwnersWithHref(record.owners)}
-          renderOwnerContent={renderOwnerContent}
+          owners={record.owners}
           showLabel={false}
         />
       </Table.Cell>

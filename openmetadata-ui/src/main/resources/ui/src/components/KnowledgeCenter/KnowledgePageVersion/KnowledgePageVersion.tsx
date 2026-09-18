@@ -42,7 +42,6 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -130,9 +129,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                       <Owner
                         isCompactView={false}
                         ownerDisplayName={ownerDisplayName}
-                        owners={toOwnerRefs(
-                          knowledgePage?.owners ?? ownerRef ?? []
-                        )}
+                        owners={knowledgePage?.owners ?? ownerRef ?? []}
                         showLabel={false}
                       />
                       <span

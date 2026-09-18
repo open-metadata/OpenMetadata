@@ -47,8 +47,10 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
@@ -73,6 +75,7 @@ import {
   databaseQueryKey,
   DATABASE_DEFAULT_FIELDS,
 } from '../../rest/queries/databaseQuery';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -88,6 +91,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   getEntityDetailsPath,
   getExplorePath,
@@ -552,8 +556,15 @@ const DatabaseDetails: FunctionComponent = () => {
   }, [currentVersion, decodedDatabaseFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DATABASE_SERVICES,
+          getPartialNameFromTableFQN(decodedDatabaseFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedDatabaseFQN]
   );
 
   const afterDomainUpdateAction = useCallback(
