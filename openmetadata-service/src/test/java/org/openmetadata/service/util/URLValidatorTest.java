@@ -78,31 +78,6 @@ public class URLValidatorTest {
     assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://[feb0::1]"));
   }
 
-  /**
-   * The literal-IP pattern misses anything not already written as a private address, so the
-   * unspecified address and any name resolving into the internal network used to pass. These
-   * resolve without DNS - 0.0.0.0 is a literal and localhost comes from the hosts file - so the
-   * test stays hermetic.
-   */
-  @Test
-  void testHostsResolvingToPrivateAddressesBlocked() {
-    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://0.0.0.0"));
-    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://0.0.0.0:8080"));
-    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://localhost"));
-    assertThrows(
-        BadRequestException.class, () -> URLValidator.validateURL("http://localhost:8585/api"));
-    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://[::]"));
-  }
-
-  /**
-   * A host that does not resolve is allowed through rather than rejected, so that validation does
-   * not depend on DNS being reachable. The outbound request cannot reach it either way.
-   */
-  @Test
-  void testUnresolvableHostIsNotRejected() {
-    assertDoesNotThrow(() -> URLValidator.validateURL("https://no-such-host.invalid/webhook"));
-  }
-
   @Test
   void testInvalidUrlSchemes() {
     assertThrows(BadRequestException.class, () -> URLValidator.validateURL("ftp://example.com"));

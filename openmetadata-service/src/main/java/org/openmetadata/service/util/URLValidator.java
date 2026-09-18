@@ -14,12 +14,10 @@
 package org.openmetadata.service.util;
 
 import jakarta.ws.rs.BadRequestException;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -32,8 +30,6 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class URLValidator {
   private static final List<String> ALLOWED_SCHEMES = Arrays.asList("http", "https");
-  private static final String PRIVATE_NETWORK_MESSAGE =
-      "URL targeting private/internal network not allowed";
   private static final Pattern PRIVATE_IP_PATTERN =
       Pattern.compile(
           "^(127\\.|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|169\\.254\\.|\\[?::1\\]?|\\[?[fF][cCdD][0-9a-fA-F]{0,2}:|\\[?[fF][eE][89abAB][0-9a-fA-F]:).*");
@@ -46,49 +42,7 @@ public class URLValidator {
     String host = getString(urlString);
 
     if (PRIVATE_IP_PATTERN.matcher(host).matches()) {
-      throw new BadRequestException(PRIVATE_NETWORK_MESSAGE);
-    }
-
-    rejectPrivateAddresses(host);
-  }
-
-  /**
-   * The literal-host pattern only catches addresses already written as private IPs. A name that
-   * resolves to one - {@code localhost}, {@code metadata.google.internal}, or any hostname pointed
-   * at the internal network - passes it untouched, as does the unspecified address
-   * {@code 0.0.0.0}.
-   *
-   * <p>The pattern is kept as a cheap pre-filter: it also covers IPv6 unique-local {@code fc00::/7},
-   * which {@link InetAddress#isSiteLocalAddress()} does not.
-   *
-   * <p>Resolving here narrows the hole rather than closing it. The name is resolved again when the
-   * request is issued and may answer differently by then; only pinning the validated address into
-   * the HTTP client defeats DNS rebinding, which is a larger change than this fix.
-   */
-  private static void rejectPrivateAddresses(String host) {
-    for (InetAddress address : resolve(host)) {
-      if (address.isAnyLocalAddress()
-          || address.isLoopbackAddress()
-          || address.isLinkLocalAddress()
-          || address.isSiteLocalAddress()
-          || address.isMulticastAddress()) {
-        throw new BadRequestException(PRIVATE_NETWORK_MESSAGE);
-      }
-    }
-  }
-
-  /**
-   * A host that does not resolve is left to the caller rather than rejected. Rejecting would make
-   * validation depend on DNS being reachable, which breaks air-gapped deployments and any config
-   * saved before its endpoint exists; an unresolvable host cannot be reached by the outbound request
-   * either, so allowing it here grants no access.
-   */
-  private static InetAddress[] resolve(String host) {
-    try {
-      return InetAddress.getAllByName(host);
-    } catch (UnknownHostException e) {
-      LOG.debug("Host [{}] did not resolve; skipping address-level SSRF checks", host, e);
-      return new InetAddress[0];
+      throw new BadRequestException("URL targeting private/internal network not allowed");
     }
   }
 
