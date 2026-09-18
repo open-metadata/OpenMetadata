@@ -59,6 +59,18 @@ class TestTruncateCell:
         assert len(result) == SAMPLE_DATA_MAX_CELL_LENGTH
 
 
+class TestSkippableSamplingErrors:
+    @pytest.mark.parametrize(
+        "error",
+        [
+            RuntimeError("[UC_DEPENDENCY_DOES_NOT_EXIST]"),
+            RuntimeError("boom"),
+        ],
+    )
+    def test_base_sampler_does_not_skip_sampling_errors(self, error):
+        assert not SamplerInterface.is_skippable_sampling_error(error)
+
+
 class TestGenerateSampleData:
     """Test SamplerInterface.generate_sample_data with SampleDataIngestionConfig"""
 
