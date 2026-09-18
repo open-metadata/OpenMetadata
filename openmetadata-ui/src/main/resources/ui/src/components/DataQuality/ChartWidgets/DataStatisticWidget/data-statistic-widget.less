@@ -40,7 +40,7 @@
   justify-content: center;
   padding: 0;
   color: @grey-900;
-  border-color: @grey-50;
+  border-color: var(--color-bg-secondary);
 
   svg {
     height: 40px;
@@ -55,7 +55,7 @@
     border: 6px solid;
     padding: var(--om-space-6);
     background-color: @grey-100;
-    border-color: @grey-50;
+    border-color: var(--color-bg-secondary);
 
     svg {
       height: 20px;
@@ -65,21 +65,21 @@
 
   // Status-specific colors for circular bordered style
   &.failed {
-    color: @red-10;
-    background-color: @alert-error-icon-bg-1;
-    border-color: @red-9;
+    color: var(--tw-color-utility-error-700);
+    background-color: var(--tw-color-utility-error-100);
+    border-color: var(--tw-color-utility-error-50);
   }
 
   &.success {
-    color: @green-10;
-    background-color: @green-100;
-    border-color: @green-9;
+    color: var(--tw-color-utility-success-700);
+    background-color: var(--tw-color-utility-success-100);
+    border-color: var(--tw-color-utility-success-50);
   }
 
   &.aborted {
-    color: @alert-warning-icon;
-    background-color: @alert-warning-icon-bg-1;
-    border-color: @yellow-10;
+    color: var(--tw-color-utility-warning-600);
+    background-color: var(--tw-color-utility-warning-100);
+    border-color: var(--tw-color-utility-warning-50);
   }
 }
 
@@ -133,24 +133,24 @@
     border: none;
 
     &.failed {
-      color: @red-10;
-      background-color: @red-9;
+      color: var(--tw-color-utility-error-700);
+      background-color: var(--tw-color-utility-error-50);
       &:hover {
-        background-color: @alert-error-icon-bg-1;
+        background-color: var(--tw-color-utility-error-100);
       }
     }
     &.success {
-      color: @green-10;
-      background-color: @green-9;
+      color: var(--tw-color-utility-success-700);
+      background-color: var(--tw-color-utility-success-50);
       &:hover {
-        background-color: @green-100;
+        background-color: var(--tw-color-utility-success-100);
       }
     }
     &.aborted {
-      color: @alert-warning-icon;
-      background-color: @yellow-10;
+      color: var(--tw-color-utility-warning-600);
+      background-color: var(--tw-color-utility-warning-50);
       &:hover {
-        background-color: @alert-warning-icon-bg-1;
+        background-color: var(--tw-color-utility-warning-100);
       }
     }
   }
