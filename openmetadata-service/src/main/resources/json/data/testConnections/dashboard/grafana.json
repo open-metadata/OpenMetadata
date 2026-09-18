@@ -5,8 +5,8 @@
     "steps": [
         {
             "name": "GetDashboards",
-            "description": "Validate authentication credentials",
-            "errorMessage": "Failed to authenticate with Grafana. Please check your credentials.",
+            "description": "List the dashboards available to the user.",
+            "errorMessage": "Failed to fetch dashboards from Grafana. Please validate the Host and Port, and that the service account token is valid and has access to search dashboards.",
             "mandatory": true,
             "shortCircuit": true
         }
