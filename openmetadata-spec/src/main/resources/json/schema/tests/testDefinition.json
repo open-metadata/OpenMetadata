@@ -107,7 +107,7 @@
     },
     "dataQualityDimensions": {
       "javaType": "org.openmetadata.schema.type.DataQualityDimensions",
-      "description": "This enum defines the dimension a test case belongs to.",
+      "description": "Names of the data quality dimensions OpenMetadata ships with. Kept for backwards compatibility only: a dimension is an entity now, and a test definition may be classified with any of them, custom ones included.",
       "type": "string",
       "enum": [
         "Completeness",
@@ -164,7 +164,8 @@
       }
     },
     "dataQualityDimension": {
-      "$ref": "#/definitions/dataQualityDimensions"
+      "description": "Name of the data quality dimension test cases of this test definition are classified with by default. Any dimension registered in Settings > Preferences > Data Quality can be used, system and custom alike.",
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "owners": {
       "description": "Owners of this TestCase definition.",

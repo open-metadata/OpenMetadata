@@ -12,10 +12,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SearchIndex } from '../enums/search.enum';
-import type { ExploreQuickFilterField } from '../interface/quick-filter.interface';
+import type { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 import {
   applyQuickFilterLabels,
   getOptionsFromAggregationBucket,
+  getQuickFilterLabelFormatter,
   getQuickFilterSourceFields,
   hydrateQuickFilterLabels,
 } from '../utils/AdvancedSearchPureUtils';
@@ -194,7 +195,7 @@ export const useQuickFilterLabels = ({
           response.data.aggregations[`sterms#${searchKey}`]?.buckets ?? [];
         const label = getOptionsFromAggregationBucket(
           buckets,
-          undefined,
+          getQuickFilterLabelFormatter(field.key),
           sourceFields
         ).find((option) => option.key === optionKey)?.label;
 

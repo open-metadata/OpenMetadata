@@ -19,6 +19,7 @@ import {
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
   getOntologyHealthSummary,
+  resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 
 const FILTERS: GraphFilters = {
@@ -96,6 +97,37 @@ const GRAPH: OntologyGraphData = {
 };
 
 describe('OntologyStudio utils', () => {
+  it('resolves a human label without allowing an entity UUID to win', () => {
+    const id = '002e5485-0c59-45cc-912e-15fbc7e350bf';
+
+    expect(
+      resolveOntologyTermLabel({
+        displayName: 'Customer Account',
+        fullyQualifiedName: 'Finance.customer_account',
+        id,
+        label: id,
+        name: 'customer_account',
+      })
+    ).toBe('Customer Account');
+    expect(
+      resolveOntologyTermLabel({
+        displayName: '  ',
+        fullyQualifiedName: 'Finance.customer_account',
+        id,
+        label: id,
+        name: 'customer_account',
+      })
+    ).toBe('customer_account');
+    expect(
+      resolveOntologyTermLabel({
+        fullyQualifiedName: 'Finance."Customer.Account"',
+        id,
+        label: id,
+        name: id,
+      })
+    ).toBe('Customer.Account');
+  });
+
   it('computes scoped health without letting unrelated filters hide isolated terms', () => {
     const health = getOntologyHealthSummary(GRAPH, {
       ...FILTERS,

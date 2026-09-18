@@ -759,7 +759,12 @@ def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     )
 
 
-def build_es_fqn_search_string(database_name: str, schema_name, service_name, table_name) -> str:
+def build_es_fqn_search_string(
+    database_name: str | None,
+    schema_name: str | None,
+    service_name: str | None,
+    table_name: str | None,
+) -> str:
     """
     Builds FQN search string for ElasticSearch
 

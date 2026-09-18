@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@v1.9.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
@@ -478,18 +478,24 @@ jobs:
 
       - name: Tailwind Audit (no hardcoded values)
         id: tw_audit
-        if: steps.changed-src-files.outputs.any_changed == 'true'
+        if: steps.changed-ui-files.outputs.any_changed == 'true'
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         env:
           CHANGED_FILES: ${{ steps.changed-src-files.outputs.all_changed_files }}
         run: |
+          node scripts/design-tokens/scanner.test.js
+          node --test scripts/design-tokens/tw-scanner.test.js
           TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
           if [ -z "${TS_FILES// }" ]; then
             echo "No TSX/TS files to audit."
             exit 0
           fi
-          if ! node scripts/tw-audit.js $TS_FILES > /tmp/tw-audit.out 2>&1; then
+          if node scripts/tw-audit.js $TS_FILES > /tmp/tw-audit.out 2>&1; then
+            # Successful audits can still contain review warnings; keep them
+            # visible without turning the migration inventory into a gate.
+            cat /tmp/tw-audit.out
+          else
             cat /tmp/tw-audit.out
             OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/tw-audit.out | grep -E 'errors|Files with|^  +[0-9]' | head -30 | sed 's/^/  /')
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"

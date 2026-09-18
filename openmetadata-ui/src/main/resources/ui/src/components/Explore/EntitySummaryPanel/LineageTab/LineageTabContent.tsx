@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
+import { Owner, Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -31,135 +31,10 @@ import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.inte
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
-
-type LineageItem = {
-  entity: EntityReference & {
-    serviceType?: FormattedDatabaseServiceType;
-    entityType?: EntityType;
-    owners?: EntityReference[];
-  };
-  direction: 'upstream' | 'downstream';
-  path: string;
-  owners?: EntityReference[];
-};
-
-const getLineageItemKey = (item: LineageItem) =>
-  item.entity.id ||
-  item.entity.fullyQualifiedName ||
-  `${item.direction}-${item.path}`;
-
-const LineageItemDirection = ({
-  direction,
-}: {
-  direction: LineageItem['direction'];
-}) => {
-  const { t } = useTranslation();
-  const isUpstream = direction === 'upstream';
-
-  return (
-    <Tooltip
-      placement="top"
-      title={isUpstream ? t('label.upstream') : t('label.downstream')}
-      triggerClassName="tw:inline-flex">
-      {isUpstream ? (
-        <UpstreamIcon height={18} width={18} />
-      ) : (
-        <DownstreamIcon height={18} width={18} />
-      )}
-    </Tooltip>
-  );
-};
-
-const LineageItemEntityType = ({ entityType }: { entityType?: EntityType }) => {
-  if (!entityType) {
-    return null;
-  }
-
-  const icon = searchClassBase.getEntityIcon(entityType);
-
-  return (
-    <>
-      {icon && (
-        <span className="w-4 d-inline-flex align-middle entity-type-icon">
-          {icon}
-        </span>
-      )}
-      <Typography.Text className="item-entity-type-text">
-        {capitalize(entityType)}
-      </Typography.Text>
-    </>
-  );
-};
-
-const LineageItemOwners = ({ owners }: { owners?: EntityReference[] }) => {
-  if (owners && owners.length > 0) {
-    return (
-      <OwnerLabel
-        avatarSize={16}
-        className="item-owner-label-text"
-        isCompactView={false}
-        owners={owners}
-        showLabel={false}
-      />
-    );
-  }
-
-  return (
-    <NoOwnerFound
-      isCompactView
-      showLabel
-      className="item-owner-label-text"
-      multiple={{ user: false, team: false }}
-      owners={[]}
-      showDashPlaceholder={false}
-    />
-  );
-};
-
-const LineageItemCard = ({ item }: { item: LineageItem }) => (
-  <Link
-    className="lineage-item-link"
-    target="_blank"
-    to={getEntityLinkFromType(
-      item.entity.fullyQualifiedName ?? '',
-      item.entity.entityType as EntityType
-    )}>
-    <div className="lineage-item-card">
-      <div className="lineage-item-header">
-        <div className="d-flex align-items-center gap-1">
-          <div className="service-icon">
-            {getServiceLogo(
-              capitalize(item.entity.serviceType) ?? '',
-              'service-icon-lineage'
-            )}
-          </div>
-          <div className="item-path-container">
-            {item.path && renderTruncatedPath(item.path)}
-          </div>
-        </div>
-        <div className="lineage-item-direction">
-          <LineageItemDirection direction={item.direction} />
-        </div>
-      </div>
-      <div className="lineage-card-content">
-        <Typography.Text className="item-name-text">
-          {getEntityName(item.entity)}
-        </Typography.Text>
-        <div className="d-flex align-items-center gap-1 lineage-info-container">
-          <LineageItemEntityType entityType={item.entity.entityType} />
-          <span className="item-bullet-separator">{BULLET_SEPARATOR}</span>
-          <LineageItemOwners owners={item.entity.owners} />
-        </div>
-      </div>
-    </div>
-  </Link>
-);
 
 const LineageTabContent: React.FC<LineageTabContentProps> = ({
   lineageData,
@@ -193,7 +68,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     }, [lineageData, entityFqn]);
 
   const lineageItems = useMemo(() => {
-    const items: LineageItem[] = [];
+    const items: Array<{
+      entity: EntityReference & {
+        serviceType?: FormattedDatabaseServiceType;
+        entityType?: EntityType;
+        owners?: EntityReference[];
+      };
+      direction: 'upstream' | 'downstream';
+      path: string;
+      owners?: EntityReference[];
+    }> = [];
 
     if (filter === 'upstream') {
       for (const entity of upstreamNodes) {
@@ -257,6 +141,41 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     });
   }, [lineageItems, searchText]);
 
+  const renderEntityTypeInfo = (entityType: string | undefined) => {
+    if (!entityType) {
+      return null;
+    }
+
+    return (
+      <>
+        {searchClassBase.getEntityIcon(entityType) && (
+          <span className="w-4 d-inline-flex align-middle entity-type-icon">
+            {searchClassBase.getEntityIcon(entityType)}
+          </span>
+        )}
+        <Typography.Text className="item-entity-type-text">
+          {capitalize(entityType)}
+        </Typography.Text>
+      </>
+    );
+  };
+
+  const renderOwnerInfo = (owners: EntityReference[] | undefined) => {
+    if (owners && owners.length > 0) {
+      return (
+        <Owner
+          avatarSize={16}
+          className="item-owner-label-text"
+          isCompactView={false}
+          owners={owners}
+          showLabel={false}
+        />
+      );
+    }
+
+    return <Owner className="item-owner-label-text" owners={[]} />;
+  };
+
   return (
     <div className="lineage-tab-content">
       <div className="lineage-filter-buttons">
@@ -316,7 +235,69 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       <div className="lineage-items-list">
         {filteredLineageItems.length > 0 ? (
           filteredLineageItems.map((item) => (
-            <LineageItemCard item={item} key={getLineageItemKey(item)} />
+            <Link
+              className="lineage-item-link"
+              key={
+                item.entity.id ||
+                item.entity.fullyQualifiedName ||
+                `${item.direction}-${item.path}`
+              }
+              target="_blank"
+              to={getEntityLinkFromType(
+                item.entity.fullyQualifiedName ?? '',
+                item.entity.entityType as EntityType
+              )}>
+              <div
+                className="lineage-item-card"
+                key={
+                  item.entity.id ||
+                  item.entity.fullyQualifiedName ||
+                  `${item.direction}-${item.path}`
+                }>
+                <div className="lineage-item-header">
+                  <div className="d-flex align-items-center gap-1">
+                    <div className="service-icon">
+                      {getServiceLogo(
+                        capitalize(item.entity.serviceType) ?? '',
+                        'service-icon-lineage'
+                      )}
+                    </div>
+                    <div className="item-path-container">
+                      {item.path && renderTruncatedPath(item.path)}
+                    </div>
+                  </div>
+                  <div className="lineage-item-direction">
+                    {item.direction === 'upstream' ? (
+                      <Tooltip
+                        placement="top"
+                        title={t('label.upstream')}
+                        triggerClassName="tw:inline-flex">
+                        <UpstreamIcon height={18} width={18} />
+                      </Tooltip>
+                    ) : (
+                      <Tooltip
+                        placement="top"
+                        title={t('label.downstream')}
+                        triggerClassName="tw:inline-flex">
+                        <DownstreamIcon height={18} width={18} />
+                      </Tooltip>
+                    )}
+                  </div>
+                </div>
+                <div className="lineage-card-content">
+                  <Typography.Text className="item-name-text">
+                    {getEntityName(item.entity)}
+                  </Typography.Text>
+                  <div className="d-flex align-items-center gap-1 lineage-info-container">
+                    {renderEntityTypeInfo(item.entity.entityType)}
+                    <span className="item-bullet-separator">
+                      {BULLET_SEPARATOR}
+                    </span>
+                    {renderOwnerInfo(item.entity.owners)}
+                  </div>
+                </div>
+              </div>
+            </Link>
           ))
         ) : (
           <div>

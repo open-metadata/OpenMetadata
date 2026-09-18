@@ -14,6 +14,7 @@ import type { ComponentProps, FC, HTMLAttributes, ReactNode } from 'react';
 import type { Input } from '../../base/input/input';
 import type { BreadcrumbItemType } from '../breadcrumbs/breadcrumbs';
 
+export type PageHeaderDensity = 'compact' | 'comfortable';
 export type PageHeaderVariant = 'flat' | 'gradient';
 
 export interface PageHeaderTab {
@@ -65,6 +66,8 @@ export interface PageHeaderProps
    * optional per-tab `count` badge), or a custom node for full control.
    */
   footer?: ReactNode | PageHeaderTab[];
+  /** Vertical spacing. Defaults to 'comfortable'. */
+  density?: PageHeaderDensity;
   /** Visual treatment. 'gradient' applies the brand-tinted card per Figma. */
   variant?: PageHeaderVariant;
   'data-testid'?: string;

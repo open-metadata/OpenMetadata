@@ -31,6 +31,7 @@ import {
   waitForAllLoadersToDisappear,
 } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { getCellByName } from './scopedLocators';
 import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -525,7 +526,7 @@ export const searchTeam = async (
     await expect
       .poll(
         async () => {
-          const matchingCells = page.getByRole('cell', { name: teamName });
+          const matchingCells = getCellByName(page, teamName);
           const count = await matchingCells.count();
 
           return (
@@ -635,13 +636,13 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
 
   await page
     .locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
   ).toHaveClass(/active/);
 
@@ -722,13 +723,13 @@ export const addUserTeam = async (
 
   await page
     .locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
   ).toHaveClass(/active/);
 
@@ -781,9 +782,7 @@ export const executionOnOwnerTeam = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByRole('cell', { name: newTeamData.displayName })
-  ).toBeVisible();
+  await expect(getCellByName(page, newTeamData.displayName)).toBeVisible();
 };
 
 export const executionOnOwnerGroupTeam = async (
@@ -842,7 +841,10 @@ export const applyEntityTypeFilterValue = async (
   entityTypeCheckboxTestId: string
 ) => {
   await page.getByRole('button', { name: 'Entity Type' }).click();
-  await page.getByTestId(entityTypeCheckboxTestId).check();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(entityTypeCheckboxTestId.replace(/-(checkbox|radio)$/, ''))
+    .click();
   const filterResponse = waitForTeamAssetsSearchResponse(page, teamId);
   await page.getByTestId('update-btn').click();
   const response = await filterResponse;

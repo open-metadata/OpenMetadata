@@ -27,6 +27,7 @@ import tseslint from 'typescript-eslint';
 import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs';
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
@@ -109,6 +110,7 @@ export default [
       'openmetadata-i18n': openMetadataI18n,
       'openmetadata-imports': openMetadataImports,
       'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-permissions': openMetadataPermissions,
       'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
@@ -266,6 +268,29 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
+      // Design-system import discipline — warn while existing violations are
+      // migrated; promote to error once the backlog reaches zero.
+      //
+      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
+      // does not trigger the eslint --fix footgun in ui-checkstyle.
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {
+              group: ['@untitledui/icons', '@untitledui/icons/*'],
+              message:
+                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
+            },
+            {
+              group: ['**/assets/**/*.svg'],
+              message:
+                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
+            },
+          ],
+        },
+      ],
+
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
@@ -324,10 +349,12 @@ export default [
       'jsx-a11y/media-has-caption': 'error',
       'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
       'jsx-a11y/anchor-ambiguous-text': 'error',
-      // Downgraded to warn: rule flags pre-existing inherited title= (incl.
-      // false positives on member-expression components and required iframe
-      // titles); tracked for follow-up rather than blocking.
-      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
+      // Error: production has zero raw native title= (PR #32916 migrated them to
+      // <Tooltip>), and the rule no longer false-positives on member-expression
+      // components or required <iframe> titles. Locked at error so new raw titles
+      // fail CI. Test/mock files are exempted below — their Tooltip mocks render
+      // <div title={title}> on purpose so tests can read the tooltip text.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -420,6 +447,62 @@ export default [
     files: ['src/components/AppRouter/**/*.{ts,tsx}'],
     rules: {
       'openmetadata-performance/no-eager-page-imports': 'error',
+    },
+  },
+
+  // Permission access restrictions: components and pages must use permission
+  // utilities instead of raw access. Guides the permission-refactor sweep (#6036).
+  //
+  // no-raw-permission-access promoted to 'error': Tasks 6-9 drove this rule's
+  // findings (MemberExpression, and now ObjectPattern destructuring) to 0
+  // across src/components and src/pages — verified at promotion time.
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*'],
+    rules: {
+      'openmetadata-permissions/no-raw-permission-access': 'error',
+
+      // getPrioritizedEditPermission/getPrioritizedViewPermission are
+      // field-priority helpers meant to be consumed through the permission
+      // core (useEntityPermissions / getDerivedPermissionFlags), which
+      // expose the same prioritization as named canEditX/canViewX flags and
+      // a can(Operation.X) escape hatch. Calling the raw helpers directly
+      // from a component reimplements that logic ad hoc outside the core.
+      // DEFAULT_ENTITY_PERMISSION is deliberately NOT banned: it is the
+      // sanctioned fallback/placeholder object used throughout the already-
+      // converted code (e.g. before a permissions fetch resolves), unlike
+      // the two prioritization helpers.
+      //
+      // Deviation from the task brief: the brief assumed this would land at
+      // 'error', with the sweep having already driven direct call sites to
+      // (near) zero. Verification at promotion time found 40 files (45
+      // import specifiers) still importing these two functions directly
+      // from components/pages — not "a few, small" stragglers, and
+      // concentrated in a category the sweep never touched (the per-entity
+      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
+      // etc. — plus a handful of widgets and hooks). Converting 40 files'
+      // worth of permission derivation is its own sweep-scale task
+      // (mirroring Task 8), not something to fold silently into a
+      // lint-hardening/promotion task. Landing this specific restriction at
+      // 'warn' follows the repo's own documented convention (see the "warn
+      // tier" comment above) for a real, counted backlog that is not zero
+      // yet; promote to 'error' once a follow-up sweep clears it.
+      'no-restricted-imports': [
+        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        {
+          patterns: [
+            {
+              regex: '(^|/)utils/PermissionsUtils$',
+              importNames: [
+                'getPrioritizedEditPermission',
+                'getPrioritizedViewPermission',
+              ],
+              message:
+                'getPrioritizedEditPermission/getPrioritizedViewPermission are field-priority helpers for the permission core. Use the named canEditX/canViewX flags, or the can(Operation.X) escape hatch, from useEntityPermissions/getDerivedPermissionFlags instead.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -644,6 +727,24 @@ export default [
     rules: {
       'i18next/no-literal-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // no-raw-title-attribute targets shipped UI (use <Tooltip>, not a raw DOM
+  // title). Test files legitimately render a native `title` — the standard jest
+  // mock of <Tooltip> is `({ title, children }) => <div title={title}>{children}
+  // </div>` so a test can read the tooltip text off the DOM — so exempt them.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/**/__mocks__/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
     },
   },
 

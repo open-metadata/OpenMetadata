@@ -15,13 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import {
-  FunctionComponent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FunctionComponent, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -30,17 +24,13 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   topicQueryFn,
@@ -55,10 +45,6 @@ import {
 } from '../../rest/topicsAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -68,24 +54,25 @@ const TopicDetailsPage: FunctionComponent = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const queryClient = useQueryClient();
 
   const { entityFqn: topicFQN } = useFqn({ type: EntityType.TOPIC });
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [topicPermissions, setTopicPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-
-  const canViewTopic = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        topicPermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [topicPermissions]
-  );
+  // Single useEntityPermissions call — no genuine cycle here (contrast
+  // TableDetailsPageV1.tsx's two-call pattern): this page never derives a
+  // `deleted`-gated canEdit* flag of its own. TopicDetails (below) owns the raw
+  // {@code topicPermissions} prop and derives its own edit-tier flags from it plus its
+  // own {@code deleted} (sourced from {@code topicDetails.deleted}), so `deleted` is
+  // irrelevant to what THIS call returns. `canViewBasic` (prioritized, ViewAll-fallback)
+  // still has to run before {@code topicDetails} exists, since it gates the entity
+  // {@code useQuery}'s `enabled` below.
+  const {
+    permissions: topicPermissions, // TopicDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic: canViewTopic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.TOPIC, topicFQN);
 
   const topicCacheKey = useMemo(
     () => topicQueryKey(topicFQN, TOPIC_DEFAULT_FIELDS),
@@ -93,8 +80,8 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 
   const isTopicQueryEnabled = useMemo(
-    () => Boolean(topicFQN && canViewTopic && !permissionsLoading),
-    [topicFQN, canViewTopic, permissionsLoading]
+    () => Boolean(topicFQN && canViewTopic && !isPermissionsLoading),
+    [topicFQN, canViewTopic, isPermissionsLoading]
   );
 
   const {
@@ -107,8 +94,14 @@ const TopicDetailsPage: FunctionComponent = () => {
     enabled: isTopicQueryEnabled,
   });
 
-  const isError = useMemo(
+  const isMissing = useMemo(
     () => (topicError as AxiosError | undefined)?.response?.status === 404,
+    [topicError]
+  );
+  const isError = useMemo(
+    () =>
+      Boolean(topicError) &&
+      (topicError as AxiosError)?.response?.status !== 404,
     [topicError]
   );
 
@@ -116,7 +109,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     const status = (topicError as AxiosError | undefined)?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
-    } else if (status && status !== 404) {
+    } else if (topicError && status !== 404) {
       showErrorToast(
         topicError as AxiosError,
         t('server.entity-details-fetch-error', {
@@ -165,23 +158,17 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
   const entityName = useMemo(() => getEntityName(topicDetails), [topicDetails]);
 
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.TOPIC,
-        entityFqn
-      );
-      setTopicPermissions(permissions);
-    } catch {
+  // Permission fetching itself now lives in useEntityPermissions (called above). Preserves
+  // the old fetchResourcePermission catch's exact toast (interpolating the FQN itself, not
+  // a translated entity-type label — this page's message differs from the rest of the
+  // sweep's `{ entity: t('label.<x>-lowercase') }` shape).
+  useEffect(() => {
+    if (permissionsError) {
       showErrorToast(
-        t('server.fetch-entity-permissions-error', { entity: entityFqn })
+        t('server.fetch-entity-permissions-error', { entity: topicFQN })
       );
-    } finally {
-      setPermissionsLoading(false);
     }
-  };
+  }, [permissionsError, topicFQN]);
 
   const saveUpdatedTopicData = useCallback(
     (updatedData: Topic) => {
@@ -326,23 +313,27 @@ const TopicDetailsPage: FunctionComponent = () => {
     [setTopicDetails]
   );
 
-  useEffect(() => {
-    if (topicFQN) {
-      fetchResourcePermission(topicFQN);
-    }
-  }, [topicFQN]);
-
-  if (permissionsLoading || topicLoading) {
+  if (isPermissionsLoading || topicLoading) {
     return <PageLoader />;
   }
-  if (isError) {
+  if (isMissing) {
     return (
       <ErrorPlaceHolder>
         {getEntityMissingError('topic', topicFQN)}
       </ErrorPlaceHolder>
     );
   }
-  if (!topicPermissions.ViewAll && !topicPermissions.ViewBasic) {
+  if (isError) {
+    return (
+      <ErrorPlaceHolder
+        placeholderText={t('server.entity-details-fetch-error', {
+          entityType: t('label.topic'),
+          entityName: topicFQN,
+        })}
+      />
+    );
+  }
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

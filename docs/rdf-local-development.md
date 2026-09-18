@@ -172,6 +172,7 @@ rdf:
 | `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
 | `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `ASYNC_MAX_CONCURRENT_RDF_WRITES` | In-flight live writes (automatically clamped to one for Fuseki) | `8` |
 | `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
 | `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |
@@ -242,6 +243,24 @@ Content-Type: application/json
   "query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
 }
 ```
+
+### Execute Agent SPARQL Query
+```bash
+POST /api/v1/rdf/sparql/agent
+Content-Type: application/json
+
+{
+  "query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
+}
+```
+
+Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource (granted by a policy
+that names it — wildcard `All`/`All` policies do not grant it). Only `SELECT` queries run,
+with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
+completeness status relative to the submitted query. Queries evaluate over the
+server-configured dataset without persona filtering and without asset-level
+authorization — callers must already be entitled to see the whole projected graph.
 
 ### Get Glossary Term Relationship Graph
 ```bash

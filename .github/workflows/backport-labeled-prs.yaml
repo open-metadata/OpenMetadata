@@ -172,7 +172,11 @@ jobs:
         id: dispatch
         uses: benc-uk/workflow-dispatch@v1.3.2
         with:
-          workflow: Resolve an OpenMetadata backport conflict
+          # By filename, not display name. This was `Resolve an OpenMetadata
+          # backport conflict` and broke the moment that workflow was renamed —
+          # a dispatch by display name is a cross-repo reference with nothing
+          # checking it. The filename is stable across renames.
+          workflow: oss-backport-resolve.yaml
           repo: open-metadata/openmetadata-collate
           ref: main
           token: ${{ secrets.COLLATE_PAT }}

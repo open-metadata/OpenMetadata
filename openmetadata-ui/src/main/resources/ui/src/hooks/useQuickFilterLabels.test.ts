@@ -13,7 +13,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ExploreQuickFilterField } from '../interface/quick-filter.interface';
+import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 import { getAggregationOptions } from '../utils/ExploreUtils';
 import { useQuickFilterLabels } from './useQuickFilterLabels';
 

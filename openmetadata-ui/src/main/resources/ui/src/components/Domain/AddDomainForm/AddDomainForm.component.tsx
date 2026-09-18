@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Button,
+  ClassificationTag,
   Dot,
   FieldProp,
   FieldTypes,
@@ -862,6 +863,25 @@ const AddDomainForm = ({
       onFocus: handleTagFocus,
       onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
       options: tagOptions,
+      renderTag: (item: FormSelectItem, onRemove: () => void) => {
+        const tagValue = (item as DomainFormSelectItem).value;
+        const style =
+          tagValue && typeof tagValue === 'object' && 'style' in tagValue
+            ? tagValue.style
+            : undefined;
+
+        return (
+          <ClassificationTag
+            color={style?.color}
+            icon={style?.iconURL}
+            key={item.id}
+            label={item.label || ''}
+            maxWidth={150}
+            tooltip={item.label || ''}
+            onDelete={onRemove}
+          />
+        );
+      },
       renderItem: (item: FormSelectItem) => (
         <Autocomplete.Item
           avatarUrl={item.avatarUrl}

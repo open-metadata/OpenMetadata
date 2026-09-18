@@ -11,4 +11,6 @@
  *  limitations under the License.
  */
 
+// Types moved to interface/ so hooks stop importing from components.
+// This path stays as a re-export: openmetadata-collate imports it directly.
 export * from '../../../interface/app-module.interface';
