@@ -30,8 +30,14 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// 990 KiB keeps ~14 KB over the current build: a dependency bump cannot block
-// the queue, while a lazy route landing on the entry graph still fails here.
+// The ~45 KiB `setOwnerHrefResolver` owed the entry graph is now paid: its two
+// route builders live in a leaf `RouterPaths` module, so registering a profile
+// URL no longer drags `useMarketplaceStore`, `qs` and the service constants in.
+// With that and the hover card both off first paint the build measures 1000310
+// bootstrap bytes, against 1141354 on main before either landed -- so this
+// returns to the 990 KiB that was in force before the regression, rather than
+// banking 177 KiB of slack the gate would then stop catching regressions with.
+// ~13 KiB of headroom, in line with the sibling ratchets above.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 990 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;

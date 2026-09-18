@@ -20,6 +20,7 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -812,18 +813,11 @@ const LineageMapBreadcrumbs = ({
       id: breadcrumb.id,
       icon: isRootBreadcrumb ? Home02 : undefined,
       label: (
-        // Native title, not the design-system <Tooltip>: Breadcrumbs renders a
-        // crumb's label inside an AriaLink whenever onAction is set and the
-        // crumb is not the current one, and TooltipTrigger wraps any child that
-        // is not natively focusable -- a span is not -- in an AriaButton. That
-        // would put a button inside a link: invalid HTML, and the breadcrumb
-        // would stop responding to presses. Breadcrumbs truncates the label
-        // itself via maxItemWidth without offering an overflow tooltip, so the
-        // native title is what reveals a clipped label.
-        // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
-        <span data-testid={`lineage-map-breadcrumb-${index}`} title={label}>
+        <Typography
+          data-testid={`lineage-map-breadcrumb-${index}`}
+          tooltip={label}>
           {label}
-        </span>
+        </Typography>
       ),
     };
   });
@@ -992,6 +986,7 @@ const LineageMapCanvas = ({
   const onProviderNodeClickRef = useRef(onProviderNodeClick);
   const sceneRef = useRef<LineageScene>();
   const sceneRequestIdRef = useRef(0);
+  const pendingFetchRef = useRef(false);
   const preserveViewportRef = useRef(false);
   const lastSemanticZoomAtRef = useRef(0);
   const previousZoomRef = useRef<number>();
@@ -1129,12 +1124,20 @@ const LineageMapCanvas = ({
         : sceneCache.get(cacheKey);
       preserveViewportRef.current = Boolean(options.preserveViewport);
       if (cachedScene) {
+        // Clear the flag so the scene-layout effect's layoutNodes.then() is
+        // allowed to call setLoading(false). Without this, a cache hit that
+        // races an in-flight fetch leaves pendingFetchRef true indefinitely:
+        // the stale response is dropped (request-id guard), the flag is never
+        // cleared, and the loader stays stuck.
+        pendingFetchRef.current = false;
         setScene(cachedScene);
         setSceneError(undefined);
-        setLoading(false);
+        // setLoading(false) deferred to layoutNodes.then() in the scene useEffect
+        // so the loader stays visible until nodes are positioned in the DOM.
 
         return cachedScene;
       }
+      pendingFetchRef.current = true;
       setLoading(true);
       let response: LineageScene | undefined;
       try {
@@ -1144,16 +1147,23 @@ const LineageMapCanvas = ({
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
+          // Clear before setScene so the layout effect's .then() sees
+          // pendingFetchRef.current === false and is allowed to clear the loader.
+          pendingFetchRef.current = false;
           setScene(response);
           setSceneError(undefined);
+          // setLoading(false) deferred to layoutNodes.then() in the scene
+          // useEffect — the loader must stay up until ELK finishes positioning
+          // nodes so that waitForAllLoadersToDisappear (in tests) and any
+          // user-visible spinner correctly represent "graph ready", not just
+          // "HTTP response received".
         }
       } catch (error) {
         if (sceneRequestIdRef.current === requestId) {
+          pendingFetchRef.current = false;
           setSceneError(error as AxiosError);
           showErrorToast(error as AxiosError);
-        }
-      } finally {
-        if (sceneRequestIdRef.current === requestId) {
+          // Error — no layout will run; clear the loader immediately.
           setLoading(false);
         }
       }
@@ -1375,6 +1385,13 @@ const LineageMapCanvas = ({
   useEffect(() => {
     if (!scene) {
       setSceneNodes([]);
+      // Only clear the loader when no fetch is in flight. On initial mount
+      // scene is undefined while the first HTTP request is pending, so an
+      // unconditional setLoading(false) here would dismiss the loader before
+      // the graph is ready — the race this pendingFetchRef pattern exists to prevent.
+      if (!pendingFetchRef.current) {
+        setLoading(false);
+      }
 
       return;
     }
@@ -1429,17 +1446,31 @@ const LineageMapCanvas = ({
     });
     setSceneNodes(nextNodes);
     let isMounted = true;
-    layoutNodes(nextNodes, nextEdges, scene.band).then((layoutedNodes) => {
-      if (isMounted) {
-        setNodes(layoutedNodes);
-        setEdges(nextEdges);
-        if (preserveViewportRef.current) {
-          preserveViewportRef.current = false;
-        } else {
-          setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+    layoutNodes(nextNodes, nextEdges, scene.band)
+      .then((layoutedNodes) => {
+        // Guard against both stale layout runs (isMounted) and spurious
+        // re-layouts triggered while a newer fetch is still in flight
+        // (pendingFetchRef). Without the pendingFetchRef check, deps like
+        // removeSceneNode changing simultaneously with a fetchScene call can
+        // re-run this effect against the old scene; if that layout finishes
+        // before the HTTP response, setLoading(false) fires prematurely and
+        // waitForAllLoadersToDisappear returns before the new graph is ready.
+        if (isMounted && !pendingFetchRef.current) {
+          setNodes(layoutedNodes);
+          setEdges(nextEdges);
+          setLoading(false);
+          if (preserveViewportRef.current) {
+            preserveViewportRef.current = false;
+          } else {
+            setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+          }
         }
-      }
-    });
+      })
+      .catch(() => {
+        if (isMounted && !pendingFetchRef.current) {
+          setLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
@@ -2156,6 +2187,7 @@ const LineageMapCanvas = ({
       )}
       <ReactFlow
         fitView
+        onlyRenderVisibleElements
         className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full"
         data-testid="react-flow-component"
         deleteKeyCode={null}
@@ -2169,13 +2201,6 @@ const LineageMapCanvas = ({
         nodeTypes={nodeTypes}
         nodes={renderedNodes}
         nodesConnectable={canEditScene}
-        // Off under Playwright. Virtualisation makes a node outside the
-        // viewport absent from the DOM rather than merely off-screen, so "is
-        // this node in the graph" silently becomes a question about where the
-        // camera is pointing: assertions fail on a correct graph and no wait
-        // fixes it, because nothing re-renders. Tests that genuinely care about
-        // the viewport have toBeInViewport.
-        onlyRenderVisibleElements={!import.meta.env.PW_E2E_BUILD}
         selectNodesOnDrag={false}
         onConnect={handleConnect}
         onConnectEnd={() => setIsCreatingEdge(false)}

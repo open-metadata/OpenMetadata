@@ -125,7 +125,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await entityTypeFilter.click();
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
 
@@ -172,7 +172,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.fill('Table');
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
     });
@@ -287,7 +287,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await userSearchResponse;
 
       const adminOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('admin', { exact: true });
       await expect(adminOption).toBeVisible();
 
@@ -319,7 +319,11 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.request().method() === 'GET'
       );
 
-      await page.locator('.ant-dropdown-menu-item:visible').first().click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitemradio')
+        .first()
+        .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
@@ -588,7 +592,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const filtersDropdown = page.getByTestId('search-dropdown-Entity Type');
       await filtersDropdown.click();
 
-      const popover = page.locator('.ant-dropdown-menu');
+      const popover = page.getByTestId('drop-down-menu');
       await expect(popover).toBeVisible();
       const tableOption = popover.getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
@@ -1529,7 +1533,7 @@ test.describe(
           );
           await filtersDropdown.click();
 
-          const popover = page.locator('.ant-dropdown-menu');
+          const popover = page.getByTestId('drop-down-menu');
           await expect(popover).toBeVisible();
 
           const glossaryTermsOption = popover.getByTestId('glossary');

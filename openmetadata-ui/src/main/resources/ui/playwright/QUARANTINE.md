@@ -27,13 +27,12 @@ coverage, a retried one looks green.
 
 ## Entries
 
-2 entries, 16 tests. Most evidence is failures observed across 11 merge_group runs sampled on
+1 entry, 1 test. Most evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Pages/Lineage/LineageFilters.spec.ts` | `Lineage Filters` — the whole describe, 15 tests | — | Tagged wholesale in #33357 on 2026-09-15 with no symptom recorded anywhere, so there is nothing to reproduce against. This is now the bulk of the parked coverage: 15 of the 16 quarantined tests. Getting a symptom on record is the prerequisite for releasing it. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
 
 ### Triage, 2026-09-09
@@ -61,10 +60,10 @@ projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4609 of 4625** with these 2 entries; the
-quarantined lane lists 25, which is the 16 quarantined tests plus the 9 fixture
+default-lane count here. It is **4624 of 4625** with this 1 entry; the
+quarantined lane lists 10, which is the 1 quarantined test plus the 9 fixture
 projects above.
-(It was 4601 of 4618 with 2 entries plus LineageFilters, 4586 of 4605 with 4
+(It was 4609 of 4625 with 2 entries, 4601 of 4618 with 2 entries plus LineageFilters, 4586 of 4605 with 4
 entries plus LineageFilters, 4576 of 4580 with 4 entries, 4575 of 4580 with 5,
 and 4543 of 4555 when the list held 13.)
 
@@ -99,6 +98,7 @@ entry.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | `changeTermHierarchyFromModal` calls the `moveAsync` API, which returns 200 immediately while the actual move is processed asynchronously. The test navigated to glossary2 and asserted the moved term without waiting for the async move to complete — a race the test lost 9/11 times. Added an `expect.poll` that waits for the term's `glossary.fullyQualifiedName` to update (same pattern as the passing H-M05 test). The misleading "Drag-and-drop" symptom label was from the quarantine entry; this test uses the modal, not drag-and-drop. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | Released in #33395. The Explore summary panel renders owners from the search document, which is refreshed asynchronously after the owner PATCH, so polling the DOM and re-navigating raced the index refresh in both the add and remove steps. The test now gates on `/api/v1/search/query` through `waitForOwnerIndexed` (a nested `owners.id` query filter, since `owners` is nested in `knowledge_page_search_index`; removal waits on a `must_not` of the same clause), then navigates once and asserts. |
 | `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | The wait demanded `Success` from a step that is meant to end `Failed`. The test saves a contract whose semantics the table deliberately violates ("should fail initially"), but `waitForContractExecutionWithFallback` had no expected-status parameter, so it polled for `Success` for the full 600s and then derived `suiteStatus = 'Running'` from its own timeout and asserted that against `/^(Aborted|Success|Failed)$/`. The wait is now `waitForContractResult`: it polls the specific `results/{resultId}`, takes the terminal status the scenario actually produces (`ContractExecutionStatus.Failed` at these call sites), and throws with the server's status and message as soon as a *different* terminal status arrives. **The BE gap in the old entry is not disproven** — a quality run that writes no `qualityValidation` would still leave the status non-terminal. What changed is that it can no longer hide inside a 600s timeout: it now fails within the poll window naming the status it saw. Re-quarantine on that evidence if it recurs. |
+| `e2e/Pages/Lineage/LineageFilters.spec.ts` | `Lineage Filters` (whole describe) | Released in #33336, which also repaired the lineage export test. It was tagged wholesale in #33357 with no symptom on record, so there was never anything here to reproduce against -- the release is upstream's call and its 15 tests are back in the default lane. |
 
 ## Left running deliberately
 
