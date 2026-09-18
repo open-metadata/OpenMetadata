@@ -162,6 +162,12 @@ const Sidebar: React.FC = () => {
     return activeSubNav.sections
       .flatMap((section) => section.items)
       .flatMap((item) => {
+        // The collapsed rail is navigation-only: an unlabeled icon can't
+        // convey what a create action does. Intent-only CTAs (no `path`)
+        // stay in the expanded SubPanel's Quick Actions.
+        if (!item.path) {
+          return [];
+        }
         const icon = item.railIcon ?? item.icon;
         if (!icon) {
           return [];
