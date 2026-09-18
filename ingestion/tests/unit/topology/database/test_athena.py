@@ -65,6 +65,9 @@ from metadata.ingestion.source.database.athena.models import AthenaStatus
 from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
 from metadata.ingestion.source.database.athena.utils import get_columns
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    PROPERTY_NAME_MAX_LENGTH,
+)
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -424,6 +427,12 @@ def _get_request(mock_metadata, call_index=0):
     return mock_metadata.create_or_update_custom_property.call_args_list[call_index].args[0].createCustomPropertyRequest
 
 
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 class TestGetTableExtensionsEarlyExits:
     """Cover the early-return branches of get_table_extensions."""
 
@@ -511,7 +520,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop__airflow__dag__id__prod": "v"}
+        assert result == {_disambiguated("myprop__airflow__dag__id__prod", "myprop/airflow:dag id@prod"): "v"}
         request = _get_request(mock_metadata)
         assert request.displayName == "myprop/airflow:dag id@prod"
 
@@ -524,7 +533,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop.data__type-v1__beta": "v"}
+        assert result == {_disambiguated("myprop.data__type-v1__beta", "myprop.data/type-v1 beta"): "v"}
 
     def test_already_valid_name_unchanged(self, athena_source):
         props = {"simple_key": "value"}
@@ -595,6 +604,64 @@ class TestGetTableExtensionsSanitization:
 
         assert list(r1.keys()) == list(r2.keys())
 
+    def test_leading_underscore_is_prefixed(self, athena_source):
+        """The server requires an alphanumeric first character; a name that fails the pattern is
+        rejected at registration and the property is silently lost."""
+        props = {"_internal": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata") as mock_metadata,
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p__internal", "_internal"): "value"}
+        assert _get_request(mock_metadata).displayName == "_internal"
+
+    def test_leading_dot_is_prefixed(self, athena_source):
+        props = {".hidden": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p_.hidden", ".hidden"): "value"}
+
+    def test_leading_invalid_char_is_prefixed_after_substitution(self, athena_source):
+        """`/` maps to `__`, which would still leave a non-alphanumeric first character."""
+        props = {"/foo": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p___foo", "/foo"): "value"}
+
+    def test_alphanumeric_leading_name_is_untouched(self, athena_source):
+        """Names that already satisfy the server pattern must keep the name they have today."""
+        props = {"write.format.default": "parquet"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {"write.format.default": "parquet"}
+
+    def test_name_pushed_over_the_limit_by_the_prefix_is_hashed(self, athena_source):
+        """The prefix is applied before the length check, so it cannot produce an over-long name."""
+        original = "_" + ("a" * PROPERTY_NAME_MAX_LENGTH)
+        props = {original: "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        expected_hash = hashlib.md5(original.encode("utf-8"), usedforsecurity=False).hexdigest()
+        assert result == {expected_hash: "value"}
+
 
 class TestGetTableExtensionsValueFiltering:
     """Filter out null and empty-string property values."""
@@ -653,7 +720,7 @@ class TestGetTableExtensionsDedup:
             athena_source.get_table_extensions("tbl2", TableType.Iceberg)
 
         assert mock_metadata.create_or_update_custom_property.call_count == 1
-        assert "shared_key" in athena_source._processed_prop
+        assert "Table:shared_key" in athena_source._processed_prop
 
     def test_distinct_props_each_registered_once(self, athena_source):
         with (
@@ -680,7 +747,7 @@ class TestGetTableExtensionsDedup:
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
         assert result is None
-        assert "k1" not in athena_source._processed_prop
+        assert "Table:k1" not in athena_source._processed_prop
 
     def test_registration_failure_for_one_prop_does_not_block_others(self, athena_source):
         """Registration errors on one prop don't prevent others from being returned."""
@@ -983,3 +1050,24 @@ class TestIncludeCustomPropertiesSchema:
 
         pipeline = DatabaseServiceMetadataPipeline(includeCustomProperties=True)
         assert pipeline.includeCustomProperties is True
+
+
+class TestAthenaPrepareTypeRef:
+    """prepare() resolves the string property type once per workflow, and only when enabled."""
+
+    def test_prepare_fetches_type_ref_when_enabled(self, athena_source):
+        athena_source._string_property_type_ref = None
+
+        with patch.object(athena_source, "metadata") as mock_metadata:
+            athena_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 1
+
+    def test_prepare_skips_fetch_when_disabled(self, athena_source):
+        """A disabled pipeline must not call the server at all."""
+        athena_source.source_config.includeCustomProperties = False
+
+        with patch.object(athena_source, "metadata") as mock_metadata:
+            athena_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 0
