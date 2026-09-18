@@ -81,8 +81,8 @@
 // Appended last so it wins over the light `.custom-code-mirror-theme`.
 .dark-mode {
   .CodeMirror {
-    background: var(--om-color-bg-surface);
-    color: var(--om-color-text-primary);
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
 
     // CodeMirror 5's default syntax hues (keyword #708, string #a11, number
     // #164, atom #219, …) are dark, saturated colors meant for a light
@@ -115,29 +115,29 @@
     }
     .cm-operator,
     .cm-meta {
-      color: var(--om-color-text-secondary);
+      color: var(--color-text-secondary);
     }
     .cm-comment {
-      color: var(--om-color-text-tertiary);
+      color: var(--color-text-tertiary);
     }
     .cm-error {
       color: var(--color-error-400);
     }
   }
   .custom-code-mirror-theme .CodeMirror {
-    background: var(--om-color-bg-surface);
+    background: var(--color-bg-surface);
   }
   .CodeMirror-gutters {
-    background-color: var(--om-color-bg-canvas);
-    border-right-color: var(--om-color-border-subtle);
+    background-color: var(--color-bg-canvas);
+    border-right-color: var(--color-border-subtle);
   }
   .CodeMirror-linenumber,
   .CodeMirror-foldgutter-open,
   .CodeMirror-foldgutter-folded {
-    color: var(--om-color-text-tertiary);
+    color: var(--color-text-tertiary);
   }
   .CodeMirror-cursor {
-    border-left-color: var(--om-color-text-primary);
+    border-left-color: var(--color-text-primary);
   }
   // Include the focused state: CodeMirror's own
   // `.CodeMirror-focused .CodeMirror-selected` (light lavender) has equal
@@ -145,9 +145,9 @@
   // active editing.
   .CodeMirror-selected,
   .CodeMirror-focused .CodeMirror-selected {
-    background: var(--om-color-bg-secondary-hover);
+    background: var(--color-bg-secondary_hover);
   }
   .CodeMirror-activeline-background {
-    background: var(--om-color-bg-secondary);
+    background: var(--color-bg-secondary);
   }
 }
