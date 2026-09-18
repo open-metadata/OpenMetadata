@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestSuite } from '../../../../../generated/tests/testSuite';
 import TestCaseTestSuitesCard from './TestCaseTestSuitesCard';
@@ -84,5 +84,39 @@ describe('TestCaseTestSuitesCard', () => {
     renderCard([tableSuite]);
 
     expect(screen.getByTestId('expand-collapse-icon')).toBeInTheDocument();
+  });
+
+  it('shows the first five suites and reveals the rest on demand', () => {
+    const bundleSuites = Array.from(
+      { length: 7 },
+      (_, index) =>
+        ({
+          ...bundleSuite,
+          id: `bundle-suite-${index}`,
+          name: `bundle_${index}`,
+          fullyQualifiedName: `bundle_${index}`,
+        } as TestSuite)
+    );
+    renderCard([tableSuite, ...bundleSuites]);
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.plus-count-more' })
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(8);
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.less' }));
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+  });
+
+  it('has no show-more toggle when every suite fits', () => {
+    renderCard([tableSuite, bundleSuite]);
+
+    expect(
+      screen.queryByTestId('test-suites-show-more')
+    ).not.toBeInTheDocument();
   });
 });

@@ -107,6 +107,22 @@ test.describe(
         );
       });
 
+      await test.step('Only the name is the link, the rest of the row does not navigate', async () => {
+        const detailsUrl = page.url();
+
+        await testSuites
+          .getByRole('listitem')
+          .filter({
+            has: page.getByTestId(
+              `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+            ),
+          })
+          .locator('svg')
+          .click();
+
+        await expect(page).toHaveURL(detailsUrl);
+      });
+
       await test.step('The panel sits above the tags', async () => {
         const suitesBox = await testSuites.boundingBox();
         const tagsBox = await page.getByTestId('tags-container').boundingBox();
