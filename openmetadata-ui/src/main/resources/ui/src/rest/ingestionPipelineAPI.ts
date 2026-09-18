@@ -158,6 +158,21 @@ export const getIngestionPipelineLogById = (
   );
 };
 
+export const getIngestionPipelineLogByRunId = (
+  idOrFqn: string,
+  runId: string,
+  after?: string
+) => {
+  return APIClient.get<IngestionPipelineLogByIdInterface>(
+    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/${runId}`,
+    {
+      params: {
+        after,
+      },
+    }
+  );
+};
+
 export const postKillIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
