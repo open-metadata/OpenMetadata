@@ -18,8 +18,8 @@ jest.mock('../components/common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
   default: jest.fn(({ children, userName, type }) => (
     <div
-      data-testid="user-pop-over-card"
       data-owner-type={type}
+      data-testid="user-pop-over-card"
       data-username={userName}>
       {children}
     </div>
