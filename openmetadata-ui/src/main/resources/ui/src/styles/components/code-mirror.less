@@ -74,16 +74,55 @@
   }
 }
 
-// Dark-mode editor chrome for every CodeMirror instance (SchemaEditor, query
-// cards, JSON/manifest widgets, query console). CodeMirror ships a light theme,
+// Dark-mode editor theming for every CodeMirror instance (SchemaEditor, query
+// cards, JSON/manifest widgets, query console). CodeMirror 5 ships a light theme,
 // so without this the editor surface, gutter, line numbers, cursor, selection,
-// and active line stay light in dark mode. Syntax token hues are left intact
-// (they read fine on the dark surface); only comments are lifted to a legible
-// muted tone. Appended last so it wins over the light `.custom-code-mirror-theme`.
+// active line, and syntax tokens stay tuned for a light background in dark mode.
+// Appended last so it wins over the light `.custom-code-mirror-theme`.
 .dark-mode {
   .CodeMirror {
     background: var(--om-color-bg-surface);
     color: var(--om-color-text-primary);
+
+    // CodeMirror 5's default syntax hues (keyword #708, string #a11, number
+    // #164, atom #219, …) are dark, saturated colors meant for a light
+    // background and fail contrast on the dark surface. Remap them to light
+    // hues; nesting under .CodeMirror outranks the default
+    // `.cm-s-default .cm-<token>` rules regardless of stylesheet order.
+    .cm-keyword {
+      color: var(--color-purple-300);
+    }
+    .cm-def,
+    .cm-builtin {
+      color: var(--color-blue-400);
+    }
+    .cm-variable-2,
+    .cm-property {
+      color: var(--color-blue-300);
+    }
+    .cm-number,
+    .cm-atom,
+    .cm-attribute {
+      color: var(--color-orange-300);
+    }
+    .cm-string,
+    .cm-string-2 {
+      color: var(--color-green-300);
+    }
+    .cm-type,
+    .cm-variable-3 {
+      color: var(--color-success-400);
+    }
+    .cm-operator,
+    .cm-meta {
+      color: var(--om-color-text-secondary);
+    }
+    .cm-comment {
+      color: var(--om-color-text-tertiary);
+    }
+    .cm-error {
+      color: var(--color-error-400);
+    }
   }
   .custom-code-mirror-theme .CodeMirror {
     background: var(--om-color-bg-surface);
@@ -110,8 +149,5 @@
   }
   .CodeMirror-activeline-background {
     background: var(--om-color-bg-secondary);
-  }
-  .cm-comment {
-    color: var(--om-color-text-tertiary);
   }
 }
