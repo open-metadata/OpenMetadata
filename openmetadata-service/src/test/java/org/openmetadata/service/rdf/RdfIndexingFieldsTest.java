@@ -37,4 +37,25 @@ class RdfIndexingFieldsTest {
         List.of("columns", "domains", "followers", "owners"),
         RdfIndexingFields.forSupportedFields(supportedFields));
   }
+
+  @Test
+  void retainsInputsOfDedicatedRdfMappers() {
+    // These four are in RdfPropertyMapper's IGNORED_PROPERTIES because a dedicated mapper emits
+    // them as structured RDF instead of an opaque JSON literal. Reusing that predicate to pick the
+    // fields to *load* dropped them from the entity before the dedicated mappers ever ran, so
+    // table constraints, profiles, pipeline status and usage never reached the graph.
+    final Set<String> supportedFields =
+        Set.of(
+            "tableConstraints",
+            "profile",
+            "pipelineStatus",
+            "usageSummary",
+            "changeDescription",
+            "testCaseResult",
+            Entity.FIELD_VOTES);
+
+    assertEquals(
+        List.of("pipelineStatus", "profile", "tableConstraints", "usageSummary"),
+        RdfIndexingFields.forSupportedFields(supportedFields));
+  }
 }

@@ -37,11 +37,12 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
+import { TreeSelect } from '../tree-select/tree-select';
 
 // Narrow wrapper so the icon prop's type doesn't widen to the raw
 // `@untitledui/icons` FC, whose `children` type clashes with consumers that
 // augment ReactNode globally (e.g. react-i18next).
-const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
+export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
   <SearchLg aria-hidden="true" {...props} />
 );
 
@@ -49,7 +50,7 @@ const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
 
-const TriggerCountBadge = ({ count }: { count: number }) => (
+export const TriggerCountBadge = ({ count }: { count: number }) => (
   <Typography
     inline
     className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
@@ -60,7 +61,7 @@ const TriggerCountBadge = ({ count }: { count: number }) => (
   </Typography>
 );
 
-const TriggerButton = ({
+export const TriggerButton = ({
   hasSelection,
   text,
   label,
@@ -320,7 +321,7 @@ const OptionRow = ({
  * `CheckboxBase` size `sm`), so checkbox size, alignment, and typography are
  * uniform by construction.
  */
-export const FilterSelect = ({
+const FilterSelect = ({
   label,
   options,
   selectedValues,
@@ -836,3 +837,10 @@ export const FilterSelect = ({
     </Dropdown.Root>
   );
 };
+
+const _FilterSelect = FilterSelect as typeof FilterSelect & {
+  Tree: typeof TreeSelect;
+};
+_FilterSelect.Tree = TreeSelect;
+
+export { _FilterSelect as FilterSelect };
