@@ -414,6 +414,7 @@ function TestSummaryGraph({
           allowDataOverflow
           domain={['min', 'max']}
           padding={{ top: 8, bottom: 8 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={formatYAxis}
           width={80}
         />
