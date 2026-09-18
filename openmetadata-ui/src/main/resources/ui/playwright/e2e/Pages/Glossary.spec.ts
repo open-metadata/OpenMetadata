@@ -630,38 +630,20 @@ test.describe('Glossary tests', () => {
         expect(await icons.count()).toBe(3);
 
         // Add Glossary to Dashboard Charts
-        await page.click(
-          '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
-        );
-
-        await page.click('[data-testid="tag-selector"]');
-
-        const glossaryRequest5 = page.waitForResponse(
-          `/api/v1/search/query?q=*&index=glossaryTerm&from=0&size=25&deleted=false&track_total_hits=true&getHierarchy=true`
-        );
-        await page.fill(
-          '[data-testid="tag-selector"] #tagsForm_tags',
-          glossaryTerm3.data.name
-        );
-        await glossaryRequest5;
-
-        await page
-          .getByRole('tree')
-          .getByTestId(`tag-${glossaryTerm3.data.fullyQualifiedName}`)
-          .click();
-
-        await page
-          .locator(
-            `[data-testid="tag-selector"]:has-text("${glossaryTerm3.data.displayName}")`
+        await openGlossaryPicker(
+          page,
+          page.locator(
+            '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]'
           )
-          .waitFor();
+        );
 
-        const patchRequest3 = page.waitForResponse(`/api/v1/charts/*`);
+        await toggleGlossaryTermInPicker(page, {
+          name: glossaryTerm3.data.name,
+          displayName: glossaryTerm3.data.displayName,
+          fullyQualifiedName: glossaryTerm3.responseData.fullyQualifiedName,
+        });
 
-        await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-        await page.getByTestId('saveAssociatedTag').click();
-        await patchRequest3;
+        await applyGlossaryPicker(page, '/api/v1/charts/*');
 
         // Check if the term is present
         const tagSelectorText = await page

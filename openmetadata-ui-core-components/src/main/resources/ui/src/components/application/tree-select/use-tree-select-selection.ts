@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { TreeSelectNode } from './tree-select.types';
 
 interface UseTreeSelectSelectionOptions<T> {
@@ -77,6 +77,7 @@ export const useTreeSelectSelection = <T = unknown>({
   const [selectedNodes, setSelectedNodes] = useState<
     Map<string, TreeSelectNode<T>>
   >(new Map());
+  const parentOfSelected = useRef<Map<string, string>>(new Map());
 
   const notify = useCallback(
     (next: Map<string, TreeSelectNode<T>>) => {
@@ -106,6 +107,14 @@ export const useTreeSelectSelection = <T = unknown>({
             next.delete(sibling.id);
           }
         });
+        if (parent) {
+          parentOfSelected.current.forEach((parentId, selectedId) => {
+            if (parentId === parent.id && selectedId !== node.id) {
+              next.delete(selectedId);
+            }
+          });
+          parentOfSelected.current.set(node.id, parent.id);
+        }
         if (isSelected) {
           next.delete(node.id);
         } else {
@@ -130,10 +139,12 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const setSelection = useCallback((nodes: TreeSelectNode<T>[]) => {
+    parentOfSelected.current = new Map();
     setSelectedNodes(new Map(nodes.map((node) => [node.id, node])));
   }, []);
 
   const clearSelection = useCallback(() => {
+    parentOfSelected.current = new Map();
     setSelectedNodes(new Map());
     onChange?.(multiple ? [] : null);
   }, [multiple, onChange]);
