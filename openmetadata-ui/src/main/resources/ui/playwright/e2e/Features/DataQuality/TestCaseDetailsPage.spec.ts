@@ -12,6 +12,7 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
@@ -25,6 +26,7 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // name is fixed at construction, so a retry that reuses this worker would
 // re-run `create` with the same name and get a 409.
 let table!: TableClass;
+let bundleSuite: BundleTestSuiteClass;
 
 const openDetailsPage = async (page: Page) => {
   await enableAiAppMode(page);
@@ -39,7 +41,7 @@ test.describe(
   { tag: ['@Features', '@Observability'] },
   () => {
     test.beforeAll(
-      'Create a table, a test case and one result',
+      'Create a table, a test case in a bundle suite and one result',
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -57,14 +59,68 @@ test.describe(
           }
         );
 
+        bundleSuite = new BundleTestSuiteClass();
+        await bundleSuite.createBundleTestSuite(apiContext);
+        const addResponse = await bundleSuite.addTestCases(apiContext, [
+          testCase.id as string,
+        ]);
+        expect(addResponse.status()).toBe(200);
+
         await afterAction();
       }
     );
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await bundleSuite.delete(apiContext);
       await table.delete(apiContext);
       await afterAction();
+    });
+
+    test('lists the test suites the test case belongs to, above the tags', async ({
+      page,
+    }) => {
+      await openDetailsPage(page);
+
+      const testSuites = page.getByTestId('test-suites-container');
+      const tableSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+      );
+      const bundleSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+      );
+
+      await test.step('The table suite links to its table and the bundle suite to its page', async () => {
+        await expect(tableSuiteLink).toHaveAccessibleName(
+          `Table ${table.entityResponseData.name}`
+        );
+        await expect(bundleSuiteLink).toHaveAccessibleName(
+          `Bundle Suite ${bundleSuite.bundleTestSuiteResponseData.name}`
+        );
+        await expect(tableSuiteLink).toHaveAttribute(
+          'href',
+          /\/profiler\/data-quality$/
+        );
+        await expect(bundleSuiteLink).toHaveAttribute(
+          'href',
+          `/test-suites/${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+        );
+      });
+
+      await test.step('The panel sits above the tags', async () => {
+        const suitesBox = await testSuites.boundingBox();
+        const tagsBox = await page.getByTestId('tags-container').boundingBox();
+
+        expect(suitesBox).not.toBeNull();
+        expect(tagsBox).not.toBeNull();
+        expect(Number(suitesBox?.y)).toBeLessThan(Number(tagsBox?.y));
+      });
+
+      await test.step('The panel collapses like the tags panel', async () => {
+        await testSuites.getByTestId('expand-collapse-icon').click();
+
+        await expect(bundleSuiteLink).toBeHidden();
+      });
     });
 
     test('renders the page frame with a two column result tab', async ({
