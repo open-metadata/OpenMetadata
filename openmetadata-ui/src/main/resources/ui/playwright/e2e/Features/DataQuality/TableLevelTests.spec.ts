@@ -727,22 +727,34 @@ test.describe(
         const useColumnsTrigger = page.locator(
           '#testCaseFormV1_params_useColumns_0_value'
         );
-        await scrollIntoViewAndSettle(useColumnsTrigger);
-        await useColumnsTrigger.click();
-
-        // The column already used as a key column is disabled in this list.
-        await expect(
-          page
-            .getByRole('option')
-            .filter({ hasText: table1.entity?.columns[0].name })
-            .first()
-        ).toHaveAttribute('aria-disabled', 'true');
-
-        await page
+        const keyColumnOption = page
+          .getByRole('option')
+          .filter({ hasText: table1.entity?.columns[0].name })
+          .first();
+        const useColumnOption = page
           .getByRole('option')
           .filter({ hasText: table1.entity?.columns[1].name })
-          .first()
-          .click();
+          .first();
+        // selectOptionWithRetry, inlined to assert on the open list before
+        // picking: if the popover closes first, reopen instead of letting the
+        // click wait out the test timeout.
+        await expect(async () => {
+          if (
+            (await useColumnsTrigger.getAttribute('aria-expanded')) !== 'true'
+          ) {
+            await scrollIntoViewAndSettle(useColumnsTrigger);
+            await useColumnsTrigger.click();
+          }
+          // The column already used as a key column is disabled in this list.
+          await expect(keyColumnOption).toHaveAttribute(
+            'aria-disabled',
+            'true',
+            {
+              timeout: 2000,
+            }
+          );
+          await useColumnOption.click({ timeout: 2000 });
+        }).toPass({ timeout: 15000 });
 
         await page.fill('#testCaseFormV1_params_where', 'test');
         await submitTestCaseForm(page);
