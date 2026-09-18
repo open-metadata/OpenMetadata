@@ -18,7 +18,7 @@ from ..runtime.status import Status
 @pytest.fixture
 def status_payload():
     return {
-        "pipeline_type": "example",
+        "source_type": "example",
         "ingestion_pipeline_fqn": None,
         "success": True,
         "steps": [
@@ -53,7 +53,7 @@ def test_steps_cannot_be_missing_empty_or_non_objects(status_payload, steps):
         Status.from_dict(status_payload)
 
 
-@pytest.mark.parametrize("key", ["pipeline_type", "success", "steps"])
+@pytest.mark.parametrize("key", ["source_type", "success", "steps"])
 def test_required_status_fields(status_payload, key):
     del status_payload[key]
     with pytest.raises(ValueError):
@@ -116,11 +116,12 @@ def test_error_total_does_not_count_only_sampled_details(status_payload):
     assert status.step("Absent") is None
 
 
-def test_successful_status_retains_counts_and_nullable_pipeline(status_payload):
-    status_payload["pipeline_type"] = None
+@pytest.mark.parametrize("source_type", ["mysql", "mysql-lineage", "custom.module.Source", None])
+def test_successful_status_retains_counts_and_source_type(status_payload, source_type):
+    status_payload["source_type"] = source_type
     status = Status.from_dict(status_payload)
     assert status.success is True
-    assert status.pipeline_type is None
+    assert status.source_type == source_type
     assert status.total_errors == 0
     assert status.all_failures == []
     assert status.steps[0].records == 2

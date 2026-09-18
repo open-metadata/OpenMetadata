@@ -37,6 +37,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Source,
@@ -509,8 +515,23 @@ class TestWorkflowExecuteTeardown:
             mock_step_close.assert_called_once()
 
 
-def test_write_status_file_writes_expected_shape(tmp_path):
-    workflow = OkWorkflow(config=config)
+@pytest.mark.parametrize(
+    "source_type,pipeline,expected_source_type",
+    [
+        ("mysql", DatabaseServiceMetadataPipeline(), "mysql"),
+        ("mysql", DatabaseServiceProfilerPipeline(), "mysql"),
+        ("mysql-lineage", DatabaseServiceQueryLineagePipeline(), "mysql-lineage"),
+    ],
+    ids=["metadata", "profiler", "lineage"],
+)
+def test_write_status_file_reports_source_type_not_pipeline_type(tmp_path, source_type, pipeline, expected_source_type):
+    source = Source(
+        type=source_type,
+        serviceName="test",
+        serviceConnection={"config": {"type": "Mysql", "username": "user", "hostPort": "localhost:3306"}},
+        sourceConfig=SourceConfig(config=pipeline),
+    )
+    workflow = OkWorkflow(config=config.model_copy(update={"source": source}))
     workflow.execute()
 
     status_file = tmp_path / "status.json"
@@ -519,7 +540,8 @@ def test_write_status_file_writes_expected_shape(tmp_path):
     assert status_file.exists()
     payload = json.loads(status_file.read_text())
 
-    assert payload["pipeline_type"] == "simple"
+    assert payload["source_type"] == expected_source_type
+    assert "pipeline_type" not in payload
     assert payload["ingestion_pipeline_fqn"] is None
     assert payload["success"] is True
     assert isinstance(payload["steps"], list)

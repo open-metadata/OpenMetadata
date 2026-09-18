@@ -54,7 +54,7 @@ elif config.get("mode") == "dashboard":
     })
     Path(config["persisted"]).write_text(dashboard.model_dump_json())
 status = {
-    "pipeline_type": "metadata", "success": config.get("success", True),
+    "source_type": "example", "success": config.get("success", True),
     "steps": [{"name": "Probe", "records": 1, "updated_records": 0,
                "warnings": 0, "errors": config.get("errors", 0), "filtered": 0, "failures": None}],
 }
@@ -109,7 +109,7 @@ if probe.get("descendant"):
     signal.pause()
 if not probe.get("missing"):
     status = {
-        "pipeline_type": "example",
+        "source_type": "example",
         "ingestion_pipeline_fqn": None,
         "success": probe.get("success", True),
         "steps": [{

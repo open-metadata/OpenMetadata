@@ -67,7 +67,7 @@ class StepStatus:
 
 @dataclass(frozen=True)
 class Status:
-    pipeline_type: str | None
+    source_type: str | None
     ingestion_pipeline_fqn: str | None
     success: bool
     steps: list[StepStatus]
@@ -80,13 +80,13 @@ class Status:
             raise ValueError("status.success must be a boolean")
         if not isinstance(data.get("steps"), list) or not data["steps"]:
             raise ValueError("status.steps must be a nonempty list")
-        if "pipeline_type" not in data:
-            raise ValueError("status.pipeline_type is required")
-        for key in ("pipeline_type", "ingestion_pipeline_fqn"):
+        if "source_type" not in data:
+            raise ValueError("status.source_type is required")
+        for key in ("source_type", "ingestion_pipeline_fqn"):
             if data.get(key) is not None and not isinstance(data[key], str):
                 raise ValueError(f"status.{key} must be a string or null")
         return cls(
-            pipeline_type=data["pipeline_type"],
+            source_type=data["source_type"],
             ingestion_pipeline_fqn=data.get("ingestion_pipeline_fqn"),
             success=data["success"],
             steps=[StepStatus.from_dict(step) for step in data["steps"]],

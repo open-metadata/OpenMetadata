@@ -457,7 +457,7 @@ with sqlite3.connect(config["database"]) as connection:
                                (654321 if config["sampler"] == "wrong-initial" else value,))
     else:
         raise AssertionError(f"unexpected subcommand: {subcommand}")
-status = {"pipeline_type": "metadata" if subcommand == "ingest" else "autoClassification", "success": True,
+status = {"source_type": "sqlite", "success": True,
           "steps": [{"name": "Sampler", "records": 1, "updated_records": 0,
                      "warnings": 0, "errors": 0, "filtered": 0, "failures": []}]}
 Path(sys.argv[sys.argv.index("--status-file") + 1]).write_text(json.dumps(status))
