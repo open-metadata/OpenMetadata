@@ -27,11 +27,11 @@ jest.mock('../../../assets/svg/ic-certification.svg', () => ({
   ReactComponent: () => <div data-testid="default-certification-icon" />,
 }));
 
-jest.mock('../Icon/Icon', () => ({
+jest.mock('@openmetadata/ui-core-components/icon', () => ({
   Icon: jest.fn(),
 }));
 
-const { Icon } = jest.requireMock('../Icon/Icon');
+const { Icon } = jest.requireMock('@openmetadata/ui-core-components/icon');
 
 const mockCertification: AssetCertification = {
   tagLabel: {

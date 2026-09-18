@@ -521,6 +521,10 @@ export default defineConfig(async ({ mode }) => {
         // React copy — an "Invalid hook call" (`useRef` of null) in every RHF
         // form. `dedupe` alone does not cover the dev pre-bundle path.
         'react-hook-form',
+        // Same reason as the `dedupe` entries: the dev pre-bundle path must
+        // not hand the linked library a second i18next.
+        'i18next',
+        'react-i18next',
       ],
       esbuildOptions: {
         target: 'esnext',

@@ -239,6 +239,81 @@ describe('Search DropDown Component', () => {
     });
   });
 
+  it('Should keep a pending selection when selectedKeys is re-derived while open', async () => {
+    // Mirrors the Add Test Case modal's Column filter: `selectedKeys` there is a
+    // memo over server-fetched options, so a late suggestions response hands the
+    // dropdown a fresh array identity while the user is mid-edit. That must not
+    // discard the option they already clicked, or Update applies nothing.
+    mockOnChange.mockClear();
+
+    const { rerender } = render(
+      <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('User 2'));
+    });
+
+    // The late fetch resolves: same selection, brand new array identity.
+    await act(async () => {
+      rerender(
+        <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('update-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [{ key: 'User 2', label: 'User 2' }],
+        'owner.displayName'
+      );
+    });
+  });
+
+  it('Should apply an external selectedKeys change that arrives while open', async () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation. When that navigation clears the filter, Update must not write
+    // the stale local selection back.
+    mockOnChange.mockClear();
+
+    const { rerender } = render(
+      <SearchDropdown
+        {...mockProps}
+        singleSelect
+        selectedKeys={[{ key: 'User 1', label: 'User 1' }]}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    await act(async () => {
+      rerender(
+        <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('update-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith([], 'owner.displayName');
+    });
+  });
+
   it('Selected option should unselect on next click', async () => {
     render(<SearchDropdown {...mockProps} />);
 
