@@ -143,7 +143,7 @@ The scaffold prints a checklist. These files need manual edits:
    - Add your connector name to the `type` enum array
    - Add a `$ref` to your connection schema in the `connection` oneOf
 
-2. **UI service utils** — Import the schema and add a switch case:
+2. **UI service utils** — Add a schema loader entry:
    ```
    openmetadata-ui/.../utils/{ServiceType}ServiceUtils.tsx
    ```
@@ -432,7 +432,7 @@ auth and `../../../../` to reach shared types. Non-database schemas use
 
 1. Check you added the type to `{serviceType}Service.json`
 2. Check you ran `yarn parse-schema`
-3. Check you added the switch case in `{ServiceType}ServiceUtils.tsx`
+3. Check you added the schema loader entry in `{ServiceType}ServiceUtils.tsx`
 
 ### Test connection fails
 
