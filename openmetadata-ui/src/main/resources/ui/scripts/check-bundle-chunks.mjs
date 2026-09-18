@@ -30,17 +30,15 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// main measures 1141354 bytes (1114.6 KiB) after the owner-link refactor
-// pulled `renderOwnerPopover` (antd Popover + PopoverContent +
-// TeamPopoverContent + ProfilePicture) into the eager index.tsx graph. This
-// branch's AuthCoordinator refactor also imports the coordinator singleton
-// statically from AuthProvider, adding its CrossTabLock + RefreshQueue +
-// ProactiveTimer + VisibilityWatcher subgraph to bootstrap. Together the build
-// lands at ~1118 KiB Brotli. 1150 KiB keeps ~32 KB headroom so an unrelated
-// dep bump doesn't immediately re-fail here — main's own ratchet to 1130 KiB
-// (which took vendor-untitled's 20 eager locale bundles into account) needed
-// a little more room on top for the coordinator subgraph; the vendor-untitled
-// / locale-bundle deferral is the real win and is tracked separately.
+// Taking the owner hover card off the entry graph (see ownerRenderUtils) puts
+// main at 1045275 bootstrap bytes, against 1141354 before it. This branch adds
+// the AuthCoordinator subgraph (CrossTabLock + RefreshQueue + ProactiveTimer +
+// VisibilityWatcher) statically imported from AuthProvider, so the current
+// build sits a few KB above main. 1150 KiB leaves room for that coordinator
+// footprint plus the ~45 KiB still owed by `setOwnerHrefResolver`, which
+// reaches RouterUtils and drags `useMarketplaceStore`, `qs` and the service
+// constants onto the entry graph. Once those two are unpicked this should
+// come down well below where it started.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 1150 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
