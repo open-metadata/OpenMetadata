@@ -833,6 +833,68 @@ a[href].link-text-grey,
   color: @background-color !important;
 }
 
+// Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
+// ontology, ports). Themes the shared chrome — background dots, minimap,
+// zoom controls, default edges/handles, attribution — via semantic tokens so
+// it flips with the theme. Custom node internals are themed in their own files.
+.dark-mode {
+  .react-flow__background {
+    // Background pattern (dots/lines) renders as SVG paths.
+    .react-flow__background-pattern,
+    path,
+    circle {
+      stroke: var(--om-color-border-subtle);
+      fill: var(--om-color-border-subtle);
+    }
+  }
+
+  .react-flow__minimap {
+    background-color: var(--om-color-bg-surface);
+
+    .react-flow__minimap-mask {
+      fill: var(--om-color-bg-overlay);
+    }
+
+    .react-flow__minimap-node {
+      fill: var(--om-color-bg-raised);
+      stroke: var(--om-color-border-subtle);
+    }
+  }
+
+  .react-flow__controls {
+    .react-flow__controls-button {
+      background-color: var(--om-color-bg-raised);
+      border-bottom-color: var(--om-color-border-subtle);
+      color: var(--om-color-text-secondary);
+
+      svg {
+        fill: currentColor;
+      }
+
+      &:hover {
+        background-color: var(--om-color-bg-secondary-hover);
+      }
+    }
+  }
+
+  .react-flow__edge-path {
+    stroke: var(--om-color-border-primary);
+  }
+
+  .react-flow__handle {
+    background-color: var(--om-color-bg-raised);
+    border-color: var(--om-color-border-primary);
+  }
+
+  .react-flow__attribution {
+    background-color: var(--om-color-bg-surface);
+
+    > a {
+      color: var(--om-color-text-tertiary) !important;
+    }
+  }
+}
+
 /* EntityVersion  */
 
 .version-data {
