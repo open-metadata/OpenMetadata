@@ -256,6 +256,17 @@ const GlossaryPage = () => {
     };
   }, [isGlossaryActive, glossaryFqn]);
 
+  // When the list fetch has already found this glossary, use it directly and
+  // skip the redundant FQN lookup. The FQN fetch only fires for FQNs absent
+  // from the list — giving a real 404 for bad URLs.
+  const glossaryFoundInList = useMemo(
+    () =>
+      initialised
+        ? glossaries.find((g) => g.fullyQualifiedName === glossaryFqn)
+        : undefined,
+    [initialised, glossaries, glossaryFqn]
+  );
+
   const {
     data: glossaryTermDetails,
     isFetching: glossaryTermFetching,
@@ -268,16 +279,19 @@ const GlossaryPage = () => {
 
   // Resolve the active glossary by FQN so a nonexistent FQN produces a real
   // 404 instead of silently rendering the first glossary from the list.
+  // Skipped when glossaryFoundInList is truthy — the list data is sufficient.
   const {
-    data: glossaryDetails,
+    data: glossaryFetchedDetails,
     isFetching: glossaryFetching,
     error: glossaryError,
   } = useQuery({
     queryKey: ['glossary', glossaryFqn] as const,
     queryFn: () =>
       getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
-    enabled: isGlossaryView,
+    enabled: isGlossaryView && initialised && !glossaryFoundInList,
   });
+
+  const glossaryDetails = glossaryFoundInList ?? glossaryFetchedDetails;
 
   const setGlossaryTermDetails = useCallback(
     (
@@ -345,12 +359,16 @@ const GlossaryPage = () => {
       return glossaryTermFetching;
     }
     if (isGlossaryView) {
-      return glossaryFetching;
+      // Keep the panel loading until the list has settled. When the glossary is
+      // found in the list (glossaryFetching = false, no FQN fetch), initialised
+      // guards against a brief flash while the list is still paginating.
+      return !initialised || glossaryFetching;
     }
 
     return false;
   }, [
     glossaries.length,
+    initialised,
     isTermView,
     glossaryTermFetching,
     isGlossaryView,

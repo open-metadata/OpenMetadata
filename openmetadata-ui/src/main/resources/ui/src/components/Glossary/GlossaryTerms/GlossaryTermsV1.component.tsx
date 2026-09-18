@@ -245,8 +245,7 @@ const GlossaryTermsV1 = ({
       fetchGlossaryTermAssets();
     }, 500);
     if (!isVersionView) {
-      fetchTaskCounts();
-      fetchActivityCount();
+      Promise.all([fetchTaskCounts(), fetchActivityCount()]);
     }
   }, [glossaryFqn, isVersionView]);
 

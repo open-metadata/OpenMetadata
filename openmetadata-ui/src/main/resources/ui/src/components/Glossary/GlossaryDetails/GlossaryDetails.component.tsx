@@ -215,8 +215,7 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    fetchTaskCounts();
-    fetchActivityCount();
+    Promise.all([fetchTaskCounts(), fetchActivityCount()]);
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(
