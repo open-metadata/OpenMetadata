@@ -9,26 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""
-Test Container sampler processor functionality
-"""
+"""Tests for sampler processor execution and status handling."""
 
 import uuid
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from metadata.generated.schema.entity.data.container import (
-    Container,
-    ContainerDataModel,
-)
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    ColumnName,
-    DataType,
-    Table,
-    TableData,
-)
+from metadata.generated.schema.entity.data.container import Container, ContainerDataModel
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table, TableData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -45,7 +34,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.source.model import ProfilerSourceAndEntity
+from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 from metadata.sampler.processor import SamplerProcessor
 
 
@@ -110,6 +101,130 @@ def workflow_config():
     config.source.serviceConnection.root = Mock()
     config.source.serviceConnection.root.config = {}
     return config
+
+
+@pytest.fixture
+def profiler_record(table_entity):
+    return ProfilerSourceAndEntity(
+        profiler_source=MagicMock(spec=ProfilerSourceInterface),
+        entity=table_entity,
+    )
+
+
+@pytest.fixture
+def sampler_processor_factory(monkeypatch, workflow_config, profiler_record):
+    def create(
+        error: RuntimeError | None = None,
+        is_skippable: bool = False,
+        *,
+        has_columns: bool = True,
+        has_sampler_context: bool = True,
+        sample_data: TableData | None = None,
+    ):
+        adapter = MagicMock()
+        adapter.get_columns.return_value = profiler_record.entity.columns if has_columns else []
+        adapter.build_sampler_kwargs.return_value = {} if has_sampler_context else None
+        sampler = MagicMock()
+        if error is not None:
+            sampler.generate_sample_data.side_effect = error
+        else:
+            sampler.generate_sample_data.return_value = sample_data or TableData(
+                columns=[ColumnName(root="id")], rows=[["1"]]
+            )
+        sampler_class = MagicMock()
+        sampler_class.create.return_value = sampler
+        sampler_class.is_skippable_sampling_error.return_value = is_skippable
+        monkeypatch.setattr("metadata.sampler.processor.adapter_for", lambda entity: adapter)
+        monkeypatch.setattr("metadata.sampler.processor.import_sampler_class", lambda *args, **kwargs: sampler_class)
+
+        metadata = MagicMock()
+        metadata.get_profiler_config_settings.return_value = None
+        processor = SamplerProcessor(
+            config=workflow_config,
+            metadata=metadata,
+            profiler_config_class=ProfilerProcessorConfig,
+        )
+        return processor, profiler_record, profiler_record.entity, sampler_class
+
+    return create
+
+
+def test_skippable_sampling_error_adds_one_warning_without_a_failure(sampler_processor_factory):
+    processor, record, table, _ = sampler_processor_factory(
+        RuntimeError("[UC_DEPENDENCY_DOES_NOT_EXIST] missing view dependency"),
+        is_skippable=True,
+    )
+    entity_fqn = table.fullyQualifiedName.root
+
+    response = processor.run(record)
+
+    assert response is None
+    assert processor.status.failures == []
+    assert processor.status.records == []
+    assert len(processor.status.warnings) == 1
+    warning = processor.status.warnings[0]
+    assert list(warning) == [entity_fqn]
+    assert warning[entity_fqn].startswith("Skipping sample collection")
+    assert "UC_DEPENDENCY_DOES_NOT_EXIST" in warning[entity_fqn]
+
+
+def test_unrecognized_sampling_error_remains_a_failure(sampler_processor_factory):
+    processor, record, table, _ = sampler_processor_factory(
+        RuntimeError("boom"),
+        is_skippable=False,
+    )
+    entity_fqn = table.fullyQualifiedName.root
+
+    response = processor.run(record)
+
+    assert response is None
+    assert not any(
+        warning.get(entity_fqn, "").startswith("Skipping sample collection") for warning in processor.status.warnings
+    )
+    assert len(processor.status.failures) == 1
+    failure = processor.status.failures[0]
+    assert failure.name == entity_fqn
+    assert "boom" in failure.error
+    assert "RuntimeError" in failure.stackTrace
+
+
+def test_sampler_processor_skips_entities_without_columns(sampler_processor_factory):
+    processor, record, _, sampler_class = sampler_processor_factory(has_columns=False)
+
+    response = processor.run(record)
+
+    assert response is None
+    assert processor.status.failures == []
+    assert processor.status.records == []
+    sampler_class.create.assert_not_called()
+
+
+def test_sampler_processor_reports_missing_sampler_context(sampler_processor_factory):
+    processor, record, table, sampler_class = sampler_processor_factory(has_sampler_context=False)
+
+    response = processor.run(record)
+
+    assert response is None
+    assert processor.status.records == []
+    assert len(processor.status.failures) == 1
+    failure = processor.status.failures[0]
+    assert failure.name == table.fullyQualifiedName.root
+    assert "Could not build sampler context" in failure.error
+    sampler_class.create.assert_not_called()
+
+
+def test_sampler_processor_public_run_returns_and_scans_sample_data(sampler_processor_factory):
+    expected_data = TableData(columns=[ColumnName(root="id")], rows=[["sample"]])
+    processor, record, table, _ = sampler_processor_factory(sample_data=expected_data)
+
+    response = processor.run(record)
+
+    assert response is not None
+    assert response.entity == table
+    assert response.sample_data.data == expected_data
+    assert processor.status.warnings == []
+    assert processor.status.failures == []
+    assert processor.status.records == ["SamplerResponse [test_table]"]
 
 
 @patch("metadata.sampler.processor.import_sampler_class")
