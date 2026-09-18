@@ -142,7 +142,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs",
+        "index_options": "positions",
         "term_vector": "with_positions_offsets"
       },
       "version": {
