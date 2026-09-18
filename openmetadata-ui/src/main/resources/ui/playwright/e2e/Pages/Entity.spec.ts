@@ -437,47 +437,51 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test.slow(true);
 
         const isMlModel = entity.type === 'MlModel';
-        // Tag Selector
-        await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
+        const tagRow = page.locator(
+          `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+        );
+        const glossaryRow = page.locator(
+          `[${rowSelector}="${
+            isMlModel
+              ? entity.childrenSelectorId2
+              : entity.childrenSelectorId ?? ''
+          }"]`
+        );
 
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
+        // Open Tag Selector
+        await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
+
         await expect(
-          page.locator('.async-tree-select-list-dropdown')
-        ).toBeHidden();
+          page.locator('[data-testid="selectable-list"]')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('glossary-term-picker-popover')
+        ).not.toBeAttached();
 
-        // Glossary Selector
-        await page
-          .locator(
-            `[${rowSelector}="${
-              isMlModel
-                ? entity.childrenSelectorId2
-                : entity.childrenSelectorId ?? ''
-            }"]`
-          )
+        // Open Glossary Selector — should close Tag Selector
+        await glossaryRow
           .getByTestId('glossary-container')
           .getByTestId('add-tag')
           .click();
 
         await expect(
-          page.locator('.async-tree-select-list-dropdown')
+          page
+            .getByTestId('glossary-term-picker-popover')
+            .locator('[role="treegrid"]')
         ).toBeVisible();
-        await expect(page.locator('.async-select-list-dropdown')).toBeHidden();
-
-        // Re-check Tag Selector
-        await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-          .getByTestId('tags-container')
-          .getByTestId('add-tag')
-          .click();
-
-        await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(
-          page.locator('.async-tree-select-list-dropdown')
-        ).toBeHidden();
+          page.locator('[data-testid="selectable-list"]')
+        ).not.toBeVisible();
+
+        // Re-open Tag Selector — should close Glossary Selector
+        await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
+
+        await expect(
+          page.locator('[data-testid="selectable-list"]')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('glossary-term-picker-popover')
+        ).not.toBeAttached();
       });
     }
 
