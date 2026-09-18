@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import type { AvatarSize, OwnerRef } from '../../../types';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { Divider } from '../../base/divider/divider';
 import { OwnerChip } from './owner-chip';
 
 export interface OwnerOverflowPopoverContentProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   avatarSize: AvatarSize;
   ownerDisplayName?: Map<string, ReactNode>;
   overflowTitleLabel?: string;
@@ -44,7 +44,7 @@ export const OwnerOverflowPopoverContent = ({
   const teamOwners = owners.filter((owner) => owner.type === 'team');
   const userOwners = owners.filter((owner) => owner.type !== 'team');
 
-  const renderGroup = (label: string, group: OwnerRef[]) =>
+  const renderGroup = (label: string, group: OwnerEntityReference[]) =>
     group.length > 0 && (
       <div className="tw:flex tw:flex-col tw:gap-1">
         {showHeadings && (

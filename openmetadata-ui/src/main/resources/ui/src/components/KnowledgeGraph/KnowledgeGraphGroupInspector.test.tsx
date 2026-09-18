@@ -142,3 +142,53 @@ it('preserves incoming direction in the summary and each member row', async () =
     identifyGraphEdges(edges)[0].id
   );
 });
+
+it('summarises a bundle that mixes an owning user and an owning team by family', () => {
+  const owners = [
+    { id: 'finance', label: 'Finance', type: 'team' },
+    { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+  ];
+  const edges = owners.map((owner) => ({
+    from: owner.id,
+    to: root.id,
+    label: 'Owns',
+    relationType: 'owns',
+  }));
+  const data = { nodes: [root, ...owners], edges };
+  const presented = buildGraphPresentation(
+    data,
+    data,
+    root.id,
+    'balanced',
+    []
+  ).data;
+  const group = presented.nodes.find((node) => node.presentation?.members);
+  if (!group) {
+    throw new Error('Expected an ownership bundle');
+  }
+  render(
+    <ThemeProvider>
+      <KnowledgeGraphGroupInspector
+        edges={transformToG6Format(presented).edges}
+        node={group}
+        nodes={new Map(data.nodes.map((node) => [node.id, node]))}
+        onExpand={jest.fn()}
+        onSelectRelationship={jest.fn()}
+        onViewRelationships={jest.fn()}
+      />
+    </ThemeProvider>
+  );
+
+  expect(screen.getByTestId('group-relationship-summary')).toHaveTextContent(
+    '2 label.people → Owns → Customers'
+  );
+  expect(screen.getByTestId('relationship-predicate')).toHaveTextContent(
+    'owns'
+  );
+  expect(
+    screen.getByRole('button', { name: 'Finance ← Owns' })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+  ).toBeInTheDocument();
+});

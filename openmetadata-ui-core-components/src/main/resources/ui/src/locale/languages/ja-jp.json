@@ -28,12 +28,14 @@
     "pagination-navigation": "ページネーションナビゲーション",
     "previous-page": "前のページへ",
     "records": "レコード",
+    "remove-entity": "{{entity}}を削除",
     "remove-filter": "フィルターを削除",
     "search": "検索",
     "select-all": "すべて選択",
     "select-dates": "日付を選択",
     "select-only-one-row": "1 行を選択",
     "show-hidden-breadcrumbs": "非表示のパンくずリストを表示",
-    "today": "今日"
+    "today": "今日",
+    "tree-select": "ツリー選択"
   }
 }

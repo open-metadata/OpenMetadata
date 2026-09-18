@@ -113,13 +113,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
-jest.mock('../../../../hooks/useOwnerDisplayProps', () => ({
-  useOwnerDisplayProps: () => ({
-    toOwnersWithHref: (refs: unknown[]) => refs ?? [],
-    renderOwnerContent: (_owner: unknown, chip: unknown) => chip,
-  }),
-}));
-
 jest.mock('../../../common/WidgetCard/WidgetCard', () =>
   jest
     .fn()

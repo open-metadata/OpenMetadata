@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { RenderOwnerContent } from '@openmetadata/ui-core-components';
-import UserPopOverCard from '../../components/common/PopOverCard/UserPopOverCard';
-import { OwnerType } from '../../enums/user.enum';
+import type { ReactNode } from 'react';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { OwnerType } from '../enums/user.enum';
 
 /**
- * Wraps an Owner/OwnerAvatarStack chip with the app's rich, REST-backed
- * hover card (name, username, team/role info) — core-components' Owner
- * can't build that card itself since it stays REST-agnostic, so this is
- * the `renderOwnerContent` slot implementation call sites pass in.
+ * Wraps an owner chip in a UserPopOverCard so hovering the owner avatar/name
+ * shows the user/team hover card. Pass as the `renderOwnerContent` prop of a
+ * non-compact `<Owner>`.
+ *
+ * This is a plain module-level function (referentially stable, no hooks) so it
+ * can be used from column-render utilities — which cannot call
+ * `useOwnerDisplayProps` — as well as from components.
  */
-export const renderOwnerHoverCard: RenderOwnerContent = (owner, chip) => (
+export const renderOwnerPopover = (
+  owner: { name?: string; type?: string },
+  chip: ReactNode
+): ReactNode => (
   <UserPopOverCard
     type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
     userName={owner.name ?? ''}>
