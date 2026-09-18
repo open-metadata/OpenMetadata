@@ -17,6 +17,7 @@ import traceback
 from collections.abc import Callable, Iterable
 
 import validators
+from cachetools import LRUCache
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
@@ -47,6 +48,11 @@ from metadata.utils.logger import ometa_logger
 from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
+
+# Safety cap on the number of projects cached to resolve project hierarchies.
+# Real Tableau sites rarely have more than a few thousand projects; this bounds
+# memory on pathological sites without affecting hierarchy resolution in practice.
+MAX_CACHED_PROJECTS = 10_000
 
 # GetSourceTables samples a few workbooks rather than reading the whole site. Every test
 # connection step shares one timeout, so the sample is capped. Breadth matters more than
@@ -112,7 +118,7 @@ class TableauClient:
         self.pagination_limit = pagination_limit
         self.custom_sql_table_queries: dict[str, list[str]] = {}
         self.owner_cache: dict[str, TableauOwner] = {}
-        self.all_projects: dict[str, ProjectItem] = {}
+        self.all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
         self.ssl_manager = ssl_manager
 
     def server_info(self):
@@ -181,7 +187,7 @@ class TableauClient:
         """
         try:
             logger.debug("Getting all projects from the tableau server")
-            all_projects: dict[str, ProjectItem] = {}
+            all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
             for project in Pager(self.tableau_server.projects):
                 all_projects[project.id] = project
             self.all_projects = all_projects
