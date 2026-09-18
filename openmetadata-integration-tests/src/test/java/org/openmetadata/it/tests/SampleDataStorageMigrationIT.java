@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -44,7 +45,12 @@ import org.openmetadata.service.migration.utils.MigrationFile;
  * inventory, because the shape hides at four different depths across seven tables and the paths
  * that are easiest to forget — Hive's {@code metastoreConnection}, SSIS/Wherescape's {@code
  * databaseConnection} — belong to connectors nobody thinks of as "a database service".
+ *
+ * <p>Isolated rather than concurrent: reproducing the pre-upgrade state means parking a row in
+ * {@code dbservice_entity} that no longer deserializes, and until the migration runs any other test
+ * listing database services would read it and fail.
  */
+@Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class SampleDataStorageMigrationIT {
 

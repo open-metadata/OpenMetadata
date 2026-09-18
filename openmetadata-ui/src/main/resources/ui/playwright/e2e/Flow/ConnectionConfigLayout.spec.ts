@@ -184,17 +184,20 @@ const openSnowflakeConnectionConfig = async (page: Page) => {
     await advancedSection.waitFor({ state: 'visible' });
   }
 
-  const sampleStorageSelect = page.locator(
-    '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
+  // Anchored on the advanced grid rather than on the sample-data storage selector: that
+  // widget is hidden through DEF_UI_SCHEMA now that external S3 storage is gone
+  // (collate#5995), so waiting for it to appear would never return.
+  const advancedPrimaryGrid = advancedSection.locator(
+    '.connection-advanced-primary-grid'
   );
 
-  if (!(await sampleStorageSelect.isVisible())) {
+  if (!(await advancedPrimaryGrid.isVisible())) {
     await advancedSection
       .getByRole('button', { name: /Advanced Config/i })
       .click();
   }
 
-  await sampleStorageSelect.waitFor({ state: 'visible' });
+  await advancedPrimaryGrid.waitFor({ state: 'visible' });
 };
 
 const openAddDatabaseServicePage = async (page: Page) => {
