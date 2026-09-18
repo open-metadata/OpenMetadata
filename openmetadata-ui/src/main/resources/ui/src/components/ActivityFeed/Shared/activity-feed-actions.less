@@ -29,8 +29,14 @@
 
 // The one part that cannot be shared: which card's hover reveals which bar.
 // A conversation card contains reply cards, so each trigger is anchored to its
-// own card rather than to any ancestor.
-.activity-feed-card-new:hover > .feed-actions.ant-space,
+// own card rather than to any ancestor - a plain descendant selector on the
+// conversation would also reveal every reply's bar.
+//
+// The .ant-card-body step is antd's own wrapper: Card renders its children
+// inside it, so the conversation's bar is a grandchild, not a child. A test in
+// ActivityFeedcardNew.component.test.tsx pins that shape so an antd upgrade
+// that changes it fails loudly rather than silently leaving these hidden.
+.activity-feed-card-new:hover > .ant-card-body > .feed-actions.ant-space,
 .reply-card:hover .feed-actions.ant-space {
   opacity: 1;
   pointer-events: auto;

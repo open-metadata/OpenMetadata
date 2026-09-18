@@ -207,6 +207,25 @@ describe('ActivityFeedCardNew', () => {
     expect(screen.getByTestId('feed-actions')).toBeVisible();
   });
 
+  it('keeps the root actions a direct child of the card body', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    // The hover reveal in activity-feed-actions.less is written as
+    // `.activity-feed-card-new:hover > .ant-card-body > .feed-actions`. antd's
+    // Card puts its children inside .ant-card-body, so that middle step is
+    // load-bearing: drop it and the selector stops matching, leaving the
+    // reply/resolve/edit/delete bar hidden from mouse users.
+    const actions = screen.getByTestId('feed-actions');
+    const body = actions.parentElement;
+
+    expect(body).toHaveClass('ant-card-body');
+    expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
   it('renders activity replies in the open side panel', () => {
     mockProviderValue.activityReplies = [activityReply];
 
