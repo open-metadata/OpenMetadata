@@ -42,8 +42,18 @@ jobs:
       matrix:
         connector: ${{ fromJSON(inputs.connectors || '["mysql"]') }}
     environment: test
+    env:
+      E2E_CONNECTOR: ${{ matrix.connector }}
 
     steps:
+      - name: Validate connector
+        shell: bash
+        run: |
+          case "$E2E_CONNECTOR" in
+            mysql) ;;
+            *) echo "Unsupported E2E connector" >&2; exit 1 ;;
+          esac
+
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@36e9a5af4eddb91fc11aec4c6f6f79b3cc0cb523 # main
         with:
@@ -81,8 +91,8 @@ jobs:
           mkdir -p junit
           pytest -v \
             --e2e-contract-check \
-            --junitxml=junit/test-results-v2-${{ matrix.connector }}.xml \
-            tests/cli_e2e_v2/${{ matrix.connector }}
+            --junitxml="junit/test-results-v2-${E2E_CONNECTOR}.xml" \
+            "tests/cli_e2e_v2/${E2E_CONNECTOR}"
         shell: bash
 
       - name: Upload tests artifact

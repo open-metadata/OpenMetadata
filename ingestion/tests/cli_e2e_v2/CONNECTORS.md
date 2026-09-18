@@ -213,6 +213,8 @@ INVENTORY = ContractInventory(
 
 The shared collection validator loads only selected connectors' inventories. No runtime or central registry edit is needed, and missing inventories fail rather than inherit database requirements. Keep inventory modules declarative, use absolute imports, and never provision resources during import.
 
+Before enabling a connector in CI, add its directory name to the `Validate connector` allowlist in `.github/workflows/py-cli-e2e-tests-v2.yml`. The workflow rejects unknown names before setup and passes accepted names through a quoted environment variable.
+
 Do not hide cases behind skip/xfail or downgrade known-supported capabilities. An `unsupported` entry needs a concrete reviewed reason; product bugs are strict failures, not unsupported features. Declare available generated support flags in `capabilities`, keyed by the contract ID's first segment (for example, `profile` → `MysqlConnection.model_fields["supportsProfiler"].get_default(call_default_factory=True)`). A true flag prevents waiving that capability's contracts; narrower features without a corresponding flag still require reviewed reasons.
 
 ```bash

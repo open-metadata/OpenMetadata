@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Collection contracts are checked in isolated, network-blocked pytest sessions."""
 
+import os
 import shlex
 from pathlib import Path
 
@@ -230,7 +231,8 @@ def test_ci_invocation_enforces_complete_contracts(pytester, monkeypatch, omit_c
     workflow = yaml.safe_load((root / ".github/workflows/py-cli-e2e-tests-v2.yml").read_text())
     steps = workflow["jobs"]["py-cli-e2e-tests-v2"]["steps"]
     script = next(step["run"] for step in steps if step.get("id") == "e2e-v2-test")
-    command = script[script.index("pytest ") :].replace("\\\n", "").replace("${{ matrix.connector }}", "mysql")
+    monkeypatch.setenv("E2E_CONNECTOR", "mysql")
+    command = os.path.expandvars(script[script.index("pytest ") :].replace("\\\n", ""))
     arguments = shlex.split(command)[1:]
     suite = _child(pytester, monkeypatch, directory="tests/cli_e2e_v2")
     ids = tuple(case for case in MYSQL_IDS if not omit_case or case != "profile.metrics")
