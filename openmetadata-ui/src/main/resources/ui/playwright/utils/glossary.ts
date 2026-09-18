@@ -2292,9 +2292,10 @@ export const expandToGlossaryTermChildren = async (
 
   await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, parentTermDisplayName, {
-      search: false,
-    });
+    // The new TreeSelect search returns the glossary with the matched term
+    // nested (including its children), so searching is required — the prior
+    // glossary-name search won't include unrelated sibling terms.
+    await expandTreeNodeByName(page, parentTermDisplayName);
   }
 };
 
