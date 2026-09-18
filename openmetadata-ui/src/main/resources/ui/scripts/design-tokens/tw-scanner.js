@@ -23,6 +23,7 @@
  * Warnings (do not fail CI):
  *   - arbitrary color/spacing/radius that does NOT resolve (calc/%/var/one-off)
  *   - raw #hex / rgb() outside a Tailwind class (chart configs, style objects…)
+ *   - explicit tw:dark:* overrides and unsupported --ai-* theme tokens
  *   - inline style={{ ... }} with a hardcoded colour or px
  *
  * Debt inventory (informational):
@@ -42,6 +43,8 @@ const RGB_RE = /\brgba?\(\s*\d[\d.]*\s*[, ]\s*\d[\d.]*\s*[, ]\s*\d[\d.]*(?:\s*[,
 const NUM_UNIT_RE = /^(-?\d*\.?\d+)(px|rem)$/;
 const ANTD_IMPORT_RE = /import\s+[^;]*?\bfrom\s+['"]antd(?:\/[^'"]*)?['"]/g;
 const INLINE_STYLE_RE = /style=\{\{/g;
+const DARK_VARIANT_RE = /\btw:dark:[^\s"'{}\x60>,)]+/g;
+const AI_TOKEN_RE = /--ai-[a-z0-9_-]+/gi;
 
 function lineColAt(text, index) {
   let line = 1;
@@ -97,6 +100,29 @@ function scanText(text, relPath) {
   };
 
   let m;
+
+  // These remain warnings while AI-mode migration debt is being inventoried;
+  // semantic tokens are still the supported path for all new theme styling.
+  DARK_VARIANT_RE.lastIndex = 0;
+  while ((m = DARK_VARIANT_RE.exec(text))) {
+    push(m.index, {
+      category: 'dark-theme-override',
+      severity: SEVERITY.WARNING,
+      raw: m[0],
+      suggestion: 'use one semantic utility for both themes',
+    });
+  }
+
+  AI_TOKEN_RE.lastIndex = 0;
+  while ((m = AI_TOKEN_RE.exec(text))) {
+    push(m.index, {
+      category: 'unsupported-theme-namespace',
+      severity: SEVERITY.WARNING,
+      raw: m[0],
+      suggestion: 'use the shared --color-* semantic namespace',
+    });
+  }
+
   ARBITRARY_RE.lastIndex = 0;
   while ((m = ARBITRARY_RE.exec(text))) {
     const f = classifyArbitrary(m[1], m[2]);
