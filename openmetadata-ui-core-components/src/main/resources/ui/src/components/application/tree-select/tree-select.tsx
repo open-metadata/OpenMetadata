@@ -184,6 +184,8 @@ export const TreeSelect = <T = unknown,>({
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // What was expanded before a search took over, restored when it clears.
+  const preSearchExpandedRef = useRef<Set<Key> | null>(null);
   // Stable root IDs captured before any search replaces treeData, so
   // displayedSelectedCount is not zeroed out while the user is searching.
   const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
@@ -249,6 +251,23 @@ export const TreeSelect = <T = unknown,>({
       setStableRootIds(new Set(treeData.map((n) => n.id)));
     }
   }, [treeData, searchTerm]);
+
+  // Search results arrive nested inside collapsed rows, so open every branch
+  // once per result set. Written as state rather than derived so a row the
+  // user collapses stays collapsed; clearing the search restores whatever
+  // they had open before.
+  useEffect(() => {
+    if (searchTerm) {
+      if (preSearchExpandedRef.current === null) {
+        preSearchExpandedRef.current = expandedKeys;
+      }
+      setExpandedKeys(collectParentKeys(treeData, new Set()));
+    } else if (preSearchExpandedRef.current !== null) {
+      setExpandedKeys(preSearchExpandedRef.current);
+      preSearchExpandedRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, treeData]);
 
   const loadAllDescendants = useCallback(
     async (node: TreeSelectNode<T>): Promise<TreeSelectNode<T>> => {
@@ -537,15 +556,12 @@ export const TreeSelect = <T = unknown,>({
     [showSelectedOnly, treeData, selectedIdsSet]
   );
   const filteredExpandedKeys = useMemo(() => {
-    // A search returns matches nested under their parents, so every branch is
-    // opened — otherwise the hits sit inside collapsed rows and the search
-    // looks like it only matched the top level.
-    if (!showSelectedOnly && !searchTerm) {
+    if (!showSelectedOnly) {
       return expandedKeys;
     }
 
     return collectParentKeys(filteredTreeData, new Set(expandedKeys));
-  }, [showSelectedOnly, searchTerm, expandedKeys, filteredTreeData]);
+  }, [showSelectedOnly, expandedKeys, filteredTreeData]);
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
