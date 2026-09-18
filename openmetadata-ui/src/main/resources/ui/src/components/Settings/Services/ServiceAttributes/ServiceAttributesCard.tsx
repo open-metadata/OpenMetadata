@@ -134,8 +134,8 @@ const ServiceAttributesCard = ({
       {isEditing ? (
         <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-3">
           <Select
+            isRequired
             data-testid="service-environment-select"
-            isRequired={true}
             label={t('label.environment')}
             value={draft.environment}
             onChange={(key) =>
