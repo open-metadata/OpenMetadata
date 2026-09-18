@@ -22,7 +22,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
@@ -30,22 +30,14 @@ import {
   AVAILABLE_ICONS,
   DEFAULT_TAG_ICON,
 } from '../../common/IconPicker/IconPicker.constants';
-import { StyleModalProps } from '../StyleModal/StyleModal.interface';
+import { IconColorModalProps } from './IconColorModal.interface';
 
-const ICON_OPTIONS = [
-  DEFAULT_TAG_ICON,
-  ...AVAILABLE_ICONS.filter((icon) => icon.name !== DEFAULT_TAG_ICON.name),
-].map((icon) => ({
-  icon: icon.component,
-  id: icon.name,
-  label: icon.name,
-}));
-
-const IconColorModal: FC<StyleModalProps> = ({
+const IconColorModal: FC<IconColorModalProps> = ({
   open,
   onCancel,
   onSubmit,
   style,
+  defaultIcon = DEFAULT_TAG_ICON,
 }) => {
   const { t } = useTranslation();
   const form = useForm<Style>({
@@ -68,6 +60,19 @@ const IconColorModal: FC<StyleModalProps> = ({
 
   const selectedColor = useWatch({ control: form.control, name: 'color' });
 
+  const iconOptions = useMemo(
+    () =>
+      [
+        defaultIcon,
+        ...AVAILABLE_ICONS.filter((icon) => icon.name !== defaultIcon.name),
+      ].map((icon) => ({
+        icon: icon.component,
+        id: icon.name,
+        label: icon.name,
+      })),
+    [defaultIcon]
+  );
+
   const handleSubmit = async (values: Style) => {
     try {
       setIsSaving(true);
@@ -88,8 +93,8 @@ const IconColorModal: FC<StyleModalProps> = ({
       allowUrl: true,
       backgroundColor: selectedColor,
       'data-testid': 'icon-picker-btn',
-      defaultIcon: DEFAULT_TAG_ICON,
-      options: ICON_OPTIONS,
+      defaultIcon,
+      options: iconOptions,
     },
     type: FieldTypes.ICON_PICKER,
   };

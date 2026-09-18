@@ -260,21 +260,34 @@ jest.mock('../../../../utils/RouterUtils', () => ({
   getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
-    if (owners && owners.length > 0) {
-      const owner = owners[0];
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest
+    .fn()
+    .mockImplementation(
+      ({
+        owners,
+        placeHolder,
+      }: {
+        owners?: Array<{ id?: string; displayName?: string; name?: string }>;
+        placeHolder?: string;
+      }) => {
+        if (owners && owners.length > 0) {
+          return (
+            <>
+              {owners.map((owner, i) => (
+                <span key={owner.id ?? i}>
+                  <div data-testid="avatar">Avatar</div>
+                  <span>{owner.displayName || owner.name}</span>
+                </span>
+              ))}
+            </>
+          );
+        }
 
-      return (
-        <div data-testid="owner-label">
-          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
-          <span>{owner.displayName || owner.name || 'Unknown'}</span>
-        </div>
-      );
-    }
-
-    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
-  }),
+        return placeHolder ? <span>{placeHolder}</span> : null;
+      }
+    ),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';

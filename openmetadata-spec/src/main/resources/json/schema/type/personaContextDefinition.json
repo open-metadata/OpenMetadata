@@ -94,6 +94,10 @@
           "type": "boolean",
           "default": false
         },
+        "filteredInSearch": {
+          "description": "Deliver this rule as a search scope instead of preloading its entities. When true the rule contributes its entityType and queryFilter to the persona search scope handed to AI search tools, and alwaysInContext, fullyRendered, sections and maxAssets are ignored. Absent is read as false so rules stored before this field keep preloading; the rule creation API stamps true when the client omits it, making search scoping the default for new rules.",
+          "type": "boolean"
+        },
         "enabled": {
           "description": "Whether the rule participates in materialization.",
           "type": "boolean",

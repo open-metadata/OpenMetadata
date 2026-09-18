@@ -103,7 +103,11 @@ jest.mock('../../components/OntologyExplorer/OntologyExplorer', () => ({
   default: jest.fn((props: ExplorerMockProps) => {
     mockOntologyExplorer(props);
 
-    return <div data-testid="ontology-explorer" />;
+    return (
+      <div data-testid="ontology-explorer">
+        <input aria-label="Concept search" />
+      </div>
+    );
   }),
 }));
 
@@ -211,7 +215,7 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByTestId('mode-tab-query'));
 
     expect(screen.getByTestId('sparql-query-console')).toBeInTheDocument();
-    expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
   });
 
   it('explains that SPARQL is unavailable when the knowledge graph is disabled', () => {
@@ -379,6 +383,50 @@ describe('OntologyExplorerPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['Query to View', ['mode-tab-query', 'mode-tab-view']],
+    [
+      'the recorded mode sequence',
+      ['mode-tab-edit', 'mode-tab-query', 'mode-tab-edit', 'mode-tab-view'],
+    ],
+    ['AI to View', ['mode-tab-ai', 'mode-tab-view']],
+  ])('preserves the explorer and its search through %s', (_scenario, tabs) => {
+    mockUseOntologyAiCapability.mockReturnValue({
+      isEnabled: true,
+      isLoading: false,
+      isRdfEnabled: true,
+    });
+    render(<OntologyExplorerPage />);
+    const explorer = screen.getByTestId('ontology-explorer');
+    const search = screen.getByRole('textbox', { name: 'Concept search' });
+    fireEvent.change(search, { target: { value: 'Account' } });
+
+    for (const tab of tabs) {
+      fireEvent.click(screen.getByTestId(tab));
+    }
+
+    expect(screen.getByTestId('ontology-explorer')).toBe(explorer);
+    expect(explorer).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Concept search' })).toHaveValue(
+      'Account'
+    );
+  });
+
+  it('reloads the explorer after the Model workbench where concepts can change', () => {
+    render(<OntologyExplorerPage />);
+    const explorer = screen.getByTestId('ontology-explorer');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    fireEvent.click(screen.getByTestId('submode-tab-model'));
+
+    expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('submode-tab-graph'));
+
+    expect(screen.getByTestId('ontology-explorer')).toBeVisible();
+    expect(screen.getByTestId('ontology-explorer')).not.toBe(explorer);
+  });
+
   it('opens the ontology library from the dedicated header action', () => {
     render(<OntologyExplorerPage />);
 
@@ -454,7 +502,7 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByTestId('mode-tab-ai'));
 
     expect(screen.getByTestId('ontology-ai-assistant')).toBeInTheDocument();
-    expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-explorer')).not.toBeVisible();
   });
 
   it('opens generated SPARQL in the console without executing it', () => {

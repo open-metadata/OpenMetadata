@@ -393,6 +393,11 @@ public class WorkflowHandler {
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
   }
 
+  /** Whether this process is running a database migration rather than serving the application. */
+  public static boolean isMigrationContext() {
+    return initialized && instance.isMigrationContext;
+  }
+
   public ProcessEngineConfiguration getProcessEngineConfiguration() {
     if (processEngine != null) {
       return processEngine.getProcessEngineConfiguration();
@@ -1002,12 +1007,12 @@ public class WorkflowHandler {
                         "[WorkflowTask] Completing with variables: taskId='{}' vars={}",
                         task.getId(),
                         variablesValue);
-                    taskService.complete(task.getId(), variablesValue);
+                    DeadlockRetry.run(() -> taskService.complete(task.getId(), variablesValue));
                   },
                   () -> {
                     LOG.debug(
                         "[WorkflowTask] Completing without variables: taskId='{}'", task.getId());
-                    taskService.complete(task.getId());
+                    DeadlockRetry.run(() -> taskService.complete(task.getId()));
                   });
           LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
@@ -1247,7 +1252,7 @@ public class WorkflowHandler {
       Object rejectValue =
           resolveMultiApprovalResult(task.getProcessDefinitionId(), nodeName, false, Boolean.FALSE);
       variables.put(resultVariable, rejectValue);
-      taskService.complete(task.getId(), variables);
+      DeadlockRetry.run(() -> taskService.complete(task.getId(), variables));
       return true;
     }
 
@@ -1260,7 +1265,7 @@ public class WorkflowHandler {
       Object approveValue =
           resolveMultiApprovalResult(task.getProcessDefinitionId(), nodeName, true, Boolean.TRUE);
       variables.put(resultVariable, approveValue);
-      taskService.complete(task.getId(), variables);
+      DeadlockRetry.run(() -> taskService.complete(task.getId(), variables));
       return true;
     }
 

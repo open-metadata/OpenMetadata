@@ -268,6 +268,17 @@ export const postAggregateFieldOptions = ({
   );
 };
 
+/** Posts the body as given — no `.*` wrapping, which would break an alternation of exact terms. */
+export const postExactAggregateFieldOptions = (
+  body: AggregationRequest,
+  signal?: AbortSignal
+) =>
+  APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    '/search/aggregate',
+    body,
+    { signal }
+  );
+
 export const getEntityCount = async (
   path: string,
   database?: string
