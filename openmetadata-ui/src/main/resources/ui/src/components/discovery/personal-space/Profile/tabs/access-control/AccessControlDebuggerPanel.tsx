@@ -164,196 +164,194 @@ const AccessControlDebuggerPanel: FC = () => {
       <Card
         className="tw:mt-4 tw:overflow-hidden"
         data-testid="evaluation-result">
+        <Box
+          className={`tw:px-6 tw:py-4 tw:border-b-2 ${
+            evaluationInfo.allowed
+              ? 'tw:bg-success-primary tw:border-success-subtle'
+              : 'tw:bg-error-primary tw:border-error-subtle'
+          }`}>
+          <Typography
+            className="tw:text-primary"
+            size="text-md"
+            weight="semibold">
+            {t('label.permission-evaluation-result')}
+          </Typography>
+        </Box>
+        <Box className="tw:p-6" direction="col" gap={4}>
           <Box
-            className={`tw:px-6 tw:py-4 tw:border-b-2 ${
-              evaluationInfo.allowed
-                ? 'tw:bg-success-primary tw:border-success-subtle'
-                : 'tw:bg-error-primary tw:border-error-subtle'
-            }`}>
+            className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
+            direction="col"
+            gap={2}>
             <Typography
               className="tw:text-primary"
-              size="text-md"
+              size="text-lg"
               weight="semibold">
-              {t('label.permission-evaluation-result')}
+              {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
+            </Typography>
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {`${t('label.user')} `}
+              <strong>{evaluationInfo.user.name}</strong>
+              {` ${t('label.is')} `}
+              <strong className={allowedColor}>
+                {evaluationInfo.allowed
+                  ? t('label.allowed')
+                  : t('label.denied')}
+              </strong>
+              {` ${t('label.to-perform')} `}
+              <strong>{evaluationInfo.operation}</strong>
+              {` ${t('label.on')} `}
+              <strong>{evaluationInfo.resource}</strong>
+              {evaluationInfo.resourceId && ` (${evaluationInfo.resourceId})`}
             </Typography>
           </Box>
-          <Box className="tw:p-6" direction="col" gap={4}>
+
+          {evaluationInfo.summary && (
+            <Box
+              className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
+              direction="row"
+              gap={4}
+              wrap="wrap">
+              <Typography className="tw:text-secondary" size="text-sm">
+                {`${t('label.policies-evaluated')}: ${
+                  evaluationInfo.summary.totalPoliciesEvaluated
+                }`}
+              </Typography>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {`${t('label.rules-evaluated')}: ${
+                  evaluationInfo.summary.totalRulesEvaluated
+                }`}
+              </Typography>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {`${t('label.matching-rule-plural')}: ${
+                  evaluationInfo.summary.matchingRules
+                }`}
+              </Typography>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {`${t('label.allow-rule-plural')}: ${
+                  evaluationInfo.summary.allowRules
+                }`}
+              </Typography>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {`${t('label.deny-rule-plural')}: ${
+                  evaluationInfo.summary.denyRules
+                }`}
+              </Typography>
+              <Typography className="tw:text-secondary" size="text-sm">
+                {t('label.time-ms', {
+                  milliseconds: evaluationInfo.summary.evaluationTimeMs,
+                })}
+              </Typography>
+            </Box>
+          )}
+
+          <Box direction="col" gap={2}>
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {`${t('label.evaluation-step-plural')}:`}
+            </Typography>
+            {evaluationInfo.evaluationSteps.map((step) => {
+              const stepEffectColor =
+                step.effect.toUpperCase() === 'ALLOW'
+                  ? 'tw:text-success-primary'
+                  : 'tw:text-error-primary';
+
+              return (
+                <Card
+                  className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
+                  direction="col"
+                  gap={2}
+                  key={step.stepNumber}>
+                  <Box align="center" direction="row" gap={2} wrap="wrap">
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {`${t('label.step')} ${step.stepNumber}: `}
+                    </Typography>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {step.policy.name}
+                    </Typography>
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {`- ${t('label.rule')}: ${step.rule}`}
+                    </Typography>
+                  </Box>
+                  <Typography className="tw:text-secondary" size="text-sm">
+                    {`${t('label.source')}: ${step.source} (${
+                      step.sourceEntity.name
+                    })`}
+                  </Typography>
+                  <Typography className="tw:text-secondary" size="text-sm">
+                    {`${t('label.effect')}: `}
+                    <strong className={stepEffectColor}>{step.effect}</strong>
+                  </Typography>
+                  <Typography className="tw:text-secondary" size="text-sm">
+                    {`${t('label.matched')}: `}
+                    <strong>
+                      {step.matched ? t('label.yes') : t('label.no')}
+                    </strong>
+                  </Typography>
+                  <Typography className="tw:text-tertiary" size="text-xs">
+                    {step.matchReason}
+                  </Typography>
+                  {step.conditionEvaluations.length > 0 && (
+                    <Box direction="col" gap={1}>
+                      <Typography className="tw:text-secondary" size="text-sm">
+                        {`${t('label.condition-plural')}:`}
+                      </Typography>
+                      {step.conditionEvaluations.map((cond) => (
+                        <Box
+                          align="center"
+                          direction="row"
+                          gap={2}
+                          key={cond.condition}>
+                          <Typography className="tw:text-xs tw:font-mono tw:bg-secondary tw:px-1 tw:rounded">
+                            {cond.condition}
+                          </Typography>
+                          <Typography
+                            className="tw:text-secondary"
+                            size="text-xs">
+                            {` → ${
+                              cond.result ? t('label.true') : t('label.false')
+                            }`}
+                          </Typography>
+                          <Typography
+                            className="tw:text-tertiary"
+                            size="text-xs">
+                            {`(${cond.evaluationDetails})`}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Card>
+              );
+            })}
+          </Box>
+
+          {evaluationInfo.summary?.reasonsForDecision && (
             <Box
               className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
               direction="col"
               gap={2}>
               <Typography
                 className="tw:text-primary"
-                size="text-lg"
-                weight="semibold">
-                {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
-              </Typography>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {`${t('label.user')} `}
-                <strong>{evaluationInfo.user.name}</strong>
-                {` ${t('label.is')} `}
-                <strong className={allowedColor}>
-                  {evaluationInfo.allowed
-                    ? t('label.allowed')
-                    : t('label.denied')}
-                </strong>
-                {` ${t('label.to-perform')} `}
-                <strong>{evaluationInfo.operation}</strong>
-                {` ${t('label.on')} `}
-                <strong>{evaluationInfo.resource}</strong>
-                {evaluationInfo.resourceId && ` (${evaluationInfo.resourceId})`}
-              </Typography>
-            </Box>
-
-            {evaluationInfo.summary && (
-              <Box
-                className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
-                direction="row"
-                gap={4}
-                wrap="wrap">
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {`${t('label.policies-evaluated')}: ${
-                    evaluationInfo.summary.totalPoliciesEvaluated
-                  }`}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {`${t('label.rules-evaluated')}: ${
-                    evaluationInfo.summary.totalRulesEvaluated
-                  }`}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {`${t('label.matching-rule-plural')}: ${
-                    evaluationInfo.summary.matchingRules
-                  }`}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {`${t('label.allow-rule-plural')}: ${
-                    evaluationInfo.summary.allowRules
-                  }`}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {`${t('label.deny-rule-plural')}: ${
-                    evaluationInfo.summary.denyRules
-                  }`}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-sm">
-                  {t('label.time-ms', {
-                    milliseconds: evaluationInfo.summary.evaluationTimeMs,
-                  })}
-                </Typography>
-              </Box>
-            )}
-
-            <Box direction="col" gap={2}>
-              <Typography
-                className="tw:text-primary"
                 size="text-sm"
                 weight="semibold">
-                {`${t('label.evaluation-step-plural')}:`}
+                {`${t('label.reasons-for-decision')}:`}
               </Typography>
-              {evaluationInfo.evaluationSteps.map((step) => {
-                const stepEffectColor =
-                  step.effect.toUpperCase() === 'ALLOW'
-                    ? 'tw:text-success-primary'
-                    : 'tw:text-error-primary';
-
-                return (
-                  <Card
-                    className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
-                    direction="col"
-                    gap={2}
-                    key={step.stepNumber}>
-                    <Box align="center" direction="row" gap={2} wrap="wrap">
-                      <Typography className="tw:text-secondary" size="text-sm">
-                        {`${t('label.step')} ${step.stepNumber}: `}
-                      </Typography>
-                      <Typography
-                        className="tw:text-primary"
-                        size="text-sm"
-                        weight="semibold">
-                        {step.policy.name}
-                      </Typography>
-                      <Typography className="tw:text-secondary" size="text-sm">
-                        {`- ${t('label.rule')}: ${step.rule}`}
-                      </Typography>
-                    </Box>
-                    <Typography className="tw:text-secondary" size="text-sm">
-                      {`${t('label.source')}: ${step.source} (${
-                        step.sourceEntity.name
-                      })`}
-                    </Typography>
-                    <Typography className="tw:text-secondary" size="text-sm">
-                      {`${t('label.effect')}: `}
-                      <strong className={stepEffectColor}>{step.effect}</strong>
-                    </Typography>
-                    <Typography className="tw:text-secondary" size="text-sm">
-                      {`${t('label.matched')}: `}
-                      <strong>
-                        {step.matched ? t('label.yes') : t('label.no')}
-                      </strong>
-                    </Typography>
-                    <Typography className="tw:text-tertiary" size="text-xs">
-                      {step.matchReason}
-                    </Typography>
-                    {step.conditionEvaluations.length > 0 && (
-                      <Box direction="col" gap={1}>
-                        <Typography
-                          className="tw:text-secondary"
-                          size="text-sm">
-                          {`${t('label.condition-plural')}:`}
-                        </Typography>
-                        {step.conditionEvaluations.map((cond) => (
-                          <Box
-                            align="center"
-                            direction="row"
-                            gap={2}
-                            key={cond.condition}>
-                            <Typography className="tw:text-xs tw:font-mono tw:bg-secondary tw:px-1 tw:rounded">
-                              {cond.condition}
-                            </Typography>
-                            <Typography
-                              className="tw:text-secondary"
-                              size="text-xs">
-                              {` → ${
-                                cond.result ? t('label.true') : t('label.false')
-                              }`}
-                            </Typography>
-                            <Typography
-                              className="tw:text-tertiary"
-                              size="text-xs">
-                              {`(${cond.evaluationDetails})`}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    )}
-                  </Card>
-                );
-              })}
-            </Box>
-
-            {evaluationInfo.summary?.reasonsForDecision && (
-              <Box
-                className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
-                direction="col"
-                gap={2}>
+              {evaluationInfo.summary.reasonsForDecision.map((reason) => (
                 <Typography
-                  className="tw:text-primary"
-                  size="text-sm"
-                  weight="semibold">
-                  {`${t('label.reasons-for-decision')}:`}
+                  className="tw:text-secondary"
+                  key={reason}
+                  size="text-sm">
+                  {`• ${reason}`}
                 </Typography>
-                {evaluationInfo.summary.reasonsForDecision.map((reason) => (
-                  <Typography
-                    className="tw:text-secondary"
-                    key={reason}
-                    size="text-sm">
-                    {`• ${reason}`}
-                  </Typography>
-                ))}
-              </Box>
-            )}
-          </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
       </Card>
     );
   };
