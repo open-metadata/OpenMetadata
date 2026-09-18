@@ -1210,7 +1210,11 @@
         </plugins>
       </build>
     </profile>
-    <!-- RDF integration tests profile -->
+    <!-- RDF integration tests profile.
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
+         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
+         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
+         server with no update service, so every SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
@@ -1249,7 +1253,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1299,7 +1302,6 @@
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>

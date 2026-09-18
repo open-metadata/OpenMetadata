@@ -121,6 +121,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
   public static final String INCIDENT_STATUS_FIELD = "incidentStatus";
+  public static final String DATA_QUALITY_DIMENSION_FIELD = "dataQualityDimension";
+  // The search document denormalizes the dimension to its name under a dedicated key. The
+  // EntityReference-typed DATA_QUALITY_DIMENSION_FIELD is never indexed, so a hit read back into a
+  // TestCase can never carry a string where the POJO expects a reference.
+  public static final String DATA_QUALITY_DIMENSION_NAME_FIELD = "dataQualityDimensionName";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
@@ -1160,7 +1165,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         "testSuites",
         "testDefinition",
         "testCaseResult",
-        "dataQualityDimension",
+        DATA_QUALITY_DIMENSION_FIELD,
         INCIDENTS_FIELD);
   }
 
