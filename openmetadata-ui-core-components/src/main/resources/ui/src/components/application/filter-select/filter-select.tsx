@@ -787,7 +787,7 @@ const FilterSelect = ({
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={staged.length === 0}
-                size="sm"
+                size="xs"
                 onPress={() => setStaged([])}>
                 {t('label.clear-all')}
               </Button>
@@ -795,14 +795,14 @@ const FilterSelect = ({
                 <Button
                   color="secondary"
                   data-testid="close-btn"
-                  size="sm"
+                  size="xs"
                   onPress={() => handleOpenChange(false)}>
                   {t('label.cancel')}
                 </Button>
                 <Button
                   color="primary"
                   data-testid="update-btn"
-                  size="sm"
+                  size="xs"
                   onPress={handleApply}>
                   {staged.length > 0
                     ? t('label.apply-count', { count: staged.length })
@@ -827,7 +827,7 @@ const FilterSelect = ({
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={selectedValues.length === 0}
-                size="sm"
+                size="xs"
                 onPress={() => onChange([])}>
                 {t('label.clear-all')}
               </Button>
