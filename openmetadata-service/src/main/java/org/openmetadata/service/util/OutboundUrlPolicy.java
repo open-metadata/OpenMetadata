@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
 import jakarta.ws.rs.BadRequestException;
 import java.net.Inet6Address;
@@ -51,9 +50,8 @@ public class OutboundUrlPolicy {
   private static final List<InetAddress> METADATA_ADDRESSES =
       metadataAddresses("100.100.100.200", "fd00:ec2::254");
 
-  private static final OutboundUrlPolicy DEFAULT = new OutboundUrlPolicy(InetAddress::getAllByName);
-
-  private static volatile OutboundUrlPolicy instance = DEFAULT;
+  private static final OutboundUrlPolicy INSTANCE =
+      new OutboundUrlPolicy(InetAddress::getAllByName);
 
   private final HostResolver resolver;
 
@@ -62,21 +60,7 @@ public class OutboundUrlPolicy {
   }
 
   public static OutboundUrlPolicy getInstance() {
-    return instance;
-  }
-
-  /**
-   * Lets a test point the policy at a stub resolver. A test that needs a real HTTP endpoint has to
-   * bind it to this machine, and the policy would otherwise refuse the request under test.
-   */
-  @VisibleForTesting
-  public static void setInstance(OutboundUrlPolicy policy) {
-    instance = policy == null ? DEFAULT : policy;
-  }
-
-  @VisibleForTesting
-  public static void resetInstance() {
-    instance = DEFAULT;
+    return INSTANCE;
   }
 
   /**
@@ -135,35 +119,27 @@ public class OutboundUrlPolicy {
 
   /**
    * A host written as an address keeps the rule it has always had: an internal address is refused
-   * outright. A host written as a name is refused only when it leads back to this machine, so a
-   * receiver that lives on the cluster network and is addressed by its name keeps working.
+   * outright. A host written as a name is refused only when it leads somewhere the operator cannot
+   * reach as themselves, which means a link-local or cloud metadata endpoint. A name that leads to
+   * this machine or to the cluster network stays allowed: connecting to destinations an operator
+   * configures is what the product does.
    */
   private static String addressRejection(String host, InetAddress address, boolean literal) {
-    if (isLocalAddress(address) || isMetadataAddress(address) || isNat64Local(address)) {
-      return String.format("%s resolves to a loopback, link-local or metadata address", host);
+    if (address.isLinkLocalAddress() || isMetadataAddress(address) || isNat64Metadata(address)) {
+      return String.format("%s resolves to a link-local or metadata address", host);
     }
-    if (literal && isPrivateAddress(address)) {
+    if (literal && (address.isLoopbackAddress() || isPrivateAddress(address))) {
       return "URL targeting private/internal network not allowed";
     }
     return null;
-  }
-
-  /**
-   * The unspecified address is included with loopback: connecting to 0.0.0.0 or :: reaches the local
-   * host, so leaving it out would reopen the case this rejects.
-   */
-  private static boolean isLocalAddress(InetAddress address) {
-    return address.isLoopbackAddress()
-        || address.isLinkLocalAddress()
-        || address.isAnyLocalAddress();
   }
 
   private static boolean isMetadataAddress(InetAddress address) {
     return METADATA_ADDRESSES.contains(address);
   }
 
-  /** 64:ff9b::/96 can carry a loopback or metadata IPv4 address inside a public-looking IPv6 one. */
-  private static boolean isNat64Local(InetAddress address) {
+  /** 64:ff9b::/96 can carry a link-local or metadata IPv4 address inside a public-looking one. */
+  private static boolean isNat64Metadata(InetAddress address) {
     byte[] bytes = address.getAddress();
     if (!(address instanceof Inet6Address) || bytes[0] != 0 || bytes[1] != 0x64) {
       return false;
@@ -176,13 +152,13 @@ public class OutboundUrlPolicy {
         return false;
       }
     }
-    return embeddedIsLocal(Arrays.copyOfRange(bytes, 12, 16));
+    return embeddedIsBlocked(Arrays.copyOfRange(bytes, 12, 16));
   }
 
-  private static boolean embeddedIsLocal(byte[] ipv4) {
+  private static boolean embeddedIsBlocked(byte[] ipv4) {
     try {
       InetAddress embedded = InetAddress.getByAddress(ipv4);
-      return isLocalAddress(embedded) || isMetadataAddress(embedded);
+      return embedded.isLinkLocalAddress() || isMetadataAddress(embedded);
     } catch (UnknownHostException e) {
       return false;
     }

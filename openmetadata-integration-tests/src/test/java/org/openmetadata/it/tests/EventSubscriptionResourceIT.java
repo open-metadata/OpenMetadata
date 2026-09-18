@@ -109,14 +109,14 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
-  void test_webhookEndpointOnThisMachine_400(TestNamespace ns) {
+  void test_webhookEndpointAsLoopbackAddress_400(TestNamespace ns) {
     Webhook webhook =
         new Webhook().withEndpoint(URI.create("http://127.0.0.1:8585/api/v1/test/webhook/blocked"));
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("sub_loopback"))
-            .withDescription("Endpoint that resolves back to the server")
+            .withDescription("Endpoint written as a loopback address")
             .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
             .withResources(List.of("all"))
             .withEnabled(false)
@@ -131,7 +131,7 @@ public class EventSubscriptionResourceIT
     assertThrows(
         Exception.class,
         () -> createEntity(request),
-        "A webhook endpoint on the server's own machine should be rejected");
+        "A webhook endpoint written as a loopback address should be rejected");
   }
 
   private List<SubscriptionDestination> getWebhookDestination(TestNamespace ns) {

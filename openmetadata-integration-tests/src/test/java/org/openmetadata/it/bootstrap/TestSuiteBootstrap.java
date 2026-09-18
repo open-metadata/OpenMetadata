@@ -28,7 +28,6 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -76,7 +75,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
-import org.openmetadata.service.util.OutboundUrlPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -260,21 +258,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
     final String fromEnv = System.getenv("JPW_MODE");
     return fromEnv != null ? fromEnv : "";
-  }
-
-  /**
-   * The suite points its webhook destinations at the test server itself, and the outbound URL policy
-   * refuses anything that resolves back to this machine. Resolving that one name to a public address
-   * keeps the policy out of the way of tests that are not about it. An endpoint written as a literal
-   * loopback address is still refused, which EventSubscriptionResourceIT asserts.
-   */
-  private void allowTestWebhookReceiver() {
-    OutboundUrlPolicy.setInstance(
-        new OutboundUrlPolicy(
-            host ->
-                "localhost".equals(host)
-                    ? InetAddress.getAllByName("93.184.216.34")
-                    : InetAddress.getAllByName(host)));
   }
 
   private void startDatabase() {
@@ -622,7 +605,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void startApplication() throws Exception {
     LOG.info("Starting OpenMetadata application...");
-    allowTestWebhookReceiver();
     OpenMetadataApplicationConfig config = buildRuntimeApplicationConfig();
     String projectRoot = getProjectRoot();
     String flyWayMigrationScriptsLocation = getFlywayMigrationScriptsLocation(projectRoot);

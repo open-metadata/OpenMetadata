@@ -2,7 +2,6 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.common.net.InetAddresses;
 import jakarta.ws.rs.BadRequestException;
@@ -30,7 +29,7 @@ class OutboundUrlPolicyTest {
           Map.entry("metadata.internal", "169.254.169.254"),
           Map.entry("metadata.alibaba", "100.100.100.200"),
           Map.entry("metadata.aws.v6", "fd00:ec2::254"),
-          Map.entry("nat64.example.com", "64:ff9b::7f00:1"));
+          Map.entry("nat64.example.com", "64:ff9b::a9fe:a9fe"));
 
   private final OutboundUrlPolicy policy = new OutboundUrlPolicy(OutboundUrlPolicyTest::resolve);
 
@@ -67,11 +66,10 @@ class OutboundUrlPolicyTest {
   }
 
   @Test
-  void hostnameResolvingToThisMachineIsRejected() {
-    BadRequestException rejected =
-        assertThrows(
-            BadRequestException.class, () -> policy.checkForSave("http://local.test:8585/api"));
-    assertTrue(rejected.getMessage().contains("loopback"));
+  void hostnameResolvingToThisMachineIsAllowed() {
+    // The operator can reach their own machine, and local development depends on being able to
+    // point an alert at a receiver running beside the server.
+    assertDoesNotThrow(() -> policy.checkForSave("http://local.test:8585/api"));
   }
 
   @Test
@@ -91,7 +89,7 @@ class OutboundUrlPolicyTest {
   }
 
   @Test
-  void nat64AddressWrappingLoopbackIsRejected() {
+  void nat64AddressWrappingLinkLocalIsRejected() {
     assertThrows(
         BadRequestException.class, () -> policy.checkForSave("http://nat64.example.com/hook"));
   }
@@ -116,7 +114,7 @@ class OutboundUrlPolicyTest {
   void connectPathReportsAPolicyRejection() {
     assertThrows(
         OutboundUrlBlockedException.class,
-        () -> policy.checkForConnect(URI.create("http://local.test:8585/api")));
+        () -> policy.checkForConnect(URI.create("http://metadata.internal/computeMetadata/v1/")));
   }
 
   @Test

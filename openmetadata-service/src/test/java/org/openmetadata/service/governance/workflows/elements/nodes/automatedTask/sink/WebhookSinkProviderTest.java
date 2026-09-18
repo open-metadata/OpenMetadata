@@ -23,7 +23,6 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -33,14 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.providers.WebhookSinkProvider;
-import org.openmetadata.service.util.OutboundUrlPolicy;
 
 class WebhookSinkProviderTest {
 
@@ -206,23 +202,6 @@ class WebhookSinkProviderTest {
     assertTrue(context.isBatchMode());
     assertEquals("exec-123", context.getWorkflowExecutionId());
     assertEquals("TestWorkflow", context.getWorkflowName());
-  }
-
-  @BeforeEach
-  void allowTheLocalStubServer() {
-    // The stub below has to bind to this machine. Resolving it to a public address keeps the policy
-    // out of the way of what this test is actually about; the request still goes to the stub.
-    OutboundUrlPolicy.setInstance(
-        new OutboundUrlPolicy(
-            host ->
-                "localhost".equals(host)
-                    ? InetAddress.getAllByName("93.184.216.34")
-                    : InetAddress.getAllByName(host)));
-  }
-
-  @AfterEach
-  void restorePolicy() {
-    OutboundUrlPolicy.resetInstance();
   }
 
   @Test
