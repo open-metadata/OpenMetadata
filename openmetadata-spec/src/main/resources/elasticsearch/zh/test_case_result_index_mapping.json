@@ -206,9 +206,6 @@
           "entityType": {
             "type": "keyword"
           },
-          "dataQualityDimension": {
-            "type": "keyword"
-          },
           "owners": {
             "type": "nested",
             "properties": {
@@ -428,6 +425,9 @@
             "type": "text"
           },
           "type": {
+            "type": "keyword"
+          },
+          "dataQualityDimensionName": {
             "type": "keyword"
           }
         }

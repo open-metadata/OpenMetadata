@@ -73,6 +73,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
+    GlossaryTag: ({ label, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, label),
     Select: Object.assign(
       ({ children, ...props }: Record<string, unknown>) =>
         React.createElement('select', props, children),

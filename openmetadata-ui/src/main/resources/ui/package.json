@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build && yarn bundle:check",
+    "build": "NODE_OPTIONS=\"${NODE_OPTIONS:---max-old-space-size=6144}\" vite build",
     "build:release": "yarn build && yarn compress:brotli",
     "analyze": "vite build --mode analyze",
     "bundle:check": "node scripts/check-bundle-chunks.mjs",
@@ -286,7 +286,7 @@
     "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-style-import": "^2.0.0",
     "vite-plugin-svgr": "^3.3.0",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^6.1.1"
   },
   "resolutions": {
     "@types/react": "^18.2.55",
@@ -316,11 +316,12 @@
     "tar-fs": "2.1.4",
     "brace-expansion": "1.1.18",
     "browserslist": "4.28.8",
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.8",
     "linkify-it": "5.0.2",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
     "markdown-it": ">=14.2.0",
+    "moment": "2.31.0",
     "nanoid": "3.3.17",
     "uuid": "^14.0.0",
     "esbuild": "^0.28.1",

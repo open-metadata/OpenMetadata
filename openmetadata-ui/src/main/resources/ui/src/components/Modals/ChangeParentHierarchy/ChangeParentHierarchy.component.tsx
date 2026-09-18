@@ -14,7 +14,7 @@
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -39,6 +39,8 @@ import {
   MoveGlossaryTermWebsocketResponse,
 } from './ChangeParentHierarchy.interface';
 
+const MAX_BUFFERED_EVENTS = 100;
+
 const ChangeParentHierarchy = ({
   selectedData,
   onCancel,
@@ -54,6 +56,11 @@ const ChangeParentHierarchy = ({
   const [selectedParent, setSelectedParent] =
     useState<DefaultOptionType | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
+  const submittedJobId = useRef<string>();
+  const awaitingResponse = useRef(false);
+  const bufferedEvents = useRef(
+    new Map<string, MoveGlossaryTermWebsocketResponse>()
+  );
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -118,6 +125,7 @@ const ChangeParentHierarchy = ({
 
     try {
       setLoadingState((prev) => ({ ...prev, isSaving: true }));
+      awaitingResponse.current = true;
       const parent = selectedParent.data as Glossary | GlossaryTerm;
       const response = await moveGlossaryTerm(selectedData.id, {
         id: parent.id,
@@ -127,6 +135,17 @@ const ChangeParentHierarchy = ({
         fullyQualifiedName: parent.fullyQualifiedName,
       });
 
+      submittedJobId.current = response.jobId;
+      awaitingResponse.current = false;
+
+      const early = bufferedEvents.current.get(response.jobId);
+      bufferedEvents.current.clear();
+      if (early) {
+        handleMoveJobUpdate(early);
+
+        return;
+      }
+
       const jobData: MoveGlossaryTermWebsocketResponse = {
         jobId: response.jobId,
         message: response.message,
@@ -135,18 +154,28 @@ const ChangeParentHierarchy = ({
 
       setMoveJob(jobData);
     } catch (error) {
+      awaitingResponse.current = false;
       showErrorToast(error as AxiosError);
       setLoadingState((prev) => ({ ...prev, isSaving: false }));
     }
   };
 
-  // WebSocket listener for move job updates
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
         if (moveResponse) {
-          const moveResponseData = JSON.parse(moveResponse);
-          handleMoveJobUpdate(moveResponseData);
+          const data: MoveGlossaryTermWebsocketResponse =
+            JSON.parse(moveResponse);
+
+          if (submittedJobId.current && data.jobId === submittedJobId.current) {
+            handleMoveJobUpdate(data);
+          } else if (
+            awaitingResponse.current &&
+            data.jobId &&
+            bufferedEvents.current.size < MAX_BUFFERED_EVENTS
+          ) {
+            bufferedEvents.current.set(data.jobId, data);
+          }
         }
       });
     }

@@ -304,7 +304,7 @@
           }
         }
       },
-      "dataQualityDimension": {
+      "dataQualityDimensionName": {
         "type": "keyword"
       },
       "tags": {

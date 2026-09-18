@@ -299,7 +299,7 @@
           }
         }
       },
-      "dataQualityDimension": {
+      "dataQualityDimensionName": {
         "type": "keyword"
       },
       "owners": {
