@@ -105,14 +105,19 @@ public interface SearchClient
    * tag-mutating painless almost never carry Tier in {@code tags[]}. Unconditionally assigning
    * {@code tier = null} when no Tier was seen would wipe the live-indexed dedicated field —
    * caught by {@code GlossaryRenameCascade.spec.ts}.
+   *
+   * <p>Every {@code def} here stays inside the guard block. A single tag change can produce both a
+   * removal and an addition script, and {@code SearchRepository.getInheritedFieldChanges} appends
+   * them into one painless program — so this snippet is concatenated with itself and a declaration
+   * at the top level would fail to compile with "Variable [newTags] is already defined".
    */
   String TAG_RESEPARATION_SCRIPT =
       """
-      def newTags = new ArrayList();
-      def tier = null;
-      def classTags = new ArrayList();
-      def glossTags = new ArrayList();
       if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        def newTags = new ArrayList();
+        def tier = null;
+        def classTags = new ArrayList();
+        def glossTags = new ArrayList();
         for (def t : ctx._source.tags) {
           if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
           if (t.tagFQN.startsWith('Tier.')) {
