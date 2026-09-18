@@ -110,6 +110,18 @@ logger = ingestion_logger()
 
 TABLEAU_TAG_CATEGORY = "TableauTags"
 TABLEAU_FIELD_TYPE_DISPLAY = "Tableau Field"
+# The server rejects char/varchar/binary/varbinary columns with a null dataLength.
+# Tableau's metadata API never reports a column length for any type, so there is no
+# real value to report here - this placeholder only exists to satisfy that constraint.
+# `ColumnTypeParser.get_column_type` returns the plain string value (e.g. "BINARY"),
+# not the `DataType` enum member, so this set must compare against those raw strings.
+LENGTH_REQUIRED_DATA_TYPES = {
+    DataType.CHAR.value,
+    DataType.VARCHAR.value,
+    DataType.BINARY.value,
+    DataType.VARBINARY.value,
+}
+DEFAULT_DATA_LENGTH = 1
 # Tableau titles database column names when it builds fields (`order_date` becomes
 # `Order Date`), so separators and casing carry no meaning when comparing the two.
 # `\w` is Unicode-aware, and `_` is listed explicitly because `\w` matches it: a name made
@@ -159,7 +171,12 @@ class TableauSource(DashboardServiceSource):
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         self._declare_dashboard_progress_total()
-        yield from self.client.get_workbooks(include_owners=self.source_config.includeOwners)
+        yield from self.client.get_workbooks(
+            include_owners=self.source_config.includeOwners,
+            dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
+            project_filter_pattern=self.source_config.projectFilterPattern,
+            on_filtered=self.status.filter,
+        )
 
     def _declare_dashboard_progress_total(self) -> None:
         """Declare the Dashboard progress total. ``get_workbook_count`` is a
@@ -1055,6 +1072,13 @@ class TableauSource(DashboardServiceSource):
             )
         return None
 
+    @staticmethod
+    def _get_data_length(data_type: str) -> int | None:
+        """
+        char/varchar/binary/varbinary columns must have a non-null dataLength
+        """
+        return DEFAULT_DATA_LENGTH if data_type in LENGTH_REQUIRED_DATA_TYPES else None
+
     def get_child_columns(self, field: DatasourceField) -> list[Column]:
         """
         Extract the child columns from the fields
@@ -1063,9 +1087,11 @@ class TableauSource(DashboardServiceSource):
         for column in field.upstreamColumns or []:
             try:
                 if column:
+                    data_type = ColumnTypeParser.get_column_type(column.remoteType if column.remoteType else None)
                     parsed_column = {
                         "dataTypeDisplay": (column.remoteType if column.remoteType else DataType.UNKNOWN.value),
-                        "dataType": ColumnTypeParser.get_column_type(column.remoteType if column.remoteType else None),
+                        "dataType": data_type,
+                        "dataLength": self._get_data_length(data_type),
                         "name": truncate_column_name(column.id),
                         "displayName": column.name if column.name else column.id,
                     }
@@ -1130,8 +1156,10 @@ class TableauSource(DashboardServiceSource):
                 }
                 mirrored_column = self._get_mirrored_upstream_column(field=field)
                 if mirrored_column:
+                    mirrored_data_type = ColumnTypeParser.get_column_type(mirrored_column.remoteType)
                     parsed_fields["dataTypeDisplay"] = mirrored_column.remoteType or DataType.UNKNOWN.value
-                    parsed_fields["dataType"] = ColumnTypeParser.get_column_type(mirrored_column.remoteType)
+                    parsed_fields["dataType"] = mirrored_data_type
+                    parsed_fields["dataLength"] = self._get_data_length(mirrored_data_type)
                     if mirrored_column.remoteType == DataType.ARRAY.value:
                         parsed_fields["arrayDataType"] = DataType.UNKNOWN
                 else:
