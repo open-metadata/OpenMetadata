@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/events/destinationHealth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DestinationHealth",
+  "description": "The health of one destination.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.DestinationHealth",
+  "properties": {
+    "status": {
+      "description": "The status of the most recent tick that produced a target for this destination.",
+      "$ref": "./subscriptionStatus.json"
+    },
+    "failingSince": {
+      "description": "When the current run of failing ticks started. Absent while the destination is healthy.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "consecutiveFailedTicks": {
+      "description": "Ticks in a row in which this destination failed.",
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "additionalProperties": false
+}

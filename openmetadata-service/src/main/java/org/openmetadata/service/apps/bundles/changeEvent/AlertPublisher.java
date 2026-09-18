@@ -12,6 +12,12 @@ import org.openmetadata.service.util.DIContainer;
 
 @Slf4j
 public class AlertPublisher extends AbstractEventConsumer {
+
+  @Override
+  protected ConsumerKind kind() {
+    return ConsumerKind.EVENT;
+  }
+
   public AlertPublisher(DIContainer di) {
     super(di);
   }

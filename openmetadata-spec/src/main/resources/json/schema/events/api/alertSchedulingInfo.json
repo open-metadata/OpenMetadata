@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/alertSchedulingInfo.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertSchedulingInfo",
+  "description": "How one alert is scheduled right now: its job, its trigger, how far it has read and what the last reconcile found. It answers why an alert is not firing in one request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.AlertSchedulingInfo",
+  "properties": {
+    "enabled": {
+      "description": "Whether the stored alert is enabled. A disabled alert has no job.",
+      "type": "boolean"
+    },
+    "jobClass": {
+      "description": "Class the job is stored with. Absent when the alert has no job.",
+      "type": "string"
+    },
+    "triggerState": {
+      "description": "State of the alert's own trigger in the job store, such as NORMAL, BLOCKED or ERROR. NONE when it has no trigger.",
+      "type": "string"
+    },
+    "previousFireTime": {
+      "description": "When the trigger last fired.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "nextFireTime": {
+      "description": "When the trigger fires next.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "currentOffset": {
+      "description": "The position the alert has read up to.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "latestOffset": {
+      "description": "The offset of the newest change event.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "lag": {
+      "description": "Change events the alert has not read yet.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "lastReconcileAt": {
+      "description": "When a reconcile on the answering server last looked at this alert.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastReconcileVerdict": {
+      "description": "What that reconcile found: healthy, or what it repaired.",
+      "type": "string"
+    }
+  },
+  "required": ["enabled", "triggerState", "currentOffset", "latestOffset", "lag"],
+  "additionalProperties": false
+}

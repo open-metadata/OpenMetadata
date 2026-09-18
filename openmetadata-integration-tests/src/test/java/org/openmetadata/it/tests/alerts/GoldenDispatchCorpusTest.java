@@ -38,8 +38,8 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.quartz.JobDataMap;
 
 /**
  * The no-regression corpus for dispatch: a fixed set of change events goes through a real tick,
@@ -67,11 +67,11 @@ class GoldenDispatchCorpusTest {
       AlertMetrics before = counters(alert);
 
       insert(tableEvents());
-      JobDataMap jobData = DirectTick.run(alert);
+      DirectTick.run(alert);
 
       GoldenFiles golden = goldenFor(alert, receiver);
       golden.assertMatches("all-channels.sends", sends(receiver, golden));
-      golden.assertMatches("all-channels.record", record(alert, jobData, before));
+      golden.assertMatches("all-channels.record", record(alert, before));
     }
   }
 
@@ -84,12 +84,12 @@ class GoldenDispatchCorpusTest {
       AlertMetrics before = counters(alert);
 
       insert(tableEvents());
-      JobDataMap jobData = DirectTick.run(alert);
+      DirectTick.run(alert);
 
       GoldenFiles golden = goldenFor(alert, receiver);
       treatDestinationsAsInterchangeable(alert, golden);
       golden.assertMatches("dead-endpoint.sends", sends(receiver, golden));
-      Map<String, Object> record = record(alert, jobData, before);
+      Map<String, Object> record = record(alert, before);
       sortByStatus(record);
       golden.assertMatches("dead-endpoint.record", record);
     }
@@ -219,15 +219,14 @@ class GoldenDispatchCorpusTest {
     return sends;
   }
 
-  private static Map<String, Object> record(
-      EventSubscription alert, JobDataMap jobData, AlertMetrics before) {
+  private static Map<String, Object> record(EventSubscription alert, AlertMetrics before) {
     CollectionDAO dao = Entity.getCollectionDAO();
     String alertId = alert.getId().toString();
     Map<String, Object> record = new LinkedHashMap<>();
     record.put("counters", countedByThisTick(before, counters(alert)));
     record.put("deliveredEventIds", deliveredEventIds(dao, alertId));
     record.put("failures", failures(dao, alertId));
-    record.put("destinationStatus", destinationStatus(jobData));
+    record.put("destinationStatus", destinationStatus(alert));
     return record;
   }
 
@@ -248,13 +247,11 @@ class GoldenDispatchCorpusTest {
         .toList();
   }
 
-  // Destination status lives in the job's copy of the alert today.
-  private static List<Map<String, Object>> destinationStatus(JobDataMap jobData) {
-    EventSubscription afterTick =
-        JsonUtils.readValue(
-            (String) jobData.get(AbstractEventConsumer.ALERT_INFO_KEY), EventSubscription.class);
+  private static List<Map<String, Object>> destinationStatus(EventSubscription alert) {
+    List<SubscriptionDestination> afterTick =
+        EventSubscriptionScheduler.getInstance().listAlertDestinations(alert.getId());
     List<Map<String, Object>> status = new ArrayList<>();
-    for (SubscriptionDestination destination : afterTick.getDestinations()) {
+    for (SubscriptionDestination destination : afterTick) {
       Map<String, Object> entry = new LinkedHashMap<>();
       entry.put("destination", destination.getId().toString());
       entry.put("status", destination.getStatusDetails());

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -20,7 +19,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
-import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -33,28 +31,26 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
-import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublisher;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.util.DIContainer;
-import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
+import org.quartz.Scheduler;
 
 class DispatchIsolationTest {
 
@@ -107,8 +103,8 @@ class DispatchIsolationTest {
     }
 
     verify(channel, times(1)).sendMessage(eq(healthy), any());
-    assertEquals(1, consumer.metrics().getSuccessEvents());
-    assertEquals(1, consumer.metrics().getFailedEvents());
+    assertEquals(1, consumer.ledger.pending().successEvents());
+    assertEquals(1, consumer.ledger.pending().failedEvents());
     assertEquals(1, consumer.failures.size());
     assertSame(broken, consumer.failures.getFirst().getChangeEventWithSubscription().getRight());
   }
@@ -120,15 +116,17 @@ class DispatchIsolationTest {
     doThrow(new IllegalStateException("already closed")).when(first).close();
     EventSubscription alert = alertWithTwoDestinations();
     RecordingConsumer consumer = new RecordingConsumer();
-    CollectionDAO dao = daoWithNoMetrics();
-    JobExecutionContext context = contextCarrying(alert);
+    CollectionDAO dao = daoWithNoNewEvents();
+    JobExecutionContext context = contextOfAnUnscheduledJob();
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<AlertRows> rows = mockStatic(AlertRows.class);
         MockedStatic<AlertFactory> factory = mockStatic(AlertFactory.class)) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
+      rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 0)))).thenReturn(first);
       factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 1)))).thenReturn(second);
-      consumer.execute(context);
+      consumer.tick(alert, TestLedgers.fresh(), context);
     }
 
     verify(first, times(1)).close();
@@ -190,25 +188,19 @@ class DispatchIsolationTest {
         .withDestinations(List.of(webhookDestination(), webhookDestination()));
   }
 
-  private static CollectionDAO daoWithNoMetrics() {
-    EventSubscriptionDAOs.EventSubscriptionDAO subscriptionDao =
-        mock(EventSubscriptionDAOs.EventSubscriptionDAO.class);
-    when(subscriptionDao.getSubscriberExtension(anyString(), anyString())).thenReturn(null);
+  private static CollectionDAO daoWithNoNewEvents() {
+    ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
+    when(changeEvents.getLatestOffset()).thenReturn(0L);
     CollectionDAO dao = mock(CollectionDAO.class);
-    when(dao.eventSubscriptionDAO()).thenReturn(subscriptionDao);
+    when(dao.changeEventDAO()).thenReturn(changeEvents);
     return dao;
   }
 
-  private static JobExecutionContext contextCarrying(EventSubscription alert) {
-    EventSubscriptionOffset offset =
-        new EventSubscriptionOffset().withCurrentOffset(7L).withStartingOffset(7L);
-    JobDataMap jobData = new JobDataMap();
-    jobData.put(AbstractEventConsumer.ALERT_INFO_KEY, JsonUtils.pojoToJson(alert));
-    jobData.put(AbstractEventConsumer.ALERT_OFFSET_KEY, JsonUtils.pojoToJson(offset));
-    JobDetail jobDetail = mock(JobDetail.class);
-    when(jobDetail.getJobDataMap()).thenReturn(jobData);
+  // The job store knows no such job, so there is no copy for older servers to keep in step.
+  private static JobExecutionContext contextOfAnUnscheduledJob() {
     JobExecutionContext context = mock(JobExecutionContext.class);
-    when(context.getJobDetail()).thenReturn(jobDetail);
+    when(context.getJobDetail()).thenReturn(mock(JobDetail.class));
+    when(context.getScheduler()).thenReturn(mock(Scheduler.class));
     return context;
   }
 
@@ -219,28 +211,7 @@ class DispatchIsolationTest {
     RecordingConsumer() {
       super(mock(DIContainer.class));
       this.eventSubscription = new EventSubscription().withId(UUID.randomUUID()).withName("a");
-      setMetrics(new AlertMetrics().withTotalEvents(0).withSuccessEvents(0).withFailedEvents(0));
-    }
-
-    AlertMetrics metrics() {
-      return (AlertMetrics) field("alertMetrics", null, false);
-    }
-
-    private void setMetrics(AlertMetrics metrics) {
-      field("alertMetrics", metrics, true);
-    }
-
-    private Object field(String name, Object value, boolean write) {
-      try {
-        Field field = AbstractEventConsumer.class.getDeclaredField(name);
-        field.setAccessible(true);
-        if (write) {
-          field.set(this, value);
-        }
-        return field.get(this);
-      } catch (ReflectiveOperationException e) {
-        throw new IllegalStateException(e);
-      }
+      this.ledger = TestLedgers.fresh();
     }
 
     @Override
@@ -264,6 +235,11 @@ class DispatchIsolationTest {
     @Override
     public boolean getEnabled() {
       return true;
+    }
+
+    @Override
+    protected ConsumerKind kind() {
+      return ConsumerKind.EVENT;
     }
   }
 }

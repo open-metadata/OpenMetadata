@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertEventInProgress.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertEventInProgress",
+  "description": "A note an alert writes before it reads events and clears when it commits. It counts the ticks in a row that opened at one position and never committed, so an event that stops the server every time can be set aside.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertEventInProgress",
+  "properties": {
+    "offset": {
+      "description": "The position the interrupted ticks opened at.",
+      "type": "integer",
+      "existingJavaType": "Long"
+    },
+    "attempts": {
+      "description": "Ticks in a row that opened at this position and did not commit.",
+      "type": "integer"
+    },
+    "timestamp": {
+      "description": "Update time of this row.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["offset", "attempts", "timestamp"],
+  "additionalProperties": false
+}

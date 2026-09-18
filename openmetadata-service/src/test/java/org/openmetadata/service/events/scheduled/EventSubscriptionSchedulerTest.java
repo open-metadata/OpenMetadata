@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.dropwizard.db.DataSourceFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -36,6 +37,29 @@ import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 
 class EventSubscriptionSchedulerTest {
+
+  @Test
+  void configuresClusteredJdbcStore() {
+    DataSourceFactory postgres = new DataSourceFactory();
+    postgres.setDriverClass("org.postgresql.Driver");
+    postgres.setUrl("jdbc:postgresql://localhost/openmetadata_db");
+    postgres.setUser("openmetadata_user");
+    postgres.setPassword("openmetadata_password");
+
+    Properties quartz = EventSubscriptionScheduler.quartzProperties(postgres);
+
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.JobStoreTX", quartz.get("org.quartz.jobStore.class"));
+    assertEquals("true", quartz.get("org.quartz.jobStore.isClustered"));
+    assertEquals(
+        "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate",
+        quartz.get("org.quartz.jobStore.driverDelegateClass"));
+    assertEquals("10", quartz.get("org.quartz.threadPool.threadCount"));
+    assertEquals(
+        "13",
+        quartz.get("org.quartz.dataSource.myDS.maxConnections"),
+        "the worker threads plus the three connections Quartz asks for beside them");
+  }
 
   @Test
   @DisplayName("Scheduler should use ALERT_JOB_GROUP for job grouping")

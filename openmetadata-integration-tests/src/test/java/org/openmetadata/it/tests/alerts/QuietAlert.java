@@ -26,6 +26,24 @@ final class QuietAlert {
 
   // A new alert's trigger fires at once. Waiting for that tick to finish leaves the next one a
   // day away, so only the tick this test drives reads the fixture events.
+  /**
+   * After an edit the alert's job is scheduled again and fires at once, on whichever server takes
+   * it. A tick driven directly must not run beside it, so this waits until that tick is over.
+   * The trigger's state comes from the job store, so it is true for the whole cluster.
+   */
+  static void awaitScheduledTickIsOver(EventSubscription alert) {
+    Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
+    TriggerKey key =
+        new TriggerKey(alert.getId().toString(), EventSubscriptionScheduler.ALERT_TRIGGER_GROUP);
+    Awaitility.await("the scheduled tick of " + alert.getName() + " to be over")
+        .pollDelay(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(90))
+        .until(
+            () ->
+                hasFired(scheduler, alert.getId().toString())
+                    && scheduler.getTriggerState(key) == Trigger.TriggerState.NORMAL);
+  }
+
   private static void awaitFirstScheduledTick(EventSubscription alert) {
     Scheduler scheduler = EventSubscriptionScheduler.getInstance().getAlertsScheduler();
     String jobName = alert.getId().toString();

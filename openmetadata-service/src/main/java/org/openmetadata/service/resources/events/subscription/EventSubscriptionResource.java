@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
@@ -942,6 +943,35 @@ public class EventSubscriptionResource
                   + subscriptionId)
           .build();
     }
+  }
+
+  @GET
+  @Path("/id/{subscriptionId}/scheduling")
+  @Operation(
+      operationId = "getEventSubscriptionSchedulingById",
+      summary = "Get how an event subscription is scheduled",
+      description =
+          "The alert's job class, its trigger's state and fire times, its position, its lag and what the last reconcile found.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Scheduling information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AlertSchedulingInfo.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found")
+      })
+  public AlertSchedulingInfo getEventSubscriptionSchedulingById(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("subscriptionId")
+          UUID subscriptionId)
+      throws SchedulerException {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
+    return EventSubscriptionScheduler.getInstance().getSchedulingInfo(subscriptionId);
   }
 
   @GET

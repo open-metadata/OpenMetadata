@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertHealth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertHealth",
+  "description": "The delivery health of every destination of one alert, kept in a row so that edits, restarts and test sends never reset it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertHealth",
+  "properties": {
+    "destinations": {
+      "description": "Health by destination id. Each value is a destinationHealth.json document.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, org.openmetadata.schema.entity.events.DestinationHealth>"
+    },
+    "timestamp": {
+      "description": "Update time of this row.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "destinations",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

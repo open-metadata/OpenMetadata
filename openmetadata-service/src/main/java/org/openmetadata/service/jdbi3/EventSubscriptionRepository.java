@@ -15,11 +15,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,16 +34,15 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -69,23 +68,47 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      List<SubscriptionDestination> destinations = new ArrayList<>();
-      entity
-          .getDestinations()
-          .forEach(
-              destination ->
-                  destinations.add(
-                      destination.withStatusDetails(
-                          EventSubscriptionScheduler.getInstance()
-                              .getStatusForEventSubscription(
-                                  entity.getId(), destination.getId()))));
-      entity.withDestinations(destinations);
+      entity.withDestinations(
+          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(getTemplateReference(entity));
   }
 
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
+
+  // Every save path schedules through these hooks, so a saved alert and its job cannot drift
+  // apart, whoever saved it. The scheduler call is an idempotent replace.
+  @Override
+  protected void postCreate(EventSubscription entity) {
+    super.postCreate(entity);
+    EventSubscriptionScheduler.ensureScheduled(entity);
+  }
+
+  @Override
+  protected void postCreate(List<EventSubscription> entities) {
+    super.postCreate(entities);
+    entities.forEach(EventSubscriptionScheduler::ensureScheduled);
+  }
+
+  @Override
+  protected void postUpdate(EventSubscription original, EventSubscription updated) {
+    super.postUpdate(original, updated);
+    EventSubscriptionScheduler.ensureScheduled(updated);
+  }
+
+  @Override
+  protected void postUpdateMany(List<EventSubscription> entities) {
+    super.postUpdateMany(entities);
+    listOrEmpty(entities).forEach(EventSubscriptionScheduler::ensureScheduled);
+  }
+
+  // Every hard delete reaches this, including deleteInternal, which skips postDelete.
+  @Override
+  protected void entitySpecificCleanup(EventSubscription entity) {
+    EventSubscriptionScheduler.removeScheduled(entity.getId());
+    AlertRecord.forget(entity.getId());
+  }
 
   @Override
   public void setInheritedFields(EventSubscription entity, Fields fields) {
@@ -169,28 +192,18 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         .forEach(destination -> destination.withId(UUID.randomUUID()));
   }
 
+  /**
+   * Skips the backlog. The job data is cleaned first: a server of the previous release trusts an
+   * offset it cached there over the position row, so a skip that left one behind would be undone
+   * by that server's next tick. When it cannot be cleaned, nothing changes and the caller is told.
+   */
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
-    long currentTime = System.currentTimeMillis();
-    // Upsert Offset
-    EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset()
-            .withCurrentOffset(latestOffset)
-            .withStartingOffset(latestOffset)
-            .withStartingTimestamp(currentTime)
-            .withTimestamp(currentTime);
-
-    Entity.getCollectionDAO()
-        .eventSubscriptionDAO()
-        .upsertSubscriberExtension(
-            eventSubscription.getId().toString(),
-            OFFSET_EXTENSION,
-            "eventSubscriptionOffset",
-            JsonUtils.pojoToJson(eventSubscriptionOffset));
-
-    EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
-    return eventSubscriptionOffset;
+    if (!EventSubscriptionScheduler.getInstance().dropStaleJobData(eventSubscription)) {
+      throw new ServiceUnavailableException(
+          "The backlog was not skipped because the alert's job could not be updated. Try again.");
+    }
+    return AlertRecord.skipBacklog(eventSubscription.getId());
   }
 
   @Override
