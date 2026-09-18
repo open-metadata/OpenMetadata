@@ -130,7 +130,7 @@ const ServicePage = withPageSuspenseFallback(
 );
 
 const SwaggerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/SwaggerPage'))
+  React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
 
 const TourPageComponent = withPageSuspenseFallback(
