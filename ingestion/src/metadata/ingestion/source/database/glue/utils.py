@@ -30,14 +30,18 @@ PRESTO_VIEW_PATTERN = re.compile(
     r"^/\*\s*(?:presto|trino)\s+(?:materialized\s+)?view\s*:\s*(?P<payload>.*?)\s*\*/$",
     re.IGNORECASE | re.DOTALL,
 )
-SQL_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
+# Both comment forms come from one fragment so the two readers below cannot drift apart: a
+# statement that one of them treats as a comment and the other as SQL is how a bare marker ends
+# up wrapped into a CREATE VIEW.
+COMMENT = r"/\*.*?\*/|--[^\n]*"
+SQL_COMMENT_PATTERN = re.compile(COMMENT, re.DOTALL)
 # Anchored to the head of the statement, the way the SAP HANA and ClickHouse readers do it.
 # An unanchored search would read the CREATE VIEW inside a string literal as a header already
 # being there and leave a bare SELECT unwrapped, which costs the lineage parser its target.
 # Leading comments are stepped over one at a time rather than by a repeated group: a group
 # whose body can also match the "*/" that ends it backtracks exponentially on input like
 # "/*" + "*//*" * n, which a view definition is free to contain.
-LEADING_COMMENT_PATTERN = re.compile(r"\s*(?:/\*.*?\*/|--[^\n]*)", re.DOTALL)
+LEADING_COMMENT_PATTERN = re.compile(rf"\s*(?:{COMMENT})", re.DOTALL)
 CREATE_VIEW_PATTERN = re.compile(r"\s*CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\b", re.IGNORECASE)
 SIMPLE_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -68,7 +72,8 @@ def _read_definition(candidate: str | None, table_name: str) -> str | None:
     if presto_view:
         return _decode_presto_view(presto_view.group("payload"), table_name)
     # A candidate made of nothing but comments is a marker, not a definition. Matching on the
-    # shape rather than on "/* Presto View */" covers the Trino and materialized spellings too.
+    # shape rather than on "/* Presto View */" covers the Trino and materialized spellings too,
+    # and line comments as well: wrapping one produces a CREATE VIEW whose body is commented out.
     if not SQL_COMMENT_PATTERN.sub("", text).strip():
         return None
     return text
