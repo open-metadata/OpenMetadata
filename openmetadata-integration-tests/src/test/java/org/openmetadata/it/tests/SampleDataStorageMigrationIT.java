@@ -66,8 +66,7 @@ public class SampleDataStorageMigrationIT {
   private static Map<String, List<String>> coveredPaths() {
     Map<String, List<String>> paths = new LinkedHashMap<>();
     paths.put(
-        "dbservice_entity",
-        List.of("connection.config", "connection.config.metastoreConnection"));
+        "dbservice_entity", List.of("connection.config", "connection.config.metastoreConnection"));
     paths.put("dashboard_service_entity", List.of("connection.config.connection"));
     paths.put(
         "pipeline_service_entity",
@@ -97,14 +96,16 @@ public class SampleDataStorageMigrationIT {
 
     assertThrows(
         Exception.class,
-        () -> JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
+        () ->
+            JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
         "precondition: the legacy row is what breaks on upgrade");
 
     runSampleDataStorageStatements();
 
     assertNull(storageConfigNode(legacy.getId()), "the legacy node is removed outright");
     assertDoesNotThrow(
-        () -> JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
+        () ->
+            JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
         "and the repaired row deserializes against the tightened schema");
 
     JsonNode preserved = storageConfigNode(hosted.getId());
@@ -142,8 +143,7 @@ public class SampleDataStorageMigrationIT {
         .forEach(
             table -> {
               assertTrue(mysql.contains("UPDATE " + table), "MySQL migration skips " + table);
-              assertTrue(
-                  postgres.contains("UPDATE " + table), "Postgres migration skips " + table);
+              assertTrue(postgres.contains("UPDATE " + table), "Postgres migration skips " + table);
             });
   }
 
@@ -167,14 +167,15 @@ public class SampleDataStorageMigrationIT {
         .useHandle(
             handle -> {
               ObjectNode root = (ObjectNode) JsonUtils.readTree(readServiceJson(serviceId));
-              ObjectNode connectionConfig =
-                  (ObjectNode) root.get("connection").get("config");
+              ObjectNode connectionConfig = (ObjectNode) root.get("connection").get("config");
               connectionConfig.set(
                   "sampleDataStorageConfig",
                   JsonUtils.getObjectNode("config", JsonUtils.readTree(config)));
               handle
                   .createUpdate(
-                      "UPDATE dbservice_entity SET json = " + jsonBindExpression() + " WHERE id = :id")
+                      "UPDATE dbservice_entity SET json = "
+                          + jsonBindExpression()
+                          + " WHERE id = :id")
                   .bind("json", JsonUtils.pojoToJson(root))
                   .bind("id", serviceId.toString())
                   .execute();
