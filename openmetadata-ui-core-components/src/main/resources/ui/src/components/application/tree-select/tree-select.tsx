@@ -14,7 +14,7 @@ import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
 import {
   SearchInputIcon,
   TriggerCountBadge,
-} from '../filter-select/filter-select';
+} from '../filter-select/filter-select.shared';
 import {
   type ReactElement,
   type RefObject,

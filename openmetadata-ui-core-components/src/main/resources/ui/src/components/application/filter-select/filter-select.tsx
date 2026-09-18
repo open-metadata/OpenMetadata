@@ -15,19 +15,19 @@ import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
+import { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
   useRef,
   useState,
   type FC,
-  type HTMLAttributes,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -39,27 +39,9 @@ import type {
 } from './filter-select.types';
 import { TreeSelect } from '../tree-select/tree-select';
 
-// Narrow wrapper so the icon prop's type doesn't widen to the raw
-// `@untitledui/icons` FC, whose `children` type clashes with consumers that
-// augment ReactNode globally (e.g. react-i18next).
-export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
-  <SearchLg aria-hidden="true" {...props} />
-);
-
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
   (typeof option.label === 'string' ? option.label : option.value);
-
-export const TriggerCountBadge = ({ count }: { count: number }) => (
-  <Typography
-    inline
-    className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
-    data-testid="filter-count-badge"
-    size="text-xs"
-    weight="medium">
-    {count}
-  </Typography>
-);
 
 export const TriggerButton = ({
   hasSelection,
@@ -249,10 +231,13 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  isNullOption,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  /** The pinned "No <X>" row, which the design mutes relative to real options. */
+  isNullOption?: boolean;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
@@ -285,10 +270,12 @@ const OptionRow = ({
       {(state) => (
         <span
           className={cx(
-            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
-            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary',
-            showCheckbox && state.isSelected && 'tw:text-primary',
-            !state.isSelected && 'tw:text-secondary'
+            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+            // Real options read at full strength whether or not they are
+            // selected; only the pinned null row is muted. Single select has no
+            // checkbox, so its selected row goes brand instead.
+            isNullOption ? 'tw:text-secondary' : 'tw:text-primary',
+            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary'
           )}>
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
@@ -454,6 +441,25 @@ const FilterSelect = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  // While open, resync on a genuine change to the selected values, keyed on the
+  // values rather than the array. Consumers pass `selectedValues` as a memo over
+  // server-fetched options, so a suggestions request resolving mid-edit hands
+  // over a new array holding the same values; syncing on that would discard the
+  // row the user just clicked. A real external change — Explore quick filters
+  // stay mounted and open across query-string-only navigation, so a filter
+  // cleared that way must reach the staged set — still applies, which keeps
+  // Apply from writing a stale value back.
+  const selectedValuesKey = useMemo(
+    () => JSON.stringify(selectedValues),
+    [selectedValues]
+  );
+  useEffect(() => {
+    if (isOpen && isStaged) {
+      setStaged(selectedValues);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedValuesKey]);
 
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
@@ -702,7 +708,7 @@ const FilterSelect = ({
         triggerRef={isChips ? chipsFieldRef : undefined}>
         <div className="tw:contents" ref={popoverContentRef}>
           {searchable && (
-            <div className="tw:p-2" ref={searchWrapperRef}>
+            <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={searchWrapperRef}>
               <Input
                 icon={SearchInputIcon}
                 inputDataTestId="search-input"
@@ -722,7 +728,11 @@ const FilterSelect = ({
                   displayedSelectedCount > 0 && !allDisplayedSelected
                 }
                 isSelected={allDisplayedSelected}
-                label={t('label.select-all')}
+                label={
+                  <span className="tw:text-sm tw:text-primary">
+                    {t('label.select-all')}
+                  </span>
+                }
                 size="xs"
                 onChange={handleSelectAll}
               />
@@ -758,6 +768,7 @@ const FilterSelect = ({
               onSelectionChange={handleSelectionChange}>
               {displayedNullOption && (
                 <OptionRow
+                  isNullOption
                   hideCounts={hideCounts}
                   option={displayedNullOption}
                   showCheckbox={isMulti}
@@ -791,8 +802,9 @@ const FilterSelect = ({
           )}
 
           {showFooter && (
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
+            <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-3 tw:pr-3 tw:pl-5">
               <Button
+                className="tw:px-0 tw:py-1.5"
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={staged.length === 0}
@@ -802,6 +814,7 @@ const FilterSelect = ({
               </Button>
               <div className="tw:flex tw:items-center tw:gap-2">
                 <Button
+                  className="tw:py-1.5"
                   color="secondary"
                   data-testid="close-btn"
                   size="sm"
@@ -809,6 +822,7 @@ const FilterSelect = ({
                   {t('label.cancel')}
                 </Button>
                 <Button
+                  className="tw:py-1.5"
                   color="primary"
                   data-testid="update-btn"
                   size="sm"
@@ -822,7 +836,7 @@ const FilterSelect = ({
           )}
 
           {showStatusFooter && (
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
               <Typography
                 className="tw:text-tertiary"
                 data-testid="selected-count"
@@ -833,6 +847,7 @@ const FilterSelect = ({
                   : t('label.count-selected', { count: selectedValues.length })}
               </Typography>
               <Button
+                className="tw:py-1.5"
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={selectedValues.length === 0}
@@ -853,4 +868,5 @@ const _FilterSelect = FilterSelect as typeof FilterSelect & {
 };
 _FilterSelect.Tree = TreeSelect;
 
+export { SearchInputIcon, TriggerCountBadge } from './filter-select.shared';
 export { _FilterSelect as FilterSelect };
