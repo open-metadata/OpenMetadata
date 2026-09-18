@@ -1,7 +1,7 @@
 # RDF authorization experiment: request-local sanitized model (candidate L)
 
 - **Status:** test-only prototype evidence for the proposed ADR [`docs/adr/2026-09-14-authorized-sparql.md`](adr/2026-09-14-authorized-sparql.md), candidate **L** of [`docs/rdf-authorization-research.md`](rdf-authorization-research.md). No production code, endpoint, schema, POM, or configuration changed. Not an approved architecture.
-- **Date / base:** started 2026-09-14 on top of `9c2f27a7682`; last updated 2026-09-17 at `41ef8fc1ec`. Dated sections below record the evidence as it was at the time; the summaries at the top and bottom are current.
+- **Date / base:** started 2026-09-14 on top of `9c2f27a7682`; last updated 2026-09-18 after a code-review pass (Finding 14). Dated sections below record the evidence as it was at the time; the summaries at the top and bottom are current.
 - **Question:** On real projected triples, does a request-local model that physically contains only admitted facts give the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`? Can a bounded retrieval from `graph/knowledge` build that model without guessing?
 - **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Local tests run on in-process Jena. An opt-in subclass reruns the same tests with every retrieval sent to an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`. An integration test checks decisions against OpenMetadata's real authorization on API-created entities, and that live projections are rejected where the map has no reviewed rule.
 
@@ -12,10 +12,10 @@
 - **Retrieval without guessing: not yet for realistic data.** On live projections the build is still **rejected as a whole**, deliberately, because facts without a reviewed permission rule remain (see "Status for review"). No complete model has been built from real data.
 - **Performance: unknown.** Nothing measured here is latency or memory evidence for the roughly two-second target.
 
-**Current test evidence (2026-09-17, `41ef8fc1ec`):**
-- `SanitizedModelExperimentTest`: 86 tests, 0 failures, 0 errors, 0 skipped, in-process.
-- `RdfAuthorizationAlignmentIT`: 2 tests, 0 failures, 0 errors, 0 skipped, against Postgres 15, OpenSearch 3.4.0 and Fuseki 6.2.0.
-- `SanitizedModelFusekiTest` (opt-in, retrieval through Fuseki): last run on 2026-09-14 with the 56 tests that existed then, all passing. **The 30 local tests added since have not been run through Fuseki.**
+**Current test evidence (local runs, 2026-09-18):**
+- `SanitizedModelExperimentTest`: 96 tests, 0 failures, 0 errors, 0 skipped, in-process.
+- `RdfAuthorizationAlignmentIT`: 2 tests, 0 failures, 0 errors, 0 skipped, against Postgres 15, OpenSearch 3.4.0 and Fuseki 6.2.0, last run on 2026-09-17. **It has not been re-run since the 2026-09-18 changes to it**, which compile but are otherwise unverified.
+- `SanitizedModelFusekiTest` (opt-in, retrieval through Fuseki): last run on 2026-09-14 with the 56 tests that existed then, all passing. **The 40 local tests added since have not been run through Fuseki.**
 - These are recorded worktree runs, not PR CI: no CI workflow runs the `postgres-rdf-tests` profile or the opt-in Fuseki class.
 
 ## What was added (test code only)
@@ -24,7 +24,7 @@ All files are under `openmetadata-service/src/test/java/org/openmetadata/service
 
 | File | Role |
 | --- | --- |
-| `rdf/SanitizedModelExperimentTest.java` | 86 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, scalar table and domain facts, the non-deleted scope, reference-lookup limits, containment, fail-closed cases, ownership conflicts and query-profile rejections. |
+| `rdf/SanitizedModelExperimentTest.java` | 96 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, scalar table and domain facts, the non-deleted scope, reference-lookup limits, containment, fail-closed cases, ownership conflicts and query-profile rejections. |
 | `rdf/SanitizedModelFusekiTest.java` | Opt-in subclass. Inherits every local test and reruns it with retrieval from a throwaway Fuseki container capped at 1 GiB. It asserts the server reports version 6.2.0, and before every `DROP ALL` it checks that the endpoint belongs to that container. Disabled unless `-DrdfAuthorizationFusekiImage` is set. |
 | `rdf/SanitizedModelFixture.java` | Tables A–D, tags, domains, a soft-deleted table and database containers, projected by the production `JsonLdTranslator` and `RdfRepository.buildLineageModel`. Also holds the catalog and the policy rules. |
 | `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, reference resolution and a fresh `Model`. |
@@ -215,7 +215,7 @@ This concerns thread reuse in the test only. Production request threads, the sha
 - Domains: `dct:description`, `dct:hasVersion`, `dct:modified`, `dcat:version`, `om:domainType`, `om:entityStatus`, `om:childrenCount`, `om:has`, `om:upstream`, `om:downstream`, `prov:wasDerivedFrom`.
 - Types: `om:Domain`, `skos:Collection`.
 
-The test asserts the rejection and that every violation is a mapping gap (no ownership or retrieval error). It also asserts that four deferred facts are among the violations: domain membership (`om:has`), domain lineage (`om:upstream`), a container link (`om:belongsToSchema`) and the soft-delete flag (`om:isDeleted`). Finally, no violation may name a scalar term the builder maps. The `om:isDeleted` and mapped-scalar assertions came with the scalar slice. They passed on 2026-09-15 with the verification command and image below: `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped; `SanitizedModelExperimentTest` 59 tests, 0 failures, 0 errors, 0 skipped; Maven exit 0. It proves that unsupported live facts are rejected. It does not show that a sanitized model can be built from live projections.
+The test asserts the rejection and that every violation is a mapping gap (no ownership or retrieval error). It also asserts that four deferred facts are among the violations: domain membership (`om:has`), domain lineage (`om:upstream`), a container link (`om:belongsToSchema`) and the soft-delete flag (`om:isDeleted`). **Superseded:** Finding 12 mapped `om:isDeleted` and Finding 13 mapped the container links, so the current code asserts three deferred facts — `om:has`, `om:upstream` and `om:joins`. This section records the run as it was. Finally, no violation may name a scalar term the builder maps. The `om:isDeleted` and mapped-scalar assertions came with the scalar slice. They passed on 2026-09-15 with the verification command and image below: `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped; `SanitizedModelExperimentTest` 59 tests, 0 failures, 0 errors, 0 skipped; Maven exit 0. It proves that unsupported live facts are rejected. It does not show that a sanitized model can be built from live projections.
 
 **Verification run, 2026-09-15, with the final test code.**
 
@@ -346,6 +346,13 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
       - **A prediction that did not hold:** neither `om:tables` nor `om:databaseSchemas` appeared on the live nodes, although the code trace said the projection loads those fields. Unverified explanation: the schema and database were projected when they were created and had no children, and adding a child writes only the CONTAINS relationship without re-projecting the parent, so the lists would appear only after a later update or reindex of the container. Their local rejection tests stay, because a reindexed container would carry them.
       - **Diagnostics, not latency evidence:** REST checks took 48–108 ms per phase and fresh-request checks 14–29 ms. Container peaks: OpenSearch 2,594 MiB, Fuseki 652 MiB, Postgres 216 MiB, MinIO 185 MiB. Free RAM stayed at or above 44%, with no pressure spikes and no swap-outs. The run's containers were removed; the stopped development containers were untouched.
 
+14. **Review pass on coverage and wording (2026-09-18).** A code review found that the experiment claimed every unsupported fact rejects the build while several families had no test, and that two descriptions did not match the code.
+    - **New rejection tests**, one parameterized case per fact family, all failing closed on the unmapped predicate: `om:hasSampleData`, `om:hasProfile` and `om:hasQueryText` on a table; `om:childrenCount`, `om:downstream` and `prov:wasDerivedFrom` on a domain; `om:default` on a database, and `om:hasTag` and `om:domains` on a schema; and an ingestion-pipeline candidate, which rejects the build as an unmapped resource and stands for every entity type without a node kind. `SanitizedModelExperimentTest`: **96 tests, 0 failures, 0 errors, 0 skipped**, run locally on 2026-09-18.
+    - **Owner facts stay untested.** `om:hasOwner` names a user, and this fixture registers no user type, so the reference-identity check rejects the build before the mapping gap is reported. It still fails closed, but the case would prove the identity rule rather than the missing mapping, so it was dropped instead of registering a type the fixture's catalog does not hold.
+    - **The object-type gap was understated.** The owned-node predicates already reject a literal object through `requireIri`, so the open gap is `om:hasTag`, `om:domains`, `om:upstream`, `om:downstream` and `prov:wasDerivedFrom`, not "every predicate outside containment".
+    - **One source of truth for the mapping.** The integration test asserted against a hand-kept copy of the mapped vocabulary, which could drift from the builder. `SanitizedModelBuilder` now exposes `mappedPredicates()` and `approvedTypes()`, and the test reads those; the ontology prefix is the builder's constant in both test classes. The integration test also declares `@Execution(ExecutionMode.SAME_THREAD)`, like `RdfRelationExclusionsIT`, and its package placement is now explained in the class comment: it drives the package-private builder from the service test jar. **Not verified by a run:** the module compiles, but the integration test has not been re-run since these changes.
+    - **Open standards findings**, left for maintainer direction rather than changed unilaterally: all four experiment classes exceed the 500-line limit, and several methods exceed the 15-line guidance. Splitting them matters only if the code outlives the experiment.
+
 ## Status for review
 
 This section is the current summary for PR review. It describes what the experiment supports on its fixtures, and what blocks production RBAC. Those blockers are not claimed to block merging a test-only experiment.
@@ -356,23 +363,25 @@ This section is the current summary for PR review. It describes what the experim
 - **Bounded, fail-closed retrieval.** Subject-keyed retrieval from `graph/knowledge` never reads inferred or default graphs. It fails rather than answer from a partial model when the triple budget or the 1,000-entity reference lookup is exceeded.
 - **Explicit admission.** Every fact needs a predicate → field → view-operation rule. Unknown facts, ownership conflicts, invalid references and projection/catalog disagreements reject the whole build with every violation reported.
 - **Mapped fact groups.** Table and domain scalars (Finding 10), the table's tags, columns, extension, domains and lineage, the non-deleted scope (Finding 12), and containment links and membership for independently readable databases, schemas and services (Finding 13).
-- **Real authorization alignment.** With `DefaultAuthorizer` and database-loaded policy attributes, fresh-request in-process decisions matched REST across six phases on one user and four tables (see "Integration run").
+- **Real authorization alignment.** With `DefaultAuthorizer` and database-loaded policy attributes, fresh-request in-process decisions matched REST across six phases on one user and four tables (see "Integration run"). The rejection test in the same class adds a fifth, soft-deleted table.
 - **Fail-closed on live data.** API-created entities still reject the build, and the regression asserts which deferred facts cause it.
 - **Test query profile.** It rejects every tested way of reading outside the model (22 forms).
 
 ### Unsupported facts (each rejects the build today)
 
-- **Tag application:** `om:labelType` and `om:tagState` written onto shared tag nodes (Finding 3).
-- **Lineage details:** `om:hasLineageDetails` and the edge-owned nodes under it (Finding 4).
-- **Joins:** `om:joins`, a literal naming other tables.
-- **Domains:** membership `om:has`, domain lineage (`om:upstream`, `om:downstream`, `prov:wasDerivedFrom` on a domain) and `om:childrenCount` (Finding 11).
-- **Services:** `om:hasConnection`, `om:testConnectionResult`, `om:pipelines`, and `om:contains` on a service.
-- **Container fields:** the membership lists `om:tables` and `om:databaseSchemas`, both profiler configs, `om:default`, `om:hasLocation`, `skos:prefLabel`, `om:style`, `om:sourceHash`, `om:dataContract`, and owners, followers, tags, domains, certification and lifecycle on a container.
-- **Other operations:** usage, sample data, tests, queries and profiles, which need operations other than `VIEW_BASIC` (Finding 6).
-- **Every other entity type.** Only tables, tags, domains, database services, databases and schemas have a node kind. As a candidate, a dashboard, pipeline, topic, glossary term, user, team or any other type rejects the build as an unmapped resource. Referenced from an admitted fact without being a candidate, a readable one is a scope error and an unreadable one is dropped as hidden.
+Every fact below rejects the build. The two tiers differ in evidence, not in behaviour: **[tested]** marks a family a local or integration test drives, and **[by construction]** marks one that no test drives, where rejection follows from the absence of a mapping alone (Finding 14).
+
+- **Tag application:** [tested] `om:labelType` and `om:tagState` written onto shared tag nodes (Finding 3).
+- **Lineage details:** [tested] `om:hasLineageDetails` and the edge-owned nodes under it (Finding 4).
+- **Joins:** [tested, integration only] `om:joins`, a literal naming other tables.
+- **Domains:** membership `om:has` and `om:upstream` on a domain [tested, integration only]; `om:downstream`, `prov:wasDerivedFrom` and `om:childrenCount` on a domain [tested locally, Finding 14] (Finding 11).
+- **Services:** [tested] `om:hasConnection`, `om:testConnectionResult`, `om:pipelines`, and `om:contains` on a service.
+- **Container fields:** the membership lists `om:tables` and `om:databaseSchemas`, `om:databaseSchemaProfilerConfig`, `om:default`, and tags and domains on a container [tested]; `om:databaseProfilerConfig`, `om:hasLocation`, `skos:prefLabel`, `om:style`, `om:sourceHash`, `om:dataContract`, and owners, followers, certification and lifecycle on a container [by construction].
+- **Other operations:** sample data, profiles and query text on a table [tested, Finding 14]; usage and tests [by construction]. All need operations other than `VIEW_BASIC` (Finding 6).
+- **Every other entity type.** Only tables, tags, domains, database services, databases and schemas have a node kind. As a candidate, a dashboard, pipeline, topic, glossary term, user, team or any other type rejects the build as an unmapped resource; an ingestion pipeline candidate stands for the family in a test (Finding 14). Referenced from an admitted fact without being a candidate, a readable one is a scope error and an unreadable one is dropped as hidden.
 - **Owned blank-node structures**, by design, with no test.
 
-A known admission gap that is **not** closed: only the four containment predicates require an entity object. Every other relationship predicate still admits a literal object once mapped, which would bypass that predicate's target check.
+A known admission gap that is **not** closed: the four containment predicates require an entity object, and the four owned-node predicates (`om:hasColumn`, `om:hasChildColumn`, `om:hasExtension`, `om:hasExtensionProperty`) reject a literal where they resolve their child. The remaining relationship predicates — `om:hasTag`, `om:domains`, `om:upstream`, `om:downstream` and `prov:wasDerivedFrom` — still admit a literal object, which would bypass that predicate's target check.
 
 ### Permission-contract questions
 
@@ -393,7 +402,7 @@ A known admission gap that is **not** closed: only the four containment predicat
 - **Candidate selection evaluates every catalog resource.** A real system needs a pre-filter whose completeness is proven.
 - **Retrieval is not pinned to one dataset** during blue/green promotion or in-place rebuild (ADR F8), and remote cancellation is not shown (F9).
 - **Freshness beyond one JVM:** cross-pod invalidation, in-flight requests and policy edits are not covered.
-- **Remote retrieval evidence is thin:** one Fuseki-backed run of 56 tests on arm64; the 30 later tests have not run through Fuseki.
+- **Remote retrieval evidence is thin:** one Fuseki-backed run of 56 tests on arm64; the 40 later tests have not run through Fuseki.
 - **No CI coverage:** neither the RDF integration profile nor the opt-in Fuseki class runs in CI.
 
 ### Follow-up work (blocks production RBAC, not necessarily this experiment)

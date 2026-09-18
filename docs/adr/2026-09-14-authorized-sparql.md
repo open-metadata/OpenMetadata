@@ -100,7 +100,7 @@ Policy questions answered above are closed: fact and shared-node authorization f
 
 ## Next steps
 
-- [x] Test the authorized-model approach on four assets, including one hidden asset; verify counts and paths cannot reveal it. This is a test-only prototype; see [docs/rdf-authorization-experiment.md](../rdf-authorization-experiment.md). As of 2026-09-17: 86 local tests pass on in-process Jena; the opt-in Fuseki-backed variant last passed with the 56 tests that existed on 2026-09-14.
+- [x] Test the authorized-model approach on four assets, including one hidden asset; verify counts and paths cannot reveal it. This is a test-only prototype; see [docs/rdf-authorization-experiment.md](../rdf-authorization-experiment.md). As of 2026-09-18: 96 local tests pass on in-process Jena; the opt-in Fuseki-backed variant last passed with the 56 tests that existed on 2026-09-14.
 - [x] Check in-process authorization against real OpenMetadata REST decisions on one fixture: six domain and role phases, including a revocation, matched (2 integration tests pass).
 - [ ] Verify field/shared-node permissions and retrieval completeness against existing OpenMetadata behavior. Partly done: table and domain scalars, the non-deleted scope and containment for readable containers are mapped; tag application, lineage details, joins, domain membership, domain lineage and service secrets still fail closed, so live projections are still rejected. See the experiment's "Status for review".
 - [ ] Measure practical memory, latency, and execution limits at representative scope.
