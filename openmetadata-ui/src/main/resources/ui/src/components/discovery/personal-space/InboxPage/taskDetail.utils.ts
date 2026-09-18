@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import { TIER_CATEGORY } from '../../../../constants/constants';
 import {
   EntityReference,
   Task,
@@ -26,7 +27,6 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
-import { getTierTags } from '../../../../utils/TablePureUtils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import {
   TaskAboutEntity,
@@ -40,6 +40,11 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 /** The tag prefix Collate classifies personally-identifiable columns under. */
 const PII_TAG_PREFIX = 'PII.';
+
+// The classification prefixes are read here rather than through the table
+// utils' `getTierTags`: that module reaches the customization and permission
+// layers at import time, which this file must not drag into the task list.
+const TIER_TAG_PREFIX = `${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`;
 
 // Type → badge label / colour / icon. Colour carries meaning here (an incident
 // reads red, an access request blue), so it is declared per type rather than
@@ -452,7 +457,7 @@ export const deriveTaskAboutEntity = (
 
   return {
     entity,
-    tier: isEmpty(tags) ? undefined : getTierTags(tags),
+    tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
     piiColumnCount: columns?.filter((column) =>
       (column.tags ?? []).some((tag) => tag.tagFQN?.startsWith(PII_TAG_PREFIX))
