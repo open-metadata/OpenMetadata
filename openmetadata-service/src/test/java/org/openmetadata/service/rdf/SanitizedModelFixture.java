@@ -356,6 +356,14 @@ final class SanitizedModelFixture {
         .toList();
   }
 
+  /** The catalog plus a candidate of a type no reviewed mapping covers. */
+  static List<CatalogResource> catalogWithUnmappedType() {
+    return Stream.concat(
+            catalog().stream(),
+            Stream.of(new CatalogResource(Entity.INGESTION_PIPELINE, PIPELINE_ID, List.of())))
+        .toList();
+  }
+
   /**
    * Catalog state of entities outside the candidates: E is soft-deleted, one live table is
    * readable, one carries the restricted tag. Anything else is unknown, so the builder treats it as

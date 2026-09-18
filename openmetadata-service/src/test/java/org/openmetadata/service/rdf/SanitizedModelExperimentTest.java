@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.CONSISTENCY_FAILURE;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.MAX_REFERENCE_LOOKUPS;
+import static org.openmetadata.service.rdf.SanitizedModelBuilder.OM;
 import static org.openmetadata.service.rdf.SanitizedModelBuilder.SCOPE_ERROR;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.BASE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.DATABASE_ID;
@@ -64,6 +65,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.CatalogResource;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.FactAdmissionException;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.KnowledgeSource;
@@ -85,6 +87,8 @@ class SanitizedModelExperimentTest {
       ASK { { <C> om:isDeleted ?deleted }
             UNION { <C> <http://www.w3.org/ns/prov#invalidatedAtTime> ?invalidatedAt } }
       """;
+  private static final String PROV = "http://www.w3.org/ns/prov#";
+
   private static final String PREFIXES =
       """
       PREFIX om: <https://open-metadata.org/ontology/>
@@ -286,8 +290,8 @@ class SanitizedModelExperimentTest {
   @Test
   void tagApplicationStateOnASharedTagFailsClosed() {
     SanitizedModelFixture.addTagApplicationState(store);
-    assertFailsClosedOn(BASE + "ontology/labelType");
-    assertFailsClosedOn(BASE + "ontology/tagState");
+    assertFailsClosedOn(OM + "labelType");
+    assertFailsClosedOn(OM + "tagState");
   }
 
   @Test
@@ -488,11 +492,9 @@ class SanitizedModelExperimentTest {
     SanitizedModelFixture.addChildMembershipLists(store);
     final FactAdmissionException failure = failsClosed(this::sanitizedWithContainers);
     assertTrue(
-        failure.getMessage().contains(BASE + "ontology/tables on DATABASE_SCHEMA"),
-        failure.getMessage());
+        failure.getMessage().contains(OM + "tables on DATABASE_SCHEMA"), failure.getMessage());
     assertTrue(
-        failure.getMessage().contains(BASE + "ontology/databaseSchemas on DATABASE"),
-        failure.getMessage());
+        failure.getMessage().contains(OM + "databaseSchemas on DATABASE"), failure.getMessage());
   }
 
   /**
@@ -515,7 +517,7 @@ class SanitizedModelExperimentTest {
     insertKnowledge("%s om:%s \"service.db.schema\"".formatted(subject, predicate));
     assertFailsClosedOn(
         this::sanitizedWithContainers,
-        CONSISTENCY_FAILURE + BASE + "ontology/" + predicate + " must reference an entity");
+        CONSISTENCY_FAILURE + OM + predicate + " must reference an entity");
   }
 
   @ParameterizedTest(name = "om:{0}")
@@ -523,7 +525,7 @@ class SanitizedModelExperimentTest {
   void servicePayloadsAreRejected(final String predicate, final Consumer<Dataset> payload) {
     SanitizedModelFixture.addContainers(store);
     payload.accept(store);
-    assertFailsClosedOn(this::sanitizedWithContainers, BASE + "ontology/" + predicate);
+    assertFailsClosedOn(this::sanitizedWithContainers, OM + predicate);
   }
 
   private static Stream<Arguments> servicePayloadsOutsideTheMapping() {
@@ -539,22 +541,79 @@ class SanitizedModelExperimentTest {
   void childMembershipOfAServiceIsRejected() {
     SanitizedModelFixture.addContainers(store);
     SanitizedModelFixture.addServiceMembership(store);
-    assertFailsClosedOn(
-        this::sanitizedWithContainers, BASE + "ontology/contains on DATABASE_SERVICE");
+    assertFailsClosedOn(this::sanitizedWithContainers, OM + "contains on DATABASE_SERVICE");
   }
 
   @Test
   void containerFieldsOutsideTheReviewedMappingStillRejectTheBuild() {
     SanitizedModelFixture.addContainers(store);
     SanitizedModelFixture.addSchemaProfilerConfig(store);
+    assertFailsClosedOn(this::sanitizedWithContainers, OM + "databaseSchemaProfilerConfig");
+  }
+
+  /**
+   * Families the experiment names as unsupported without another test behind them. Each predicate is
+   * one the projection emits, on a node kind whose reviewed map leaves it out.
+   */
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("tableFactsOutsideTheMapping")
+  void tableFactFamiliesWithoutAMappingRejectTheBuild(final String violation, final String fact) {
+    insertKnowledge("<A> " + fact);
+    assertFailsClosedOn(violation);
+  }
+
+  private static Stream<Arguments> tableFactsOutsideTheMapping() {
+    return Stream.of(
+        arguments(OM + "hasSampleData on TABLE", "om:hasSampleData 'rows of sampled data'"),
+        arguments(OM + "hasProfile on TABLE", "om:hasProfile 'a column profile'"),
+        arguments(OM + "hasQueryText on TABLE", "om:hasQueryText 'select * from a'"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("domainFactsOutsideTheMapping")
+  void domainFactFamiliesWithoutAMappingRejectTheBuild(final String violation, final String fact) {
+    insertKnowledge("<D_VISIBLE> " + fact);
+    assertFailsClosedOn(this::sanitizedWithDomains, violation);
+  }
+
+  private static Stream<Arguments> domainFactsOutsideTheMapping() {
+    return Stream.of(
+        arguments(OM + "childrenCount on DOMAIN", "om:childrenCount 3"),
+        arguments(OM + "downstream on DOMAIN", "om:downstream <A>"),
+        arguments(PROV + "wasDerivedFrom on DOMAIN", "<" + PROV + "wasDerivedFrom> <A>"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("containerFactsOutsideTheMapping")
+  void containerFactFamiliesWithoutAMappingRejectTheBuild(
+      final String violation, final String fact) {
+    SanitizedModelFixture.addContainers(store);
+    insertKnowledge(fact);
+    assertFailsClosedOn(this::sanitizedWithContainers, violation);
+  }
+
+  private static Stream<Arguments> containerFactsOutsideTheMapping() {
+    return Stream.of(
+        arguments(OM + "default on DATABASE", "<DATABASE> om:default true"),
+        arguments(OM + "hasTag on DATABASE_SCHEMA", "<SCHEMA> om:hasTag <T_SHARED>"),
+        arguments(OM + "domains on DATABASE_SCHEMA", "<SCHEMA> om:domains <D_VISIBLE>"));
+  }
+
+  /** Every entity type outside the reviewed kinds, which the fixture stands for with a pipeline. */
+  @Test
+  void aCandidateOfAnUnmappedEntityTypeRejectsTheBuild() {
     assertFailsClosedOn(
-        this::sanitizedWithContainers, BASE + "ontology/databaseSchemaProfilerConfig");
+        () ->
+            sanitized(
+                SanitizedModelFixture.catalogWithUnmappedType(),
+                SanitizedModelFixture.restrictedTablesHidden()),
+        "No mapping for resource " + Entity.INGESTION_PIPELINE);
   }
 
   @Test
   void lineageDetailsWithoutAPermissionMappingFailClosed() {
     SanitizedModelFixture.addLineageDetails(store, TABLE_A, TABLE_D);
-    assertFailsClosedOn(BASE + "ontology/hasLineageDetails");
+    assertFailsClosedOn(OM + "hasLineageDetails");
   }
 
   @Test
@@ -747,22 +806,21 @@ class SanitizedModelExperimentTest {
   }
 
   private SanitizedModel sanitizedWithDomains() {
-    return new SanitizedModelBuilder(
-            source(store),
-            SanitizedModelFixture.catalogWithDomains(),
-            SanitizedModelFixture.references(),
-            SanitizedModelFixture.restrictedTablesAndDomainsHidden(),
-            TRIPLE_BUDGET)
-        .build();
+    return sanitized(
+        SanitizedModelFixture.catalogWithDomains(),
+        SanitizedModelFixture.restrictedTablesAndDomainsHidden());
   }
 
   private SanitizedModel sanitizedWithContainers() {
+    return sanitized(
+        SanitizedModelFixture.catalogWithContainers(),
+        SanitizedModelFixture.restrictedTablesAndSchemasHidden());
+  }
+
+  private SanitizedModel sanitized(
+      final List<CatalogResource> catalog, final CallerPermissions permissions) {
     return new SanitizedModelBuilder(
-            source(store),
-            SanitizedModelFixture.catalogWithContainers(),
-            SanitizedModelFixture.references(),
-            SanitizedModelFixture.restrictedTablesAndSchemasHidden(),
-            TRIPLE_BUDGET)
+            source(store), catalog, SanitizedModelFixture.references(), permissions, TRIPLE_BUDGET)
         .build();
   }
 

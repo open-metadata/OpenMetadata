@@ -7,6 +7,7 @@ import static java.util.stream.Collectors.toUnmodifiableMap;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 final class SanitizedModelBuilder {
   static final String BASE = "https://open-metadata.org/";
   static final String KNOWLEDGE = BASE + "graph/knowledge";
-  private static final String OM = BASE + "ontology/";
+  static final String OM = BASE + "ontology/";
   private static final String TYPE = RDF.type.getURI();
   private static final String LABEL = RDFS.label.getURI();
   private static final String FQN = OM + "fullyQualifiedName";
@@ -230,8 +231,10 @@ final class SanitizedModelBuilder {
               ViewField.EXTENSION));
 
   /**
-   * Containment predicates whose object must be another entity. Every other relationship predicate
-   * still admits a literal object; closing that shape for them is a separate, unreviewed change.
+   * Containment predicates whose object must be another entity. The owned-node predicates in {@link
+   * #OWNED_CHILD_BY_PREDICATE} reject a literal through {@code requireIri}; every remaining
+   * relationship predicate still admits one, and closing that shape is a separate, unreviewed
+   * change.
    */
   private static final Set<String> ENTITY_OBJECT_PREDICATES =
       Set.of(CONTAINS, BELONGS_TO_SERVICE, BELONGS_TO_DATABASE, BELONGS_TO_SCHEMA);
@@ -260,6 +263,18 @@ final class SanitizedModelBuilder {
           "http://www.w3.org/2004/02/skos/core#Concept",
           "http://www.w3.org/2004/02/skos/core#Collection",
           "http://www.w3.org/ns/prov#Entity");
+
+  /** Every predicate some node kind maps, so a test reads the map instead of copying it. */
+  static Set<String> mappedPredicates() {
+    final Set<String> predicates = new HashSet<>();
+    FIELD_BY_PREDICATE.values().forEach(fields -> predicates.addAll(fields.keySet()));
+    return Set.copyOf(predicates);
+  }
+
+  /** The type terms a fact may carry, exposed for the same reason. */
+  static Set<String> approvedTypes() {
+    return TYPE_VOCABULARY;
+  }
 
   private final KnowledgeSource source;
   private final Map<String, CatalogResource> catalogByIri;

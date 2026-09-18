@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.rdf.SanitizedModelBuilder.OM;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.ws.rs.core.SecurityContext;
@@ -45,6 +46,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -109,15 +112,20 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * <p>The generic integration profiles include every IT but start no Fuseki, so the class runs only
  * with {@code enableRdf=true}. A class-level condition is used because Failsafe reports it as
  * skipped tests, whereas an aborted {@code @BeforeAll} assumption is reported as no tests at all.
+ *
+ * <p>It lives in the builder's package, not in {@code org.openmetadata.it.tests}, because it drives
+ * the package-private experiment builder from {@code openmetadata-service}'s test jar. Moving it
+ * would mean publishing that experiment's types. Both tests await the same asynchronous projection
+ * of a shared graph, so they run on one thread like {@code RdfRelationExclusionsIT}.
  */
 @EnabledIfSystemProperty(
     named = "enableRdf",
     matches = "true",
     disabledReason = "RDF is disabled for this run; use the postgres-rdf-tests profile")
 @ExtendWith(TestNamespaceExtension.class)
+@Execution(ExecutionMode.SAME_THREAD)
 class RdfAuthorizationAlignmentIT {
   private static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
-  private static final String OM = "https://open-metadata.org/ontology/";
   private static final String NO_REQUESTED_FIELDS = "";
   private static final String NO_INCLUDE_RELATIONS_PARAM = null;
 
@@ -141,29 +149,6 @@ class RdfAuthorizationAlignmentIT {
           UNMAPPED_PREDICATE + OM + "has on DOMAIN",
           UNMAPPED_PREDICATE + OM + "upstream on DOMAIN",
           UNMAPPED_PREDICATE + OM + "joins on TABLE");
-
-  /** Terms the builder now maps; live facts using them must be admitted, not reported as gaps. */
-  private static final Set<String> MAPPED_TERMS =
-      Set.of(
-          "http://purl.org/dc/terms/description",
-          "http://purl.org/dc/terms/modified",
-          "http://purl.org/dc/terms/hasVersion",
-          "http://www.w3.org/ns/dcat#version",
-          OM + "hasServiceType",
-          OM + "entityStatus",
-          OM + "processedLineage",
-          OM + "isDeleted",
-          OM + "domainType",
-          OM + "belongsToService",
-          OM + "belongsToDatabase",
-          OM + "belongsToSchema",
-          OM + "Domain",
-          OM + "DatabaseService",
-          OM + "Database",
-          OM + "DatabaseSchema",
-          "http://www.w3.org/ns/dcat#Catalog",
-          "http://www.w3.org/ns/dcat#DataService",
-          "http://www.w3.org/2004/02/skos/core#Collection");
 
   /**
    * Predicate names, object kinds, referenced entity types and counts for one node. {@code ?object}
@@ -292,12 +277,12 @@ class RdfAuthorizationAlignmentIT {
     assertInstanceOf(ReferenceState.Live.class, states.get(liveIri.iri()));
   }
 
+  /** The builder's own map is the source of truth, so a copy here cannot drift away from it. */
   private static boolean namesMappedTerm(final String violation) {
-    return MAPPED_TERMS.stream()
-        .anyMatch(
-            term ->
-                violation.startsWith(UNMAPPED_PREDICATE + term + " on ")
-                    || violation.equals("Type " + term + UNAPPROVED_TYPE));
+    return SanitizedModelBuilder.mappedPredicates().stream()
+            .anyMatch(predicate -> violation.startsWith(UNMAPPED_PREDICATE + predicate + " on "))
+        || SanitizedModelBuilder.approvedTypes().stream()
+            .anyMatch(type -> violation.equals("Type " + type + UNAPPROVED_TYPE));
   }
 
   private static boolean isMappingGap(final String violation) {
