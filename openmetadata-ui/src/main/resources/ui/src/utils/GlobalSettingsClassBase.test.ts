@@ -14,6 +14,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
+import { AuthProvider } from '../generated/settings/settings';
 import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import globalSettingsClassBase, {
   GlobalSettingsClassBase,
@@ -28,6 +29,21 @@ jest.mock('./PermissionsUtils', () => ({
   ...jest.requireActual('./PermissionsUtils'),
   userPermissions: {
     hasViewPermissions: jest.fn(),
+  },
+}));
+
+const NON_PASSWORD_OWNING_PROVIDERS = Object.values(AuthProvider).filter(
+  (provider) =>
+    provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
+);
+
+let mockAuthProvider: AuthProvider | undefined = AuthProvider.Basic;
+
+jest.mock('../hooks/useApplicationStore', () => ({
+  useApplicationStore: {
+    getState: jest.fn(() => ({
+      authConfig: { provider: mockAuthProvider },
+    })),
   },
 }));
 
@@ -52,7 +68,14 @@ describe('GlobalSettingsClassBase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthProvider = AuthProvider.Basic;
   });
+
+  const getLoginConfigurationItem = (isAdminUser: boolean) =>
+    globalSettingsClassBase
+      .getGlobalSettingsMenuWithPermission(mockNoPermissions, isAdminUser)
+      .find((item) => item.key === 'preferences')
+      ?.items?.find((item) => item.key === 'preferences.loginConfiguration');
 
   describe('getGlobalSettingsMenuWithPermission', () => {
     it('should return menu items for admin user with all permissions', () => {
@@ -532,6 +555,31 @@ describe('GlobalSettingsClassBase', () => {
       );
 
       expect(searchSettingsItem?.items).toBeDefined();
+    });
+
+    it.each([AuthProvider.Basic, AuthProvider.LDAP])(
+      'should expose login configuration to an admin under %s, whose login OpenMetadata owns',
+      (provider) => {
+        mockAuthProvider = provider;
+
+        expect(getLoginConfigurationItem(true)?.isProtected).toBe(true);
+      }
+    );
+
+    // Derived from the enum rather than hand-listed so a provider added to the schema is covered
+    // here by default — the safe direction, since a new provider is far likelier to be an external
+    // IdP than one whose login OpenMetadata owns.
+    it.each([...NON_PASSWORD_OWNING_PROVIDERS, undefined])(
+      'should hide login configuration under %s, where the settings never take effect',
+      (provider) => {
+        mockAuthProvider = provider;
+
+        expect(getLoginConfigurationItem(true)?.isProtected).toBe(false);
+      }
+    );
+
+    it('should keep login configuration hidden from a non-admin even under basic auth', () => {
+      expect(getLoginConfigurationItem(false)?.isProtected).toBe(false);
     });
 
     it('should mark data asset rules as beta', () => {

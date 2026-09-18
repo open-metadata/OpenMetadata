@@ -23,6 +23,8 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { isBasicAuthProvider } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -357,6 +359,11 @@ const SettingCategoryRoute = () => {
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
+
+  const isLoginConfigEnabled = isBasicAuthProvider(authProvider);
 
   return (
     <Routes>
@@ -444,13 +451,17 @@ const SettingsRouter = () => {
 
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <EditLoginConfiguration
-              pageTitle={t('label.edit-entity', {
-                entity: t('label.login-configuration'),
-              })}
-            />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <EditLoginConfiguration
+                pageTitle={t('label.edit-entity', {
+                  entity: t('label.login-configuration'),
+                })}
+              />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG.replace(
           ROUTES.SETTINGS,
@@ -871,9 +882,13 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AdminProtectedRoute hasPermission={false}>
-            <LoginConfigurationPage />
-          </AdminProtectedRoute>
+          isLoginConfigEnabled ? (
+            <AdminProtectedRoute hasPermission={false}>
+              <LoginConfigurationPage />
+            </AdminProtectedRoute>
+          ) : (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          )
         }
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
