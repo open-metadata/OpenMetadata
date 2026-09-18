@@ -56,7 +56,7 @@ interface ActivityFeedActionsProps {
    * Replaces the provider-backed delete. Required by callers outside the
    * activity feed, which have no conversation to delete a post from.
    */
-  onDelete?: () => void;
+  onDelete?: () => void | Promise<void>;
   /**
    * Reveal styling from the owning card. These actions stay mounted so they
    * remain reachable by Tab and by a screen reader; a consumer that wants them
@@ -134,14 +134,20 @@ const ActivityFeedActions = ({
     updateEditorFocus(true);
   };
 
-  const handleDelete = () => {
-    setShowDeleteDialog(false);
-
+  const handleDelete = async () => {
     if (onDelete) {
-      onDelete();
+      try {
+        await onDelete();
+        setShowDeleteDialog(false);
+      } catch {
+        // Leave the confirmation open so the delete can be retried. The caller
+        // owns reporting the failure.
+      }
 
       return;
     }
+
+    setShowDeleteDialog(false);
 
     if (!conversationId) {
       return;

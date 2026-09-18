@@ -318,6 +318,12 @@ jest.mock(
   })
 );
 
+const mockShowErrorToast = jest.fn();
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+}));
+
 jest.mock('../../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../../rest/tasksAPI'),
   resolveTask: jest.fn().mockResolvedValue({}),
@@ -1370,6 +1376,34 @@ describe('TaskTabNew Component', () => {
         MOCK_TASK_WITH_COMMENT.id,
         true
       );
+    });
+
+    it('should toast and rethrow when deleting the comment fails', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      deleteTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      // Rethrown on purpose: the card keeps its confirmation open only if the
+      // callback it awaited actually rejects.
+      await expect(
+        (lastCommentCardProps().onDelete as () => Promise<void>)()
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
+    });
+
+    it('should toast and rethrow when editing the comment fails', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      editTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      await expect(
+        (lastCommentCardProps().onEdit as (m: string) => Promise<void>)('x')
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
     });
 
     it('should edit the comment and refetch the thread', async () => {

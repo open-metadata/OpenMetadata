@@ -317,6 +317,28 @@ describe('CommentCard', () => {
       });
     });
 
+    it('should keep the editor open when the save fails', async () => {
+      onEdit.mockRejectedValueOnce(new Error('boom'));
+      renderCommentCard();
+
+      await hoverCard();
+
+      fireEvent.click(screen.getByTestId('edit-button'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('send-button'));
+
+      await waitFor(() => {
+        expect(onEdit).toHaveBeenCalled();
+      });
+
+      // Dismissing here would look like the edit had been saved.
+      expect(screen.getByTestId('feed-editor')).toBeInTheDocument();
+    });
+
     it('should hide editor and show preview after update', async () => {
       renderCommentCard();
 

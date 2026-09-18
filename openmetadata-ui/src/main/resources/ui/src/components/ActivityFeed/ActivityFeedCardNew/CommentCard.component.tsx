@@ -110,9 +110,14 @@ const CommentCard = ({
     setIsEditPost(!isEditPost);
   };
 
-  const handleSave = useCallback(() => {
-    onEdit(postMessage ?? '');
-    setIsEditPost(false);
+  const handleSave = useCallback(async () => {
+    try {
+      await onEdit(postMessage ?? '');
+      setIsEditPost(false);
+    } catch {
+      // Keep the editor open and the draft intact so the edit can be retried.
+      // The caller owns reporting the failure.
+    }
   }, [onEdit, postMessage]);
 
   const defaultValue = useMemo(

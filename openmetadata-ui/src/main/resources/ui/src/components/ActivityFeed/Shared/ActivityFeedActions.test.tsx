@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   Conversation,
   ConversationReply,
@@ -290,6 +290,21 @@ describe('ActivityFeedActions', () => {
 
     expect(onDelete).toHaveBeenCalled();
     expect(mockDeleteFeed).not.toHaveBeenCalled();
+  });
+
+  it('keeps the confirmation open when onDelete rejects', async () => {
+    const onDelete = jest.fn().mockRejectedValue(new Error('boom'));
+
+    render(<ActivityFeedActions canDelete isReply onDelete={onDelete} />);
+    fireEvent.click(screen.getByTestId('delete-message'));
+    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    await waitFor(() => {
+      expect(onDelete).toHaveBeenCalled();
+    });
+
+    // Closing here would look like the delete had gone through.
+    expect(screen.getByTestId('confirmation-modal')).toBeInTheDocument();
   });
 
   it('closes the confirmation without deleting', () => {

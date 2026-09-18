@@ -1854,12 +1854,28 @@ export const TaskTabNew = ({
               key={comment.id}
               message={comment.message}
               onDelete={async () => {
-                await deleteTaskComment(task.id, comment.id);
-                await fetchUpdatedThread(task.id, true);
+                try {
+                  await deleteTaskComment(task.id, comment.id);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  // The REST helpers throw without surfacing anything of their
+                  // own. Rethrow after toasting so the card leaves the
+                  // confirmation open for a retry instead of dismissing it as
+                  // though the delete had succeeded.
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
               }}
               onEdit={async (message) => {
-                await editTaskComment(task.id, comment.id, message);
-                await fetchUpdatedThread(task.id, true);
+                try {
+                  await editTaskComment(task.id, comment.id, message);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
               }}
             />
           );
