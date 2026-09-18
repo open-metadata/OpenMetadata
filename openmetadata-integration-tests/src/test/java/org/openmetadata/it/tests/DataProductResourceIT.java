@@ -787,6 +787,46 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .update(editableSchema.getId().toString(), editableSchema);
   }
 
+  @Test
+  void test_domainRemovalDetachesDataProductsFromAssets(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance_removal");
+
+    DataProduct product =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_removal"))
+                .withDescription("Domains will be cleared")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_removal", finance);
+    bulkAddAssets(
+        product.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+
+    // Clearing the product's domains leaves the schema with no domains; an asset with a data
+    // product but no domains fails validation, so the assignment must be detached.
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(product.getId().toString(), "domains");
+    current.setDomains(List.of());
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(schemaDataProducts, product.getId()),
+        "A data product must be detached from an asset left with no domains");
+
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after domain removal");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
   private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
     DataProduct current =
         SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");

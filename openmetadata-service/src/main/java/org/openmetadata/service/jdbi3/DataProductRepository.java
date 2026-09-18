@@ -1059,7 +1059,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       if (!assetRecords.isEmpty()
           && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
         detachConflictingDataProductsAfterDomainChange(
-            findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null), updatedDomains);
+            findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null));
       }
     }
 
@@ -1192,24 +1192,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
-  private void detachConflictingDataProductsAfterDomainChange(
-      List<EntityReference> assets, List<EntityReference> newDomains) {
-    Set<UUID> newDomainIds =
-        newDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  private void detachConflictingDataProductsAfterDomainChange(List<EntityReference> assets) {
     for (EntityReference asset : assets) {
       Set<UUID> assetDomainIds =
           findFrom(asset.getId(), asset.getType(), Relationship.HAS, DOMAIN, NON_DELETED).stream()
               .map(EntityReference::getId)
               .collect(Collectors.toSet());
       detachConflictingDataProducts(asset, assetDomainIds);
-      detachConflictingDataProductsFromDescendants(asset, newDomainIds);
+      detachConflictingDataProductsFromDescendants(asset, assetDomainIds);
     }
   }
 
   /**
-   * Descendants with no domain of their own inherit this asset's new domains, so their assigned data
-   * products face the same conflict. A descendant that carries its own domain is unaffected and its
-   * subtree keeps inheriting from it, so the walk stops there.
+   * Descendants with no domain of their own inherit this asset's effective domains, so their assigned
+   * data products face the same conflict. A descendant that carries its own domain is unaffected and
+   * its subtree keeps inheriting from it, so the walk stops there.
    */
   private void detachConflictingDataProductsFromDescendants(
       EntityReference asset, Set<UUID> inheritedDomainIds) {
@@ -1236,6 +1233,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private boolean conflictsWithDomains(EntityReference dataProduct, Set<UUID> effectiveDomainIds) {
+    // Mirror the validation rule: an entity with any data product but no domains always fails, so
+    // once the asset is left without domains every assignment must go.
+    if (effectiveDomainIds.isEmpty()) {
+      return true;
+    }
     Set<UUID> dataProductDomainIds =
         findFrom(dataProduct.getId(), DATA_PRODUCT, Relationship.CONTAINS, DOMAIN, NON_DELETED)
             .stream()
