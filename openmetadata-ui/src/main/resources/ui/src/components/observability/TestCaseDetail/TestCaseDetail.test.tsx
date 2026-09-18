@@ -337,6 +337,14 @@ describe('TestCaseDetail', () => {
     expect(screen.getByTestId('result-tab-body')).toBeInTheDocument();
   });
 
+  it('should align the detail header card with the inset tab content', () => {
+    render(<TestCaseDetail />);
+
+    expect(screen.getByTestId('test-case-header-container')).toHaveClass(
+      'tw:mx-4'
+    );
+  });
+
   it('should provide the shared incident data to the details header', () => {
     render(<TestCaseDetail />);
 

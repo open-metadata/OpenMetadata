@@ -16,9 +16,11 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
   Input,
+  Owner,
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   Button,
   Checkbox,
@@ -51,8 +53,6 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -106,6 +106,7 @@ import {
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
@@ -414,6 +415,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
+
+  // Consumer via useGenericContext(). No `deleted` argument: the old expression here
+  // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
+  // concept, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing
+  // to gate. permissions.Create sites left untouched — Create isn't a flagged
+  // operation for the no-raw-permission-access lint rule.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Task[]>
   >({});
@@ -1132,9 +1143,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
-              owners={reviewers}
+              owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
@@ -1448,7 +1459,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </Button>
           </Dropdown>
 
-          {getBulkEditButton(permissions.EditAll, handleEditGlossary)}
+          {getBulkEditButton(canEditAll, handleEditGlossary)}
 
           <Button
             className="text-primary remove-button-background-hover"
@@ -1482,6 +1493,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     statusDropdownMenu,
     searchInput,
     toggleExpandAll,
+    canEditAll,
   ]);
 
   const handleAddGlossaryTermClick = () => {

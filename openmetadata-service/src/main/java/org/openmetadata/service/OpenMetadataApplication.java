@@ -342,6 +342,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setAuditLogRepository(auditLogRepository);
     ResourceRegistry.addResource(
         Entity.AUDIT_LOG, List.of(MetadataOperation.AUDIT_LOGS), Collections.emptySet());
+    ResourceRegistry.addResource(
+        Entity.RDF, List.of(MetadataOperation.EXECUTE_SPARQL_QUERY), Collections.emptySet());
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);

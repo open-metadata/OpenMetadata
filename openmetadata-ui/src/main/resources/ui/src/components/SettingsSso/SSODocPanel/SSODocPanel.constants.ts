@@ -35,6 +35,11 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   secretKey: 'clientSecret',
   scopes: 'scopes',
   providerName: 'providerName',
+  emailClaim: 'emailClaim',
+  displayNameClaim: 'displayNameClaim',
+  adminEmails: 'adminEmails',
+  allowedEmailDomains: 'allowedEmailDomains',
+  botDomain: 'botDomain',
 };
 
 export const PROVIDER_FILE_MAP: Record<string, string> = {

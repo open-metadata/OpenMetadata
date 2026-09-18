@@ -17,6 +17,7 @@ import {
   ButtonGroupItem,
   Card,
   Dropdown,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -78,7 +79,6 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
@@ -764,7 +764,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
+          <Owner isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {
@@ -793,7 +793,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}
@@ -820,7 +819,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}

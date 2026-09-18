@@ -444,6 +444,11 @@ public class WorkflowHandler {
     }
   }
 
+  /** Whether this process is running a database migration rather than serving the application. */
+  public static boolean isMigrationContext() {
+    return initialized && instance.isMigrationContext;
+  }
+
   public ProcessEngineConfiguration getProcessEngineConfiguration() {
     if (processEngine != null) {
       return processEngine.getProcessEngineConfiguration();

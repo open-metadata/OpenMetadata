@@ -24,7 +24,12 @@ import { waitForAllLoadersToDisappear } from './entity';
 
 export const authenticateAdminPage = async (page: Page) => {
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-  const requiresLogin = await Promise.race([
+  // Promise.any, not Promise.race: only one of the two elements ever appears, so
+  // the losing waitFor keeps running until it times out or the page closes. With
+  // race, that loser's late rejection is unhandled and shows up in traces as a
+  // giant red "Wait for selector #email" spanning the whole test — misleading
+  // noise that points at a login stall that never happened. any() consumes it.
+  const requiresLogin = await Promise.any([
     page
       .locator('#email')
       .waitFor({ state: 'visible' })

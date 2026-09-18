@@ -349,7 +349,10 @@ export const addTeamAsReviewer = async (
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
   await teamsSearchResponse;
 
-  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
+  const ownerItem = page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: teamName });
+  await ownerItem.waitFor({ state: 'visible' });
 
   if (isSelectableInsideForm) {
     await ownerItem.click();
@@ -986,13 +989,11 @@ const testFilterWithSpecificOption = async (
 
   if (searchText) {
     const aggregateResponse = waitForAggregation(page, { value: searchText });
-    await page
-      .getByRole('textbox', { name: 'Search Service Type...' })
-      .fill(searchText);
+    await page.getByTestId('search-input').fill(searchText);
     await aggregateResponse;
   }
 
-  await page.locator(`[data-testid="${optionTestId}"]`).click();
+  await page.getByTestId('drop-down-menu').getByTestId(optionTestId).click();
 
   const filterResponse = page.waitForResponse(
     `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
@@ -1022,7 +1023,7 @@ const testFilterWithFirstOption = async (
   const dropdownMenu = page.getByTestId('drop-down-menu');
   await dropdownMenu.waitFor();
 
-  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
+  const options = dropdownMenu.getByRole('menuitemcheckbox');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -1095,7 +1096,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table-checkbox',
+    'table',
     'table'
   );
 
@@ -1103,7 +1104,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'Mysql-checkbox',
+    'mysql',
     'mysql',
     'Mysql'
   );
@@ -1872,10 +1873,9 @@ export const addMultiOwnerInDialog = async (data: {
     await searchOwner;
     await waitForAllLoadersToDisappear(page);
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     if (type === 'Teams') {
       if (isSelectableInsideForm) {

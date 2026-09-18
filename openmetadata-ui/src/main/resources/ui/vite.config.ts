@@ -355,6 +355,12 @@ export default defineConfig(async ({ mode }) => {
         '@react-types/shared',
         'tailwind-merge',
         'react-hook-form',
+        // i18next must share a single instance so initCoreI18n (called from
+        // index.tsx on the app's i18next) registers the `core` namespace that
+        // useCoreTranslation (in @openmetadata/ui-core-components) can read.
+        // Without dedup, the linked package resolves its own node_modules copy.
+        'i18next',
+        'react-i18next',
       ],
     },
 
@@ -515,6 +521,10 @@ export default defineConfig(async ({ mode }) => {
         // React copy — an "Invalid hook call" (`useRef` of null) in every RHF
         // form. `dedupe` alone does not cover the dev pre-bundle path.
         'react-hook-form',
+        // Same reason as the `dedupe` entries: the dev pre-bundle path must
+        // not hand the linked library a second i18next.
+        'i18next',
+        'react-i18next',
       ],
       esbuildOptions: {
         target: 'esnext',
