@@ -347,6 +347,69 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
   });
 
+  describe('same-resource request sequencing', () => {
+    it('does not clear a banner set by a newer same-resource response when an older sub-limit response resolves last', async () => {
+      // Two overlapping force fetches for the same resource resolve out of
+      // order: the later-started over-limit fetch must own the banner, and
+      // the earlier-started sub-limit fetch must not drop it. Without
+      // per-resource request sequencing the stale reply would re-check
+      // ownership, see the banner belongs to the same resource, and clear
+      // a valid over-limit banner.
+      let resolveSubLimit: (value: ResourceLimit) => void = () => {};
+      let resolveOverLimit: (value: ResourceLimit) => void = () => {};
+
+      // Older request (started first) returns sub-limit data.
+      mockedGetLimitByResource.mockReturnValueOnce(
+        new Promise<ResourceLimit>((resolve) => {
+          resolveSubLimit = resolve;
+        })
+      );
+      // Newer request (started second) returns over-limit data.
+      mockedGetLimitByResource.mockReturnValueOnce(
+        new Promise<ResourceLimit>((resolve) => {
+          resolveOverLimit = resolve;
+        })
+      );
+
+      const subLimitRefresh = useLimitStore
+        .getState()
+        .getResourceLimit('user', true, true);
+      const overLimitRefresh = useLimitStore
+        .getState()
+        .getResourceLimit('user', true, true);
+
+      // The newer request wins: resolve it first and install the banner.
+      resolveOverLimit(
+        buildLimitResponse({ currentCount: 11, softLimit: 7, hardLimit: 10 })
+      );
+      await overLimitRefresh;
+
+      const bannerAfterNewer = useLimitStore.getState().bannerDetails;
+
+      expect(bannerAfterNewer?.resource).toBe('user');
+      expect(bannerAfterNewer?.type).toBe('danger');
+      expect(bannerAfterNewer?.subheader).toContain(
+        'You have used 11 out of 10 of the User resource.'
+      );
+
+      // The older sub-limit reply resolves last and must not clobber the
+      // newer over-limit banner or the cached resourceLimit.
+      resolveSubLimit(
+        buildLimitResponse({ currentCount: 3, softLimit: 7, hardLimit: 10 })
+      );
+      await subLimitRefresh;
+
+      const survivingBanner = useLimitStore.getState().bannerDetails;
+
+      expect(survivingBanner?.resource).toBe('user');
+      expect(survivingBanner?.type).toBe('danger');
+      expect(survivingBanner?.subheader).toContain(
+        'You have used 11 out of 10 of the User resource.'
+      );
+      expect(useLimitStore.getState().resourceLimit.user.currentCount).toBe(11);
+    });
+  });
+
   describe('showBanner=false leaves the banner untouched', () => {
     it('does not set the banner when showBanner is false and the limit is exceeded', async () => {
       mockedGetLimitByResource.mockResolvedValueOnce(

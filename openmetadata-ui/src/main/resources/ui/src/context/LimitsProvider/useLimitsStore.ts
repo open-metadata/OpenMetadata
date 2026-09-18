@@ -101,6 +101,10 @@ export const useLimitStore = create<{
   config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit['featureLimitStatuses'][number]>;
   bannerDetails: BannerDetails | null;
+  // Monotonic per-resource counter of in-flight fetches. The most recent
+  // fetch holds the highest id, so a stale response (lower id) that resolves
+  // out of order can be detected and dropped before it mutates the store.
+  resourceRequestSeq: Record<string, number>;
   getResourceLimit: (
     resource: string,
     showBanner?: boolean,
@@ -116,6 +120,7 @@ export const useLimitStore = create<{
   config: null,
   resourceLimit: {},
   bannerDetails: null,
+  resourceRequestSeq: {},
 
   setConfig: (config: LimitConfig) => {
     set({ config });
@@ -144,7 +149,25 @@ export const useLimitStore = create<{
 
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
+      // Reserve a sequence id for this fetch; any later fetch for the same
+      // resource bumps it, so the most recent request holds the highest id.
+      set((state) => ({
+        resourceRequestSeq: {
+          ...state.resourceRequestSeq,
+          [resource]: (state.resourceRequestSeq[resource] ?? 0) + 1,
+        },
+      }));
+      const seq = get().resourceRequestSeq[resource];
+
       const limit = await getLimitByResource(resource);
+
+      // A newer fetch for this resource started while this one was in
+      // flight. Apply only the newer result, so a stale sub-limit reply
+      // cannot overwrite the resourceLimit or clear a banner the newer
+      // over-limit reply installed.
+      if (get().resourceRequestSeq[resource] !== seq) {
+        return limit.featureLimitStatuses[0];
+      }
 
       setResourceLimit(resource, limit.featureLimitStatuses[0]);
       rLimit = limit.featureLimitStatuses[0];
