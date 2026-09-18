@@ -1,0 +1,70 @@
+{
+  "counters" : {
+    "failedEvents" : 2,
+    "successEvents" : 0,
+    "totalEvents" : 3
+  },
+  "deliveredEventIds" : [ ],
+  "destinationStatus" : [ {
+    "destination" : "<destination>",
+    "status" : {
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination>",
+    "status" : {
+      "lastFailedAt" : "<time>",
+      "lastFailedReason" : "Internal Server Error",
+      "lastFailedStatusCode" : 500,
+      "nextAttempt" : "<time>",
+      "status" : "awaitingRetry",
+      "timestamp" : "<time>"
+    }
+  } ],
+  "failures" : [ {
+    "changeEvent" : {
+      "currentVersion" : 0.1,
+      "entity" : "{\"id\":\"e6e99c8a-6a01-3fba-8d55-2d3df7d246d1\",\"name\":\"orders\",\"fullyQualifiedName\":\"golden_service.golden_db.golden_schema.orders\",\"description\":\"Customer orders\",\"version\":0.1,\"updatedAt\":1767225600000,\"updatedBy\":\"admin\",\"columns\":[{\"name\":\"id\",\"dataType\":\"BIGINT\",\"tags\":[],\"children\":[]}],\"deleted\":false,\"processedLineage\":false,\"entityStatus\":\"Unprocessed\"}",
+      "entityFullyQualifiedName" : "golden_service.golden_db.golden_schema.orders",
+      "entityId" : "edba5d37-87cd-38a6-b58c-0dd89488e4ac",
+      "entityType" : "table",
+      "eventType" : "entityCreated",
+      "id" : "231caadc-df5d-3a1e-98e7-b9d02c3e344a",
+      "previousVersion" : 0.1,
+      "timestamp" : "<time>",
+      "userName" : "admin"
+    },
+    "failingSubscriptionId" : "<destination>",
+    "reason" : "Failed to publish event of destination type Webhook due to 1 of 2 recipients failed: Webhook delivery failed with HTTP 500: Internal Server Error ",
+    "source" : "SUBSCRIBER",
+    "timestamp" : "<time>"
+  }, {
+    "changeEvent" : {
+      "changeDescription" : {
+        "fieldsAdded" : [ ],
+        "fieldsDeleted" : [ ],
+        "fieldsUpdated" : [ {
+          "name" : "description",
+          "newValue" : "Customer orders, one row per order",
+          "oldValue" : "Customer orders"
+        } ],
+        "previousVersion" : 0.1
+      },
+      "currentVersion" : 0.2,
+      "entity" : "{\"id\":\"e6e99c8a-6a01-3fba-8d55-2d3df7d246d1\",\"name\":\"orders\",\"fullyQualifiedName\":\"golden_service.golden_db.golden_schema.orders\",\"description\":\"Customer orders\",\"version\":0.1,\"updatedAt\":1767225600000,\"updatedBy\":\"admin\",\"columns\":[{\"name\":\"id\",\"dataType\":\"BIGINT\",\"tags\":[],\"children\":[]}],\"deleted\":false,\"processedLineage\":false,\"entityStatus\":\"Unprocessed\"}",
+      "entityFullyQualifiedName" : "golden_service.golden_db.golden_schema.orders",
+      "entityId" : "edba5d37-87cd-38a6-b58c-0dd89488e4ac",
+      "entityType" : "table",
+      "eventType" : "entityUpdated",
+      "id" : "d0b07077-391d-3ba0-9c50-331bf66d2abc",
+      "previousVersion" : 0.1,
+      "timestamp" : "<time>",
+      "userName" : "admin"
+    },
+    "failingSubscriptionId" : "<destination>",
+    "reason" : "Failed to publish event of destination type Webhook due to 1 of 2 recipients failed: Webhook delivery failed with HTTP 500: Internal Server Error ",
+    "source" : "SUBSCRIBER",
+    "timestamp" : "<time>"
+  } ]
+}

@@ -314,26 +314,54 @@ public abstract class AbstractEventConsumer
   private boolean sendToDestinationType(
       ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
     Destination<ChangeEvent> publisher = destinations.getFirst();
-    // Resolve recipients from all destinations of this type for deduplication
+    boolean status = true;
+    try {
+      sendThroughPrimary(event, destinations, publisher, resolver);
+    } catch (EventPublisherException e) {
+      LOG.error("Failed to send alert: {}", e.getMessage());
+      recordSendFailure(e);
+      status = false;
+    } catch (RuntimeException e) {
+      // Anything unexpected costs this channel for this event, never the rest of the batch.
+      LOG.error("Unexpected error sending alert for change event {}", event.getId(), e);
+      recordSendFailure(unexpectedSendFailure(publisher, event, e));
+      status = false;
+    }
+    return status;
+  }
+
+  // Send via primary destination only, with deduplicated recipients (one send per type).
+  // Empty recipients is treated as successful (no-op send).
+  private void sendThroughPrimary(
+      ChangeEvent event,
+      List<Destination<ChangeEvent>> destinations,
+      Destination<ChangeEvent> publisher,
+      RecipientResolver resolver)
+      throws EventPublisherException {
     Set<Recipient> recipients = Set.of();
     if (publisher.requiresRecipients()) {
       List<SubscriptionDestination> subDestinations =
           destinations.stream().map(Destination::getSubscriptionDestination).toList();
       recipients = resolver.resolveRecipients(event, subDestinations);
     }
-    // Send via primary destination only, with deduplicated recipients (one send per type).
-    // Empty recipients is treated as successful (no-op send).
-    boolean status = true;
     if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-      try {
-        publisher.sendMessage(event, recipients);
-      } catch (EventPublisherException e) {
-        LOG.error("Failed to send alert: {}", e.getMessage());
-        handleFailedEvent(e, true);
-        status = false;
-      }
+      publisher.sendMessage(event, recipients);
     }
-    return status;
+  }
+
+  private static EventPublisherException unexpectedSendFailure(
+      Destination<ChangeEvent> publisher, ChangeEvent event, RuntimeException cause) {
+    return new EventPublisherException(
+        String.format("Unexpected error while sending: %s", cause.getMessage()),
+        Pair.of(publisher.getSubscriptionDestination().getId(), event));
+  }
+
+  private void recordSendFailure(EventPublisherException failure) {
+    try {
+      handleFailedEvent(failure, true);
+    } catch (RuntimeException recordingError) {
+      LOG.error("Failed to record a send failure: {}", failure.getMessage(), recordingError);
+    }
   }
 
   private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
@@ -551,7 +579,21 @@ public abstract class AbstractEventConsumer
           e);
 
     } finally {
-      persistTick(jobExecutionContext);
+      try {
+        persistTick(jobExecutionContext);
+      } finally {
+        closeDestinations();
+      }
+    }
+  }
+
+  private void closeDestinations() {
+    for (Destination<ChangeEvent> destination : destinationMap.values()) {
+      try {
+        destination.close();
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to close a destination of {}", eventSubscription.getName(), e);
+      }
     }
   }
 

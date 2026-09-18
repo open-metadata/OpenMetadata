@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
@@ -86,11 +87,12 @@ public class EmailPublisher implements Destination<ChangeEvent> {
               .filter(Objects::nonNull)
               .collect(Collectors.toSet());
 
-      // Send email to each recipient
-      for (String receiver : receivers) {
-        EmailUtil.sendNotificationEmail(
-            receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
-      }
+      IsolatedSends.sendToEach(
+          receivers,
+          this,
+          receiver ->
+              EmailUtil.sendNotificationEmail(
+                  receiver, emailMessage.getSubject(), emailMessage.getHtmlContent()));
 
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {

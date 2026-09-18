@@ -1,0 +1,48 @@
+{
+  "counters" : {
+    "failedEvents" : 0,
+    "successEvents" : 10,
+    "totalEvents" : 3
+  },
+  "deliveredEventIds" : [ "231caadc-df5d-3a1e-98e7-b9d02c3e344a", "d0b07077-391d-3ba0-9c50-331bf66d2abc" ],
+  "destinationStatus" : [ {
+    "destination" : "<destination-0>",
+    "status" : {
+      "lastSuccessfulAt" : "<time>",
+      "nextAttempt" : "<time>",
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination-1>",
+    "status" : {
+      "lastSuccessfulAt" : "<time>",
+      "nextAttempt" : "<time>",
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination-2>",
+    "status" : {
+      "lastSuccessfulAt" : "<time>",
+      "nextAttempt" : "<time>",
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination-3>",
+    "status" : {
+      "lastSuccessfulAt" : "<time>",
+      "nextAttempt" : "<time>",
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  }, {
+    "destination" : "<destination-4>",
+    "status" : {
+      "status" : "active",
+      "timestamp" : "<time>"
+    }
+  } ],
+  "failures" : [ ]
+}

@@ -22,7 +22,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +33,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.MSTeamsMessageDecorator;
@@ -81,19 +81,13 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       // Convert to JSON
       String json = JsonUtils.pojoToJson(teamsMessage);
 
-      // Convert type-agnostic Recipient objects to configured webhook requests
-      List<Invocation.Builder> targets =
+      List<WebhookRecipient> webhookRecipients =
           recipients.stream()
               .filter(WebhookRecipient.class::isInstance)
               .map(WebhookRecipient.class::cast)
-              .map(r -> r.getConfiguredRequest(client, json))
-              .filter(Objects::nonNull)
               .toList();
 
-      // Send Teams message to each webhook target
-      for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, json);
-      }
+      IsolatedSends.sendToEach(webhookRecipients, this, recipient -> sendTo(recipient, json));
     } catch (Exception e) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, event, e.getMessage());
@@ -101,6 +95,13 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  private void sendTo(WebhookRecipient recipient, String json) throws EventPublisherException {
+    Invocation.Builder target = recipient.getConfiguredRequest(client, json);
+    if (target != null) {
+      postWebhookMessage(this, target, json);
     }
   }
 

@@ -19,6 +19,7 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.net.UnknownHostException;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -89,40 +91,53 @@ public class GenericPublisher implements Destination<ChangeEvent> {
               .map(WebhookRecipient.class::cast)
               .toList();
 
-      for (WebhookRecipient recipient : webhookRecipients) {
-        Invocation.Builder target = recipient.getConfiguredRequest(client, eventJson);
-        if (target == null) {
-          continue;
-        }
-        try {
-          postWebhookMessage(this, target, eventJson);
-        } catch (EventPublisherException ex) {
-          if (isOAuth2Configured() && ex.getMessage().contains("HTTP 401")) {
-            LOG.debug("OAuth2 token rejected (401), invalidating and retrying");
-            invalidateOAuth2Token();
-            Invocation.Builder retryTarget = recipient.getConfiguredRequest(client, eventJson);
-            postWebhookMessage(this, retryTarget, eventJson);
-          } else {
-            throw ex;
-          }
-        }
-      }
+      IsolatedSends.sendToEach(webhookRecipients, this, recipient -> sendTo(recipient, eventJson));
     } catch (Exception ex) {
-      if (ex.getCause() instanceof UnknownHostException) {
-        String message =
-            String.format(
-                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-                subscriptionDestination.getId(), webhook.getEndpoint());
-        LOG.warn(message);
-        setErrorStatus(System.currentTimeMillis(), 400, "UnknownHostException");
-      }
-
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  private void sendTo(WebhookRecipient recipient, String eventJson) throws EventPublisherException {
+    Invocation.Builder target = recipient.getConfiguredRequest(client, eventJson);
+    if (target != null) {
+      postOrMarkUnknownHost(recipient, target, eventJson);
+    }
+  }
+
+  private void postOrMarkUnknownHost(
+      WebhookRecipient recipient, Invocation.Builder target, String eventJson)
+      throws EventPublisherException {
+    try {
+      postRefreshingTokenOnce(recipient, target, eventJson);
+    } catch (ProcessingException ex) {
+      if (ex.getCause() instanceof UnknownHostException) {
+        LOG.warn(
+            "Unknown Host Exception for Generic Publisher : {} , WebhookEndpoint : {}",
+            subscriptionDestination.getId(),
+            webhook.getEndpoint());
+        setErrorStatus(System.currentTimeMillis(), 400, "UnknownHostException");
+      }
+      throw ex;
+    }
+  }
+
+  private void postRefreshingTokenOnce(
+      WebhookRecipient recipient, Invocation.Builder target, String eventJson)
+      throws EventPublisherException {
+    try {
+      postWebhookMessage(this, target, eventJson);
+    } catch (EventPublisherException ex) {
+      if (!isOAuth2Configured() || !ex.getMessage().contains("HTTP 401")) {
+        throw ex;
+      }
+      LOG.debug("OAuth2 token rejected (401), invalidating and retrying");
+      invalidateOAuth2Token();
+      postWebhookMessage(this, recipient.getConfiguredRequest(client, eventJson), eventJson);
     }
   }
 

@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +36,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
@@ -82,17 +82,14 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       String transformedJson = convertCamelCaseToSnakeCase(json);
 
-      List<Invocation.Builder> targets =
+      List<WebhookRecipient> webhookRecipients =
           recipients.stream()
               .filter(WebhookRecipient.class::isInstance)
               .map(WebhookRecipient.class::cast)
-              .map(r -> r.getConfiguredRequest(client, transformedJson))
-              .filter(Objects::nonNull)
               .toList();
 
-      for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, transformedJson);
-      }
+      IsolatedSends.sendToEach(
+          webhookRecipients, this, recipient -> sendTo(recipient, transformedJson));
     } catch (Exception e) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, event, e.getMessage());
@@ -100,6 +97,13 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  private void sendTo(WebhookRecipient recipient, String json) throws EventPublisherException {
+    Invocation.Builder target = recipient.getConfiguredRequest(client, json);
+    if (target != null) {
+      postWebhookMessage(this, target, json);
     }
   }
 
