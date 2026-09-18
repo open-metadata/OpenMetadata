@@ -17,20 +17,22 @@ import ArticleStatusBadge from './ArticleStatusBadge.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(
-    ({ children, color }: { children: React.ReactNode; color: string }) => (
-      <span data-color={color}>{children}</span>
-    )
-  ),
-  Tooltip: jest.fn(
-    ({ children, title }: { children: React.ReactNode; title: string }) => (
-      <span data-testid="tooltip" data-tooltip-title={title}>
+    ({
+      children,
+      color,
+      tooltip,
+      'data-testid': dataTestId,
+    }: {
+      children: React.ReactNode;
+      color: string;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <span data-color={color} data-testid={dataTestId} data-tooltip={tooltip}>
         {children}
       </span>
     )
   ),
-  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -60,8 +62,8 @@ describe('ArticleStatusBadge', () => {
       />
     );
 
-    expect(screen.getByTestId('tooltip')).toHaveAttribute(
-      'data-tooltip-title',
+    expect(screen.getByTestId('article-status-badge')).toHaveAttribute(
+      'data-tooltip',
       'provider exploded'
     );
   });
@@ -69,7 +71,9 @@ describe('ArticleStatusBadge', () => {
   it('renders no tooltip on a Queued badge', () => {
     render(<ArticleStatusBadge status={PageProcessingStatus.Queued} />);
 
-    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('article-status-badge')).not.toHaveAttribute(
+      'data-tooltip'
+    );
     expect(screen.getByTestId('article-status-badge')).toHaveTextContent(
       'label.queued'
     );
@@ -86,9 +90,6 @@ describe('ArticleStatusBadge', () => {
     const badge = screen.getByTestId('article-status-badge');
 
     expect(badge).toHaveTextContent(label);
-    expect(badge.querySelector('[data-color]')).toHaveAttribute(
-      'data-color',
-      color
-    );
+    expect(badge).toHaveAttribute('data-color', color);
   });
 });

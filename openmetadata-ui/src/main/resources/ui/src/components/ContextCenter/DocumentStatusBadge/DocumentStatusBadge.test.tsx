@@ -17,20 +17,22 @@ import DocumentStatusBadge from './DocumentStatusBadge.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithDot: jest.fn(
-    ({ children, color }: { children: React.ReactNode; color: string }) => (
-      <span data-color={color}>{children}</span>
-    )
-  ),
-  Tooltip: jest.fn(
-    ({ children, title }: { children: React.ReactNode; title: string }) => (
-      <span data-testid="tooltip" data-tooltip-title={title}>
+    ({
+      children,
+      color,
+      tooltip,
+      'data-testid': dataTestId,
+    }: {
+      children: React.ReactNode;
+      color: string;
+      tooltip?: string;
+      'data-testid': string;
+    }) => (
+      <span data-color={color} data-testid={dataTestId} data-tooltip={tooltip}>
         {children}
       </span>
     )
   ),
-  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -60,8 +62,8 @@ describe('DocumentStatusBadge', () => {
       />
     );
 
-    expect(screen.getByTestId('tooltip')).toHaveAttribute(
-      'data-tooltip-title',
+    expect(screen.getByTestId('document-status-badge')).toHaveAttribute(
+      'data-tooltip',
       'provider exploded'
     );
   });
@@ -74,8 +76,8 @@ describe('DocumentStatusBadge', () => {
       />
     );
 
-    expect(screen.getByTestId('tooltip')).toHaveAttribute(
-      'data-tooltip-title',
+    expect(screen.getByTestId('document-status-badge')).toHaveAttribute(
+      'data-tooltip',
       'message.extracted-from-chunk-count'
     );
   });
@@ -88,7 +90,9 @@ describe('DocumentStatusBadge', () => {
       />
     );
 
-    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('document-status-badge')).not.toHaveAttribute(
+      'data-tooltip'
+    );
     expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
       'label.processed'
     );
@@ -107,9 +111,6 @@ describe('DocumentStatusBadge', () => {
     const badge = screen.getByTestId('document-status-badge');
 
     expect(badge).toHaveTextContent(label);
-    expect(badge.querySelector('[data-color]')).toHaveAttribute(
-      'data-color',
-      color
-    );
+    expect(badge).toHaveAttribute('data-color', color);
   });
 });

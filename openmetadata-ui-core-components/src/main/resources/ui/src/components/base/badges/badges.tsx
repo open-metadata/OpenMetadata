@@ -260,6 +260,11 @@ interface BadgeWithDotProps<T extends BadgeTypes> {
   bordered?: boolean;
   className?: string;
   children: ReactNode;
+  'data-testid': string;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the badge */
+  tooltipPlacement?: Placement;
 }
 
 export const BadgeWithDot = <T extends BadgeTypes>(
@@ -272,6 +277,9 @@ export const BadgeWithDot = <T extends BadgeTypes>(
     bordered = true,
     className,
     children,
+    'data-testid': dataTestId,
+    tooltip,
+    tooltipPlacement = 'top',
   } = props;
 
   const colors = withBadgeTypes[type];
@@ -296,7 +304,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
     [badgeTypes.badgeModern]: badgeSizes,
   };
 
-  return (
+  const badge = (
     <span
       className={cx(
         colors.common,
@@ -304,11 +312,22 @@ export const BadgeWithDot = <T extends BadgeTypes>(
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
-      )}>
+      )}
+      data-testid={dataTestId}>
       <Dot className={colors.styles[color].addon} size="sm" />
       {children}
     </span>
   );
+
+  if (tooltip) {
+    return (
+      <Tooltip placement={tooltipPlacement} title={tooltip}>
+        {badge}
+      </Tooltip>
+    );
+  }
+
+  return badge;
 };
 
 interface BadgeWithIconProps<T extends BadgeTypes> {

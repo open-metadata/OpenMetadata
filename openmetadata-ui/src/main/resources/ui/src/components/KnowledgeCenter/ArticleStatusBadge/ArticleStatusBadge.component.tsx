@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { Badge } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageProcessingStatus } from '../../../generated/entity/data/page';
@@ -57,24 +53,14 @@ const ArticleStatusBadge: FC<ArticleStatusBadgeProps> = ({ error, status }) => {
   const tooltipTitle =
     status === PageProcessingStatus.Failed && error ? error : undefined;
 
-  const badge = (
-    <Badge color={config.color} size="sm">
+  return (
+    <Badge
+      color={config.color}
+      data-testid="article-status-badge"
+      size="sm"
+      tooltip={tooltipTitle}>
       {t(config.labelKey)}
     </Badge>
-  );
-
-  return (
-    <span className="tw:shrink-0" data-testid="article-status-badge">
-      {tooltipTitle ? (
-        <Tooltip title={tooltipTitle}>
-          <TooltipTrigger data-testid="article-status-tooltip-trigger">
-            {badge}
-          </TooltipTrigger>
-        </Tooltip>
-      ) : (
-        badge
-      )}
-    </span>
   );
 };
 

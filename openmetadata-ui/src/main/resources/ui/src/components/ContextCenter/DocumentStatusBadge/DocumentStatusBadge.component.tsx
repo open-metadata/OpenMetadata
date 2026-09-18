@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  BadgeWithDot,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { BadgeWithDot } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -49,10 +45,9 @@ const STATUS_CONFIG: Record<
 
 const isPartialExtraction = (stats?: ExtractionStats): boolean =>
   Boolean(
-    stats &&
-      stats.chunksTotal &&
-      stats.chunksProcessed !== undefined &&
-      stats.chunksProcessed < stats.chunksTotal
+    stats?.chunksTotal &&
+      stats?.chunksProcessed !== undefined &&
+      stats?.chunksProcessed < stats.chunksTotal
   );
 
 const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
@@ -84,24 +79,15 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
     });
   }
 
-  const badge = (
-    <BadgeWithDot color={config.color} size="sm" type="color">
+  return (
+    <BadgeWithDot
+      color={config.color}
+      data-testid="document-status-badge"
+      size="sm"
+      tooltip={tooltipTitle}
+      type="color">
       {t(config.labelKey)}
     </BadgeWithDot>
-  );
-
-  return (
-    <span className="tw:shrink-0" data-testid="document-status-badge">
-      {tooltipTitle ? (
-        <Tooltip title={tooltipTitle}>
-          <TooltipTrigger data-testid="document-status-tooltip-trigger">
-            {badge}
-          </TooltipTrigger>
-        </Tooltip>
-      ) : (
-        badge
-      )}
-    </span>
   );
 };
 
