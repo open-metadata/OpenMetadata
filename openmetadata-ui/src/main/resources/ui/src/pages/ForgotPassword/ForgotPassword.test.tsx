@@ -87,7 +87,9 @@ describe('ForgotPassword', () => {
     });
 
     render(<ForgotPassword />);
-    const emailInput = screen.getByTestId('email').querySelector('input') as HTMLInputElement;
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('submit-button');
 
     await act(async () => {
@@ -102,7 +104,9 @@ describe('ForgotPassword', () => {
 
   it('shows an error when email is invalid', async () => {
     render(<ForgotPassword />);
-    const emailInput = screen.getByTestId('email').querySelector('input') as HTMLInputElement;
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('submit-button');
 
     await act(async () => {
@@ -117,7 +121,9 @@ describe('ForgotPassword', () => {
 
   it('shows success toast on submit', async () => {
     render(<ForgotPassword />);
-    const emailInput = screen.getByTestId('email').querySelector('input') as HTMLInputElement;
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('submit-button');
 
     await act(async () => {
@@ -147,7 +153,9 @@ describe('ForgotPassword', () => {
     });
 
     render(<ForgotPassword />);
-    const emailInput = screen.getByTestId('email').querySelector('input') as HTMLInputElement;
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('submit-button');
 
     await act(async () => {

@@ -92,9 +92,7 @@ export const CarouselLayout = ({
   return (
     <>
       <DocumentTitle title={pageTitle} />
-      <div
-        className={DEFAULT_SPLIT_LAYOUT_CLASSES}
-        data-testid="signin-page">
+      <div className={DEFAULT_SPLIT_LAYOUT_CLASSES} data-testid="signin-page">
         <div className={DEFAULT_FORM_COLUMN_CLASSES}>{children}</div>
         <div
           className={classNames(

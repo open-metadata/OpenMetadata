@@ -87,9 +87,9 @@ describe('ResetPassword', () => {
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
-    const password = (
-      await screen.findByTestId('password')
-    ).querySelector('input') as HTMLInputElement;
+    const password = (await screen.findByTestId('password')).querySelector(
+      'input'
+    ) as HTMLInputElement;
     const confirmPwd = (
       await screen.findByTestId('confirm-password')
     ).querySelector('input') as HTMLInputElement;
@@ -112,9 +112,9 @@ describe('ResetPassword', () => {
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
-    const password = (
-      await screen.findByTestId('password')
-    ).querySelector('input') as HTMLInputElement;
+    const password = (await screen.findByTestId('password')).querySelector(
+      'input'
+    ) as HTMLInputElement;
     const confirmPwd = (
       await screen.findByTestId('confirm-password')
     ).querySelector('input') as HTMLInputElement;
