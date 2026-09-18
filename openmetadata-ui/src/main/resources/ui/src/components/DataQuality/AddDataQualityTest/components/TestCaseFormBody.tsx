@@ -27,7 +27,6 @@ import {
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { TFunction } from 'i18next';
 import { debounce, snakeCase } from 'lodash';
 import {
   FC,
@@ -85,18 +84,16 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
-import {
-  getThresholdPreview,
-  hasThresholdUnitParam,
-} from '../../../../utils/DataQuality/TestCaseThresholdUtils';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import { hasThresholdUnitParam } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,
@@ -262,59 +259,6 @@ const CustomQueryToggle: FC<{
     </Button>
   </div>
 );
-
-/**
- * Live, plain-English restatement of what the configured threshold does, so
- * the meaning of `threshold` + `thresholdUnit` is never left to the user to
- * infer from two raw controls. Watches `params` so it follows every keystroke.
- */
-const ThresholdPreview: FC<{
-  form: UseFormReturn<FormValues>;
-  definition: TestDefinition;
-  target?: string;
-  profilerConfig?: TableProfilerConfig;
-  t: TFunction;
-}> = ({ form, definition, target, profilerConfig, t }) => {
-  const params = useWatch({ control: form.control, name: 'params' });
-
-  const preview = useMemo(
-    () =>
-      getThresholdPreview(
-        {
-          definition,
-          params: (params ?? {}) as Record<string, unknown>,
-          target,
-          profileSample: profilerConfig?.profileSample,
-          profileSampleType: profilerConfig?.profileSampleType,
-        },
-        t
-      ),
-    [definition, params, target, profilerConfig, t]
-  );
-
-  if (!preview) {
-    return null;
-  }
-
-  return (
-    <div className="threshold-preview" data-testid="threshold-preview">
-      <FormItemLabel label={t('label.preview')} />
-      <p data-testid="threshold-preview-sentence">{preview.sentence}</p>
-      {preview.samplingNote && (
-        <p className="text-grey-muted" data-testid="threshold-sampling-warning">
-          {preview.samplingNote}
-        </p>
-      )}
-      {preview.zeroBoundWarning && (
-        <Alert
-          data-testid="threshold-zero-bound-warning"
-          title={preview.zeroBoundWarning}
-          variant="warning"
-        />
-      )}
-    </div>
-  );
-};
 
 const TestTypeCard: FC<{
   isEditMode: boolean;
@@ -1568,7 +1512,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
               definition={selectedTestDefinition}
               form={form}
               profilerConfig={tableProfilerConfig}
-              t={t}
               target={
                 selectedTestLevel === TestLevel.COLUMN
                   ? selectedColumn

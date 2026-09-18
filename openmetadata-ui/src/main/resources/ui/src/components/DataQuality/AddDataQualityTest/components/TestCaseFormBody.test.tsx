@@ -28,7 +28,10 @@ import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
+import {
+  getTableDetailsByFQN,
+  getTableProfilerConfig,
+} from '../../../../rest/tableAPI';
 import {
   getListTestCaseBySearch,
   getListTestDefinitions,
@@ -138,6 +141,8 @@ const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
 const mockGetTableDetailsByFQN = getTableDetailsByFQN as jest.MockedFunction<
   typeof getTableDetailsByFQN
 >;
+const mockGetTableProfilerConfig =
+  getTableProfilerConfig as jest.MockedFunction<typeof getTableProfilerConfig>;
 const mockGetListTestDefinitions =
   getListTestDefinitions as jest.MockedFunction<typeof getListTestDefinitions>;
 const mockGetListTestCaseBySearch =
@@ -237,6 +242,7 @@ describe('TestCaseFormBody', () => {
     formRef = undefined;
     mockSearchQuery.mockResolvedValue(SEARCH_RESPONSE as never);
     mockGetTableDetailsByFQN.mockResolvedValue(SELECTED_TABLE as never);
+    mockGetTableProfilerConfig.mockResolvedValue({} as never);
     mockGetListTestDefinitions.mockResolvedValue({
       data: [TEST_DEFINITION],
       paging: { total: 1 },
@@ -936,6 +942,105 @@ describe('TestCaseFormBody', () => {
       expect(
         await screen.findByTestId('data-quality-dimension')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('threshold preview', () => {
+    const THRESHOLD_DEFINITION = {
+      ...TEST_DEFINITION,
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      displayName: 'Column Values To Be Not Null',
+      parameterDefinition: [
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const selectThresholdTest = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: 'columnValuesToBeNotNull',
+          label: 'Column Values To Be Not Null',
+        } as never);
+        formRef?.setValue('params.threshold', 50 as never);
+      });
+    };
+
+    it('notes the sample the threshold is measured on, read from the real response shape', async () => {
+      // GET /tables/{id}/tableProfilerConfig nests the sample under
+      // `profileSampleConfig.config` — reading it off the config root silently
+      // dropped the note even though the request succeeded.
+      mockGetTableProfilerConfig.mockResolvedValue({
+        tableProfilerConfig: {
+          profileSampleConfig: {
+            sampleConfigType: 'STATIC',
+            config: {
+              profileSample: 10,
+              profileSampleType: 'PERCENTAGE',
+            },
+          },
+        },
+      } as never);
+
+      await selectThresholdTest();
+
+      expect(
+        await screen.findByTestId('threshold-sampling-warning')
+      ).toBeInTheDocument();
+      expect(mockGetTableProfilerConfig).toHaveBeenCalledWith('table-id');
+    });
+
+    it('omits the note when the table is profiled in full', async () => {
+      mockGetTableProfilerConfig.mockResolvedValue({
+        tableProfilerConfig: { computeColumnMetrics: true },
+      } as never);
+
+      await selectThresholdTest();
+
+      expect(
+        await screen.findByTestId('threshold-preview')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('threshold-sampling-warning')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not ask for the profiler config of a test without a threshold', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(mockGetTableProfilerConfig).not.toHaveBeenCalled();
     });
   });
 });
