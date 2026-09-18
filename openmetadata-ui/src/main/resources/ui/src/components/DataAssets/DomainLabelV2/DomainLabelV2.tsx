@@ -212,7 +212,11 @@ export const DomainLabelV2 = <
         renderTrigger={renderTrigger}
         selectedDomain={activeDomain}
         triggerVariant="button"
-        onUpdate={handleDomainSave}
+        onUpdate={
+          handleDomainSave as (
+            domain: EntityReference | EntityReference[] | undefined
+          ) => Promise<void>
+        }
       />
     );
   }, [
