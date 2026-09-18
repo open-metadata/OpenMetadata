@@ -569,7 +569,7 @@ test.describe(
               r.request().method() === 'PATCH'
           );
           await page
-            .getByTestId(`remove-${testUser.responseData.name}`)
+            .getByTestId(`remove-${testUser.responseData.displayName}`)
             .click();
           await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
           await page.getByTestId('confirm-button').click();
@@ -579,7 +579,7 @@ test.describe(
 
         await test.step('User row is gone', async () => {
           await expect(
-            page.getByRole('rowheader', { name: testUser.responseData.name })
+            page.getByRole('rowheader', { name: testUser.responseData.displayName })
           ).not.toBeVisible();
         });
       } finally {
