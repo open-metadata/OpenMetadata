@@ -412,7 +412,20 @@ export default defineConfig({
     {
       name: 'Basic',
       grep: combineGrep(/@basic/),
-      testIgnore: dedicatedStateTestIgnore,
+      // The SSO scenario matrix (SsoScenarios.spec.ts) tags its Basic-provider
+      // row with `@basic` because each leg is labelled by its fixture slug.
+      // The `sso-auth` project already owns those specs via testMatch, but
+      // this project's `@basic` grep would otherwise pull them in and run
+      // them concurrently with real `@basic` feature tests — where the
+      // fixture's `beforeAll` (`configureBackend`) mutates
+      // `authenticationConfiguration` server-wide, so a co-scheduled test
+      // hitting `/api/v1/users/signup` sees Self Signup toggled off and
+      // fails with 501. Ignoring `**/Auth/**` here keeps the `Basic`
+      // project focused on feature specs and lets the `sso-auth` project
+      // (fullyParallel:false, workers:1) own auth-config mutations
+      // exclusively, mirroring the same guard the primary `chromium`
+      // project already has on its testIgnore.
+      testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**'],
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,
