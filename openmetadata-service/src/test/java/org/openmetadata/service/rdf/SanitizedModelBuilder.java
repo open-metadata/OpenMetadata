@@ -43,10 +43,10 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
  * predicate on the owning resource, and its object is a literal, an approved type, or a node the
  * caller may see. Anything without a mapping fails the whole build.
  */
-final class SanitizedModelBuilder {
-  static final String BASE = "https://open-metadata.org/";
-  static final String KNOWLEDGE = BASE + "graph/knowledge";
-  static final String OM = BASE + "ontology/";
+public final class SanitizedModelBuilder {
+  public static final String BASE = "https://open-metadata.org/";
+  public static final String KNOWLEDGE = BASE + "graph/knowledge";
+  public static final String OM = BASE + "ontology/";
   private static final String TYPE = RDF.type.getURI();
   private static final String LABEL = RDFS.label.getURI();
   private static final String FQN = OM + "fullyQualifiedName";
@@ -68,7 +68,7 @@ final class SanitizedModelBuilder {
       Pattern.compile(Pattern.quote(BASE + "entity/") + "([^/]+)/([^/]+)");
   private static final Pattern CANONICAL_UUID =
       Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
-  static final int MAX_REFERENCE_LOOKUPS = 1_000;
+  public static final int MAX_REFERENCE_LOOKUPS = 1_000;
   private static final int SUBJECTS_PER_QUERY = 100;
   private static final int MAX_OWNERSHIP_DEPTH = 8;
 
@@ -265,14 +265,14 @@ final class SanitizedModelBuilder {
           "http://www.w3.org/ns/prov#Entity");
 
   /** Every predicate some node kind maps, so a test reads the map instead of copying it. */
-  static Set<String> mappedPredicates() {
+  public static Set<String> mappedPredicates() {
     final Set<String> predicates = new HashSet<>();
     FIELD_BY_PREDICATE.values().forEach(fields -> predicates.addAll(fields.keySet()));
     return Set.copyOf(predicates);
   }
 
   /** The type terms a fact may carry, exposed for the same reason. */
-  static Set<String> approvedTypes() {
+  public static Set<String> approvedTypes() {
     return TYPE_VOCABULARY;
   }
 
@@ -288,7 +288,7 @@ final class SanitizedModelBuilder {
    * @param references deletion state, from the catalog, of entities that facts reference but that
    *     are not candidates
    */
-  SanitizedModelBuilder(
+  public SanitizedModelBuilder(
       final KnowledgeSource source,
       final List<CatalogResource> catalog,
       final ReferenceStates references,
@@ -302,7 +302,7 @@ final class SanitizedModelBuilder {
     this.tripleBudget = tripleBudget;
   }
 
-  SanitizedModel build() {
+  public SanitizedModel build() {
     final Retrieval retrieval = new Retrieval(tripleBudget);
     Map<Resource, Governance> frontier = visibleResources();
     for (int depth = 0; !frontier.isEmpty(); depth++) {
@@ -604,11 +604,11 @@ final class SanitizedModelBuilder {
     };
   }
 
-  interface KnowledgeSource {
+  public interface KnowledgeSource {
     Model construct(String sparql);
   }
 
-  interface CallerPermissions {
+  public interface CallerPermissions {
     boolean allows(CatalogResource resource, MetadataOperation operation);
   }
 
@@ -616,16 +616,16 @@ final class SanitizedModelBuilder {
    * The catalog's view of referenced entities that are not candidates. The result is keyed by IRI; a
    * reference it leaves out counts as missing.
    */
-  interface ReferenceStates {
+  public interface ReferenceStates {
     Set<String> entityTypes();
 
     Map<String, ReferenceState> resolve(Set<EntityIri> references);
   }
 
   /** A catalog entity IRI already checked for a registered type and a canonical id. */
-  record EntityIri(String iri, String type, UUID id) {}
+  public record EntityIri(String iri, String type, UUID id) {}
 
-  sealed interface ReferenceState {
+  public sealed interface ReferenceState {
     record Live(CatalogResource resource) implements ReferenceState {}
 
     record Deleted() implements ReferenceState {}
@@ -637,7 +637,7 @@ final class SanitizedModelBuilder {
   }
 
   /** Policy attributes the catalog (not the RDF projection) holds for one resource. */
-  record CatalogResource(String type, UUID id, List<TagLabel> tags)
+  public record CatalogResource(String type, UUID id, List<TagLabel> tags)
       implements ResourceContextInterface {
     String iri() {
       return BASE + "entity/" + type + "/" + id;
@@ -669,7 +669,7 @@ final class SanitizedModelBuilder {
     }
   }
 
-  record SanitizedModel(Model model, int retrievedTriples, int retrievalQueries) {}
+  public record SanitizedModel(Model model, int retrievedTriples, int retrievalQueries) {}
 
   private record Governance(CatalogResource owner, NodeKind kind) {}
 
@@ -717,13 +717,13 @@ final class SanitizedModelBuilder {
     }
   }
 
-  static final class FactAdmissionException extends IllegalStateException {
+  public static final class FactAdmissionException extends IllegalStateException {
     FactAdmissionException(final String message) {
       super(message);
     }
   }
 
-  static final class RetrievalBudgetExceededException extends IllegalStateException {
+  public static final class RetrievalBudgetExceededException extends IllegalStateException {
     RetrievalBudgetExceededException(final String message) {
       super(message);
     }

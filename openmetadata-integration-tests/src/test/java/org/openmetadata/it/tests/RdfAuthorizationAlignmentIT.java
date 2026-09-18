@@ -1,4 +1,4 @@
-package org.openmetadata.service.rdf;
+package org.openmetadata.it.tests;
 
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.groupingBy;
@@ -78,6 +78,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.SanitizedModelBuilder;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CatalogResource;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
@@ -113,10 +114,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * with {@code enableRdf=true}. A class-level condition is used because Failsafe reports it as
  * skipped tests, whereas an aborted {@code @BeforeAll} assumption is reported as no tests at all.
  *
- * <p>It lives in the builder's package, not in {@code org.openmetadata.it.tests}, because it drives
- * the package-private experiment builder from {@code openmetadata-service}'s test jar. Moving it
- * would mean publishing that experiment's types. Both tests await the same asynchronous projection
- * of a shared graph, so they run on one thread like {@code RdfRelationExclusionsIT}.
+ * <p>Both tests await the same asynchronous projection of a shared graph, so they run on one thread
+ * like {@code RdfRelationExclusionsIT} rather than concurrently.
  */
 @EnabledIfSystemProperty(
     named = "enableRdf",
