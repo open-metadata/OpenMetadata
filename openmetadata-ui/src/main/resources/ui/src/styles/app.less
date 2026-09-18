@@ -833,45 +833,6 @@ a[href].link-text-grey,
   color: @background-color !important;
 }
 
-// Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less is `@x: var(--legacy-x, #originalHex)`, so light
-// mode resolves to the exact original hex (no drift) while dark mode picks up
-// the semantic/utility override below. This themes every consumer of these
-// legacy vars app-wide without per-file edits. Utility tokens auto-invert under
-// .dark-mode, so referencing them here yields the dark value. Categorical ramps
-// (severity, heatmap gradients) are intentionally excluded — they belong to the
-// token foundation.
-.dark-mode {
-  // Neutral surfaces / borders / muted text
-  --legacy-grey-26: var(--color-bg-secondary_subtle);
-  --legacy-grey-25: var(--color-bg-secondary_subtle);
-  --legacy-grey-9: var(--color-bg-secondary_subtle);
-  --legacy-grey-1: var(--color-bg-secondary);
-  --legacy-grey-2: var(--color-bg-secondary);
-  --legacy-grey-5: var(--color-bg-secondary);
-  --legacy-grey-50: var(--color-bg-secondary);
-  --legacy-grey-15: var(--color-border-secondary);
-  --legacy-grey-7: var(--color-text-quaternary);
-  // Status — utility tokens auto-invert to readable dark values
-  --legacy-blue-13: var(--tw-color-utility-blue-light-100);
-  --legacy-blue-22: var(--tw-color-utility-blue-light-50);
-  --legacy-blue-500: var(--tw-color-utility-blue-light-500);
-  --legacy-green-9: var(--tw-color-utility-success-50);
-  --legacy-green-10: var(--tw-color-utility-success-700);
-  --legacy-green-12: var(--tw-color-utility-success-100);
-  --legacy-green-100: var(--tw-color-utility-success-100);
-  --legacy-green-500: var(--tw-color-utility-success-500);
-  --legacy-red-9: var(--tw-color-utility-error-50);
-  --legacy-red-10: var(--tw-color-utility-error-700);
-  --legacy-red-22: var(--tw-color-utility-error-500);
-  --legacy-yellow-10: var(--tw-color-utility-warning-50);
-  --legacy-alert-error-icon-bg-1: var(--tw-color-utility-error-100);
-  --legacy-alert-warning-icon: var(--tw-color-utility-warning-600);
-  --legacy-alert-warning-icon-bg-1: var(--tw-color-utility-warning-100);
-  --legacy-warning-100: var(--tw-color-utility-warning-100);
-  --legacy-warning-400: var(--tw-color-utility-warning-400);
-}
-
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
 // ontology, ports). Themes the shared chrome — background dots, minimap,
 // zoom controls, default edges/handles, attribution — via semantic tokens so
