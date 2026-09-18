@@ -111,20 +111,31 @@ export async function addTestCaseListFilterByTable(
   await testCaseByTableResponse;
 }
 
-export async function addTestCaseListFilterByFirstColumn(page: Page) {
+// The Column options aggregate `columns.name.keyword` over every data asset,
+// not the table picked in the Table filter, so their order depends on what
+// else the shard has ingested. Search for a known column instead of taking
+// whichever lands first: TableClass suffixes each column with a uuid, so the
+// search yields exactly one option.
+export async function addTestCaseListFilterByColumn(
+  page: Page,
+  columnName: string
+) {
   await page.getByTestId('search-dropdown-Column').click();
-
-  const firstColumnOption = page
+  await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitemradio')
-    .first();
-  await firstColumnOption.waitFor({ state: 'visible' });
-  await firstColumnOption.click();
+    .getByTestId('search-input')
+    .fill(columnName);
+
+  const columnOption = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(columnName);
+  await columnOption.waitFor({ state: 'visible' });
+  await columnOption.click();
 
   const testCaseByColumnResponse = page.waitForResponse(
     (url) =>
       url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      url.url().includes('columnName')
+      url.url().includes(`columnName=${encodeURIComponent(columnName)}`)
   );
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await testCaseByColumnResponse;
@@ -132,7 +143,8 @@ export async function addTestCaseListFilterByFirstColumn(page: Page) {
 
 export async function addTestCaseListResetFilters(
   page: Page,
-  tableFqn: string
+  tableFqn: string,
+  columnName: string
 ) {
   await addTestCaseListFilterByTestType(page, 'All');
 
@@ -148,11 +160,7 @@ export async function addTestCaseListResetFilters(
     '/api/v1/dataQuality/testCases/search/list*'
   );
   await page.getByTestId('search-dropdown-Column').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByRole('menuitemradio')
-    .first()
-    .click();
+  await page.getByTestId('drop-down-menu').getByTestId(columnName).click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearColumnResponse;
 
@@ -197,17 +205,19 @@ export async function addTestCaseListFilterByTableInAddTestCasesDialog(
   return addTestCaseListFilterByTable(page, tableEntityName, tableFqn);
 }
 
-export async function addTestCaseListFilterByFirstColumnInAddTestCasesDialog(
-  page: Page
+export async function addTestCaseListFilterByColumnInAddTestCasesDialog(
+  page: Page,
+  columnName: string
 ) {
-  return addTestCaseListFilterByFirstColumn(page);
+  return addTestCaseListFilterByColumn(page, columnName);
 }
 
 export async function addTestCaseListResetFiltersInAddTestCasesDialog(
   page: Page,
-  tableFqn: string
+  tableFqn: string,
+  columnName: string
 ) {
-  return addTestCaseListResetFilters(page, tableFqn);
+  return addTestCaseListResetFilters(page, tableFqn, columnName);
 }
 
 export async function addTestCaseListToggleSelectAllInAddTestCasesDialog(
