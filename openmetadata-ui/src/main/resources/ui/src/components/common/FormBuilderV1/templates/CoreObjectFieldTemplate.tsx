@@ -404,6 +404,14 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   uiSchema,
 }) => {
   const { t } = useTranslation();
+
+  // RJSF only applies `ui:widget: 'hidden'` to widgets, so an object field marked hidden
+  // still renders its titled panel — an empty section with a heading and no controls.
+  // Honour the flag here so hiding a whole group removes it from the form.
+  if (uiSchema?.['ui:widget'] === 'hidden') {
+    return null;
+  }
+
   const {
     flatPropertyLayout,
     isRoot,
