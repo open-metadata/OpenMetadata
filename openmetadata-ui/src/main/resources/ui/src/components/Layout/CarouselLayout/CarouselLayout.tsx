@@ -10,21 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Grid, Layout, Row } from 'antd';
-import { Content } from 'antd/lib/layout/layout';
 import classNames from 'classnames';
 import { lazy, ReactNode } from 'react';
 import loginClassBase from '../../../constants/LoginClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
-import './carousel-layout.less';
 
 const LoginCarousel = withSuspenseFallback(
   lazy(() => import('../../../pages/LoginPage/LoginCarousel'))
 );
 
 const LOGIN_SPLIT_LAYOUT_CLASSES =
-  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-white';
+  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-primary';
 
 const LOGIN_VIDEO_PANEL_CLASSES =
   'tw:relative tw:flex tw:flex-[1_1_52%] tw:min-w-0 tw:items-center ' +
@@ -41,9 +38,17 @@ const LOGIN_VIDEO_CARD_CLASSES =
 
 const LOGIN_FORM_PANEL_CLASSES =
   'tw:flex tw:flex-[1_1_48%] tw:min-w-0 tw:flex-col tw:overflow-y-auto ' +
-  'tw:bg-white tw:max-[1000px]:flex-[1_1_100%] ' +
-  'tw:[&_.login-form-container]:h-auto tw:[&_.login-form-container]:m-auto ' +
-  'tw:[&_.login-form-container]:w-full';
+  'tw:bg-primary tw:max-[1000px]:flex-[1_1_100%]';
+
+const DEFAULT_SPLIT_LAYOUT_CLASSES =
+  'tw:flex tw:h-screen tw:min-h-screen tw:w-full tw:overflow-hidden tw:bg-primary';
+
+const DEFAULT_FORM_COLUMN_CLASSES =
+  'tw:flex tw:flex-col tw:overflow-y-auto tw:bg-primary ' +
+  'tw:flex-[1_1_100%] tw:xl:flex-[1_1_41%]';
+
+const DEFAULT_MEDIA_COLUMN_CLASSES =
+  'tw:hidden tw:xl:flex tw:flex-[1_1_59%] tw:items-center tw:justify-center tw:p-6';
 
 export const CarouselLayout = ({
   pageTitle,
@@ -54,14 +59,13 @@ export const CarouselLayout = ({
   children: ReactNode;
   carouselClassName?: string;
 }) => {
-  const { xl } = Grid.useBreakpoint();
   const hasLoginVideo = Boolean(loginClassBase.getLoginVideo());
 
   if (hasLoginVideo) {
     return (
-      <Layout>
+      <>
         <DocumentTitle title={pageTitle} />
-        <Content
+        <div
           className={classNames(LOGIN_SPLIT_LAYOUT_CLASSES, carouselClassName)}
           data-testid="signin-page">
           <div
@@ -80,34 +84,26 @@ export const CarouselLayout = ({
             </div>
           </div>
           <div className={LOGIN_FORM_PANEL_CLASSES}>{children}</div>
-        </Content>
-      </Layout>
+        </div>
+      </>
     );
   }
 
-  const formColumn = (
-    <Col className="carousel-left-side-container" span={xl ? 10 : 24}>
-      {children}
-    </Col>
-  );
-
-  const mediaColumn = xl && (
-    <Col span={14}>
-      <div className={classNames('form-carousel-container', carouselClassName)}>
-        <LoginCarousel />
-      </div>
-    </Col>
-  );
-
   return (
-    <Layout className="tw:bg-primary">
+    <>
       <DocumentTitle title={pageTitle} />
-      <Content className="p-md">
-        <Row data-testid="signin-page" gutter={[48, 0]} wrap={false}>
-          {formColumn}
-          {mediaColumn}
-        </Row>
-      </Content>
-    </Layout>
+      <div
+        className={DEFAULT_SPLIT_LAYOUT_CLASSES}
+        data-testid="signin-page">
+        <div className={DEFAULT_FORM_COLUMN_CLASSES}>{children}</div>
+        <div
+          className={classNames(
+            DEFAULT_MEDIA_COLUMN_CLASSES,
+            carouselClassName
+          )}>
+          <LoginCarousel />
+        </div>
+      </div>
+    </>
   );
 };
