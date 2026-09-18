@@ -15,11 +15,18 @@ Unit tests for MetadataUsageBulkSink error handling
 import json
 import os
 import tempfile
+from io import StringIO
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
+
+from metadata.entity_resolution.engine import EntityResolver
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
@@ -34,6 +41,7 @@ from metadata.ingestion.bulksink.metadata_usage import (
     MetadataUsageSinkConfig,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.mixins.es_mixin import FqnSearchResult
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 
 
@@ -372,3 +380,149 @@ class TestHandleQueryCostErrorHandling(TestCase):
             5,
             "All 5 cost records should be published",
         )
+
+
+def _usage_record_line() -> str:
+    return json.dumps(create_table_usage().model_dump_json()) + "\n"
+
+
+def _metadata_for_usage_resolution(table: Table):
+    metadata = MagicMock()
+    service = DatabaseService(
+        id=uuid4(), name="test_service", fullyQualifiedName="test_service", serviceType="Postgres"
+    )
+    entities = {"test_service": service, table.fullyQualifiedName.root: table}
+    published = []
+    joins = []
+
+    def get_by_name(*, fqn, **_kwargs):
+        return entities.get(fqn)
+
+    metadata.get_by_name.side_effect = get_by_name
+    metadata.publish_table_usage.side_effect = lambda entity, request: published.append((entity.id, request.count))
+    metadata.publish_frequently_joined_with.side_effect = lambda entity, request: joins.append((entity.id, request))
+    return metadata, entities, published, joins
+
+
+def test_table_usage_run_reuses_resolution_across_files_and_refreshes_next_run():
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata, entities, published, _ = _metadata_for_usage_resolution(table)
+    sink = MetadataUsageBulkSink(
+        config=MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata=metadata,
+    )
+    recreated = table.model_copy(update={"id": Table(id=uuid4(), name="test_table", columns=[]).id})
+
+    def staged_files():
+        yield StringIO(_usage_record_line() * 2)
+        entities[table.fullyQualifiedName.root] = recreated
+        yield StringIO(_usage_record_line())
+
+    sink.iterate_files = staged_files
+
+    sink.handle_table_usage()
+
+    assert published == [(table.id, 2), (table.id, 1)]
+    assert not sink.status.failures
+    sink.handle_table_usage()
+    assert published[2:] == [(recreated.id, 2), (recreated.id, 1)]
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_table_usage_run_closes_resolver_on_success_and_failure(fail):
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata, _, published, _ = _metadata_for_usage_resolution(table)
+    sink = MetadataUsageBulkSink(
+        config=MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata=metadata,
+    )
+    resolver = EntityResolver(metadata)
+
+    def broken_iteration(*_args, **_kwargs):
+        yield StringIO(_usage_record_line())
+        if fail:
+            raise RuntimeError("batch iteration failed")
+
+    sink.iterate_files = broken_iteration
+    with patch("metadata.ingestion.bulksink.metadata_usage.EntityResolver", return_value=resolver):
+        if fail:
+            with pytest.raises(RuntimeError, match="batch iteration failed"):
+                sink.handle_table_usage()
+        else:
+            sink.handle_table_usage()
+
+    assert published == [(table.id, 1)]
+    with pytest.raises(RuntimeError, match="closed"):
+        TableResolver(resolver).resolve(
+            service_names=("test_service",),
+            database_name="test_db",
+            database_schema="test_schema",
+            table_name="test_table",
+        )
+    metadata.close.assert_not_called()
+
+
+def test_usage_join_targets_use_the_same_run_resolution():
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata, entities, published, joins = _metadata_for_usage_resolution(table)
+    record = create_table_usage().model_copy(update={"joins": []})
+    joined_record = record.model_dump()
+    joined_record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "test_table", "column": "id"}],
+        }
+    ]
+
+    def staged_files():
+        yield StringIO(_usage_record_line())
+        entities.pop(table.fullyQualifiedName.root)
+        yield StringIO(json.dumps(json.dumps(joined_record)) + "\n")
+
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = staged_files
+    sink.handle_table_usage()
+    assert published == [(table.id, 1), (table.id, 1)]
+    assert len(joins) == 1
+    assert joins[0][0] == table.id
+    assert (
+        joins[0][1].columnJoins[0].joinedWith[0].fullyQualifiedName.root
+        == "test_service.test_db.test_schema.test_table.id"
+    )
+    assert not sink.status.failures
+
+
+@pytest.mark.parametrize("service_type,expected_count", [("Clickhouse", 1), ("Postgres", 0)])
+def test_usage_preserves_service_specific_database_normalization(service_type, expected_count):
+    table = Table(
+        id=uuid4(), name="test_table", fullyQualifiedName="test_service.default.test_schema.test_table", columns=[]
+    )
+    metadata, entities, published, _ = _metadata_for_usage_resolution(table)
+    entities["test_service"] = DatabaseService(
+        id=uuid4(),
+        name="test_service",
+        fullyQualifiedName="test_service",
+        serviceType=service_type,
+    )
+    metadata.search_fqn_candidates.return_value = FqnSearchResult((table.fullyQualifiedName.root,), 1, True)
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = lambda: iter([StringIO(_usage_record_line())])
+    sink.handle_table_usage()
+    assert published == ([(table.id, 1)] if expected_count else [])

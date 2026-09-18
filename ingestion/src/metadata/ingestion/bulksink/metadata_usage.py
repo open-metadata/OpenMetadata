@@ -22,13 +22,22 @@ import json
 import os
 import shutil
 import traceback
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional  # noqa: UP035
+from typing import Optional
 
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
+from metadata.entity_resolution.engine import (
+    EntityResolutionPlan,
+    EntityResolver,
+    FqnCandidate,
+    FqnLookupMode,
+    ResolutionTier,
+)
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -36,6 +45,7 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableJoins,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService, DatabaseServiceType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -49,10 +59,7 @@ from metadata.generated.schema.type.tableUsageCount import (
 )
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import BulkSink
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_table_entities_from_query,
-)
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -62,8 +69,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp
 
 logger = ingestion_logger()
-
-LRU_CACHE_SIZE = 4096
 
 
 class MetadataUsageSinkConfig(ConfigModel):
@@ -184,41 +189,56 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Handle table usage.
         """
-        for file_handler in self.iterate_files():
-            self.table_usage_map = {}
-            for usage_record in file_handler.readlines():
-                record = json.loads(usage_record)
-                table_usage = TableUsageCount(**json.loads(record))
+        resolver = EntityResolver(self.metadata)
+        try:
+            for file_handler in self.iterate_files():
+                self.table_usage_map = {}
+                for usage_record in file_handler.readlines():
+                    record = json.loads(usage_record)
+                    table_usage = TableUsageCount(**json.loads(record))
 
-                self.service_name = table_usage.serviceName
-                table_entities = None
-                try:
-                    logger.debug(
-                        f"[UsageSink] Fetching table entities for "
-                        f"service={self.service_name}, "
-                        f"database={table_usage.databaseName}, "
-                        f"schema={table_usage.databaseSchema}, "
-                        f"table={table_usage.table}"
+                    self.service_name = table_usage.serviceName
+                    table_entities = None
+                    try:
+                        logger.debug(
+                            "[UsageSink] Fetching table entities for service=%s, database=%s, schema=%s, table=%s",
+                            self.service_name,
+                            table_usage.databaseName,
+                            table_usage.databaseSchema,
+                            table_usage.table,
+                        )
+
+                        table_entities = self._resolve_usage_tables(
+                            database_name=table_usage.databaseName,
+                            database_schema=table_usage.databaseSchema,
+                            table_name=table_usage.table,
+                            resolver=resolver,
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            "Cannot get table entities from query table %s: %s",
+                            table_usage.table,
+                            exc,
+                        )
+
+                    if not table_entities:
+                        logger.warning(
+                            "Could not fetch table %s.%s",
+                            table_usage.databaseName,
+                            table_usage.table,
+                        )
+                        continue
+
+                    self.get_table_usage_and_joins(
+                        table_entities,
+                        table_usage,
+                        resolver=resolver,
                     )
 
-                    table_entities = get_table_entities_from_query(
-                        metadata=self.metadata,
-                        service_names=self.service_name,
-                        database_name=table_usage.databaseName,
-                        database_schema=table_usage.databaseSchema,
-                        table_name=table_usage.table,
-                    )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Cannot get table entities from query table {table_usage.table}: {exc}")
-
-                if not table_entities:
-                    logger.warning(f"Could not fetch table {table_usage.databaseName}.{table_usage.table}")
-                    continue
-
-                self.get_table_usage_and_joins(table_entities, table_usage)
-
-            self.__publish_usage_records()
+                self.__publish_usage_records()
+        finally:
+            resolver.close()
 
     def handle_query_cost(self) -> None:
         for file_handler in self.iterate_files(usage_files=False):
@@ -236,7 +256,13 @@ class MetadataUsageBulkSink(BulkSink):
         self.handle_table_usage()
         self.handle_query_cost()
 
-    def get_table_usage_and_joins(self, table_entities: List[Table], table_usage: TableUsageCount):  # noqa: UP006
+    def get_table_usage_and_joins(
+        self,
+        table_entities: Sequence[Table],
+        table_usage: TableUsageCount,
+        *,
+        resolver: Optional[EntityResolver] = None,  # noqa: UP045
+    ):
         """
         For the list of tables, compute usage with already existing seen
         tables and publish the join information.
@@ -247,7 +273,11 @@ class MetadataUsageBulkSink(BulkSink):
                 table_join_request = None
                 try:
                     self.__populate_table_usage_map(table_usage=table_usage, table_entity=table_entity)
-                    table_join_request = self.__get_table_joins(table_entity=table_entity, table_usage=table_usage)
+                    table_join_request = self.__get_table_joins(
+                        table_entity=table_entity,
+                        table_usage=table_usage,
+                        resolver=resolver,
+                    )
                     logger.debug(f"table join request {table_join_request}")
 
                     if table_join_request is not None and len(table_join_request.columnJoins) > 0:
@@ -282,7 +312,12 @@ class MetadataUsageBulkSink(BulkSink):
                 )
                 self.status.warning(f"Table: {table_usage.table}", reason="Could not fetch table")
 
-    def __get_table_joins(self, table_entity: Table, table_usage: TableUsageCount) -> TableJoins:
+    def __get_table_joins(
+        self,
+        table_entity: Table,
+        table_usage: TableUsageCount,
+        resolver: Optional[EntityResolver],  # noqa: UP045
+    ) -> TableJoins:
         """
         Method to get Table Joins
         """
@@ -301,7 +336,12 @@ class MetadataUsageBulkSink(BulkSink):
                 column_joins_dict[column_join.tableColumn.column] = {}
 
             for column in column_join.joinedWith:
-                joined_column_fqn = self.__get_column_fqn(table_usage.databaseName, table_usage.databaseSchema, column)
+                joined_column_fqn = self.__get_column_fqn(
+                    table_usage.databaseName,
+                    table_usage.databaseSchema,
+                    column,
+                    resolver,
+                )
                 if str(joined_column_fqn) in joined_with.keys():  # noqa: SIM118
                     column_joined_with = joined_with[str(joined_column_fqn)]
                     column_joined_with.joinCount += 1
@@ -324,22 +364,57 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqn(self, database: str, database_schema: str, table_column: TableColumn) -> Optional[str]:  # noqa: RET503, UP045
+    def __get_column_fqn(
+        self,
+        database: str | None,
+        database_schema: str | None,
+        table_column: TableColumn,
+        resolver: Optional[EntityResolver],  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
         """
         Method to get column fqn
         """
-        table_entities = get_table_entities_from_query(
-            metadata=self.metadata,
-            service_names=self.service_name,
+        table_entities = self._resolve_usage_tables(
             database_name=database,
             database_schema=database_schema,
             table_name=table_column.table,
+            resolver=resolver,
         )
         if not table_entities:
             return None
 
         for table_entity in table_entities:
             return get_column_fqn(table_entity=table_entity, column=table_column.column)
+        return None
+
+    def _resolve_usage_tables(
+        self,
+        database_name: str | None,
+        database_schema: str | None,
+        table_name: str,
+        resolver: EntityResolver | None,
+    ) -> tuple[Table, ...]:
+        """Resolve a normalized usage reference with the run's resolver."""
+        if self.service_name is None:
+            return ()
+        operation_resolver = resolver or EntityResolver(self.metadata)
+        try:
+            services = operation_resolver.resolve(
+                EntityResolutionPlan(
+                    entity_type=DatabaseService,
+                    tiers=(ResolutionTier((FqnCandidate(fqn.quote_name(self.service_name), FqnLookupMode.EXACT),)),),
+                )
+            )
+            return TableResolver(operation_resolver).resolve(
+                service_names=(self.service_name,),
+                database_name=database_name,
+                database_schema=database_schema,
+                table_name=table_name,
+                ignore_database=bool(services and services[0].serviceType == DatabaseServiceType.Clickhouse),
+            )
+        finally:
+            if resolver is None:
+                operation_resolver.close()
 
     def _get_table_life_cycle_data(self, table_entity: Table, table_usage: TableUsageCount):
         """
