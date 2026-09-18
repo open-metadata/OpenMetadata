@@ -1205,7 +1205,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     reconcileConflicts(assets, directDomains, reindexQueue);
     reconcileInheritingDescendants(assets, directDomains, reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
-      searchRepository.updateEntitiesByReference(reindexQueue);
+      // This runs inside the domain-change @Transaction. Defer the batched reindex until commit so
+      // its re-reads see the committed (post-detach) rows rather than the in-flight transaction
+      // state — matching updateEntitiesByReference's transactional contract.
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(reindexQueue),
+          "detachConflictingDataProductsReindex",
+          null,
+          null,
+          DATA_PRODUCT);
     }
   }
 
@@ -1222,6 +1230,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       List<EntityReference> reindexQueue) {
     List<EntityReference> frontier = roots;
     Map<UUID, Set<UUID>> inherited = inheritedByParent;
+    // Roots are reconciled by the caller; guard against revisiting a node reached by another parent
+    // or via a containment cycle, so the walk always terminates.
+    Set<UUID> visited = new HashSet<>(inheritedByParent.keySet());
     while (!frontier.isEmpty()) {
       List<CollectionDAO.EntityRelationshipObject> childRows =
           daoCollection
@@ -1242,7 +1253,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
       for (CollectionDAO.EntityRelationshipObject row : childRows) {
         UUID childId = UUID.fromString(row.getToId());
-        if (nextInherited.containsKey(childId) // already queued via another parent (defensive)
+        if (!visited.add(childId) // already seen via another parent or a cycle
             || !childExplicitDomains.getOrDefault(childId, Set.of()).isEmpty()) {
           continue;
         }
@@ -1297,6 +1308,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             .add(new EntityReference().withId(dataProductId).withType(DATA_PRODUCT));
       }
     }
+    // Detached assets need full references (with FQN): invalidateCacheForEntity only evicts the
+    // by-name cache when the FQN is present, and descendant refs built from relationship rows carry
+    // none. populateEntityReferences fills them in place, batching one lookup per entity type and
+    // dropping any concurrently-deleted row.
+    List<EntityReference> detachedAssets =
+        conflictsByAsset.keySet().stream().map(assetsById::get).collect(Collectors.toList());
+    EntityUtil.populateEntityReferences(detachedAssets);
     conflictsByAsset.forEach(
         (assetId, dataProducts) ->
             removeDataProductAssignments(assetsById.get(assetId), dataProducts, reindexQueue));
