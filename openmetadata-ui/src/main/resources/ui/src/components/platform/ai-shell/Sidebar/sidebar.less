@@ -114,6 +114,18 @@
   --ask-rest-icon: var(--color-gray-600);
 }
 
+// Dark: flatten the sidebar surfaces (outer card, main panel, rail) to canvas so
+// the sidebar reads as one continuous piece with the page — no raised-card
+// standout, separate-color, or border look. In light these keep their existing
+// surface / gray-blue-page values (frozen); only dark collapses to canvas.
+.dark-mode {
+  .ask-sidebar,
+  .ask-main-panel,
+  .ask-rail {
+    background: var(--color-bg-canvas);
+  }
+}
+
 // ---- Shell ----
 // Outer card width = inner panel width + left/right padding (4px each).
 @ask-sidebar-card-width: (@ask-sidebar-width + @ask-sub-outer-padding * 2);
