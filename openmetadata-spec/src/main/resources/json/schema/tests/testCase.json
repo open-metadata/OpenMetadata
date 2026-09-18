@@ -165,17 +165,6 @@
       "type": "boolean",
       "default": false
     },
-    "failureThreshold": {
-      "description": "Tolerance applied when evaluating this test case. A deviation within the threshold is still reported as a success. Defaults to 0, which evaluates the test case strictly.",
-      "type": "number",
-      "minimum": 0,
-      "default": 0
-    },
-    "thresholdUnit": {
-      "description": "Unit `failureThreshold` is expressed in.",
-      "$ref": "./basic.json#/definitions/thresholdUnit",
-      "default": "ABSOLUTE"
-    },
     "tags": {
       "description": "Tags for this test case. This is an inherited field from the parent entity and is not set directly on the test case.",
       "type": "array",

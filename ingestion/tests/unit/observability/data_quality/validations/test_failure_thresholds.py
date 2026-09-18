@@ -21,15 +21,16 @@ from uuid import uuid4
 import pytest
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.table.sqlalchemy.tableRowCountToEqual import (
+    TableRowCountToEqualValidator,
+)
 from metadata.data_quality.validations.thresholds import (
+    ThresholdUnit,
+    _warn_zero_reference,
     apply_bound_tolerance,
     within_deviation,
 )
-from metadata.generated.schema.tests.basic import (
-    TestCaseResult,
-    TestCaseStatus,
-    ThresholdUnit,
-)
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
 
@@ -114,6 +115,9 @@ def test_within_deviation(observed, expected_value, threshold, unit, expected):
 
 def test_percentage_of_a_zero_bound_is_surfaced(caplog):
     """A zero bound silently reverts to strict: warn rather than substitute a floor."""
+    # The warning is emitted once per message, so drop what the other cases already logged
+    _warn_zero_reference.cache_clear()
+
     with caplog.at_level(logging.WARNING, logger="TestSuite"):
         assert apply_bound_tolerance(0, 100, 10, PERCENTAGE) == (0, 110)
 
@@ -132,20 +136,30 @@ class _MockValidator(BaseTestValidator):
         )
 
 
-def _validator(failure_threshold=0, threshold_unit=ABSOLUTE) -> _MockValidator:
-    test_case = TestCase(
+def _test_case(parameter_values) -> TestCase:
+    return TestCase(
         name="test_case",
         entityLink="<#E::table::service.db.schema.table>",
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=[
-            TestCaseParameterValue(name="minValue", value="10"),
-            TestCaseParameterValue(name="maxValue", value="20"),
-        ],
-        failureThreshold=failure_threshold,
-        thresholdUnit=threshold_unit,
-    )
-    return _MockValidator(MagicMock(), test_case, int(datetime.now().timestamp()))
+        parameterValues=parameter_values,
+    )  # type: ignore
+
+
+def _threshold_params(threshold, unit):
+    """The threshold is configured with the parameters the test definitions declare"""
+    return [
+        TestCaseParameterValue(name="threshold", value=str(threshold)),
+        TestCaseParameterValue(name="thresholdUnit", value=unit.value),
+    ]
+
+
+def _validator(failure_threshold=0, threshold_unit=ABSOLUTE) -> _MockValidator:
+    parameter_values = [
+        TestCaseParameterValue(name="minValue", value="10"),
+        TestCaseParameterValue(name="maxValue", value="20"),
+    ] + _threshold_params(failure_threshold, threshold_unit)
+    return _MockValidator(MagicMock(), _test_case(parameter_values), int(datetime.now().timestamp()))
 
 
 def test_get_bounds_without_threshold_is_a_no_op():
@@ -172,3 +186,26 @@ def test_matches_expected():
     assert _validator(5, ABSOLUTE).matches_expected(104, 100) is True
     assert _validator(5, PERCENTAGE).matches_expected(104, 100) is True
     assert _validator(1, PERCENTAGE).matches_expected(104, 100) is False
+
+
+@pytest.mark.parametrize(
+    "threshold,unit,expected_status",
+    [
+        # the migrated validators read the threshold from the test case parameters
+        (0, ABSOLUTE, TestCaseStatus.Failed),
+        (5, ABSOLUTE, TestCaseStatus.Success),
+        (1, ABSOLUTE, TestCaseStatus.Failed),
+        (5, PERCENTAGE, TestCaseStatus.Success),
+        (1, PERCENTAGE, TestCaseStatus.Failed),
+    ],
+)
+def test_exact_value_validator_tolerates_a_deviation(threshold, unit, expected_status):
+    """A row count of 102 against an expected 100 passes within a tolerance of 2"""
+    validator = TableRowCountToEqualValidator(
+        MagicMock(),
+        _test_case([TestCaseParameterValue(name="value", value="100")] + _threshold_params(threshold, unit)),
+        int(datetime.now().timestamp()),
+    )
+    validator._run_results = lambda *_args, **_kwargs: 102
+
+    assert validator.run_validation().testCaseStatus == expected_status

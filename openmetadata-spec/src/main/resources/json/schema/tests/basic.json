@@ -106,21 +106,6 @@
         }
       ]
     },
-    "thresholdUnit": {
-      "description": "Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to the bound or to the expected value.",
-      "javaType": "org.openmetadata.schema.tests.type.ThresholdUnit",
-      "type": "string",
-      "enum": ["ABSOLUTE", "PERCENTAGE"],
-      "javaEnums": [
-        {
-          "name": "ABSOLUTE"
-        },
-        {
-          "name": "PERCENTAGE"
-        }
-      ],
-      "default": "ABSOLUTE"
-    },
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",

@@ -129,7 +129,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
-      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,failureThreshold,thresholdUnit,dimensionColumns,topDimensions";
+      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   private static final String PLATFORM_WIDE_EXPORT = "*";
   // `domains` is required so the CSV paths can post-filter on the domain each test case inherits
   // from its linked table — test cases never materialize a domain relationship of their own.
@@ -1841,18 +1841,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   "useDynamicAssertion",
                   original.getUseDynamicAssertion(),
                   updated.getUseDynamicAssertion()));
-      compareAndUpdate(
-          "failureThreshold",
-          () ->
-              recordChange(
-                  "failureThreshold",
-                  original.getFailureThreshold(),
-                  updated.getFailureThreshold()));
-      compareAndUpdate(
-          "thresholdUnit",
-          () ->
-              recordChange(
-                  "thresholdUnit", original.getThresholdUnit(), updated.getThresholdUnit()));
       compareAndUpdate(
           "dimensionColumns",
           () ->

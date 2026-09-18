@@ -79,11 +79,6 @@ export interface TestCase {
      */
     failedRowsSample?: TableData;
     /**
-     * Tolerance applied when evaluating this test case. A deviation within the threshold is
-     * still reported as a success. Defaults to 0, which evaluates the test case strictly.
-     */
-    failureThreshold?: number;
-    /**
      * Followers of this test case. When not set, the test case inherits the followers from the
      * table it belongs to.
      */
@@ -155,10 +150,6 @@ export interface TestCase {
      * Basic and Logical Test Suites this test case belongs to
      */
     testSuites?: TestSuite[];
-    /**
-     * Unit `failureThreshold` is expressed in.
-     */
-    thresholdUnit?: ThresholdUnit;
     /**
      * Number of top dimension values to show before grouping the rest as Others. Controls the
      * cardinality of dimensional test results. Defaults to 5 when not specified.
@@ -1242,16 +1233,4 @@ export enum Status {
     Running = "Running",
     Skipped = "Skipped",
     Warning = "Warning",
-}
-
-/**
- * Unit `failureThreshold` is expressed in.
- *
- * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
- * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
- * the bound or to the expected value.
- */
-export enum ThresholdUnit {
-    Absolute = "ABSOLUTE",
-    Percentage = "PERCENTAGE",
 }
