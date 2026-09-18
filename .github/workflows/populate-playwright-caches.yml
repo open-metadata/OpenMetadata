@@ -111,7 +111,7 @@ jobs:
       - name: Populate Playwright system deps cache
         id: warm-apt
         continue-on-error: true
-        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: >-
             fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf
