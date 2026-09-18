@@ -190,6 +190,12 @@ class TableauClient:
             all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
             for project in Pager(self.tableau_server.projects):
                 all_projects[project.id] = project
+            if len(all_projects) >= MAX_CACHED_PROJECTS:
+                logger.warning(
+                    f"Tableau site has at least {MAX_CACHED_PROJECTS} projects; the project "
+                    "cache is full and project hierarchy names may be incomplete for some "
+                    "workbooks."
+                )
             self.all_projects = all_projects
         except Exception as e:
             logger.debug(f"Failed to get all projects: {str(e)}")  # noqa: RUF010
