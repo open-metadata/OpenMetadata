@@ -579,7 +579,9 @@ test.describe(
 
         await test.step('User row is gone', async () => {
           await expect(
-            page.getByRole('rowheader', { name: testUser.responseData.displayName })
+            page.getByRole('rowheader', {
+              name: testUser.responseData.displayName,
+            })
           ).not.toBeVisible();
         });
       } finally {
