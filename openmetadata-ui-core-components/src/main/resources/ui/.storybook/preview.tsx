@@ -39,11 +39,13 @@ const StoryWithLocale = ({
   theme,
   dir,
   locale,
+  fullBleed,
 }: {
   Story: StoryFn;
   theme: ThemeMode;
   dir: 'ltr' | 'rtl';
   locale: string;
+  fullBleed: boolean;
 }) => {
   useEffect(() => {
     if (i18n.language !== locale) {
@@ -54,26 +56,34 @@ const StoryWithLocale = ({
   if (theme === 'both') {
     return (
       <div className="tw:grid tw:grid-cols-1 tw:gap-4">
-        {renderInTheme(Story, 'light', dir)}
-        {renderInTheme(Story, 'dark', dir)}
+        {renderInTheme(Story, 'light', dir, fullBleed, true)}
+        {renderInTheme(Story, 'dark', dir, fullBleed, true)}
       </div>
     );
   }
 
-  return renderInTheme(Story, theme, dir);
+  return renderInTheme(Story, theme, dir, fullBleed, false);
 };
+
+// A `fullBleed` story fills the canvas instead of sitting inside its padding —
+// layout and viewport tests need the real edge. In side-by-side mode the two
+// themes split the canvas, so each half takes half the height.
+const fullBleedHeight = (isSplit: boolean) =>
+  isSplit ? 'tw:h-[50vh]' : 'tw:h-screen';
 
 const renderInTheme = (
   Story: StoryFn,
   mode: 'light' | 'dark',
-  dir: 'ltr' | 'rtl'
+  dir: 'ltr' | 'rtl',
+  fullBleed: boolean,
+  isSplit: boolean
 ) => {
   const className =
     mode === 'dark' ? 'dark-mode tw:bg-primary' : 'tw:bg-primary';
 
   return (
     <div className={className} dir={dir}>
-      <div className="tw:p-6">
+      <div className={fullBleed ? fullBleedHeight(isSplit) : 'tw:p-6'}>
         <Story />
       </div>
     </div>
@@ -82,6 +92,13 @@ const renderInTheme = (
 
 const preview: Preview = {
   parameters: {
+    options: {
+      // Sidebar sections, top to bottom. Anything unlisted sorts after these,
+      // so a new section shows up at the bottom until it is added here.
+      storySort: {
+        order: ['Components', 'Application', 'Foundations', 'Icons', 'Testing'],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -125,6 +142,7 @@ const preview: Preview = {
       const theme: ThemeMode = parameterTheme ?? globalTheme;
       const locale = ctx.globals.locale as string;
       const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
+      const fullBleed = Boolean(ctx.parameters?.fullBleed);
 
       return (
         <HelmetProvider>
@@ -132,6 +150,7 @@ const preview: Preview = {
             <StoryWithLocale
               Story={Story}
               dir={dir}
+              fullBleed={fullBleed}
               locale={locale}
               theme={theme}
             />

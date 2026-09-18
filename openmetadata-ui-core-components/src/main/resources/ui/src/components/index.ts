@@ -133,6 +133,7 @@ export * from './application/date-picker/range-preset';
 export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
 export * from './application/page-layout/page-layout';
+export * from './application/page-shell/page-shell';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';

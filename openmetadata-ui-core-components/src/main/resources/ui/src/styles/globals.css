@@ -937,6 +937,75 @@
   --outline-color-brand-solid: var(--outline-color-brand-solid, theme(--color-bg-brand-solid));
   --outline-color-brand-solid_hover: var(--outline-color-brand-solid_hover, theme(--color-bg-brand-solid_hover));
   --outline-color-brand_alt: var(--outline-color-brand_alt, theme(--color-border-brand_alt));
+
+  /* ─── PAGE SHELL ───────────────────────────────────────────────────────────
+   * Surface tokens for the application shell: the viewport, the nav card, the
+   * page canvas and the cards inside it. The shell has no ramp of its own — it
+   * draws from --color-gray-*, whose dark steps separate stacked surfaces more
+   * widely than a pure-neutral ramp does, and whose cool cast matches the rest
+   * of the product.
+   * ─────────────────────────────────────────────────────────────────────── */
+
+  /* SHELL BACKGROUND COLORS */
+  /* Light keeps the viewport and the main nav on one cool off-white, so the white nav card reads as the lifted surface. Off-ramp on purpose. */
+  --color-bg-shell-page: var(--color-bg-shell-page, #f8f9fc);
+  --color-bg-shell-nav: var(--color-bg-shell-nav, #f8f9fc);
+  --color-bg-shell-nav-card: var(--color-bg-shell-nav-card, theme(--color-white));
+  --color-bg-shell-nav-item_hover: var(--color-bg-shell-nav-item_hover, theme(--color-gray-100));
+  --color-bg-shell-nav-item_active: var(--color-bg-shell-nav-item_active, theme(--color-gray-50));
+  --color-bg-shell-canvas: var(--color-bg-shell-canvas, theme(--color-white));
+  --color-bg-shell-header: var(--color-bg-shell-header, theme(--color-white));
+  --color-bg-shell-card: var(--color-bg-shell-card, theme(--color-white));
+  --color-bg-shell-card-header: var(--color-bg-shell-card-header, theme(--color-gray-25));
+  --color-bg-shell-card_hover: var(--color-bg-shell-card_hover, theme(--color-gray-50));
+  /* Inputs, chips, table headers — the deepest nested fill. */
+  --color-bg-shell-nested: var(--color-bg-shell-nested, theme(--color-gray-100));
+  --color-bg-shell-row_hover: var(--color-bg-shell-row_hover, theme(--color-gray-100));
+  --color-bg-shell-row-selected: var(--color-bg-shell-row-selected, #eff6ff);
+  --color-bg-shell-accent: var(--color-bg-shell-accent, #2563eb);
+
+  /* SHELL BORDER COLORS */
+  /* Neutral edges sit on gray-100 (#f5f5f5) — the lightest step that still reads as a line. gray-50 (#fafafa) is a shade off white and disappears against the white canvas and card surfaces. */
+  --color-border-shell-nav: var(--color-border-shell-nav, theme(--color-gray-100));
+  --color-border-shell-canvas: var(--color-border-shell-canvas, theme(--color-gray-100));
+  /* The canvas header's edge is a brand tint, not a neutral — it belongs to the header's blue wash rather than the shell's border scale. */
+  --color-border-shell-header: var(--color-border-shell-header, #eff8ff);
+  --color-border-shell-card: var(--color-border-shell-card, theme(--color-gray-100));
+  --color-border-shell-row: var(--color-border-shell-row, theme(--color-gray-100));
+
+  /* Text has no shell-specific tokens: the shell uses the library's own text scale (--color-text-primary / -secondary / -tertiary, and -brand-secondary for accented text), which already flips for dark mode. */
+
+  /* SHELL GRADIENTS */
+  /* Brand tint layered over bg-shell-header by the .shell-header-tint class below. Tailwind emits an unrecognised theme namespace as --tw-gradient-* with `inherits: false`, so this cannot be re-pointed from .dark-mode — dark drops the tint with a descendant rule instead. */
+  --gradient-shell-header: linear-gradient(89deg, #eff6ff52 -2.31%, #eff8ffcc 102.64%);
+
+  /* SHELL PROPERTY-NAMESPACE ALIASES — these generate tw:bg-shell-*, tw:border-shell-* and tw:outline-shell-* */
+  --background-color-shell-page: var(--background-color-shell-page, theme(--color-bg-shell-page));
+  --background-color-shell-nav: var(--background-color-shell-nav, theme(--color-bg-shell-nav));
+  --background-color-shell-nav-card: var(--background-color-shell-nav-card, theme(--color-bg-shell-nav-card));
+  --background-color-shell-nav-item_hover: var(--background-color-shell-nav-item_hover, theme(--color-bg-shell-nav-item_hover));
+  --background-color-shell-nav-item_active: var(--background-color-shell-nav-item_active, theme(--color-bg-shell-nav-item_active));
+  --background-color-shell-canvas: var(--background-color-shell-canvas, theme(--color-bg-shell-canvas));
+  --background-color-shell-header: var(--background-color-shell-header, theme(--color-bg-shell-header));
+  --background-color-shell-card: var(--background-color-shell-card, theme(--color-bg-shell-card));
+  --background-color-shell-card-header: var(--background-color-shell-card-header, theme(--color-bg-shell-card-header));
+  --background-color-shell-card_hover: var(--background-color-shell-card_hover, theme(--color-bg-shell-card_hover));
+  --background-color-shell-nested: var(--background-color-shell-nested, theme(--color-bg-shell-nested));
+  --background-color-shell-row_hover: var(--background-color-shell-row_hover, theme(--color-bg-shell-row_hover));
+  --background-color-shell-row-selected: var(--background-color-shell-row-selected, theme(--color-bg-shell-row-selected));
+  --background-color-shell-accent: var(--background-color-shell-accent, theme(--color-bg-shell-accent));
+  --border-color-shell-nav: var(--border-color-shell-nav, theme(--color-border-shell-nav));
+  --border-color-shell-canvas: var(--border-color-shell-canvas, theme(--color-border-shell-canvas));
+  --border-color-shell-header: var(--border-color-shell-header, theme(--color-border-shell-header));
+  --border-color-shell-card: var(--border-color-shell-card, theme(--color-border-shell-card));
+  --border-color-shell-row: var(--border-color-shell-row, theme(--color-border-shell-row));
+  /* Region edges are drawn as outlines, not borders: an outline is layout-neutral, so the region's padding stays the measured inset, and it is pixel-snapped instead of rounding a sub-pixel border up to half a device pixel. */
+  --outline-color-shell-nav: var(--outline-color-shell-nav, theme(--color-border-shell-nav));
+  --outline-color-shell-canvas: var(--outline-color-shell-canvas, theme(--color-border-shell-canvas));
+  --outline-color-shell-header: var(--outline-color-shell-header, theme(--color-border-shell-header));
+  --outline-color-shell-card: var(--outline-color-shell-card, theme(--color-border-shell-card));
+  --outline-color-shell-row: var(--outline-color-shell-row, theme(--color-border-shell-row));
+  --outline-color-shell-accent: var(--outline-color-shell-accent, theme(--color-bg-shell-accent));
 }
 
 @layer base {
@@ -1487,7 +1556,77 @@
     --tw-text-color-tertiary_on-brand: var(--color-text-tertiary_on-brand);
     --tw-text-color-tooltip-supporting-text: var(--color-tooltip-supporting-text);
     --tw-text-color-warning-primary: var(--color-text-warning-primary);
+
+    /* ─── PAGE SHELL ───────────────────────────────────────────────────────
+     * Depth hierarchy mirrors light, one ramp step per nesting level:
+     *   viewport 950 → nav card / canvas 900 → main nav / header / body 800
+     * Two invariants light holds too, and the reason the main nav and the sub
+     * nav do not share a token: the main nav must read as a distinct surface
+     * from the sub nav beside it, and the canvas must read as distinct from
+     * the viewport behind it. Header and body share one colour by design.
+     * ───────────────────────────────────────────────────────────────────── */
+
+    /* SHELL BACKGROUND COLORS */
+    --color-bg-shell-page: theme(--color-gray-950);
+    --color-bg-shell-nav-card: theme(--color-gray-900);
+    --color-bg-shell-nav: theme(--color-gray-800);
+    --color-bg-shell-nav-item_hover: theme(--color-gray-700);
+    --color-bg-shell-nav-item_active: theme(--color-gray-700);
+    --color-bg-shell-canvas: theme(--color-gray-900);
+    --color-bg-shell-header: theme(--color-gray-800);
+    --color-bg-shell-card: theme(--color-gray-800);
+    --color-bg-shell-card-header: theme(--color-gray-800);
+    --color-bg-shell-card_hover: theme(--color-gray-700);
+    /* 600 is now a content colour; the nested fill sits in the surface band. */
+    --color-bg-shell-nested: theme(--color-gray-700);
+    --color-bg-shell-row_hover: theme(--color-gray-700);
+    --color-bg-shell-row-selected: theme(--color-gray-700);
+    --color-bg-shell-accent: #93b4fd;
+
+    /* SHELL BORDER COLORS */
+    --color-border-shell-nav: theme(--color-gray-700);
+    --color-border-shell-canvas: theme(--color-gray-700);
+    --color-border-shell-header: theme(--color-gray-700);
+    --color-border-shell-card: theme(--color-gray-700);
+    --color-border-shell-row: theme(--color-gray-700);
+
+    /* --tw-*-color-shell-* — Tailwind utility layer, see the note above. */
+    --tw-background-color-shell-page: var(--color-bg-shell-page);
+    --tw-background-color-shell-nav: var(--color-bg-shell-nav);
+    --tw-background-color-shell-nav-card: var(--color-bg-shell-nav-card);
+    --tw-background-color-shell-nav-item_hover: var(--color-bg-shell-nav-item_hover);
+    --tw-background-color-shell-nav-item_active: var(--color-bg-shell-nav-item_active);
+    --tw-background-color-shell-canvas: var(--color-bg-shell-canvas);
+    --tw-background-color-shell-header: var(--color-bg-shell-header);
+    --tw-background-color-shell-card: var(--color-bg-shell-card);
+    --tw-background-color-shell-card-header: var(--color-bg-shell-card-header);
+    --tw-background-color-shell-card_hover: var(--color-bg-shell-card_hover);
+    --tw-background-color-shell-nested: var(--color-bg-shell-nested);
+    --tw-background-color-shell-row_hover: var(--color-bg-shell-row_hover);
+    --tw-background-color-shell-row-selected: var(--color-bg-shell-row-selected);
+    --tw-background-color-shell-accent: var(--color-bg-shell-accent);
+    --tw-border-color-shell-nav: var(--color-border-shell-nav);
+    --tw-border-color-shell-canvas: var(--color-border-shell-canvas);
+    --tw-border-color-shell-header: var(--color-border-shell-header);
+    --tw-border-color-shell-card: var(--color-border-shell-card);
+    --tw-border-color-shell-row: var(--color-border-shell-row);
+    --tw-outline-color-shell-nav: var(--color-border-shell-nav);
+    --tw-outline-color-shell-canvas: var(--color-border-shell-canvas);
+    --tw-outline-color-shell-header: var(--color-border-shell-header);
+    --tw-outline-color-shell-card: var(--color-border-shell-card);
+    --tw-outline-color-shell-row: var(--color-border-shell-row);
+    --tw-outline-color-shell-accent: var(--color-bg-shell-accent);
   }
+}
+
+/* Canvas-header tint. Light layers the brand gradient over bg-shell-header;
+dark flattens it to that colour by dropping the image. */
+.shell-header-tint {
+  background-image: var(--tw-gradient-shell-header);
+}
+
+.dark-mode .shell-header-tint {
+  background-image: none;
 }
 
 /* Skeleton wave animation used by the exported Skeleton component. */
