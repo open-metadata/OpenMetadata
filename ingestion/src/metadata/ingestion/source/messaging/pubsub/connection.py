@@ -36,7 +36,11 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_default_credentials,
+    get_gcp_impersonate_credentials,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -107,12 +111,25 @@ class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
                 if PUBSUB_EMULATOR_HOST in os.environ:
                     del os.environ[PUBSUB_EMULATOR_HOST]
 
-            publisher = pubsub_v1.PublisherClient()
-            subscriber = pubsub_v1.SubscriberClient()
+            gcp_credentials = None
+            if not connection.useEmulator and connection.gcpConfig:
+                impersonate = connection.gcpConfig.gcpImpersonateServiceAccount
+                if impersonate and impersonate.impersonateServiceAccount:
+                    target = impersonate.impersonateServiceAccount.strip()
+                    if target:
+                        gcp_credentials = get_gcp_impersonate_credentials(
+                            impersonate_service_account=target,
+                            lifetime=impersonate.lifetime or 3600,
+                        )
+                else:
+                    gcp_credentials = get_gcp_default_credentials()
+
+            publisher = pubsub_v1.PublisherClient(credentials=gcp_credentials)
+            subscriber = pubsub_v1.SubscriberClient(credentials=gcp_credentials)
 
             schema_client = None
             if connection.schemaRegistryEnabled and not connection.useEmulator:
-                schema_client = SchemaServiceClient()
+                schema_client = SchemaServiceClient(credentials=gcp_credentials)
 
             project_id = _get_project_id(connection)
             if not project_id:
