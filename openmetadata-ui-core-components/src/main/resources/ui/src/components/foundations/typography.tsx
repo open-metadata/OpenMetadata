@@ -88,6 +88,13 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
   tooltip?: ReactNode;
+  // Anchor pass-through, for the `as="a"` shape used by antd `Typography.Link`
+  // migrations. `HTMLAttributes` doesn't include these — they're spread onto
+  // `Component` at runtime regardless of `as`, so this only widens the type to
+  // match existing behaviour.
+  href?: string;
+  target?: HTMLAttributeAnchorTarget;
+  rel?: string;
 }
 
 // `styles/typography.css` applies its real typographic rules through a
