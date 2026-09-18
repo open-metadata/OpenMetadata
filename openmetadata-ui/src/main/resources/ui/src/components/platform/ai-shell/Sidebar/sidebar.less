@@ -83,7 +83,7 @@
 @ask-text-tertiary: var(--om-color-text-tertiary);
 @ask-text-quaternary: var(--om-color-text-quaternary);
 @ask-brand: var(--tw-color-brand-600);
-@ask-brand-active: var(--tw-color-utility-brand-800);
+@ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
 @ask-border-secondary: var(--om-color-border-secondary);
 
@@ -95,11 +95,15 @@
 @ask-transition-duration: 200ms;
 @ask-transition-ease: ease;
 
-// Dark-only: flip the selected surface to the brand-tinted interactive-selected
-// role (brand-500 @16%) so the active pill reads as a blue-tinted surface, matching
-// the design recording. Light leaves this unset -> gray-blue-100 fallback (frozen).
+// Dark-only overrides that match the design recording exactly. Light leaves both
+// unset, falling back to the frozen light values (gray-blue-100 pill, brand-800 fg).
+//  - selected surface -> interactive-selected (brand-500 @16%), a blue-tinted pill;
+//    a solid gray-blue-900 was invisible against the gray-blue-950 panel.
+//  - selected label/icon -> brand-300 (#84caff); the utility-brand-800 scale lands
+//    on brand-200 in dark, one step too pale versus the recording.
 .dark-mode {
   --ask-selected-surface: var(--om-color-interactive-selected);
+  --ask-selected-fg: var(--color-brand-300);
 }
 
 // ---- Shell ----
