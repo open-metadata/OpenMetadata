@@ -314,3 +314,36 @@ export const MutuallyExclusive: StoryObj = {
     );
   },
 };
+
+// Inline "create" row: an entity picker that also lets the user launch a
+// create form for a new entity, prefilled with the current search term. The
+// consumer owns the label (translated) and the create flow (e.g. a modal).
+export const WithCreate: StoryObj = {
+  render: () => {
+    const [value, setValue] = useState<TreeSelectNode[]>([]);
+    const [lastCreate, setLastCreate] = useState<string | null>(null);
+
+    return (
+      <div style={{ width: 360 }}>
+        <FilterSelect.Tree
+          bordered
+          lazyLoad
+          multiple
+          searchable
+          createLabel="Add new domain"
+          fetchData={fetchGlossaryTerms}
+          label="Domain"
+          triggerVariant="button"
+          value={value}
+          onChange={(next) => setValue(Array.isArray(next) ? next : [])}
+          onCreate={(searchTerm) => setLastCreate(searchTerm)}
+        />
+        <p style={{ fontSize: 12, marginTop: 12, color: '#667085' }}>
+          {lastCreate === null
+            ? 'Open the dropdown and click “Add new domain”.'
+            : `Create requested with search term: "${lastCreate}"`}
+        </p>
+      </div>
+    );
+  },
+};

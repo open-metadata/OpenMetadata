@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import {
+  ChevronDown,
+  Plus,
+  RefreshCw01,
+  SearchLg,
+  XClose,
+} from '@untitledui/icons';
 import {
   SearchInputIcon,
   TriggerCountBadge,
@@ -214,6 +220,8 @@ export const TreeSelect = <T = unknown,>({
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
+  onCreate,
+  createLabel,
   onNodeExpand,
   onNodeCollapse,
   onSearch,
@@ -649,10 +657,18 @@ export const TreeSelect = <T = unknown,>({
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
+  const showCreateRow = Boolean(onCreate && createLabel);
 
   const handleClearAll = useCallback(() => {
     replaceSelection([]);
   }, [replaceSelection]);
+
+  // Hand the term to the consumer (to prefill its create form) and close, so
+  // the picker is not left open behind the form the consumer opens.
+  const handleCreate = useCallback(() => {
+    onCreate?.(searchTerm);
+    setOpen(false);
+  }, [onCreate, searchTerm, setOpen]);
 
   const handleApply = useCallback(() => {
     onChange?.(multiple ? selectedData : selectedData[0] ?? null);
@@ -688,6 +704,22 @@ export const TreeSelect = <T = unknown,>({
             size="xs"
             onChange={handleSelectAll}
           />
+        </div>
+      )}
+      {showCreateRow && (
+        <div
+          className="tw:px-2 tw:pb-1"
+          onMouseDown={(event) => event.preventDefault()}>
+          <Button
+            color="link-color"
+            data-testid={
+              dataTestId ? `${dataTestId}-create` : 'tree-select-create'
+            }
+            iconLeading={Plus}
+            size="sm"
+            onPress={handleCreate}>
+            {createLabel}
+          </Button>
         </div>
       )}
       <div

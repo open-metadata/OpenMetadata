@@ -138,6 +138,14 @@ export interface TreeSelectProps<T = unknown> {
   onOpenChange?: (open: boolean) => void;
   /** Consumer-owned trigger, rendered in place of the built-in one. */
   renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
+  /**
+   * Enables an inline "create" action row at the top of the dropdown. Called
+   * with the current search term so the consumer can prefill a create form.
+   * The row only renders when `createLabel` is also provided.
+   */
+  onCreate?: (searchTerm: string) => void;
+  /** Consumer-translated label for the `onCreate` row (e.g. "Add new domain"). */
+  createLabel?: string;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;
