@@ -43,7 +43,6 @@ import { PortsLineageViewProps } from './PortsLineageView.types';
 
 const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
 
-// Theme-aware default edge/marker color so ports lineage edges follow dark mode.
 const PORTS_EDGE_COLOR = 'var(--om-color-border-primary)';
 
 const getPortHandleId = (port: SourceType): string => {
