@@ -24,33 +24,33 @@
 
   color: @grey-900;
   background-color: @grey-100;
-  border-color: @grey-50;
+  border-color: var(--color-bg-secondary);
 
   svg {
     height: 20px;
     width: 20px;
   }
   &.failed {
-    color: @red-10;
-    background-color: @alert-error-icon-bg-1;
-    border-color: @red-9;
+    color: var(--tw-color-utility-error-700);
+    background-color: var(--tw-color-utility-error-100);
+    border-color: var(--tw-color-utility-error-50);
   }
   &.success {
-    color: @green-10;
-    background-color: @green-100;
-    border-color: @green-9;
+    color: var(--tw-color-utility-success-700);
+    background-color: var(--tw-color-utility-success-100);
+    border-color: var(--tw-color-utility-success-50);
   }
   &.aborted {
-    color: @alert-warning-icon;
-    background-color: @alert-warning-icon-bg-1;
-    border-color: @yellow-10;
+    color: var(--tw-color-utility-warning-600);
+    background-color: var(--tw-color-utility-warning-100);
+    border-color: var(--tw-color-utility-warning-50);
   }
 }
 
 .test-case-area-chart-widget-container {
   position: relative;
-  background: @grey-26;
-  border-color: @grey-9;
+  background: var(--color-bg-secondary_subtle);
+  border-color: var(--color-border-secondary);
 
   .test-case-status-widget-footer-divider {
     border-style: dashed;
