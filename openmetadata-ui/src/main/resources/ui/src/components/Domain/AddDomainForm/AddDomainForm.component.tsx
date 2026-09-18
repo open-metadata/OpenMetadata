@@ -11,17 +11,13 @@
  *  limitations under the License.
  */
 import {
-  Autocomplete,
   Avatar,
   Box,
   Button,
-  ClassificationTag,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
   FormItemLabel,
-  FormSelectItem,
   getField,
   HintText,
   HookForm,
@@ -64,12 +60,6 @@ import {
   IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
 import { searchDomains } from '../../../rest/domainAPI';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
@@ -83,8 +73,7 @@ import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferen
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import {
@@ -202,7 +191,7 @@ export const transformDomainFormData = (
   type: DomainFormType,
   parentDomain?: Domain
 ): CreateDomain | CreateDataProduct => {
-  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const tags = formData.tags;
   const expertsList = formData.experts.map(
     (item) => item.value as EntityReference
   );
@@ -258,42 +247,6 @@ export const transformDomainFormData = (
   return data;
 };
 
-const createTagLabel = ({
-  description,
-  displayName,
-  name,
-  source,
-  style,
-  tagFQN,
-}: {
-  description?: string;
-  displayName?: string;
-  name?: string;
-  source: TagSource;
-  style?: TagLabel['style'];
-  tagFQN: string;
-}): TagLabel => ({
-  description,
-  displayName,
-  labelType: LabelType.Manual,
-  name,
-  source,
-  state: State.Confirmed,
-  style,
-  tagFQN,
-});
-
-const mapTagLabelToOption = (tagLabel: TagLabel): DomainFormSelectItem => ({
-  id: tagLabel.tagFQN,
-  label:
-    getTagDisplay(tagLabel.displayName || tagLabel.name) || tagLabel.tagFQN,
-  supportingText: tagLabel.displayName || tagLabel.name,
-  icon: tagLabel.style?.color ? (
-    <Dot size="sm" style={{ color: tagLabel.style.color }} />
-  ) : undefined,
-  value: tagLabel,
-});
-
 const mapEntityReferenceToOption = (
   reference: EntityReference
 ): DomainFormSelectItem => ({
@@ -332,7 +285,6 @@ const AddDomainForm = ({
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
   const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
     []
   );
@@ -561,42 +513,6 @@ const AddDomainForm = ({
     [type]
   );
 
-  const fetchTagOptions = useCallback(async (searchText = '') => {
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
-      const nextOptions = (response?.data ?? [])
-        .map((option) => {
-          const tag = option.data as {
-            description?: string;
-            displayName?: string;
-            fullyQualifiedName?: string;
-            name?: string;
-            style?: TagLabel['style'];
-          };
-
-          if (!tag?.fullyQualifiedName) {
-            return null;
-          }
-
-          return mapTagLabelToOption(
-            createTagLabel({
-              description: tag.description,
-              displayName: tag.displayName,
-              name: tag.name,
-              source: TagSource.Classification,
-              style: tag.style,
-              tagFQN: tag.fullyQualifiedName,
-            })
-          );
-        })
-        .filter((option): option is DomainFormSelectItem => option !== null);
-
-      setTagOptions(nextOptions);
-    } catch {
-      setTagOptions([]);
-    }
-  }, []);
-
   const fetchDomainOptions = useCallback(async (searchText = '') => {
     try {
       const domains = await searchDomains(searchText, 1);
@@ -690,10 +606,6 @@ const AddDomainForm = ({
     }
   }, []);
 
-  const handleTagFocus = useCallback(() => {
-    void fetchTagOptions();
-  }, [fetchTagOptions]);
-
   const handleDomainFocus = useCallback(() => {
     void fetchDomainOptions();
   }, [fetchDomainOptions]);
@@ -701,12 +613,6 @@ const AddDomainForm = ({
   const handleUserTeamFocus = useCallback(() => {
     void fetchUserTeamOptions();
   }, [fetchUserTeamOptions]);
-
-  const debouncedTagSearch = useMemo(
-    () =>
-      debounce((searchText: string) => void fetchTagOptions(searchText), 250),
-    [fetchTagOptions]
-  );
 
   const debouncedDomainSearch = useMemo(
     () =>
@@ -728,11 +634,10 @@ const AddDomainForm = ({
 
   useEffect(
     () => () => {
-      debouncedTagSearch.cancel();
       debouncedDomainSearch.cancel();
       debouncedUserTeamSearch.cancel();
     },
-    [debouncedDomainSearch, debouncedTagSearch, debouncedUserTeamSearch]
+    [debouncedDomainSearch, debouncedUserTeamSearch]
   );
 
   useEffect(() => {
@@ -850,53 +755,6 @@ const AddDomainForm = ({
     name: 'color',
     type: FieldTypes.COLOR_PICKER,
   };
-
-  const tagsField: FieldProp = applyIntakeFormRequired({
-    id: 'root/tags',
-    label: t('label.tag-plural'),
-    name: 'tags',
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
-    props: {
-      'data-testid': 'tags-container',
-      filterOption: () => true,
-      multiple: true,
-      onFocus: handleTagFocus,
-      onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
-      options: tagOptions,
-      renderTag: (item: FormSelectItem, onRemove: () => void) => {
-        const tagValue = (item as DomainFormSelectItem).value;
-        const style =
-          tagValue && typeof tagValue === 'object' && 'style' in tagValue
-            ? tagValue.style
-            : undefined;
-
-        return (
-          <ClassificationTag
-            color={style?.color}
-            icon={style?.iconURL}
-            key={item.id}
-            label={item.label || ''}
-            maxWidth={150}
-            tooltip={item.label || ''}
-            onDelete={onRemove}
-          />
-        );
-      },
-      renderItem: (item: FormSelectItem) => (
-        <Autocomplete.Item
-          avatarUrl={item.avatarUrl}
-          data-testid={`tag-option-${item.id}`}
-          icon={item.icon}
-          id={item.id}
-          isDisabled={item.isDisabled}
-          key={item.id}
-          label={item.label}
-          supportingText={item.supportingText}
-        />
-      ),
-    },
-    type: FieldTypes.TAG_SUGGESTION,
-  });
 
   const domainTypeField: FieldProp = applyIntakeFormRequired({
     label: t('label.domain-type'),
@@ -1152,7 +1010,19 @@ const AddDomainForm = ({
           </Box>
         )}
       </FormField>
-      <div>{getField(tagsField)}</div>
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <TagSelector
+            className="tw:w-full"
+            label={t('label.tag-plural')}
+            placeholder={t('label.select-field', {
+              field: t('label.tag-plural'),
+            })}
+            value={field.value ?? []}
+            onChange={field.onChange}
+          />
+        )}
+      </FormField>
       <FormField
         control={form.control}
         name="glossaryTerms"

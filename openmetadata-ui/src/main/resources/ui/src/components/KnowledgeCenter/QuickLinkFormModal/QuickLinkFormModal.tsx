@@ -13,10 +13,10 @@
 import {
   Autocomplete,
   Button,
-  ClassificationTag,
   Dialog,
   FieldProp,
   FieldTypes,
+  FormField,
   FormSelectItem,
   getField,
   HookForm,
@@ -41,7 +41,6 @@ import { EntityReference } from '../../../generated/entity/type';
 import {
   LabelType,
   State,
-  Style,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
@@ -68,6 +67,7 @@ import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface QuickLinkFormModalFormData
@@ -86,7 +86,7 @@ interface QuickLinkFormValues {
   displayName: string;
   url: string;
   description: string;
-  tags: QuickLinkFormSelectItem[];
+  tags: TagLabel[];
   glossaryTerms: QuickLinkFormSelectItem[];
   relatedEntities: QuickLinkFormSelectItem[];
 }
@@ -128,7 +128,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 }) => {
   const { t } = useTranslation('translation', { i18n });
   const [isUpdating, setIsUpdating] = useState(false);
-  const [tagOptions, setTagOptions] = useState<QuickLinkFormSelectItem[]>([]);
   const [glossaryOptions, setGlossaryOptions] = useState<
     QuickLinkFormSelectItem[]
   >([]);
@@ -190,7 +189,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         displayName: quickLink.displayName ?? '',
         url: (quickLink.page as QuickLink)?.url ?? '',
         description: quickLink.description ?? '',
-        tags: classification.map(mapTagLabelToSelectItem),
+        tags: classification,
         glossaryTerms: glossaries.map(mapTagLabelToSelectItem),
         relatedEntities: filteredRelatedDataAssets.map(
           mapEntityReferenceToSelectItem
@@ -217,41 +216,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       tagClassBase.setFilterClassification([KNOWLEDGE_CENTER_CLASSIFICATION]);
     };
   }, [isOpen]);
-
-  const fetchTagOptions = useCallback(async (searchText = '') => {
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
-      const options = (response?.data ?? [])
-        .map((option) => {
-          const tag = option.data as {
-            description?: string;
-            displayName?: string;
-            fullyQualifiedName?: string;
-            name?: string;
-            style?: Style;
-          };
-          if (!tag?.fullyQualifiedName) {
-            return null;
-          }
-
-          return mapTagLabelToSelectItem({
-            labelType: LabelType.Manual,
-            source: TagSource.Classification,
-            state: State.Confirmed,
-            tagFQN: tag.fullyQualifiedName,
-            displayName: tag.displayName,
-            name: tag.name,
-            description: tag.description,
-            style: tag.style,
-          });
-        })
-        .filter((opt): opt is QuickLinkFormSelectItem => opt !== null);
-
-      setTagOptions(options);
-    } catch {
-      setTagOptions([]);
-    }
-  }, []);
 
   const fetchGlossaryOptions = useCallback(async (searchText = '') => {
     try {
@@ -310,11 +274,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     }
   }, []);
 
-  const debouncedTagSearch = useMemo(
-    () => debounce((text: string) => void fetchTagOptions(text), 250),
-    [fetchTagOptions]
-  );
-
   const debouncedGlossarySearch = useMemo(
     () => debounce((text: string) => void fetchGlossaryOptions(text), 250),
     [fetchGlossaryOptions]
@@ -327,11 +286,10 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(
     () => () => {
-      debouncedTagSearch.cancel();
       debouncedGlossarySearch.cancel();
       debouncedAssetSearch.cancel();
     },
-    [debouncedAssetSearch, debouncedGlossarySearch, debouncedTagSearch]
+    [debouncedAssetSearch, debouncedGlossarySearch]
   );
 
   const handleQuickLinkUpdate = async (
@@ -412,7 +370,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       displayName: values.displayName,
       url: values.url,
       description: values.description,
-      tags: values.tags.map((item) => item.value as TagLabel),
+      tags: values.tags,
       glossaryTerms: values.glossaryTerms.map((item) => item.value as TagLabel),
       relatedEntities,
     };
@@ -468,49 +426,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       disabled: !canEditDescription,
     },
     placeholder: t('label.description'),
-  };
-
-  const tagsField: FieldProp = {
-    name: 'tags',
-    required: false,
-    label: t('label.tag-plural'),
-    id: 'root/tags',
-    type: FieldTypes.TAG_SUGGESTION,
-    props: {
-      'data-testid': 'tags-container',
-      disabled: !canEditTags,
-      filterOption: () => true,
-      multiple: true,
-      onFocus: () => void fetchTagOptions(),
-      onSearchChange: (text: string) => debouncedTagSearch(text),
-      options: tagOptions,
-      renderItem: (item: FormSelectItem) => (
-        <Autocomplete.Item
-          id={item.id}
-          key={item.id}
-          label={item.label}
-          supportingText={item.supportingText}
-        />
-      ),
-      renderTag: (item: FormSelectItem, onRemove: () => void) => {
-        const tagValue = (item as QuickLinkFormSelectItem).value;
-        const style =
-          tagValue && 'style' in tagValue ? tagValue.style : undefined;
-
-        return (
-          <ClassificationTag
-            color={style?.color}
-            icon={style?.iconURL}
-            key={item.id}
-            label={item.label || ''}
-            maxWidth={150}
-            tooltip={item.label || ''}
-            onDelete={onRemove}
-          />
-        );
-      },
-    },
-    placeholder: t(SELECT_FIELD_LABEL_KEY, { field: t('label.tag-plural') }),
   };
 
   const glossaryTermsField: FieldProp = {
@@ -596,7 +511,19 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
               {getField(displayNameField)}
               <div>{getField(urlField)}</div>
               {getField(descriptionField)}
-              {getField(tagsField)}
+              <FormField control={form.control} name="tags">
+                {({ field }) => (
+                  <TagSelector
+                    className="tw:w-full"
+                    label={t('label.tag-plural')}
+                    placeholder={t(SELECT_FIELD_LABEL_KEY, {
+                      field: t('label.tag-plural'),
+                    })}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
+              </FormField>
               {getField(glossaryTermsField)}
               {getField(relatedEntitiesField)}
             </HookForm>

@@ -77,6 +77,7 @@ import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFie
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ParameterFields from './ParameterFields';
 import {
@@ -374,7 +375,7 @@ const TestDetailsCard: FC<{
     <FormField control={form.control} name="tags">
       {({ field }) => (
         <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSuggestion
+          <TagSelector
             label={t('label.tag-plural')}
             placeholder={t('label.select-field', {
               field: t('label.tag-plural'),

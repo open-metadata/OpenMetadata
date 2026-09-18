@@ -263,6 +263,7 @@ const TagsContainerV2 = ({
     handleCancel,
     handleSave,
     initialOptions,
+    tagType,
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {

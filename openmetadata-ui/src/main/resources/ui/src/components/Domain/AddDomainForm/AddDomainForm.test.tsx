@@ -735,7 +735,7 @@ describe('transformDomainFormData', () => {
   it('maps a populated DOMAIN form into a CreateDomain payload', () => {
     const formData: DomainFormValues = {
       ...baseForm,
-      tags: [buildItem('PII.Sensitive', tagLabel)],
+      tags: [tagLabel],
       glossaryTerms: [glossaryTerm],
       owners: [buildItem('owner-1', ownerRef)],
       experts: [buildItem('expert-1', expertRef)],

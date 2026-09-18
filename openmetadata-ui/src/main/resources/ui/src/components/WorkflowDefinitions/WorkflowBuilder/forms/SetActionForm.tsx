@@ -39,6 +39,7 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 
 import { FormActionButtons, MetadataFormSection } from './';
@@ -213,10 +214,9 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   const renderFieldValue = () => {
     if (formData.fieldName === 'tags') {
       return (
-        <TagSuggestion
+        <TagSelector
           key="tags"
           label={t('label.field-value')}
-          tagType={TagSource.Classification}
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
         />
