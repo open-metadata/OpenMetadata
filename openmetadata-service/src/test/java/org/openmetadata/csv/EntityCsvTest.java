@@ -1942,7 +1942,7 @@ public class EntityCsvTest {
         .getEntityWithDependencyResolution(
             Entity.TABLE,
             tableFqn,
-            "owners,tags,domains,extension",
+            "owners,tags,domains,extension,tableConstraints,tablePartition",
             org.openmetadata.schema.type.Include.NON_DELETED);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
