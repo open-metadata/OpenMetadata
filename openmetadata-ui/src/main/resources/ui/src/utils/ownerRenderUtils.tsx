@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { OwnerType } from '../enums/user.enum';
+
+// Registered at bootstrap (src/index.tsx) but only *called* when an owner chip
+// renders, so a static import drags UserPopOverCard's whole subgraph -- antd
+// Popover, ProfilePicture and the four popover-content components -- into the
+// entry chunk for a card nobody has hovered yet.
+const UserPopOverCard = lazy(
+  () => import('../components/common/PopOverCard/UserPopOverCard')
+);
 
 /**
  * Wraps an owner chip in a UserPopOverCard so hovering the owner avatar/name
@@ -27,9 +34,13 @@ export const renderOwnerPopover = (
   owner: { name?: string; type?: string },
   chip: ReactNode
 ): ReactNode => (
-  <UserPopOverCard
+  // Falls back to the bare chip until the card chunk lands, so the owner name
+  // is never blank while hovering.
+  <Suspense fallback={chip}>
+    <UserPopOverCard
     type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
     userName={owner.name ?? ''}>
-    {chip}
-  </UserPopOverCard>
+      {chip}
+    </UserPopOverCard>
+  </Suspense>
 );
