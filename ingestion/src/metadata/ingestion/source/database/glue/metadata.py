@@ -358,7 +358,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             # An Iceberg view is typed Iceberg rather than View, so keying off the Glue type
             # keeps it from being the one kind of view that loses its definition.
             is_view = table.TableType == "VIRTUAL_VIEW"
-            schema_definition = get_schema_definition(table, schema_name) if is_view else None
+            schema_definition = get_schema_definition(table, schema_name, table_name) if is_view else None
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,

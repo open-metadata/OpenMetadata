@@ -31,24 +31,32 @@ PRESTO_VIEW_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 SQL_COMMENT_PATTERN = re.compile(r"/\*.*?\*/", re.DOTALL)
-# Same shape the Redshift and Trino readers use, so the lineage parser gets a statement it
-# can attach a target table to instead of a bare SELECT.
-CREATE_VIEW_PATTERN = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW", re.IGNORECASE)
+# Anchored to the head of the statement, past any leading comment, the way the SAP HANA and
+# ClickHouse readers do it. An unanchored search would read the CREATE VIEW inside a string
+# literal as a header already being there and leave a bare SELECT unwrapped, which costs the
+# lineage parser its target table.
+CREATE_VIEW_PATTERN = re.compile(
+    r"^\s*(?:/\*.*?\*/\s*|--[^\n]*\n\s*)*CREATE\s+(OR\s+REPLACE\s+)?(EXTERNAL\s+|MATERIALIZED\s+)?VIEW\b",
+    re.IGNORECASE | re.DOTALL,
+)
 SIMPLE_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def get_schema_definition(table: GlueTable, schema_name: str) -> str | None:
+def get_schema_definition(table: GlueTable, schema_name: str, table_name: str) -> str | None:
     """Return the CREATE VIEW statement for a Glue view, or None when Glue holds no text for it.
 
     ViewOriginalText is the SQL the user wrote and ViewExpandedText is Hive's fully qualified
     rewrite of it, so the original is preferred and the expanded text is only a fallback for
     the views where Hive left the original empty.
+
+    table_name is the name the entity is stored under, which the source truncates, rather than
+    table.Name: a statement naming a target the catalog does not hold resolves to no lineage.
     """
     for candidate in (table.ViewOriginalText, table.ViewExpandedText):
-        definition = _read_definition(candidate, table.Name)
+        definition = _read_definition(candidate, table_name)
         if definition:
-            return _as_create_view(definition, schema_name, table.Name)
-    logger.debug("Glue holds no view definition for [%s.%s]", schema_name, table.Name)
+            return _as_create_view(definition, schema_name, table_name)
+    logger.debug("Glue holds no view definition for [%s.%s]", schema_name, table_name)
     return None
 
 

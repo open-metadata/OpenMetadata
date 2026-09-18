@@ -650,23 +650,25 @@ class TestGlueSchemaDefinition:
         ],
     )
     def test_schema_definition(self, table, expected):
-        assert get_schema_definition(table, "default") == expected
+        assert get_schema_definition(table, "default", table.Name) == expected
 
     def test_hyphenated_names_are_quoted(self):
         """Glue allows a hyphen in a database name, and an unquoted one is not parseable SQL."""
         table = _view(original="SELECT 1", name="my-view")
 
-        assert get_schema_definition(table, "zipcode-db") == 'CREATE VIEW "zipcode-db"."my-view" AS SELECT 1'
+        assert (
+            get_schema_definition(table, "zipcode-db", table.Name) == 'CREATE VIEW "zipcode-db"."my-view" AS SELECT 1'
+        )
 
     def test_quote_in_a_name_is_doubled(self):
         table = _view(original="SELECT 1", name='odd"name')
 
-        assert get_schema_definition(table, "default") == 'CREATE VIEW default."odd""name" AS SELECT 1'
+        assert get_schema_definition(table, "default", table.Name) == 'CREATE VIEW default."odd""name" AS SELECT 1'
 
 
 class TestGlueSchemaDefinitionWarnings:
-    """Text Glue simply does not hold needs no operator action, so only a payload we were
-    handed and could not read is worth a warning."""
+    """A view whose text Glue simply does not store needs no operator action, so that stays at
+    debug. A payload Glue did hand us that we could not decode is the only case worth a warning."""
 
     @pytest.mark.parametrize(
         "original",
@@ -680,13 +682,13 @@ class TestGlueSchemaDefinitionWarnings:
     )
     def test_unreadable_payload_warns(self, original, caplog):
         with caplog.at_level(logging.WARNING):
-            assert get_schema_definition(_view(original=original), "default") is None
+            assert get_schema_definition(_view(original=original), "default", "sample_view") is None
 
         assert len(caplog.records) == 1
 
     def test_missing_definition_is_not_a_warning(self, caplog):
         with caplog.at_level(logging.WARNING):
-            assert get_schema_definition(_view(expanded="/* Presto View */"), "default") is None
+            assert get_schema_definition(_view(expanded="/* Presto View */"), "default", "sample_view") is None
 
         assert caplog.records == []
 
@@ -815,3 +817,60 @@ class TestGlueIncludeFlags:
 
     def test_both_off_yields_nothing(self, glue_source):
         assert self._names(glue_source, includeTables=False, includeViews=False) == []
+
+
+class TestGlueViewDefinitionEdges:
+    """Cases where a definition that looks fine still resolves to the wrong lineage, or to none."""
+
+    def test_a_select_mentioning_create_view_is_still_wrapped(self):
+        """The header check has to read the head of the statement. Matching anywhere would take
+        the text inside this literal for a header and leave the SELECT without a target."""
+        table = _view(original="SELECT 'CREATE VIEW' AS ddl FROM audit_log")
+
+        assert get_schema_definition(table, "default", "sample_view") == (
+            "CREATE VIEW default.sample_view AS SELECT 'CREATE VIEW' AS ddl FROM audit_log"
+        )
+
+    @pytest.mark.parametrize(
+        "original",
+        [
+            "\n  CREATE VIEW default.sample_view AS SELECT 1",
+            "/* a leading comment */ CREATE VIEW default.sample_view AS SELECT 1",
+            "-- a leading line comment\nCREATE VIEW default.sample_view AS SELECT 1",
+        ],
+        ids=["leading_whitespace", "leading_block_comment", "leading_line_comment"],
+    )
+    def test_a_real_header_is_never_wrapped_twice(self, original):
+        definition = get_schema_definition(_view(original=original), "default", "sample_view")
+
+        assert definition == original.strip()
+        assert definition.count("CREATE VIEW") == 1
+
+    def test_the_statement_names_the_table_under_its_stored_name(self, glue_source):
+        """standardize_table_name truncates to 128 chars, so naming the raw Glue name here would
+        point the lineage target at an entity the catalog does not hold. This one has to run the
+        whole path, because the truncation happens in get_tables_name_and_type."""
+        long_name = "v" * 200
+        glue_source._get_glue_tables = lambda: [TablePage(TableList=[_view(original="SELECT 1", name=long_name)])]
+
+        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+            mock_fqn.build = mock_fqn_build
+            requests = [
+                next(glue_source.yield_table(name_and_type)).right
+                for name_and_type in glue_source.get_tables_name_and_type()
+            ]
+
+        stored_name = requests[0].name.root
+        assert stored_name == long_name[:128]
+        assert requests[0].schemaDefinition.root == f"CREATE VIEW default.{stored_name} AS SELECT 1"
+
+    def test_a_view_with_a_null_serde_info_is_still_ingested(self, glue_source):
+        """StorageDetails() defaults SerdeInfo to a non-null value, so only an explicit null
+        reaches the guard in get_format."""
+        table = _view(original="SELECT 1")
+        table.StorageDescriptor = StorageDetails(SerdeInfo=None)
+
+        request = TestGlueViewRequest._request(glue_source, table, TableType.View)
+
+        assert request.fileFormat is None
+        assert request.schemaDefinition.root == "CREATE VIEW default.sample_view AS SELECT 1"
