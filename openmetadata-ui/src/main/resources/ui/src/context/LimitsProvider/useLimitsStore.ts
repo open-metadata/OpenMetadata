@@ -136,13 +136,7 @@ export const useLimitStore = create<{
     showBanner = true,
     force = false
   ) => {
-    const {
-      setResourceLimit,
-      resourceLimit,
-      setBannerDetails,
-      config,
-      bannerDetails,
-    } = get();
+    const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
     if (config?.enable === false) {
       return buildDisabledResourceLimit(resource);
@@ -158,12 +152,15 @@ export const useLimitStore = create<{
 
     if (rLimit) {
       const plan = config?.limits?.config.plan ?? 'FREE';
+      // Re-read the banner after the awaited fetch: a concurrent refresh may
+      // have changed it while this call was waiting, so the value captured
+      // before the await is stale for the ownership check in maybeShowLimitBanner.
       maybeShowLimitBanner(
         rLimit,
         resource,
         plan,
         showBanner,
-        bannerDetails,
+        get().bannerDetails,
         setBannerDetails
       );
     }

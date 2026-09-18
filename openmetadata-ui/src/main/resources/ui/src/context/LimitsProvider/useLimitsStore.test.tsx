@@ -21,11 +21,6 @@ const mockedGetLimitByResource = getLimitByResource as jest.MockedFunction<
   typeof getLimitByResource
 >;
 
-/**
- * Build a `getLimitByResource` response payload for a single resource.
- * Defaults model the "no limit configured" sentinel values used by the store
- * (softLimit/hardLimit === -1 means "not enforced").
- */
 const buildLimitResponse = (opts: {
   name?: string;
   currentCount: number;
@@ -66,7 +61,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
   describe('setting the banner when a limit is exceeded', () => {
     it('sets a warning banner when the soft limit is exceeded', async () => {
-      // count=8, softLimit=7, hardLimit=10 -> over soft, under hard
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 8, softLimit: 7, hardLimit: 10 })
       );
@@ -87,7 +81,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('sets a danger banner when the hard limit is exceeded', async () => {
-      // count=11, softLimit=7, hardLimit=10 -> over both soft and hard
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 11, softLimit: 7, hardLimit: 10 })
       );
@@ -105,7 +98,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('sets the banner when the API reports limitReached even if local thresholds are not crossed', async () => {
-      // count=3, softLimit=7, hardLimit=10 -> under thresholds, but API says reached
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           currentCount: 3,
@@ -139,7 +131,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
   describe('clearing the banner when usage drops below the limit', () => {
     it('clears a previously-set banner when the owning resource drops below the soft/hard limit on a force refresh', async () => {
-      // First fetch: over soft limit -> banner set with count=8
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 8, softLimit: 7, hardLimit: 10 })
       );
@@ -152,7 +143,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
         'You have used 8 out of 10 of the User resource.'
       );
 
-      // Second fetch (force): usage drops to 5 -> below both limits
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 5, softLimit: 7, hardLimit: 10 })
       );
@@ -162,7 +152,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('clears a hard-limit banner when usage drops back below the soft limit', async () => {
-      // over hard limit
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 12, softLimit: 7, hardLimit: 10 })
       );
@@ -170,7 +159,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
       expect(useLimitStore.getState().bannerDetails?.type).toBe('danger');
 
-      // back below soft limit
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 3, softLimit: 7, hardLimit: 10 })
       );
@@ -180,7 +168,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('updates (does not clear) the banner when usage drops from hard limit to still over soft limit', async () => {
-      // over hard limit (count=12)
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 12, softLimit: 7, hardLimit: 10 })
       );
@@ -191,7 +178,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
         'You have used 12 out of 10'
       );
 
-      // still over soft limit but back under hard limit (count=8)
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 8, softLimit: 7, hardLimit: 10 })
       );
@@ -207,7 +193,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
   describe('cross-resource banner ownership safety', () => {
     it('does not clear a banner owned by another resource when a different resource refreshes below its limit', async () => {
-      // bot is over its hard limit -> bot owns the banner
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'bot',
@@ -222,7 +207,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
       expect(botBanner?.resource).toBe('bot');
       expect(botBanner?.subheader).toContain('Bot resource');
 
-      // user (different resource) refresh comes back under its limits
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'user',
@@ -242,7 +226,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('clears the banner when the owner resource later drops below its limit, after an unrelated sub-limit refresh left it in place', async () => {
-      // bot over hard limit -> bot banner
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'bot',
@@ -255,7 +238,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
       expect(useLimitStore.getState().bannerDetails?.resource).toBe('bot');
 
-      // unrelated user sub-limit refresh must NOT clear the bot banner
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'user',
@@ -268,7 +250,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
       expect(useLimitStore.getState().bannerDetails?.resource).toBe('bot');
 
-      // now bot itself drops below its limit -> bot banner should clear
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'bot',
@@ -283,7 +264,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('replaces the banner owner when a different resource goes over its limit', async () => {
-      // user over soft limit
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({ currentCount: 8, softLimit: 7, hardLimit: 10 })
       );
@@ -291,7 +271,6 @@ describe('useLimitStore.getResourceLimit banner management', () => {
 
       expect(useLimitStore.getState().bannerDetails?.resource).toBe('user');
 
-      // bot now over hard limit -> ownership transfers to bot
       mockedGetLimitByResource.mockResolvedValueOnce(
         buildLimitResponse({
           name: 'bot',
@@ -307,6 +286,65 @@ describe('useLimitStore.getResourceLimit banner management', () => {
       expect(banner?.resource).toBe('bot');
       expect(banner?.type).toBe('danger');
     });
+
+    it('does not clear a user-owned banner when a delayed sub-limit bot response was captured against a stale bot banner', async () => {
+      // Ownership must be re-checked against the live store when each response
+      // is applied: a slow refresh that captured an older banner must not clear
+      // a banner a faster refresh has since installed for another resource.
+      mockedGetLimitByResource.mockResolvedValueOnce(
+        buildLimitResponse({
+          name: 'bot',
+          currentCount: 20,
+          softLimit: 5,
+          hardLimit: 10,
+        })
+      );
+      await useLimitStore.getState().getResourceLimit('bot', true, true);
+
+      expect(useLimitStore.getState().bannerDetails?.resource).toBe('bot');
+
+      let resolveBotRefresh: (value: ResourceLimit) => void = () => {};
+      mockedGetLimitByResource.mockReturnValueOnce(
+        new Promise<ResourceLimit>((resolve) => {
+          resolveBotRefresh = resolve;
+        })
+      );
+      mockedGetLimitByResource.mockResolvedValueOnce(
+        buildLimitResponse({
+          name: 'user',
+          currentCount: 20,
+          softLimit: 5,
+          hardLimit: 10,
+        })
+      );
+
+      const botRefresh = useLimitStore
+        .getState()
+        .getResourceLimit('bot', true, true);
+      const userRefresh = useLimitStore
+        .getState()
+        .getResourceLimit('user', true, true);
+
+      // The user refresh resolves first and takes ownership of the banner.
+      await userRefresh;
+
+      expect(useLimitStore.getState().bannerDetails?.resource).toBe('user');
+
+      // The delayed bot refresh returns sub-limit, but it captured the stale
+      // bot banner before the user banner existed; it must not clear the
+      // current user-owned banner.
+      resolveBotRefresh(
+        buildLimitResponse({
+          name: 'bot',
+          currentCount: 1,
+          softLimit: 5,
+          hardLimit: 10,
+        })
+      );
+      await botRefresh;
+
+      expect(useLimitStore.getState().bannerDetails?.resource).toBe('user');
+    });
   });
 
   describe('showBanner=false leaves the banner untouched', () => {
@@ -320,7 +358,7 @@ describe('useLimitStore.getResourceLimit banner management', () => {
     });
 
     it('does not clear an existing banner when showBanner is false even if usage is sub-limit', async () => {
-      // pre-seed a banner as if a LimitWrapper had set it
+      // Pre-seed a banner as if a LimitWrapper had set it.
       useLimitStore.setState({
         bannerDetails: {
           header: 'You have reached 100% of your FREE Plan usage limit.',
@@ -349,7 +387,7 @@ describe('useLimitStore.getResourceLimit banner management', () => {
   describe('disabled limits config', () => {
     it('returns a sentinel sub-limit and never touches the banner when config.enable is false', async () => {
       useLimitStore.setState({ config: { ...ENABLED_CONFIG, enable: false } });
-      // pre-seed a banner to prove it is not cleared
+      // Pre-seed a banner to prove the disabled path does not clear it.
       useLimitStore.setState({
         bannerDetails: {
           header: 'pre-existing',
