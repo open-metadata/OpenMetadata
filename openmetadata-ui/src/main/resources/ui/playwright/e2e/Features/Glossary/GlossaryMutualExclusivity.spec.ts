@@ -34,12 +34,14 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const POPOVER = 'glossary-term-picker-popover';
 
 // Scoped to the picker popover; returns the selection control (checkbox or radio wrapper).
-const selectionControl = (page: Page, fqn: string) =>
-  page
-    .getByTestId(POPOVER)
-    .locator(
-      `[data-testid="checkbox-${fqn}"], [data-testid="radio-${fqn}"]`
-    );
+// Uses getByTestId + .or() instead of a raw CSS selector so FQNs with quotes/percent are escaped.
+const selectionControl = (page: Page, fqn: string) => {
+  const popover = page.getByTestId(POPOVER);
+
+  return popover
+    .getByTestId(`checkbox-${fqn}`)
+    .or(popover.getByTestId(`radio-${fqn}`));
+};
 
 // The clickable tree-node row inside the popover.
 const treeNode = (page: Page, fqn: string) =>
