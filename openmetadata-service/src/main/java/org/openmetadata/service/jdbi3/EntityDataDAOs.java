@@ -378,6 +378,26 @@ public interface EntityDataDAOs {
         @Bind("termName") String termName,
         @Bind("excludeId") String excludeId);
 
+    // Duplicate-name check scoped to direct children of a single parent term (or glossary root),
+    // so that two terms with the same name under different parents are not flagged as duplicates.
+    // The NOT LIKE clause excludes grandchildren and deeper descendants, matching only the
+    // immediate next fqnHash segment.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :parentHash "
+            + "AND fqnHash NOT LIKE :parentHashNested AND LOWER(name) = LOWER(:termName)")
+    int getGlossaryTermCountIgnoreCaseUnderParent(
+        @BindConcat(
+                value = "parentHash",
+                parts = {":fqnhash", ".%"},
+                hash = true)
+            String fqnhash,
+        @BindConcat(
+                value = "parentHashNested",
+                parts = {":fqnhash", ".%.%"},
+                hash = true)
+            String fqnhashRepeat,
+        @Bind("termName") String termName);
+
     @SqlQuery(
         "SELECT json FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
     String getGlossaryTermByNameAndGlossaryIgnoreCase(
