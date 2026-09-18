@@ -826,7 +826,7 @@ const FilterSelect = ({
           )}
 
           {showStatusFooter && (
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
+            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
               <Typography
                 className="tw:text-tertiary"
                 data-testid="selected-count"
@@ -837,7 +837,7 @@ const FilterSelect = ({
                   : t('label.count-selected', { count: selectedValues.length })}
               </Typography>
               <Button
-                className="tw:px-0 tw:py-1.5"
+                className="tw:py-1.5"
                 color="tertiary"
                 data-testid="clear-filter-btn"
                 isDisabled={selectedValues.length === 0}
