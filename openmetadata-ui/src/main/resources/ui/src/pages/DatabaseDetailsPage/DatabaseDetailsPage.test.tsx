@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText } from '@testing-library/react';
+import { findByTestId, findByText, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -92,6 +92,25 @@ const mockSchemaData = {
   paging: { after: 'ZMbpLOqQQsREk_7DmEOr', total: 12 },
 };
 
+// The asset-tab segment is the lowercased count label, which `t` resolves to its
+// key under the global react-i18next mock. Pin the label the way ServiceDetailsPage's
+// own suite does so the assertions below can name the real URL; everything else in
+// the routing path — ConnectionsRouterClassBase and RouterUtils — runs unmocked.
+jest.mock('../../utils/ServicePureUtils', () => ({
+  ...jest.requireActual('../../utils/ServicePureUtils'),
+  getCountLabel: jest.fn().mockReturnValue('Databases'),
+}));
+
+// `useLocation` is mocked below for the page's own consumers, so the probe reads the
+// live router location from the unmocked module (AddServicePage.test.tsx precedent).
+const LocationProbe = () => {
+  const { pathname } = jest.requireActual('react-router-dom').useLocation();
+
+  return <p data-testid="location-display">{pathname}</p>;
+};
+
+const DATABASE_ROUTE = '/database/bigquery.shopify';
+
 const mockFeedCount = {
   totalCount: 6,
   counts: [
@@ -153,7 +172,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
-  useNavigate: jest.fn(),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
@@ -266,7 +284,27 @@ jest.mock(
   () => ({
     DataAssetsHeader: jest
       .fn()
-      .mockImplementation(() => <p>DataAssetsHeader</p>),
+      .mockImplementation(
+        ({
+          afterDeleteAction,
+        }: {
+          afterDeleteAction: (isSoftDelete?: boolean) => void;
+        }) => (
+          <div>
+            <p>DataAssetsHeader</p>
+            <button
+              data-testid="hard-delete"
+              onClick={() => afterDeleteAction(false)}>
+              hardDelete
+            </button>
+            <button
+              data-testid="soft-delete"
+              onClick={() => afterDeleteAction(true)}>
+              softDelete
+            </button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -393,6 +431,38 @@ describe('Test DatabaseDetails page', () => {
         pageTitle: 'bigquery_gcp.ecommerce_db',
       }),
       expect.anything()
+    );
+  });
+
+  it('should land on the parent service asset tab after a hard delete', async () => {
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={[DATABASE_ROUTE]}>
+        <DatabaseDetailsPage />
+        <LocationProbe />
+      </MemoryRouter>
+    );
+
+    const hardDeleteButton = await findByTestId(container, 'hard-delete');
+    fireEvent.click(hardDeleteButton);
+
+    expect(await findByTestId(container, 'location-display')).toHaveTextContent(
+      '/service/databaseServices/bigquery/databases'
+    );
+  });
+
+  it('should stay on the database page after a soft delete', async () => {
+    const { container } = renderWithQueryClient(
+      <MemoryRouter initialEntries={[DATABASE_ROUTE]}>
+        <DatabaseDetailsPage />
+        <LocationProbe />
+      </MemoryRouter>
+    );
+
+    const softDeleteButton = await findByTestId(container, 'soft-delete');
+    fireEvent.click(softDeleteButton);
+
+    expect(await findByTestId(container, 'location-display')).toHaveTextContent(
+      DATABASE_ROUTE
     );
   });
 });
