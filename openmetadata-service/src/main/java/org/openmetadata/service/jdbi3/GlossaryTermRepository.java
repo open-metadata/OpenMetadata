@@ -22,6 +22,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -195,6 +196,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     supportsSearch = true;
     renameAllowed = true;
+    // One fetcher, two fields: fetchAndSetParentOrGlossary populates BOTH parent and glossary, and
+    // the glossary half branches on the parent it just resolved (HAS for a nested term, CONTAINS
+    // for a root one). They cannot be split into a "glossary" fetcher without ordering the two, and
+    // setFieldsInBulk excludes both field names for that reason.
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
     fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
     fieldFetchers.put("usageCount", this::fetchAndSetUsageCount);
@@ -658,7 +663,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Resolve parent/glossary references in batch to avoid per-entity relationship lookups.
     populateParentAndGlossaryReferencesInBulk(entities);
 
-    fetchAndSetFields(entities, fields);
+    // Both field names are excluded, not just parent. Today only "parent" is a registered fetcher
+    // key and it populates glossary as well, so naming "glossary" changes nothing — but if that
+    // fetcher is ever split, the new key must not re-run and overwrite the fresh references
+    // resolved just above with the stale cached ones. The literal is deliberate: Entity.GLOSSARY is
+    // the entity *type*, and an exclusion keyed on a field name must not track a type rename.
+    fetchAndSetFieldsExcept(entities, fields, Set.of(FIELD_PARENT, "glossary"));
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
