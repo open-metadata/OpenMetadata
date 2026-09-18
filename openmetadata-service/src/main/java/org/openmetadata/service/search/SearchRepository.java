@@ -857,7 +857,8 @@ public class SearchRepository {
                               entry.getValue().indexPattern(), entry.getValue().mappingContent()),
                       (left, right) -> left,
                       TreeMap::new));
-      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      Map<String, String> liveFingerprints =
+          searchClient.getIndexTemplateFingerprints(indexTemplateNamePattern());
       return expectedFingerprints.entrySet().stream()
           .allMatch(
               expected ->
@@ -868,6 +869,18 @@ public class SearchRepository {
           exception.getMessage());
       return false;
     }
+  }
+
+  /**
+   * Template-name wildcard for this deployment only. Template names are {@code om_} + the
+   * cluster-alias-prefixed index name, so a bare {@code om_*} reads every co-tenant's templates on
+   * a shared cluster — visible to a search role that is otherwise confined to its own prefix,
+   * because index-template actions cannot be pattern-scoped by the security plugin.
+   */
+  private String indexTemplateNamePattern() {
+    return nullOrEmpty(clusterAlias)
+        ? "om_*"
+        : "om_" + clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + "*";
   }
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
