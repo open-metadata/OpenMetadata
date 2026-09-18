@@ -138,16 +138,6 @@ public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
 
-  /** Providers whose settings live in {@code authenticationConfiguration.oidcConfiguration}. */
-  private static final Set<AuthProvider> OIDC_PROVIDERS =
-      Set.of(
-          AuthProvider.AZURE,
-          AuthProvider.GOOGLE,
-          AuthProvider.OKTA,
-          AuthProvider.AUTH_0,
-          AuthProvider.AWS_COGNITO,
-          AuthProvider.CUSTOM_OIDC);
-
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
   // ontology explorer legend. Creating, updating and deleting them stays admin-only.
@@ -1167,9 +1157,21 @@ public class SystemResource {
     if (provider != AuthProvider.SAML) {
       authConfig.setSamlConfiguration(null);
     }
-    if (!OIDC_PROVIDERS.contains(provider)) {
+    if (!usesOidcConfiguration(provider)) {
       authConfig.setOidcConfiguration(null);
     }
+  }
+
+  /**
+   * Only these providers carry their settings somewhere other than {@code oidcConfiguration}, so
+   * naming them — rather than listing the OIDC providers — keeps a new OIDC provider working here
+   * without an edit.
+   */
+  private static boolean usesOidcConfiguration(AuthProvider provider) {
+    return switch (provider) {
+      case BASIC, LDAP, SAML, OPENMETADATA -> false;
+      default -> true;
+    };
   }
 
   @PATCH
