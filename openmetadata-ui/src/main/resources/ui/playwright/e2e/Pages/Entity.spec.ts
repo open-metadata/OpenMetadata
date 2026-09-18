@@ -449,7 +449,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
 
         // Open Tag Selector
-        await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
+        await tagRow
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
 
         await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(
@@ -472,7 +475,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         ).not.toBeVisible();
 
         // Re-open Tag Selector — should close Glossary Selector
-        await tagRow.getByTestId('tags-container').getByTestId('add-tag').click();
+        await tagRow
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+          .click();
 
         await expect(page.locator('.async-select-list-dropdown')).toBeVisible();
         await expect(

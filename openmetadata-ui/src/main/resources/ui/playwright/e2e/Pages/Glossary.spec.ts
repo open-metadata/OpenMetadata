@@ -101,14 +101,14 @@ import {
   verifyTaskCreated,
   verifyWorkflowInstanceExists,
 } from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
-import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
-import { performUserLogin } from '../../utils/user';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { sidebarClick } from '../../utils/sidebar';
+import { TaskDetails, waitForTaskResolveResponse } from '../../utils/task';
+import { performUserLogin } from '../../utils/user';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -564,9 +564,12 @@ test.describe('Glossary tests', () => {
           fullyQualifiedName: glossaryTerm2.responseData.fullyQualifiedName,
         });
 
-        await applyGlossaryPicker(page, (res) =>
-          res.url().includes('/api/v1/dashboards/') &&
-          res.request().method() === 'PATCH');
+        await applyGlossaryPicker(
+          page,
+          (res) =>
+            res.url().includes('/api/v1/dashboards/') &&
+            res.request().method() === 'PATCH'
+        );
 
         // The staged draft is seeded when the picker opens, so the applied
         // term must be on the widget before reopening it.

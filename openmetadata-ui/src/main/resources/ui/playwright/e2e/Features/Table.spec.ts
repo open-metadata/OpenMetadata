@@ -27,13 +27,13 @@ import {
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { sidebarClick } from '../../utils/sidebar';
-import { test } from '../fixtures/pages';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
 
