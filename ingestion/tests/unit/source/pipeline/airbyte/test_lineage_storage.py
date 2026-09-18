@@ -24,6 +24,7 @@ upstream lineage node but rejects it as a downstream target (``container -> apiC
 HTTP 500), so an API *destination* is anchored on the pipeline instead of emitting a rejected edge.
 """
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -36,6 +37,20 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -59,11 +74,20 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteStream,
     AirbyteWorkspace,
 )
-from metadata.ingestion.source.pipeline.airbyte.resolvers import get_resolver
+from metadata.ingestion.source.pipeline.airbyte.resolvers import (
+    DESTINATION,
+    SOURCE,
+    get_resolver,
+)
 from metadata.ingestion.source.pipeline.airbyte.utils import (
     get_destination_container_path,
+    get_destination_table_details,
     get_source_container_path,
+    get_source_table_details,
+    service_supports_database,
+    table_fqn_candidates,
 )
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 
 MOCK_JWT = (
     "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9."
@@ -493,20 +517,27 @@ ENDPOINT_ID = "44444444-4444-4444-8444-444444444444"
 class TestResolverRegistry:
     """The connector-type registry dispatches every kind, unknowns fall back to API."""
 
-    def test_dispatch_maps_types_to_entity_kinds(self):
-        assert get_resolver("s3").om_type == "container"
-        assert get_resolver("S3").om_type == "container"
-        assert get_resolver("postgres").om_type == "table"
-        assert get_resolver("redshift").om_type == "table"
+    @pytest.mark.parametrize("direction", [SOURCE, DESTINATION])
+    def test_dispatch_maps_types_to_entity_kinds(self, direction):
+        assert get_resolver("s3", direction).om_type == "container"
+        assert get_resolver("S3", direction).om_type == "container"
+        assert get_resolver("postgres", direction).om_type == "table"
+        assert get_resolver("redshift", direction).om_type == "table"
         # Warehouses are mapped so they never fall through to the API resolver.
-        assert get_resolver("snowflake").om_type == "table"
-        assert get_resolver("bigquery").om_type == "table"
-        assert get_resolver("kafka").om_type == "topic"
-        assert get_resolver("elasticsearch").om_type == "searchIndex"
+        assert get_resolver("snowflake", direction).om_type == "table"
+        assert get_resolver("bigquery", direction).om_type == "table"
+        assert get_resolver("kafka", direction).om_type == "topic"
+        assert get_resolver("elasticsearch", direction).om_type == "searchIndex"
         # Unknown connector (a SaaS API, /dev/null, vector DB) -> None: the caller then tries
         # the opt-in API resolver and, failing that, anchors on the pipeline.
-        assert get_resolver("hubspot") is None
-        assert get_resolver(None) is None
+        assert get_resolver("hubspot", direction) is None
+        assert get_resolver(None, direction) is None
+
+    def test_source_only_connectors_are_not_supported_destinations(self):
+        """Airbyte ships MongoDB as a source only; a shared registry called it a supported
+        destination and dropped the edge instead of anchoring it on the pipeline."""
+        assert get_resolver("mongodb", SOURCE).om_type == "table"
+        assert get_resolver("mongodb", DESTINATION) is None
 
 
 class TestNewEntityKinds:
@@ -661,3 +692,412 @@ class TestApiEndpointSafeFanout:
         # Ambiguous (2 endpoints) -> destination unresolved -> anchored on pipeline, never guessed.
         assert edges[0].edge.fromEntity.type == "container"
         assert edges[0].edge.toEntity.type == "pipeline"
+
+
+class TestTableLevelResolution:
+    """
+    Airbyte reports one "database" value whose OpenMetadata level depends on the target
+    service class, and names its levels per connector. Getting either wrong produced a
+    confidently wrong edge (a BigQuery destination resolved into an unrelated MySQL table).
+    """
+
+    def _searched_fqns(self, airbyte_source):
+        return [
+            call.kwargs.get("fqn_search_string")
+            for call in airbyte_source.metadata.es_search_from_fqn.call_args_list
+            if call.kwargs.get("entity_type") is Table
+        ]
+
+    def _lineage(self, airbyte_source, destination, service_name, supports_database):
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=[service_name])
+        # Pin the service class rather than stubbing a whole DatabaseService connection model.
+        airbyte_source.__dict__["db_service_supports_database"] = supports_database
+        airbyte_source.client.get_destination.return_value = destination
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Table: _stub(TABLE_ID)})
+        return [
+            either.right
+            for either in airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+    def test_bigquery_destination_uses_project_and_dataset_keys(self, airbyte_source):
+        """BigQuery names its levels project_id/dataset_id; reading `database`/`schema`
+        literally left both empty and `fqn.build` then matched an arbitrary same-named table."""
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteDestinationResponse(
+                destinationType="bigquery",
+                configuration={"project_id": "om-proj", "dataset_id": "om_ds"},
+            ),
+            service_name="bq_svc",
+            supports_database=True,
+        )
+
+        assert len(edges) == 1
+        assert edges[0].edge.toEntity.type == "table"
+        assert "bq_svc.om-proj.om_ds.pokemon" in self._searched_fqns(airbyte_source)
+
+    def test_bigquery_destination_without_keys_emits_no_edge(self, airbyte_source):
+        """No project_id/dataset_id means the table cannot be identified — the
+        `*.*.*.<table>` search must never be issued."""
+        edges = self._lineage(
+            airbyte_source,
+            AirbyteDestinationResponse(destinationType="bigquery", configuration={}),
+            service_name="bq_svc",
+            supports_database=True,
+        )
+
+        assert edges == []
+        assert self._searched_fqns(airbyte_source) == []
+
+    @pytest.mark.parametrize("connector", ["clickhouse", "oracle"])
+    def test_single_database_destination_lands_in_the_schema_slot(self, airbyte_source, connector):
+        """OpenMetadata files a single-database service under a synthetic `default` database,
+        so what these connectors call a database is really the schema."""
+        self._lineage(
+            airbyte_source,
+            AirbyteDestinationResponse(destinationType=connector, configuration={"database": "app_db"}),
+            service_name="single_svc",
+            supports_database=False,
+        )
+
+        assert "single_svc.*.app_db.pokemon" in self._searched_fqns(airbyte_source)
+
+    def test_undecided_service_tries_both_shapes(self, airbyte_source):
+        """A masked or unreadable connection must search both levels, never guess one."""
+        self._lineage(
+            airbyte_source,
+            AirbyteDestinationResponse(destinationType="clickhouse", configuration={"database": "app_db"}),
+            service_name="unknown_svc",
+            supports_database=None,
+        )
+
+        searched = self._searched_fqns(airbyte_source)
+        assert "unknown_svc.app_db.*.pokemon" in searched
+        assert "unknown_svc.*.app_db.pokemon" in searched
+
+
+class TestUnsupportedConnectorWarning:
+    """
+    Issue #28591's core complaint: a connection that resolves nothing must say so at default
+    log level. The mid-cascade demotion to debug left it silent.
+    """
+
+    def _two_stream_connection(self):
+        return AirbyteConnectionModel(
+            connectionId="248e61dc-ec52-480e-bd08-6edb8b33b14c",
+            name="om28591-pokeapi-to-devnull",
+            sourceId="s1",
+            destinationId="d1",
+            configurations={"streams": [{"name": "pokemon"}, {"name": "berry"}]},
+        )
+
+    def test_one_warning_per_side_regardless_of_stream_count(self, airbyte_source, caplog):
+        airbyte_source.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="dev-null", configuration={}
+        )
+
+        with caplog.at_level(logging.WARNING, logger="Ingestion"):
+            edges = list(
+                airbyte_source.yield_pipeline_lineage_details(
+                    AirbytePipelineDetails(
+                        workspace=AirbyteWorkspace(workspaceId="ws-1"),
+                        connection=self._two_stream_connection(),
+                    )
+                )
+            )
+
+        assert edges == []
+        unsupported = [record for record in caplog.records if "is not supported yet" in record.message]
+        # Two unsupported sides, two streams: the warning is per connection side, not per stream.
+        assert len(unsupported) == 2
+        assert {record.args[1] for record in unsupported} == {"source", "destination"}
+
+    @pytest.mark.parametrize("destination_type", ["mongodb", "dev-null"])
+    def test_source_only_and_unknown_destinations_behave_alike(self, airbyte_source, destination_type):
+        """`mongodb` is an Airbyte source, never a destination. The shared registry counted it
+        as a supported destination, so it silently dropped the edge while `dev-null` anchored
+        on the pipeline."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["pg"])
+        airbyte_source.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="postgres", configuration={"database": "pg_db"}
+        )
+        airbyte_source.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType=destination_type, configuration={}
+        )
+        airbyte_source.metadata.get_by_name.side_effect = _route_get_by_name({Table: _stub(TABLE_ID)})
+        airbyte_source._get_table_fqn = MagicMock(return_value="pg.pg_db.public.pokemon")
+
+        edges = [
+            either.right
+            for either in airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "table"
+        assert edges[0].edge.toEntity.type == "pipeline"
+
+
+class TestContainerPathResolution:
+    """
+    `es_search_container_by_path` matches `fullPath` exactly, so the path Airbyte writes to
+    must be reconstructed exactly and every prefix level tried, not just the bucket.
+    """
+
+    def test_namespace_is_part_of_the_written_path(self):
+        """Airbyte's default s3_path_format is ${NAMESPACE}/${STREAM_NAME}/..."""
+        destination = AirbyteDestinationResponse(
+            destinationType="s3",
+            configuration={"s3_bucket_name": "bucket", "s3_bucket_path": "raw"},
+        )
+        stream = AirbyteStream(name="users", namespace="public")
+        assert get_destination_container_path(stream, destination) == "s3://bucket/raw/public/users"
+
+    def test_walks_up_to_the_deepest_declared_prefix(self, airbyte_source):
+        """A manifest that declares only a middle prefix must resolve to that prefix, not
+        skip straight to the bucket."""
+        prefix_container = Container(
+            id=BUCKET_CONTAINER_ID,
+            name="api_data",
+            fullyQualifiedName="om28591-minio-storage.om28591-airbyte-dest.api_data",
+            service=MOCK_STORAGE_SERVICE_REF,
+        )
+        airbyte_source.metadata.es_search_container_by_path.side_effect = lambda full_path, **_: (
+            [prefix_container] if full_path == "s3://om28591-airbyte-dest/api_data" else []
+        )
+
+        edges = [
+            either.right
+            for either in airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+        assert len(edges) == 1
+        assert str(edges[0].edge.toEntity.id.root) == BUCKET_CONTAINER_ID
+
+    def test_ambiguous_storage_services_yield_no_edge(self, airbyte_source):
+        """The same bucket ingested under two storage services: with no storageServiceNames
+        the answer is arbitrary and the user cannot correct it, so emit nothing."""
+        other_container = Container(
+            id="7c7c7c7c-1111-4222-8333-444455556666",
+            name="api_data/pokemon",
+            fullyQualifiedName="other-minio-storage.om28591-airbyte-dest.api_data/pokemon",
+            service=EntityReference(
+                id="8d8d8d8d-1111-4222-8333-444455556666",
+                type="storageService",
+                name="other-minio-storage",
+            ),
+        )
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER, other_container]
+
+        edges = list(
+            airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        )
+
+        assert edges == []
+
+    def test_storage_service_names_resolves_the_ambiguity(self, airbyte_source):
+        """With the list configured the choice is the user's, so first match is correct."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(
+            storageServiceNames=["om28591-minio-storage"]
+        )
+        other_container = Container(
+            id="7c7c7c7c-1111-4222-8333-444455556666",
+            name="api_data/pokemon",
+            fullyQualifiedName="other-minio-storage.om28591-airbyte-dest.api_data/pokemon",
+            service=EntityReference(
+                id="8d8d8d8d-1111-4222-8333-444455556666",
+                type="storageService",
+                name="other-minio-storage",
+            ),
+        )
+        airbyte_source.metadata.es_search_container_by_path.return_value = [other_container, MOCK_CONTAINER]
+
+        edges = [
+            either.right
+            for either in airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        ]
+
+        assert len(edges) == 1
+        assert str(edges[0].edge.toEntity.id.root) == CONTAINER_ID
+
+
+DB_SERVICE_ID = "66666666-6666-4666-8666-666666666666"
+
+
+def _db_service(name, config):
+    return DatabaseService(
+        id=DB_SERVICE_ID,
+        name=name,
+        serviceType=DatabaseServiceType.Postgres,
+        connection=DatabaseConnection(config=config) if config else None,
+    )
+
+
+class TestServiceClassDetection:
+    """
+    Which OpenMetadata level Airbyte's "database" value maps to is a property of the target
+    service, not the connector: multi-database services declare `supportsDatabase`/`database`
+    in their connection schema, single-database ones declare neither and ingest under a
+    synthetic `default` database.
+    """
+
+    @pytest.mark.parametrize(
+        ("config", "expected"),
+        [
+            (PostgresConnection(username="u", hostPort="h:5432", database="d"), True),
+            (MysqlConnection(username="u", hostPort="h:3306"), False),
+            # An unreadable connection says nothing about the service's class.
+            (None, None),
+        ],
+    )
+    def test_service_class_is_read_from_connection_field_presence(self, config, expected):
+        metadata = MagicMock()
+        metadata.get_by_name.return_value = _db_service("svc", config)
+        assert service_supports_database(metadata, "svc") is expected
+
+    def test_absent_service_is_undecided(self):
+        metadata = MagicMock()
+        metadata.get_by_name.return_value = None
+        assert service_supports_database(metadata, "svc") is None
+
+    def test_presence_not_truthiness(self):
+        """A server can return the flag nulled; testing its truthiness would then classify a
+        multi-database service as single-database and drop the database level."""
+        config = PostgresConnection(username="u", hostPort="h:5432", database="d", supportsDatabase=None)
+        assert not config.supportsDatabase
+        metadata = MagicMock()
+        metadata.get_by_name.return_value = _db_service("svc", config)
+        assert service_supports_database(metadata, "svc") is True
+
+    def test_bigquery_declares_the_flag_without_a_database_field(self):
+        """BigQuery is multi-database but has no `database` field, so the check must accept
+        either declaration."""
+        fields = BigQueryConnection.model_fields
+        assert "supportsDatabase" in fields
+        assert "database" not in fields
+
+    def test_disagreeing_services_stay_undecided(self, airbyte_source):
+        """Two configured services of different classes cannot share one answer, so both
+        FQN shapes get tried rather than one being guessed."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["pg", "my"])
+        airbyte_source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **_: {
+            "pg": _db_service("pg", PostgresConnection(username="u", hostPort="h:5432", database="d")),
+            "my": _db_service("my", MysqlConnection(username="u", hostPort="h:3306")),
+        }.get(fqn)
+
+        assert airbyte_source.db_service_supports_database is None
+
+    def test_single_service_decides(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["my"])
+        airbyte_source.metadata.get_by_name.return_value = _db_service(
+            "my", MysqlConnection(username="u", hostPort="h:3306")
+        )
+
+        assert airbyte_source.db_service_supports_database is False
+
+    def test_no_configured_services_is_undecided(self, airbyte_source):
+        assert airbyte_source.get_db_service_names() == []
+        assert airbyte_source.db_service_supports_database is None
+
+
+class TestTableFqnCandidates:
+    """The shapes tried for one set of Airbyte-reported levels, most specific first."""
+
+    DETAILS = TableDetails(name="users", schema="public", database="app_db")
+
+    def test_multi_database_service_uses_the_reported_levels(self):
+        assert table_fqn_candidates(self.DETAILS, True) == [self.DETAILS]
+
+    def test_single_database_service_moves_the_database_into_the_schema_slot(self):
+        assert table_fqn_candidates(self.DETAILS, False) == [TableDetails(name="users", schema="public", database=None)]
+
+    def test_single_database_service_without_a_schema_falls_back_to_the_database(self):
+        details = TableDetails(name="users", schema=None, database="app_db")
+        assert table_fqn_candidates(details, False) == [TableDetails(name="users", schema="app_db", database=None)]
+
+    def test_undecided_service_tries_multi_then_single(self):
+        assert table_fqn_candidates(self.DETAILS, None) == [
+            self.DETAILS,
+            TableDetails(name="users", schema="public", database=None),
+        ]
+
+    def test_no_database_never_duplicates_the_same_shape(self):
+        details = TableDetails(name="users", schema="public", database=None)
+        assert table_fqn_candidates(details, None) == [details]
+
+    def test_multi_database_service_without_a_database_has_nothing_to_try(self):
+        """A declared multi-database service whose connector reported no database cannot be
+        qualified — no candidate, rather than a half-qualified guess."""
+        assert table_fqn_candidates(TableDetails(name="users", schema=None, database=None), True) == []
+
+
+class TestUnderQualifiedGuard:
+    """The guard kills `*.*.*.<table>` without narrowing legitimate searches."""
+
+    def test_refuses_a_table_with_neither_level(self, airbyte_source):
+        assert airbyte_source._get_table_fqn(TableDetails(name="users", schema=None, database=None)) is None
+        airbyte_source.metadata.es_search_from_fqn.assert_not_called()
+
+    def test_a_database_alone_is_still_searched(self, airbyte_source):
+        """Postgres with no stream namespace has a database and must keep working."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["pg"])
+        airbyte_source._get_table_fqn(TableDetails(name="users", schema=None, database="app_db"))
+
+        searched = [
+            call.kwargs.get("fqn_search_string")
+            for call in airbyte_source.metadata.es_search_from_fqn.call_args_list
+            if call.kwargs.get("entity_type") is Table
+        ]
+        assert "pg.app_db.*.users" in searched
+
+    def test_a_schema_alone_is_still_searched(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["my"])
+        airbyte_source._get_table_fqn(TableDetails(name="users", schema="app_db", database=None))
+
+        searched = [
+            call.kwargs.get("fqn_search_string")
+            for call in airbyte_source.metadata.es_search_from_fqn.call_args_list
+            if call.kwargs.get("entity_type") is Table
+        ]
+        assert "my.*.app_db.users" in searched
+
+
+class TestBigQuerySourceKeys:
+    """BigQuery names its levels the same way on both sides of a connection."""
+
+    def test_source_reads_project_id_and_dataset_id(self):
+        details = get_source_table_details(
+            AirbyteStream(name="pokemon", namespace="ignored_namespace"),
+            AirbyteSourceResponse(
+                sourceType="bigquery",
+                configuration={"project_id": "om-proj", "dataset_id": "om_ds"},
+            ),
+        )
+        assert (details.database, details.schema) == ("om-proj", "om_ds")
+
+    def test_source_falls_back_to_the_stream_namespace_without_a_dataset(self):
+        details = get_source_table_details(
+            AirbyteStream(name="pokemon", namespace="ns_ds"),
+            AirbyteSourceResponse(sourceType="bigquery", configuration={"project_id": "om-proj"}),
+        )
+        assert (details.database, details.schema) == ("om-proj", "ns_ds")
+
+    def test_display_name_type_uses_the_same_aliases(self):
+        """The internal API reports "BigQuery"; the public API reports "bigquery"."""
+        details = get_destination_table_details(
+            AirbyteStream(name="pokemon"),
+            AirbyteDestinationResponse(
+                destinationName="BigQuery",
+                connectionConfiguration={"project_id": "om-proj", "dataset_id": "om_ds"},
+            ),
+        )
+        assert (details.database, details.schema) == ("om-proj", "om_ds")

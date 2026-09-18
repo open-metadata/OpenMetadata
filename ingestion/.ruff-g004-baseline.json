@@ -2100,16 +2100,6 @@
       "de24d11c9756171df28e0696f4521068586dcbc71688ea05965da6a0c96032c9": 1,
       "e2d7e3ff815f9420ce9fb118e992a6017944e687cec66340c990dcbceaf78a3d": 1
     },
-    "ingestion/src/metadata/ingestion/source/pipeline/airbyte/client.py": {
-      "50fb440f0b3c7a0f755d751ff8376a44084cf5f115c0143da8429abf669f197b": 1
-    },
-    "ingestion/src/metadata/ingestion/source/pipeline/airbyte/metadata.py": {
-      "09b7fb75fb46aae1f471365133f9b0b51939b02b2ed6f7fcf7866e82c8b30a78": 1,
-      "2cee749dd74ad6f5f23950f90a7e0e20820a1a4be31e9ff24d1c7e78f378a85c": 1,
-      "570b5ef59246f3775707e6f8a70cbb284f60055e44051aee88bcc076865903ef": 1,
-      "69a51950e519204600f68868ed48be1d6f37922f5ffdb584382ea2b01fa84c8a": 1,
-      "9b812c349c290cdfcbb686acb53debc1babbb3f8bbbae0fbac64a2cbb9d4a537": 1
-    },
     "ingestion/src/metadata/ingestion/source/pipeline/airflow/api/client.py": {
       "1f733a2850b119f05e28f11e0d1440f6f21f2ab12615b2e4c98087306cc09a21": 1,
       "3877fd56743eaef35127d0fba5d539d53749cc62ca0d1380349b4a17e71d8a3f": 1,

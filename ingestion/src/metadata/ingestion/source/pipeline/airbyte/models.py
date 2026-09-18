@@ -49,7 +49,7 @@ class AirbyteConnectionConfigurations(BaseModel):
 
     @field_validator("streams", mode="before")
     @classmethod
-    def _drop_streams_without_name(cls, value):
+    def _drop_streams_without_name(cls, value: object) -> object:
         """Drop malformed entries before validation instead of failing the whole connection.
 
         The public API is not guaranteed to omit a stray nameless entry; one bad stream

@@ -92,6 +92,13 @@ DESTINATION_TYPE_LOOKUP = {
     "oracle": AirbyteDestination.ORACLE,
 }
 
+# Connectors that name the two table-FQN levels differently from the generic
+# ``database``/``schema`` keys. Keyed on the connector display name, which is identical for
+# the source and destination enums. ``(database_key, schema_key)``.
+TABLE_KEY_ALIASES = {
+    AirbyteSource.BIGQUERY.value: ("project_id", "dataset_id"),
+}
+
 # Object-store connectors map to a Container, not a Table, so they are resolved by path
 # rather than through the TYPE_LOOKUP maps. Holds the connector display name ("S3", as
 # the internal API reports it) and the public-API slug ("s3").

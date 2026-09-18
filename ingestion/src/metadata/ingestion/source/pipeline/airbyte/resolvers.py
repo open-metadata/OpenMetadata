@@ -27,6 +27,7 @@ Direction rules baked into the resolvers:
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.data.apiCollection import APICollection
@@ -56,6 +57,7 @@ from .utils import (  # noqa: TID252
     get_destination_table_details,
     get_source_container_path,
     get_source_table_details,
+    table_fqn_candidates,
 )
 
 if TYPE_CHECKING:
@@ -91,7 +93,14 @@ class TableResolver(EntityResolver):
 
     om_type = "table"
 
-    def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+    def resolve(
+        self,
+        source: "AirbyteSource",
+        stream: AirbyteStream,
+        connection: Connection,
+        direction: str,
+        pipeline_name: str,
+    ) -> EntityReference | None:
         # The caller pairs `connection` with `direction`: source_connection only ever
         # arrives with SOURCE, destination_connection only ever arrives with DESTINATION.
         details = (
@@ -102,28 +111,23 @@ class TableResolver(EntityResolver):
         if not details:
             return None
 
-        table_fqn = source._get_table_fqn(details)
-        if not table_fqn:
-            logger.warning(
-                "Airbyte lineage [%s]: table [%s].[%s].[%s] (type %s) not found in OpenMetadata",
-                pipeline_name,
-                details.database or "*",
-                details.schema,
-                details.name,
-                connection.resolved_type,
-            )
-            return None
+        for candidate in table_fqn_candidates(details, source.db_service_supports_database):
+            table_fqn = source._get_table_fqn(candidate)
+            if not table_fqn:
+                continue
+            entity = source.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            if entity:
+                return EntityReference(id=entity.id, type="table")
 
-        entity = source.metadata.get_by_name(entity=Table, fqn=table_fqn)
-        if not entity:
-            logger.warning(
-                "Airbyte lineage [%s]: table (fqn [%s], type %s) not found in OpenMetadata",
-                pipeline_name,
-                table_fqn,
-                connection.resolved_type,
-            )
-            return None
-        return EntityReference(id=entity.id, type="table")
+        logger.warning(
+            "Airbyte lineage [%s]: table [%s].[%s].[%s] (type %s) not found in OpenMetadata",
+            pipeline_name,
+            details.database or "*",
+            details.schema,
+            details.name,
+            connection.resolved_type,
+        )
+        return None
 
 
 class ContainerResolver(EntityResolver):
@@ -131,7 +135,14 @@ class ContainerResolver(EntityResolver):
 
     om_type = "container"
 
-    def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+    def resolve(
+        self,
+        source: "AirbyteSource",
+        stream: AirbyteStream,
+        connection: Connection,
+        direction: str,
+        pipeline_name: str,
+    ) -> EntityReference | None:
         # Same caller-guaranteed pairing as TableResolver.resolve.
         container_path = (
             get_source_container_path(stream, cast("AirbyteSourceResponse", connection))
@@ -159,7 +170,14 @@ class _ServiceScopedResolver(EntityResolver):
     def _entity_type(self):
         raise NotImplementedError
 
-    def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+    def resolve(
+        self,
+        source: "AirbyteSource",
+        stream: AirbyteStream,
+        connection: Connection,
+        direction: str,
+        pipeline_name: str,
+    ) -> EntityReference | None:
         service_names = self._service_names(source)
         if not service_names:
             logger.debug(
@@ -191,13 +209,13 @@ class TopicResolver(_ServiceScopedResolver):
 
     om_type = "topic"
 
-    def _service_names(self, source):
+    def _service_names(self, source: "AirbyteSource") -> list[str]:
         return source.get_messaging_service_names()
 
-    def _entity_type(self):
+    def _entity_type(self) -> type[Topic]:
         return Topic
 
-    def _build_fqn(self, source, service_name, stream):
+    def _build_fqn(self, source: "AirbyteSource", service_name: str, stream: AirbyteStream) -> str | None:
         return fqn.build(
             metadata=source.metadata,
             entity_type=Topic,
@@ -211,13 +229,13 @@ class SearchIndexResolver(_ServiceScopedResolver):
 
     om_type = "searchIndex"
 
-    def _service_names(self, source):
+    def _service_names(self, source: "AirbyteSource") -> list[str]:
         return source.get_search_service_names()
 
-    def _entity_type(self):
+    def _entity_type(self) -> type[SearchIndex]:
         return SearchIndex
 
-    def _build_fqn(self, source, service_name, stream):
+    def _build_fqn(self, source: "AirbyteSource", service_name: str, stream: AirbyteStream) -> str | None:
         return fqn.build(
             metadata=source.metadata,
             entity_type=SearchIndex,
@@ -237,7 +255,14 @@ class ApiResolver(EntityResolver):
 
     om_type = "apiCollection"
 
-    def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+    def resolve(
+        self,
+        source: "AirbyteSource",
+        stream: AirbyteStream,
+        connection: Connection,
+        direction: str,
+        pipeline_name: str,
+    ) -> EntityReference | None:
         api_services = source.get_api_service_names()
         if not api_services:
             logger.debug(
@@ -262,7 +287,9 @@ class ApiResolver(EntityResolver):
 
         return self._single_endpoint_reference(source, collection, stream, pipeline_name)
 
-    def _match_collection(self, source, stream, api_services, pipeline_name) -> APICollection | None:
+    def _match_collection(
+        self, source: "AirbyteSource", stream: AirbyteStream, api_services: list[str], pipeline_name: str
+    ) -> APICollection | None:
         collections = [
             collection
             for collection in source.metadata.es_search_from_fqn(
@@ -283,7 +310,9 @@ class ApiResolver(EntityResolver):
             return None
         return collections[0]
 
-    def _single_endpoint_reference(self, source, collection, stream, pipeline_name) -> EntityReference | None:
+    def _single_endpoint_reference(
+        self, source: "AirbyteSource", collection: APICollection, stream: AirbyteStream, pipeline_name: str
+    ) -> EntityReference | None:
         collection_fqn = model_str(collection.fullyQualifiedName)
         endpoints = [
             endpoint
@@ -319,26 +348,26 @@ _SEARCH_RESOLVER = SearchIndexResolver()
 API_RESOLVER = ApiResolver()
 
 
-def _build_registry() -> dict[str, EntityResolver]:
+def _build_registry(table_types: Iterable[str]) -> dict[str, EntityResolver]:
     """One connector type → one resolver. Both display-name and slug keys are present."""
-    registry: dict[str, EntityResolver] = {}
-    for connector_type in {*SOURCE_TYPE_LOOKUP, *DESTINATION_TYPE_LOOKUP}:
-        registry[connector_type] = _TABLE_RESOLVER
-    for connector_type in S3_CONNECTOR_TYPES:
-        registry[connector_type] = _CONTAINER_RESOLVER
-    for connector_type in MESSAGING_CONNECTOR_TYPES:
-        registry[connector_type] = _TOPIC_RESOLVER
-    for connector_type in SEARCH_CONNECTOR_TYPES:
-        registry[connector_type] = _SEARCH_RESOLVER
+    registry: dict[str, EntityResolver] = dict.fromkeys(table_types, _TABLE_RESOLVER)
+    registry.update(dict.fromkeys(S3_CONNECTOR_TYPES, _CONTAINER_RESOLVER))
+    registry.update(dict.fromkeys(MESSAGING_CONNECTOR_TYPES, _TOPIC_RESOLVER))
+    registry.update(dict.fromkeys(SEARCH_CONNECTOR_TYPES, _SEARCH_RESOLVER))
     return registry
 
 
-CONNECTOR_RESOLVERS: dict[str, EntityResolver] = _build_registry()
+# Airbyte ships connectors on one side only (MongoDB is a source, never a destination), so a
+# shared registry would report a source-only type as a supported destination and silently drop
+# the edge instead of anchoring it on the pipeline.
+SOURCE_RESOLVERS: dict[str, EntityResolver] = _build_registry(SOURCE_TYPE_LOOKUP)
+DESTINATION_RESOLVERS: dict[str, EntityResolver] = _build_registry(DESTINATION_TYPE_LOOKUP)
 
 
-def get_resolver(resolved_type: str | None) -> EntityResolver | None:
+def get_resolver(resolved_type: str | None, direction: str) -> EntityResolver | None:
     """
-    Resolver for a connector type, or None when the type is not mapped to any entity kind.
+    Resolver for a connector type on one side of a connection, or None when the type is not
+    mapped to any entity kind there.
 
     A None return means "unknown connector": the caller then tries the opt-in API resolver
     and, failing that, anchors on the pipeline. Unknown types are deliberately NOT routed to
@@ -347,4 +376,5 @@ def get_resolver(resolved_type: str | None) -> EntityResolver | None:
     """
     if not resolved_type:
         return None
-    return CONNECTOR_RESOLVERS.get(resolved_type) or CONNECTOR_RESOLVERS.get(resolved_type.lower())
+    registry = SOURCE_RESOLVERS if direction == SOURCE else DESTINATION_RESOLVERS
+    return registry.get(resolved_type) or registry.get(resolved_type.lower())
