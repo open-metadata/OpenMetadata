@@ -257,7 +257,7 @@ const OptionRow = ({
       {(state) => (
         <span
           className={cx(
-            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
+            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
             !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary',
             showCheckbox && state.isSelected && 'tw:text-primary',
             !state.isSelected && 'tw:text-secondary'
@@ -713,7 +713,11 @@ const FilterSelect = ({
                   displayedSelectedCount > 0 && !allDisplayedSelected
                 }
                 isSelected={allDisplayedSelected}
-                label={t('label.select-all')}
+                label={
+                  <span className="tw:text-sm tw:text-primary">
+                    {t('label.select-all')}
+                  </span>
+                }
                 size="xs"
                 onChange={handleSelectAll}
               />
