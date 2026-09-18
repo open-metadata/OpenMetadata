@@ -389,8 +389,13 @@ async function applyExploreFacet(page: Page, facet: ExploreFacet) {
   await clickUpdateButtonIfVisible(page);
   const response = await result;
   expect(response.status(), response.url()).toBe(200);
+  // FilterSelect (#33021) is non-modal and owns its own dismissal: its
+  // pointerdown handler returns early for anything inside the trigger, so
+  // clicking the trigger again cannot close an open popover. Escape is the
+  // affordance it listens for. In staged mode the Update click above has
+  // already closed it, hence the guard.
   if (await page.getByTestId('search-input').isVisible()) {
-    await dropdown.click();
+    await page.keyboard.press('Escape');
   }
   await expect(page.getByTestId('search-input')).toBeHidden();
 

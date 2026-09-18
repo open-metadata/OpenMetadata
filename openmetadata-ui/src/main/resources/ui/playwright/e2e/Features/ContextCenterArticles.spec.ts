@@ -625,8 +625,10 @@ test.describe('Context Center Articles', () => {
     await updateBody(page, description);
 
     await navigateToArticles(page);
-    let card = page.getByTestId(`knowledge-card-${title}`);
-    await expect(card).toBeVisible();
+    // The listing pages in as you scroll, so a freshly created article is not
+    // necessarily on the first page -- scroll to it rather than asserting it
+    // happens to be above the fold.
+    let card = await scrollListingToCard(page, title);
     await expect(card.getByTestId('knowledge-card-description')).toContainText(
       description
     );
@@ -700,8 +702,7 @@ test.describe('Context Center Articles', () => {
     await followAfterAction();
 
     await navigateToArticles(page);
-    card = page.getByTestId(`knowledge-card-${title}`);
-    await expect(card).toBeVisible();
+    card = await scrollListingToCard(page, title);
     await expect(card).toContainText(domain.responseData.displayName);
     await expect(card).toContainText(user.responseData.displayName);
     await expect(page.getByTestId(`recent-viewed-${title}`)).toBeVisible();

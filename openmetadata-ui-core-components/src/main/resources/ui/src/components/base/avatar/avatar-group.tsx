@@ -17,7 +17,10 @@ import {
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
-import { getOwnerRenderer } from '../../application/owner/owner-renderer';
+import {
+  getOwnerRenderer,
+  resolveOwnerHref,
+} from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
@@ -125,12 +128,18 @@ export const AvatarGroup = ({
       </span>
     );
 
-    const chip = owner.href ? (
+    // Same source as OwnerChip: `Owner` normalises inputs before rendering and
+    // strips any incoming href, so the profile link exists only in the
+    // registered resolver -- reading `owner.href` here would never match and
+    // every stacked owner would render unclickable.
+    const href = resolveOwnerHref(owner);
+
+    const chip = href ? (
       <a
         aria-label={nameStr}
         className="tw:block"
         data-testid="owner-link"
-        href={owner.href}
+        href={href}
         key={owner.id}>
         {nameNode}
       </a>
