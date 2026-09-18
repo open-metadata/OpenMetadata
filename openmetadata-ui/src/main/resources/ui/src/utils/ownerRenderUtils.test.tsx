@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { OwnerType } from '../enums/user.enum';
 import { renderOwnerPopover } from './ownerRenderUtils';
 
 jest.mock('../components/common/PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
-  default: jest.fn(({ children, userName }) => (
-    <div data-testid="user-pop-over-card" data-username={userName}>
+  default: jest.fn(({ children, userName, type }) => (
+    <div
+      data-testid="user-pop-over-card"
+      data-owner-type={type}
+      data-username={userName}>
       {children}
     </div>
   )),
@@ -46,8 +50,28 @@ describe('renderOwnerPopover', () => {
     );
 
     expect(await screen.findByTestId('user-pop-over-card')).toHaveAttribute(
-      'data-username',
-      'eng'
+      'data-owner-type',
+      OwnerType.TEAM
+    );
+  });
+
+  it('should map every other owner onto the user type', async () => {
+    render(
+      <>{renderOwnerPopover({ name: 'alice', type: 'user' }, <span>A</span>)}</>
+    );
+
+    expect(await screen.findByTestId('user-pop-over-card')).toHaveAttribute(
+      'data-owner-type',
+      OwnerType.USER
+    );
+  });
+
+  it('should treat a missing type as a user', async () => {
+    render(<>{renderOwnerPopover({ name: 'alice' }, <span>A</span>)}</>);
+
+    expect(await screen.findByTestId('user-pop-over-card')).toHaveAttribute(
+      'data-owner-type',
+      OwnerType.USER
     );
   });
 });
