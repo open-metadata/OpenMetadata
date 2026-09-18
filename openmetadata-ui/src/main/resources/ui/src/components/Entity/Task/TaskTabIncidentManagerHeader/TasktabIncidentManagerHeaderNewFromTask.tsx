@@ -22,7 +22,6 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { Task } from '../../../../rest/tasksAPI';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
@@ -137,7 +136,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
             {isUndefined(task.assignees) || isEmpty(task.assignees) ? (
               NO_DATA_PLACEHOLDER
             ) : (
-              <Owner owners={toOwnerRefs(task.assignees)} />
+              <Owner owners={task.assignees} />
             )}
           </div>
           <div className="gap-2 flex-center">
@@ -145,7 +144,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
               {`${t('label.created-by')}: `}
             </Typography.Text>
             {task.createdBy ? (
-              <Owner owners={toOwnerRefs([task.createdBy])} />
+              <Owner owners={[task.createdBy]} />
             ) : (
               NO_DATA_PLACEHOLDER
             )}

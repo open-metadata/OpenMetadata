@@ -921,11 +921,6 @@
       "count": 1
     }
   },
-  "playwright/utils/addTestCaseList.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
-    }
-  },
   "playwright/utils/advancedSearch.ts": {
     "om-playwright/no-positional-locator": {
       "count": 6

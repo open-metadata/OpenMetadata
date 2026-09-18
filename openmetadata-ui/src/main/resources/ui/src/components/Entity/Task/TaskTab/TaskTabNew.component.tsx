@@ -80,7 +80,6 @@ import {
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import {
   Option,
@@ -441,7 +440,6 @@ export const TaskTabNew = ({
   );
 
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [form] = Form.useForm();
   const editablePayload = Form.useWatch('payload', form) as
     | TaskPayload
@@ -1611,6 +1609,18 @@ export const TaskTabNew = ({
     setIsEditAssignee(true);
   };
 
+  const editAssigneeButton = shouldEditAssignee ? (
+    <EditIconButton
+      className="p-0"
+      data-testid="edit-assignees"
+      size="small"
+      title={t('label.edit-entity', {
+        entity: t('label.assignee-plural'),
+      })}
+      onClick={handleEditClick}
+    />
+  ) : null;
+
   function renderTaskHeader() {
     return isTaskTestCaseResult ? (
       <TaskTabIncidentManagerHeaderNewFromTask task={task} />
@@ -1726,27 +1736,15 @@ export const TaskTabNew = ({
                       <Typography.Text className="text-grey-body">
                         {getEntityName(task?.assignees[0])}
                       </Typography.Text>
-                      {shouldEditAssignee && (
-                        <EditIconButton
-                          className="p-0"
-                          data-testid="edit-assignees"
-                          size="small"
-                          title={t('label.edit-entity', {
-                            entity: t('label.assignee-plural'),
-                          })}
-                          onClick={handleEditClick}
-                        />
-                      )}
+                      {editAssigneeButton}
                     </div>
                   ) : (
                     <Owner
-                      isAssignee
                       hasPermission={shouldEditAssignee}
                       isCompactView={false}
-                      owners={toOwnersWithHref(task?.assignees)}
-                      renderOwnerContent={renderOwnerContent}
+                      owners={task?.assignees}
+                      selectorContent={editAssigneeButton}
                       showLabel={false}
-                      onEditClick={handleEditClick}
                     />
                   )}
                 </Col>
