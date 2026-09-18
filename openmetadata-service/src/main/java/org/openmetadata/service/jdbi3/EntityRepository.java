@@ -5202,7 +5202,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ThreadLocal.withInitial(() -> Boolean.FALSE);
 
   /** {@code true} when this call opened the outermost boundary and therefore owns the retry. */
-  static boolean enterRetryableBoundary() {
+  private static boolean enterRetryableBoundary() {
     if (Boolean.TRUE.equals(RETRYABLE_BOUNDARY_OPEN.get())) {
       return false;
     }
@@ -5210,6 +5210,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return true;
   }
 
+  /** Package-private so a test can reset a boundary stranded by an earlier failure. */
   static void exitRetryableBoundary(boolean ownsRetry) {
     if (ownsRetry) {
       RETRYABLE_BOUNDARY_OPEN.remove();
