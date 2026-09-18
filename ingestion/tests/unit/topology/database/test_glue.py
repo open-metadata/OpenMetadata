@@ -14,6 +14,7 @@ Test Glue using the topology
 """
 
 import base64
+import hashlib
 import json
 import logging
 import textwrap
@@ -22,6 +23,7 @@ from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
+from uuid import UUID
 
 import pytest
 
@@ -36,6 +38,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.glue.metadata import GlueSource
@@ -54,6 +57,14 @@ from metadata.ingestion.source.database.glue.models import (
 from metadata.ingestion.source.database.glue.utils import get_schema_definition
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
+
+
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
@@ -896,3 +907,253 @@ class TestGlueViewDefinitionEdges:
         assert get_schema_definition(table, "default", "sample_view") == (
             "CREATE VIEW default.sample_view AS CREATE VIEWS FROM whatever"
         )
+
+
+@pytest.fixture
+def custom_property_source():
+    """GlueSource with custom properties enabled and the catalog pages wired to the JSON fixture."""
+    with patch.object(GlueSource, "test_connection", return_value=False):
+        workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+        glue_source = GlueSource.create(
+            mock_glue_config["source"],
+            workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    # The topology context is process wide, so a leftover table_data here would be picked up by
+    # the next connector's tests. Restore whatever was there afterwards.
+    context = glue_source.context.get().__dict__
+    original_context = context.copy()
+    context["database_service"] = MOCK_DATABASE_SERVICE.name.root
+    context["database"] = MOCK_DATABASE.name.root
+    context["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    glue_source.source_config.includeCustomProperties = True
+    glue_source._string_property_type_ref = PropertyType(
+        EntityReference(id=UUID("00000000-0000-0000-0000-000000000001"), type="type")
+    )
+    glue_source._get_glue_tables = lambda: [TablePage(**mock_data.get("mock_table_paginator"))]
+    yield glue_source
+    context.clear()
+    context.update(original_context)
+
+
+def _glue_table_with_params(params: dict | None, name: str = "tbl") -> GlueTable:
+    return GlueTable(
+        Name=name,
+        TableType="EXTERNAL_TABLE",
+        Parameters=TableParameters(**params) if params is not None else None,
+        StorageDescriptor=StorageDetails(Columns=[GlueColumn(Name="id", Type="string")]),
+    )
+
+
+class TestTableParametersPreservesUnknownKeys:
+    """Glue parameters other than table_type must survive model validation, or there is nothing
+    to ingest as custom properties."""
+
+    def test_unknown_parameters_are_preserved(self):
+        params = TableParameters(table_type="ICEBERG", EXTERNAL="TRUE")
+
+        assert params.model_dump() == {"table_type": "ICEBERG", "EXTERNAL": "TRUE"}
+
+    def test_table_type_attribute_access_still_works(self):
+        """The shape used to detect Iceberg tables in get_tables_name_and_type and _iter_columns."""
+        params = TableParameters(table_type="ICEBERG", EXTERNAL="TRUE")
+
+        assert params.table_type == "ICEBERG"
+
+    def test_absent_table_type_dumps_as_none(self):
+        """The falsy-value filter relies on this to keep table_type out of non-Iceberg extensions."""
+        assert TableParameters(EXTERNAL="TRUE").model_dump() == {
+            "table_type": None,
+            "EXTERNAL": "TRUE",
+        }
+
+    def test_dotted_parameter_keys_survive(self):
+        params = TableParameters(**{"skip.header.line.count": "2"})
+
+        assert params.model_dump()["skip.header.line.count"] == "2"
+
+    def test_table_page_round_trips_parameters(self):
+        """The regression guard for the root cause: TablePage validation used to drop these."""
+        page = TablePage(**mock_data.get("mock_table_paginator"))
+        by_name = {table.Name: table for table in page.TableList}
+
+        assert by_name["cloudfront_logs2"].Parameters.model_dump()["skip.header.line.count"] == "2"
+        assert by_name["cloudfront_logs"].Parameters.model_dump()["EXTERNAL"] == "TRUE"
+
+
+class TestGlueGetTableExtensionsEarlyExits:
+    def test_returns_none_when_flag_disabled(self, custom_property_source):
+        """GlueUnitTest drives yield_table against a real OpenMetadata object, so the flag check
+        has to come before anything that would touch self.metadata."""
+        custom_property_source.source_config.includeCustomProperties = False
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) is None
+
+        assert mock_metadata.create_or_update_custom_property.call_count == 0
+
+    def test_returns_none_without_type_ref(self, custom_property_source):
+        custom_property_source._string_property_type_ref = None
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        assert custom_property_source.get_table_extensions(table) is None
+
+    def test_returns_none_when_table_has_no_parameters(self, custom_property_source):
+        table = _glue_table_with_params(None)
+
+        assert custom_property_source.get_table_extensions(table) is None
+
+    def test_returns_none_when_all_values_filtered_out(self, custom_property_source):
+        table = _glue_table_with_params({})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) is None
+
+
+class TestGlueAppliesToAllTableTypes:
+    """Unlike Athena, whose $properties metatable is Iceberg-only, every Glue table carries
+    Parameters, so the extension is built regardless of table type."""
+
+    @pytest.mark.parametrize(
+        "table_type",
+        [TableType.Regular, TableType.External, TableType.View, TableType.Iceberg],
+    )
+    def test_extension_built_for_every_table_type(self, custom_property_source, table_type):
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+        table.TableType = table_type.value
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"EXTERNAL": "TRUE"}
+
+
+class TestGlueCustomPropertyValues:
+    def test_non_string_value_is_coerced(self, custom_property_source):
+        """Custom properties are registered as `string`; the server validates each value against
+        that schema and rejects the whole table on a mismatch."""
+        table = _glue_table_with_params({"retention_days": 5})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"retention_days": "5"}
+
+    def test_table_type_is_dropped_when_absent(self, custom_property_source):
+        table = _glue_table_with_params({"EXTERNAL": "TRUE"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert "table_type" not in custom_property_source.get_table_extensions(table)
+
+    def test_table_type_is_kept_when_present(self, custom_property_source):
+        """table_type is a genuine Glue parameter key, so it is ingested like any other."""
+        table = _glue_table_with_params({"table_type": "ICEBERG"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"table_type": "ICEBERG"}
+
+    def test_dotted_key_is_preserved_verbatim(self, custom_property_source):
+        table = _glue_table_with_params({"skip.header.line.count": "2"})
+
+        with patch.object(custom_property_source, "metadata"):
+            assert custom_property_source.get_table_extensions(table) == {"skip.header.line.count": "2"}
+
+    def test_invalid_chars_are_sanitized(self, custom_property_source):
+        table = _glue_table_with_params({"owner/team": "data-eng"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("owner__team", "owner/team"): "data-eng"
+            }
+
+        request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
+        assert request.createCustomPropertyRequest.displayName == "owner/team"
+
+    def test_registration_failure_drops_only_that_property(self, custom_property_source):
+        """An unregistered key in the extension fails the whole table server side, so a property
+        whose definition could not be created must not be emitted."""
+        table = _glue_table_with_params({"bad": "x", "good": "y"})
+
+        def fail_on_bad(ometa_custom_property):
+            if ometa_custom_property.createCustomPropertyRequest.displayName == "bad":
+                raise RuntimeError("boom")
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            mock_metadata.create_or_update_custom_property.side_effect = fail_on_bad
+            result = custom_property_source.get_table_extensions(table)
+
+        assert result == {"good": "y"}
+        assert "Table:bad" not in custom_property_source._processed_prop
+
+    def test_shared_key_registered_once_across_tables(self, custom_property_source):
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            table = _glue_table_with_params({"EXTERNAL": "TRUE"}, "t1")
+            custom_property_source.get_table_extensions(table)
+            table = _glue_table_with_params({"EXTERNAL": "TRUE"}, "t2")
+            custom_property_source.get_table_extensions(table)
+
+        assert mock_metadata.create_or_update_custom_property.call_count == 1
+
+    def test_leading_underscore_key_is_prefixed(self, custom_property_source):
+        """Glue parameter keys are operator-authored, so underscore-prefixed names are routine and
+        would otherwise be rejected by the server's customPropertyName pattern."""
+        table = _glue_table_with_params({"_internal_owner": "data-eng"})
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            assert custom_property_source.get_table_extensions(table) == {
+                _disambiguated("p__internal_owner", "_internal_owner"): "data-eng"
+            }
+
+        request = mock_metadata.create_or_update_custom_property.call_args_list[0].args[0]
+        assert request.createCustomPropertyRequest.displayName == "_internal_owner"
+
+
+class TestGluePrepareLoadsTypeRef:
+    def test_prepare_fetches_type_ref_when_enabled(self, custom_property_source):
+        custom_property_source._string_property_type_ref = None
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            custom_property_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 1
+
+    def test_prepare_skips_fetch_when_disabled(self, custom_property_source):
+        """A disabled pipeline must not call the server at all."""
+        custom_property_source.source_config.includeCustomProperties = False
+
+        with patch.object(custom_property_source, "metadata") as mock_metadata:
+            custom_property_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 0
+
+
+class TestGlueYieldTableExtension:
+    """End to end through the real fixture: the extension must reach CreateTableRequest."""
+
+    @staticmethod
+    def _requests(source):
+        # get_tables_name_and_type stashes table_data on the context as it yields, so the producer
+        # has to be consumed lazily rather than materialised first.
+        with patch.object(source, "metadata"):
+            for table_name_and_type in source.get_tables_name_and_type():
+                yield next(source.yield_table(table_name_and_type)).right
+
+    def test_extension_attached_to_create_table_request(self, custom_property_source):
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.fqn.build",
+            side_effect=mock_fqn_build,
+        ):
+            by_name = {r.name.root: r for r in self._requests(custom_property_source)}
+
+        assert by_name["cloudfront_logs"].extension.root == {
+            "EXTERNAL": "TRUE",
+            "transient_lastDdlTime": "1652441537",
+        }
+        assert by_name["cloudfront_logs2"].extension.root["skip.header.line.count"] == "2"
+
+    def test_extension_is_none_when_flag_disabled(self, custom_property_source):
+        custom_property_source.source_config.includeCustomProperties = False
+
+        with patch(
+            "metadata.ingestion.source.database.glue.metadata.fqn.build",
+            side_effect=mock_fqn_build,
+        ):
+            requests = list(self._requests(custom_property_source))
+
+        assert all(request.extension is None for request in requests)

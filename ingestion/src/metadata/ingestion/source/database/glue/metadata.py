@@ -45,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -61,6 +62,9 @@ from metadata.ingestion.source.connections import (
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -68,6 +72,7 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
+    GlueTable,
     StorageDetails,
     TablePage,
 )
@@ -84,7 +89,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
+class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
@@ -102,6 +107,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.schema_description_map = {}
         self.schema_catalog_id_map = {}
         self.external_location_map = {}
+        self._init_custom_properties()
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -382,6 +388,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 ),
                 fileFormat=self.get_format(storage_descriptor),
                 locationPath=storage_descriptor.Location,
+                extension=EntityExtension(extensions) if (extensions := self.get_table_extensions(table)) else None,
             )
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
@@ -394,8 +401,22 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 )
             )
 
+    def get_table_extensions(self, table: GlueTable) -> dict[str, str] | None:
+        """Glue table Parameters as custom properties.
+
+        Takes the table rather than a name, unlike the CommonDbSourceService hook of the same
+        name: GlueSource does not inherit that hook, and yield_table already holds the table.
+        """
+        if not self.custom_properties_enabled or not table.Parameters:
+            return None
+        return self.build_entity_extension(
+            table.Parameters.model_dump(),
+            source_label="Glue table parameters",
+        )
+
     def prepare(self):
-        """Nothing to prepare"""
+        super().prepare()
+        self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
