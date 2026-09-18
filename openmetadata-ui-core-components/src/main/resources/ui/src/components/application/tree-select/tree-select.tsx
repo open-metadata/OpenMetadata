@@ -105,6 +105,21 @@ const filterTreeToSelected = <T,>(
   return result;
 };
 
+// Ids of every node that has children, so a branch can be opened wholesale.
+const collectParentKeys = <T,>(
+  nodes: TreeSelectNode<T>[],
+  keys: Set<Key>
+): Set<Key> => {
+  for (const node of nodes) {
+    if (node.children?.length) {
+      keys.add(node.id);
+      collectParentKeys(node.children, keys);
+    }
+  }
+
+  return keys;
+};
+
 const collectSelectableNodes = <T,>(
   nodes: TreeSelectNode<T>[]
 ): TreeSelectNode<T>[] => {
@@ -522,22 +537,15 @@ export const TreeSelect = <T = unknown,>({
     [showSelectedOnly, treeData, selectedIdsSet]
   );
   const filteredExpandedKeys = useMemo(() => {
-    if (!showSelectedOnly) {
+    // A search returns matches nested under their parents, so every branch is
+    // opened — otherwise the hits sit inside collapsed rows and the search
+    // looks like it only matched the top level.
+    if (!showSelectedOnly && !searchTerm) {
       return expandedKeys;
     }
-    const keys = new Set(expandedKeys);
-    const addParentKeys = (nodes: TreeSelectNode<T>[]) => {
-      for (const node of nodes) {
-        if (node.children?.length) {
-          keys.add(node.id);
-          addParentKeys(node.children);
-        }
-      }
-    };
-    addParentKeys(filteredTreeData);
 
-    return keys;
-  }, [showSelectedOnly, expandedKeys, filteredTreeData]);
+    return collectParentKeys(filteredTreeData, new Set(expandedKeys));
+  }, [showSelectedOnly, searchTerm, expandedKeys, filteredTreeData]);
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it shows a quiet footer instead.
   const showStatusFooter = usesDropdownChrome && multiple && !isStaged;
@@ -561,6 +569,7 @@ export const TreeSelect = <T = unknown,>({
         <div className="tw:p-2">
           <Input
             icon={SearchInputIcon}
+            inputDataTestId={dataTestId ? `${dataTestId}-search` : undefined}
             placeholder={searchPlaceholder ?? t('label.search')}
             size="sm"
             value={inputValue}

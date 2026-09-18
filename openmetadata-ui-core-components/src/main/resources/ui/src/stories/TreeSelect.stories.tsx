@@ -114,12 +114,64 @@ const GLOSSARY_TERMS: Record<string, TreeSelectNode[]> = {
 
 const GLOSSARY_ROOTS = ['Finance', 'Customer', 'PII'];
 
+const childrenOf = (id: string) => GLOSSARY_TERMS[id] ?? [];
+
+// Keeps any node that matches, plus the ancestors needed to reach it.
+const filterSubtree = (
+  nodes: TreeSelectNode[],
+  query: string
+): TreeSelectNode[] =>
+  nodes.reduce<TreeSelectNode[]>((matches, node) => {
+    const children = filterSubtree(childrenOf(node.id), query);
+    const selfMatches = node.label.toLowerCase().includes(query);
+
+    if (selfMatches || children.length > 0) {
+      matches.push({
+        ...node,
+        children,
+        isLeaf: children.length === 0,
+        lazyLoad: false,
+      });
+    }
+
+    return matches;
+  }, []);
+
 const fetchGlossaryTerms = async ({
   parentId,
+  searchTerm,
 }: {
   parentId?: string;
+  searchTerm?: string;
 }): Promise<TreeSelectDataResponse> => {
   await wait(300);
+
+  // Mirrors the server: a search returns each glossary with its matching terms
+  // already nested, rather than a flat list of hits.
+  if (searchTerm) {
+    const query = searchTerm.toLowerCase();
+
+    return {
+      nodes: GLOSSARY_ROOTS.reduce<TreeSelectNode[]>((roots, name) => {
+        const children = filterSubtree(childrenOf(name), query);
+
+        if (children.length > 0) {
+          roots.push({
+            id: name,
+            label: name,
+            value: name,
+            allowSelection: false,
+            children,
+            icon: <GlossaryIcon />,
+            isLeaf: false,
+            lazyLoad: false,
+          });
+        }
+
+        return roots;
+      }, []),
+    };
+  }
 
   if (parentId) {
     return { nodes: GLOSSARY_TERMS[parentId] ?? [] };
