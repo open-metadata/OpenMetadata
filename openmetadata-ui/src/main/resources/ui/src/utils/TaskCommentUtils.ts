@@ -24,8 +24,13 @@ export interface CommentPermissions {
  * TaskRepository#editComment / #deleteComment: the author may edit or delete
  * their own comment, and an admin may additionally delete anyone's.
  *
- * Shared so the activity-feed card and the Inbox task panel cannot drift apart
- * from each other, or from the backend.
+ * Shared so the task tab and the Inbox task panel cannot drift apart from each
+ * other, or from the backend.
+ *
+ * Note the asymmetry is real and verified against the Java: #editComment has no
+ * `isAdmin` parameter, #deleteComment does. This is NOT the rule used for
+ * activity-feed conversation replies, which go through RBAC and let an admin do
+ * both - see resolveActionVisibility in ActivityFeedActions.
  */
 export const resolveCommentPermissions = (
   currentUser: { name?: string; isAdmin?: boolean } | undefined,

@@ -69,6 +69,16 @@ interface ActivityFeedActionsProps {
 /**
  * Fall back to the feed's own author-or-admin rule for whichever action the
  * caller did not state a permission for.
+ *
+ * This default is the *conversation* rule, not the task-comment one. A
+ * conversation reply is authorized through RBAC
+ * (ConversationRepository#patchReply / #deleteReply ask the authorizer for
+ * EDIT_ALL / DELETE), which an admin passes for both. A task comment is not:
+ * TaskRepository#editComment takes no `isAdmin` at all and permits the author
+ * only, while #deleteComment takes one and permits author-or-admin. The two
+ * rules are deliberately different - do not collapse them. Callers rendering
+ * task comments pass `canEdit`/`canDelete` explicitly, derived from
+ * `resolveCommentPermissions` in utils/TaskCommentUtils.
  */
 const resolveActionVisibility = (
   isAuthor: boolean,

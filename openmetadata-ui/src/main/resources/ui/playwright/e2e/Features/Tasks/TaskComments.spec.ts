@@ -164,6 +164,10 @@ test.describe('Task Comments - Add Comment', () => {
     const actions = card.getByTestId('feed-actions');
     const deleteAction = card.getByTestId('delete-message');
 
+    // Posting the comment leaves the pointer over the card, which would hold
+    // the bar revealed - park it away first to sample the resting state.
+    await page.mouse.move(0, 0);
+
     // Mounted before any hover so it stays reachable by keyboard and screen
     // readers - the reveal is opacity, which Playwright's visibility check
     // deliberately ignores, so assert the computed value directly.
@@ -203,6 +207,12 @@ test.describe('Task Comments - Add Comment', () => {
 
     const actions = card.getByTestId('feed-actions');
     const deleteAction = card.getByTestId('delete-message');
+
+    // Park the pointer away from the card first, so the reveal asserted below
+    // is attributable to focus-within and not to a leftover hover.
+    await page.mouse.move(0, 0);
+
+    await expect(actions).toHaveCSS('opacity', '0');
 
     // Regression coverage for the affordance being an `<Icon onClick>` span:
     // it could not hold focus at all, so none of this was possible without a

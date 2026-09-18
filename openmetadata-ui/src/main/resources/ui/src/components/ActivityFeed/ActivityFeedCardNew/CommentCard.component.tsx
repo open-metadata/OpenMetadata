@@ -34,6 +34,7 @@ import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import '../ActivityFeedTab/activity-feed-tab.less';
 import { COMMENT_ACTIONS_HOVER_REVEAL } from '../Shared/ActivityFeedActions.constants';
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -146,7 +147,7 @@ const CommentCard = ({
   return (
     <div
       className={classNames(
-        'd-flex justify-start relative reply-card gap-2 tw:group/comment',
+        'd-flex items-start justify-start relative reply-card gap-2 tw:group/comment',
         {
           'reply-card-border-bottom': !isLastReply,
         }
@@ -191,16 +192,14 @@ const CommentCard = ({
         {onReaction && (
           <Row align="top" className="m-y-md">
             <Col
-              className="footer-container"
+              className="reply-card-footer"
               data-testid="feed-card-footer"
               span={24}>
-              <div>
-                <div className="flex items-center gap-2 w-full rounded-8">
-                  <Reactions
-                    reactions={reactions ?? []}
-                    onReactionSelect={onReaction}
-                  />
-                </div>
+              <div className="d-flex items-center gap-2 w-full">
+                <Reactions
+                  reactions={reactions ?? []}
+                  onReactionSelect={onReaction}
+                />
               </div>
             </Col>
           </Row>

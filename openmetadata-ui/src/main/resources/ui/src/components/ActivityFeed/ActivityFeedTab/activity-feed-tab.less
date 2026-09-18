@@ -486,11 +486,36 @@
 }
 
 .reply-card {
-  padding-top: @padding-lg;
+  // Symmetric, so the divider below a reply sits midway between it and the
+  // next one rather than flush against the text it follows. Matches the
+  // padding of the comments container these sit in.
+  padding-top: var(--om-space-16);
+  padding-bottom: var(--om-space-16);
 }
 
 .reply-card-border-bottom {
   border-bottom: 0.5px solid var(--om-legacy-color-e4e4e4);
+}
+
+// A reply's footer carries the add-reaction control on its own, without the
+// post toolbar's sibling controls to frame it. Give it the same bordered box
+// the feed actions use so it reads as a control rather than a loose glyph.
+.reply-card-footer {
+  [data-testid='add-reactions'] {
+    border: 0.5px solid var(--om-color-gray-blue-100);
+    background: var(--tw-color-bg-primary);
+  }
+}
+
+// Tooltips render into a portal on document.body, so this has to sit in a
+// stylesheet that every component rendering `timestamp-tooltip` pulls in -
+// both ActivityFeedcardNew and CommentCard import this file. Without it the
+// tooltip keeps antd's default white text on the white background its `color`
+// prop sets, i.e. an empty bubble.
+.timestamp-tooltip {
+  .ant-tooltip-inner {
+    color: var(--om-color-text-primary);
+  }
 }
 
 .reply-message {

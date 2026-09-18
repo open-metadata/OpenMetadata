@@ -15,10 +15,15 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { CheckCircle, XCircle } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import React, {
@@ -35,8 +40,6 @@ import { Link } from 'react-router-dom';
 import DeleteModal from '../../../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import TaskCommentActions from '../../../../../components/common/TaskComment/TaskCommentActions';
-import TaskCommentBody from '../../../../../components/common/TaskComment/TaskCommentBody';
 import { UserTeamSelectableList } from '../../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -64,7 +67,10 @@ import {
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
+import {
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../../utils/FeedUtilsPure';
 import { getTestCaseDetailPagePath } from '../../../../../utils/RouterUtils';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
@@ -78,6 +84,7 @@ import {
   TaskResolveAction,
 } from '../taskResolve.utils';
 import { getTaskTitle } from '../taskTitle.utils';
+import ActivityFeedEditorNew from '../../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import InboxCommentComposer from './InboxCommentComposer';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
@@ -308,47 +315,86 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   }, [taskId, comment.id, onChanged]);
 
   return (
+    // align="start" keeps the avatar pinned to the top of the row, and the
+    // content column holds everything else so the message and timestamp line
+    // up under the author name instead of under the avatar.
     <Box
+      align="start"
       className="tw:relative tw:group"
       data-testid="task-comment-card"
-      direction="col"
       gap={2}>
-      <Box align="center" className="tw:justify-between" gap={2}>
-        <Box align="center" gap={2}>
-          <ProfilePicture
-            displayName={authorName}
-            name={comment.author?.name ?? ''}
-            width="28"
-          />
+      <ProfilePicture
+        displayName={authorName}
+        name={comment.author?.name ?? ''}
+        width="28"
+      />
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        <Box align="center" className="tw:justify-between" gap={2}>
           <Typography size="text-sm" weight="semibold">
             {authorName}
           </Typography>
+          {!isEditing && canModifyComment && (
+            // Real buttons, kept mounted and revealed with opacity: unmounting
+            // them until hover puts them out of reach of the keyboard.
+            <div
+              aria-label={t('label.action-plural')}
+              className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+              data-testid="task-comment-actions"
+              role="group">
+              {canEdit && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-task-comment"
+                  icon={EditIcon}
+                  size="xs"
+                  tooltip={t('label.edit')}
+                  onClick={() => setIsEditing(true)}
+                />
+              )}
+              {canDelete && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid="delete-task-comment"
+                  icon={DeleteIcon}
+                  size="xs"
+                  tooltip={t('label.delete')}
+                  onClick={() => setShowDeleteDialog(true)}
+                />
+              )}
+            </div>
+          )}
         </Box>
-        {!isEditing && canModifyComment && (
-          <TaskCommentActions
-            canDelete={canDelete}
-            canEdit={canEdit}
-            className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
-            onDeleteRequest={() => setShowDeleteDialog(true)}
-            onEditRequest={() => setIsEditing(true)}
-          />
+        {isEditing ? (
+          <Box data-testid="edit-task-comment-editor" direction="col" gap={2}>
+            <ActivityFeedEditorNew
+              focused
+              defaultValue={MarkdownToHTMLConverter.makeHtml(
+                getFrontEndFormat(comment.message)
+              )}
+              onSave={handleEditSave}
+            />
+            <Box align="center" className="tw:justify-end">
+              <Button
+                color="link-gray"
+                data-testid="cancel-edit-task-comment"
+                size="sm"
+                onPress={() => setIsEditing(false)}>
+                {t('label.cancel')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
+            <RichTextEditorPreviewerV1
+              className="inbox-feed-message tw:text-sm"
+              markdown={getFrontEndFormat(comment.message)}
+            />
+          </Box>
         )}
+        <Typography className="tw:text-secondary" size="text-xs">
+          {getRelativeTime(comment.createdAt)}
+        </Typography>
       </Box>
-      <TaskCommentBody
-        comment={comment}
-        isEditing={isEditing}
-        onCancelEdit={() => setIsEditing(false)}
-        onSave={handleEditSave}>
-        <Box className="tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-utility-gray-blue-50 tw:px-4 tw:py-3">
-          <RichTextEditorPreviewerV1
-            className="inbox-feed-message tw:text-sm"
-            markdown={getFrontEndFormat(comment.message)}
-          />
-        </Box>
-      </TaskCommentBody>
-      <Typography className="tw:text-secondary" size="text-xs">
-        {getRelativeTime(comment.createdAt)}
-      </Typography>
 
       <DeleteModal
         entityTitle={t('label.comment')}
