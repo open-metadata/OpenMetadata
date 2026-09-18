@@ -839,12 +839,18 @@ a[href].link-text-grey,
 // it flips with the theme. Custom node internals are themed in their own files.
 .dark-mode {
   .react-flow__background {
-    // Background pattern (dots/lines) renders as SVG paths.
-    .react-flow__background-pattern,
-    path,
+    // Dot patterns are filled circles (fill controls the dot); line/cross
+    // patterns are stroked paths. Painting the wrong property enlarges dots or
+    // adds spurious fills, so keep them separate.
+    .react-flow__background-pattern.dots,
     circle {
-      stroke: var(--om-color-border-subtle);
       fill: var(--om-color-border-subtle);
+    }
+
+    .react-flow__background-pattern.lines,
+    .react-flow__background-pattern.cross,
+    path {
+      stroke: var(--om-color-border-subtle);
     }
   }
 
