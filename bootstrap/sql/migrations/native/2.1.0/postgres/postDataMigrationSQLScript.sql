@@ -224,22 +224,61 @@ WHERE json ->> 'email' <> lower(json ->> 'email');
 
 -- External S3 sample-data storage support was removed (collate#5995).
 -- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /
--- storageConfig) from any stored service connection and profiler config so that
--- upgraded instances parse under the tightened sampleDataStorageConfig schema and can
--- never attempt an external S3 write. Removing the whole sampleDataStorageConfig node is
--- equivalent to the retained OpenMetadata-hosted default (the field is optional). Empty
--- configs are left untouched. Idempotent: re-running finds nothing to remove.
+-- storageConfig) from every stored connection and profiler config so that upgraded
+-- instances parse under the tightened sampleDataStorageConfig schema and can never
+-- attempt an external S3 write. The schema now admits an empty config object only, so
+-- the guard is "config holds anything at all" rather than a list of known S3 keys -- a
+-- row carrying just overwriteData is as unparseable as one carrying a bucket name.
+-- Removing the whole node is equivalent to the retained OpenMetadata-hosted default
+-- (the field is optional). An already-empty config is left untouched. Idempotent:
+-- re-running finds nothing to remove.
+--
+-- Hive nests its metastore connection, so a database service can hold the shape at two
+-- depths.
 UPDATE dbservice_entity
-SET json = json::jsonb #- '{connection,config,sampleDataStorageConfig}'
-WHERE jsonb_exists(json::jsonb #> '{connection,config,sampleDataStorageConfig,config}', 'storageConfig')
-   OR jsonb_exists(json::jsonb #> '{connection,config,sampleDataStorageConfig,config}', 'bucketName');
+SET json = json::jsonb
+      #- '{connection,config,sampleDataStorageConfig}'
+      #- '{connection,config,metastoreConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,sampleDataStorageConfig,config}' <> '{}'::jsonb
+   OR json::jsonb #> '{connection,config,metastoreConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb;
+
+-- Superset reaches its database through a nested connection, and a dashboard service is
+-- not stored in dbservice_entity.
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb;
+
+-- Airflow nests under connection; SSIS and Wherescape under databaseConnection.
+UPDATE pipeline_service_entity
+SET json = json::jsonb
+      #- '{connection,config,connection,sampleDataStorageConfig}'
+      #- '{connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+   OR json::jsonb #> '{connection,config,databaseConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb;
+
+-- Alation, same nesting, metadata service table.
+UPDATE metadata_service_entity
+SET json = json::jsonb #- '{connection,config,connection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb;
+
+-- Test Connection stores the submitted form as a workflow request. The UI deletes the
+-- row once the check finishes, but rows survive an interrupted test, and a row that no
+-- longer deserializes is also a row the retention sweep cannot delete.
+UPDATE automations_workflow
+SET json = json::jsonb
+      #- '{request,connection,config,sampleDataStorageConfig}'
+      #- '{request,connection,config,connection,sampleDataStorageConfig}'
+      #- '{request,connection,config,metastoreConnection,sampleDataStorageConfig}'
+      #- '{request,connection,config,databaseConnection,sampleDataStorageConfig}'
+WHERE json::jsonb #> '{request,connection,config,sampleDataStorageConfig,config}' <> '{}'::jsonb
+   OR json::jsonb #> '{request,connection,config,connection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+   OR json::jsonb #> '{request,connection,config,metastoreConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb
+   OR json::jsonb #> '{request,connection,config,databaseConnection,sampleDataStorageConfig,config}' <> '{}'::jsonb;
 
 UPDATE database_entity
 SET json = json::jsonb #- '{databaseProfilerConfig,sampleDataStorageConfig}'
-WHERE jsonb_exists(json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}', 'storageConfig')
-   OR jsonb_exists(json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}', 'bucketName');
+WHERE json::jsonb #> '{databaseProfilerConfig,sampleDataStorageConfig,config}' <> '{}'::jsonb;
 
 UPDATE database_schema_entity
 SET json = json::jsonb #- '{databaseSchemaProfilerConfig,sampleDataStorageConfig}'
-WHERE jsonb_exists(json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}', 'storageConfig')
-   OR jsonb_exists(json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}', 'bucketName');
+WHERE json::jsonb #> '{databaseSchemaProfilerConfig,sampleDataStorageConfig,config}' <> '{}'::jsonb;

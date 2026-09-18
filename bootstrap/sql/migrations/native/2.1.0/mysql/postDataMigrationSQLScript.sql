@@ -245,22 +245,61 @@ WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(J
 
 -- External S3 sample-data storage support was removed (collate#5995).
 -- Strip the legacy S3 shape (bucketName / prefix / filePathPattern / overwriteData /
--- storageConfig) from any stored service connection and profiler config so that
--- upgraded instances parse under the tightened sampleDataStorageConfig schema and can
--- never attempt an external S3 write. Removing the whole sampleDataStorageConfig node is
--- equivalent to the retained OpenMetadata-hosted default (the field is optional). Empty
--- configs are left untouched. Idempotent: re-running finds nothing to remove.
+-- storageConfig) from every stored connection and profiler config so that upgraded
+-- instances parse under the tightened sampleDataStorageConfig schema and can never
+-- attempt an external S3 write. The schema now admits an empty config object only, so
+-- the guard is "config holds anything at all" rather than a list of known S3 keys -- a
+-- row carrying just overwriteData is as unparseable as one carrying a bucket name.
+-- Removing the whole node is equivalent to the retained OpenMetadata-hosted default
+-- (the field is optional). An already-empty config is left untouched. Idempotent:
+-- re-running finds nothing to remove.
+--
+-- Hive nests its metastore connection, so a database service can hold the shape at two
+-- depths.
 UPDATE dbservice_entity
-SET json = JSON_REMOVE(json, '$.connection.config.sampleDataStorageConfig')
-WHERE JSON_EXTRACT(json, '$.connection.config.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
-   OR JSON_EXTRACT(json, '$.connection.config.sampleDataStorageConfig.config.bucketName') IS NOT NULL;
+SET json = JSON_REMOVE(json,
+      '$.connection.config.sampleDataStorageConfig',
+      '$.connection.config.metastoreConnection.sampleDataStorageConfig')
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.sampleDataStorageConfig.config')) > 0
+   OR JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.metastoreConnection.sampleDataStorageConfig.config')) > 0;
+
+-- Superset reaches its database through a nested connection, and a dashboard service is
+-- not stored in dbservice_entity.
+UPDATE dashboard_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connection.sampleDataStorageConfig')
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.connection.sampleDataStorageConfig.config')) > 0;
+
+-- Airflow nests under connection; SSIS and Wherescape under databaseConnection.
+UPDATE pipeline_service_entity
+SET json = JSON_REMOVE(json,
+      '$.connection.config.connection.sampleDataStorageConfig',
+      '$.connection.config.databaseConnection.sampleDataStorageConfig')
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.connection.sampleDataStorageConfig.config')) > 0
+   OR JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.databaseConnection.sampleDataStorageConfig.config')) > 0;
+
+-- Alation, same nesting, metadata service table.
+UPDATE metadata_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.connection.sampleDataStorageConfig')
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.connection.config.connection.sampleDataStorageConfig.config')) > 0;
+
+-- Test Connection stores the submitted form as a workflow request. The UI deletes the
+-- row once the check finishes, but rows survive an interrupted test, and a row that no
+-- longer deserializes is also a row the retention sweep cannot delete.
+UPDATE automations_workflow
+SET json = JSON_REMOVE(json,
+      '$.request.connection.config.sampleDataStorageConfig',
+      '$.request.connection.config.connection.sampleDataStorageConfig',
+      '$.request.connection.config.metastoreConnection.sampleDataStorageConfig',
+      '$.request.connection.config.databaseConnection.sampleDataStorageConfig')
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.request.connection.config.sampleDataStorageConfig.config')) > 0
+   OR JSON_LENGTH(JSON_EXTRACT(json, '$.request.connection.config.connection.sampleDataStorageConfig.config')) > 0
+   OR JSON_LENGTH(JSON_EXTRACT(json, '$.request.connection.config.metastoreConnection.sampleDataStorageConfig.config')) > 0
+   OR JSON_LENGTH(JSON_EXTRACT(json, '$.request.connection.config.databaseConnection.sampleDataStorageConfig.config')) > 0;
 
 UPDATE database_entity
 SET json = JSON_REMOVE(json, '$.databaseProfilerConfig.sampleDataStorageConfig')
-WHERE JSON_EXTRACT(json, '$.databaseProfilerConfig.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
-   OR JSON_EXTRACT(json, '$.databaseProfilerConfig.sampleDataStorageConfig.config.bucketName') IS NOT NULL;
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.databaseProfilerConfig.sampleDataStorageConfig.config')) > 0;
 
 UPDATE database_schema_entity
 SET json = JSON_REMOVE(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig')
-WHERE JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig.config.storageConfig') IS NOT NULL
-   OR JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig.config.bucketName') IS NOT NULL;
+WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.databaseSchemaProfilerConfig.sampleDataStorageConfig.config')) > 0;
