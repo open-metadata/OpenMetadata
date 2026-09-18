@@ -310,6 +310,13 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    // A beforeAll hook inherits the 60s test timeout, which the projection poll below would consume
+    // on its own — leaving nothing for table.create() and killing the hook under exactly the delay
+    // the poll exists to absorb. A failed beforeAll fails the whole suite, so the budgets come from
+    // ontology-rdf.setup.ts, which already calibrated this projection: 180s hook around a 120s poll.
+    // This project depends on ['setup', 'entity-data-setup'] and not on ontology-rdf-setup, so it
+    // gets no prior RDF health gate and has to tolerate a cold projection here.
+    test.setTimeout(180_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     table = new TableClass();
     try {
@@ -335,7 +342,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           },
           {
             message: 'Table relationships must reach the RDF projection',
-            timeout: 60_000,
+            timeout: 120_000,
           }
         )
         .toMatchObject({ status: 200, body: { boolean: true } });
