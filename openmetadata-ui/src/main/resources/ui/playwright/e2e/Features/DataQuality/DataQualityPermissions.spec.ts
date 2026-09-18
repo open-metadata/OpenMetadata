@@ -605,9 +605,11 @@ test.describe(
           viewBasicPage.getByTestId('entity-page-header')
         ).toBeVisible();
 
+        // Target the header's definition link: the configuration card renders the
+        // same name once the definition loads, so matching by text is ambiguous.
         await expect(
-          viewBasicPage.getByText(/Table Row Count To Be Between/i)
-        ).toBeVisible();
+          viewBasicPage.getByTestId('test-definition-name')
+        ).toHaveText(/Table Row Count To Be Between/i);
       });
     });
 

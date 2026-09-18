@@ -28,12 +28,14 @@
     "pagination-navigation": "การนำทางการแบ่งหน้า",
     "previous-page": "ไปที่หน้าก่อนหน้า",
     "records": "บันทึก",
+    "remove-entity": "ลบ {{entity}}",
     "remove-filter": "ลบตัวกรอง",
     "search": "ค้นหา",
     "select-all": "เลือกทั้งหมด",
     "select-dates": "เลือกวันที่",
     "select-only-one-row": "เลือกหนึ่งแถว",
     "show-hidden-breadcrumbs": "แสดงเบรดครัมบ์ที่ซ่อนอยู่",
-    "today": "วันนี้"
+    "today": "วันนี้",
+    "tree-select": "เลือกแบบต้นไม้"
   }
 }
