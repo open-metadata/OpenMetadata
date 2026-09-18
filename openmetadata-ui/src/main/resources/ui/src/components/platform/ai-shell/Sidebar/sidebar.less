@@ -82,6 +82,9 @@
 @ask-text-secondary: var(--om-color-text-secondary);
 @ask-text-tertiary: var(--om-color-text-tertiary);
 @ask-text-quaternary: var(--om-color-text-quaternary);
+// Rest-state nav/list icons: quaternary (gray-400) in light, gray-600 in dark to
+// match the recording — quaternary reads a step too bright on the dark surface.
+@ask-icon-rest: var(--ask-rest-icon, var(--om-color-text-quaternary));
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
@@ -101,9 +104,11 @@
 //    a solid gray-blue-900 was invisible against the gray-blue-950 panel.
 //  - selected label/icon -> brand-300 (#84caff); the utility-brand-800 scale lands
 //    on brand-200 in dark, one step too pale versus the recording.
+//  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
 .dark-mode {
   --ask-selected-surface: var(--om-color-interactive-selected);
   --ask-selected-fg: var(--color-brand-300);
+  --ask-rest-icon: var(--color-gray-600);
 }
 
 // ---- Shell ----
@@ -364,7 +369,7 @@
     justify-content: center;
     width: @ask-nav-item-icon-size;
     height: @ask-nav-item-icon-size;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
 
     svg {
@@ -690,7 +695,7 @@
   &__item-icon {
     width: 18px;
     height: 18px;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
   }
 
@@ -764,7 +769,7 @@
   &__item-icon {
     width: 18px;
     height: 18px;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
 
     svg {
@@ -1259,7 +1264,7 @@
     justify-content: center;
     width: @ask-nav-item-icon-size;
     height: @ask-nav-item-icon-size;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
   }
 
