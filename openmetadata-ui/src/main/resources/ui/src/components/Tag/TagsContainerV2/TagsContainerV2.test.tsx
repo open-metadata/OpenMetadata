@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { EntityTags } from 'Models';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -21,6 +21,7 @@ import {
   TagLabelMetadata,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { GlossaryTermPickerProps } from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import TagsContainerV2 from './TagsContainerV2';
 
 let capturedOnSubmit:
@@ -32,6 +33,28 @@ jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
     capturedOnSubmit = props.onSubmit;
 
     return <div data-testid="mock-tag-select-form">TagSelectForm</div>;
+  });
+});
+
+let capturedGlossaryProps: GlossaryTermPickerProps | undefined;
+
+const TRIGGER_STATE = {
+  isOpen: false,
+  toggle: jest.fn(),
+  open: jest.fn(),
+  close: jest.fn(),
+  selectedCount: 0,
+};
+
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () => {
+  return jest.fn().mockImplementation((props: GlossaryTermPickerProps) => {
+    capturedGlossaryProps = props;
+
+    return (
+      <div data-testid="mock-glossary-picker">
+        {props.renderTrigger?.(TRIGGER_STATE)}
+      </div>
+    );
   });
 });
 
@@ -79,11 +102,12 @@ jest.mock('../../Suggestions/SuggestionsAlert/SuggestionsAlert', () =>
 );
 
 jest.mock('../../common/WidgetCard/WidgetCard', () =>
-  jest
-    .fn()
-    .mockImplementation(({ children, dataTestId }) => (
-      <div data-testid={dataTestId}>{children}</div>
-    ))
+  jest.fn().mockImplementation(({ children, dataTestId, headerExtra }) => (
+    <div data-testid={dataTestId}>
+      {headerExtra}
+      {children}
+    </div>
+  ))
 );
 
 const PERSONAL_DATA_FQN = 'PersonalData.Personal';
@@ -164,9 +188,10 @@ const renderTagsContainerInsideClickableParent = (props: {
   );
 };
 
+// The card header and the inline slot each render an edit icon; either opens
+// the same editor, so the first one is as good as the other.
 const enterEditMode = async () => {
-  const editButton = screen.getByTestId('edit-button');
-  fireEvent.click(editButton);
+  fireEvent.click(screen.getAllByTestId('edit-button')[0]);
   await screen.findByTestId('mock-tag-select-form');
 };
 
@@ -471,5 +496,169 @@ describe('TagsContainerV2 click propagation', () => {
 
     expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
     expect(onParentClick).not.toHaveBeenCalled();
+  });
+});
+
+const GLOSSARY_MRR_FQN = 'Finance.MRR';
+const GLOSSARY_ARR_FQN = 'Finance.ARR';
+
+const mrrTerm: EntityTags = {
+  tagFQN: GLOSSARY_MRR_FQN,
+  source: TagSource.Glossary,
+  labelType: LabelType.Automated,
+  state: State.Suggested,
+  appliedBy: 'bot-glossary',
+  appliedAt: new Date(APPLIED_AT_ISO),
+};
+
+// A term freshly picked from the glossary listing: no server-managed fields.
+const arrTerm = {
+  tagFQN: GLOSSARY_ARR_FQN,
+  source: TagSource.Glossary,
+} as TagLabel;
+
+const emitGlossaryChange = (terms: TagLabel[]) => {
+  const onChange = capturedGlossaryProps?.onChange;
+
+  if (!onChange) {
+    throw new Error('GlossaryTermPicker was never rendered');
+  }
+
+  return onChange(terms);
+};
+
+const renderGlossaryContainer = (props: {
+  selectedTags: EntityTags[];
+  onSelectionChange: jest.Mock;
+  newLook?: boolean;
+}) => {
+  capturedGlossaryProps = undefined;
+
+  return render(
+    <MemoryRouter>
+      <TagsContainerV2
+        permission
+        showInlineEditButton
+        entityFqn="sample.db.schema.table"
+        entityType="table"
+        newLook={props.newLook ?? true}
+        selectedTags={props.selectedTags}
+        tagType={TagSource.Glossary}
+        onSelectionChange={props.onSelectionChange}
+      />
+    </MemoryRouter>
+  );
+};
+
+describe('TagsContainerV2 glossary picker', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    capturedGlossaryProps = undefined;
+  });
+
+  it('anchors the picker to the add/edit icon rather than swapping the body', () => {
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm],
+      onSelectionChange: jest.fn(),
+    });
+
+    const picker = screen.getByTestId('mock-glossary-picker');
+
+    // The icon is the picker's trigger, and the body still shows the terms.
+    expect(within(picker).getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-tag-select-form')).toBeNull();
+  });
+
+  it('commits on Apply rather than per toggle', () => {
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm],
+      onSelectionChange: jest.fn(),
+    });
+
+    expect(capturedGlossaryProps?.commitMode).toBe('staged');
+  });
+
+  it('opens the popover when the icon is clicked', () => {
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm],
+      onSelectionChange: jest.fn(),
+    });
+
+    expect(capturedGlossaryProps?.isOpen).toBe(false);
+
+    const picker = screen.getByTestId('mock-glossary-picker');
+    fireEvent.click(within(picker).getByTestId('edit-button'));
+
+    expect(capturedGlossaryProps?.isOpen).toBe(true);
+  });
+
+  it('seeds the picker with only the glossary labels', () => {
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm, piiSensitiveTag],
+      onSelectionChange: jest.fn(),
+    });
+
+    expect(capturedGlossaryProps?.value).toEqual([mrrTerm]);
+  });
+
+  it('keeps classification tags when glossary terms are saved', async () => {
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm, piiSensitiveTag],
+      onSelectionChange,
+    });
+
+    await act(async () => {
+      await emitGlossaryChange([arrTerm]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        tagFQN: GLOSSARY_ARR_FQN,
+        source: TagSource.Glossary,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      }),
+      piiSensitiveTag,
+    ]);
+  });
+
+  it('preserves server-managed fields on a term that survives the save', async () => {
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm],
+      onSelectionChange,
+    });
+
+    // GlossaryTermPicker hands back the applied label untouched.
+    await act(async () => {
+      await emitGlossaryChange([mrrTerm, arrTerm]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({
+        tagFQN: GLOSSARY_MRR_FQN,
+        appliedBy: 'bot-glossary',
+        appliedAt: new Date(APPLIED_AT_ISO),
+        labelType: LabelType.Automated,
+        state: State.Suggested,
+      }),
+      expect.objectContaining({ tagFQN: GLOSSARY_ARR_FQN }),
+    ]);
+  });
+
+  it('skips the save when the selection is unchanged', async () => {
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm],
+      onSelectionChange,
+    });
+
+    await act(async () => {
+      await emitGlossaryChange([mrrTerm]);
+    });
+
+    expect(onSelectionChange).not.toHaveBeenCalled();
   });
 });

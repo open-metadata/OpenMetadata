@@ -20,6 +20,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,27 +46,31 @@ import {
 } from './use-tree-select-search';
 import { useTreeSelectSelection } from './use-tree-select-selection';
 
-/** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
+// `tw:w-80` on the chrome dropdown, known before it renders.
 const DROPDOWN_CHROME_WIDTH = 320;
-/** Matches react-aria's default overlay `containerPadding`. */
+// react-aria's default overlay `containerPadding`.
 const VIEWPORT_PADDING = 12;
 
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
-/**
- * Anchors the dropdown to the trigger's left edge, mirroring it to the
- * trigger's right edge when there is no room on the right. Without this
- * react-aria keeps the dropdown on screen by shifting it off its anchor, so it
- * no longer starts at the trigger.
- */
-const useDropdownPlacement = (
+interface DropdownAnchor {
+  placement: DropdownPlacement;
+  // react-aria sets `--trigger-width` only from its own triggers, not a bare ref.
+  triggerWidth?: number;
+}
+
+// Left edge of the trigger, mirrored to its right edge when there is no room —
+// react-aria would otherwise shift the dropdown off its anchor to stay on screen.
+const useDropdownAnchor = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
-): DropdownPlacement => {
-  const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+): DropdownAnchor => {
+  const [anchor, setAnchor] = useState<DropdownAnchor>({
+    placement: 'bottom left',
+  });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -78,7 +83,10 @@ const useDropdownPlacement = (
       const needed = (width ?? rect.width) + VIEWPORT_PADDING;
       const fitsRight = window.innerWidth - rect.left >= needed;
       const fitsLeft = rect.right >= needed;
-      setPlacement(!fitsRight && fitsLeft ? 'bottom right' : 'bottom left');
+      setAnchor({
+        placement: !fitsRight && fitsLeft ? 'bottom right' : 'bottom left',
+        triggerWidth: rect.width,
+      });
     };
 
     measure();
@@ -87,7 +95,7 @@ const useDropdownPlacement = (
     return () => window.removeEventListener('resize', measure);
   }, [isOpen, width, triggerRef]);
 
-  return placement;
+  return anchor;
 };
 
 const shouldLazyLoad = <T,>(
@@ -245,7 +253,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const placement = useDropdownPlacement(
+  const { placement, triggerWidth } = useDropdownAnchor(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -785,15 +793,13 @@ export const TreeSelect = <T = unknown,>({
   const treeDropdown = (
     <Dropdown.Popover
       isNonModal
-      className={cx(
-        // `w-full` would size against the portal root.
-        usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
-        popoverClassName
-      )}
+      className={cx(usesDropdownChrome && 'tw:w-80', popoverClassName)}
       // Stops a dismissable ancestor reading clicks here as outside ones.
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       placement={placement}
+      // Matched to the field; `w-full` would size against the portal root.
+      style={usesDropdownChrome ? undefined : { width: triggerWidth }}
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}

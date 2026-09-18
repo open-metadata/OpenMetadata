@@ -22,6 +22,11 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from '../../../utils/glossaryPicker';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -675,49 +680,24 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await expect(panelContainer).toBeVisible();
         await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
 
-        // Click edit glossary terms button in the column detail panel
-        const glossaryEditButton = panelContainer.getByTestId(
-          'edit-glossary-terms'
+        await openGlossaryPicker(
+          page,
+          panelContainer.getByTestId('edit-glossary-terms')
         );
-        await expect(glossaryEditButton).toBeVisible();
-        await glossaryEditButton.click();
 
-        // Wait for selectable list to appear
-        const selectableList = page.locator('[data-testid="selectable-list"]');
-        await expect(selectableList).toBeVisible();
-
-        // Search for the glossary term
-        const searchBar = page.locator(
-          '[data-testid="glossary-term-select-search-bar"]'
-        );
-        await expect(searchBar).toBeVisible();
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('glossaryTerm') &&
-            response.request().method() === 'GET'
-        );
-        await searchBar.fill(child.responseData.displayName);
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        // Select the glossary term from the flat list
-        const termOption = page.locator('[data-testid="owner-option"]').filter({
-          hasText: child.responseData.displayName,
+        await toggleGlossaryTermInPicker(page, {
+          name: child.responseData.name,
+          displayName: child.responseData.displayName,
+          fullyQualifiedName: child.responseData.fullyQualifiedName,
         });
-        await expect(termOption).toBeVisible();
-        await termOption.click();
 
-        // Save via Update button
-        const updateResponse = page.waitForResponse(
-          (response) =>
+        await applyGlossaryPicker(page, (response) =>
+          Boolean(
             response.url().includes('/api/v1/columns/name/') ||
-            response.url().includes('/api/v1/tables/')
+              response.url().includes('/api/v1/tables/')
+          )
         );
-        const updateButton = page.getByRole('button', { name: 'Update' });
-        await expect(updateButton).toBeVisible();
-        await updateButton.click();
-        await updateResponse;
+
         await waitForAllLoadersToDisappear(page);
 
         // Verify glossary term appears in the column detail panel

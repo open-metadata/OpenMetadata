@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TreeSelectNode } from '@openmetadata/ui-core-components';
+import { GlossaryTerm as GlossaryTermIcon } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -38,6 +39,7 @@ export const convertToTreeNodes = (
     children: option.children ? convertToTreeNodes(option.children) : [],
     isLeaf: !option.children || option.children.length === 0,
     allowSelection: option.selectable !== false,
+    icon: <GlossaryTermIcon size={16} />,
     lazyLoad: option.lazyLoad !== false,
     isParentMutuallyExclusive: option.isParentMutuallyExclusive,
     data: option.data
@@ -62,7 +64,7 @@ export const convertGlossaryTermsToTreeOptionsWithNames = (
     const isGlossaryTerm = level !== 0;
 
     return {
-      // FQN first so ids match the tag.tagFQN-keyed selection seeded in GlossaryTermTreeSelect
+      // FQN first so ids match the tag.tagFQN-keyed selection seeded in GlossaryTermPicker
       id: option.fullyQualifiedName || option.name || option.id,
       value: option.fullyQualifiedName || option.name || option.id,
       title: getEntityName(option),

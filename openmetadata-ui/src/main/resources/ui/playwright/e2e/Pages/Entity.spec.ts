@@ -65,6 +65,11 @@ import {
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
 import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from '../../utils/glossaryPicker';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,
@@ -615,55 +620,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           });
           await waitForAllLoadersToDisappear(page);
           // Step 1: Add a glossary term first
-          const glossaryEditButton = panelContainer.getByTestId(
-            'edit-glossary-terms'
+          await openGlossaryPicker(
+            page,
+            panelContainer.getByTestId('edit-glossary-terms')
           );
-          await expect(glossaryEditButton).toBeVisible();
-          await glossaryEditButton.click();
 
-          // Wait for selectable list to be visible and ready
-          const selectableList = page.locator(
-            '[data-testid="selectable-list"]'
-          );
-          await expect(selectableList).toBeVisible();
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
 
-          const searchBar = page.locator(
-            '[data-testid="glossary-term-select-search-bar"]'
-          );
-          await expect(searchBar).toBeVisible();
-          const glossarySearchResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes('glossaryTerm') &&
-              response.request().method() === 'GET'
-          );
-          await searchBar.fill(
-            EntityDataClass.glossaryTerm1.responseData.displayName
-          );
-          const glossarySearchRequest = await glossarySearchResponse;
-          expect(glossarySearchRequest.status()).toBe(200);
-          await waitForAllLoadersToDisappear(page);
-
-          // Wait for term option to be visible before clicking
-          const termOption = page
-            .locator('[data-testid="owner-option"]')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            });
-          await expect(termOption).toBeVisible();
-          await termOption.click();
-
-          // Wait for both API response AND UI update
-          const glossaryUpdateResponse = page.waitForResponse(
-            (response) =>
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          const updateButton = page.getByRole('button', { name: 'Update' });
-          await expect(updateButton).toBeVisible();
-          await expect(updateButton).toBeEnabled();
-          await updateButton.click();
-          await glossaryUpdateResponse;
 
           // CRITICAL: Wait for UI to update after API response
           await waitForAllLoadersToDisappear(page);
@@ -683,7 +657,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await editTagsButton.click();
 
           // Wait for selectable list to be visible and ready
-          await expect(selectableList).toBeVisible();
+          await expect(
+            page.locator('[data-testid="selectable-list"]')
+          ).toBeVisible();
 
           const tagSearchBar = page.locator(
             '[data-testid="tag-select-search-bar"]'
@@ -759,26 +735,17 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await waitForAllLoadersToDisappear(page);
           // Remove glossary term
-          await cleanupPanel.getByTestId('edit-glossary-terms').click();
-          await page
-            .locator('[data-testid="selectable-list"]')
-            .waitFor({ state: 'visible' });
-
-          const searchGlossaryCleanup = page.waitForResponse(
-            '/api/v1/search/query?q=*index=glossaryTerm*'
+          await openGlossaryPicker(
+            page,
+            cleanupPanel.getByTestId('edit-glossary-terms')
           );
-          await page
-            .locator('[data-testid="glossary-term-select-search-bar"]')
-            .fill(EntityDataClass.glossaryTerm1.responseData.displayName);
-          await searchGlossaryCleanup;
-          await waitForAllLoadersToDisappear(page);
 
-          await page
-            .locator('.selectable-list-item')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            })
-            .click();
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
           const glossaryCleanupResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
@@ -1515,47 +1482,24 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await waitForAllLoadersToDisappear(page);
           // Add glossary term via panel
-          const editButton = panelContainer.getByTestId('edit-glossary-terms');
-          await expect(editButton).toBeVisible();
-          await editButton.click();
-
-          // Wait for selectable list to be visible and ready
-          const selectableList = page.locator(
-            '[data-testid="selectable-list"]'
-          );
-          await expect(selectableList).toBeVisible();
-
-          const searchBar = page.locator(
-            '[data-testid="glossary-term-select-search-bar"]'
-          );
-          await expect(searchBar).toBeVisible();
-          await searchBar.fill(
-            EntityDataClass.glossaryTerm1.responseData.displayName
+          await openGlossaryPicker(
+            page,
+            panelContainer.getByTestId('edit-glossary-terms')
           );
 
-          // Wait for loader to disappear after search
-          await waitForAllLoadersToDisappear(page);
+          await toggleGlossaryTermInPicker(page, {
+            name: EntityDataClass.glossaryTerm1.responseData.name,
+            displayName: EntityDataClass.glossaryTerm1.responseData.displayName,
+            fullyQualifiedName:
+              EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName,
+          });
 
-          // Wait for term option to be visible before clicking
-          const termOption = page
-            .locator('[data-testid="owner-option"]')
-            .filter({
-              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-            });
-          await expect(termOption).toBeVisible();
-          await termOption.click();
-
-          // Wait for both API response AND UI update
-          const updateResponse = page.waitForResponse(
-            (response) =>
+          await applyGlossaryPicker(page, (response) =>
+            Boolean(
               response.url().includes('/api/v1/columns/name/') ||
-              response.url().includes(`/api/v1/${entity.endpoint}/`)
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            )
           );
-          const updateButton = page.getByRole('button', { name: 'Update' });
-          await expect(updateButton).toBeVisible();
-          await expect(updateButton).toBeEnabled();
-          await updateButton.click();
-          await updateResponse;
 
           // CRITICAL: Wait for UI to update after API response
           await waitForAllLoadersToDisappear(page);
