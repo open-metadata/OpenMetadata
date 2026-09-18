@@ -29,6 +29,18 @@ public final class EntityGoldenSnapshot {
           "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
   private static final Set<String> CLOCK_FIELDS =
       Set.of("updatedAt", "createdAt", "changedAt", "timestamp", "eventTime");
+
+  /**
+   * ISO-8601 date fields, pinned for the same reason as {@link #CLOCK_FIELDS} but with a string
+   * placeholder because they are not epoch millis. Table joins and usage carry today's date and a
+   * rolling window start, so a fixture recorded on one day compares unequal on the next — the
+   * failure looks like a behaviour change when nothing changed but the calendar. {@code endDate} is
+   * listed although no scenario emits one yet: it is {@code startDate}'s pair in the same join and
+   * usage windows, so a scenario that grows into it would reintroduce exactly this failure.
+   */
+  private static final Set<String> DATE_FIELDS = Set.of("date", "startDate", "endDate");
+
+  private static final String DATE_PLACEHOLDER = "<date>";
   private static final int ID_LIMIT = 256;
   private final Map<String, String> ids = new LinkedHashMap<>();
   private final Map<String, String> aliases;
@@ -140,6 +152,8 @@ public final class EntityGoldenSnapshot {
               entry -> {
                 if (CLOCK_FIELDS.contains(entry.getKey())) {
                   result.put(entry.getKey(), 0);
+                } else if (DATE_FIELDS.contains(entry.getKey()) && entry.getValue().isTextual()) {
+                  result.put(entry.getKey(), DATE_PLACEHOLDER);
                 } else {
                   result.set(entry.getKey(), normalize(entry.getValue()));
                 }

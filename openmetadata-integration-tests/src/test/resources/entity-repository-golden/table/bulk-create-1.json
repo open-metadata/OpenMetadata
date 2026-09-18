@@ -36,7 +36,7 @@
       "columnJoins" : [ ],
       "dayCount" : 30,
       "directTableJoins" : [ ],
-      "startDate" : "2026-08-16"
+      "startDate" : "<date>"
     },
     "name" : "golden_bulk1",
     "processedLineage" : false,
@@ -48,7 +48,7 @@
         "count" : 0,
         "percentileRank" : 0.0
       },
-      "date" : "2026-09-15",
+      "date" : "<date>",
       "monthlyStats" : {
         "count" : 0,
         "percentileRank" : 0.0
