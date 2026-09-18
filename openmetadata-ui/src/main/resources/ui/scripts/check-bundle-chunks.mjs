@@ -30,16 +30,17 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// 1150 KiB. The prior 990 KiB ceiling was set (PR #33482) against a build
-// that predated main's owner-link refactor pulling `renderOwnerPopover`
-// (which transitively drags antd Popover + PopoverContent + TeamPopoverContent
-// + ProfilePicture) into the eager index.tsx graph. On top of that, this
-// branch's AuthCoordinator refactor imports the coordinator singleton
-// statically from AuthProvider, adding its full CrossTabLock + RefreshQueue +
-// ProactiveTimer + VisibilityWatcher subgraph to bootstrap. Together the two
-// land the current build at 1118 KiB Brotli. The docblock's ratchet rule
-// applies: bump up when the code justifies it, don't bypass the gate — 1150
-// KiB keeps ~32 KB headroom so an unrelated dep bump doesn't re-fail here.
+// main measures 1141354 bytes (1114.6 KiB) after the owner-link refactor
+// pulled `renderOwnerPopover` (antd Popover + PopoverContent +
+// TeamPopoverContent + ProfilePicture) into the eager index.tsx graph. This
+// branch's AuthCoordinator refactor also imports the coordinator singleton
+// statically from AuthProvider, adding its CrossTabLock + RefreshQueue +
+// ProactiveTimer + VisibilityWatcher subgraph to bootstrap. Together the build
+// lands at ~1118 KiB Brotli. 1150 KiB keeps ~32 KB headroom so an unrelated
+// dep bump doesn't immediately re-fail here — main's own ratchet to 1130 KiB
+// (which took vendor-untitled's 20 eager locale bundles into account) needed
+// a little more room on top for the coordinator subgraph; the vendor-untitled
+// / locale-bundle deferral is the real win and is tracked separately.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 1150 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;

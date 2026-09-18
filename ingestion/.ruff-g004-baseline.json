@@ -1127,8 +1127,6 @@
       "e2ac310d3a5f54fc09f10cbb0734912357ad628a6a518c3d0cdaca3b1c1b844d": 1
     },
     "ingestion/src/metadata/ingestion/source/database/athena/metadata.py": {
-      "0433f1a67471b1d05e680849bd7663dfbeba236c1fea5be1a30970777e69c7d5": 1,
-      "44b02f06d42f53cd17077947490cff14dc953dded4a53c71319931e17b8104dd": 1,
       "95f26611179297e2f30eaed410336b37566fabb56cbc5e9c2fadaea563ee2ba6": 1,
       "aa5c53ea0a1451d62c4004b07f0d04bfe28353d9d00faf41f95ee004f3ec0b5a": 1,
       "d27504e6976da850f3db07937978cd7e2ddfaa9296455493d8c8d756ada02522": 1,
