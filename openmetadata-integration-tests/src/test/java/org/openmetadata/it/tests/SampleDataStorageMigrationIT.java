@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -25,6 +26,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -95,7 +97,7 @@ public class SampleDataStorageMigrationIT {
     injectStorageConfig(hosted.getId(), "{}");
 
     assertThrows(
-        Exception.class,
+        JsonParsingException.class,
         () ->
             JsonUtils.readValue(storedConnectionConfig(legacy.getId()), SnowflakeConnection.class),
         "precondition: the legacy row is what breaks on upgrade");
@@ -234,7 +236,7 @@ public class SampleDataStorageMigrationIT {
   private String readMigration(String dialect) {
     try {
       return Files.readString(migrationFile(dialect));
-    } catch (Exception e) {
+    } catch (IOException e) {
       throw new IllegalStateException("Cannot read the 2.1.0 " + dialect + " migration", e);
     }
   }
