@@ -73,3 +73,40 @@
     }
   }
 }
+
+// Dark-mode editor chrome for every CodeMirror instance (SchemaEditor, query
+// cards, JSON/manifest widgets, query console). CodeMirror ships a light theme,
+// so without this the editor surface, gutter, line numbers, cursor, selection,
+// and active line stay light in dark mode. Syntax token hues are left intact
+// (they read fine on the dark surface); only comments are lifted to a legible
+// muted tone. Appended last so it wins over the light `.custom-code-mirror-theme`.
+.dark-mode {
+  .CodeMirror {
+    background: var(--om-color-bg-surface);
+    color: var(--om-color-text-primary);
+  }
+  .custom-code-mirror-theme .CodeMirror {
+    background: var(--om-color-bg-surface);
+  }
+  .CodeMirror-gutters {
+    background-color: var(--om-color-bg-canvas);
+    border-right-color: var(--om-color-border-subtle);
+  }
+  .CodeMirror-linenumber,
+  .CodeMirror-foldgutter-open,
+  .CodeMirror-foldgutter-folded {
+    color: var(--om-color-text-tertiary);
+  }
+  .CodeMirror-cursor {
+    border-left-color: var(--om-color-text-primary);
+  }
+  .CodeMirror-selected {
+    background: var(--om-color-bg-secondary-hover);
+  }
+  .CodeMirror-activeline-background {
+    background: var(--om-color-bg-secondary);
+  }
+  .cm-comment {
+    color: var(--om-color-text-tertiary);
+  }
+}
