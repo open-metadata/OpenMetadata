@@ -14,7 +14,6 @@
 import { Table } from '@openmetadata/ui-core-components/icons';
 // CheckCircle and User01 have no counterpart in the core-components icon
 // barrel, which only re-exports the design team's own SVG set.
-// eslint-disable-next-line no-restricted-imports
 import { CheckCircle, User01 } from '@untitledui/icons';
 import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
 import { IncidentGroupByOption } from './IncidentGroups.types';
