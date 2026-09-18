@@ -355,6 +355,26 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
     - **What CI does and does not run.** `SanitizedModelExperimentTest` runs in the `openmetadata-service` unit-test job on every PR, so it can fail an unrelated build: its fixture projects through the production `JsonLdTranslator`, so a new term in a JSON-LD context reaches the builder as an unmapped fact. That is intended as a canary, and it is also a cost on unrelated changes. The Fuseki class is disabled unless its image property is set, and no workflow runs the `postgres-rdf-tests` profile, so the integration test never runs in CI.
     - **Open standards findings**, left for maintainer direction rather than changed unilaterally: all four experiment classes exceed the 500-line limit, and several methods exceed the 15-line guidance. Splitting them matters only if the code outlives the experiment.
 
+15. **Which bulk authorization path candidate selection should reuse (2026-09-18).** Source reading at this worktree's revision; no runs. The PR asked reviewers to choose this path. The codebase largely answers it, and the answer is narrower than "pick one".
+    - **Three paths exist.**
+
+      | Path | What it is | Cost | Authoritative |
+      | --- | --- | --- | --- |
+      | A. Search-compiled policy | `RBACConditionEvaluator` compiles policy rules into an Elasticsearch/OpenSearch bool query | one search query, independent of catalog size | **No — fails open** |
+      | B. Per-entity evaluation | `Authorizer.authorize` → `PolicyEvaluator.hasPermission` | one policy evaluation and one entity load per candidate | Yes |
+      | C. Bulk per-entity evaluation | `LineagePermissionFilter` — B, batched by entity type | one batch load per entity type, one evaluation per candidate | Yes |
+
+    - **A cannot be the authorization decision.** Four reasons, all in code:
+      - it is **off by default**: `enableAccessControl` defaults to `false` in the schema (`openmetadata-spec/.../configuration/searchSettings.json:14`) and in the shipped settings (`openmetadata-service/.../json/data/settings/searchSettings.json:3`);
+      - `RBACConditionEvaluator.handleMethodReference` translates 9 of `RuleEvaluator`'s 16 `@Function` predicates and has **no `default` branch**, so an untranslated condition is silently dropped and the rule compiles *less* restrictively than the policy it came from. Of the seven untranslated, `noDomain` and `matchTeam` are asset-scoped; the three task predicates and `isAdminUser`/`isBotUser` are not asset visibility;
+      - a caller with no rule naming a view operation compiles to `matchAllQuery()`, so absent policy means "everything";
+      - it filters an index, so it inherits index freshness rather than catalog state.
+
+      Every one of those failure modes is fail-open, the opposite of what a sanitized model requires. A can still serve as a *narrowing* pre-filter whose output is re-checked, never as the admission decision.
+    - **C is the canonical bulk path, and it already solves this problem.** `LineagePermissionFilter` prunes a graph's nodes to those the caller may `VIEW_BASIC`, which is candidate selection in another guise. It buckets references by entity type and issues one batch `repository.get(null, ids, ResourceContext.authorizationFields(repository), Include.ALL)` per type, then hands each pre-resolved entity to a `ResourceContext` so the authorizer refetches nothing; it batch-loads tags lazily through `BulkFieldHydrator`, because tags have unbounded cardinality and a deployment with no tag conditions should never pay for them; it calls `authorize` rather than `getPermission`, which reports a conditional rule as `CONDITIONAL_ALLOW` that a filter must not read as an allow; it fails closed on every error path, including a whole type bucket whose repository is missing; and it caps at `MAX_FILTERED_NODES = 500`, reporting when the ceiling was reached. **Recommendation: candidate selection reuses C.** The experiment's `visibleResources()` is B without batching — a loop over every catalog resource — so the change is mechanical and its shape is already proven in main code.
+    - **What C does not solve, which is the important part.** C prunes a candidate set that something else produced; it does not enumerate what a caller can see. Its cost stays linear in candidates, so it fixes the constant — an N+1 of entity loads becomes one batch per type — and not the complexity. **No path in the codebase both scales and is authoritative:** A scales but fails open, is off by default and is incomplete; B and C are authoritative but linear. A catalog-wide request-local view therefore needs either a new pre-filter with a proven completeness argument, or the ADR's bounded-scope option, where linear cost over a bounded candidate set is acceptable and `MAX_FILTERED_NODES` is the existing precedent for the bound.
+    - **The concurrency half of the question is already fixed by shipped code.** `SparqlQueryExecutionGuard` admits at most `GLOBAL_CONCURRENCY = 8` SPARQL queries globally and 2 per principal. A latency budget therefore has to hold at eight concurrent authorized requests, and peak heap is eight simultaneous request-local models rather than one. That is a constraint, not a preference, unless the guard changes.
+
 ## Status for review
 
 This section is the current summary for PR review. It describes what the experiment supports on its fixtures, and what blocks production RBAC. Those blockers are not claimed to block merging a test-only experiment.
@@ -394,7 +414,7 @@ A known admission gap that is **not** closed: the four containment predicates re
 
 ### Permission-contract questions
 
-1. **Discovery versus direct read.** Should candidates be the assets a caller can discover, directly read, or a defined combination? Search-compiled policy may skip conditions, and rechecking candidates cannot recover assets that discovery missed.
+1. **Discovery versus direct read.** Should candidates be the assets a caller can discover, directly read, or a defined combination? Finding 15 sharpens this: the search-compiled path is off by default, drops untranslated conditions silently and compiles an absent policy to match-all, so discovery cannot be the authorization decision — only a pre-filter that something authoritative re-checks. Rechecking still cannot recover assets discovery missed.
 2. **Stricter than REST, declared.** REST returns a container reference after authorizing the table alone, and every child reference after authorizing the container alone. The experiment requires both ends to be readable. Is that the contract?
 3. **Identity-only exposure** for containers the caller cannot read, which REST effectively provides and the experiment does not ([scope proposal](rdf-authorization-scope-proposal.md), decisions 6–7).
 4. **Default GET versus requested fields.** The mapping follows the default GET, which needs `VIEW_BASIC`. A GET that names the same field needs `VIEW_ALL`. Free-text fields such as `description` can embed entity links.
@@ -408,7 +428,8 @@ A known admission gap that is **not** closed: the four containment predicates re
 
 - **No latency or memory measurement per request.** All timings are whole test classes or per-phase authorization diagnostics on four tables; container memory figures are coarse samples.
 - **The roughly two-second target is undetermined.** Candidate discovery, per-resource authorization, retrieval, model construction and evaluation have not been measured at any representative scope, cold or warm, or under concurrency.
-- **Candidate selection evaluates every catalog resource.** A real system needs a pre-filter whose completeness is proven.
+- **Candidate selection evaluates every catalog resource.** A real system needs a pre-filter whose completeness is proven. Finding 15 identifies `LineagePermissionFilter` as the batched path to reuse and shows that no existing path is both scalable and authoritative, so the pre-filter is still unbuilt.
+- **The concurrency the target must hold at is eight**, from `SparqlQueryExecutionGuard`, so peak heap is eight simultaneous request-local models (Finding 15).
 - **Retrieval is not pinned to one dataset** during blue/green promotion or in-place rebuild (ADR F8), and remote cancellation is not shown (F9).
 - **Freshness beyond one JVM:** cross-pod invalidation, in-flight requests and policy edits are not covered.
 - **Remote retrieval evidence is thin:** one Fuseki-backed run of 56 tests on arm64; the 40 later tests have not run through Fuseki.
