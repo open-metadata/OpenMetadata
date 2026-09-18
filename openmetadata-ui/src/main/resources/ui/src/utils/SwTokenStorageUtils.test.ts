@@ -258,7 +258,10 @@ describe('SwTokenStorageUtils', () => {
 
       expect(mockSetItem).toHaveBeenCalledWith(
         'app_state',
-        JSON.stringify({ secondary: 'refresh-token', primary: 'leader-persisted' })
+        JSON.stringify({
+          secondary: 'refresh-token',
+          primary: 'leader-persisted',
+        })
       );
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
@@ -271,7 +274,9 @@ describe('SwTokenStorageUtils', () => {
       const swFailure = new Error('IndexedDB write failed');
       mockSetItem.mockRejectedValue(swFailure);
 
-      await expect(setOidcTokenStrict('never-persisted')).rejects.toBe(swFailure);
+      await expect(setOidcTokenStrict('never-persisted')).rejects.toBe(
+        swFailure
+      );
       // Nothing may reach localStorage (SECURITY invariant preserved) and
       // subsequent callers must see the SW as broken so they stop paying the
       // controller-wait timeout — same side effect as the fail-silent path.
