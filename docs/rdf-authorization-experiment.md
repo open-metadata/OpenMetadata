@@ -385,6 +385,13 @@ Every fact below rejects the build. The two tiers differ in evidence, not in beh
 
 A known admission gap that is **not** closed: the four containment predicates require an entity object, and the four owned-node predicates (`om:hasColumn`, `om:hasChildColumn`, `om:hasExtension`, `om:hasExtensionProperty`) reject a literal where they resolve their child. The remaining relationship predicates — `om:hasTag`, `om:domains`, `om:upstream`, `om:downstream` and `prov:wasDerivedFrom` — still admit a literal object, which would bypass that predicate's target check.
 
+### Impact of merging this experiment
+
+- **Runtime: none.** No production code, endpoint, schema, configuration, flag or migration ships, so no deployed behaviour changes and #33224 stays open.
+- **CI: one new gate.** `SanitizedModelExperimentTest` runs in the `openmetadata-service` unit-test job on every PR (96 tests, about two seconds). Because its fixture projects through the production `JsonLdTranslator`, a new term in a JSON-LD context arrives as an unmapped fact and fails the suite — a deliberate canary, and a cost on unrelated changes.
+- **Not in CI:** `SanitizedModelFusekiTest` is disabled unless its image property is set, and no workflow runs the `postgres-rdf-tests` profile, so `RdfAuthorizationAlignmentIT` never runs there.
+- **Maintenance:** four test classes the backend team would own, each above the repo's 500-line class limit.
+
 ### Permission-contract questions
 
 1. **Discovery versus direct read.** Should candidates be the assets a caller can discover, directly read, or a defined combination? Search-compiled policy may skip conditions, and rechecking candidates cannot recover assets that discovery missed.
