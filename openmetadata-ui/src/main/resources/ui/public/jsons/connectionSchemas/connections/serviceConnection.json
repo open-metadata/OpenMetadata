@@ -8782,6 +8782,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -51686,6 +51692,12 @@
                         }
                       },
                       "additionalProperties": false
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
