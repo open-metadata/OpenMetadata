@@ -26,10 +26,14 @@
 # bootstrap/build/seed steps still run directly on the runner exactly as in the e2e workflow.
 name: playwright-visual-regression
 
+# A required status check has to be able to report on every PR and in the merge
+# queue, so this triggers unconditionally and gates the expensive job on a
+# `paths` filter inside it instead. A job skipped that way still satisfies
+# branch protection, whereas a workflow that never starts leaves the check
+# pending forever.
 on:
+  merge_group:
   pull_request:
-    paths:
-      - "openmetadata-ui/**"
   workflow_dispatch:
 
 concurrency:
@@ -37,10 +41,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui: ${{ steps.filter.outputs.ui }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            ui:
+              - 'openmetadata-ui/**'
+
   playwright-visual-regression:
     name: playwright-visual-regression
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    needs: check-changes
+    if: ${{ !github.event.pull_request.draft && needs.check-changes.outputs.ui == 'true' }}
     permissions:
       contents: read
     steps:
