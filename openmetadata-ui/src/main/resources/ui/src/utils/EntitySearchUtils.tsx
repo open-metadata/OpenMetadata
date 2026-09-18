@@ -171,8 +171,8 @@ const getRecognizedSpanProps = (attrs: string): RecognizedSpan | null => {
     return null;
   }
 
-  const className = attrs.match(CLASS_ATTR_RE)?.[1] ?? '';
-  const dataTestId = attrs.match(DATA_TESTID_ATTR_RE)?.[1];
+  const className = CLASS_ATTR_RE.exec(attrs)?.[1] ?? '';
+  const dataTestId = DATA_TESTID_ATTR_RE.exec(attrs)?.[1];
 
   return { className, dataTestId };
 };

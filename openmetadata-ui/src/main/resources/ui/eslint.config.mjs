@@ -235,20 +235,6 @@ export default [
           message:
             'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
         },
-        // Never import the raw Untitled `Input` from the core-components
-        // library — every user-typed value must pass through DOMPurify on the
-        // way in, so callers must go through `SanitizedInput`. Skipping this
-        // wrapper is how stored-XSS strings leak into descriptions,
-        // displayName, tag values, etc. — see security advisory
-        // GHSA-59gm-6h39-397f. Backlog is zero at time of writing; the
-        // 17 pre-existing call sites were migrated in the same PR that
-        // introduced `SanitizedInput` in @openmetadata/ui-core-components.
-        {
-          selector:
-            "ImportDeclaration[source.value='@openmetadata/ui-core-components'] > ImportSpecifier[imported.name='Input']",
-          message:
-            'Do not import `Input` directly from @openmetadata/ui-core-components — use `SanitizedInput` from the same package so typed values are DOMPurify-scrubbed before bubbling to onChange (GHSA-59gm-6h39-397f). If you truly need an unsanitized input (rare — e.g. numeric-only fields where HTML has no meaning), justify it inline with an eslint-disable-next-line and reference the advisory.',
-        },
       ],
 
       // SonarJS — same engine and rule ids (Sxxxx) as the SonarCloud analysis

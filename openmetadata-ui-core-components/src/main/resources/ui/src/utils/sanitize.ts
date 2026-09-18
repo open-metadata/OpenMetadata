@@ -17,8 +17,11 @@ export const getSanitizeContent = (html: string): string => {
   // user's text itself contains a placeholder-shaped string.
   const nonce = Math.random().toString(36).slice(2, 10);
 
-  // Protect entity links from DOMPurify encoding
-  const entityLinkRegex = /<#E::[^>]+>/g;
+  // Protect entity links from DOMPurify encoding. The `{1,512}` upper bound on
+  // the interior class prevents polynomial-time backtracking on adversarial
+  // inputs like `<#E::<#E::<#E::…AAAA` (CodeQL js/polynomial-redos) — an
+  // OpenMetadata FQN never exceeds this in practice.
+  const entityLinkRegex = /<#E::[^>]{1,512}>/g;
   const entityLinks: string[] = [];
   let entityLinkIndex = 0;
 
