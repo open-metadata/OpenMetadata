@@ -33,8 +33,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const POPOVER = 'glossary-term-picker-popover';
 
-// Scoped to the picker popover; returns the selection control (checkbox or radio wrapper).
-// Uses getByTestId + .or() instead of a raw CSS selector so FQNs with quotes/percent are escaped.
+// getByTestId + .or() so FQNs with quotes and percent signs stay escaped.
 const selectionControl = (page: Page, fqn: string) => {
   const popover = page.getByTestId(POPOVER);
 
@@ -43,11 +42,9 @@ const selectionControl = (page: Page, fqn: string) => {
     .or(popover.getByTestId(`radio-${fqn}`));
 };
 
-// The clickable tree-node row inside the popover.
 const treeNode = (page: Page, fqn: string) =>
   page.getByTestId(POPOVER).getByTestId(`tree-node-${fqn}`);
 
-// Open the picker from the knowledge-panel add-tag button and search for a glossary.
 const openAndSearch = async (page: Page, glossaryName: string) => {
   await openGlossaryPicker(
     page,

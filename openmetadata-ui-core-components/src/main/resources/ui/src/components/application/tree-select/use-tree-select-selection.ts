@@ -39,9 +39,12 @@ const getAllChildrenIds = <T>(node: TreeSelectNode<T>): string[] => {
   return ids;
 };
 
+// A cascade cannot choose between mutually exclusive siblings, so it stops there.
 const collectNodes = <T>(node: TreeSelectNode<T>): TreeSelectNode<T>[] => {
   const nodes = [node];
-  node.children?.forEach((child) => nodes.push(...collectNodes(child)));
+  node.children
+    ?.filter((child) => !child.isParentMutuallyExclusive)
+    .forEach((child) => nodes.push(...collectNodes(child)));
 
   return nodes;
 };

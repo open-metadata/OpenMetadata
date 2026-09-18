@@ -1251,10 +1251,14 @@ export const addTagsAndGlossaryToDomain = async (
   {
     tagFqn,
     glossaryTermFqn,
+    glossaryTermName,
     isDomain = true,
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
+    // Searched for in the picker. Taken from the term, never split out of the
+    // FQN — a generated term name can itself contain dots.
+    glossaryTermName: string;
     isDomain?: boolean;
   }
 ) => {
@@ -1281,7 +1285,7 @@ export const addTagsAndGlossaryToDomain = async (
     page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
   );
   await toggleGlossaryTermInPicker(page, {
-    name: glossaryTermFqn,
+    name: glossaryTermName,
     fullyQualifiedName: glossaryTermFqn,
   });
   await applyGlossaryPicker(page, patchUrl);

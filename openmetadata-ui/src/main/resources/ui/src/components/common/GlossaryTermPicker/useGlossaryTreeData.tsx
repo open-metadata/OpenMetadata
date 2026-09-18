@@ -39,8 +39,7 @@ interface HierarchicalGlossary extends Glossary {
   children?: ModifiedGlossaryTerm[];
 }
 
-// Glossaries at the root, terms lazy-loaded on expand. Node ids are FQNs so a
-// selection seeded from `TagLabel.tagFQN` matches.
+// Glossaries at the root, terms lazy-loaded on expand; ids are FQNs to match tagFQN.
 export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
   const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
 
@@ -68,7 +67,8 @@ export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
                   );
 
                 treeNodes.push({
-                  id: glossary.id,
+                  // Same id as the root branch; selection is keyed by it.
+                  id: glossary.name,
                   label: getEntityName(glossary),
                   value:
                     glossary.fullyQualifiedName || glossary.name || glossary.id,

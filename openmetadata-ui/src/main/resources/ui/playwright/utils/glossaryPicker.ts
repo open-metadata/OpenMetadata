@@ -12,8 +12,7 @@
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
 
-// Drives the glossary picker popover. It is portaled, so rows are located
-// globally, and nothing is saved until Apply.
+// Drives the picker popover: portaled, and nothing is saved until Apply.
 
 export type GlossaryTermRef = {
   name: string;
@@ -46,7 +45,6 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .count()
     .then((n) => n > 0);
 
-// Fills the search box and waits for the glossary query behind it.
 export const searchGlossaryPicker = async (page: Page, term: string) => {
   const searchResponse = page.waitForResponse(
     (response) =>
@@ -57,7 +55,6 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
-// Clicks an add/edit icon and waits for the tree.
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
@@ -83,8 +80,7 @@ export const toggleGlossaryTermInPicker = async (
   await row.click();
 };
 
-// One PATCH however many terms were toggled. Pass `false` where Apply only
-// updates local state — the picker inside a form.
+// One PATCH however many terms toggled; `false` where Apply only updates state.
 export const applyGlossaryPicker = async (
   page: Page,
   patchUrl?: string | ((response: Response) => boolean) | false

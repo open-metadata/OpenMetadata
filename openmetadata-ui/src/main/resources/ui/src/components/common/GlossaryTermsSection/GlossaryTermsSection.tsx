@@ -72,8 +72,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         );
         const updatedTags = [...nonGlossaryTags, ...selectedTerms];
 
-        // Provided directly, this skips updateEntityField's fallback for
-        // non-standard entity types.
+        // Skips updateEntityField's fallback for non-standard entity types.
         if (onGlossaryTermsUpdate) {
           try {
             const resultTags = await onGlossaryTermsUpdate(updatedTags);

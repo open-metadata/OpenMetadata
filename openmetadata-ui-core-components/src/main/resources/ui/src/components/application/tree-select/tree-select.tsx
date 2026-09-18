@@ -541,6 +541,18 @@ export const TreeSelect = <T = unknown,>({
     setShowSelectedOnly(false);
   }, [isStaged, setSelection, value, setOpen]);
 
+  // Closing through the trigger is a non-Apply close, so it discards the draft.
+  const toggleOpen = useCallback(() => {
+    if (disabled) {
+      return;
+    }
+    if (isOpen) {
+      dismiss();
+    } else {
+      setOpen(true);
+    }
+  }, [disabled, isOpen, dismiss, setOpen]);
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -794,6 +806,8 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       placement={placement}
+      // No DialogTrigger, so react-aria would read the opening click as an
+      // outside one; the pointerdown effect above owns dismissal instead.
       shouldCloseOnInteractOutside={() => false}
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
@@ -807,7 +821,7 @@ export const TreeSelect = <T = unknown,>({
         <div ref={triggerRef}>
           {renderTrigger({
             isOpen,
-            toggle: () => !disabled && setOpen(!isOpen),
+            toggle: toggleOpen,
             open: openTrigger,
             close: dismiss,
             selectedCount: selectedData.length,
@@ -838,7 +852,7 @@ export const TreeSelect = <T = unknown,>({
             iconTrailing={ChevronDown}
             isDisabled={disabled}
             size={bordered ? 'md' : 'sm'}
-            onPress={() => !disabled && setOpen(!isOpen)}>
+            onPress={toggleOpen}>
             {triggerText}
             {multiple && hasSelection && (
               <TriggerCountBadge count={displayedSelectedCount} />

@@ -2226,9 +2226,7 @@ export const verifyMutualExclusivitySelection = async (
 
 // -- Glossary Tree Select helpers --
 
-// The popover wrapper has `display: contents` (no bounding box), so visibility
-// checks must target a real child. Use getTreeDropdown() only to scope locators;
-// for open-gate assertions use getTreeDropdownContent().
+// `display: contents` has no box, so scope with this but assert on the tree.
 export const getTreeDropdown = (page: Page) =>
   page.getByTestId('glossary-terms-popover');
 
@@ -2284,16 +2282,14 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  // The popover wrapper is display:contents (no bounding box), so wait for
-  // the actual tree inside it instead.
+  // `display: contents` has no box, so wait on the tree inside it.
   await expect(getTreeDropdownContent(page)).toBeVisible({
     timeout: 10000,
   });
 
   await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
   if (parentTermDisplayName) {
-    // Not searched: a nested search returns the term one level deep, so it
-    // renders as a leaf and its chevron never becomes interactive.
+    // Not searched: a nested search returns a leaf, whose chevron stays hidden.
     await expandTreeNodeByName(page, parentTermDisplayName, { search: false });
   }
 };
