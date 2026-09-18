@@ -498,14 +498,19 @@ describe('SettingsRouter login configuration routes', () => {
     }
   );
 
-  it('still renders the login configuration page under basic auth', async () => {
-    mockAuthProvider = AuthProvider.Basic;
+  // `openmetadata` is a second name for the same native-password authenticator as `basic`, so the
+  // server enforces the login configuration for it and the route must stay reachable.
+  it.each([AuthProvider.Basic, AuthProvider.Openmetadata, AuthProvider.LDAP])(
+    'still renders the login configuration page under %s',
+    async (provider) => {
+      mockAuthProvider = provider;
 
-    renderAt('/settings/preferences/loginConfiguration');
+      renderAt('/settings/preferences/loginConfiguration');
 
-    expect(
-      await screen.findByText('LoginConfigurationPage')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByText('LoginConfigurationPage')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+    }
+  );
 });

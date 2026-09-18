@@ -82,7 +82,7 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { userPermissions } from '../utils/PermissionsUtils';
-import { isBasicAuthProvider } from './AuthProvider.util';
+import { isLoginConfigurationApplicable } from './AuthProvider.util';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -416,7 +416,7 @@ class GlobalSettingsClassBase {
             description: t('message.page-sub-header-for-login-configuration'),
             isProtected:
               Boolean(isAdminUser) &&
-              isBasicAuthProvider(
+              isLoginConfigurationApplicable(
                 useApplicationStore.getState().authConfig?.provider
               ),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,

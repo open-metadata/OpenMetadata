@@ -24,7 +24,7 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { isBasicAuthProvider } from '../../utils/AuthProvider.util';
+import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
@@ -363,7 +363,7 @@ const SettingsRouter = () => {
     (state) => state.authConfig?.provider
   );
 
-  const isLoginConfigEnabled = isBasicAuthProvider(authProvider);
+  const isLoginConfigEnabled = isLoginConfigurationApplicable(authProvider);
 
   return (
     <Routes>

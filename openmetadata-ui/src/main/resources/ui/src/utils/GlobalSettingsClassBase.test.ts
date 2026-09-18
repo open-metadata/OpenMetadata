@@ -32,9 +32,17 @@ jest.mock('./PermissionsUtils', () => ({
   },
 }));
 
-const NON_PASSWORD_OWNING_PROVIDERS = Object.values(AuthProvider).filter(
-  (provider) =>
-    provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
+// `openmetadata` is a second name for the same native-password authenticator as `basic`, and
+// `ldap` has its own authenticator reading the same settings — the server enforces the login
+// configuration for all three, so all three must keep the page.
+const LOGIN_CONFIG_PROVIDERS = [
+  AuthProvider.Basic,
+  AuthProvider.LDAP,
+  AuthProvider.Openmetadata,
+];
+
+const EXTERNAL_IDP_PROVIDERS = Object.values(AuthProvider).filter(
+  (provider) => !LOGIN_CONFIG_PROVIDERS.includes(provider)
 );
 
 let mockAuthProvider: AuthProvider | undefined = AuthProvider.Basic;
@@ -557,8 +565,8 @@ describe('GlobalSettingsClassBase', () => {
       expect(searchSettingsItem?.items).toBeDefined();
     });
 
-    it.each([AuthProvider.Basic, AuthProvider.LDAP])(
-      'should expose login configuration to an admin under %s, whose login OpenMetadata owns',
+    it.each(LOGIN_CONFIG_PROVIDERS)(
+      'should expose login configuration to an admin under %s, whose login the server drives',
       (provider) => {
         mockAuthProvider = provider;
 
@@ -568,8 +576,8 @@ describe('GlobalSettingsClassBase', () => {
 
     // Derived from the enum rather than hand-listed so a provider added to the schema is covered
     // here by default — the safe direction, since a new provider is far likelier to be an external
-    // IdP than one whose login OpenMetadata owns.
-    it.each([...NON_PASSWORD_OWNING_PROVIDERS, undefined])(
+    // IdP than one whose login the server drives itself.
+    it.each([...EXTERNAL_IDP_PROVIDERS, undefined])(
       'should hide login configuration under %s, where the settings never take effect',
       (provider) => {
         mockAuthProvider = provider;

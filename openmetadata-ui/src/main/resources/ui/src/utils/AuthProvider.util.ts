@@ -421,13 +421,21 @@ export const isTourRoute = (pathname: string) => {
 };
 
 /**
- * Providers whose login OpenMetadata itself owns, so the server enforces the login
- * configuration (failed-attempt lockout, access block time, JWT expiry). Under any external
- * IdP those settings are inert — the IdP owns them — so surfaces that edit them must be hidden
- * rather than left to write values that never take effect.
+ * Providers whose login flow the server drives through its own authenticator, so the login
+ * configuration (failed-attempt lockout, access block time, JWT expiry) is actually enforced.
+ * Under any external IdP those settings are inert — the IdP owns them — so surfaces that edit
+ * them must be hidden rather than left to write values that never take effect.
+ *
+ * `basic` and `openmetadata` are two names for the same native-password authenticator (see
+ * JwtFilter#isSameProvider); `ldap` has its own authenticator, which reads the same three
+ * settings.
  */
-export const isBasicAuthProvider = (provider?: AuthProvider): boolean =>
-  provider === AuthProvider.Basic || provider === AuthProvider.LDAP;
+export const isLoginConfigurationApplicable = (
+  provider?: AuthProvider
+): boolean =>
+  provider === AuthProvider.Basic ||
+  provider === AuthProvider.LDAP ||
+  provider === AuthProvider.Openmetadata;
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
