@@ -6,10 +6,8 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
-import org.openmetadata.service.apps.bundles.insights.search.IndexMappingTemplate;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final Rest5Client client;
@@ -44,16 +42,8 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public String getDataStreamMappings(String name) throws IOException {
-    try {
-      Response response = performRequest("GET", "/" + name + "/_mapping");
-      return new String(response.getEntity().getContent().readAllBytes());
-    } catch (IOException e) {
-      if (e.getMessage() != null && e.getMessage().contains("404")) {
-        return null;
-      }
-      throw e;
-    }
+  public String getResourcePath() {
+    return resourcePath;
   }
 
   @Override
@@ -85,17 +75,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public boolean updateDataAssetsDataStream(
-      String name, String entityType, IndexMapping entityIndexMapping, String language)
-      throws IOException {
-    int currentVersion = writeIndexMappingVersion(name);
-    IndexMappingTemplate template =
-        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
-    performRequest(
-        "PUT",
-        "/" + name + "/_mapping",
-        JsonUtils.pojoToJson(template.getTemplate().getMappings()));
-    return currentVersion != MAPPING_VERSION;
+  public void putWriteIndexMapping(String name, String mappings) throws IOException {
+    Request request = new Request("PUT", "/" + name + "/_mapping");
+    request.addParameter("write_index_only", "true");
+    request.setEntity(new StringEntity(mappings, ContentType.APPLICATION_JSON));
+    client.performRequest(request);
   }
 
   @Override

@@ -161,23 +161,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
               language,
               dataAssetsConfig.getRetention());
         } else {
-          // A failed update falls through to the outer catch (log and retry next run). We do not
-          // delete + recreate the stream on error: that would drop all historical snapshots on a
-          // transient failure, and the rollover below already applies the new template
-          // non-destructively when the mapping is stale.
-          boolean templateChanged =
-              searchInterface.updateDataAssetsDataStream(
-                  dataStreamName, dataAssetType, dataAssetIndex, language);
-          if (templateChanged) {
-            try {
-              searchInterface.rolloverDataStream(dataStreamName);
-            } catch (IOException rolloverEx) {
-              LOG.warn(
-                  "Rollover failed for data stream {}; will retry on the next run.",
-                  dataStreamName,
-                  rolloverEx);
-            }
-          }
+          // updateDataAssetsDataStream applies the current template to the write index and, on a
+          // 400 (a field type can't change in place, e.g. owners/extension on pre-1.13 streams),
+          // rolls the stream over so a fresh write index picks it up. Any other failure falls
+          // through to the outer catch and is retried on the next run — no data is deleted.
+          searchInterface.updateDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
       } catch (IOException ex) {
         LOG.error(

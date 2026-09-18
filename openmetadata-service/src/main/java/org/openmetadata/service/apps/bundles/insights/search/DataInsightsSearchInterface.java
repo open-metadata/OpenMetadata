@@ -1,11 +1,8 @@
 package org.openmetadata.service.apps.bundles.insights.search;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.custom.DataAssetType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -21,17 +18,6 @@ public interface DataInsightsSearchInterface {
 
   void createDataStream(String name) throws IOException;
 
-  /** Returns {@code GET /<dataStream>/_mapping} (all backing indexes), or {@code null} if absent. */
-  String getDataStreamMappings(String name) throws IOException;
-
-  /**
-   * Version stamp for the Data Insights data-asset mapping. Bump this whenever the mapping or its
-   * dynamic templates change (e.g. bumped to 2 for the completeness-evidence fields added in
-   * #33079) so an existing data stream rolls over once to pick up the new template. The write
-   * index's stored value gates the rollover; see {@link #updateDataAssetsDataStream}.
-   */
-  int MAPPING_VERSION = 2;
-
   default IndexMappingTemplate prepareDataAssetTemplates(
       String name, String entityType, IndexMapping mapping, String language, String resourcePath)
       throws IOException {
@@ -41,60 +27,11 @@ public interface DataInsightsSearchInterface {
             mapping,
             language,
             readResource(resourcePath + "/indexMappingsTemplate.json"));
-
-    // Stamp the version onto the component template only. A rollover's new backing index inherits
-    // it; the PUT _mapping in updateDataAssetsDataStream deliberately omits it, so a stream whose
-    // rollover failed still reads as stale and is retried on the next run.
-    createComponentTemplate(name + "-mapping", withMappingVersion(built));
+    createComponentTemplate(name + "-mapping", built);
     createIndexTemplate(
         name,
         IndexTemplate.forDataStream(name, readResource(resourcePath + "/indexTemplate.json")));
     return JsonUtils.readValue(built, IndexMappingTemplate.class);
-  }
-
-  /** Adds {@code mappings._meta.mappingVersion} to a built component-template body. */
-  private static String withMappingVersion(String built) {
-    try {
-      ObjectNode root = (ObjectNode) JsonUtils.readTree(built);
-      ObjectNode mappings = (ObjectNode) root.path("template").path("mappings");
-      mappings.set("_meta", mappings.objectNode().put("mappingVersion", MAPPING_VERSION));
-      return JsonUtils.pojoToJson(root);
-    } catch (Exception e) {
-      return built;
-    }
-  }
-
-  /**
-   * The mapping version currently on the data stream's write index, or {@code -1} when the stream
-   * predates the version stamp (i.e. it was created on an older release and needs a rollover). A
-   * failed read is reported as {@link #MAPPING_VERSION} so a transient error neither forces a
-   * rollover nor trips the recreate fallback in the caller; it is simply retried on the next run.
-   */
-  default int writeIndexMappingVersion(String name) {
-    String body;
-    try {
-      body = getDataStreamMappings(name);
-    } catch (IOException e) {
-      return MAPPING_VERSION;
-    }
-    if (body == null) {
-      return -1;
-    }
-    JsonNode indices = JsonUtils.readTree(body);
-    String writeIndex = null;
-    Iterator<String> names = indices.fieldNames();
-    while (names.hasNext()) {
-      String candidate = names.next();
-      // Backing index names end in a zero-padded generation, so the largest name is the write
-      // index.
-      if (writeIndex == null || candidate.compareTo(writeIndex) > 0) {
-        writeIndex = candidate;
-      }
-    }
-    if (writeIndex == null) {
-      return -1;
-    }
-    return indices.path(writeIndex).path("mappings").path("_meta").path("mappingVersion").asInt(-1);
   }
 
   default String readResource(String resourceFile) {
@@ -178,20 +115,57 @@ public interface DataInsightsSearchInterface {
 
   void deleteDataAssetDataStream(String name) throws IOException;
 
+  /** The engine's template resource path (e.g. {@code /dataInsights/elasticsearch}). */
+  String getResourcePath();
+
   /**
-   * Updates existing backing indexes and the template used when the data stream rolls over.
-   *
-   * @return {@code true} when the write index's stored {@link #MAPPING_VERSION} is stale (so the
-   *     caller should roll the stream over), {@code false} when it is already current.
+   * Updates the data stream's mapping. Applies the current template to the write index only
+   * ({@code write_index_only=true}); when the engine rejects an in-place field-type change with a
+   * 400 (e.g. a stream created before 1.13, where {@code owners} became {@code nested} and {@code
+   * extension} became an {@code object}), the stream is rolled over so the next write index is
+   * created fresh from the template, and the mapping is applied to that new index. Any other failure
+   * propagates to the caller, which logs and retries on the next run. History is preserved either
+   * way — no backing index is deleted.
    */
-  boolean updateDataAssetsDataStream(
+  default void updateDataAssetsDataStream(
       String name, String entityType, IndexMapping entityIndexMapping, String language)
-      throws IOException;
+      throws IOException {
+    String mappings =
+        JsonUtils.pojoToJson(
+            prepareDataAssetTemplates(
+                    name, entityType, entityIndexMapping, language, getResourcePath())
+                .getTemplate()
+                .getMappings());
+    try {
+      putWriteIndexMapping(name, mappings);
+    } catch (IOException e) {
+      if (!isMappingConflict(e)) {
+        throw e;
+      }
+      rolloverDataStream(name);
+      putWriteIndexMapping(name, mappings);
+    }
+  }
+
+  /**
+   * Applies {@code mappings} to the data stream's current write index only ({@code PUT
+   * /<stream>/_mapping?write_index_only=true}), so older backing indexes carrying an incompatible
+   * mapping do not reject the update on later runs.
+   */
+  void putWriteIndexMapping(String name, String mappings) throws IOException;
+
+  /**
+   * True when a request failed with HTTP 400 — e.g. the engine rejected an in-place field-type
+   * change, which is the signal to roll the stream over.
+   */
+  default boolean isMappingConflict(IOException e) {
+    return e.getMessage() != null && e.getMessage().contains("400");
+  }
 
   /**
    * Forces the data stream to roll over so the next write targets a new backing index created from
-   * the current index template. This is needed after a template update adds {@code
-   * dynamic_templates} or settings that {@code PUT _mapping} cannot apply to an existing index.
+   * the current index template. Needed when a template change cannot be applied in place (a new
+   * field type, dynamic template, or setting).
    */
   void rolloverDataStream(String name) throws IOException;
 

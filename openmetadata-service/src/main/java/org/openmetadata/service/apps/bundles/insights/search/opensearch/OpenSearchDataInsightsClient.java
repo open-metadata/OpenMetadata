@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
@@ -52,14 +53,8 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public String getDataStreamMappings(String name) throws IOException {
-    var request = Requests.builder().method("GET").endpoint("/" + name + "/_mapping").build();
-    try (var response = client.generic().execute(request)) {
-      if (response.getStatus() == 404) {
-        return null;
-      }
-      return response.getBody().map(b -> b.bodyAsString()).orElse(null);
-    }
+  public String getResourcePath() {
+    return resourcePath;
   }
 
   @Override
@@ -90,17 +85,21 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public boolean updateDataAssetsDataStream(
-      String name, String entityType, IndexMapping entityIndexMapping, String language)
-      throws IOException {
-    int currentVersion = writeIndexMappingVersion(name);
-    IndexMappingTemplate template =
-        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
-    performRequest(
-        "PUT",
-        "/" + name + "/_mapping",
-        JsonUtils.pojoToJson(template.getTemplate().getMappings()));
-    return currentVersion != MAPPING_VERSION;
+  public void putWriteIndexMapping(String name, String mappings) throws IOException {
+    var request =
+        Requests.builder()
+            .method("PUT")
+            .endpoint("/" + name + "/_mapping")
+            .query(Map.of("write_index_only", "true"))
+            .json(mappings)
+            .build();
+    try (var response = client.generic().execute(request)) {
+      int status = response.getStatus();
+      if (status >= 300) {
+        throw new IOException(
+            "Data Insights request PUT /" + name + "/_mapping failed with " + status);
+      }
+    }
   }
 
   @Override
