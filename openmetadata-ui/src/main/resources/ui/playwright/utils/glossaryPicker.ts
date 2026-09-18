@@ -41,7 +41,10 @@ export const glossaryPickerRow = (page: Page, name: string) =>
 
 // The row's control carries the selected state.
 export const isGlossaryTermSelected = (row: Locator) =>
-  row.locator('[data-selected="true"]').count().then((n) => n > 0);
+  row
+    .locator('[data-selected="true"]')
+    .count()
+    .then((n) => n > 0);
 
 // Fills the search box and waits for the glossary query behind it.
 export const searchGlossaryPicker = async (page: Page, term: string) => {

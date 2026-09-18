@@ -12,7 +12,6 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
-import type { RightPanelPageObject } from './RightPanelPageObject';
 import {
   applyGlossaryPicker,
   glossaryPickerRow,
@@ -20,6 +19,7 @@ import {
   openGlossaryPicker,
   searchGlossaryPicker,
 } from '../../../utils/glossaryPicker';
+import type { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
  * Base class for right-panel tab Page Objects only.

@@ -64,12 +64,12 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
-import { visitServiceDetailsPage } from '../../utils/service';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
+import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
   'Api Endpoint': ApiEndpointClass,

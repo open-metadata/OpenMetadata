@@ -21,12 +21,12 @@ import {
   closeColumnDetailPanel,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
-import { sidebarClick } from '../../../utils/sidebar';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
   toggleGlossaryTermInPicker,
 } from '../../../utils/glossaryPicker';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
