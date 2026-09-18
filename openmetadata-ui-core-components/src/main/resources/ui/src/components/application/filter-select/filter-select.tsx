@@ -221,10 +221,13 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  isNullOption,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  /** The pinned "No <X>" row, which the design mutes relative to real options. */
+  isNullOption?: boolean;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
@@ -258,9 +261,11 @@ const OptionRow = ({
         <span
           className={cx(
             'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
-            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary',
-            showCheckbox && state.isSelected && 'tw:text-primary',
-            !state.isSelected && 'tw:text-secondary'
+            // Real options read at full strength whether or not they are
+            // selected; only the pinned null row is muted. Single select has no
+            // checkbox, so its selected row goes brand instead.
+            isNullOption ? 'tw:text-secondary' : 'tw:text-primary',
+            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary'
           )}>
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
@@ -693,7 +698,7 @@ const FilterSelect = ({
         triggerRef={isChips ? chipsFieldRef : undefined}>
         <div className="tw:contents" ref={popoverContentRef}>
           {searchable && (
-            <div className="tw:p-2" ref={searchWrapperRef}>
+            <div className="tw:px-3 tw:pt-3 tw:pb-2" ref={searchWrapperRef}>
               <Input
                 icon={SearchInputIcon}
                 inputDataTestId="search-input"
@@ -753,6 +758,7 @@ const FilterSelect = ({
               onSelectionChange={handleSelectionChange}>
               {displayedNullOption && (
                 <OptionRow
+                  isNullOption
                   hideCounts={hideCounts}
                   option={displayedNullOption}
                   showCheckbox={isMulti}
@@ -786,7 +792,7 @@ const FilterSelect = ({
           )}
 
           {showFooter && (
-            <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:p-3">
+            <div className="tw:mt-2 tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-3 tw:pr-3 tw:pl-5">
               <Button
                 className="tw:px-0 tw:py-1.5"
                 color="tertiary"
