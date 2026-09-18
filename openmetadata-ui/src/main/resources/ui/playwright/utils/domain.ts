@@ -1278,9 +1278,7 @@ export const addTagsAndGlossaryToDomain = async (
   // Add glossary term (uses the new GlossaryTermPicker)
   await openGlossaryPicker(
     page,
-    page.locator(
-      '[data-testid="glossary-container"] [data-testid="add-tag"]'
-    )
+    page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
   );
   await toggleGlossaryTermInPicker(page, {
     name: glossaryTermFqn,

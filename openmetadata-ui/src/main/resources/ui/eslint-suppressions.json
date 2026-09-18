@@ -258,11 +258,8 @@
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
-      "count": 11
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {

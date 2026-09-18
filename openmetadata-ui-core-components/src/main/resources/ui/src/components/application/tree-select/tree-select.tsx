@@ -794,6 +794,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       placement={placement}
+      shouldCloseOnInteractOutside={() => false}
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}

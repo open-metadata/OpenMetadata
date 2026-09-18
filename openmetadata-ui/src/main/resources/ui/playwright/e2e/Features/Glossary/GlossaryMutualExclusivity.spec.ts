@@ -51,9 +51,7 @@ const treeNode = (page: Page, fqn: string) =>
 const openAndSearch = async (page: Page, glossaryName: string) => {
   await openGlossaryPicker(
     page,
-    page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('add-tag')
+    page.getByTestId('KnowledgePanel.GlossaryTerms').getByTestId('add-tag')
   );
   await searchGlossaryPicker(page, glossaryName);
 };
@@ -177,25 +175,16 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         );
 
         // Select first child
-        await treeNode(
-          page,
-          child1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
         await expect(c1).toHaveAttribute('data-selected', 'true');
 
         // Select second child — first should auto-deselect (ME)
-        await treeNode(
-          page,
-          child2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
         await expect(c2).toHaveAttribute('data-selected', 'true');
         await expect(c1).toHaveAttribute('data-selected', 'false');
 
         // Select third child — only third remains selected
-        await treeNode(
-          page,
-          child3.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
         await expect(c3).toHaveAttribute('data-selected', 'true');
         await expect(c2).toHaveAttribute('data-selected', 'false');
         await expect(c1).toHaveAttribute('data-selected', 'false');
@@ -259,22 +248,13 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           child3.responseData.fullyQualifiedName
         );
 
-        await treeNode(
-          page,
-          child1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
         await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        await treeNode(
-          page,
-          child2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
         await expect(c2).toHaveAttribute('data-selected', 'true');
 
-        await treeNode(
-          page,
-          child3.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
         await expect(c3).toHaveAttribute('data-selected', 'true');
 
         // All three should still be selected (non-ME parent allows multi-select)
@@ -320,10 +300,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           page,
           child1.responseData.fullyQualifiedName
         );
-        const node = treeNode(
-          page,
-          child1.responseData.fullyQualifiedName
-        );
+        const node = treeNode(page, child1.responseData.fullyQualifiedName);
 
         // Select child
         await node.click();
@@ -427,10 +404,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await expect(nmc2).toHaveAttribute('data-selected', 'true');
 
         // Select ME child
-        await treeNode(
-          page,
-          meChild1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, meChild1.responseData.fullyQualifiedName).click();
         await expect(mc1).toHaveAttribute('data-selected', 'true');
 
         // Non-ME children should still be selected
@@ -438,10 +412,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await expect(nmc2).toHaveAttribute('data-selected', 'true');
 
         // Select another ME child — first ME child should auto-deselect
-        await treeNode(
-          page,
-          meChild2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, meChild2.responseData.fullyQualifiedName).click();
         await expect(mc2).toHaveAttribute('data-selected', 'true');
         await expect(mc1).toHaveAttribute('data-selected', 'false');
 
@@ -483,14 +454,13 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
 
         await openAndSearch(page, glossary.responseData.name);
 
-        await treeNode(
-          page,
-          child.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child.responseData.fullyQualifiedName).click();
 
-        await applyGlossaryPicker(page, (response) =>
-          response.url().includes('/api/v1/tables/') &&
-          response.request().method() === 'PATCH'
+        await applyGlossaryPicker(
+          page,
+          (response) =>
+            response.url().includes('/api/v1/tables/') &&
+            response.request().method() === 'PATCH'
         );
 
         // Verify tag appears
@@ -706,16 +676,10 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await expect(t2).toBeVisible();
 
         // Verify mutual exclusivity works (selecting one deselects the other)
-        await treeNode(
-          page,
-          term1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, term1.responseData.fullyQualifiedName).click();
         await expect(t1).toHaveAttribute('data-selected', 'true');
 
-        await treeNode(
-          page,
-          term2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, term2.responseData.fullyQualifiedName).click();
         await expect(t2).toHaveAttribute('data-selected', 'true');
         await expect(t1).toHaveAttribute('data-selected', 'false');
 
@@ -813,30 +777,18 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         );
 
         // Non-ME parent children allow multi-select
-        await treeNode(
-          page,
-          child1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
         await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        await treeNode(
-          page,
-          child2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
         await expect(c2).toHaveAttribute('data-selected', 'true');
         await expect(c1).toHaveAttribute('data-selected', 'true');
 
         // ME sibling children enforce mutual exclusivity
-        await treeNode(
-          page,
-          sibChild1.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, sibChild1.responseData.fullyQualifiedName).click();
         await expect(sc1).toHaveAttribute('data-selected', 'true');
 
-        await treeNode(
-          page,
-          sibChild2.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, sibChild2.responseData.fullyQualifiedName).click();
         await expect(sc2).toHaveAttribute('data-selected', 'true');
         await expect(sc1).toHaveAttribute('data-selected', 'false');
 
@@ -910,18 +862,9 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           child3.responseData.fullyQualifiedName
         );
 
-        await treeNode(
-          page,
-          child1.responseData.fullyQualifiedName
-        ).click();
-        await treeNode(
-          page,
-          child2.responseData.fullyQualifiedName
-        ).click();
-        await treeNode(
-          page,
-          child3.responseData.fullyQualifiedName
-        ).click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
 
         // All three should be selected despite glossary being ME
         // because the immediate parent is non-ME
