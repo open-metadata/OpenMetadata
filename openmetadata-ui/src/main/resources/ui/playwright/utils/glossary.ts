@@ -2226,8 +2226,14 @@ export const verifyMutualExclusivitySelection = async (
 
 // -- Glossary Tree Select helpers --
 
+// The popover wrapper has `display: contents` (no bounding box), so visibility
+// checks must target a real child. Use getTreeDropdown() only to scope locators;
+// for open-gate assertions use getTreeDropdownContent().
 export const getTreeDropdown = (page: Page) =>
   page.getByTestId('glossary-terms-popover');
+
+export const getTreeDropdownContent = (page: Page) =>
+  page.getByTestId('glossary-terms-popover').locator('[role="treegrid"]');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2278,7 +2284,9 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
+  // The popover wrapper is display:contents (no bounding box), so wait for
+  // the actual tree inside it instead.
+  await expect(getTreeDropdownContent(page)).toBeVisible({
     timeout: 10000,
   });
 

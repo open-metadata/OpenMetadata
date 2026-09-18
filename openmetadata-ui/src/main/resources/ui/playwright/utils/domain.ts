@@ -1283,7 +1283,7 @@ export const addTagsAndGlossaryToDomain = async (
     )
   );
   await toggleGlossaryTermInPicker(page, {
-    name: glossaryTermFqn.split('.').pop() ?? glossaryTermFqn,
+    name: glossaryTermFqn,
     fullyQualifiedName: glossaryTermFqn,
   });
   await applyGlossaryPicker(page, patchUrl);
