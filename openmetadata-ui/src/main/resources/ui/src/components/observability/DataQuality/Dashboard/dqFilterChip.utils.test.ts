@@ -10,28 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { chipLabel, chipTriggerClassName } from './dqFilterChip.utils';
+import {
+  chipCountBadgeClassName,
+  chipTriggerClassName,
+  chipTriggerSelectedClassName,
+} from './dqFilterChip.utils';
 
 describe('dqFilterChip utils', () => {
-  describe('chipLabel', () => {
-    it('should return the bare label when the count is zero', () => {
-      expect(chipLabel('Tags', 0)).toBe('Tags');
+  describe('chipTriggerClassName', () => {
+    it('should carry the borderless quick-filter treatment', () => {
+      expect(chipTriggerClassName).toContain('tw:text-tertiary');
+      expect(chipTriggerClassName).toContain('tw:p-1');
     });
 
-    it('should append the count when it is greater than zero', () => {
-      expect(chipLabel('Tags', 3)).toBe('Tags · 3');
-    });
-
-    it('should not append a negative count', () => {
-      expect(chipLabel('Owner', -1)).toBe('Owner');
+    it('should not carry the bordered chip treatment', () => {
+      // The owner trigger sits beside FilterSelect chips rendered as borderless
+      // buttons; a border or skeuomorphic shadow here is the visual drift this
+      // guards against.
+      expect(chipTriggerClassName).not.toContain('shadow-xs-skeuomorphic');
+      expect(chipTriggerClassName).not.toContain('after:outline-primary');
     });
   });
 
-  describe('chipTriggerClassName', () => {
-    it('should be a non-empty class string matching the secondary chip look', () => {
-      expect(typeof chipTriggerClassName).toBe('string');
-      expect(chipTriggerClassName).toContain('tw:inline-flex');
-      expect(chipTriggerClassName).toContain('tw:text-secondary');
+  describe('chipTriggerSelectedClassName', () => {
+    it('should brand the trigger the way FilterSelect does', () => {
+      expect(chipTriggerSelectedClassName).toContain(
+        'tw:text-fg-brand-primary'
+      );
+    });
+  });
+
+  describe('chipCountBadgeClassName', () => {
+    it('should be a round brand badge with equal height and min width', () => {
+      expect(chipCountBadgeClassName).toContain('tw:rounded-full');
+      expect(chipCountBadgeClassName).toContain('tw:h-[18px]');
+      expect(chipCountBadgeClassName).toContain('tw:min-w-[18px]');
+      expect(chipCountBadgeClassName).toContain('tw:bg-utility-brand-50');
     });
   });
 });
