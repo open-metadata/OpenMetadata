@@ -70,6 +70,7 @@ export const languageMap: Record<string, SupportedLocales> = {
   en: SupportedLocales.English,
   ko: SupportedLocales.한국어,
   fr: SupportedLocales.Français,
+  it: SupportedLocales.Italiano,
   zh: SupportedLocales.简体中文,
   ja: SupportedLocales.日本語,
   pt: SupportedLocales['Português (Brasil)'], // Default to Brazilian Portuguese
