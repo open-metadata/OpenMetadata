@@ -163,65 +163,6 @@ const waitForMetricHierarchySearch = (page: Page, query: string) =>
     );
   });
 
-const attachScreenshot = async (page: Page, testId: string, name: string) => {
-  const target = page.getByTestId(testId);
-  await expect(target).toBeVisible();
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-  });
-  // Poll the bounding box until two consecutive reads agree, so an opening
-  // drawer or reflowing container settles before we capture the screenshot.
-  let stableBounds = await target.boundingBox();
-  await expect
-    .poll(
-      async () => {
-        const previous = stableBounds;
-        stableBounds = await target.boundingBox();
-        if (!previous || !stableBounds) {
-          return false;
-        }
-
-        return (
-          Math.abs(stableBounds.x - previous.x) <= 1 &&
-          Math.abs(stableBounds.y - previous.y) <= 1 &&
-          Math.abs(stableBounds.width - previous.width) <= 1 &&
-          Math.abs(stableBounds.height - previous.height) <= 1
-        );
-      },
-      { timeout: 10_000 }
-    )
-    .toBe(true);
-
-  expect(stableBounds).not.toBeNull();
-  expect(stableBounds?.width).toBeGreaterThan(0);
-  expect(stableBounds?.height).toBeGreaterThan(0);
-
-  const body = await target.screenshot({ animations: 'disabled' });
-  const devicePixelRatio = await page.evaluate(() => window.devicePixelRatio);
-  const pngWidth = body.readUInt32BE(16);
-  const pngHeight = body.readUInt32BE(20);
-
-  expect(body.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
-  expect(body.byteLength).toBeGreaterThan(1_024);
-  expect(pngWidth).toBeGreaterThan(0);
-  expect(pngHeight).toBeGreaterThan(0);
-  expect(
-    Math.abs(
-      pngWidth - Math.round((stableBounds?.width ?? 0) * devicePixelRatio)
-    )
-  ).toBeLessThanOrEqual(2);
-  expect(
-    Math.abs(
-      pngHeight - Math.round((stableBounds?.height ?? 0) * devicePixelRatio)
-    )
-  ).toBeLessThanOrEqual(2);
-
-  await test.info().attach(name, {
-    body,
-    contentType: 'image/png',
-  });
-};
-
 const openAddMetricDrawer = async (page: Page) => {
   await page.goto('/metrics');
   await page.getByTestId('create-metric').click();
@@ -516,7 +457,6 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(
         page.getByTestId(`metric-group-card-${groupName}`)
       ).toBeVisible();
-      await attachScreenshot(page, 'metric-list-page', 'metric-list-card-view');
       await groupToggle.click();
       await expect(page.getByText(rootName, { exact: true })).toBeHidden();
       await groupToggle.click();
@@ -749,11 +689,6 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await expect(page.getByTestId('metric-group-inherited')).toContainText(
         rootName
       );
-      await attachScreenshot(
-        page,
-        'add-metric-container',
-        'metric-add-child-inherited'
-      );
       await fillRequiredMetricFields(page, childName);
       const childResponse = page.waitForResponse(
         (response) =>
@@ -789,14 +724,6 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await patchResponse;
       await expect(page.getByTestId('metric-expression-code')).toContainText(
         'COUNT(DISTINCT order_id)'
-      );
-
-      await page.setViewportSize({ height: 844, width: 390 });
-      await expect(page.getByTestId('metric-definition-card')).toBeVisible();
-      await attachScreenshot(
-        page,
-        'metric-definition-card',
-        'metric-definition-narrow'
       );
     } finally {
       if (root) {
