@@ -37,6 +37,7 @@ import {
   getDecodedFqn,
   getEncodedFqn,
   getPermissionErrorText,
+  getQueryWithSlash,
   getTrimmedContent,
   jsonToCSV,
   ordinalize,
@@ -591,6 +592,31 @@ describe('StringUtils', () => {
     it('should escape a Lucene field query so it is searched as literal text', () => {
       expect(escapeESReservedCharacters('name:value')).toBe(
         String.raw`name\:value`
+      );
+    });
+  });
+
+  describe('getQueryWithSlash', () => {
+    it('should escape a single quote', () => {
+      expect(getQueryWithSlash("it's")).toBe(String.raw`it\'s`);
+    });
+
+    it('should leave a plain query untouched', () => {
+      expect(getQueryWithSlash('sample_data orders')).toBe(
+        'sample_data orders'
+      );
+    });
+
+    it.each([['&'], ['\\'], ['&&'], ['\\\\'], ['\\&'], ['  &  ']])(
+      'should return an empty string for a query made only of %j',
+      (query) => {
+        expect(getQueryWithSlash(query)).toBe('');
+      }
+    );
+
+    it('should not re-escape a double quote already escaped by escapeESReservedCharacters', () => {
+      expect(getQueryWithSlash(String.raw`\"customer`)).toBe(
+        String.raw`\"customer`
       );
     });
   });

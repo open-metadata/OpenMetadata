@@ -98,8 +98,17 @@ export const slugify = (value: string) =>
     .replaceAll(/^-+|-+$/g, '');
 
 // will add back slash "\" before quote in string if present
-export const getQueryWithSlash = (query: string): string =>
-  query.replaceAll(/["']/g, String.raw`\$&`);
+export const getQueryWithSlash = (query: string): string => {
+  const trimmed = query.trim();
+  // escapeESReservedCharacters already escapes "&" and quotes upstream of this
+  // call; re-escaping a query that is purely those already-escaped characters
+  // sends Elasticsearch a term with no actual content, so drop it instead.
+  if (/^[\\&]+$/.test(trimmed)) {
+    return '';
+  }
+
+  return query.replaceAll(/[']/g, String.raw`\$&`);
+};
 
 /**
  * Convert a template string into HTML DOM nodes.
