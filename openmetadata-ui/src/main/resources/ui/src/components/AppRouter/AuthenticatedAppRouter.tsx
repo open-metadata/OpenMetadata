@@ -326,12 +326,6 @@ const MetricListPage = withPageSuspenseFallback(
   )
 );
 
-const AddMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
-  )
-);
-
 const ColumnBulkOperationsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -811,16 +805,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.DATA_PRODUCT}
       />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-      <Route
-        element={
-          <AddMetricPage
-            pageTitle={t('label.add-new-entity', {
-              entity: t('label.metric'),
-            })}
-          />
-        }
-        path={ROUTES.ADD_METRIC}
-      />
       <Route
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}

@@ -276,14 +276,16 @@ public class LineageRepository {
     String detailsJson = validateLineageDetails(from, to, lineageDetails);
 
     // Finally, add lineage relationship
-    dao.relationshipDAO()
-        .insert(
-            from.getId(),
-            to.getId(),
-            from.getType(),
-            to.getType(),
-            Relationship.UPSTREAM.ordinal(),
-            detailsJson);
+    executeRelationshipWriteWithDeadlockRetry(
+        () ->
+            dao.relationshipDAO()
+                .insert(
+                    from.getId(),
+                    to.getId(),
+                    from.getType(),
+                    to.getType(),
+                    Relationship.UPSTREAM.ordinal(),
+                    detailsJson));
     addLineageToSearch(from, to, lineageDetails);
 
     // Direct invalidation of cached lineage rooted at either endpoint of the new edge.
@@ -529,14 +531,16 @@ public class LineageRepository {
 
   private void insertLineage(
       EntityReference from, EntityReference to, LineageDetails lineageDetails) {
-    dao.relationshipDAO()
-        .insert(
-            from.getId(),
-            to.getId(),
-            from.getType(),
-            to.getType(),
-            Relationship.UPSTREAM.ordinal(),
-            JsonUtils.pojoToJson(lineageDetails));
+    executeRelationshipWriteWithDeadlockRetry(
+        () ->
+            dao.relationshipDAO()
+                .insert(
+                    from.getId(),
+                    to.getId(),
+                    from.getType(),
+                    to.getType(),
+                    Relationship.UPSTREAM.ordinal(),
+                    JsonUtils.pojoToJson(lineageDetails)));
     addLineageToSearch(from, to, lineageDetails);
 
     // Add lineage to RDF
@@ -1441,14 +1445,16 @@ public class LineageRepository {
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
       lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
-      dao.relationshipDAO()
-          .insert(
-              fromRef.getId(),
-              toRef.getId(),
-              fromRef.getType(),
-              toRef.getType(),
-              Relationship.UPSTREAM.ordinal(),
-              JsonUtils.pojoToJson(lineageDetails));
+      executeRelationshipWriteWithDeadlockRetry(
+          () ->
+              dao.relationshipDAO()
+                  .insert(
+                      fromRef.getId(),
+                      toRef.getId(),
+                      fromRef.getType(),
+                      toRef.getType(),
+                      Relationship.UPSTREAM.ordinal(),
+                      JsonUtils.pojoToJson(lineageDetails)));
       addLineageToSearch(fromRef, toRef, lineageDetails);
 
       // Add lineage to RDF
@@ -1471,6 +1477,14 @@ public class LineageRepository {
         () ->
             dao.relationshipDAO()
                 .delete(fromId, fromEntity, toId, toEntity, Relationship.UPSTREAM.ordinal()));
+  }
+
+  static void executeRelationshipWriteWithDeadlockRetry(Runnable relationshipWrite) {
+    DeadlockRetry.execute(
+        () -> {
+          relationshipWrite.run();
+          return null;
+        });
   }
 
   private void processDeletedRelations(
@@ -1663,8 +1677,16 @@ public class LineageRepository {
 
       // Validate Lineage Details
       String detailsJson = validateLineageDetails(from, to, updated);
-      dao.relationshipDAO()
-          .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
+      executeRelationshipWriteWithDeadlockRetry(
+          () ->
+              dao.relationshipDAO()
+                  .insert(
+                      fromId,
+                      toId,
+                      fromEntity,
+                      toEntity,
+                      Relationship.UPSTREAM.ordinal(),
+                      detailsJson));
       addLineageToSearch(from, to, updated);
       return new RestUtil.PatchResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED)
           .toResponse();
@@ -1765,14 +1787,16 @@ public class LineageRepository {
           details.setUpdatedAt(System.currentTimeMillis());
           details.setUpdatedBy(updatedBy);
           // UPSERT the updated lineage JSON back into the relationship table
-          dao.relationshipDAO()
-              .insert(
-                  UUID.fromString(row.getFromId()),
-                  UUID.fromString(row.getToId()),
-                  row.getFromEntity(),
-                  row.getToEntity(),
-                  row.getRelation(),
-                  JsonUtils.pojoToJson(details));
+          executeRelationshipWriteWithDeadlockRetry(
+              () ->
+                  dao.relationshipDAO()
+                      .insert(
+                          UUID.fromString(row.getFromId()),
+                          UUID.fromString(row.getToId()),
+                          row.getFromEntity(),
+                          row.getToEntity(),
+                          row.getRelation(),
+                          JsonUtils.pojoToJson(details)));
         }
       } catch (Exception ex) {
         LOG.warn(

@@ -27,6 +27,7 @@ import {
   StorageServiceType,
 } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import type { Metric } from '../../../generated/entity/data/metric';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
@@ -47,7 +48,7 @@ import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
-const mockProps: DataAssetsHeaderProps = {
+const mockProps = {
   dataAsset: {
     id: 'assets-id',
     name: 'testContainer',
@@ -72,7 +73,7 @@ const mockProps: DataAssetsHeaderProps = {
   onVersionClick: jest.fn(),
   onTierUpdate: jest.fn(),
   onOwnerUpdate: jest.fn(),
-};
+} satisfies DataAssetsHeaderProps;
 
 const mockNavigate = jest.fn();
 
@@ -185,6 +186,7 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
+
 // Captures the `editDisplayNamePermission` prop directly instead of rendering an opaque
 // div — needed to assert the rename affordance stays ungated on soft-deleted entities
 // (behavior parity with base commit 9cf866cd23: `permissions?.EditAll ||
@@ -369,6 +371,25 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
+  it('does not render metric type, unit, or granularity in the header', () => {
+    const metric: Metric = {
+      fullyQualifiedName: 'metric.orders-count',
+      id: 'metric-id',
+      name: 'orders-count',
+    };
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={metric}
+        entityType={EntityType.METRIC}
+        onMetricUpdate={jest.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    expect(screen.queryByTestId('metric-header-info')).not.toBeInTheDocument();
+  });
+
   it('should render an explicitly supplied breadcrumb trail', () => {
     const tableHeaderProps = {
       ...mockProps,
@@ -843,13 +864,16 @@ describe('DataAssetsHeader component', () => {
     render(
       <DataAssetsHeader
         {...mockProps}
-        dataAsset={{
-          ...mockProps.dataAsset,
-          style: {
-            color: '#123456',
-            iconURL: 'https://example.com/icon.svg',
-          },
-        }}
+        dataAsset={
+          {
+            ...mockProps.dataAsset,
+            style: {
+              color: '#123456',
+              iconURL: 'https://example.com/icon.svg',
+            },
+          } as Container
+        }
+        entityType={EntityType.CONTAINER}
         onStyleUpdate={onStyleUpdate}
       />
     );

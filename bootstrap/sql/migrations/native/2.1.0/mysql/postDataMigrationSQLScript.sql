@@ -27,6 +27,14 @@ ON DUPLICATE KEY UPDATE
   updatedAt = VALUES(updatedAt),
   latestRecordId = VALUES(latestRecordId);
 
+-- Existing metrics predate the approval workflow and must remain usable. Explicit
+-- workflow statuses are preserved, and this update is idempotent.
+UPDATE metric_entity
+SET json = JSON_SET(json, '$.entityStatus', 'Approved')
+WHERE JSON_EXTRACT(json, '$.entityStatus') IS NULL
+   OR JSON_TYPE(JSON_EXTRACT(json, '$.entityStatus')) = 'NULL'
+   OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = 'Unprocessed';
+
 -- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
 -- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
 DELETE FROM apps_extension_time_series
