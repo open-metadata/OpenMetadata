@@ -37,6 +37,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/services/testConnectionDefinitions")
@@ -58,6 +59,9 @@ public class TestConnectionDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<TestConnectionDefinition> testConnectionDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 

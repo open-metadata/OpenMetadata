@@ -37,6 +37,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
@@ -59,6 +60,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -80,12 +82,14 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -442,7 +446,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserFromRegistrationRequest(RegistrationRequest create) {
-    String username = create.getEmail().split("@")[0];
+    String username =
+        generateUsernameFromEmail(create.getEmail(), userRepository::checkUserNameExists);
     String hashedPwd =
         BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
@@ -451,10 +456,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             username,
             new CreateUser()
                 .withName(username)
-                .withEmail(create.getEmail())
+                .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
                 .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
                 .withIsBot(false)
                 .withIsAdmin(false))
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(username))
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)
@@ -527,18 +533,20 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public User lookUserInProvider(String email, String pwd) {
     User storedUser = null;
-    try {
-      if (email.contains("@")) {
-        // lookup by User Email
+    if (email.contains("@")) {
+      try {
+        // Authenticating by email: the same lookup the SSO flows use, so a deactivated account or
+        // a duplicate-email collision fails with its own message instead of being reported as bad
+        // credentials. Only "no such account" falls through to the generic response, which is what
+        // keeps this from telling an attacker which addresses are registered.
         storedUser =
-            userRepository.getByEmail(
-                null,
+            userRepository.getActiveUserByEmailForAuth(
                 email,
                 new EntityUtil.Fields(
                     Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
+      } catch (EntityNotFoundException ignored) {
+        LOG.debug("No account registered for {}", email);
       }
-    } catch (Exception ignored) {
-
     }
 
     if (storedUser == null || Boolean.TRUE.equals(storedUser.getIsBot())) {

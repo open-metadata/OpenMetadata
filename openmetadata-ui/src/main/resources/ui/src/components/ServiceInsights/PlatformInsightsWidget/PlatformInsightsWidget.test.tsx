@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ServicesType } from '../../../interface/service.interface';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -48,7 +49,9 @@ jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
   };
 });
 
-const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
+const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
+  typeof useRequiredParams
+>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
   typeof getTitleByChartType
@@ -61,9 +64,9 @@ describe('PlatformInsightsWidget', () => {
   const mockServiceDetails = {
     id: 'test-service-id',
     name: 'test-service',
-    serviceType: 'Mysql' as any,
+    serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
-  } as any;
+  } as unknown as ServicesType;
 
   const mockChartsData = [
     {

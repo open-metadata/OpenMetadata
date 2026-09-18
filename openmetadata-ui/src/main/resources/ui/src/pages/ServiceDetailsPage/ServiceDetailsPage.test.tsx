@@ -31,6 +31,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ServiceInsightsTabProps } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { ROUTES } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -618,6 +619,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   DEFAULT_ENTITY_PERMISSION: { ViewAll: false, EditAll: false },
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
@@ -639,6 +641,11 @@ jest.mock('../../hooks/useTableFilters', () => ({
 describe('ServiceDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'airflow',
+    }));
   });
 
   const renderComponent = async (props = {}) => {
@@ -689,6 +696,20 @@ describe('ServiceDetailsPage', () => {
       // search nor fall back to the unfiltered list.
       expect(searchQuery).toHaveBeenCalledTimes(1);
       expect(getIngestionPipelines).not.toHaveBeenCalled();
+    });
+
+    it('should fetch the metadata list even when the pipeline service is unreachable', async () => {
+      (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+        isAirflowAvailable: false,
+        isFetchingStatus: false,
+        platform: 'airflow',
+      }));
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await renderComponent();
+
+      // Pipelines are OpenMetadata entities; only the actions on them need that service.
+      expect(getIngestionPipelines).toHaveBeenCalled();
     });
   });
 
@@ -1760,6 +1781,66 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
+    });
+  });
+
+  describe('Permission-gated affordances', () => {
+    it('hides the Connection tab (and its edit button) when EditAll is false', async () => {
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest
+          .fn()
+          .mockImplementation(() =>
+            Promise.resolve({ ViewAll: true, EditAll: false, Create: true })
+          ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+      });
+
+      // The Connection tab is filtered out of `items` entirely when EditAll is
+      // false, so neither its content nor the edit-connection button renders —
+      // contrasts with the existing "Test connection tab" describe block, which
+      // exercises the same tab with the default EditAll:true fixture.
+      expect(
+        screen.queryByTestId('edit-connection-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the permission error placeholder when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
+          Promise.resolve({
+            ViewAll: false,
+            ViewBasic: false,
+            EditAll: false,
+          })
+        ),
+        permissions: {
+          database: { ViewAll: true, EditAll: true },
+          dashboard: { ViewAll: true, EditAll: true },
+          pipeline: { ViewAll: true, EditAll: true },
+        },
+      }));
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();
     });
   });
 });

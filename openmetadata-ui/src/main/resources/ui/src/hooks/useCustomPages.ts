@@ -10,48 +10,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { EntityType } from '../enums/entity.enum';
-import { Page, PageType } from '../generated/system/ui/page';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
-import { getDocumentByFQN } from '../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
+} from '../rest/queries/docStoreQuery';
+import { getPersonaPage } from '../utils/CustomizePage/PersonaPage.utils';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const { selectedPersona } = useApplicationStore();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
-  const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const fqn = personaDocFqn(selectedPersona);
 
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona?.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType)
-      );
-      setNavigation(doc.data?.navigation);
-    } catch (error) {
-      // Need to reset Navigation to avoid showing old navigation items
-      setNavigation([]);
-      setCustomizedPage(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedPersona?.fullyQualifiedName, pageType]);
+  const { data: doc, isError } = useQuery({
+    queryKey: docStoreQueryKey(fqn ?? ''),
+    queryFn: docStoreQueryFn(fqn ?? ''),
+    enabled: !!fqn,
+    retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
+  });
 
+  // hasMounted flips once after the first paint so entity pages always show
+  // their loader on first render — identical to the old useState(true) pattern.
+  // Without this, selectedPersona arrives asynchronously after first render,
+  // causing isLoading to flip false→true→false in a window where
+  // waitForAllLoadersToDisappear may have already returned.
+  const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    } else {
-      setIsLoading(false);
-    }
-  }, [selectedPersona, pageType]);
+    setHasMounted(true);
+  }, []);
 
   return {
-    customizedPage,
-    navigation,
-    isLoading,
+    customizedPage: getPersonaPage(doc, pageType) ?? null,
+    // Reset to [] on error to clear stale navigation items, null when no persona selected.
+    navigation: isError
+      ? ([] as NavigationItem[])
+      : ((doc?.data?.navigation ?? null) as NavigationItem[] | null),
+    // Only block render on the very first paint. The persona doc fetches in the
+    // background after that; customizedPage/navigation update when it arrives
+    // without re-showing a loader (matches the old fetchDocument behaviour).
+    isLoading: !hasMounted,
   };
 };

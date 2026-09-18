@@ -13,6 +13,7 @@
 import { compare, type Operation } from 'fast-json-patch';
 import {
   cloneDeep,
+  has,
   isArray,
   isEmpty,
   isNil,
@@ -36,18 +37,20 @@ import type { StatusData } from '../../components/DataQuality/ChartWidgets/Statu
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import type { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { DEFAULT_DIMENSIONS_DATA } from '../../constants/DataQuality.constants';
+import { DATA_QUALITY_DIMENSION_INDEX_FIELD } from '../../constants/DataQualityDimension.constants';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import { DataQualityDimensions } from '../../enums/DataQuality.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import type { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import type { Table } from '../../generated/entity/data/table';
 import type { TestCaseStatus } from '../../generated/entity/feed/testCaseResult';
 import type { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import type {
+  EntityReference,
   TestCase,
   TestCaseParameterValue,
 } from '../../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   TestDataType,
   type TestDefinition,
 } from '../../generated/tests/testDefinition';
@@ -64,6 +67,8 @@ import { getColumnNameFromEntityLink } from '../EntityPureUtils';
 import { getEntityFQN } from '../FeedUtilsPure';
 import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink, getTierTags } from '../TablePureUtils';
+
+const COLUMNS_ENTITY_LINK_SEGMENT = '::columns::';
 
 export const buildTestCaseParams = (
   params: ListTestCaseParamsBySearch | undefined,
@@ -117,13 +122,116 @@ export const createTestCaseParameters = (
     : params;
 };
 
+/**
+ * The form holds the dimension by name; the test case holds a reference to the dimension
+ * entity. An unchanged name keeps the existing reference so no patch operation is emitted,
+ * and a new one is sent without an id — the server resolves the dimension by name and fails
+ * the request if it does not exist.
+ */
+const toDimensionReference = (
+  dimensionName: string | undefined,
+  testCase: TestCase
+): EntityReference | undefined => {
+  if (!dimensionName) {
+    return undefined;
+  }
+  if (testCase.dataQualityDimension?.name === dimensionName) {
+    return testCase.dataQualityDimension;
+  }
+
+  return {
+    type: 'dataQualityDimension',
+    name: dimensionName,
+    fullyQualifiedName: dimensionName,
+  } as EntityReference;
+};
+
 export interface CreateUpdatedTestCasePatchArgs {
   testCase: TestCase;
   value: TestCaseFormType;
   createTestCaseObject: Partial<CreateTestCase>;
   showOnlyParameter?: boolean;
   isComputeRowCountFieldVisible: boolean;
+  /**
+   * Dimension the test case inherits from its test definition, used to tell an
+   * untouched prefill apart from a deliberate override.
+   */
+  inheritedDimension?: string;
 }
+
+const resolvePatchedDescription = (
+  showOnlyParameter: boolean | undefined,
+  testCase: TestCase,
+  value: TestCaseFormType
+): string | undefined => {
+  if (showOnlyParameter) {
+    return testCase.description;
+  }
+
+  return isEmpty(value.description) ? undefined : value.description;
+};
+
+const resolvePatchedTags = (
+  showOnlyParameter: boolean | undefined,
+  rebuiltTags: TestCase['tags'],
+  testCase: TestCase
+): TestCase['tags'] => {
+  const hasNoTagChanges = isEmpty(rebuiltTags) && isEmpty(testCase.tags);
+
+  return showOnlyParameter || hasNoTagChanges ? testCase.tags : rebuiltTags;
+};
+
+const resolvePatchedDimensionColumns = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.dimensionColumns)) {
+    return testCase.dimensionColumns;
+  }
+
+  return value.dimensionColumns || undefined;
+};
+
+const resolvePatchedTopDimensions = (
+  testCase: TestCase,
+  value: TestCaseFormType
+) => {
+  if (isUndefined(value.topDimensions)) {
+    return testCase.topDimensions;
+  }
+
+  return value.topDimensions ?? undefined;
+};
+
+/**
+ * The dimension field is rendered (and prefilled) in both the full form and the
+ * parameter-only drawer — it is part of the parameter box on the test case result
+ * page — so a submitted empty value means the user cleared the override and the
+ * patch must drop it. Only a missing key counts as untouched.
+ *
+ * A test case that carries no dimension of its own inherits the one of its test
+ * definition, and that inherited value is what the field is prefilled with.
+ * Submitting it back unchanged — editing a parameter, say — must leave the test
+ * case inheriting instead of pinning today's default as an override, so it
+ * counts as untouched too.
+ */
+const resolvePatchedDimension = (
+  testCase: TestCase,
+  value: TestCaseFormType,
+  inheritedDimension: string | undefined
+): EntityReference | undefined => {
+  if (!has(value, 'dataQualityDimension')) {
+    return testCase.dataQualityDimension;
+  }
+
+  const isUntouchedInheritedValue =
+    isUndefined(testCase.dataQualityDimension) &&
+    value.dataQualityDimension === inheritedDimension;
+
+  return isUntouchedInheritedValue
+    ? testCase.dataQualityDimension
+    : toDimensionReference(value.dataQualityDimension, testCase);
+};
 
 export const createUpdatedTestCasePatch = ({
   testCase,
@@ -131,6 +239,7 @@ export const createUpdatedTestCasePatch = ({
   createTestCaseObject,
   showOnlyParameter,
   isComputeRowCountFieldVisible,
+  inheritedDimension,
 }: CreateUpdatedTestCasePatchArgs): Operation[] => {
   const tierTag = testCase.tags ? getTierTags(testCase.tags) : undefined;
   const rebuiltTags = [
@@ -141,25 +250,19 @@ export const createUpdatedTestCasePatch = ({
   const updatedTestCase = {
     ...testCase,
     ...createTestCaseObject,
-    description: showOnlyParameter
-      ? testCase.description
-      : isEmpty(value.description)
-      ? undefined
-      : value.description,
+    description: resolvePatchedDescription(showOnlyParameter, testCase, value),
     displayName: showOnlyParameter ? testCase?.displayName : value.displayName,
     computePassedFailedRowCount: isComputeRowCountFieldVisible
       ? value.computePassedFailedRowCount
       : testCase?.computePassedFailedRowCount,
-    tags:
-      showOnlyParameter || (isEmpty(rebuiltTags) && isEmpty(testCase.tags))
-        ? testCase.tags
-        : rebuiltTags,
-    dimensionColumns: isUndefined(value.dimensionColumns)
-      ? testCase.dimensionColumns
-      : value.dimensionColumns || undefined,
-    topDimensions: isUndefined(value.topDimensions)
-      ? testCase.topDimensions
-      : value.topDimensions ?? undefined,
+    tags: resolvePatchedTags(showOnlyParameter, rebuiltTags, testCase),
+    dimensionColumns: resolvePatchedDimensionColumns(testCase, value),
+    topDimensions: resolvePatchedTopDimensions(testCase, value),
+    dataQualityDimension: resolvePatchedDimension(
+      testCase,
+      value,
+      inheritedDimension
+    ),
   };
 
   return compare(testCase, updatedTestCase);
@@ -364,12 +467,145 @@ const buildDataQualityDimensionFilter = (dimension: string) => {
   if (dimension === DataQualityDimensions.NoDimension) {
     return {
       bool: {
-        must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        must_not: [{ exists: { field: DATA_QUALITY_DIMENSION_INDEX_FIELD } }],
       },
     };
   }
 
-  return { term: { dataQualityDimension: dimension } };
+  return { term: { [DATA_QUALITY_DIMENSION_INDEX_FIELD]: dimension } };
+};
+
+type EsFilterClause = Record<string, unknown>;
+
+/** Owner/tagging-related filters (unhealthy status, owner, certification, tags, tier, data products). */
+const buildOwnershipAndTaggingFilters = (
+  filters: DataQualityDashboardChartFilters | undefined,
+  unhealthy: boolean
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (unhealthy) {
+    clauses.push({
+      terms: {
+        // The latest status is stored under testCaseResult in the testCase
+        // index; the top-level testCaseStatus field belongs to result documents.
+        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
+      },
+    });
+  }
+
+  if (filters?.ownerFqn) {
+    clauses.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.certification) {
+    clauses.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tags && filters.tags.length > 0) {
+    clauses.push(buildMustEsFilterForTags(filters.tags));
+  }
+
+  if (filters?.tier && filters.tier.length > 0) {
+    clauses.push(buildMustEsFilterForTier(filters.tier));
+  }
+
+  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
+    clauses.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
+
+  return clauses;
+};
+
+/** Entity/service/platform/dimension-related filters. */
+const buildEntityAndServiceFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (filters?.entityFQN) {
+    clauses.push({
+      term: { originEntityFQN: filters.entityFQN },
+    });
+  }
+
+  if (filters?.serviceName) {
+    clauses.push({
+      term: {
+        'service.name.keyword': filters.serviceName,
+      },
+    });
+  }
+
+  if (filters?.testPlatforms) {
+    clauses.push({
+      terms: {
+        testPlatforms: filters.testPlatforms,
+      },
+    });
+  }
+
+  if (filters?.dataQualityDimension) {
+    clauses.push(buildDataQualityDimensionFilter(filters.dataQualityDimension));
+  }
+
+  return clauses;
+};
+
+/** Status/type/time-range-related filters. */
+const buildStatusTypeAndTimeFilters = (
+  filters: DataQualityDashboardChartFilters | undefined
+): EsFilterClause[] => {
+  const clauses: EsFilterClause[] = [];
+
+  if (!isEmpty(filters?.testCaseStatus)) {
+    // Elasticsearch `term` only accepts one value; URL-backed multi-selects
+    // need `terms` so the selected statuses are matched with OR semantics.
+    if (isArray(filters?.testCaseStatus)) {
+      clauses.push({
+        terms: {
+          'testCaseResult.testCaseStatus': filters.testCaseStatus,
+        },
+      });
+    } else {
+      clauses.push({
+        term: {
+          'testCaseResult.testCaseStatus': filters?.testCaseStatus,
+        },
+      });
+    }
+  }
+
+  if (filters?.testCaseType) {
+    if (filters.testCaseType === TestCaseType.table) {
+      clauses.push({
+        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
+      });
+    }
+
+    if (filters.testCaseType === TestCaseType.column) {
+      clauses.push({ regexp: { entityLink: '.*::columns::.*' } });
+    }
+  }
+
+  if (filters?.startTs && filters?.endTs) {
+    clauses.push({
+      range: {
+        'testCaseResult.timestamp': {
+          gte: filters.startTs,
+          lte: filters.endTs,
+        },
+      },
+    });
+  }
+
+  return clauses;
 };
 
 /** Builds the complete filter set supported by the testCase index. */
@@ -387,102 +623,11 @@ export const buildDataQualityDashboardFilters = (data: {
     return buildDataQualityTableFilters(filters);
   }
 
-  const mustFilter = [];
-
-  if (unhealthy) {
-    mustFilter.push({
-      terms: {
-        // The latest status is stored under testCaseResult in the testCase
-        // index; the top-level testCaseStatus field belongs to result documents.
-        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
-      },
-    });
-  }
-
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-
-  if (filters?.certification) {
-    mustFilter.push({
-      bool: {
-        should: filters.certification.map((fqn) => ({
-          term: { 'certification.tagLabel.tagFQN': fqn },
-        })),
-      },
-    });
-  }
-
-  if (filters?.tags && filters.tags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(filters.tags));
-  }
-
-  if (filters?.tier && filters.tier.length > 0) {
-    mustFilter.push(buildMustEsFilterForTier(filters.tier));
-  }
-
-  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
-    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
-  }
-
-  if (filters?.entityFQN) {
-    mustFilter.push({
-      term: { originEntityFQN: filters.entityFQN },
-    });
-  }
-
-  if (filters?.serviceName) {
-    mustFilter.push({
-      term: {
-        'service.name.keyword': filters.serviceName,
-      },
-    });
-  }
-
-  if (filters?.testPlatforms) {
-    mustFilter.push({
-      terms: {
-        testPlatforms: filters.testPlatforms,
-      },
-    });
-  }
-
-  if (filters?.dataQualityDimension) {
-    mustFilter.push(
-      buildDataQualityDimensionFilter(filters.dataQualityDimension)
-    );
-  }
-
-  if (filters?.testCaseStatus) {
-    mustFilter.push({
-      term: {
-        'testCaseResult.testCaseStatus': filters.testCaseStatus,
-      },
-    });
-  }
-
-  if (filters?.testCaseType) {
-    if (filters.testCaseType === TestCaseType.table) {
-      mustFilter.push({
-        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
-      });
-    }
-
-    if (filters.testCaseType === TestCaseType.column) {
-      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
-    }
-  }
-
-  if (filters?.startTs && filters?.endTs) {
-    mustFilter.push({
-      range: {
-        'testCaseResult.timestamp': {
-          gte: filters.startTs,
-          lte: filters.endTs,
-        },
-      },
-    });
-  }
+  const mustFilter = [
+    ...buildOwnershipAndTaggingFilters(filters, unhealthy),
+    ...buildEntityAndServiceFilters(filters),
+    ...buildStatusTypeAndTimeFilters(filters),
+  ];
 
   mustFilter.push({
     term: {
@@ -617,7 +762,7 @@ export function getColumnFilterOptions(
   items: TestCase[]
 ): SearchDropdownOption[] {
   const withColumn = items.filter((tc) =>
-    tc.entityLink?.includes('::columns::')
+    tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)
   );
   const pairs = withColumn.map((tc) => {
     const tableFqn = getEntityFQN(tc.entityLink);
@@ -666,7 +811,7 @@ export function filterTestCasesByTableAndColumn(
   if (filterColumns.length > 0) {
     const columnSet = new Set(filterColumns);
     result = result.filter((tc) => {
-      if (!tc.entityLink?.includes('::columns::')) {
+      if (!tc.entityLink?.includes(COLUMNS_ENTITY_LINK_SEGMENT)) {
         return false;
       }
 
@@ -713,7 +858,7 @@ export function getColumnFilterEntityLink(
 ): string | undefined {
   if (
     !columnFilterKey.includes('::') ||
-    columnFilterKey.includes('::columns::') ||
+    columnFilterKey.includes(COLUMNS_ENTITY_LINK_SEGMENT) ||
     columnFilterKey.startsWith('<#E')
   ) {
     return undefined;
@@ -779,7 +924,7 @@ export const getTestCaseListPath = (
 });
 
 export const getTestCaseTabPath = (
-  testCaseStatus: TestCaseStatus,
+  testCaseStatus: TestCaseStatus | TestCaseStatus[],
   filters?: DataQualityDashboardChartFilters
 ) => getTestCaseListPath(filters, { testCaseStatus });
 
@@ -791,10 +936,14 @@ export const transformToTestCaseStatusByDimension = (
   );
 
   inputData.forEach((item) => {
+    // The report keys each row by the aggregated Elasticsearch field name, not by the
+    // bucketName -- see SearchAggregation, which collects `field` into `dimensions`. The
+    // sibling `testCaseResult.testCaseStatus` key is the same shape.
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension = DataQualityDimensions.NoDimension,
+      [DATA_QUALITY_DIMENSION_INDEX_FIELD]:
+        dataQualityDimension = DataQualityDimensions.NoDimension,
     } = item;
     const count = parseInt(document_count, 10);
 

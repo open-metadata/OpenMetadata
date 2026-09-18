@@ -14,7 +14,6 @@ Secrets manager implementation using AWS SSM Parameter Store
 """
 
 import traceback
-from typing import Optional
 
 from botocore.exceptions import ClientError
 
@@ -39,7 +38,7 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     def __init__(self, loader: SecretsManagerClientLoader):
         super().__init__(client="ssm", provider=SecretsManagerProvider.aws, loader=loader)
 
-    def get_string_value(self, secret_id: str) -> Optional[str]:  # noqa: UP045
+    def get_string_value(self, secret_id: str) -> str | None:
         """
         :param secret_id: The parameter name to retrieve.
         :return: The value of the parameter. When the parameter is not present, it throws a `ValueError` exception.

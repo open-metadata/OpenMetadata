@@ -14,7 +14,8 @@
 import hashlib
 import re
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import text
@@ -49,6 +50,7 @@ from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
 )
+from metadata.ingestion.models.lf_tags_model import TagItem
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
@@ -69,7 +71,6 @@ from metadata.ingestion.source.database.glue.models import DatabasePage
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
@@ -107,7 +108,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
@@ -152,7 +153,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             logger.warning(f"Failed to fetch string property type ref: {exc}")
             logger.debug(traceback.format_exc())
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -182,7 +183,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """Get Athena table partition detail
 
         Args:
@@ -218,11 +219,33 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
         return self.external_location_map.get((self.context.get().database, schema_name, table_name))
+
+    def _register_lf_tag(self, entity_fqn: str, tag: TagItem) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register each LF-tag value and attach it to the source entity."""
+        for value in tag.TagValues:
+            try:
+                definition = self.define_tag(
+                    classification_name=tag.TagKey,
+                    tag_name=value,
+                    classification_description=ATHENA_TAG_CLASSIFICATION,
+                    tag_description=ATHENA_TAG,
+                )
+                if definition:
+                    self.attach_tag(entity_fqn=entity_fqn, tag=definition)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=value,
+                        error=f"Error yielding tag [{value}]: [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -232,18 +255,18 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 tags = self.athena_lake_formation_client.get_database_tags(name=schema_name)
                 for tag in tags or []:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            DatabaseSchema,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
+                    yield from self._register_lf_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                DatabaseSchema,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=schema_name,
+                            ),
                         ),
-                        tags=tag.TagValues,
-                        classification_name=tag.TagKey,
-                        tag_description=ATHENA_TAG,
-                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                        tag=tag,
                     )
             except Exception as exc:
                 yield Either(
@@ -256,7 +279,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield table and column tags
@@ -265,44 +288,45 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 table_name, _ = table_name_and_type
                 table_tags = self.athena_lake_formation_client.get_table_and_column_tags(
-                    schema_name=self.context.get().database_schema,
+                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name=table_name,
                 )
 
                 # yield the table tags
                 for tag in table_tags.LFTagsOnTable or []:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Table,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                            table_name=table_name,
+                    yield from self._register_lf_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                Table,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                table_name=table_name,
+                                skip_es_search=True,
+                            ),
                         ),
-                        tags=tag.TagValues,
-                        classification_name=tag.TagKey,
-                        tag_description=ATHENA_TAG,
-                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                        tag=tag,
                     )
 
                 # yield the column tags
                 for column in table_tags.LFTagsOnColumns or []:
                     for tag in column.LFTags or []:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=fqn.build(
-                                self.metadata,
-                                Column,
-                                service_name=self.context.get().database_service,
-                                database_name=self.context.get().database,
-                                schema_name=self.context.get().database_schema,
-                                table_name=table_name,
-                                column_name=column.Name,
+                        yield from self._register_lf_tag(
+                            entity_fqn=cast(
+                                "str",
+                                fqn.build(
+                                    self.metadata,
+                                    Column,
+                                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                    table_name=table_name,
+                                    column_name=column.Name,
+                                ),
                             ),
-                            tags=tag.TagValues,
-                            classification_name=tag.TagKey,
-                            tag_description=ATHENA_TAG,
-                            classification_description=ATHENA_TAG_CLASSIFICATION,
+                            tag=tag,
                         )
             except Exception as exc:
                 yield Either(

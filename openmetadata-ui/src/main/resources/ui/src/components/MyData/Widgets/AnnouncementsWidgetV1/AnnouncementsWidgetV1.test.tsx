@@ -50,6 +50,7 @@ jest.mock('./AnnouncementCardV1/AnnouncementCardV1.component', () => {
   return jest.fn().mockImplementation(({ announcement, onClick }) => (
     <div
       data-testid={`announcement-card-v1-${announcement.id}`}
+      role="presentation"
       onClick={onClick}>
       <div>{announcement.createdBy}</div>
       <div>{announcement.displayName ?? announcement.name}</div>

@@ -296,6 +296,15 @@ public class McpOAuthIT extends McpTestBase {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     assertThat(response.statusCode()).isEqualTo(401);
+    // The unauthenticated POST /mcp is the first request an app-directory reviewer makes. It used
+    // to answer with a serialized McpError - a RuntimeException - and shipped a 13.8 KB body with a
+    // 60-frame stack trace naming our classes, the Jetty internals and the exact JRE build.
+    assertThat(response.body())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,"
+                + "\"error\":{\"code\":-32001,\"message\":\"Missing bearer token\"}}");
+    // RFC 6750 section 3: a request that presented no credentials gets no error parameter.
+    assertThat(challengeOf(response)).startsWith("Bearer ").doesNotContain("error=");
   }
 
   @Test
@@ -317,5 +326,15 @@ public class McpOAuthIT extends McpTestBase {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     assertThat(response.statusCode()).isEqualTo(401);
+    assertThat(response.body())
+        .isEqualTo(
+            "{\"jsonrpc\":\"2.0\",\"id\":null,"
+                + "\"error\":{\"code\":-32001,\"message\":\"Invalid or expired bearer token\"}}");
+    // RFC 6750 section 3.1: a token was supplied and rejected, so the challenge says so.
+    assertThat(challengeOf(response)).contains("error=\"invalid_token\"");
+  }
+
+  private static String challengeOf(HttpResponse<String> response) {
+    return response.headers().firstValue("WWW-Authenticate").orElse("");
   }
 }

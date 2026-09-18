@@ -10,6 +10,14 @@ help:
 prerequisites:
 	./scripts/check_prerequisites.sh
 
+.PHONY: dev_setup
+dev_setup:  ## One-call dev environment setup for macOS/Linux (pass flags via ARGS=...)
+	./scripts/dev_setup.sh $(ARGS)
+
+.PHONY: dev_check
+dev_check:  ## Diagnose the dev environment without changing anything
+	./scripts/dev_setup.sh --check
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
@@ -57,6 +65,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	mkdir -p ingestion/src/metadata/generated
 	python scripts/datamodel_generation.py
 	$(MAKE) py_antlr js_antlr
+	ruff check --isolated --no-respect-gitignore --fix --select F401,UP006,UP007,UP035,UP045 --target-version py310 ingestion/src/metadata/generated
 	$(MAKE) install
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)

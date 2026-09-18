@@ -46,6 +46,30 @@ const ALIGN_MAP = {
   'space-between': 'tw:justify-between',
 } as const;
 
+const resolveButtonsToRender = (
+  buttons: DrawerFooterButton[] | undefined,
+  primaryButton?: DrawerFooterButton,
+  secondaryButton?: DrawerFooterButton
+): DrawerFooterButton[] => {
+  const buttonsToRender = buttons || [];
+  if (!buttons && (primaryButton || secondaryButton)) {
+    if (secondaryButton) {
+      buttonsToRender.push({
+        ...secondaryButton,
+        color: secondaryButton.color || 'secondary',
+      });
+    }
+    if (primaryButton) {
+      buttonsToRender.push({
+        ...primaryButton,
+        color: primaryButton.color || 'primary',
+      });
+    }
+  }
+
+  return buttonsToRender;
+};
+
 export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
   const {
     buttons,
@@ -60,21 +84,11 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
       return <SlideoutMenu.Footer>{customContent}</SlideoutMenu.Footer>;
     }
 
-    const buttonsToRender = buttons || [];
-    if (!buttons && (primaryButton || secondaryButton)) {
-      if (secondaryButton) {
-        buttonsToRender.push({
-          ...secondaryButton,
-          color: secondaryButton.color || 'secondary',
-        });
-      }
-      if (primaryButton) {
-        buttonsToRender.push({
-          ...primaryButton,
-          color: primaryButton.color || 'primary',
-        });
-      }
-    }
+    const buttonsToRender = resolveButtonsToRender(
+      buttons,
+      primaryButton,
+      secondaryButton
+    );
 
     if (buttonsToRender.length === 0) {
       return null;

@@ -5,6 +5,7 @@ Test dbt
 import json
 import uuid
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest import TestCase
@@ -67,8 +68,74 @@ from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+DBT_TEST_UNIQUE_ID = "test.jaffle_shop.not_null_orders_order_id.cf6c17daed"
+DBT_TEST_TABLE_FQN = "snowflake.jaffle_shop.public.orders"
+
+
+def _run_result_payload(status, message, completed_at, unique_id=DBT_TEST_UNIQUE_ID, failures=None):
+    """
+    Build a run_results.json payload shaped like a real dbt artifact, including
+    the ``failures`` key that dbt emits but OpenMetadata strips before parsing.
+
+    ``completed_at=None`` drops the timing block, which is how a result with no
+    usable ``execute`` timestamp reaches the timestamp fallback path.
+    """
+    timing = (
+        [
+            {
+                "name": "compile",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+            {
+                "name": "execute",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+        ]
+        if completed_at
+        else []
+    )
+    return {
+        "metadata": {
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+            "dbt_version": "1.11.0",
+            "generated_at": completed_at or "2026-07-24T09:00:00.000000Z",
+            "invocation_id": str(uuid.uuid4()),
+            "env": {},
+        },
+        "results": [
+            {
+                "status": status,
+                "timing": timing,
+                "thread_id": "Thread-1",
+                "execution_time": 0.42,
+                "adapter_response": {},
+                "message": message,
+                "failures": failures,
+                "unique_id": unique_id,
+            }
+        ],
+        "elapsed_time": 1.5,
+        "args": {"which": "test"},
+    }
+
+
+def _parse_run_results_like_production(payload):
+    """
+    Run a raw run_results.json payload through the exact pre-processing the
+    connector applies (``remove_run_result_non_required_keys``) before parsing,
+    so tests see the same attributes production code sees.
+    """
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+    DbtServiceSource.remove_run_result_non_required_keys(MagicMock(spec=DbtServiceSource), run_results=[payload])
+    return parse_run_results(payload)
+
 
 mock_dbt_config = {
     "source": {
@@ -3125,6 +3192,108 @@ class TestGetLatestResult(TestCase):
         self.assertIs(got, new_result)
 
 
+class TestGetLatestResultPrefersExecutedResults:
+    """
+    Regression coverage for the second half of issue #29824.
+
+    A project that keeps both a ``dbt test`` artifact and a later
+    ``dbt docs generate`` artifact has the same test unique_id in both files.
+    Picking purely by ``execute.completed_at`` hands back the compile-only stub
+    from the docs run, and the real pass/fail result is discarded before
+    add_dbt_test_result() ever sees it.
+    """
+
+    @staticmethod
+    def _dbt_objects(*results_specs):
+        run_results = [
+            _parse_run_results_like_production(
+                _run_result_payload(status=status, message=message, completed_at=completed_at)
+            )
+            for status, message, completed_at in results_specs
+        ]
+        return DbtObjects(dbt_manifest=None, dbt_run_results=run_results)
+
+    def test_executed_result_wins_over_later_compile_only_stub(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "pass"
+
+    def test_executed_result_wins_when_stub_is_listed_first(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T07:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_still_wins_among_executed_results(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_stub_is_still_returned_when_nothing_was_executed(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.timing[1].completed_at == datetime.fromisoformat("2026-07-24T09:00:00+00:00")
+
+    def test_no_match_returns_none(self):
+        dbt_objects = self._dbt_objects(("pass", None, "2026-07-24T07:00:00.000000Z"))
+
+        assert DbtSource._get_latest_result(dbt_objects, "test.jaffle_shop.does_not_exist") is None
+
+    def test_executed_result_wins_when_no_timestamp_is_usable(self):
+        """
+        With no ``execute`` timing to rank by, selection falls back to the first
+        candidate. That fallback must run over executed results only, otherwise a
+        stub listed first still wins.
+        """
+        dbt_objects = self._dbt_objects(
+            ("success", None, None),
+            ("fail", "Got 3 results, configured to fail if != 0", None),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_result_survives_end_to_end_through_add_dbt_test_result(self):
+        """
+        The user-visible symptom: with a later docs-generate artifact present,
+        no test case result reaches OpenMetadata at all.
+        """
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        source = TestAddDbtTestResultNullMessage._make_source()
+        source.add_dbt_test_result(TestAddDbtTestResultNullMessage._make_dbt_test(selected))
+
+        kwargs = TestAddDbtTestResultNullMessage._sent_call(source)
+        assert kwargs["test_results"].testCaseStatus == TestCaseStatus.Success
+        assert kwargs["test_results"].timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 7, 0, 0), milliseconds=True
+        )
+
+
 class TestGetBlobsGroupedByDir(TestCase):
     """
     Test cases for get_blobs_grouped_by_dir to verify streaming support,
@@ -3817,6 +3986,115 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
         source.metadata.add_test_case_results.assert_called_once()
 
 
+class TestAddDbtTestResultNullMessage:
+    """
+    Regression coverage for issue #29824.
+
+    dbt only fills ``message`` on failure/warn for many adapters, so a genuine
+    executed data test is reported as ``status="pass", message=null``. The
+    compiled-only guard added by #26812 keyed off ``message`` alone and so
+    dropped those real results, which is why dbt test results stopped showing
+    up after the 1.13.0 upgrade.
+    """
+
+    @staticmethod
+    def _make_source():
+        source = MagicMock(spec=DbtSource)
+        # add_dbt_test_result only dispatches; the compiled-only guard and the
+        # result building live in the builders, so they have to be the real
+        # implementations or the mock would answer for the behaviour under test.
+        for name in (
+            "add_dbt_test_result",
+            "_build_run_result_test_case_result",
+            "_build_freshness_test_case_result",
+            "_resolve_dbt_test_timestamp",
+        ):
+            setattr(source, name, getattr(DbtSource, name).__get__(source, DbtSource))
+        for name in ("_map_dbt_test_status", "_get_freshness_result_details"):
+            setattr(source, name, getattr(DbtSource, name))
+        source.metadata = MagicMock()
+        source.status = MagicMock()
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(run_results_generate_time=None)
+        return source
+
+    @staticmethod
+    def _sent_call(source):
+        """
+        add_dbt_test_result swallows every exception into status.failed(), so an
+        unhandled error would otherwise look identical to a deliberate skip.
+        """
+        assert source.status.failed.call_args_list == [], source.status.failed.call_args_list
+        calls = source.metadata.add_test_case_results.call_args_list
+        assert len(calls) == 1, "expected exactly one test case result sent to OpenMetadata"
+        return calls[0].kwargs
+
+    @staticmethod
+    def _make_dbt_test(run_result):
+        return {
+            DbtCommonEnum.MANIFEST_NODE.value: SimpleNamespace(
+                name="not_null_orders_order_id",
+                column_name="order_id",
+                test_metadata=SimpleNamespace(
+                    name="not_null",
+                    kwargs={"column_name": "order_id", "model": "ref('orders')"},
+                ),
+            ),
+            DbtCommonEnum.RESULTS.value: run_result,
+            DbtCommonEnum.UPSTREAM.value: [DBT_TEST_TABLE_FQN],
+            DbtCommonEnum.UPSTREAM_BY_NAME.value: {"orders": DBT_TEST_TABLE_FQN},
+        }
+
+    def _ingest(self, status, message):
+        payload = _run_result_payload(status=status, message=message, completed_at="2026-07-24T09:00:00.000000Z")
+        run_result = _parse_run_results_like_production(payload).results[0]
+        source = self._make_source()
+        source.add_dbt_test_result(self._make_dbt_test(run_result))
+        return source
+
+    def test_failures_key_is_stripped_before_parsing(self):
+        """
+        `failures` is not in REQUIRED_RESULTS_KEYS, so it cannot be used to tell
+        an executed test from a compiled-only stub: `status` is the only signal left.
+        """
+        payload = _run_result_payload(
+            status="pass", message=None, completed_at="2026-07-24T09:00:00.000000Z", failures=0
+        )
+        run_result = _parse_run_results_like_production(payload).results[0]
+
+        assert getattr(run_result, "failures", None) is None
+        assert run_result.status.value == "pass"
+
+    def test_passing_test_with_null_message_is_ingested(self):
+        kwargs = self._sent_call(self._ingest(status="pass", message=None))
+
+        test_case_result = kwargs["test_results"]
+        assert kwargs["test_case_fqn"] == f"{DBT_TEST_TABLE_FQN}.order_id.not_null_orders_order_id"
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.result is None
+        assert [value.value for value in test_case_result.testResultValue] == ["1"]
+        assert test_case_result.timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 9, 0, 0), milliseconds=True
+        )
+
+    def test_compiled_only_success_with_null_message_is_still_skipped(self):
+        source = self._ingest(status="success", message=None)
+
+        source.metadata.add_test_case_results.assert_not_called()
+        assert source.status.failed.call_args_list == []
+
+    def test_failing_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="fail", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert [value.value for value in test_case_result.testResultValue] == ["0"]
+
+    def test_warning_test_with_null_message_is_ingested(self):
+        test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
+
+        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+
+
 class TestRemoveManifestNonRequiredKeys(TestCase):
     """
     Tests for DbtServiceSource.remove_manifest_non_required_keys.
@@ -4370,3 +4648,336 @@ class TestAddDbtSourceFreshnessResults:
             source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
             == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
         )
+
+
+class TestDbtV12MetricIngest(TestCase):
+    """Unit tests for dbt 1.12+ inline metric spec (measure-less semantic models)."""
+
+    def setUp(self):
+        from metadata.generated.schema.entity.data.metric import (
+            Language,
+            MetricExpression,
+            MetricMeasure,
+        )
+
+        self.Language = Language
+        self.MetricExpression = MetricExpression
+        self.MetricMeasure = MetricMeasure
+
+    # ------------------------------------------------------------------
+    # _simple_metric_expression
+    # ------------------------------------------------------------------
+
+    def test_simple_metric_expression_old_spec_returns_measure_name(self):
+        """Pre-1.12 path: type_params.measure.name is used as the expression."""
+        measure_ref = SimpleNamespace(name="revenue")
+        type_params = SimpleNamespace(measure=measure_ref, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "revenue"
+
+    def test_simple_metric_expression_dbt_v12_falls_back_to_expr(self):
+        """dbt 1.12+: type_params.measure is None; type_params.expr is the column expression."""
+        type_params = SimpleNamespace(measure=None, expr="user_id")
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "user_id"
+        assert expr.language == self.Language.SQL
+
+    def test_simple_metric_expression_dbt_v12_no_measure_no_expr_returns_none(self):
+        """Both measure and expr absent → no expression emitted (no crash)."""
+        type_params = SimpleNamespace(measure=None, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is None
+        assert related is None
+
+    def test_simple_metric_expression_measure_without_name_falls_back_to_expr(self):
+        """measure present but .name is None → fall back to expr."""
+        type_params = SimpleNamespace(measure=SimpleNamespace(name=None), expr="amount")
+
+        expr, _ = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is not None
+        assert expr.code == "amount"
+
+    # ------------------------------------------------------------------
+    # _extract_measures
+    # ------------------------------------------------------------------
+
+    def _make_source(self):
+        """Return a minimally wired DbtSource with mocked metadata."""
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        metadata = MagicMock()
+        return DbtSource.__new__(DbtSource), metadata
+
+    def test_extract_measures_from_semantic_model(self):
+        """Pre-1.12: measures come from the semantic model."""
+        source, _ = self._make_source()
+
+        agg = SimpleNamespace(value="count_distinct")
+        sm_measure = SimpleNamespace(name="m_users", agg=agg, description="users", expr="user_id")
+        sm = SimpleNamespace(name="sm1", measures=[sm_measure])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="m_users"), expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "m_users"
+        assert result[0].aggregation == "count_distinct"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_empty_sm_measures_uses_type_params_expr(self):
+        """dbt 1.12+: semantic model has no measures → synthetic measure from type_params.expr,
+        carrying the aggregation from metric_aggregation_params (as the pre-1.12 measure did)."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type="simple",
+            type_params=SimpleNamespace(
+                measure=None,
+                expr="user_id",
+                metric_aggregation_params={"agg": "count_distinct"},
+            ),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "distinct_users"
+        assert result[0].expression == "user_id"
+        assert result[0].aggregation == "count_distinct"
+
+    def test_extract_measures_dbt_v12_no_sm_uses_type_params_expr(self):
+        """dbt 1.12+: no semantic models at all → synthetic measure from type_params.expr."""
+        source, _ = self._make_source()
+
+        metric_node = SimpleNamespace(
+            name="active_users",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr="user_id"),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "active_users"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_no_expr_returns_empty(self):
+        """dbt 1.12+: no semantic model measures and no expr → empty list (no crash)."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="my_metric",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert result == []
+
+
+class TestDbtV12MetricAggregationAndCumulative(TestCase):
+    """dbt 1.12+ inline metrics: aggregation carried onto the measure, and cumulative
+    metrics resolved from cumulative_type_params.metric. The pre-1.12 (measure-based)
+    paths must stay byte-for-byte unchanged, so each new behaviour is guarded on the
+    absence of the old field."""
+
+    def _make_source(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        return DbtSource.__new__(DbtSource)
+
+    # ------------------------------------------------------------------
+    # _metric_aggregation
+    # ------------------------------------------------------------------
+
+    def test_metric_aggregation_from_dict(self):
+        tp = SimpleNamespace(metric_aggregation_params={"agg": "count_distinct"})
+        assert DbtSource._metric_aggregation(tp) == "count_distinct"
+
+    def test_metric_aggregation_from_object(self):
+        tp = SimpleNamespace(metric_aggregation_params=SimpleNamespace(agg="sum"))
+        assert DbtSource._metric_aggregation(tp) == "sum"
+
+    def test_metric_aggregation_unwraps_enum_value(self):
+        tp = SimpleNamespace(metric_aggregation_params={"agg": SimpleNamespace(value="median")})
+        assert DbtSource._metric_aggregation(tp) == "median"
+
+    def test_metric_aggregation_none_when_absent(self):
+        assert DbtSource._metric_aggregation(SimpleNamespace(metric_aggregation_params=None)) is None
+        assert DbtSource._metric_aggregation(SimpleNamespace()) is None
+
+    # ------------------------------------------------------------------
+    # _extract_measures aggregation (dbt 1.12+)
+    # ------------------------------------------------------------------
+
+    def test_v12_count_star_no_expr_still_creates_measure(self):
+        """agg with no expr (e.g. count(*)) → measure carrying only the aggregation."""
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="row_count",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params={"agg": "count"}),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            result = source._extract_measures(metric_node, {})
+        assert len(result) == 1
+        assert result[0].name == "row_count"
+        assert result[0].aggregation == "count"
+        assert result[0].expression is None
+
+    def test_v12_no_expr_no_agg_returns_empty(self):
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="empty_metric",
+            type="simple",
+            type_params=SimpleNamespace(measure=None, expr=None, metric_aggregation_params=None),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            assert source._extract_measures(metric_node, {}) == []
+
+    def test_v12_derived_metric_does_not_fabricate_measure(self):
+        """Regression: a derived metric stores its formula in type_params.expr, so the
+        inline fallback must not publish that formula as a measure. Only simple metrics
+        own a measure."""
+        source = self._make_source()
+        metric_node = SimpleNamespace(
+            name="profit",
+            type="derived",
+            type_params=SimpleNamespace(
+                measure=None,
+                expr="total_revenue - total_cost",
+                metric_aggregation_params=None,
+            ),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            assert source._extract_measures(metric_node, {}) == []
+
+    def test_old_spec_measure_aggregation_unchanged(self):
+        """Pre-1.12: aggregation and name still come straight from the semantic-model measure."""
+        source = self._make_source()
+        measure = SimpleNamespace(
+            name="num_distinct",
+            agg=SimpleNamespace(value="count_distinct"),
+            description="distinct customer count",
+            expr="customer_id",
+        )
+        sm = SimpleNamespace(name="sm1", measures=[measure])
+        metric_node = SimpleNamespace(
+            name="distinct_customers",
+            type_params=SimpleNamespace(
+                measure=SimpleNamespace(name="num_distinct"),
+                expr=None,
+                metric_aggregation_params=None,
+            ),
+            refs=None,
+            metrics=None,
+        )
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+        assert result[0].name == "num_distinct"
+        assert result[0].aggregation == "count_distinct"
+        assert result[0].expression == "customer_id"
+        assert result[0].description == "distinct customer count"
+
+    # ------------------------------------------------------------------
+    # _cumulative_metric_expression (dbt 1.12+)
+    # ------------------------------------------------------------------
+
+    def _cumulative_type_params(self, metric):
+        return SimpleNamespace(
+            window=SimpleNamespace(count=7, granularity=SimpleNamespace(value="day")),
+            metric=metric,
+        )
+
+    def test_cumulative_v12_wraps_metric_from_dict(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=self._cumulative_type_params({"name": "distinct_customers"}),
+        )
+        expression, related = DbtSource._cumulative_metric_expression(type_params)
+        assert related is None
+        assert expression.code == "cumulative(distinct_customers over 7 day)"
+
+    def test_cumulative_v12_wraps_metric_from_object(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=self._cumulative_type_params(SimpleNamespace(name="distinct_customers")),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression.code == "cumulative(distinct_customers over 7 day)"
+
+    def test_cumulative_old_spec_wraps_measure_unchanged(self):
+        type_params = SimpleNamespace(
+            measure=SimpleNamespace(name="revenue"),
+            cumulative_type_params=self._cumulative_type_params(None),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression.code == "cumulative(revenue over 7 day)"
+
+    def test_cumulative_v12_no_metric_returns_none(self):
+        type_params = SimpleNamespace(
+            measure=None,
+            cumulative_type_params=SimpleNamespace(window=None, metric=None),
+        )
+        expression, _ = DbtSource._cumulative_metric_expression(type_params)
+        assert expression is None

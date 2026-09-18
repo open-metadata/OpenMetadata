@@ -13,7 +13,6 @@ Spline source processing utilities
 """
 
 import traceback
-from typing import Optional, Tuple  # noqa: UP035
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -30,7 +29,7 @@ logger = ingestion_logger()
 MULTI_DB_SOURCE = {"postgresql", "oracle:thin", "vertica", "redshift"}
 
 
-def parse_dbfs_path(path: str) -> Optional[str]:  # noqa: UP045
+def parse_dbfs_path(path: str) -> str | None:
     try:
         return path.split("/")[-1]  # noqa: PLC0207
     except Exception as exc:
@@ -39,7 +38,7 @@ def parse_dbfs_path(path: str) -> Optional[str]:  # noqa: UP045
     return None
 
 
-def clean_name(name: str) -> Optional[str]:  # noqa: UP045
+def clean_name(name: str) -> str | None:
     """
     replace empty string with None
     """
@@ -49,7 +48,7 @@ def clean_name(name: str) -> Optional[str]:  # noqa: UP045
     return None
 
 
-def parse_jdbc_url(url: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def parse_jdbc_url(url: str) -> tuple[str | None, str | None, str | None]:
     """
     Handle parsing of jdbc url to extract table, schema and database name
     """

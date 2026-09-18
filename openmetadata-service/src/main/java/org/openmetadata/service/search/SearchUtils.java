@@ -55,6 +55,8 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  private static final String FUZZINESS_DISABLED = "0";
+  private static final String FUZZINESS_ENABLED = "1";
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -353,6 +355,14 @@ public final class SearchUtils {
     return aggregationJson.getString("key");
   }
 
+  /**
+   * Decides whether the caller's policy conditions are compiled into the search query. Bots are
+   * evaluated exactly like humans: they used to be exempt, which left every bot-authenticated search
+   * unfiltered even with access control on, because a skipped injection leaves the query matching
+   * everything rather than failing closed. {@code DefaultAuthorizer#authorize} already evaluates the
+   * same policies on a bot's REST reads, so exempting search made it the laxer of the two. Admins
+   * stay exempt because their compiled query would match everything anyway.
+   */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
@@ -361,7 +371,6 @@ public final class SearchUtils {
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && rbacConditionEvaluator != null;
   }
 
@@ -767,6 +776,8 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
+          .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
       case "domain_search_index", Entity.DOMAIN -> Entity.DOMAIN;
       case "data_product_search_index", Entity.DATA_PRODUCT -> Entity.DATA_PRODUCT;
@@ -809,9 +820,9 @@ public final class SearchUtils {
    */
   public static String getFuzziness(String query) {
     if (query == null || query.isBlank()) {
-      return "1";
+      return FUZZINESS_ENABLED;
     }
-    return analyzedSubTokenCount(query) > 2 ? "0" : "1";
+    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
   }
 
   /**
@@ -823,5 +834,68 @@ public final class SearchUtils {
       return 10;
     }
     return analyzedSubTokenCount(query) > 2 ? 1 : 10;
+  }
+
+  /**
+   * Outcome of one column-lineage reconciliation call against a single index selector.
+   *
+   * @param operation human-readable operation name used in the log line
+   * @param indexName index selector the update-by-query targeted
+   * @param requestedFqnCount number of column FQNs the caller asked to rewrite or remove
+   * @param updatedDocuments documents the update-by-query actually modified
+   * @param versionConflicts documents skipped because another write won the version race
+   * @param failureReasons per-shard failure reasons, empty when the call fully succeeded
+   */
+  public record ColumnLineageFlushOutcome(
+      String operation,
+      String indexName,
+      int requestedFqnCount,
+      long updatedDocuments,
+      long versionConflicts,
+      List<String> failureReasons) {}
+
+  /**
+   * Report a column-lineage reconciliation, distinguishing "nothing to do" from "we cannot tell".
+   *
+   * <p>Unresolved conflicts are dropped rewrites and warn. {@code updatedDocuments == 0} for a
+   * non-empty request stays at debug: nothing downstream may reference the columns, which
+   * is most column deletes and renames during ingestion, so warning on it would be noise. It is
+   * also what a missing index (tolerated via {@code ignoreUnavailable}) or a misresolved index
+   * selector looks like, but that failure mode is caught at build time by the test pinning the
+   * selector to the resolver registry rather than by watching production logs.
+   */
+  public static void logColumnLineageFlush(ColumnLineageFlushOutcome outcome) {
+    if (!outcome.failureReasons().isEmpty()) {
+      LOG.error(
+          "{} in upstream lineage failed for index {}: {}",
+          outcome.operation(),
+          outcome.indexName(),
+          String.join(", ", outcome.failureReasons()));
+    } else if (outcome.versionConflicts() > 0) {
+      LOG.warn(
+          "{} in upstream lineage for index {} hit {} version conflict(s); those documents kept "
+              + "their previous column FQNs after reconciliation. {} document(s) updated for {} "
+              + "requested FQN(s).",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.versionConflicts(),
+          outcome.updatedDocuments(),
+          outcome.requestedFqnCount());
+    } else if (outcome.updatedDocuments() == 0 && outcome.requestedFqnCount() > 0) {
+      LOG.debug(
+          "{} in upstream lineage matched no documents for index {} ({} FQN(s) requested). Expected "
+              + "when nothing downstream references those columns; also what a missing index or an "
+              + "unresolved index selector looks like.",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.requestedFqnCount());
+    } else {
+      LOG.info(
+          "{} in upstream lineage for index {}: {} document(s) updated for {} requested FQN(s)",
+          outcome.operation(),
+          outcome.indexName(),
+          outcome.updatedDocuments(),
+          outcome.requestedFqnCount());
+    }
   }
 }

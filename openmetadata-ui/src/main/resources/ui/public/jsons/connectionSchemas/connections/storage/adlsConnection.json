@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ADLS Connection",
+  "description": "ADLS Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.storage.ADLSConnection",
+  "definitions": {
+    "azureType": {
+      "description": "ADLS service type",
+      "type": "string",
+      "enum": [
+        "ADLS"
+      ],
+      "default": "ADLS"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "ADLS",
+      "type": "string",
+      "enum": [
+        "ADLS"
+      ]
+    },
+    "credentials": {
+      "title": "Azure Credentials",
+      "description": "Azure Credentials",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+      "properties": {
+        "clientId": {
+          "title": "Client ID",
+          "description": "Your Service Principal App ID (Client ID)",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "Your Service Principal Password (Client Secret)",
+          "type": "string",
+          "format": "password"
+        },
+        "tenantId": {
+          "title": "Tenant ID",
+          "description": "Tenant ID of your Azure Subscription",
+          "type": "string"
+        },
+        "accountName": {
+          "title": "Storage Account Name",
+          "description": "Account Name of your storage account",
+          "type": "string"
+        },
+        "vaultName": {
+          "title": "Key Vault Name",
+          "description": "Key Vault Name",
+          "type": "string"
+        },
+        "scopes": {
+          "title": "Scopes",
+          "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "containerName": {
+      "title": "Container Name",
+      "description": "Container Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "containerFilterPattern": {
+      "description": "Regex to only fetch containers that matches the pattern.",
+      "title": "Default Storage container Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "credentials"
+  ]
+}

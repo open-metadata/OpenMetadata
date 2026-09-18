@@ -665,6 +665,115 @@
                     }
                 }
             ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address_clean.testSuite",
+            "testSuiteDisplayName": "Lucene reserved characters (v2) [repro]",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_address_clean",
+            "testSuiteDescription": "Reproduces the data quality search 500 (query_shard_exception). Every test case here carries Lucene syntax in its displayName, so searching for any of them must return 200 and still match.",
+            "scheduleInterval": "0 0 * * MON",
+            "testCases": [
+                {
+                    "name": "lucene_pasted_url",
+                    "displayName": "https://localhost:8585/table/orders",
+                    "description": "Pasted URL - the original reproduction. The `:` and `//` alone produced the 500.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_angle_brackets",
+                    "displayName": "row count < 10 and > 2",
+                    "description": "Elasticsearch documents < and > as impossible to escape, so a denylist could never fix this one.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_reserved_word_not",
+                    "displayName": "NOT a real assertion",
+                    "description": "A reserved *word* rather than a character - no escaping denylist addresses this.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_double_pipe",
+                    "displayName": "shopify a||b addresses",
+                    "description": "Two unescaped pipes lex as the OR operator - the ES_RESERVED_CHARACTERS gap.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_parens_and_brackets",
+                    "displayName": "orders (v2) [archived]",
+                    "description": "Unbalanced parentheses and brackets in a display name.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_field_scoped_lookalike",
+                    "displayName": "dimension:value && customers",
+                    "description": "Looks like a Lucene field query but is free text - it must match literally, not filter.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_quote_caret_tilde",
+                    "displayName": "boosted^2 fuzzy~ \"unterminated",
+                    "description": "Boost, fuzzy and an unterminated phrase - each was a parse error on its own.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "lucene_trailing_backslash",
+                    "displayName": "windows path C:\\data\\shopify\\",
+                    "description": "A literal backslash: the escape-aware escaper silently dropped it, so the term matched nothing.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean>",
+                    "testDefinitionName": "tableRowCountToEqual",
+                    "parameterValues": [
+                        { "name": "value", "value": "100" }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "substring_mid_token_probe",
+                    "displayName": "column_values_to_be_between_probe",
+                    "description": "Search 'alues' or 'tween' to prove mid-token substring matching survives without a wildcard.",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address_clean::columns::shop_id>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1" },
+                        { "name": "maxValue", "value": "99" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
         }
     ]
 }

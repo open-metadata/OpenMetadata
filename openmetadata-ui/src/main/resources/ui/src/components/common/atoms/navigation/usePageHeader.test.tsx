@@ -85,7 +85,7 @@ describe('usePageHeader', () => {
         createPermission
         addButtonLabelKey="label.add-data-product"
         breadcrumb={<nav data-testid="breadcrumb" />}
-        search={<input data-testid="header-search" />}
+        search={<input aria-label="Search" data-testid="header-search" />}
         variant="search"
         onAddClick={jest.fn()}
       />

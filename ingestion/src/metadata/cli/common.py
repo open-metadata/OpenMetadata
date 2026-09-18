@@ -14,7 +14,7 @@ Handle workflow execution
 """
 
 from pathlib import Path
-from typing import Any, Dict  # noqa: UP035
+from typing import Any
 
 from metadata.utils.logger import cli_logger
 from metadata.workflow.base import BaseWorkflow
@@ -24,7 +24,7 @@ logger = cli_logger()
 
 def execute_workflow(
     workflow: BaseWorkflow,
-    config_dict: Dict[str, Any],  # noqa: UP006
+    config_dict: dict[str, Any],
     status_file: Path | None = None,
 ) -> None:
     """Execute the workflow, write status file if requested, raise on failure if configured."""

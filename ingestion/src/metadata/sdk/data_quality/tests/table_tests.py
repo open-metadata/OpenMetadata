@@ -11,8 +11,6 @@
 
 """Table-level test definitions for DQ as Code API."""
 
-from typing import List, Optional  # noqa: UP035
-
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.sdk.data_quality.tests.base_tests import TableTest
 
@@ -37,11 +35,11 @@ class TableColumnCountToBeBetween(TableTest):
 
     def __init__(
         self,
-        min_count: Optional[int] = None,  # noqa: UP045
-        max_count: Optional[int] = None,  # noqa: UP045
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        min_count: int | None = None,
+        max_count: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that the number of columns in the table is between "
@@ -78,9 +76,9 @@ class TableColumnCountToEqual(TableTest):
     def __init__(
         self,
         column_count: int,
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnCountToEqual",
@@ -111,11 +109,11 @@ class TableRowCountToBeBetween(TableTest):
 
     def __init__(
         self,
-        min_count: Optional[int] = None,  # noqa: UP045
-        max_count: Optional[int] = None,  # noqa: UP045
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        min_count: int | None = None,
+        max_count: int | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that the number of rows in the table is between {min_count or 'any'} and {max_count or 'any'}"
@@ -151,9 +149,9 @@ class TableRowCountToEqual(TableTest):
     def __init__(
         self,
         row_count: int,
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableRowCountToEqual",
@@ -191,13 +189,13 @@ class TableRowInsertedCountToBeBetween(TableTest):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         column_name: str,
-        min_count: Optional[int] = None,  # noqa: UP045
-        max_count: Optional[int] = None,  # noqa: UP045
+        min_count: int | None = None,
+        max_count: int | None = None,
         range_type: str = "DAY",
         range_interval: int = 1,
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         default_desc = (
             f"Validates that rows inserted in the last {range_interval} "
@@ -239,11 +237,11 @@ class TableColumnToMatchSet(TableTest):
 
     def __init__(
         self,
-        column_names: List[str],  # noqa: UP006
+        column_names: list[str],
         ordered: bool = False,
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnToMatchSet",
@@ -275,9 +273,9 @@ class TableColumnNameToExist(TableTest):
     def __init__(
         self,
         column_name: str,
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableColumnNameToExist",
@@ -312,9 +310,9 @@ class TableCustomSQLQuery(TableTest):
         self,
         sql_expression: str,
         strategy: str = "ROWS",
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableCustomSQLQuery",
@@ -355,15 +353,15 @@ class TableDiff(TableTest):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         table2: str,
-        key_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
-        table2_key_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
-        use_columns: Optional[List[str]] = None,  # noqa: UP006, UP045
-        threshold: Optional[int] = None,  # noqa: UP045
-        where: Optional[str] = None,  # noqa: UP045
-        case_sensitive_columns: Optional[bool] = None,  # noqa: UP045
-        name: Optional[str] = None,  # noqa: UP045
-        display_name: Optional[str] = None,  # noqa: UP045
-        description: Optional[str] = None,  # noqa: UP045
+        key_columns: list[str] | None = None,
+        table2_key_columns: list[str] | None = None,
+        use_columns: list[str] | None = None,
+        threshold: int | None = None,
+        where: str | None = None,
+        case_sensitive_columns: bool | None = None,
+        name: str | None = None,
+        display_name: str | None = None,
+        description: str | None = None,
     ):
         super().__init__(
             test_definition_name="tableDiff",

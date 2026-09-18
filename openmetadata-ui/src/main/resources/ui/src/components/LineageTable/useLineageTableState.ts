@@ -38,10 +38,10 @@ const initialState: LineageTableState = {
   nodeDepth: 1,
 };
 
-function lineageTableReducer(
+function lineageTableReducerPrimary(
   state: LineageTableState,
   action: LineageTableAction
-): LineageTableState {
+): LineageTableState | undefined {
   switch (action.type) {
     case 'SET_FILTER_NODES':
       return { ...state, filterNodes: action.payload };
@@ -64,6 +64,16 @@ function lineageTableReducer(
     case 'SET_UPSTREAM_COLUMN_LINEAGE_NODES':
       return { ...state, upstreamColumnLineageNodes: action.payload };
 
+    default:
+      return undefined;
+  }
+}
+
+function lineageTableReducerSecondary(
+  state: LineageTableState,
+  action: LineageTableAction
+): LineageTableState | undefined {
+  switch (action.type) {
     case 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES':
       return { ...state, downstreamColumnLineageNodes: action.payload };
 
@@ -95,8 +105,19 @@ function lineageTableReducer(
       return { ...state, nodeDepth: action.payload };
 
     default:
-      return state;
+      return undefined;
   }
+}
+
+function lineageTableReducer(
+  state: LineageTableState,
+  action: LineageTableAction
+): LineageTableState {
+  return (
+    lineageTableReducerPrimary(state, action) ??
+    lineageTableReducerSecondary(state, action) ??
+    state
+  );
 }
 
 export function useLineageTableState() {

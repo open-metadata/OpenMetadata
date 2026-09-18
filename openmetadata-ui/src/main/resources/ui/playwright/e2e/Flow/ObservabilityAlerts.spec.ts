@@ -104,20 +104,13 @@ const data = {
   },
 };
 
-let webhookEndpoint = '';
-let webhookAlertDetails: AlertDetails | undefined;
-let webhookTableFqn = '';
-
 test.beforeAll(async ({ browser }) => {
-  // The suite setup now includes a complete alert creation flow in addition to
-  // entity prerequisites, so it needs a hook-specific budget under CI load.
   test.setTimeout(120_000);
-  webhookEndpoint = await startWebhookReceiver();
   table1 = new TableClass();
   table2 = new TableClass();
   pipeline = new PipelineClass();
   domain = new Domain();
-  const { afterAction, apiContext, page } = await performAdminLogin(browser, {
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
     navigate: true,
   });
   await commonPrerequisites({
@@ -186,49 +179,14 @@ test.beforeAll(async ({ browser }) => {
     observabilityDetailsBySource.set(detail.source, detail);
   }
 
-  webhookTableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
-  const webhookAlertCreationDetails: ObservabilityCreationDetails = {
-    source: 'table',
-    sourceDisplayName: 'Table',
-    filters: [
-      {
-        name: 'Table Name',
-        inputSelector: 'fqn-list-select',
-        inputValue: webhookTableFqn,
-      },
-    ],
-    actions: [{ name: 'Get Schema Changes' }],
-    destinations: [
-      {
-        mode: 'external',
-        category: 'Webhook',
-        inputValue: webhookEndpoint,
-      },
-    ],
-  };
-  await visitObservabilityAlertPage(page);
-  await createCommonObservabilityAlert({
-    page,
-    alertName: generateAlertName(),
-    sourceName: webhookAlertCreationDetails.source,
-    sourceDisplayName: webhookAlertCreationDetails.sourceDisplayName,
-    alertDetails: webhookAlertCreationDetails,
-    filters: webhookAlertCreationDetails.filters,
-    actions: webhookAlertCreationDetails.actions,
-  });
-  webhookAlertDetails = await saveAlertAndVerifyResponse(page);
-
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext, page } = await performAdminLogin(browser, {
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
     navigate: true,
   });
   try {
-    if (webhookAlertDetails) {
-      await deleteAlert(page, webhookAlertDetails, false);
-    }
     await commonCleanup({
       apiContext,
       table: table2,
@@ -239,7 +197,7 @@ test.afterAll(async ({ browser }) => {
     await table1.delete(apiContext);
     await pipeline.delete(apiContext);
   } finally {
-    await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
+    await afterAction();
   }
 });
 
@@ -382,10 +340,47 @@ for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
 test('delivers table schema changes to an external webhook', async ({
   page,
 }) => {
-  clearCapturedWebhookRequests();
+  test.slow();
   const { afterAction, apiContext } = await getApiContext(page);
+  let webhookAlertDetails: AlertDetails | undefined;
+  const webhookTableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
 
   try {
+    // Keep network-dependent receiver setup local so AUT routing failures cannot block unrelated
+    // observability coverage through this file's shared beforeAll hook.
+    const webhookEndpoint = await startWebhookReceiver();
+    clearCapturedWebhookRequests();
+    const webhookAlertCreationDetails: ObservabilityCreationDetails = {
+      source: 'table',
+      sourceDisplayName: 'Table',
+      filters: [
+        {
+          name: 'Table Name',
+          inputSelector: 'fqn-list-select',
+          inputValue: webhookTableFqn,
+        },
+      ],
+      actions: [{ name: 'Get Schema Changes' }],
+      destinations: [
+        {
+          mode: 'external',
+          category: 'Webhook',
+          inputValue: webhookEndpoint,
+        },
+      ],
+    };
+    await visitObservabilityAlertPage(page);
+    await createCommonObservabilityAlert({
+      page,
+      alertName: generateAlertName(),
+      sourceName: webhookAlertCreationDetails.source,
+      sourceDisplayName: webhookAlertCreationDetails.sourceDisplayName,
+      alertDetails: webhookAlertCreationDetails,
+      filters: webhookAlertCreationDetails.filters,
+      actions: webhookAlertCreationDetails.actions,
+    });
+    webhookAlertDetails = await saveAlertAndVerifyResponse(page);
+
     await table1.patch({
       apiContext,
       patchData: [
@@ -441,7 +436,13 @@ test('delivers table schema changes to an external webhook', async ({
       .expect(getAddedColumnNames(delivery.payload))
       .toContain(WEBHOOK_DELIVERY_COLUMN_NAME);
   } finally {
-    await afterAction();
+    try {
+      if (webhookAlertDetails) {
+        await deleteAlert(page, webhookAlertDetails, false);
+      }
+    } finally {
+      await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
+    }
   }
 });
 

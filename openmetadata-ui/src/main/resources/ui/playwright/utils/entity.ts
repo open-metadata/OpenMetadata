@@ -36,7 +36,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
-  removeLandingBanner,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
 } from './common';
@@ -57,6 +57,24 @@ export const waitForAllLoadersToDisappear = async (
 
   // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
+};
+
+/**
+ * Wait for the lazily-mounted entity-detail widgets to replace their Suspense
+ * fallback.
+ *
+ * The right-panel widgets — tags, glossary terms, owners, domain — are behind
+ * `React.lazy`, and while their chunk loads the boundary renders
+ * `EntityDetailWidgetSkeleton`. That skeleton is *not* `data-testid="loader"`, so
+ * `waitForAllLoadersToDisappear` returns straight past it and a test can reach
+ * for something inside those widgets before they exist. Anything the widgets own
+ * — `request-entity-tags`, for one — is simply absent until this clears, so the
+ * click waits out the whole test timeout rather than racing by a few frames.
+ */
+export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
+  await expect(
+    page.locator('[data-testid="entity-detail-widget-skeleton"]')
+  ).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
@@ -93,15 +111,6 @@ export const visitEntityPage = async (data: {
   }
 
   await waitForAllLoadersToDisappear(page);
-
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
 
   const searchResponse = page.waitForResponse(
     (response) =>
@@ -141,7 +150,6 @@ export const visitEntityPageByFqn = async (data: {
 }) => {
   const { page, endpoint, fqn } = data;
   await waitForAllLoadersToDisappear(page);
-  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
@@ -162,6 +170,7 @@ export const visitEntityPageByFqn = async (data: {
   });
   await entityDetailsResponse;
   await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const addOwner = async ({
@@ -221,10 +230,15 @@ export const addOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    const ownerItem = page.getByRole('listitem', { name: owner });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
 
     await expect
       .poll(
@@ -313,10 +327,18 @@ export const addOwnerWithoutValidation = async ({
     .fill(owner);
   await searchUser;
 
+  // Scope the option to the open picker panel — some pages (e.g. the Data
+  // Contract form) render more than one owner list, so a page-wide match is
+  // ambiguous.
+  const ownerOption = page
+    .getByTestId(`owner-select-${lowerCase(type)}-panel`)
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: owner });
+
   if (type === 'Teams') {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -348,10 +370,16 @@ export const updateOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
 
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -378,10 +406,9 @@ export const removeOwnersFromList = async ({
   await waitForAllLoadersToDisappear(page);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     await ownerItem.click();
   }
@@ -477,7 +504,7 @@ export const addMultiOwner = async (data: {
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .locator('[data-testid="owner-select-users-panel"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
@@ -497,7 +524,7 @@ export const addMultiOwner = async (data: {
 
   if (clearAll && isMultipleOwners) {
     const clearButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('clear-all-button');
 
     await clearButton.click();
@@ -522,10 +549,9 @@ export const addMultiOwner = async (data: {
       .first()
       .waitFor({ state: 'detached' });
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
 
     // Wait for the item to exist and be visible before clicking
@@ -545,7 +571,7 @@ export const addMultiOwner = async (data: {
 
   if (isMultipleOwners) {
     const updateButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {
@@ -713,9 +739,19 @@ export const updateDescription = async (
   validationContainerTestId = 'asset-description-container',
   endpoint?: EntityTypeEndpoint
 ) => {
+  // The description widget is lazy-loaded behind a Suspense skeleton that is
+  // not a [data-testid="loader"], so the generic loader wait does not cover it
+  // -- on Metric in particular the edit affordance was looked for before the
+  // widget had mounted.
+  await waitForWidgetsToRender(page);
+
   const editDescriptionButton = page.getByTestId('edit-description');
   const editButton = page.getByTestId('edit-button');
 
+  // Prefer the dedicated affordance and fall back to the generic one. These
+  // must NOT be combined with .or(): a page carries one `edit-description` but
+  // several `edit-button`s, so the union is ambiguous under strict mode where
+  // each locator alone is not.
   try {
     await expect(editDescriptionButton).toBeVisible();
     await editDescriptionButton.click();
@@ -724,9 +760,8 @@ export const updateDescription = async (
     await editButton.click();
   }
 
-  // Wait for description box to be visible and ready
-  const descBox = page.locator(descriptionBox).first();
-  await expect(descBox).toBeVisible();
+  const descBox = await resolveDescriptionBox(page);
+
   await descBox.click();
   await descBox.clear();
   await descBox.fill(description);
@@ -1190,10 +1225,25 @@ export const openColumnDetailPanel = async ({
   return panelContainer;
 };
 
-export const closeColumnDetailPanel = async (page: Page) => {
+export const closeColumnDetailPanel = async (
+  page: Page,
+  entityUrl?: string
+) => {
+  // Snapshot the column URL. If the panel reopens (bug), it navigates back to this URL.
+  const columnUrl = page.url();
   const panelContainer = page.locator('.column-detail-panel');
   await panelContainer.getByTestId('close-button').click();
 
+  // 1. Immediate visibility check.
+  await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+  // 2. Positive URL check: assert the URL has settled at the entity path, not bounced back.
+  //    Callers should pass entityUrl (the FQN-less entity path) for the strongest guard.
+  if (entityUrl) {
+    await expect(page).toHaveURL(entityUrl);
+  } else {
+    await expect(page).not.toHaveURL(columnUrl);
+  }
+  // 3. After URL has settled, verify the panel is still not visible.
   await expect(page.locator('.column-detail-panel')).not.toBeVisible();
 };
 
@@ -1528,7 +1578,6 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
-  await removeLandingBanner(page);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
   const followingWidgetPanel = await revealFollowingWidget(page);
@@ -1586,7 +1635,16 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.locator(descriptionBox).fill(data.description);
+  // Scoped to the announcement dialog, not the page: this form opens over an
+  // entity page that has description editors of its own, and an unscoped
+  // `descriptionBox` matches those too.
+  const announcementDialog = page
+    .locator('[role="dialog"]')
+    .filter({ has: page.locator('#announcement-submit') });
+  const announcementDescription = announcementDialog.locator(descriptionBox);
+
+  await expect(announcementDescription).toHaveCount(1);
+  await announcementDescription.fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
@@ -2051,13 +2109,24 @@ export const checkForEditActions = async ({
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Click the lineage tab
-  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?fqn=*');
+  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
 
   // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
+
+  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
+    await onboardingDialog.getByRole('button').click();
+    await expect(onboardingDialog).not.toBeVisible();
+  }
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
@@ -2364,9 +2433,12 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   // Click on filter dropdown
   await page.getByTestId('search-dropdown-Service Type').click();
   // assert on dropdown item visibility
-  await page.getByRole('menuitem', { name: serviceType }).waitFor();
-  // assert on checkbox state
-  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
+  await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
+  // assert on selection state
+  await expect(page.getByTestId(serviceType)).toHaveAttribute(
+    'aria-checked',
+    'true'
+  );
 
   await expect(
     page

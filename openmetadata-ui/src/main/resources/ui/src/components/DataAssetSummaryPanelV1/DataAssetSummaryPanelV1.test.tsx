@@ -77,6 +77,14 @@ jest.mock('../../hooks/useChangeSummary', () => ({
   useChangeSummary: jest.fn(),
 }));
 
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: () => ({
+    rules: [],
+    entityRules: {},
+    isFetched: true,
+  }),
+}));
+
 jest.mock('../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
@@ -239,13 +247,70 @@ jest.mock('../common/DataQualitySection/DataQualitySection', () => {
   ));
 });
 
-jest.mock('../common/OwnersSection/OwnersSection', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="owners-section">Owners Section</div>
-    ));
+/* eslint-disable @typescript-eslint/no-explicit-any */
+jest.mock('@openmetadata/ui-core-components', () => {
+  const div =
+    (testId?: string) =>
+    ({ children, ...rest }: any) =>
+      (
+        <div data-testid={testId} {...rest}>
+          {children}
+        </div>
+      );
+
+  const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
+  const TabsItem = ({ children, label, id: _id, ...rest }: any) => (
+    <button role="tab" {...rest}>
+      {label ?? children}
+    </button>
+  );
+  const TabsPanel = ({ children }: any) => (
+    <div role="tabpanel">{children}</div>
+  );
+  const Tabs = Object.assign(div(), {
+    List: TabsList,
+    Item: TabsItem,
+    Panel: TabsPanel,
+  });
+
+  return {
+    Owner: () => <div data-testid="owners-section">Owners Section</div>,
+    Button: ({ children, onPress, onClick, ...rest }: any) => (
+      <button onClick={onPress ?? onClick} {...rest}>
+        {children}
+      </button>
+    ),
+    Divider: () => <hr />,
+    Tabs,
+    Typography: ({ children, as: As = 'span', ...rest }: any) => (
+      <As {...rest}>{children}</As>
+    ),
+    Tooltip: ({ children }: any) => <>{children}</>,
+    TooltipTrigger: ({ children }: any) => <>{children}</>,
+    Badge: div(),
+    Box: div(),
+    PopoverTrigger: ({ children }: any) => <>{children}</>,
+    Popover: div(),
+    Input: ({ onChange, placeholder, value, ...rest }: any) => (
+      <input
+        placeholder={placeholder}
+        value={value ?? ''}
+        onChange={onChange}
+        {...rest}
+      />
+    ),
+    CheckboxBase: ({ isSelected }: any) => (
+      <input
+        readOnly
+        aria-label="checkbox"
+        checked={isSelected ?? false}
+        type="checkbox"
+      />
+    ),
+    Avatar: ({ name, ...rest }: any) => <span {...rest}>{name}</span>,
+  };
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 jest.mock('../common/DomainsSection/DomainsSection', () => {
   return jest
@@ -431,7 +496,11 @@ describe('DataAssetSummaryPanelV1', () => {
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
     (getEntityOverview as jest.Mock).mockImplementation(
-      (_entityType: any, _dataAsset: any, additionalInfo: any) => [
+      (
+        _entityType: unknown,
+        _dataAsset: unknown,
+        additionalInfo: { incidentCount?: number }
+      ) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
         { name: 'Rows', value: 1000, visible: ['explore'] },
         { name: 'Columns', value: 15, visible: ['explore'] },
@@ -907,6 +976,49 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+      });
+    });
+
+    it('denies description edit when EditDescription is explicitly false, even with EditAll true', async () => {
+      // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+      // a `true` EditAll, not be overridden by it.
+      const explicitDenyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: false,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(explicitDenyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-section')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('update-description-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('grants description edit via EditAll when EditDescription is absent', async () => {
+      const editAllOnlyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(editAllOnlyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('update-description-btn')
+        ).toBeInTheDocument();
       });
     });
   });

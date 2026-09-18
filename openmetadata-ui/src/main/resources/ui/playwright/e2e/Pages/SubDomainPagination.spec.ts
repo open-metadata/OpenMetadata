@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   checkSubDomainCount,
@@ -22,6 +22,7 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -32,14 +33,17 @@ const SUBDOMAIN_COUNT = 60;
 const PAGE_SIZE = 9;
 
 test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  test.slow(true);
-
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await domain.create(apiContext);
+    await waitForSearchIndexed(
+      apiContext,
+      domain.data.fullyQualifiedName,
+      'domain_search_index'
+    );
 
     const createPromises = [];
     for (let i = 1; i <= SUBDOMAIN_COUNT; i++) {

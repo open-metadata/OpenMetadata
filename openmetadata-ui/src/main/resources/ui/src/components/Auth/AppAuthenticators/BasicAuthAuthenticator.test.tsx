@@ -21,6 +21,16 @@ const getAccessTokenOnExpiry = jest.fn();
 const getRefreshToken = jest.fn();
 const setOidcToken = jest.fn();
 const setRefreshToken = jest.fn();
+const updateRenewToken = jest.fn();
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
+    }),
+  },
+}));
 
 jest.mock('../AuthProviders/BasicAuthProvider', () => ({
   useBasicAuth: () => ({ handleLogout }),
@@ -161,5 +171,33 @@ describe('BasicAuthenticator', () => {
 
     expect(setOidcToken).toHaveBeenCalledWith('access-token');
     expect(result).toEqual(response);
+  });
+
+  // Regression: the parent AuthProvider used to register the renewer via a
+  // ref-deps useEffect (`[authenticatorRef.current?.renewIdToken]`), which
+  // never re-ran after the lazy authenticator finished loading — cold-load
+  // 401s raced ahead and TokenService.refreshToken() returned null without
+  // ever firing the `/api/v1/auth/refresh` HTTP call. Registration now
+  // lives in each authenticator's own mount effect.
+  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      isApplicationLoading: false,
+      authConfig: { provider: AuthProvider.Basic },
+    });
+    const { unmount } = render(
+      <BasicAuthenticator ref={null}>
+        <div>Child</div>
+      </BasicAuthenticator>
+    );
+
+    expect(updateRenewToken).toHaveBeenCalled();
+
+    const registered = updateRenewToken.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    unmount();
+
+    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
   });
 });

@@ -17,7 +17,6 @@ import traceback
 from datetime import datetime
 from functools import singledispatch
 from io import BytesIO
-from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
@@ -72,7 +71,7 @@ def _get_object_key(table: Table, prefix: str, overwrite_data: bool, file_path_f
 def upload_sample_data(
     data: TableData,
     entity: Table,
-    sample_storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
+    sample_storage_config: DataStorageConfig | None = None,
 ) -> None:
     """
     Upload Sample data to storage config

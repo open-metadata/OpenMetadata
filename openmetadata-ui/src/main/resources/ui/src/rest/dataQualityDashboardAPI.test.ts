@@ -454,7 +454,7 @@ describe('dataQualityDashboardAPI', () => {
       func: fetchTestCaseSummaryByDimension,
       index: 'testCase',
       aggregationQuery:
-        'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+        'bucketName=dimension:aggType=terms:field=dataQualityDimensionName,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
     },
   ];
 
@@ -533,6 +533,42 @@ describe('dataQualityDashboardAPI', () => {
         }),
         index: 'testCase',
         aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+        domain: undefined,
+      });
+    });
+  });
+
+  describe('fetchTestCaseSummary status filtering', () => {
+    it('should send a terms query to the batch report for multiple statuses', async () => {
+      const statuses = [TestCaseStatus.Success, TestCaseStatus.Queued];
+      const { buildDataQualityDashboardFilters: actualBuildFilters } =
+        jest.requireActual(
+          '../utils/DataQuality/DataQualityPureUtils'
+        ) as typeof import('../utils/DataQuality/DataQualityPureUtils');
+      (buildDataQualityDashboardFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchTestCaseSummary({ testCaseStatus: statuses });
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  terms: {
+                    'testCaseResult.testCaseStatus': statuses,
+                  },
+                },
+                { term: { deleted: false } },
+              ],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery:
+          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
         domain: undefined,
       });
     });
@@ -644,7 +680,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -675,7 +711,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [ownerFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -713,7 +749,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tagsFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -744,7 +780,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tierFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -789,7 +825,7 @@ describe('dataQualityDashboardAPI', () => {
           query: {
             bool: {
               must: [tagsFilter, tierFilter],
-              must_not: [{ exists: { field: 'dataQualityDimension' } }],
+              must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
             },
           },
         }),
@@ -809,7 +845,7 @@ describe('dataQualityDashboardAPI', () => {
             query: {
               bool: {
                 must: [],
-                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+                must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
               },
             },
           }),
@@ -827,7 +863,7 @@ describe('dataQualityDashboardAPI', () => {
             query: {
               bool: {
                 must: [],
-                must_not: [{ exists: { field: 'dataQualityDimension' } }],
+                must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
               },
             },
           }),

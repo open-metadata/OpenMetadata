@@ -13,8 +13,9 @@
 Validator Mixin for SQA tests cases
 """
 
+from collections.abc import Callable
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, cast  # noqa: UP035
+from typing import Any, cast
 
 from sqlalchemy import (
     Column,
@@ -75,7 +76,7 @@ class DataQualityQueryType(Enum):
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
 
-    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> Column:  # noqa: UP045
+    def get_column(self: HasValidatorContext, column_name: str | None = None) -> Column:
         """Get column object for the given column name
 
         Args:
@@ -96,7 +97,7 @@ class SQAValidatorMixin:
         )
 
     @staticmethod
-    def get_column_from_list(entity_link: str, columns: List) -> Column:  # noqa: UP006
+    def get_column_from_list(entity_link: str, columns: list) -> Column:
         """Given a column name get the column object
 
         Args:
@@ -117,9 +118,9 @@ class SQAValidatorMixin:
         self,
         runner: QueryRunner,
         metric: Metrics,
-        column: Optional[Column] = None,  # noqa: UP045
-        **kwargs: Optional[Any],  # noqa: UP045
-    ) -> Optional[int]:  # noqa: UP045
+        column: Column | None = None,
+        **kwargs: Any | None,
+    ) -> int | None:
         """Run the metric query against the column
 
         Args:
@@ -230,10 +231,10 @@ class SQAValidatorMixin:
     def _get_metrics_query(
         source: Any,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
+        metric_expressions: dict[str, ClauseElement],
         query_type: DataQualityQueryType,
-        filter_clause: Optional[ColumnElement] = None,  # noqa: UP045
-        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
+        filter_clause: ColumnElement | None = None,
+        failed_count_builder: Callable | None = None,
         top_n: int = DEFAULT_TOP_DIMENSIONS,
     ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
@@ -312,12 +313,12 @@ class SQAValidatorMixin:
         self: HasValidatorContext,
         source: FromClause,
         dimension_expr: ColumnElement,
-        metric_expressions: Dict[str, ClauseElement],  # noqa: UP006
-        failed_count_builder: Optional[Callable] = None,  # noqa: UP045
-        others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,  # noqa: UP006, UP045
-        others_metric_expressions_builder: Optional[Callable[[FromClause], Dict[str, ClauseElement]]] = None,  # noqa: UP006, UP045
+        metric_expressions: dict[str, ClauseElement],
+        failed_count_builder: Callable | None = None,
+        others_source_builder: Callable[[list[str]], FromClause] | None = None,
+        others_metric_expressions_builder: Callable[[FromClause], dict[str, ClauseElement]] | None = None,
         top_n: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[Dict[str, Any]]:  # noqa: UP006
+    ) -> list[dict[str, Any]]:
         """Execute two-pass dimensional validation with metrics.
 
         Pass 1: Get top N+1 dimensions with full metrics

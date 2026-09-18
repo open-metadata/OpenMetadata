@@ -17,6 +17,7 @@ import {
   clickOutside,
   createNewPage,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -138,7 +139,10 @@ test('Query Entity', async ({ page }) => {
       queryData.owner
     );
     await searchOwnerResponse;
-    await page.click(`.ant-popover [title="${queryData.owner}"]`);
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: queryData.owner })
+      .click();
     const updateOwnerResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -153,7 +157,7 @@ test('Query Entity', async ({ page }) => {
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
-    await page.locator(descriptionBox).fill('updated description');
+    await fillDescriptionBox(page, 'updated description');
     const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&

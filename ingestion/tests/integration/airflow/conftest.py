@@ -26,7 +26,7 @@ import requests
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.docker_client import DockerClient
 
-AIRFLOW_BASE_IMAGE = "apache/airflow:3.3.0-python3.10"
+AIRFLOW_BASE_IMAGE = "apache/airflow:3.3.1-python3.10"
 AIRFLOW_TEST_IMAGE = "om-airflow-lineage-test:local"
 
 # Fixed network name declared by docker/development/docker-compose.yml, so the container

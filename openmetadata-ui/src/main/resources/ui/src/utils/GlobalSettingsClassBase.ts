@@ -14,6 +14,7 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
+import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -434,6 +435,13 @@ class GlobalSettingsClassBase {
             icon: ProfilerConfigIcon,
           },
           {
+            label: t('label.data-quality'),
+            description: t('message.page-sub-header-for-data-quality-settings'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_QUALITY}`,
+            icon: ProfilerConfigIcon,
+          },
+          {
             label: t('label.search'),
             description: t('message.page-sub-header-for-search-setting'),
             isProtected: Boolean(isAdminUser),
@@ -679,6 +687,13 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LEARNING_RESOURCES}`,
             icon: LearningIcon,
+          },
+          {
+            label: t('label.default-app-mode'),
+            description: t('message.default-app-mode-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
+            icon: AppModeIcon,
           },
         ],
       },

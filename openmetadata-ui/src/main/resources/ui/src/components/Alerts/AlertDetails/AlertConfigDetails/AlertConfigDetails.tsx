@@ -41,7 +41,9 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
+import DestinationFormItemFormBridge, {
+  DestinationFormFieldRegistrar,
+} from '../../DestinationFormItem/DestinationFormItemFormBridge';
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
@@ -56,6 +58,10 @@ function AlertConfigDetails({
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const resources = Form.useWatch('resources', form);
+  const destinations = Form.useWatch('destinations', form);
+  const timeout = Form.useWatch('timeout', form);
+  const readTimeout = Form.useWatch('readTimeout', form);
   const { getResourcePermission } = usePermissionProvider();
   const modifiedAlertData =
     alertsClassBase.getModifiedAlertDataForForm(alertDetails);
@@ -70,19 +76,23 @@ function AlertConfigDetails({
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const { supportedFilters, supportedTriggers, containerEntities } =
-    useMemo(() => {
-      const resource = filterResources.find(
-        (resource) =>
-          resource.name === alertDetails.filteringRules?.resources[0]
-      );
+  const {
+    supportedFilters,
+    supportedTriggers,
+    containerEntities,
+    supportedEventTypes,
+  } = useMemo(() => {
+    const resource = filterResources.find(
+      (resource) => resource.name === alertDetails.filteringRules?.resources[0]
+    );
 
-      return {
-        supportedFilters: resource?.supportedFilters,
-        supportedTriggers: resource?.supportedActions,
-        containerEntities: resource?.containerEntities,
-      };
-    }, [filterResources, alertDetails]);
+    return {
+      supportedFilters: resource?.supportedFilters,
+      supportedTriggers: resource?.supportedActions,
+      containerEntities: resource?.containerEntities,
+      supportedEventTypes: resource?.supportedEventTypes,
+    };
+  }, [filterResources, alertDetails]);
 
   const fetchFunctions = useCallback(async () => {
     try {
@@ -173,6 +183,7 @@ function AlertConfigDetails({
               <ObservabilityFormFiltersItem
                 isViewMode
                 containerEntities={containerEntities}
+                supportedEventTypes={supportedEventTypes}
                 supportedFilters={supportedFilters}
               />
             </Col>
@@ -195,7 +206,25 @@ function AlertConfigDetails({
           <Divider dashed type="vertical" />
         </Col>
         <Col span={24}>
-          <DestinationFormItem isViewMode />
+          <DestinationFormItemFormBridge
+            isViewMode
+            renderValidationField={(validate) => (
+              <Form.Item
+                hidden
+                name="destinations"
+                rules={[{ validator: validate }]}>
+                <DestinationFormFieldRegistrar />
+              </Form.Item>
+            )}
+            values={{ destinations, readTimeout, resources, timeout }}
+            onChange={(values) => {
+              // Keep this adapter replacement-based even in view mode so the
+              // core form cannot be rehydrated with stale nested config.
+              Object.entries(values).forEach(([name, value]) =>
+                form.setFieldValue(name, value)
+              );
+            }}
+          />
         </Col>
         {!isEmpty(extraFormWidgets) && (
           <>

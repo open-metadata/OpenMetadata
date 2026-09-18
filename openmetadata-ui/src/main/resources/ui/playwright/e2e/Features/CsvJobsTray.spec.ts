@@ -76,7 +76,7 @@ const openTray = async (page: Page) => {
 test.describe('CsvJobsTray', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-    await page.goto('/metrics');
+    await page.goto('/metrics', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/metrics/);
   });
 
@@ -278,6 +278,25 @@ test.describe('CsvJobsTray', () => {
     ]);
 
     await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
+  });
+
+  test('auto-opens the tray for download when the poll completes it, minimised and multi-pod', async ({
+    page,
+  }) => {
+    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
+    await activateJobsTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
+    await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible();
+
+    await mockJobsApi(page, [
+      { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
+    ]);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();

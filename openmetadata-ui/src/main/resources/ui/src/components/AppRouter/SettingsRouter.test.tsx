@@ -189,169 +189,109 @@ jest.mock('./AdminProtectedRoute', () => ({
   default: jest.fn().mockImplementation(({ children }) => children),
 }));
 
-describe.skip('SettingsRouter', () => {
-  it('should render GlobalSettingPage component for exact settings route', async () => {
+describe('SettingsRouter', () => {
+  // SettingsRouter declares its routes relative to ROUTES.SETTINGS (the `/settings` prefix is
+  // stripped off each path), so it only resolves them when mounted under a parent route that
+  // consumes that prefix — rendering it bare at `/settings/...` matches nothing.
+  const renderAtSettingsPath = (entry: string) =>
     render(
-      <MemoryRouter initialEntries={['/settings']}>
-        <SettingsRouter />
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route element={<SettingsRouter />} path="/settings/*" />
+        </Routes>
       </MemoryRouter>
     );
+
+  it('should render GlobalSettingPage component for exact settings route', async () => {
+    renderAtSettingsPath('/settings');
 
     expect(await screen.findByText('GlobalSettingPage')).toBeInTheDocument();
   });
 
   it('should render AddRolePage component for add role route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_ROLE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_ROLE);
 
     expect(await screen.findByText('AddRolePage')).toBeInTheDocument();
   });
 
   it('should render RolesDetailPage component for roles details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/roles/testRole`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/roles/testRole');
 
     expect(await screen.findByText('RolesDetailPage')).toBeInTheDocument();
   });
 
   it('should render RolesListPage component for roles list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/roles`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/roles');
 
     expect(await screen.findByText('RolesListPage')).toBeInTheDocument();
   });
 
   it('should render AddPolicyPage component for add policy route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_POLICY]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_POLICY);
 
     expect(await screen.findByText('AddPolicyPage')).toBeInTheDocument();
   });
 
   it('should render AddRulePage component for add rule route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.ADD_POLICY_RULE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.ADD_POLICY_RULE);
 
     expect(await screen.findByText('AddRulePage')).toBeInTheDocument();
   });
 
   it('should render EditRulePage component for edit rule route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.EDIT_POLICY_RULE]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.EDIT_POLICY_RULE);
 
     expect(await screen.findByText('EditRulePage')).toBeInTheDocument();
   });
 
   it('should render PoliciesDetailPage component for policies details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/access/policies/testPolicy`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/policies/testPolicy');
 
     expect(await screen.findByText('PoliciesDetailPage')).toBeInTheDocument();
   });
 
   it('should render PoliciesListPage component for policies list route', async () => {
-    render(
-      <MemoryRouter initialEntries={['/settings/access/policies']}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/access/policies');
 
     expect(await screen.findByText('PoliciesListPage')).toBeInTheDocument();
   });
 
   it('should render UserListPageV1 component for user list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/members/users`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/members/users');
 
     expect(await screen.findByText('UserListPageV1')).toBeInTheDocument();
   });
 
   it('should render ServicesPage component for services route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/services/databases`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/services/databases');
 
     expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
   });
 
   it('should render TeamsPage component for teams route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/members/teams/Organization`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/members/teams/Organization');
 
     expect(await screen.findByText('TeamsPage')).toBeInTheDocument();
   });
 
   it('should render ImportTeamsPage component for import teams route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[
-          `/settings/members/teams/Organization/import?type=teams`,
-        ]}>
-        <SettingsRouter />
-      </MemoryRouter>
+    renderAtSettingsPath(
+      '/settings/members/teams/Organization/import?type=teams'
     );
 
     expect(await screen.findByText('ImportTeamsPage')).toBeInTheDocument();
   });
 
   it('should render CustomPropertiesPageV1 component for custom properties route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/customProperties/table`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/customProperties/table');
 
     expect(
       await screen.findByText('CustomPropertiesPageV1')
     ).toBeInTheDocument();
   });
 
-  it.skip('should render CustomPageSettings component for custom page settings route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[`/settings/preferences/customizeLandingPage`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('CustomPageSettings')).toBeInTheDocument();
-  });
-
   it('should render EmailConfigSettingsPage component for email config settings route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/preferences/email`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/preferences/email');
 
     expect(
       await screen.findByText('EmailConfigSettingsPage')
@@ -359,22 +299,13 @@ describe.skip('SettingsRouter', () => {
   });
 
   it('should render EditEmailConfigPage component for edit email config route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.SETTINGS_EDIT_EMAIL_CONFIG]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.SETTINGS_EDIT_EMAIL_CONFIG);
 
     expect(await screen.findByText('EditEmailConfigPage')).toBeInTheDocument();
   });
 
   it('should render LoginConfigurationPage component for login configuration details route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[`/settings/preferences/loginConfiguration`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/preferences/loginConfiguration');
 
     expect(
       await screen.findByText('LoginConfigurationPage')
@@ -382,11 +313,7 @@ describe.skip('SettingsRouter', () => {
   });
 
   it('should render EditLoginConfigurationPage component for edit login configuration route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG);
 
     expect(
       await screen.findByText('EditLoginConfigurationPage')
@@ -394,79 +321,50 @@ describe.skip('SettingsRouter', () => {
   });
 
   it('should render NotificationListPage component for notification list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.NOTIFICATION_ALERTS]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_LIST);
 
     expect(await screen.findByText('NotificationListPage')).toBeInTheDocument();
   });
 
   it('should render AddNotificationPage component for add notification route', async () => {
-    render(
-      <MemoryRouter initialEntries={[ROUTES.EDIT_NOTIFICATION_ALERTS]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.EDIT_NOTIFICATION_ALERTS);
 
     expect(await screen.findByText('AddNotificationPage')).toBeInTheDocument();
   });
 
   it('should render PersonaPage component for persona list route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/persona`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/persona');
 
     expect(await screen.findByText('PersonaPage')).toBeInTheDocument();
   });
 
   it('should render PersonaDetailsPage component for persona details route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/persona/testPersona`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/persona/testPersona');
 
     expect(await screen.findByText('PersonaDetailsPage')).toBeInTheDocument();
   });
 
   it('should render BotsPageV1 component for bots route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/bots`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/bots');
 
     expect(await screen.findByText('BotsPageV1')).toBeInTheDocument();
   });
 
   it('should render ApplicationPage component for application route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/apps`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath('/settings/apps');
 
     expect(await screen.findByText('ApplicationPage')).toBeInTheDocument();
   });
 
   it('should render AlertDetailsPage component for alert details route', async () => {
-    render(
-      <MemoryRouter
-        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
+    renderAtSettingsPath(ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB);
 
     expect(await screen.findByText('AlertDetailsPage')).toBeInTheDocument();
   });
 });
 
-// The suite above is `describe.skip` at HEAD, so a case added there would never execute. This
-// block is separate so the route guard is actually exercised.
+// Kept as a separate suite because it additionally mounts a sibling `/404` route and spies on
+// connectionsRouterClassBase to exercise the services route guard end to end.
 describe('SettingsRouter services routes', () => {
   const renderAt = (entry: string) =>
     render(

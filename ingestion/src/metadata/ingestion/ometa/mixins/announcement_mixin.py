@@ -15,7 +15,6 @@ Mixin class containing announcement specific methods.
 from __future__ import annotations
 
 import json
-from typing import List, Optional, Union  # noqa: UP035
 from uuid import UUID  # noqa: TC003
 
 from metadata.generated.schema.api.data.restoreEntity import RestoreEntity
@@ -39,15 +38,15 @@ class OMetaAnnouncementMixin:
 
     def list_announcements(
         self,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        entity_link: Optional[str] = None,  # noqa: UP045
-        status: Optional[AnnouncementStatus] = None,  # noqa: UP045
-        active: Optional[bool] = None,  # noqa: UP045
-        domain: Optional[str] = None,  # noqa: UP045
+        fields: list[str] | None = None,
+        entity_link: str | None = None,
+        status: AnnouncementStatus | None = None,
+        active: bool | None = None,
+        domain: str | None = None,
         limit: int = 10,
-        before: Optional[str] = None,  # noqa: UP045
-        after: Optional[str] = None,  # noqa: UP045
-        include: Optional[str] = None,  # noqa: UP045
+        before: str | None = None,
+        after: str | None = None,
+        include: str | None = None,
     ) -> EntityList[Announcement]:
         params = {"limit": str(limit)}
         if fields:
@@ -77,9 +76,9 @@ class OMetaAnnouncementMixin:
 
     def get_announcement(
         self,
-        announcement_id: Union[str, UUID],  # noqa: UP007
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        include: Optional[str] = None,  # noqa: UP045
+        announcement_id: str | UUID,
+        fields: list[str] | None = None,
+        include: str | None = None,
     ) -> Announcement:
         query = []
         if fields:
@@ -93,8 +92,8 @@ class OMetaAnnouncementMixin:
     def get_announcement_by_name(
         self,
         fqn: str,
-        fields: Optional[List[str]] = None,  # noqa: UP006, UP045
-        include: Optional[str] = None,  # noqa: UP045
+        fields: list[str] | None = None,
+        include: str | None = None,
     ) -> Announcement:
         query = []
         if fields:
@@ -119,18 +118,18 @@ class OMetaAnnouncementMixin:
         )
         return Announcement.model_validate(resp)
 
-    def patch_announcement(self, announcement_id: Union[str, UUID], patch: list[dict]) -> Announcement:  # noqa: UP007
+    def patch_announcement(self, announcement_id: str | UUID, patch: list[dict]) -> Announcement:
         resp = self.client.patch(
             f"{self._announcements_path}/{model_str(announcement_id)}",
             json.dumps(patch),
         )
         return Announcement.model_validate(resp)
 
-    def delete_announcement(self, announcement_id: Union[str, UUID], hard_delete: bool = False) -> None:  # noqa: UP007
+    def delete_announcement(self, announcement_id: str | UUID, hard_delete: bool = False) -> None:
         suffix = "?hardDelete=true" if hard_delete else ""
         self.client.delete(f"{self._announcements_path}/{model_str(announcement_id)}{suffix}")
 
-    def restore_announcement(self, announcement_id: Union[str, UUID]) -> Announcement:  # noqa: UP007
+    def restore_announcement(self, announcement_id: str | UUID) -> Announcement:
         resp = self.client.put(
             f"{self._announcements_path}/restore",
             RestoreEntity(id=model_str(announcement_id)).model_dump_json(

@@ -11,17 +11,27 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isEqual, uniqWith } from 'lodash';
+import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
+import type { Bucket } from 'Models';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
+import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
+import {
+  getOptionsFromAggregationBucket,
+  getQuickFilterLabelFormatter,
+  getQuickFilterSourceFields,
+} from '../../utils/AdvancedSearchPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
   getCombinedQueryFilterObject,
@@ -34,14 +44,10 @@ import {
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
-import { EntityIconSize } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
-import { ExploreSearchIndex } from './ExplorePage.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
-import QuickFilterDropdown from './QuickFilterDropdown';
 
 const ENTITY_TYPE_FILTER_KEYS: ReadonlySet<string> = new Set([
   EntityFields.ENTITY_TYPE,
@@ -57,29 +63,48 @@ const formatEntityTypeLabel = (value: string): string =>
 const getOptionLabelFormatter = (
   key: string,
   skipEntityTypeLabel = false
-): ((value: string) => string) | undefined =>
-  ENTITY_TYPE_FILTER_KEYS.has(key) && !skipEntityTypeLabel
-    ? formatEntityTypeLabel
-    : undefined;
+): ((value: string) => string) | undefined => {
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return skipEntityTypeLabel ? undefined : formatEntityTypeLabel;
+  }
 
-const addEntityTypeIcons = (
+  return getQuickFilterLabelFormatter(key);
+};
+
+const addOptionIcons = (
   key: string,
   opts: SearchDropdownOption[]
 ): SearchDropdownOption[] => {
-  if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
-    return opts;
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        searchClassBase.getEntityIconWithBg(
+          getCanonicalEntityType(opt.key),
+          EntityIconSize.Size14
+        ) ?? undefined,
+    }));
   }
 
-  return opts.map((opt) => ({
-    ...opt,
-    icon:
-      searchClassBase.getEntityIcon(
-        getCanonicalEntityType(opt.key),
-        '',
-        {},
-        EntityIconSize.Size16
-      ) ?? undefined,
-  }));
+  if (key === EntityFields.SERVICE_TYPE) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        getServiceLogo(opt.key, 'tw:size-3.5 tw:object-contain') ?? undefined,
+    }));
+  }
+
+  if (key === EntityFields.DOMAINS) {
+    const domainIcon =
+      searchClassBase.getEntityIconWithBg(
+        EntityType.DOMAIN,
+        EntityIconSize.Size14
+      ) ?? undefined;
+
+    return opts.map((opt) => ({ ...opt, icon: domainIcon }));
+  }
+
+  return opts;
 };
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -90,7 +115,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
-  showSelectedCounts = false,
   optionPageSize,
   additionalActions,
   immediateApply = false,
@@ -100,17 +124,20 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  const { t } = useTranslation();
+
+  // Every dropdown writes into this one `options` state, so only the newest
+  // fetch may write — otherwise a late response repaints the dropdown that
+  // opened after it with the previous field's values.
+  const optionsRequestIdRef = useRef(0);
+  const startOptionsRequest = () => ++optionsRequestIdRef.current;
+  const isLatestOptionsRequest = (requestId: number) =>
+    requestId === optionsRequestIdRef.current;
   const { queryFilter } = useAdvanceSearch();
   const { isNLPActive } = useSearchStore();
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
-  );
-  const getExploreDropdownPopupContainer = useCallback(
-    // Keep legacy Explore filter overlays tied to the trigger subtree so they
-    // are removed with the page during route changes.
-    (triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
-    []
   );
 
   const { showDeleted, searchText } = useMemo(() => {
@@ -125,12 +152,6 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       searchText: (parsed.search as string) ?? '',
     };
   }, [location.search]);
-
-  // Get first index for display in SearchDropdown (which expects single index)
-  const displayIndex = useMemo(
-    () => (Array.isArray(index) ? index[0] : index),
-    [index]
-  );
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),
@@ -168,15 +189,124 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [fields, showDeleted, queryFilter, defaultQueryFilter]
   );
 
+  // Initial (no search text) options per facet, keyed by everything that can
+  // change the facet's result — reopening a filter is instant, as it was when
+  // these came from the page aggregations, instead of re-running a top_hits
+  // aggregation per open. A context change (another selected value, deleted
+  // toggle, index, browse path) changes the key, so stale entries are simply
+  // never read again; the cap keeps abandoned contexts from accumulating.
+  const initialOptionsCacheRef = useRef(
+    new Map<string, SearchDropdownOption[]>()
+  );
+  const INITIAL_OPTIONS_CACHE_MAX = 50;
+  const getInitialOptionsCacheKey = (key: string) =>
+    [
+      key,
+      String(index),
+      String(showDeleted),
+      // NLP mode routes the aggregation to a different endpoint entirely, so
+      // options fetched in one mode must not answer opens in the other.
+      String(isNLPActive),
+      searchText ?? '',
+      JSON.stringify(getFacetQueryFilter(key) ?? {}),
+    ].join('::');
+
+  const buildBucketOptions = (
+    buckets: Bucket[],
+    key: string,
+    sourceFields?: string
+  ) =>
+    addOptionIcons(
+      key,
+      uniqWith(
+        getOptionsFromAggregationBucket(
+          buckets,
+          getOptionLabelFormatter(key, untitledDropdown),
+          sourceFields
+        ),
+        isEqual
+      )
+    );
+
+  // Staged selections outlive the shared options list: a search after staging
+  // repaints `options`, so at Apply time the staged key's option object (label,
+  // count) may be gone from both the field value and the current list. Remember
+  // every option published for a field so the commit keeps its label.
+  const seenOptionsRef = useRef(new Map<string, SearchDropdownOption>());
+  const SEEN_OPTIONS_CACHE_MAX = 500;
+  const publishOptions = (key: string, opts: SearchDropdownOption[]) => {
+    const seen = seenOptionsRef.current;
+    opts.forEach((option) => {
+      // Delete-then-set keeps insertion order as recency order, so eviction
+      // below drops the oldest entries first instead of wiping the map — a
+      // staged key's entry is recent (published when the user picked it) and
+      // survives far longer than under a full clear.
+      const seenKey = `${key}::${option.key}`;
+      seen.delete(seenKey);
+      seen.set(seenKey, option);
+    });
+    while (seen.size > SEEN_OPTIONS_CACHE_MAX) {
+      seen.delete(seen.keys().next().value as string);
+    }
+    setOptions(opts);
+  };
+
+  /** Initial options for one facet, answered from the per-context cache when
+   *  this exact facet context has been fetched before. */
+  const getCachedInitialOptions = async (
+    key: string,
+    searchIndexToUse: SearchIndex | SearchIndex[],
+    searchKeyToUse: string,
+    sourceFields?: string
+  ): Promise<SearchDropdownOption[]> => {
+    const cacheKey = getInitialOptionsCacheKey(key);
+    const cached = initialOptionsCacheRef.current.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const res = await getAggregationOptions(
+      searchIndexToUse,
+      searchKeyToUse,
+      '',
+      JSON.stringify(getFacetQueryFilter(key)),
+      independent,
+      showDeleted,
+      optionPageSize,
+      isNLPActive,
+      searchText,
+      sourceFields
+    );
+    const options = buildBucketOptions(
+      res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [],
+      key,
+      sourceFields
+    );
+    // Never cache an empty list: several flows assign a tag or tier and open
+    // the filter before the search index has caught up, so an empty response
+    // is often just eventual consistency. Caching it would pin the facet
+    // empty for the rest of the page; refetching an empty facet is cheap.
+    if (options.length > 0) {
+      if (initialOptionsCacheRef.current.size >= INITIAL_OPTIONS_CACHE_MAX) {
+        initialOptionsCacheRef.current.clear();
+      }
+      initialOptionsCacheRef.current.set(cacheKey, options);
+    }
+
+    return options;
+  };
+
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string,
+    requestId: number,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      publishOptions(key, addOptionIcons(key, staticOptions));
 
       return;
     }
@@ -191,50 +321,41 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // field has a value to exclude from its own facet — even when only the
     // browse filter is active. A per-facet fetch is only needed once a field
     // value must be excluded from its own aggregation.
-    const canUsePageAggregations = !hasSelectedFieldValues;
-
-    let buckets = canUsePageAggregations
+    const canUsePageAggregations = !hasSelectedFieldValues && !sourceFields;
+    const pageBuckets = canUsePageAggregations
       ? aggregations?.[key]?.buckets
       : undefined;
-    if (!buckets) {
-      const res = await getAggregationOptions(
-        searchIndexToUse,
-        searchKeyToUse,
-        '',
-        JSON.stringify(getFacetQueryFilter(key)),
-        independent,
-        showDeleted,
-        optionPageSize,
-        isNLPActive,
-        searchText
-      );
+    if (pageBuckets) {
+      if (isLatestOptionsRequest(requestId)) {
+        publishOptions(key, buildBucketOptions(pageBuckets, key, sourceFields));
+      }
 
-      buckets =
-        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
+      return;
     }
 
-    setOptions(
-      addEntityTypeIcons(
-        key,
-        uniqWith(
-          getOptionsFromAggregationBucket(
-            buckets,
-            getOptionLabelFormatter(key, untitledDropdown)
-          ),
-          isEqual
-        )
-      )
+    const options = await getCachedInitialOptions(
+      key,
+      searchIndexToUse,
+      searchKeyToUse,
+      sourceFields
     );
+    if (isLatestOptionsRequest(requestId)) {
+      publishOptions(key, options);
+    }
   };
 
   const getInitialOptions = async (
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
+    const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      publishOptions(key, addOptionIcons(key, staticOptions));
+      // Owns the newest request, so no in-flight fetch will clear the loader.
+      setIsOptionsLoading(false);
 
       return;
     }
@@ -242,11 +363,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setIsOptionsLoading(true);
     setOptions([]);
     try {
-      await fetchDefaultOptions(index, key, fieldSearchIndex, fieldSearchKey);
+      await fetchDefaultOptions(
+        index,
+        key,
+        requestId,
+        fieldSearchIndex,
+        fieldSearchKey,
+        sourceFields
+      );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (isLatestOptionsRequest(requestId)) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
@@ -254,8 +386,10 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     value: string,
     key: string,
     fieldSearchIndex?: SearchIndex,
-    fieldSearchKey?: string
+    fieldSearchKey?: string,
+    sourceFields?: string
   ) => {
+    const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
       const filteredOptions = value
@@ -263,7 +397,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(addEntityTypeIcons(key, filteredOptions));
+      publishOptions(key, addOptionIcons(key, filteredOptions));
+      // Owns the newest request, so no in-flight fetch will clear the loader.
+      setIsOptionsLoading(false);
 
       return;
     }
@@ -272,7 +408,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     setOptions([]);
     try {
       if (!value) {
-        getInitialOptions(key, fieldSearchIndex, fieldSearchKey);
+        getInitialOptions(key, fieldSearchIndex, fieldSearchKey, sourceFields);
 
         return;
       }
@@ -289,96 +425,178 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         showDeleted,
         undefined,
         isNLPActive,
-        searchText
+        searchText,
+        sourceFields
       );
 
       const buckets =
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
-      setOptions(
-        addEntityTypeIcons(
+
+      if (!isLatestOptionsRequest(requestId)) {
+        return;
+      }
+
+      publishOptions(
+        key,
+        addOptionIcons(
           key,
           uniqWith(
             getOptionsFromAggregationBucket(
               buckets,
-              getOptionLabelFormatter(key, untitledDropdown)
+              getOptionLabelFormatter(key, untitledDropdown),
+              sourceFields
             ),
             isEqual
           )
         )
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (isLatestOptionsRequest(requestId)) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
+  // The legacy dropdowns debounced their own search input; FilterSelect
+  // reports every keystroke, so debounce here before hitting aggregations.
+  const getFilterOptionsRef = useRef(getFilterOptions);
+  getFilterOptionsRef.current = getFilterOptions;
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(
+        (
+          value: string,
+          key: string,
+          fieldSearchIndex?: SearchIndex,
+          fieldSearchKey?: string,
+          sourceFields?: string
+        ) =>
+          getFilterOptionsRef.current(
+            value,
+            key,
+            fieldSearchIndex,
+            fieldSearchKey,
+            sourceFields
+          ),
+        500
+      ),
+    []
+  );
+
+  // A keystroke still pending when its dropdown closes would start a *newer*
+  // request than the next dropdown's initial fetch and outrun the request-id
+  // guard, repainting the shared options with the wrong field's values.
+  useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
   return (
-    <Space wrap className="explore-quick-filters-container" size={[8, 8]}>
+    <div className="explore-quick-filters-container tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:mt-1">
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
         );
         const dropdownOptions = field.options ?? options ?? [];
+        const label = translateWithNestedKeys(
+          field.label,
+          field.labelKeyOptions
+        );
+        const selectedOptions = field.value ?? [];
+        const nullOption = hasNullOption
+          ? {
+              value: NULL_OPTION_KEY,
+              label: t('label.no-entity', { entity: label }),
+            }
+          : undefined;
 
-        return untitledDropdown ? (
-          <QuickFilterDropdown
-            hasNullOption={hasNullOption}
-            hideCounts={field.hideCounts ?? false}
-            hideSearchBar={field.hideSearchBar ?? false}
-            independent={independent}
-            isSuggestionsLoading={isOptionsLoading}
-            key={field.key}
-            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
-            options={dropdownOptions}
-            searchKey={field.key}
-            selectedKeys={field.value ?? []}
-            showSelectedCounts={showSelectedCounts}
-            singleSelect={field.singleSelect}
-            onChange={(updatedValues) =>
-              onFieldValueSelect({ ...field, value: updatedValues })
-            }
-            onGetInitialOptions={(key) =>
-              getInitialOptions(key, field.searchIndex, field.searchKey)
-            }
-            onSearch={(value, key) =>
-              getFilterOptions(value, key, field.searchIndex, field.searchKey)
-            }
-          />
-        ) : (
-          <SearchDropdown
-            highlight
-            dropdownClassName={field.dropdownClassName}
-            getPopupContainer={getExploreDropdownPopupContainer}
-            hasNullOption={hasNullOption}
+        const handleChange = (values: string[]) => {
+          // Keep the option objects (labels, counts) for the values that stay
+          // selected; a staged value whose option was repainted away by a
+          // later search falls back to the seen-options record, and only a
+          // value never published at all keeps its key as label.
+          const knownOptions = new Map(
+            [...selectedOptions, ...dropdownOptions].map((option) => [
+              option.key,
+              option,
+            ])
+          );
+          onFieldValueSelect({
+            ...field,
+            value: values.map((value) => {
+              if (value === NULL_OPTION_KEY && nullOption) {
+                return { key: NULL_OPTION_KEY, label: nullOption.label };
+              }
+
+              return (
+                knownOptions.get(value) ??
+                seenOptionsRef.current.get(`${field.key}::${value}`) ?? {
+                  key: value,
+                  label: value,
+                }
+              );
+            }),
+          });
+        };
+
+        return (
+          <FilterSelect
+            commitMode={immediateApply ? 'immediate' : 'staged'}
+            data-testid={`search-dropdown-${field.key}`}
+            // Keep the legacy empty-state copy: specs and users know this
+            // surface as "No data available.", not the library default.
+            emptyState={t('message.no-data-available')}
             helperText={helperText}
             hideCounts={field.hideCounts ?? false}
-            hideSearchBar={field.hideSearchBar ?? false}
-            immediateApply={immediateApply}
-            independent={independent}
-            index={displayIndex as ExploreSearchIndex}
-            isSuggestionsLoading={isOptionsLoading}
+            isLoading={isOptionsLoading}
             key={field.key}
-            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
-            options={dropdownOptions}
-            searchKey={field.key}
-            selectedKeys={field.value ?? []}
-            showSelectedCounts={showSelectedCounts}
-            singleSelect={field.singleSelect}
-            onChange={(updatedValues) => {
-              onFieldValueSelect({ ...field, value: updatedValues });
-            }}
-            onGetInitialOptions={(key) =>
-              getInitialOptions(key, field.searchIndex, field.searchKey)
+            label={label}
+            nullOption={nullOption}
+            options={dropdownOptions.map((option) => ({
+              value: option.key,
+              label: option.label,
+              textValue: option.label,
+              count: option.count,
+              icon: option.icon,
+            }))}
+            resolveMissingLabel={(value) =>
+              selectedOptions.find((option) => option.key === value)?.label ??
+              value
             }
-            onSearch={(value, key) =>
-              getFilterOptions(value, key, field.searchIndex, field.searchKey)
+            searchable={!(field.hideSearchBar ?? false)}
+            selectedValues={selectedOptions.map((option) => option.key)}
+            selectionMode={field.singleSelect ? 'single' : 'multiple'}
+            triggerVariant="button"
+            onChange={handleChange}
+            onOpenChange={(open) => {
+              if (open) {
+                getInitialOptions(
+                  field.key,
+                  field.searchIndex,
+                  field.searchKey,
+                  getQuickFilterSourceFields(field)
+                );
+              } else {
+                // Drop any keystroke still pending so it can't fetch into the
+                // next opened field's shared options state.
+                debouncedSearch.cancel();
+              }
+            }}
+            onSearch={(value) =>
+              debouncedSearch(
+                value,
+                field.key,
+                field.searchIndex,
+                field.searchKey,
+                getQuickFilterSourceFields(field)
+              )
             }
           />
         );
       })}
       {additionalActions}
-    </Space>
+    </div>
   );
 };
 

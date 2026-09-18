@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -22,9 +22,9 @@ import {
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import TagsSection from './TagsSection';
 
-// Mock @react-awesome-query-builder/antd
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  ...jest.requireActual('@react-awesome-query-builder/antd'),
+// Mock @react-awesome-query-builder/ui
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Config: {},
   Utils: {
     loadFromJsonLogic: jest.fn(),
@@ -69,31 +69,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
     .fn()
-    .mockImplementation(
-      ({ children, onClick, className, size, type, ...props }) => (
-        <button
-          className={className}
-          data-size={size}
-          data-testid="button"
-          data-type={type}
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )
-    ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
     )),
-  },
 }));
 
 // Mock SVG components
@@ -140,6 +122,7 @@ jest.mock('../TagSelectableList/TagSelectableList.component', () => ({
         return (
           <div data-testid="tag-selectable-list">
             <div className="tag-selector" data-testid="async-select-list">
+              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
               <input
                 data-testid="tag-selector-input"
                 value={inputValue}
@@ -370,7 +353,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 
@@ -440,15 +422,15 @@ describe('TagsSection', () => {
     });
 
     it('should render tag items with correct structure', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />);
 
-      const tagItems = container.querySelectorAll('.tag-item');
+      const visibleTags = mockTags.slice(0, defaultProps.maxDisplayCount);
 
-      expect(tagItems).toHaveLength(3); // maxDisplayCount
+      visibleTags.forEach((tag) => {
+        const tagItem = screen.getByTestId(`tag-${tag.tagFQN}`);
 
-      tagItems.forEach((item) => {
-        expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-name')).toBeInTheDocument();
+        expect(tagItem).toBeInTheDocument();
+        expect(tagItem).toHaveTextContent(tag.displayName ?? '');
       });
     });
   });

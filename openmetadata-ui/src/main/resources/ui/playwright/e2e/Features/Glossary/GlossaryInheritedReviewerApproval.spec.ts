@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { uuid } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 /**
  * Reproduction for the Glossary Approval bug where a term whose reviewers are INHERITED from its
@@ -282,13 +284,15 @@ test.describe(
           );
         });
 
+        const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
         await page.goto(
           `/glossary/${encodeURIComponent(
             term.responseData.fullyQualifiedName
           )}`
         );
 
-        await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
+        await termRes;
+        await waitForAllLoadersToDisappear(page);
 
         await test.step('Inherited reviewer is displayed', async () => {
           await expect(

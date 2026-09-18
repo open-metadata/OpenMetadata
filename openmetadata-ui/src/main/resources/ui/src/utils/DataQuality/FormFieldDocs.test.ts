@@ -182,7 +182,7 @@ describe('loadFormFieldDocs', () => {
     // The size cap can drop an in-flight entry, after which a later call
     // re-fetches under the same key. When the original failure finally lands,
     // it must not delete that newer promise on its way out.
-    let failFirst: (error: Error) => void = () => undefined;
+    let failFirst: (error: Error) => void = (_error) => undefined;
     mockFetchMarkdownFile.mockImplementationOnce(
       () =>
         new Promise((_resolve, reject) => {

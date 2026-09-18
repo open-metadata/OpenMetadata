@@ -36,8 +36,8 @@ jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
 });
 
 // Renders a portaled link alongside its normal output, standing in for the "+n more" popover:
-// antd mounts overlay content in `document.body`, so it is a React-tree descendant whose clicks
-// bubble through the container while being a DOM sibling of it.
+// the Popover mounts overlay content in `document.body`, so it is a React-tree descendant whose
+// clicks bubble through the container while being a DOM sibling of it.
 jest.mock('../TagsViewer/TagsViewer', () => {
   const { createPortal } = jest.requireActual('react-dom');
 
@@ -52,10 +52,6 @@ jest.mock('../TagsViewer/TagsViewer', () => {
     </div>
   ));
 });
-
-jest.mock('../TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div data-testid="tags-v1" />)
-);
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
@@ -147,7 +143,10 @@ const renderTagsContainerInsideClickableParent = (props: {
 
   return render(
     <MemoryRouter>
-      <div data-testid="clickable-parent" onClick={props.onParentClick}>
+      <div
+        data-testid="clickable-parent"
+        role="presentation"
+        onClick={props.onParentClick}>
         <TagsContainerV2
           permission
           showInlineEditButton
@@ -264,6 +263,41 @@ describe('TagsContainerV2 handleSave', () => {
     for (const key of Object.keys(fullTag) as (keyof TagLabel)[]) {
       expect(survived?.[key]).toEqual(fullTag[key]);
     }
+  });
+
+  it('preserves style: null without converting it to an empty object', async () => {
+    const tagWithNullStyle: EntityTags = {
+      tagFQN: PERSONAL_DATA_FQN,
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      style: null as unknown as EntityTags['style'],
+      appliedBy: 'admin',
+      appliedAt: new Date(APPLIED_AT_ISO),
+    };
+
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderTagsContainer({
+      selectedTags: [piiSensitiveTag],
+      onSelectionChange,
+    });
+
+    await enterEditMode();
+
+    expect(capturedOnSubmit).toBeDefined();
+
+    await act(async () => {
+      await capturedOnSubmit?.([
+        { value: PERSONAL_DATA_FQN, data: tagWithNullStyle },
+      ]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+
+    const emitted = onSelectionChange.mock.calls[0][0] as TagLabel[];
+    const tag = emitted.find((t) => t.tagFQN === PERSONAL_DATA_FQN);
+
+    expect(tag?.style).toBeNull();
   });
 
   it('add-one-remove-another in same save keeps surviving tag fields intact', async () => {

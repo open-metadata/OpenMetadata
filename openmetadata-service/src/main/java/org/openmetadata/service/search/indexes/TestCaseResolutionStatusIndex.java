@@ -78,7 +78,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     fields.put("testCaseReference.displayName", 15.0f);
     fields.put("testCaseReference.name", 10.0f);
     fields.put("testCaseReference.description", 1.0f);
-    fields.put("testCaseResolutionStatusDetails.resolved.testCaseFailureComment", 10.0f);
+    fields.put("testCaseResolutionStatusDetails.testCaseFailureComment", 10.0f);
     return fields;
   }
 }

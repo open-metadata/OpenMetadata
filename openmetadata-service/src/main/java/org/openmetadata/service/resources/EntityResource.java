@@ -46,10 +46,10 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +103,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
@@ -167,6 +168,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Entity.withHref(uriInfo, entity.getDomains());
       Entity.withHref(uriInfo, entity.getDataProducts());
       return entity;
+    }
+  }
+
+  protected Response addFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  protected Response deleteFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    authorizeFollowerMutation(securityContext, userId);
+    return repository
+        .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
+        .toResponse();
+  }
+
+  private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {
+    if (userId == null) {
+      throw new BadRequestException("userId is required");
+    }
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!Objects.equals(subjectContext.user().getId(), userId)) {
+      authorizer.authorizeAdmin(securityContext);
     }
   }
 
@@ -770,41 +797,45 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                DeleteResponse<T> deleteResponse =
-                    repository.delete(userName, id, recursive, hardDelete);
-                if (hardDelete) {
-                  limits.invalidateCache(entityType);
-                }
-                repository.storeChangeEventForAsyncOperation(
-                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
-                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                    jobId, securityContext, deleteResponse.entity());
-              } catch (Exception e) {
-                // Log before notifying. The WebSocket notification is the ONLY report this path
-                // had, so a failed async delete was invisible to anyone not holding a live socket
-                // — no stack trace, no error line, nothing. A 100k-table service delete that dies
-                // here looks exactly like one still grinding, which is precisely the ambiguity
-                // that made the nightly scale failures undiagnosable.
-                LOG.error(
-                    "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
-                    entityType,
-                    id,
-                    jobId,
-                    recursive,
-                    hardDelete,
-                    e);
-                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                    jobId,
-                    securityContext,
-                    entity,
-                    e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    DeleteResponse<T> deleteResponse =
+                        repository.delete(userName, id, recursive, hardDelete);
+                    if (hardDelete) {
+                      limits.invalidateCache(entityType);
+                    }
+                    repository.storeChangeEventForAsyncOperation(
+                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
+                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                        jobId, securityContext, deleteResponse.entity());
+                  } catch (Exception e) {
+                    // Log before notifying. The WebSocket notification is the ONLY report this path
+                    // had, so a failed async delete was invisible to anyone not holding a live
+                    // socket
+                    // — no stack trace, no error line, nothing. A 100k-table service delete that
+                    // dies
+                    // here looks exactly like one still grinding, which is precisely the ambiguity
+                    // that made the nightly scale failures undiagnosable.
+                    LOG.error(
+                        "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                        entityType,
+                        id,
+                        jobId,
+                        recursive,
+                        hardDelete,
+                        e);
+                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        entity,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
 
     response =
         Response.accepted()
@@ -918,46 +949,48 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
     // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
     UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
     // WebSocket notification only needs name/status, not HREFs.
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                PutResponse<T> response = repository.restoreEntity(userName, id);
-                if (response == null) {
-                  // Pre-check saw the entity in DELETED state; a null response now means a
-                  // concurrent restore won the race. Treat as idempotent success — the
-                  // operator's request is satisfied. If the entity has since been hard-
-                  // deleted, surface that as a real failure.
-                  handleAlreadyRestored(jobId, id, entityName, notifyUserId);
-                  return;
-                }
-                repository.restoreFromSearch(response.getEntity());
-                repository.storeChangeEventForAsyncOperation(
-                    response.getEntity(), response.getChangeType(), false, userName);
-                LOG.info(
-                    "[AsyncRestore] Restored {}:{} (jobId={})",
-                    Entity.getEntityTypeFromObject(response.getEntity()),
-                    response.getEntity().getId(),
-                    jobId);
-                WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
-                    jobId, notifyUserId, response.getEntity());
-              } catch (Exception e) {
-                LOG.error(
-                    "[AsyncRestore] Failed to restore {}:{} (name={})",
-                    entityType,
-                    id,
-                    entityName,
-                    e);
-                WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                    jobId,
-                    notifyUserId,
-                    entityName,
-                    e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    PutResponse<T> response = repository.restoreEntity(userName, id);
+                    if (response == null) {
+                      // Pre-check saw the entity in DELETED state; a null response now means a
+                      // concurrent restore won the race. Treat as idempotent success — the
+                      // operator's request is satisfied. If the entity has since been hard-
+                      // deleted, surface that as a real failure.
+                      handleAlreadyRestored(jobId, id, entityName, notifyUserId);
+                      return;
+                    }
+                    repository.restoreFromSearch(response.getEntity());
+                    repository.storeChangeEventForAsyncOperation(
+                        response.getEntity(), response.getChangeType(), false, userName);
+                    LOG.info(
+                        "[AsyncRestore] Restored {}:{} (jobId={})",
+                        Entity.getEntityTypeFromObject(response.getEntity()),
+                        response.getEntity().getId(),
+                        jobId);
+                    WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                        jobId, notifyUserId, response.getEntity());
+                  } catch (Exception e) {
+                    LOG.error(
+                        "[AsyncRestore] Failed to restore {}:{} (name={})",
+                        entityType,
+                        id,
+                        entityName,
+                        e);
+                    WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                        jobId,
+                        notifyUserId,
+                        entityName,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
     RestoreEntityResponse response =
         new RestoreEntityResponse(jobId, "Restore initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
@@ -1000,8 +1033,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
-  public Response bulkAddToAssetsAsync(
-      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+  /**
+   * Authorizes a bulk asset tag/glossary operation: the caller must hold {@code operation} on every
+   * target asset's entity type, otherwise the whole request is rejected. Admins and bots are
+   * exempt. This is the shared permission gate for the bulk asset endpoints (classification tags on
+   * {@link org.openmetadata.service.resources.tags.TagResource}, glossary terms on
+   * GlossaryTermResource); it only validates permissions and performs no business logic.
+   */
+  protected void authorizeBulkAssetsPermission(
+      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     String user = subjectContext.user().getName();
 
@@ -1012,14 +1052,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     permission.getPermissions().stream()
                         .anyMatch(
                             perm ->
-                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
+                                operation.equals(perm.getOperation())
                                     && Permission.Access.ALLOW.equals(perm.getAccess())))
             .map(ResourcePermission::getResource)
             .collect(Collectors.toSet());
 
     // Validate if all entity types in the request are in the permissible resources
     List<String> unauthorizedEntityTypes =
-        request.getAssets().stream()
+        assets.stream()
             .map(EntityReference::getType)
             .filter(entityType -> !editPermissibleResources.contains(entityType))
             .distinct()
@@ -1030,24 +1070,34 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         && !subjectContext.isBot()) {
       throw new AuthorizationException(
           CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
+              user, List.of(operation), unauthorizedEntityTypes));
     }
+  }
+
+  public Response bulkAddToAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
 
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                BulkOperationResult result =
-                    repository.bulkAddAndValidateTagsToAssets(entityId, request);
-                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkAddAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Add tags to Asset operation initiated successfully.");
@@ -1056,49 +1106,27 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response bulkRemoveFromAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    String user = subjectContext.user().getName();
-    Set<String> editPermissibleResources =
-        authorizer.listPermissions(securityContext, user).stream()
-            .filter(
-                permission ->
-                    permission.getPermissions().stream()
-                        .anyMatch(
-                            perm ->
-                                MetadataOperation.EDIT_TAGS.equals(perm.getOperation())
-                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
-            .map(ResourcePermission::getResource)
-            .collect(Collectors.toSet());
-
-    List<String> unauthorizedEntityTypes =
-        request.getAssets().stream()
-            .map(EntityReference::getType)
-            .filter(entityType -> !editPermissibleResources.contains(entityType))
-            .distinct()
-            .toList();
-
-    if (!unauthorizedEntityTypes.isEmpty()
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()) {
-      throw new AuthorizationException(
-          CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
-    }
+    authorizeBulkAssetsPermission(
+        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                BulkOperationResult result =
-                    repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
-                WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.BULK_ASSET_OPERATION,
+            jobId,
+            RequestLatencyContext.wrapWithContext(
+                () -> {
+                  try {
+                    BulkOperationResult result =
+                        repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                        jobId, securityContext, result);
+                  } catch (Exception e) {
+                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                        jobId,
+                        securityContext,
+                        e.getMessage() == null ? e.toString() : e.getMessage());
+                  }
+                }));
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
             jobId, "Bulk Remove tags to Asset operation initiated successfully.");

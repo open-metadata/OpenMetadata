@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { debounce } from 'lodash';
 import { act } from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
@@ -238,6 +239,81 @@ describe('Search DropDown Component', () => {
     });
   });
 
+  it('Should keep a pending selection when selectedKeys is re-derived while open', async () => {
+    // Mirrors the Add Test Case modal's Column filter: `selectedKeys` there is a
+    // memo over server-fetched options, so a late suggestions response hands the
+    // dropdown a fresh array identity while the user is mid-edit. That must not
+    // discard the option they already clicked, or Update applies nothing.
+    mockOnChange.mockClear();
+
+    const { rerender } = render(
+      <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('User 2'));
+    });
+
+    // The late fetch resolves: same selection, brand new array identity.
+    await act(async () => {
+      rerender(
+        <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('update-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [{ key: 'User 2', label: 'User 2' }],
+        'owner.displayName'
+      );
+    });
+  });
+
+  it('Should apply an external selectedKeys change that arrives while open', async () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation. When that navigation clears the filter, Update must not write
+    // the stale local selection back.
+    mockOnChange.mockClear();
+
+    const { rerender } = render(
+      <SearchDropdown
+        {...mockProps}
+        singleSelect
+        selectedKeys={[{ key: 'User 1', label: 'User 1' }]}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    await act(async () => {
+      rerender(
+        <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('update-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith([], 'owner.displayName');
+    });
+  });
+
   it('Selected option should unselect on next click', async () => {
     render(<SearchDropdown {...mockProps} />);
 
@@ -402,6 +478,31 @@ describe('Search DropDown Component', () => {
     const noOwnerCheckbox = await screen.findByTestId('no-option-checkbox');
 
     expect(noOwnerCheckbox).toBeInTheDocument();
+  });
+
+  it('Should cancel a pending search when the dropdown is closed', async () => {
+    render(<SearchDropdown {...mockProps} />);
+
+    const trigger = await screen.findByTestId('search-dropdown-Owner');
+    const { cancel } = (debounce as jest.Mock).mock.results.at(-1)?.value ?? {};
+
+    await act(async () => {
+      userEvent.click(trigger);
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    const cancelCallsWhileOpen = cancel.mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('close-btn'));
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument()
+    );
+
+    expect(cancel.mock.calls.length).toBeGreaterThan(cancelCallsWhileOpen);
   });
 
   it('Should send null option in payload if selected', async () => {

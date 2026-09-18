@@ -79,10 +79,10 @@ function RulePreview({
             })}
           </span>
           <Box className="tw:gap-1.5" wrap="wrap">
-            {filter.includes.map((condition, index) => (
+            {filter.includes.map((condition) => (
               <PreviewRuleChip
                 condition={condition}
-                key={`${conditionKey(condition)}-${index}`}
+                key={conditionKey(condition)}
                 operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
                 tone="include"
               />
@@ -98,10 +98,10 @@ function RulePreview({
             })}
           </span>
           <Box className="tw:gap-1.5" wrap="wrap">
-            {filter.excludes.map((condition, index) => (
+            {filter.excludes.map((condition) => (
               <PreviewRuleChip
                 condition={condition}
-                key={`${conditionKey(condition)}-${index}`}
+                key={conditionKey(condition)}
                 operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
                 tone="exclude"
               />
@@ -169,6 +169,10 @@ function RegexDisclosure({
     </div>
   );
 }
+
+const renderBadgeDotIcon = () => (
+  <span className="tw:size-1.5 tw:rounded-full tw:bg-current" />
+);
 
 export function FilterSectionCard({
   filter,
@@ -267,9 +271,7 @@ export function FilterSectionCard({
           <BadgeWithIcon
             className="tw:gap-2 tw:font-medium"
             color={summary.tone === 'success' ? 'success' : 'brand'}
-            iconLeading={() => (
-              <span className="tw:size-1.5 tw:rounded-full tw:bg-current" />
-            )}
+            iconLeading={renderBadgeDotIcon}
             size="sm">
             {t(summary.textKey, summary.values)}
           </BadgeWithIcon>
@@ -327,7 +329,7 @@ export function FilterSectionCard({
                 {filter.includes.map((condition, index) => (
                   <ConditionChip
                     condition={condition}
-                    key={`${conditionKey(condition)}-${index}`}
+                    key={conditionKey(condition)}
                     operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
                     removeLabel={t('label.remove')}
                     tone="include"
@@ -394,7 +396,7 @@ export function FilterSectionCard({
               {filter.excludes.map((condition, index) => (
                 <ConditionChip
                   condition={condition}
-                  key={`${conditionKey(condition)}-${index}`}
+                  key={conditionKey(condition)}
                   operatorLabel={t(OPERATOR_LABEL_KEYS[condition.op])}
                   removeLabel={t('label.remove')}
                   tone="exclude"

@@ -86,7 +86,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div
       data-testid={`dropdown-item-${id}`}
       role="menuitem"
-      onClick={() => onAction?.(id)}>
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onAction?.(id);
+        }
+      }}>
       {children ?? label}
     </div>
   );
@@ -106,6 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);

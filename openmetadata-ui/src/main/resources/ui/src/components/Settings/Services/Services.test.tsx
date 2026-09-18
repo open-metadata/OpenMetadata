@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
 import React, { ReactNode } from 'react';
 import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
@@ -23,6 +22,7 @@ import LimitWrapper from '../../../hoc/LimitWrapper';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { ListView } from '../../common/ListView/ListView.component';
+import { ColumnsType } from '../../common/Table/Table.interface';
 import Services from './Services';
 
 let isDescription = true;
@@ -173,8 +173,9 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
 });
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<></>),
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
@@ -202,10 +203,12 @@ jest.mock('../../common/ListView/ListView.component', () => ({
       }) => (
         <div data-testid="mocked-list-view">
           <button
+            aria-label="trigger search"
             data-testid="trigger-search"
             onClick={() => searchProps.onSearch('no-such-service')}
           />
           <button
+            aria-label="trigger deleted switch"
             data-testid="trigger-deleted-switch"
             onClick={handleDeletedSwitchChange}
           />
@@ -219,16 +222,15 @@ jest.mock('../../common/ListView/ListView.component', () => ({
             })}
           </div>
           <div data-testid="table-props-container">
-            {tableProps.columns.map(
-              (column: ColumnsType[0], key: string) =>
-                column.render && (
-                  <>
-                    <div key={key}>{column.title as string}</div>
-                    <div key={key}>
-                      {column.render(column.title, column, 1) as ReactNode}
-                    </div>
-                  </>
-                )
+            {tableProps.columns.map((column: ColumnsType[0]) =>
+              column.render ? (
+                <React.Fragment key={column.key as string}>
+                  <div>{column.title as string}</div>
+                  <div>
+                    {column.render(column.title, column, 1) as ReactNode}
+                  </div>
+                </React.Fragment>
+              ) : null
             )}
           </div>
         </div>

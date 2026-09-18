@@ -89,6 +89,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { DriveServiceType } from '../../generated/entity/services/driveService';
+import { AgentType } from '../../generated/entity/services/ingestionPipelines/agentType';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
@@ -154,6 +155,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -295,8 +297,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
-  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
-    useState(false);
+  // Seeded to match `isLoading` above: the fetch is kicked off from an effect that waits on the
+  // airflow status, so a `false` seed lets the agents tab read an empty list as "no agents".
+  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] = useState(
+    !isOpenMetadataService
+  );
   const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [isFilesLoading, setIsFilesLoading] = useState(true);
   const [isSpreadsheetsLoading, setIsSpreadsheetsLoading] = useState(true);
@@ -321,7 +326,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [statusFilter, setStatusFilter] = useState<
     Array<{ key: string; label: string }>
   >([]);
-  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
+  // Seeded true for the same reason as `isIngestionPipelineLoading`: the list is fetched from an
+  // effect, and a `false` seed shows the widget's "no agents" placeholder before the first fetch.
+  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(true);
   const [collateAgentsList, setCollateAgentsList] = useState<
     CollateAgentAutomation[]
   >([]);
@@ -460,6 +467,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, decodedServiceFQN]);
 
+  // Fetch mechanism intentionally left untouched (Task 8 documented-deferral precedent,
+  // GlossaryV1.component.tsx): the resource type is chosen dynamically per service category
+  // (getResourceEntityFromServiceCategory) and `isLoading` is shared with the entity fetch, so
+  // folding this into useEntityPermissions would be an architecture change, not a mechanical
+  // one. Only the local raw `.EditAll`/`.ViewAll`/`.ViewBasic` reads convert to named flags. No
+  // `deleted` argument: none of the raw reads below were ever gated on the service's own
+  // `deleted` field in the old code, so getDerivedPermissionFlags defaults to `deleted = false`
+  // — a pure rename, not a semantic change.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(servicePermission),
+    [servicePermission]
+  );
+
   const goToEditConnection = useCallback(() => {
     navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
@@ -559,6 +579,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
       if (deleted) {
         setCollateAgentsList([]);
         handleCollateAgentPagingChange({ total: 0 });
+        // Nothing will be fetched, so release the seeded loading flag rather than
+        // leaving the widget on placeholder cards forever.
+        setIsCollateAgentLoading(false);
 
         return;
       }
@@ -591,7 +614,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
-          pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
+          agentType: AgentType.Metadata,
           limit,
         });
 
@@ -1408,6 +1431,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -1415,16 +1440,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
           entity: t('label.service'),
         })
       );
+
+      return false;
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
   const isTestingDisabled = useMemo(
     () =>
-      !servicePermission.EditAll ||
+      !flags.canEditAll ||
       (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
     [
-      servicePermission,
+      flags.canEditAll,
       serviceCategory,
       decodedServiceFQN,
       connectionDetails,
@@ -1491,6 +1518,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
+    const loadInitialFiles = () => {
+      if (!isEmpty(fileSearchValue)) {
+        return;
+      }
+      const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
+        filesPagingInfo?.pagingCursor ?? {};
+      fetchFiles({
+        limit: filesPageSize,
+        ...(fileCursorType &&
+          activeTab === EntityTabs.FILES && {
+            [fileCursorType]: fileCursorValue,
+          }),
+      });
+    };
+
+    const loadInitialSpreadsheets = () => {
+      if (!isEmpty(spreadSheetSearchValue)) {
+        return;
+      }
+      const {
+        cursorType: spreadSheetCursorType,
+        cursorValue: spreadSheetCursorValue,
+      } = spreadsheetsPagingInfo?.pagingCursor ?? {};
+      fetchSpreadsheets({
+        limit: spreadsheetsPageSize,
+        ...(spreadSheetCursorType &&
+          activeTab === EntityTabs.SPREADSHEETS && {
+            [spreadSheetCursorType]: spreadSheetCursorValue,
+          }),
+      });
+    };
+
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });
     }
@@ -1499,30 +1558,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceCategory === ServiceCategory.DRIVE_SERVICES &&
       isInitialLoadRef.current
     ) {
-      if (isEmpty(fileSearchValue)) {
-        const { cursorType: fileCursorType, cursorValue: fileCursorValue } =
-          filesPagingInfo?.pagingCursor ?? {};
-        fetchFiles({
-          limit: filesPageSize,
-          ...(fileCursorType &&
-            activeTab === EntityTabs.FILES && {
-              [fileCursorType]: fileCursorValue,
-            }),
-        });
-      }
-      if (isEmpty(spreadSheetSearchValue)) {
-        const {
-          cursorType: spreadSheetCursorType,
-          cursorValue: spreadSheetCursorValue,
-        } = spreadsheetsPagingInfo?.pagingCursor ?? {};
-        fetchSpreadsheets({
-          limit: spreadsheetsPageSize,
-          ...(spreadSheetCursorType &&
-            activeTab === EntityTabs.SPREADSHEETS && {
-              [spreadSheetCursorType]: spreadSheetCursorValue,
-            }),
-        });
-      }
+      loadInitialFiles();
+      loadInitialSpreadsheets();
       isInitialLoadRef.current = false;
     }
   }, [
@@ -1587,10 +1624,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   ]);
 
   useEffect(() => {
-    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
+    if (flags.hasViewAccess) {
       fetchServiceDetails();
     }
-  }, [decodedServiceFQN, serviceCategory, servicePermission]);
+  }, [decodedServiceFQN, serviceCategory, flags.hasViewAccess]);
 
   useEffect(() => {
     if (!isOpenMetadataService) {
@@ -1598,8 +1635,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [decodedServiceFQN, serviceCategory]);
 
+  // Deliberately not gated on the airflow status: pipelines are OpenMetadata entities, so the list
+  // and its run history are readable whether or not the pipeline service answers. Only the actions
+  // on them need that status — see `useAgentActionAvailability`.
   useEffect(() => {
-    if (isAirflowAvailable && !isOpenMetadataService) {
+    if (!isOpenMetadataService) {
       isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
@@ -1607,21 +1647,19 @@ const ServiceDetailsPage: FunctionComponent = () => {
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [
-    isAirflowAvailable,
-    searchText,
-    ingestionPageSize,
-    statusFilter,
-    typeFilter,
-  ]);
+  }, [searchText, ingestionPageSize, statusFilter, typeFilter]);
 
   useEffect(() => {
     if (isCollateAIWidgetSupported) {
       fetchCollateAgentsList({
         limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
       });
+    } else {
+      // The widget is not rendered for this service category, so nothing will fetch —
+      // release the seeded loading flag.
+      setIsCollateAgentLoading(false);
     }
-  }, [collateAgentPageSize]);
+  }, [collateAgentPageSize, isCollateAIWidgetSupported]);
 
   useEffect(() => {
     fetchWorkflowInstanceStates();
@@ -1731,7 +1769,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Space className="w-full justify-end">
             <Tooltip
               title={
-                servicePermission.EditAll
+                flags.canEditAll
                   ? t('label.edit-entity', {
                       entity: t('label.connection'),
                     })
@@ -1740,7 +1778,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               <Button
                 ghost
                 data-testid="edit-connection-button"
-                disabled={!servicePermission.EditAll}
+                disabled={!flags.canEditAll}
                 type="primary"
                 onClick={goToEditConnection}>
                 {t('label.edit-entity', {
@@ -1774,7 +1812,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       </div>
     );
   }, [
-    servicePermission.EditAll,
+    flags.canEditAll,
     allowTestConn,
     goToEditConnection,
     serviceDetails,
@@ -1914,7 +1952,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     tabs.push({
       name: t('label.connection'),
-      isHidden: !servicePermission.EditAll,
+      isHidden: !flags.canEditAll,
       key: EntityTabs.CONNECTION,
       children: testConnectionTab,
     });
@@ -1963,6 +2001,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
     paging,
     servicePermission,
+    flags.canEditAll,
     handleDescriptionUpdate,
     showDeleted,
     handleShowDeleted,
@@ -2024,7 +2063,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return <PageLoader />;
   }
 
-  if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import decimal
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +16,7 @@ import pytest
 from metadata.pii.algorithms.preprocessing import (
     MAX_NLP_TEXT_LENGTH,
     convert_to_str,
+    ner_normalize_values,
     preprocess_values,
 )
 
@@ -25,6 +27,8 @@ from metadata.pii.algorithms.preprocessing import (
         ("hello", "hello"),
         (123, "123"),
         (123.45, "123.45"),
+        (decimal.Decimal("77046931"), "77046931"),
+        (decimal.Decimal("123.456"), "123.456"),
         (b"hello", None),
         (None, None),
         ({"key": "value"}, ["value"]),
@@ -46,6 +50,51 @@ def test_converts_various_types_to_string(input_value, expected):
 )
 def test_preprocesses_sequences_correctly(input_values, expected):
     assert preprocess_values(input_values) == expected
+
+
+@pytest.mark.parametrize(
+    "input_values,expected",
+    [
+        # preprocess_values preserves original casing — no normalisation
+        (["SERGE"], ["SERGE"]),
+        (["THÉODORE"], ["THÉODORE"]),
+        (["JOHN DOE"], ["JOHN DOE"]),
+        (["John"], ["John"]),
+        (["john"], ["john"]),
+        (["John Doe"], ["John Doe"]),
+        (["123"], ["123"]),
+        (["2024-01-15"], ["2024-01-15"]),
+        ([], []),
+    ],
+)
+def test_preprocess_values_preserves_original_casing(input_values, expected):
+    """preprocess_values must not alter casing so pattern recognisers see original values."""
+    assert preprocess_values(input_values) == expected
+
+
+@pytest.mark.parametrize(
+    "input_values,expected",
+    [
+        # Purely alphabetic ALL-CAPS → title-cased for NER
+        (["SERGE"], ["Serge"]),
+        (["THÉODORE"], ["Théodore"]),
+        (["JOHN DOE"], ["John Doe"]),
+        # Mixed or lower-case → unchanged
+        (["John"], ["John"]),
+        (["john"], ["john"]),
+        (["John Doe"], ["John Doe"]),
+        # Tokens with digits must NOT be normalised (IBANs, RAMQ, crypto, …)
+        (["GB82WEST12345698765432"], ["GB82WEST12345698765432"]),
+        (["ABCD12345678"], ["ABCD12345678"]),
+        # Pure digit strings also unchanged
+        (["123"], ["123"]),
+        (["2024-01-15"], ["2024-01-15"]),
+        ([], []),
+    ],
+)
+def test_ner_normalize_values(input_values, expected):
+    """ner_normalize_values title-cases purely-alphabetic ALL-CAPS tokens only."""
+    assert ner_normalize_values(input_values) == expected
 
 
 def test_normal_length_string_processed_correctly():
