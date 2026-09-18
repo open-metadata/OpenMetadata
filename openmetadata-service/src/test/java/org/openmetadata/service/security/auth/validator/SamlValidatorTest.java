@@ -145,6 +145,38 @@ class SamlValidatorTest {
 
   private static final String OKTA_ENTITY_ID = "http://www.okta.com/exk1a2b3c4d5";
 
+  /**
+   * Self-signed, {@code CN=auth.example.com, O=Auth0}, valid 2026-09 to 2036-09 — the certificate an
+   * Auth0 tenant on a custom domain signs with, whose CN is that domain rather than the
+   * {@code .auth0.com} tenant host its Entity ID uses.
+   */
+  private static final String AUTH0_CUSTOM_DOMAIN_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUOT6JVV3WC/4YZo6y/nFgX2MatPYwDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcM
+      B1NlYXR0bGUxDjAMBgNVBAoMBUF1dGgwMRQwEgYDVQQLDAtTU09Qcm92aWRlcjEZ
+      MBcGA1UEAwwQYXV0aC5leGFtcGxlLmNvbTAeFw0yNjA5MTgwOTM3MzFaFw0zNjA5
+      MTUwOTM3MzFaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRAw
+      DgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVBdXRoMDEUMBIGA1UECwwLU1NPUHJv
+      dmlkZXIxGTAXBgNVBAMMEGF1dGguZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDM1w9Hl/70gFeFfqywrSi8I+DasQoqXJWHSmqvfBQw
+      NLrN4U8L4ud2nmfyY+qzPWHJr1V5wys0TDcmozmUxsDtZH4khcTE1JMv4abBoKcM
+      WNwYffXJfYjQ71BjnZsVnxPcq5Ixxtfq60XPy6Qfjw8cxeniHDWjUlTCaTTPK6Qq
+      rDpOPekcRE2LZQGUiNsW0UkSEZ6vGdi1WPAWgQKhiQTx/nEtnOCEiPyeWkxK0uOe
+      KCP6LMKD2avy+2VArJjiVxjZoH0GykK71rFvBSf4xJcvdLw9APGRcjJVmzV3MUo4
+      /2WRCzM8tW2/fH+8xU33i0Ub5KGkUCU1f3m2BitPu5BLAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBTUpOXNCEKm3v29sDWddBeC8NTHpDAfBgNVHSMEGDAWgBTUpOXNCEKm3v29
+      sDWddBeC8NTHpDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAm
+      CTeFF7Hgo4DvlmgEZSH2CO8OncEuLKnSwjIusb9MTkrFdcmlR9sZeQzzDy8H5RQ7
+      68PUqNWsGt9lVwZhm/A4XzXPyIZLiH20cGaZs6PqXi+ycT74LsUAq6/+zq8WLSua
+      Uj4nZnUyYJ7TDNc+lQYbAmEXENFa4OQT6sEYho18xiWafcF4mmE+3NugviSqR54J
+      UFa2CtLwbGTs/IrGJzgv0Ti5atSxF/8/gJzRCPp/rEOhmCFG8X0RKYpT2O0clf+7
+      nPq7sRFeMMIEX8GsxgvaahcgLZ2QHa075ZDSSxNXVHy3J8niKrAjnHEE4n52yXLC
+      NM3Pv29cF9tNA0rqilc7
+      -----END CERTIFICATE-----
+      """;
+
   private static final String AZURE_CERT =
       """
       -----BEGIN CERTIFICATE-----
@@ -241,11 +273,17 @@ class SamlValidatorTest {
     }
   }
 
+  /**
+   * An Auth0 tenant on a custom domain signs with that domain while its Entity ID stays on the
+   * tenant host, so CN and Entity ID host are different namespaces — the same shape as the Okta
+   * case, and what the removed exact-match rule rejected.
+   */
   @Test
   void validateSamlConfigurationAcceptsAuth0CustomDomainCertificate() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
       SamlSSOClientConfig samlConfig = baseConfig(server.url());
       samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
+      samlConfig.getIdp().setIdpX509Certificate(AUTH0_CUSTOM_DOMAIN_CERT);
 
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);

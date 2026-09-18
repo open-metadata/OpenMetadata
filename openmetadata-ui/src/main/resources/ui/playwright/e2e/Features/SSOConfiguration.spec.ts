@@ -934,9 +934,12 @@ test.describe('SAML Metadata XML Upload', () => {
     test.slow();
 
     // Never persist: this test drives real backend validation but must not repoint the running
-    // instance at an unreachable IdP.
+    // instance at an unreachable IdP. Only the write is stubbed — the page's own GET must reach the
+    // server, since enableSSOEditMode branches on whether a configuration already exists.
     await page.route('**/api/v1/system/security/config', (route) =>
-      route.fulfill({ status: 200, json: {} })
+      route.request().method() === 'PUT'
+        ? route.fulfill({ status: 200, json: {} })
+        : route.fallback()
     );
 
     await redirectToHomePage(page);

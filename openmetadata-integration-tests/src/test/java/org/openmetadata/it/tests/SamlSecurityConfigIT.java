@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,8 +56,9 @@ import org.openmetadata.sdk.network.RequestOptions;
  * requiring those to be equal rejected every valid Okta configuration.
  *
  * <p>The validate endpoint is side-effect free, so those tests never mutate the running server's
- * security configuration. The two {@code PUT} tests write back only a configuration they just read,
- * leave the active provider untouched, and restore the original.
+ * security configuration. Every {@code PUT} test leaves the active provider untouched and restores
+ * the configuration it read in a {@code finally}, including on the paths where the assertion itself
+ * fails.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 @Isolated
@@ -108,6 +110,39 @@ public class SamlSecurityConfigIT {
       -----END CERTIFICATE-----
       """;
 
+  /**
+   * Self-signed, {@code CN=auth.example.com, O=Auth0}, valid 2026-09 to 2036-09. An Auth0 tenant on
+   * a custom domain signs with that domain, while its Entity ID stays on the tenant host
+   * ({@code urn:dev-tenant.us.auth0.com}) — so CN and Entity ID host are different namespaces, the
+   * same shape as the Okta case.
+   */
+  private static final String AUTH0_CUSTOM_DOMAIN_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUOT6JVV3WC/4YZo6y/nFgX2MatPYwDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcM
+      B1NlYXR0bGUxDjAMBgNVBAoMBUF1dGgwMRQwEgYDVQQLDAtTU09Qcm92aWRlcjEZ
+      MBcGA1UEAwwQYXV0aC5leGFtcGxlLmNvbTAeFw0yNjA5MTgwOTM3MzFaFw0zNjA5
+      MTUwOTM3MzFaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRAw
+      DgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVBdXRoMDEUMBIGA1UECwwLU1NPUHJv
+      dmlkZXIxGTAXBgNVBAMMEGF1dGguZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDM1w9Hl/70gFeFfqywrSi8I+DasQoqXJWHSmqvfBQw
+      NLrN4U8L4ud2nmfyY+qzPWHJr1V5wys0TDcmozmUxsDtZH4khcTE1JMv4abBoKcM
+      WNwYffXJfYjQ71BjnZsVnxPcq5Ixxtfq60XPy6Qfjw8cxeniHDWjUlTCaTTPK6Qq
+      rDpOPekcRE2LZQGUiNsW0UkSEZ6vGdi1WPAWgQKhiQTx/nEtnOCEiPyeWkxK0uOe
+      KCP6LMKD2avy+2VArJjiVxjZoH0GykK71rFvBSf4xJcvdLw9APGRcjJVmzV3MUo4
+      /2WRCzM8tW2/fH+8xU33i0Ub5KGkUCU1f3m2BitPu5BLAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBTUpOXNCEKm3v29sDWddBeC8NTHpDAfBgNVHSMEGDAWgBTUpOXNCEKm3v29
+      sDWddBeC8NTHpDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAm
+      CTeFF7Hgo4DvlmgEZSH2CO8OncEuLKnSwjIusb9MTkrFdcmlR9sZeQzzDy8H5RQ7
+      68PUqNWsGt9lVwZhm/A4XzXPyIZLiH20cGaZs6PqXi+ycT74LsUAq6/+zq8WLSua
+      Uj4nZnUyYJ7TDNc+lQYbAmEXENFa4OQT6sEYho18xiWafcF4mmE+3NugviSqR54J
+      UFa2CtLwbGTs/IrGJzgv0Ti5atSxF/8/gJzRCPp/rEOhmCFG8X0RKYpT2O0clf+7
+      nPq7sRFeMMIEX8GsxgvaahcgLZ2QHa075ZDSSxNXVHy3J8niKrAjnHEE4n52yXLC
+      NM3Pv29cF9tNA0rqilc7
+      -----END CERTIFICATE-----
+      """;
+
   /** Same subject as {@link #OKTA_ORG_CERT}, but expired in 2021. */
   private static final String EXPIRED_CERT =
       """
@@ -155,7 +190,7 @@ public class SamlSecurityConfigIT {
             samlConfig(
                 "urn:dev-tenant.us.auth0.com",
                 "https://login.example.invalid/samlp/abcdefgh12345",
-                OKTA_ORG_CERT));
+                AUTH0_CUSTOM_DOMAIN_CERT));
 
     assertNoErrorOnField(response, IDP_CERT_FIELD);
     assertEquals("success", response.get("status").asText(), "Validation response: " + response);
@@ -211,10 +246,7 @@ public class SamlSecurityConfigIT {
     try {
       ObjectNode config = (ObjectNode) MAPPER.readTree(original);
       ObjectNode authConfig = (ObjectNode) config.get("authenticationConfiguration");
-      ObjectNode partialLdap = MAPPER.createObjectNode();
-      partialLdap.put("dnAdminPrincipal", "cn=admin,dc=example,dc=com");
-      partialLdap.put("userBaseDN", "ou=people,dc=example,dc=com");
-      authConfig.set("ldapConfiguration", partialLdap);
+      authConfig.set("ldapConfiguration", partialLdapPreservingSecret(authConfig));
 
       String result = putSecurityConfig(MAPPER.writeValueAsString(config));
 
@@ -226,27 +258,98 @@ public class SamlSecurityConfigIT {
     }
   }
 
+  /**
+   * The same scoping has to hold for the other two blocks. {@code samlConfiguration} requires
+   * {@code idp} and {@code sp}, so a stub block left behind by an earlier SAML setup would otherwise
+   * make an LDAP-provider instance unwritable.
+   */
+  @Test
+  void securityConfig_putIgnoresIncompleteSamlBlockOfInactiveProvider() throws Exception {
+    String original = getSecurityConfig();
+
+    try {
+      ObjectNode config = (ObjectNode) MAPPER.readTree(original);
+      ObjectNode authConfig = (ObjectNode) config.get("authenticationConfiguration");
+      ObjectNode partialSaml = MAPPER.createObjectNode();
+      partialSaml.set("idp", MAPPER.createObjectNode().put("entityId", OKTA_ENTITY_ID));
+      authConfig.set("samlConfiguration", partialSaml);
+
+      assertNotNull(
+          putSecurityConfig(MAPPER.writeValueAsString(config)),
+          "PUT must not reject a configuration over an inactive provider's samlConfiguration");
+    } finally {
+      putSecurityConfig(original);
+    }
+  }
+
+  /**
+   * {@code oidcConfiguration} is the confidential client's block. A public client never reads it
+   * whatever the provider, so its required fields must not gate a public-client save.
+   */
+  @Test
+  void securityConfig_putIgnoresIncompleteOidcBlockOfPublicClient() throws Exception {
+    String original = getSecurityConfig();
+
+    try {
+      ObjectNode config = (ObjectNode) MAPPER.readTree(original);
+      ObjectNode authConfig = (ObjectNode) config.get("authenticationConfiguration");
+      authConfig.put("clientType", ClientType.PUBLIC.value());
+      authConfig.set("oidcConfiguration", MAPPER.createObjectNode().put("id", "open-metadata"));
+
+      assertNotNull(
+          putSecurityConfig(MAPPER.writeValueAsString(config)),
+          "PUT must not reject a public-client configuration over oidcConfiguration fields");
+    } finally {
+      putSecurityConfig(original);
+    }
+  }
+
   /** Scoping validation to the active provider must not stop enforcing that provider's own block. */
   @Test
   void securityConfig_putStillRejectsIncompleteBlockOfActiveProvider() throws Exception {
     String original = getSecurityConfig();
 
-    ObjectNode config = (ObjectNode) MAPPER.readTree(original);
-    ObjectNode authConfig = (ObjectNode) config.get("authenticationConfiguration");
-    authConfig.put("provider", "ldap");
+    try {
+      ObjectNode config = (ObjectNode) MAPPER.readTree(original);
+      ObjectNode authConfig = (ObjectNode) config.get("authenticationConfiguration");
+      authConfig.put("provider", AuthProvider.LDAP.value());
+      ObjectNode partialLdap = MAPPER.createObjectNode();
+      partialLdap.put("dnAdminPrincipal", "cn=admin,dc=example,dc=com");
+      authConfig.set("ldapConfiguration", partialLdap);
+
+      InvalidRequestException exception =
+          assertThrows(
+              InvalidRequestException.class,
+              () -> putSecurityConfig(MAPPER.writeValueAsString(config)),
+              "An incomplete block of the active provider must still be rejected as a client error");
+
+      assertTrue(
+          exception.getMessage().contains("ldapConfiguration"),
+          "Expected the error to name the offending LDAP fields but got: "
+              + exception.getMessage());
+    } finally {
+      // Restore even when the assertion above fails: the PUT is only rejected before anything is
+      // written while the invariant this test guards still holds, and if it ever regresses the
+      // instance would otherwise be left on LDAP with an unusable configuration.
+      putSecurityConfig(original);
+    }
+  }
+
+  /**
+   * A partial LDAP block that keeps whatever {@code dnAdminPassword} the configuration already
+   * carried. {@code GET} returns that field masked and {@code PUT} resolves the mask against the
+   * stored configuration, so dropping it would write a null through and destroy a real password
+   * before the restoring {@code PUT} could put it back.
+   */
+  private ObjectNode partialLdapPreservingSecret(ObjectNode authConfig) {
     ObjectNode partialLdap = MAPPER.createObjectNode();
     partialLdap.put("dnAdminPrincipal", "cn=admin,dc=example,dc=com");
-    authConfig.set("ldapConfiguration", partialLdap);
-
-    InvalidRequestException exception =
-        assertThrows(
-            InvalidRequestException.class,
-            () -> putSecurityConfig(MAPPER.writeValueAsString(config)),
-            "An incomplete block of the active provider must still be rejected as a client error");
-
-    assertTrue(
-        exception.getMessage().contains("ldapConfiguration"),
-        "Expected the error to name the offending LDAP fields but got: " + exception.getMessage());
+    partialLdap.put("userBaseDN", "ou=people,dc=example,dc=com");
+    JsonNode storedLdap = authConfig.get("ldapConfiguration");
+    if (storedLdap != null && storedLdap.hasNonNull("dnAdminPassword")) {
+      partialLdap.set("dnAdminPassword", storedLdap.get("dnAdminPassword"));
+    }
+    return partialLdap;
   }
 
   private String getSecurityConfig() throws Exception {
@@ -278,9 +381,8 @@ public class SamlSecurityConfigIT {
   }
 
   private void assertNoErrorOnField(JsonNode response, String field) {
-    assertTrue(
-        fieldError(response, field) == null,
-        "Expected no validation error on '" + field + "' but got: " + fieldError(response, field));
+    String error = fieldError(response, field);
+    assertNull(error, "Expected no validation error on '" + field + "' but got: " + error);
   }
 
   private String fieldError(JsonNode response, String field) {

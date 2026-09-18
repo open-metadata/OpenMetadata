@@ -519,7 +519,8 @@ public class SamlValidator {
       return;
     }
 
-    String entityIdDomain = extractDomainFromUrl(samlConfig.getIdp().getEntityId());
+    String idpEntityId = samlConfig.getIdp().getEntityId();
+    String entityIdDomain = nullOrEmpty(idpEntityId) ? null : extractDomainFromUrl(idpEntityId);
     if (!nullOrEmpty(entityIdDomain) && !certCN.equals(entityIdDomain)) {
       LOG.info(
           "IdP certificate CN '{}' differs from Entity ID domain '{}'. This is expected for several identity providers and is not an error.",

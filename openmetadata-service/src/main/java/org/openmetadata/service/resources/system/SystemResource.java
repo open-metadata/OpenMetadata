@@ -60,12 +60,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
@@ -1116,9 +1118,13 @@ public class SystemResource {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
       return Response.ok(getSecurityConfig(securityContext)).build();
-    } catch (IllegalArgumentException e) {
-      // An invalid configuration is a client error; rethrow so the mapper answers 400 rather than
-      // letting the catch below report it as a server failure.
+    } catch (BadRequestException e) {
+      // Raised only by validateConfigurationOfActiveProvider, before anything is written. Rethrow
+      // so
+      // the mapper answers 400 rather than letting the catch below report it as a server failure —
+      // and keep the type narrow, so a failure from the writes below still surfaces as a 5xx
+      // instead
+      // of telling the admin their payload was bad after the configuration was already persisted.
       throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
@@ -1136,20 +1142,56 @@ public class SystemResource {
    * omits fields the cascade demanded. Only validation ignores those blocks; they are still stored.
    */
   private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
-    SecurityConfiguration scoped = JsonUtils.deepCopy(securityConfig, SecurityConfiguration.class);
-    clearInactiveProviderConfigurations(scoped.getAuthenticationConfiguration());
+    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    boolean hasActiveProvider = authConfig != null && authConfig.getProvider() != null;
+    ProviderConfigurations detached =
+        hasActiveProvider ? detachInactiveProviderConfigurations(authConfig) : null;
 
-    String violations = ValidatorUtil.validate(scoped);
-    if (violations != null) {
-      throw new IllegalArgumentException("Invalid security configuration: " + violations);
+    try {
+      String violations = ValidatorUtil.validate(securityConfig);
+      if (violations != null) {
+        throw new BadRequestException("Invalid security configuration: " + violations);
+      }
+    } finally {
+      if (detached != null) {
+        detached.restoreTo(authConfig);
+      }
+    }
+  }
+
+  /**
+   * Takes the inactive providers' blocks off {@code authConfig} and hands them back, so the caller
+   * can restore them once validation has run.
+   *
+   * <p>Detaching from the instance that is about to be persisted is deliberate, rather than
+   * validating a Jackson deep copy of it: a round trip re-applies the schema defaults that
+   * jsonschema2pojo emits as field initializers, so a {@code @NotNull} field that has a default (for
+   * example {@code provider}, which defaults to {@code basic}) would be repaired in the copy and
+   * left unenforced on the object actually saved.
+   */
+  private ProviderConfigurations detachInactiveProviderConfigurations(
+      AuthenticationConfiguration authConfig) {
+    ProviderConfigurations detached =
+        new ProviderConfigurations(
+            authConfig.getLdapConfiguration(),
+            authConfig.getSamlConfiguration(),
+            authConfig.getOidcConfiguration());
+    clearInactiveProviderConfigurations(authConfig);
+    return detached;
+  }
+
+  /** The provider blocks lifted off an {@link AuthenticationConfiguration} for validation. */
+  private record ProviderConfigurations(
+      LdapConfiguration ldap, SamlSSOClientConfig saml, OidcClientConfig oidc) {
+
+    void restoreTo(AuthenticationConfiguration authConfig) {
+      authConfig.setLdapConfiguration(ldap);
+      authConfig.setSamlConfiguration(saml);
+      authConfig.setOidcConfiguration(oidc);
     }
   }
 
   private void clearInactiveProviderConfigurations(AuthenticationConfiguration authConfig) {
-    if (authConfig == null || authConfig.getProvider() == null) {
-      return;
-    }
-
     AuthProvider provider = authConfig.getProvider();
     if (provider != AuthProvider.LDAP) {
       authConfig.setLdapConfiguration(null);
@@ -1157,7 +1199,9 @@ public class SystemResource {
     if (provider != AuthProvider.SAML) {
       authConfig.setSamlConfiguration(null);
     }
-    if (!usesOidcConfiguration(provider)) {
+    // oidcConfiguration is also the confidential client's block: a public client never reads it,
+    // whatever the provider, so its required fields must not gate a public-client save either.
+    if (!usesOidcConfiguration(provider) || authConfig.getClientType() != ClientType.CONFIDENTIAL) {
       authConfig.setOidcConfiguration(null);
     }
   }
@@ -1320,8 +1364,12 @@ public class SystemResource {
                     schema = @Schema(implementation = SecurityValidationResponse.class)))
       })
   public SecurityValidationResponse validateSecurityConfig(
-      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext, SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
+    // Scope bean validation to the active provider, as the PUT does. This is the first call the SSO
+    // form makes on save, so a cascade into an inactive provider's partially-filled block would
+    // reject the request here, before the PUT is ever reached.
+    validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
         securityConfig, applicationConfig, currentUsername);
