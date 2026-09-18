@@ -39,7 +39,6 @@ import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAl
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
@@ -229,7 +228,7 @@ const AlertDetailsPage = () => {
         {ownerLoading ? null : (
           <Owner
             hasPermission={editOwnersPermission}
-            owners={toOwnerRefs(alertDetails?.owners ?? [])}
+            owners={alertDetails?.owners ?? []}
             selectorContent={
               <UserTeamSelectableList
                 hasPermission={Boolean(editOwnersPermission)}

@@ -91,7 +91,7 @@
   },
   "playwright/e2e/Features/ContextCenterArticles.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 9
     },
     "playwright/no-wait-for-selector": {
       "count": 1
@@ -204,7 +204,7 @@
   },
   "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 4
     }
   },
   "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts": {
@@ -919,11 +919,6 @@
     },
     "playwright/no-wait-for-selector": {
       "count": 1
-    }
-  },
-  "playwright/utils/addTestCaseList.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 2
     }
   },
   "playwright/utils/advancedSearch.ts": {

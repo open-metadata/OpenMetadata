@@ -269,6 +269,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <span className="tw:animate-pulse" data-testid="count-skeleton" />
     ),
     Table,
+    // Renders only its children (the wrapped name), not the `title`, so the name
+    // appears once — the row itself carries navigation via onAction.
+    Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     // Forwards data-testid: the page title and subtitle are Typography, and dropping it let
     // assertions naming them pass without ever finding an element.
     Typography: ({
