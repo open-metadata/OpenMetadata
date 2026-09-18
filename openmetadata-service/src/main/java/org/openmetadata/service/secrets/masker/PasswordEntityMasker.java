@@ -17,6 +17,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -248,13 +249,11 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void walkCollection(Collection<?> collection, String key, PasswordFieldVisitor visitor) {
+    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
     int index = 0;
     for (Object element : collection) {
       if (isTraversable(element)) {
-        walkPasswordFields(
-            element,
-            createKey(key, ReflectionUtil.getCollectionElementKey(element, index)),
-            visitor);
+        walkPasswordFields(element, createKey(key, elementKeys.get(index)), visitor);
       }
       index++;
     }

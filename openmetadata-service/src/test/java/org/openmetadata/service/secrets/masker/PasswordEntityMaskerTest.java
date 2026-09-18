@@ -150,6 +150,35 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
   }
 
+  /**
+   * A name is only an identity if it is unique, and the schema does not enforce that. Two servers
+   * sharing a name must not share a key, or one secret would overwrite the other and both entries
+   * would come back holding the survivor.
+   */
+  @Test
+  void testDuplicateNamesDoNotShareASecret() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("dup").withApiKey(BETA_KEY)));
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
   @Test
   void testExceptionConnection() {
     Map<String, Object> mysqlConnectionObject =

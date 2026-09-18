@@ -451,10 +451,11 @@ public abstract class SecretsManager {
     if (!(obj instanceof Collection<?> collection)) {
       return;
     }
+    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
     int index = 0;
     for (Object element : collection) {
       if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
-        action.accept(element, ReflectionUtil.getCollectionElementKey(element, index));
+        action.accept(element, elementKeys.get(index));
       }
       index++;
     }

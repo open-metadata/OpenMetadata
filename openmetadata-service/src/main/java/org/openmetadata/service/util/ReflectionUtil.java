@@ -19,14 +19,20 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
 
 @Slf4j
 public class ReflectionUtil {
+  // Distinguishes a positional key from a name, so the two can never collide.
+  private static final String POSITION_KEY_PREFIX = "#";
+
   private ReflectionUtil() {
     /* Hidden construction */
   }
@@ -86,34 +92,52 @@ public class ReflectionUtil {
   }
 
   /**
-   * Identifies an element of a collection for secret bookkeeping.
+   * Identifies each element of a collection for secret bookkeeping.
    *
    * <p>Position is not a stable identity. Secrets are stored against the original configuration and
-   * restored onto the updated one, so if an element were keyed by index, removing or reordering an
-   * entry would restore a secret onto a different element - deleting the first of two MCP servers
-   * would hand its API key to the second. Elements that expose a non-empty {@code getName()} are
-   * keyed by it; only those without one fall back to position.
+   * restored onto the updated one, so keying by index would restore a secret onto whichever element
+   * later occupies that slot - deleting the first of two MCP servers would hand its API key to the
+   * second.
+   *
+   * <p>A name is only an identity if it is unique. {@code mcpServerConfig} requires a name but does
+   * not constrain it to be unique, and two elements sharing a key would overwrite one another in the
+   * password map and in the secret store. Names are therefore used only where they occur once in the
+   * collection; duplicates and unnamed elements fall back to position, which is the best available
+   * answer for elements that are genuinely indistinguishable.
    */
-  public static String getCollectionElementKey(Object element, int index) {
+  public static List<String> getCollectionElementKeys(Collection<?> collection) {
+    List<String> names = new ArrayList<>(collection.size());
+    Map<String, Integer> occurrences = new HashMap<>();
+    for (Object element : collection) {
+      String name = readName(element);
+      names.add(name);
+      if (name != null) {
+        occurrences.merge(name, 1, Integer::sum);
+      }
+    }
+    List<String> keys = new ArrayList<>(names.size());
+    for (int index = 0; index < names.size(); index++) {
+      String name = names.get(index);
+      boolean usable = name != null && occurrences.get(name) == 1;
+      keys.add(usable ? name : POSITION_KEY_PREFIX + index);
+    }
+    return keys;
+  }
+
+  /** The name an element reports, or null when it has none - see {@link #getCollectionElementKeys}. */
+  private static String readName(Object element) {
     try {
       Method getName = element.getClass().getMethod("getName");
       if (String.class.equals(getName.getReturnType())) {
         String name = (String) getName.invoke(element);
-        if (!nullOrEmpty(name)) {
-          return name;
-        }
+        return nullOrEmpty(name) ? null : name;
       }
     } catch (NoSuchMethodException e) {
-      LOG.debug(
-          "{} exposes no getName(); keying collection element by position",
-          element.getClass().getName());
+      LOG.debug("{} exposes no getName(); keying by position", element.getClass().getName());
     } catch (IllegalAccessException | InvocationTargetException e) {
-      LOG.debug(
-          "Could not read getName() from {}; keying collection element by position",
-          element.getClass().getName(),
-          e);
+      LOG.debug("Could not read getName() from {}", element.getClass().getName(), e);
     }
-    return String.valueOf(index);
+    return null;
   }
 
   /**
