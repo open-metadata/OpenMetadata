@@ -525,7 +525,12 @@ jobs:
         run: |
           if ! yarn build > /tmp/bundle-build.out 2>&1; then
             tail -40 /tmp/bundle-build.out
-            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-build.out | grep -iE 'error' | head -10 | sed 's/^/  /')
+            # `|| true`, as the steps above do: `head` closing the pipe early
+            # (SIGPIPE) or `grep` matching nothing would otherwise abort the
+            # step here under `set -e`, before the output and exit below are
+            # written — leaving the comment naming this check and listing
+            # nothing, which is the opposite of the point.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-build.out | grep -iE 'error' | head -10 | sed 's/^/  /') || true
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
@@ -540,7 +545,7 @@ jobs:
         run: |
           if ! yarn bundle:check > /tmp/bundle-check.out 2>&1; then
             cat /tmp/bundle-check.out
-            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-check.out | grep -E 'Bundle budget' | head -5 | sed 's/^/  /')
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-check.out | grep -E 'Bundle budget' | head -5 | sed 's/^/  /') || true
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
