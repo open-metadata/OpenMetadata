@@ -72,6 +72,18 @@ describe('usePaging (integration)', () => {
     ).toBeUndefined();
   });
 
+  it('starts from the size the caller asked for, whatever the preference holds', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference('paging-user', { globalPageSize: 50 });
+
+    const { result } = renderHook(() => usePaging(10), { wrapper });
+
+    // A caller that names a default never consults globalPageSize, so what this page persists to
+    // it can only ever reach other pages — never come back to this one.
+    expect(result.current.pageSize).toBe(10);
+  });
+
   it('still records a size the app-wide scale offers', () => {
     const { result } = renderHook(() => usePaging(), { wrapper });
 
