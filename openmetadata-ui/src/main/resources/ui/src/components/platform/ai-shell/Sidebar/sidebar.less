@@ -67,15 +67,16 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Shared Gate 0 roles. The selected/brand roles use the *utility* scale so they
-// flip in dark mode while keeping their exact light values and staying
-// customer-branding-aware — the previous raw palette steps (gray-blue-100,
-// brand-800, brand-50) never dark-flipped, leaving the active nav a light pill
-// with dark-blue text in dark mode. Selected surface stays neutral gray-blue and
-// the count badge stays brand, so they remain distinct in both themes.
+// Shared Gate 0 roles. Brand/text roles use the *utility* scale so they flip in
+// dark while keeping exact light values and staying customer-branding-aware.
+// The selected surface diverges by theme to match the design recording: neutral
+// gray-blue-100 in light (#eaecf5, frozen) and translucent brand in dark. A solid
+// gray-blue-900 was invisible against the gray-blue-950 panel; the recording uses a
+// blue-tinted pill (brand-500 @16%). --ask-selected-surface (flipped under
+// .dark-mode below) carries the dark value; light falls back to gray-blue-100.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
 @ask-bg-card: var(--om-color-bg-surface);
-@ask-bg-active: var(--tw-color-utility-gray-blue-100);
+@ask-bg-active: var(--ask-selected-surface, var(--tw-color-utility-gray-blue-100));
 @ask-bg-hover: var(--om-color-bg-secondary-hover);
 @ask-text-primary: var(--om-color-text-primary);
 @ask-text-secondary: var(--om-color-text-secondary);
@@ -93,6 +94,13 @@
 
 @ask-transition-duration: 200ms;
 @ask-transition-ease: ease;
+
+// Dark-only: flip the selected surface to the brand-tinted interactive-selected
+// role (brand-500 @16%) so the active pill reads as a blue-tinted surface, matching
+// the design recording. Light leaves this unset -> gray-blue-100 fallback (frozen).
+.dark-mode {
+  --ask-selected-surface: var(--om-color-interactive-selected);
+}
 
 // ---- Shell ----
 // Outer card width = inner panel width + left/right padding (4px each).
