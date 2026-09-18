@@ -14,8 +14,9 @@ import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Play } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { ReactNode, useEffect, useRef, useState } from 'react';
-import { useFocusable } from 'react-aria';
+import { isUndefined } from 'lodash';
+import { useEffect, useRef, useState } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -43,31 +44,6 @@ const PIPELINE_STATUS_FIELDS = ['pipelineStatuses'];
 interface RunTestCaseButtonProps {
   testCase: TestCase;
 }
-
-// A disabled button ignores the tooltip's trigger context, so the tooltip
-// would never open on it; this focusable wrapper keeps the reason reachable by
-// hover and keyboard without nesting the button in another button.
-const DisabledReasonTrigger = ({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  const { focusableProps } = useFocusable({}, ref);
-
-  return (
-    <span
-      {...focusableProps}
-      aria-label={label}
-      className="tw:inline-flex"
-      ref={ref}
-      role="group">
-      {children}
-    </span>
-  );
-};
 
 const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
   const { t } = useTranslation();
@@ -116,7 +92,7 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
     )
   ).can(Operation.Trigger);
   const activeRunState = getActiveRunState(pipeline);
-  const runInProgress = activeRunState !== undefined;
+  const runInProgress = !isUndefined(activeRunState);
   const disabledReasonKey = getRunDisabledReasonKey({
     pipelines,
     runInProgress,
@@ -165,11 +141,19 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
     </Button>
   );
 
+  // A disabled button ignores the tooltip's trigger context, so the tooltip would
+  // never open on it. Focusable hands that context to the span instead, keeping
+  // the reason reachable by hover and keyboard without nesting a button in a button.
   return disabledReasonKey ? (
     <Tooltip placement="top" title={t(disabledReasonKey)}>
-      <DisabledReasonTrigger label={t(disabledReasonKey)}>
-        {button}
-      </DisabledReasonTrigger>
+      <Focusable>
+        <span
+          aria-label={t(disabledReasonKey)}
+          className="tw:inline-flex"
+          role="group">
+          {button}
+        </span>
+      </Focusable>
     </Tooltip>
   ) : (
     button

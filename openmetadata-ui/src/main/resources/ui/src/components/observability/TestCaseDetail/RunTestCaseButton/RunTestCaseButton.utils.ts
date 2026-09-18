@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { first, sortBy } from 'lodash';
+import { first, isUndefined, sortBy } from 'lodash';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   IngestionPipeline,
@@ -79,7 +79,7 @@ export const getActiveRunState = (
   const isRunning = statuses.some(
     ({ pipelineState, timestamp }) =>
       pipelineState === PipelineState.Running &&
-      timestamp !== undefined &&
+      !isUndefined(timestamp) &&
       timestamp >= now - runningTimeoutMs
   );
   if (isRunning) {
@@ -96,7 +96,7 @@ export const getActiveRunState = (
 export const isRunInProgress = (
   pipeline: IngestionPipeline,
   now = Date.now()
-) => getActiveRunState(pipeline, now) !== undefined;
+) => !isUndefined(getActiveRunState(pipeline, now));
 
 /**
  * The translation key explaining why a user who may run the test case cannot
