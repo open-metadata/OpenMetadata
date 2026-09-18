@@ -22,6 +22,13 @@ body {
   font-feature-settings: normal !important;
 }
 
+// AI-mode shell background in dark: page-dark so the sidebar's margin doesn't
+// expose the gray-blue app body behind it (seamless with the canvas sidebar).
+// Dark only; light is unchanged (inherits the body as before).
+.dark-mode .assistant-layout {
+  background: var(--tw-color-bg-primary);
+}
+
 .main-container {
   display: flex;
   height: 100vh;
