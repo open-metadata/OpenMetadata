@@ -1,0 +1,166 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Calendar,
+  Clock,
+  Key01,
+  Stars01,
+  Tag01,
+  Type01,
+  User01,
+  Users01,
+} from '@untitledui/icons';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTagDisplay } from '../../../../../utils/TagsPureUtils';
+import { formatInboxDate } from '../inbox.utils';
+import {
+  TaskDetailCallout,
+  TaskDetailRow,
+  TaskDetailRowIcon,
+  TaskDetailRowValue,
+} from '../taskDetail.types';
+
+export interface TaskDetailSummaryProps {
+  rows: TaskDetailRow[];
+  callout?: TaskDetailCallout;
+}
+
+const ROW_ICON: Record<TaskDetailRowIcon, typeof User01> = {
+  calendar: Calendar,
+  clock: Clock,
+  owner: Users01,
+  shield: Key01,
+  source: Stars01,
+  tag: Tag01,
+  type: Type01,
+  user: User01,
+};
+
+/** Renders one row's value; the union keeps the descriptor free of JSX. */
+const RowValue: React.FC<{ value: TaskDetailRowValue }> = ({ value }) => {
+  switch (value.kind) {
+    case 'date':
+      return (
+        <Typography size="text-sm" weight="medium">
+          {formatInboxDate(value.timestamp)}
+        </Typography>
+      );
+
+    case 'users':
+      return (
+        <Box align="center" className="tw:flex-wrap" gap={2}>
+          {value.refs.map((ref) => (
+            <Box align="center" gap={1} key={ref.id}>
+              <ProfilePicture
+                displayName={getEntityName(ref)}
+                name={ref.name ?? ''}
+                width="20"
+              />
+              <Typography size="text-sm" weight="medium">
+                {getEntityName(ref)}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      );
+
+    case 'tags':
+      return (
+        <Box align="center" className="tw:flex-wrap" gap={1}>
+          {value.tags.map((tag) => (
+            <Badge color="gray" key={tag.tagFQN} size="sm" type="modern">
+              {getTagDisplay(tag.tagFQN)}
+            </Badge>
+          ))}
+        </Box>
+      );
+
+    case 'link':
+      return (
+        <Link
+          className="tw:font-medium! tw:text-utility-blue-dark-500 tw:no-underline! tw:hover:underline!"
+          to={value.to}>
+          {value.label}
+        </Link>
+      );
+
+    default:
+      return (
+        <Typography size="text-sm" weight="medium">
+          {value.text}
+        </Typography>
+      );
+  }
+};
+
+/**
+ * The task's key/value summary and its rationale callout, drawn from the
+ * type's descriptor. Two columns on a wide pane, one when it is narrow.
+ */
+const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
+  rows,
+  callout,
+}) => (
+  <Box data-testid="task-detail-summary" direction="col" gap={5}>
+    {rows.length > 0 && (
+      <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-4 tw:sm:grid-cols-2">
+        {rows.map((row) => {
+          const Icon = ROW_ICON[row.icon];
+
+          return (
+            <Box align="start" gap={2} key={row.key}>
+              <Icon
+                className="tw:mt-0.5 tw:shrink-0 tw:text-fg-quaternary"
+                height={16}
+                width={16}
+              />
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {row.label}
+                </Typography>
+                <div className="tw:min-w-0 tw:break-words">
+                  <RowValue value={row.value} />
+                </div>
+              </Box>
+            </Box>
+          );
+        })}
+      </div>
+    )}
+
+    {callout && (
+      <Box
+        className="tw:rounded-lg tw:border-l-2 tw:border-brand-solid tw:bg-secondary tw:px-4 tw:py-3"
+        data-testid="task-detail-callout"
+        direction="col"
+        gap={1}>
+        <Typography
+          className="tw:uppercase tw:text-quaternary tw:tracking-wide"
+          size="text-xs"
+          weight="semibold">
+          {callout.label}
+        </Typography>
+        <Typography className="tw:break-words" size="text-sm">
+          {callout.text}
+        </Typography>
+      </Box>
+    )}
+  </Box>
+);
+
+export default TaskDetailSummary;

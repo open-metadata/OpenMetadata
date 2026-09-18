@@ -287,6 +287,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  private void applyTaskSearch(ListFilter filter, String q) {
+    if (!nullOrEmpty(q)) {
+      filter.addQueryParam("taskSearch", q);
+    }
+  }
+
   private void applyTaskTimeRange(ListFilter filter, Long startTs, Long endTs) {
     if (startTs != null && endTs != null && startTs > endTs) {
       throw BadRequestException.of("startTs must be less than or equal to endTs");
@@ -513,9 +519,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (assigneeId != null) {
       filter.addQueryParam("assigneeId", assigneeId.toString());
     }
-    if (!nullOrEmpty(q)) {
-      filter.addQueryParam("darSearch", q);
-    }
+    applyTaskSearch(filter, q);
     repository.addDomainFilter(filter, domain);
 
     Fields fields = getFields(fieldsParam);
@@ -579,11 +583,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -639,11 +652,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -698,6 +720,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -715,6 +745,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
 
@@ -767,6 +798,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
           @QueryParam("endTs")
           Long endTs,
+      @Parameter(
+              description =
+                  "Free-text search. Database-only (tasks are not indexed into Elasticsearch). "
+                      + "Matches case-insensitive against task name, displayName, the request "
+                      + "reason in the payload, and the about-entity displayName / "
+                      + "fullyQualifiedName.")
+          @QueryParam("q")
+          String q,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -775,6 +814,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
+    applyTaskSearch(filter, q);
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
 

@@ -11,105 +11,153 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  AlertTriangle,
+  CheckCircle,
+  PlusCircle,
+  UserPlus01,
+  XCircle,
+} from '@untitledui/icons';
+import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { Task } from '../../../../../generated/entity/tasks/task';
-import { EntityReference } from '../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { formatActivityTime } from '../inbox.utils';
+import { formatInboxDateTime } from '../inbox.utils';
+import {
+  buildTaskTimeline,
+  TaskTimelineEntry,
+  TaskTimelineEvent,
+  TaskTimelineIcon,
+  TaskTimelineTone,
+} from '../taskTimeline.utils';
+import TaskCommentRow from './TaskCommentRow';
 
 export interface TaskActivityTimelineProps {
   task: Task;
+  /** Reload the task after a comment is edited or deleted. */
+  onCommentChanged: () => void;
 }
 
-interface TimelineEvent {
-  id: string;
-  actor?: EntityReference;
-  action: string;
-  timestamp?: number;
-}
+const EVENT_ICON: Record<TaskTimelineIcon, typeof CheckCircle> = {
+  approved: CheckCircle,
+  assigned: UserPlus01,
+  created: PlusCircle,
+  incident: AlertTriangle,
+  rejected: XCircle,
+  resolved: CheckCircle,
+};
+
+const TONE_TEXT_CLASS: Record<TaskTimelineTone, string> = {
+  default: 'tw:text-secondary',
+  error: 'tw:text-error-primary',
+  success: 'tw:text-secondary',
+};
+
+const TONE_ICON_CLASS: Record<TaskTimelineTone, string> = {
+  default: 'tw:text-fg-quaternary',
+  error: 'tw:text-error-primary',
+  success: 'tw:text-utility-success-600',
+};
+
+/** One system event: icon, sentence and the moment it happened. */
+const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
+  event,
+}) => {
+  const { t } = useTranslation();
+  const Icon = EVENT_ICON[event.icon];
+
+  return (
+    <Box align="start" className="tw:justify-between tw:gap-4">
+      <Box align="start" className="tw:min-w-0" gap={2}>
+        <span
+          className={classNames(
+            'tw:mt-0.5 tw:flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center',
+            TONE_ICON_CLASS[event.tone]
+          )}>
+          <Icon height={16} width={16} />
+        </span>
+        <Typography
+          className={TONE_TEXT_CLASS[event.tone]}
+          data-testid="task-timeline-event"
+          size="text-sm">
+          {t(event.textKey, {
+            user: event.actor ? getEntityName(event.actor) : '',
+          })}
+        </Typography>
+      </Box>
+      {event.timestamp && (
+        <Typography
+          className="tw:shrink-0 tw:text-secondary"
+          size="text-xs"
+          weight="medium">
+          {formatInboxDateTime(event.timestamp)}
+        </Typography>
+      )}
+    </Box>
+  );
+};
 
 /**
- * Lifecycle timeline for a task: creation, assignment and each comment,
- * synthesized from the task fields (no dedicated activity endpoint).
+ * The task's events and comments as one timestamp-ordered stream, so a
+ * conversation reads in the order it happened. Events are synthesized from the
+ * task's own fields (see {@link buildTaskTimeline}) — there is no per-task event
+ * endpoint, so changes the task does not stamp are not shown.
  */
 const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
   task,
+  onCommentChanged,
 }) => {
   const { t } = useTranslation();
+  const entries = useMemo(() => buildTaskTimeline(task), [task]);
 
-  const events = useMemo<TimelineEvent[]>(() => {
-    const list: TimelineEvent[] = [];
-
-    (task.comments ?? []).forEach((comment) => {
-      list.push({
-        id: `comment-${comment.id}`,
-        actor: comment.author,
-        action: t('label.added-a-comment'),
-        timestamp: comment.createdAt,
-      });
-    });
-
-    const firstAssignee = task.assignees?.[0];
-    if (firstAssignee) {
-      list.push({
-        id: `assigned-${firstAssignee.id}`,
-        actor: firstAssignee,
-        action: t('label.assigned-to'),
-        timestamp: task.createdAt,
-      });
+  const renderEntry = (entry: TaskTimelineEntry) => {
+    if (entry.kind === 'event') {
+      return <TimelineEventRow event={entry} />;
     }
 
-    list.push({
-      id: 'created',
-      actor: task.createdBy,
-      action: t('label.request-created-by'),
-      timestamp: task.createdAt,
-    });
-
-    return list;
-  }, [task, t]);
+    return (
+      <Box align="start" className="tw:min-w-0" gap={2}>
+        <ProfilePicture
+          displayName={getEntityName(entry.comment.author)}
+          name={entry.comment.author?.name ?? ''}
+          width="28"
+        />
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <TaskCommentRow
+            comment={entry.comment}
+            taskId={task.id}
+            onChanged={onCommentChanged}
+          />
+        </Box>
+      </Box>
+    );
+  };
 
   return (
-    <Box className="tw:relative" direction="col" gap={5}>
-      {/* Connector line behind the avatars (they sit at z-1 and cover it, so it
-          only shows through the gaps between events). left-[11px] centers it on
-          the 24px avatar. */}
-      <span className="tw:pointer-events-none tw:absolute tw:top-3 tw:bottom-3 tw:left-[11px] tw:z-0 tw:w-px tw:bg-utility-gray-blue-200" />
-      {events.map((event) => (
-        <Box
-          align="start"
-          className="tw:relative tw:z-[1]"
-          gap={2}
-          key={event.id}>
-          {event.actor ? (
-            <ProfilePicture
-              displayName={event.actor.displayName}
-              name={event.actor.name ?? ''}
-              width="24"
-            />
-          ) : (
-            // Reserve the 24px avatar gutter so actor-less rows still indent
-            // past the connector line instead of overlapping it.
-            <span className="tw:size-6 tw:shrink-0" />
-          )}
-          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-            <Typography size="text-sm">
-              <span className="tw:font-medium">
-                {event.actor ? getEntityName(event.actor) : ''}
-              </span>{' '}
-              <span className="tw:text-secondary">{event.action}</span>
-            </Typography>
-            {event.timestamp && (
-              <Typography className="tw:text-secondary" size="text-xs">
-                {formatActivityTime(event.timestamp)}
-              </Typography>
-            )}
-          </Box>
+    <Box data-testid="task-activity-timeline" direction="col" gap={5}>
+      <Box align="center" className="tw:justify-between" gap={3}>
+        <Box align="center" gap={2}>
+          <Typography size="text-md" weight="semibold">
+            {t('label.activity')}
+          </Typography>
+          <Badge color="gray" size="sm" type="pill-color">
+            {entries.length}
+          </Badge>
         </Box>
-      ))}
+        <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
+        <Typography className="tw:shrink-0 tw:text-secondary" size="text-xs">
+          {t('label.comments-and-events')}
+        </Typography>
+      </Box>
+
+      <Box direction="col" gap={5}>
+        {entries.map((entry) => (
+          <div key={entry.id}>{renderEntry(entry)}</div>
+        ))}
+      </Box>
     </Box>
   );
 };
