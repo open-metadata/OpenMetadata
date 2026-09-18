@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.data.table import Table
 from ..features.database.entities import table_query
 from ..mysql.test_metadata import test_error_containment_one_broken_view as error_containment_scenario
 from ..runtime.cli import CliExecutionError, CliRunner, WorkflowInvocation
-from .test_cli import PROBE
+from .support import CLI_PROBE
 
 
 @pytest.mark.parametrize(
@@ -45,7 +45,7 @@ def test_error_containment_accepts_only_the_named_failure_and_healthy_survivors(
 
 def _run_scenario(tmp_path, exit_code, failures):
     script = tmp_path / "probe.py"
-    script.write_text(PROBE)
+    script.write_text(CLI_PROBE)
     cli = CliRunner(tmp_path / "cli", command=(sys.executable, str(script)))
 
     def invocation(options):

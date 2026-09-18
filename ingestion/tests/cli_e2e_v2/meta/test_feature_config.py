@@ -25,6 +25,7 @@ from ..features.database.pipelines import (
     MetadataPipeline,
     ProfilerPipeline,
 )
+from ..features.database.pipelines import TestPipeline as DataQualityPipeline
 from ..server import ServerConfig
 
 
@@ -46,6 +47,7 @@ def server(monkeypatch):
         ),
         (ProfilerPipeline(), "profile", "custom-mysql", "orm-profiler"),
         (LineagePipeline(), "ingest", "custom-mysql-lineage", None),
+        (DataQualityPipeline(type="TestSuite"), "test", "custom-mysql", None),
         (AutoClassificationPipeline(enableAutoClassification=True), "classify", "custom-mysql", "tag-pii-processor"),
     ],
 )

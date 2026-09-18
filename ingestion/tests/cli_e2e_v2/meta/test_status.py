@@ -82,6 +82,16 @@ def test_failure_details_require_objects_and_nullable_text(status_payload, failu
         Status.from_dict(status_payload)
 
 
+@pytest.mark.parametrize("errors,detail_count", [(0, 1), (1, 2)])
+def test_failure_details_cannot_exceed_their_step_error_count(status_payload, errors, detail_count):
+    status_payload["steps"][0].update(
+        errors=errors, failures=[{"name": "my_table", "error": "source failed"}] * detail_count
+    )
+    status_payload["steps"].append({**status_payload["steps"][0], "name": "Sink", "errors": 10, "failures": None})
+    with pytest.raises(ValueError, match=r"failures.*errors"):
+        Status.from_dict(status_payload)
+
+
 def test_error_total_does_not_count_only_sampled_details(status_payload):
     status_payload["success"] = False
     status_payload["steps"][0].update(

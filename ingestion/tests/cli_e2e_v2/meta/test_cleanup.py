@@ -15,13 +15,17 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from .test_workflow_case import CHILD_CONFTEST, _configure_child
+from .support import CHILD_CONFTEST, WORKFLOW_PROBE, configure_child
 
 SERVICE_FIXTURES = """
 import json
 import os
+from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 @pytest.fixture
 def service_entity():
@@ -37,35 +41,51 @@ def independent_resource(request):
 def om(independent_resource):
     directory = Path("resources")
     directory.mkdir(exist_ok=True)
-    class FileSdk:
-        def create(self, name):
-            entity = DatabaseService(id=uuid4(), name=name, serviceType="Mysql")
-            (directory / (name + ".json")).write_text(entity.model_dump_json())
-            return entity
-
-        def get_by_name(self, *, entity, fqn):
-            assert entity is DatabaseService
+    class FileHttp:
+        def get(self, url):
             if os.environ["CLEANUP_MODE"] == "lookup_failure":
                 raise PermissionError("lookup denied")
-            path = directory / (fqn + ".json")
-            return entity.model_validate_json(path.read_text()) if path.exists() else None
+            parsed = urlsplit(url)
+            prefix = "/services/databaseServices/name/"
+            assert parsed.path.startswith(prefix)
+            path = directory / (unquote(parsed.path.removeprefix(prefix)) + ".json")
+            if not path.exists():
+                raise APIError({"code": 404, "message": "service not found"})
+            payload = json.loads(path.read_text())
+            include = parse_qs(parsed.query).get("include", ["non-deleted"])[0]
+            if payload.get("deleted") and include not in {"all", "deleted"}:
+                raise APIError({"code": 404, "message": "service not found"})
+            return payload
 
-        def delete(self, *, entity, entity_id, hard_delete, recursive):
-            assert entity is DatabaseService
-            assert hard_delete is True
-            assert recursive is True
+        def delete(self, url):
+            parsed = urlsplit(url)
+            params = parse_qs(parsed.query)
+            assert params["hardDelete"] == ["true"]
+            assert params["recursive"] == ["true"]
             if os.environ["CLEANUP_MODE"] in {"delete_failure", "both_fail"}:
                 raise PermissionError("delete denied")
+            entity_id = parsed.path.rsplit("/", 1)[-1]
             for path in directory.glob("*.json"):
-                if str(entity.model_validate_json(path.read_text()).id.root) == entity_id:
+                if json.loads(path.read_text())["id"] == entity_id:
                     path.unlink()
                     return
             raise LookupError(entity_id)
-    return FileSdk()
+    sdk = OpenMetadata(OpenMetadataConnection(
+        hostPort="http://127.0.0.1:9/api",
+        authProvider="openmetadata",
+        securityConfig={"jwtToken": "placeholder"},
+        enableVersionValidation=False,
+    ))
+    sdk.client = FileHttp()
+    return sdk
 
 @pytest.fixture
-def owned(om, service_name):
-    om.create(service_name)
+def owned(service_name):
+    entity = DatabaseService(
+        id=uuid4(), name=service_name, serviceType="Mysql",
+        deleted=os.environ["SERVICE_DELETED"] == "true",
+    )
+    (Path("resources") / (service_name + ".json")).write_text(entity.model_dump_json())
     Path("owned-name").write_text(service_name)
     if os.environ["CLEANUP_MODE"] == "setup_failure":
         raise RuntimeError("setup failed after allocation")
@@ -73,6 +93,7 @@ def owned(om, service_name):
 """
 
 
+@pytest.mark.parametrize("deleted", [False, True], ids=["active", "soft-deleted"])
 @pytest.mark.parametrize(
     "mode,passed,failed,errors,remaining",
     [
@@ -83,9 +104,12 @@ def owned(om, service_name):
         ("lookup_failure", 1, 0, 1, 1),
     ],
 )
-def test_owned_service_cleanup_is_failure_aware(pytester, monkeypatch, mode, passed, failed, errors, remaining):
-    _configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST + SERVICE_FIXTURES)
+def test_owned_service_cleanup_is_failure_aware(
+    pytester, monkeypatch, mode, passed, failed, errors, remaining, deleted
+):
+    configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST + SERVICE_FIXTURES, probe=WORKFLOW_PROBE)
     monkeypatch.setenv("CLEANUP_MODE", mode)
+    monkeypatch.setenv("SERVICE_DELETED", str(deleted).lower())
     pytester.makepyfile("""
 import os
 from pathlib import Path
@@ -118,7 +142,7 @@ def test_owned_service(cli, owned):
 
 
 def test_never_created_service_is_absent_without_teardown_error(pytester, monkeypatch):
-    _configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST + SERVICE_FIXTURES)
+    configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST + SERVICE_FIXTURES, probe=WORKFLOW_PROBE)
     monkeypatch.setenv("CLEANUP_MODE", "success")
     pytester.makepyfile("""
 def test_no_ingestion(service_name):

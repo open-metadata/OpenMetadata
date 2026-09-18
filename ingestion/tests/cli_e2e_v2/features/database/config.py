@@ -15,13 +15,7 @@ from typing import Any
 
 from ...runtime.cli import WorkflowInvocation
 from ...server import ServerConfig
-from .pipelines import (
-    AutoClassificationPipeline,
-    PipelineOptions,
-    ProfilerPipeline,
-    cli_subcommand_for,
-    source_type_suffix_for,
-)
+from .pipelines import PipelineOptions, pipeline_spec
 
 
 def database_invocation(
@@ -32,9 +26,10 @@ def database_invocation(
     server: ServerConfig,
     options: PipelineOptions,
 ) -> WorkflowInvocation:
+    spec = pipeline_spec(options)
     config = {
         "source": {
-            "type": source_type + source_type_suffix_for(options),
+            "type": source_type + spec.source_type_suffix,
             "serviceName": service_name,
             "serviceConnection": {"config": deepcopy(service_connection)},
             "sourceConfig": {"config": options.model_dump(mode="json", exclude_none=True)},
@@ -42,7 +37,6 @@ def database_invocation(
         "sink": server.to_sink_config_dict(),
         "workflowConfig": server.to_workflow_config_dict(),
     }
-    processor = {ProfilerPipeline: "orm-profiler", AutoClassificationPipeline: "tag-pii-processor"}.get(type(options))
-    if processor is not None:
-        config["processor"] = {"type": processor, "config": {}}
-    return WorkflowInvocation(cli_subcommand_for(options), config)
+    if spec.processor is not None:
+        config["processor"] = {"type": spec.processor, "config": {}}
+    return WorkflowInvocation(spec.cli_subcommand, config)

@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Structural differ for Expected* trees.
 
-Public surface: `catalog_matches(expected, mode)` checks a complete catalog snapshot.
+Public surface: `catalog_matches(expected)` checks a complete catalog snapshot.
 Diffs use bracket-path notation (e.g. `service[s].database[d].table[t].column[c].dataType`).
 """
 
@@ -18,29 +18,31 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.fqn import quote_name
 
 from ..._om_compat import unwrap_root_list
-from .snapshot import CatalogSnapshot
-from .types import (
-    Diff,
-    DiffKind,
-    ExpectedColumn,
-    ExpectedDatabase,
-    ExpectedSchema,
-    ExpectedService,
-    ExpectedStoredProcedure,
-    ExpectedTable,
-    MatchMode,
-)
+from .types import Diff, DiffKind
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from .snapshot import CatalogSnapshot
+    from .types import (
+        ExpectedColumn,
+        ExpectedDatabase,
+        ExpectedSchema,
+        ExpectedService,
+        ExpectedStoredProcedure,
+        ExpectedTable,
+    )
 
 
 class StructuralMismatch(AssertionError):  # noqa: N818  (intentional API surface — public exception name)
@@ -112,15 +114,11 @@ def _classify_path(path: str) -> tuple[str, str]:
     return scope or path, category or "service"
 
 
-def catalog_matches(expected: ExpectedService, *, mode: MatchMode) -> Callable[[CatalogSnapshot], None]:
-    if not isinstance(mode, MatchMode):
-        raise TypeError("mode must be a MatchMode")
-
+def catalog_matches(expected: ExpectedService) -> Callable[[CatalogSnapshot], None]:
     def check(snapshot: CatalogSnapshot) -> None:
         diffs: list[Diff] = []
-        if mode == MatchMode.STRICT:
-            _check_strict_inventory(expected, snapshot, diffs)
-        _diff_node(expected, parent_path="", snapshot=snapshot, mode=mode, diffs=diffs)
+        _check_inventory(expected, snapshot, diffs)
+        _diff_service(expected, snapshot, diffs)
         if diffs:
             raise StructuralMismatch(diffs)
 
@@ -133,7 +131,7 @@ def _check_duplicates(names: Iterable[str], path: str, diffs: list[Diff]) -> Non
             diffs.append(Diff(path=f"{path}[{name}].duplicates", expected=1, actual=count))
 
 
-def _check_strict_inventory(expected: ExpectedService, snapshot: CatalogSnapshot, diffs: list[Diff]) -> None:
+def _check_inventory(expected: ExpectedService, snapshot: CatalogSnapshot, diffs: list[Diff]) -> None:
     parents: dict[type, dict[str, str]] = {Database: {}, DatabaseSchema: {}, Table: {}, StoredProcedure: {}}
     service_fqn = quote_name(expected.name)
     for database in expected.databases:
@@ -177,37 +175,11 @@ def _check_strict_inventory(expected: ExpectedService, snapshot: CatalogSnapshot
                 diffs.append(Diff(path=f"{path}.{parent_field}.id", expected=model_str(parent.id), actual=reference_id))
 
 
-# -----------------------------------------------------------------------------
-# Node dispatch
-# -----------------------------------------------------------------------------
-
-
-_NodeDiffer = Callable[[object, str, CatalogSnapshot, MatchMode, list[Diff]], None]
-
-
-def _diff_node(
-    node: object,
-    parent_path: str,
-    snapshot: CatalogSnapshot,
-    mode: MatchMode,
-    diffs: list[Diff],
-) -> None:
-    """Dispatch entry; raises TypeError for an unregistered node type."""
-    differ = _DIFFERS.get(type(node))
-    if differ is None:
-        raise TypeError(f"no differ registered for {type(node).__name__}; add an entry to _DIFFERS in differ.py")
-    differ(node, parent_path, snapshot, mode, diffs)
-
-
 def _diff_service(
-    node: object,
-    parent_path: str,
+    node: ExpectedService,
     snapshot: CatalogSnapshot,
-    mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    assert isinstance(node, ExpectedService)
-    assert parent_path == "", "ExpectedService must be the root node"
     self_fqn = quote_name(node.name)
     path = f"service[{node.name}]"
 
@@ -218,18 +190,16 @@ def _diff_service(
     if actual.serviceType != node.service_type:
         diffs.append(Diff(path=f"{path}.serviceType", expected=node.service_type, actual=actual.serviceType))
 
-    for child in node.databases:
-        _diff_node(child, self_fqn, snapshot, mode, diffs)
+    for database in node.databases:
+        _diff_database(database, self_fqn, snapshot, diffs)
 
 
 def _diff_database(
-    node: object,
+    node: ExpectedDatabase,
     parent_path: str,
     snapshot: CatalogSnapshot,
-    mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    assert isinstance(node, ExpectedDatabase)
     self_fqn = f"{parent_path}.{quote_name(node.name)}"
     path = f"service[{parent_path}].database[{node.name}]"
 
@@ -238,18 +208,16 @@ def _diff_database(
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
 
-    for child in node.schemas:
-        _diff_node(child, self_fqn, snapshot, mode, diffs)
+    for schema in node.schemas:
+        _diff_schema(schema, self_fqn, snapshot, diffs)
 
 
 def _diff_schema(
-    node: object,
+    node: ExpectedSchema,
     parent_path: str,
     snapshot: CatalogSnapshot,
-    mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    assert isinstance(node, ExpectedSchema)
     self_fqn = f"{parent_path}.{quote_name(node.name)}"
     path = f"{parent_path}.schema[{node.name}]"
 
@@ -258,27 +226,28 @@ def _diff_schema(
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
 
-    for child in node.tables:
-        _diff_node(child, self_fqn, snapshot, mode, diffs)
-    for child in node.stored_procedures:
-        _diff_node(child, self_fqn, snapshot, mode, diffs)
+    for table in node.tables:
+        _diff_table(table, self_fqn, snapshot, diffs)
+    for procedure in node.stored_procedures:
+        _diff_stored_procedure(procedure, self_fqn, snapshot, diffs)
 
 
 def _diff_table(
-    node: object,
+    node: ExpectedTable,
     parent_path: str,
     snapshot: CatalogSnapshot,
-    mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    assert isinstance(node, ExpectedTable)
     self_fqn = f"{parent_path}.{quote_name(node.name)}"
-    path = f"table[{node.name}]"
+    path = f"{parent_path}.table[{node.name}]"
 
     actual = snapshot.find(Table, self_fqn)
     if actual is None:
         diffs.append(Diff(path=path, kind=DiffKind.MISSING))
         return
+
+    if node.table_type is not None and actual.tableType != node.table_type:
+        diffs.append(Diff(path=f"{path}.tableType", expected=node.table_type, actual=actual.tableType))
 
     # owner: matches when exp.owner appears in any actual owner
     if node.owner is not None:
@@ -293,42 +262,36 @@ def _diff_table(
             diffs.append(Diff(path=f"{path}.tags", expected=sorted(node.tags), actual=sorted(actual_tags)))
 
     if node.description is not None:
-        actual_desc = model_str(actual.description) if actual.description else ""
-        if node.description not in actual_desc:
-            diffs.append(
-                Diff(path=f"{path}.description", expected=f"contains {node.description!r}", actual=actual_desc)
-            )
+        actual_desc = model_str(actual.description) if actual.description is not None else None
+        if node.description != actual_desc:
+            diffs.append(Diff(path=f"{path}.description", expected=node.description, actual=actual_desc))
 
     actual_columns = unwrap_root_list(actual.columns)
-    if mode == MatchMode.STRICT:
-        _check_duplicates((model_str(c.name) for c in actual_columns), f"{path}.column", diffs)
+    _check_duplicates((model_str(c.name) for c in actual_columns), f"{path}.column", diffs)
     actual_columns_by_name = {model_str(c.name): c for c in actual_columns}
     for exp_col in node.columns:
         _diff_column(exp_col, path, actual_columns_by_name, diffs)
 
-    if mode == MatchMode.STRICT:
-        expected_names = {c.name for c in node.columns}
-        extra = set(actual_columns_by_name.keys()) - expected_names
-        if extra:
-            diffs.append(
-                Diff(
-                    path=f"{path}.columns(strict)",
-                    kind=DiffKind.UNEXPECTED,
-                    actual=sorted(extra),
-                )
+    expected_names = {c.name for c in node.columns}
+    extra = set(actual_columns_by_name.keys()) - expected_names
+    if extra:
+        diffs.append(
+            Diff(
+                path=f"{path}.columns(strict)",
+                kind=DiffKind.UNEXPECTED,
+                actual=sorted(extra),
             )
+        )
 
 
 def _diff_stored_procedure(
-    node: object,
+    node: ExpectedStoredProcedure,
     parent_path: str,
     snapshot: CatalogSnapshot,
-    mode: MatchMode,
     diffs: list[Diff],
 ) -> None:
-    assert isinstance(node, ExpectedStoredProcedure)
     self_fqn = f"{parent_path}.{quote_name(node.name)}"
-    path = f"procedure[{node.name}]"
+    path = f"{parent_path}.procedure[{node.name}]"
 
     actual = snapshot.find(StoredProcedure, self_fqn)
     if actual is None:
@@ -336,17 +299,15 @@ def _diff_stored_procedure(
         return
 
     if node.description is not None:
-        actual_desc = model_str(actual.description) if actual.description else ""
-        if node.description not in actual_desc:
-            diffs.append(
-                Diff(path=f"{path}.description", expected=f"contains {node.description!r}", actual=actual_desc)
-            )
+        actual_desc = model_str(actual.description) if actual.description is not None else None
+        if node.description != actual_desc:
+            diffs.append(Diff(path=f"{path}.description", expected=node.description, actual=actual_desc))
 
 
 def _diff_column(
     exp_col: ExpectedColumn,
     table_path: str,
-    actual_columns_by_name: dict,
+    actual_columns_by_name: dict[str, Column],
     diffs: list[Diff],
 ) -> None:
     path = f"{table_path}.column[{exp_col.name}]"
@@ -363,18 +324,6 @@ def _diff_column(
         if exp_col.tags - actual_tags:
             diffs.append(Diff(path=f"{path}.tags", expected=sorted(exp_col.tags), actual=sorted(actual_tags)))
     if exp_col.description is not None:
-        actual_desc = model_str(actual.description) if actual.description else ""
-        if exp_col.description not in actual_desc:
-            diffs.append(
-                Diff(path=f"{path}.description", expected=f"contains {exp_col.description!r}", actual=actual_desc)
-            )
-
-
-# Registry declared after differs so it can reference them by name.
-_DIFFERS: dict[type, _NodeDiffer] = {
-    ExpectedService: _diff_service,
-    ExpectedDatabase: _diff_database,
-    ExpectedSchema: _diff_schema,
-    ExpectedTable: _diff_table,
-    ExpectedStoredProcedure: _diff_stored_procedure,
-}
+        actual_desc = model_str(actual.description) if actual.description is not None else None
+        if exp_col.description != actual_desc:
+            diffs.append(Diff(path=f"{path}.description", expected=exp_col.description, actual=actual_desc))

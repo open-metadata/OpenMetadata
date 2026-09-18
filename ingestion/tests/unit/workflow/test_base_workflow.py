@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.cli.common import execute_workflow
 from metadata.cmd import metadata as metadata_cli
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -565,8 +566,37 @@ def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
     assert payload["ingestion_pipeline_fqn"] == "test_service.test_pipeline"
 
 
+@pytest.mark.parametrize("raise_on_error", [True, False])
+def test_execute_workflow_fails_when_status_file_cannot_be_written(tmp_path, raise_on_error):
+    workflow = OkWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(
+            workflow,
+            {"workflowConfig": {"raiseOnError": raise_on_error}},
+            status_file=tmp_path,
+        )
+
+    assert error.value.filename == str(tmp_path)
+
+
+def test_execute_workflow_preserves_execution_error_when_status_write_also_fails(tmp_path):
+    class FailingWorkflow(OkWorkflow):
+        def execute_internal(self):
+            raise RuntimeError("source execution failed")
+
+    workflow = FailingWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(workflow, {}, status_file=tmp_path)
+
+    assert isinstance(error.value.__context__, RuntimeError)
+    assert str(error.value.__context__) == "source execution failed"
+
+
 @pytest.mark.parametrize("workflow_class,success", [(OkWorkflow, True), (SimpleWorkflow, False)])
-def test_ingest_dbt_cli_writes_status_after_success_or_failure(tmp_path, workflow_class, success):
+@pytest.mark.parametrize("status_writable", [True, False])
+def test_ingest_dbt_cli_status_file_contract(tmp_path, workflow_class, success, status_writable):
     project = tmp_path / "my_dbt_project"
     target = project / "target"
     target.mkdir(parents=True)
@@ -577,19 +607,20 @@ def test_ingest_dbt_cli_writes_status_after_success_or_failure(tmp_path, workflo
         "  openmetadata_jwt_token: placeholder\n"
         "  openmetadata_service_name: my_service\n"
     )
-    status_path = tmp_path / "status.json"
+    status_path = tmp_path / "status.json" if status_writable else tmp_path
     workflow = workflow_class(config=config)
 
     with patch("metadata.cli.ingest_dbt.MetadataWorkflow.create", return_value=workflow):
         args = ["ingest-dbt", "-c", str(project), "--status-file", str(status_path)]
-        if success:
+        if success and status_writable:
             metadata_cli(args)
         else:
             with pytest.raises(SystemExit) as error:
                 metadata_cli(args)
             assert error.value.code == 1
 
-    payload = json.loads(status_path.read_text())
-    assert payload["success"] is success
-    failures = [failure for step in payload["steps"] for failure in step["failures"] or []]
-    assert [failure["name"] for failure in failures] == ([] if success else ["bum"])
+    if status_writable:
+        payload = json.loads(status_path.read_text())
+        assert payload["success"] is success
+        failures = [failure for step in payload["steps"] for failure in step["failures"] or []]
+        assert [failure["name"] for failure in failures] == ([] if success else ["bum"])

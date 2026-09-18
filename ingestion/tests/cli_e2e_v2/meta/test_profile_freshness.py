@@ -21,12 +21,12 @@ from sqlalchemy import Table as SqlTable
 from metadata.generated.schema.entity.data.table import Table
 
 from ..features.database.entities import table_query
-from ..features.database.pipelines import cli_subcommand_for
+from ..features.database.pipelines import pipeline_spec
 from ..features.database.profiles import profile_query
 from ..mysql.test_profiles import test_profile_column_freshness as column_freshness_scenario
 from ..mysql.test_profiles import test_profile_row_freshness as row_freshness_scenario
 from ..runtime.cli import CliRunner, WorkflowInvocation
-from .test_cli import PROBE
+from .support import CLI_PROBE
 
 
 def _profile(*, updated=False, missing=None):
@@ -80,11 +80,11 @@ def run_scenario(tmp_path, polling_clock):
             table.insert(), [{"id": index, "score": score} for index, score in enumerate((10, 20, 20, None), 1)]
         )
     script = tmp_path / "probe.py"
-    script.write_text(PROBE)
+    script.write_text(CLI_PROBE)
     cli = CliRunner(tmp_path / "cli", command=(sys.executable, str(script)))
 
     def invocation(options, *, filters):
-        subcommand = cli_subcommand_for(options)
+        subcommand = pipeline_spec(options).cli_subcommand
         return WorkflowInvocation(subcommand, {"probe": {"subcommand": subcommand}})
 
     def run(scenario, snapshots):

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""SQL-family baseline types: SqlSourceBaseline, TableSeed, ViewDefinition, StoredProcedureDefinition."""
+"""Declared SQL tables, seed rows, and ordered creation statements."""
 
 from __future__ import annotations
 
@@ -28,29 +28,9 @@ class TableSeed:
 
 
 @dataclass(frozen=True)
-class ViewDefinition:
-    """An expected view with connector-owned creation SQL."""
-
-    schema: str
-    name: str
-    definition_sql: str
-
-
-@dataclass(frozen=True)
-class StoredProcedureDefinition:
-    """An expected stored procedure with connector-owned creation SQL."""
-
-    schema: str
-    name: str
-    definition_sql: str
-
-
-@dataclass(frozen=True)
 class SqlSourceBaseline:
-    """Declared SQL schema, seeds, views, and procedures for an owned source."""
+    """Tables and seeds followed by connector-owned DDL in creation order."""
 
-    schemas: list[str]
     metadata: MetaData
     seeds: list[TableSeed] = field(default_factory=list)
-    views: list[ViewDefinition] = field(default_factory=list)
-    stored_procedures: list[StoredProcedureDefinition] = field(default_factory=list)
+    ddl: list[str] = field(default_factory=list)

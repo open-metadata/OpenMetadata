@@ -23,7 +23,9 @@ This is a guide, not a required file count. Small connectors can combine declara
 
 The source fixture must allocate a unique namespace, register cleanup before fallible setup, create the declared source data, and remove only its own resources. A failed test must not contaminate the next test. Feature tests assert independently expected persisted values; a second exhaustive seed audit is not required. Check source preconditions when they prevent a false positive, such as proving both schemas are populated and readable before testing exclusion. Mark credential-bearing dataclass fields `repr=False`; do not dump workflow configs, connection strings, passwords, or tokens. Register actual configured/generated secrets with the CI provider's native masking facility before commands can expose them. Do not silently skip missing setup or accept an unmanaged source for mutation tests.
 
-The root `service_name` fixture owns one unique OM service. A connector supplies `service_entity` (`DatabaseService` for SQL); cleanup uses that entity class for lookup and recursive hard deletion. Do not maintain a second service registry or swallow cleanup exceptions. The OM server itself is external and remains running.
+The root `service_name` fixture owns one unique OM service. A connector supplies `service_entity` (`DatabaseService` for SQL); cleanup includes soft-deleted services in its lookup and recursively hard-deletes the owned service. Do not maintain a second service registry or swallow cleanup exceptions. The OM server itself is external and remains running.
+
+For SQL sources, `SqlSourceBaseline` holds SQLAlchemy `metadata`, table `seeds`, and an ordered `ddl` list for views, procedures, or other connector-owned objects. Setup creates tables, inserts seeds, then executes each DDL statement in list order. Quote identifiers with the source dialect; keep creation dependencies in that order. Expected views and procedures remain independently declared in `expected.py`, not inferred from creation SQL.
 
 ## A complete SQL case
 
@@ -32,8 +34,8 @@ The following is a complete test module when placed under `mysql/`: the `mysql` 
 ```python
 import pytest
 
+from ingestion.tests.cli_e2e_v2.features.database.catalog.differ import catalog_matches
 from ingestion.tests.cli_e2e_v2.features.database.pipelines import MetadataPipeline
-from ingestion.tests.cli_e2e_v2.mysql.checks import mysql_catalog_matches
 from ingestion.tests.cli_e2e_v2.mysql.expected import mysql_expected
 from ingestion.tests.cli_e2e_v2.runtime import expect
 
@@ -45,15 +47,15 @@ def test_catalog(cli, mysql):
     ))
     expected = mysql_expected(mysql.service_name, schema=mysql.source.schema)
     expect.poll(mysql.catalog_query()).satisfies(
-        mysql_catalog_matches(expected)
+        catalog_matches(expected)
     )
 ```
 
 The three operations are deliberately independent:
 
-- `mysql.invocation(options)`: builds the CLI subcommand and entire workflow config, including sink and server settings. It does not execute it. Database helpers serialize generated pipeline models and own database-specific dispatch; the runtime does not infer connector family.
+- `mysql.invocation(options)`: builds the CLI subcommand and entire workflow config, including sink and server settings. It does not execute it. Database helpers serialize generated pipeline models and resolve command, source suffix, and processor together through `pipeline_spec(options)`; the runtime does not infer connector family.
 - `mysql.catalog_query()`: binds a labeled zero-argument read of actual OM state. Each polling attempt reads fresh data. Inventory queries must consume every page. Do not filter observations down to the expected result.
-- `mysql_catalog_matches(expected)`: returns a callable that validates one snapshot. Raise `AssertionError` for a mismatching observation, not for transport/authentication failures. Validate bad checker options before polling.
+- `catalog_matches(expected)`: validates complete inventory and declared fields in one snapshot, with exact descriptions and optional `ExpectedTable.table_type` checks. Raise `AssertionError` for a mismatching observation, not for transport/authentication failures. Validate bad checker options before polling.
 
 The connector context is a local convenience, not a required interface or base class. Keep provisioning and cleanup in fixtures, mutations on the owned source, and execution in the test. Use existing feature helpers directly for less common operations rather than wrapping every SDK method. A new connector needs no shared-core changes to follow this pattern.
 
@@ -61,9 +63,11 @@ The shared `cli` fixture supplies `CliRunner(work_dir: Path, *, command=("metada
 
 Expected native types, values, inventory, and relationships come from authored seed declarations, not the connector's parsers/type maps or current OM output. `mysql_expected` uses the E2E declaration/type-map layer, independent of production ingestion parsing. Catalog equality alone does not prove profile values, samples, foreign keys, lineage, or dashboard memberships.
 
+Declare views with `ExpectedTable(..., table_type=TableType.View)` in the expected catalog; the shared checker does not infer type from a fixture name. Optional fields set to `None` are not asserted. Catalog checks always reject unexpected entities and columns; use a targeted entity query when a feature needs only one prerequisite.
+
 ## Feature checks and custom tests
 
-Write named pytest tests for both single-action and multi-action scenarios. `WorkflowCase` and `run_and_check` remain optional helpers for cases that benefit from bundling an invocation, query, and check; importing a shared test is not required. There is no scenario DSL or global connector auto-discovery.
+Write named pytest tests for both single-action and multi-action scenarios: call `cli.run(invocation)`, then `expect.poll(query).satisfies(check)`. There is no shared imported test, scenario DSL, or global connector auto-discovery.
 
 This custom MySQL module checks exact row count after metadata and profiling:
 
@@ -107,7 +111,7 @@ assert len(result.status.all_failures) == 1
 assert result.status.all_failures[0]["name"] == "_broken_view"
 ```
 
-The reference containment test creates an invalid view in its owned schema and sets `workflowConfig.successThreshold=100` and `raiseOnError=True`. Ten successful records out of eleven exceed the default 90% threshold; requiring 100% makes that single failure determine the exit. Independently, the runner checks the total errors across all steps, including errors whose details were truncated. `run_and_check` accepts the same `expected_errors` policy. Missing/malformed status, an unrelated failure, an unexpected error count, or an unexpected exit must not pass merely because healthy entities exist.
+The reference containment test creates an invalid view in its owned schema and sets `workflowConfig.successThreshold=100` and `raiseOnError=True`. Ten successful records out of eleven exceed the default 90% threshold; requiring 100% makes that single failure determine the exit. Independently, the runner checks the total errors across all steps, including errors whose details were truncated, and rejects a step with more failure details than errors. Missing/malformed status, an unrelated failure, an unexpected error count, or an unexpected exit must not pass merely because healthy entities exist.
 
 ## Dashboard extension: illustrative only
 

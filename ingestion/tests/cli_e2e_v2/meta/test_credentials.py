@@ -11,8 +11,6 @@
 """Fixture credentials use native CI masks without entering config or object reprs."""
 
 import json
-import os
-from pathlib import Path
 
 import pytest
 import requests
@@ -20,7 +18,7 @@ import requests
 from ..mysql import source
 from ..runtime.ci import mask_secrets
 from ..server import ServerConfig, TokenMintError
-from .test_workflow_case import NETWORK_GUARD
+from .support import configure_child
 
 
 @pytest.mark.parametrize("github_actions", [None, "false"])
@@ -158,13 +156,10 @@ def test_generated_mysql_passwords_are_masked_before_container_creation(monkeypa
 
 @pytest.mark.parametrize("workers", [0, 2])
 def test_mask_commands_bypass_fd_capture_and_junit(pytester, monkeypatch, workers):
-    root = Path(__file__).resolve().parents[4]
-    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(pytester.path), str(root), str(root / "ingestion/src"))))
+    configure_child(pytester, monkeypatch, ini="junit_logging = all")
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     monkeypatch.setenv("OM_SERVER_URL", "http://127.0.0.1:1/api")
     monkeypatch.setenv("OM_JWT_TOKEN", "synthetic-terminal-token")
-    pytester.makeini("[pytest]\naddopts = -p ingestion.tests.cli_e2e_v2.conftest\njunit_logging = all")
-    pytester.makepyfile(sitecustomize=NETWORK_GUARD)
     pytester.makepyfile(
         """
 def test_terminal_mask(om_server_config, capfd):

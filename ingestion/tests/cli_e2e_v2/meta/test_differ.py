@@ -24,7 +24,7 @@ from sqlalchemy import Table as SqlTable
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, Constraint, DataType, Table, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -42,7 +42,6 @@ from ..features.database.catalog.types import (
     ExpectedService,
     ExpectedStoredProcedure,
     ExpectedTable,
-    MatchMode,
 )
 
 # --------------------------------------------------------------------------- #
@@ -181,8 +180,8 @@ def _baseline_expected() -> ExpectedService:
     )
 
 
-def assert_service_matches(expected, fake, *, mode=MatchMode.SUPERSET):
-    catalog_matches(expected, mode=mode)(read_catalog(fake, expected.name))
+def assert_service_matches(expected, fake):
+    catalog_matches(expected)(read_catalog(fake, expected.name))
 
 
 # --------------------------------------------------------------------------- #
@@ -197,8 +196,18 @@ def test_happy_path_no_diffs() -> None:
     assert_service_matches(expected, fake)
 
 
-@pytest.mark.parametrize("wrong_constraint", [Constraint.NOT_NULL, None])
-def test_derived_nullable_column_requires_explicit_null_constraint(wrong_constraint):
+@pytest.mark.parametrize(
+    "column_name,wrong_constraint",
+    [
+        ("id", Constraint.NOT_NULL),
+        ("id", None),
+        ("required_value", Constraint.NULL),
+        ("required_value", None),
+        ("optional_value", Constraint.NOT_NULL),
+        ("optional_value", None),
+    ],
+)
+def test_derived_columns_require_declared_constraints(column_name, wrong_constraint):
     metadata = MetaData(schema="e2e")
     SqlTable(
         "customers",
@@ -221,10 +230,26 @@ def test_derived_nullable_column_requires_explicit_null_constraint(wrong_constra
             _column("optional_value", DataType.INT, constraint=Constraint.NULL),
         ],
     )
-    assert_service_matches(expected, fake, mode=MatchMode.STRICT)
-    fake.entities[(Table, f"{SCHEMA_FQN}.customers")].columns[2].constraint = wrong_constraint
-    with pytest.raises(StructuralMismatch, match=r"column\[optional_value\].constraint"):
-        assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+    assert_service_matches(expected, fake)
+    table = fake.entities[(Table, f"{SCHEMA_FQN}.customers")]
+    next(column for column in table.columns if column.name.root == column_name).constraint = wrong_constraint
+    with pytest.raises(StructuralMismatch, match=rf"column\[{column_name}\].constraint"):
+        assert_service_matches(expected, fake)
+
+
+@pytest.mark.parametrize("wrong_constraint", [Constraint.NOT_NULL, None])
+def test_handwritten_primary_key_rejects_missing_or_wrong_constraint(wrong_constraint):
+    expected = _baseline_expected()
+    columns = expected.databases[0].schemas[0].tables[0].columns
+    columns[0] = replace(columns[0], constraint=Constraint.PRIMARY_KEY)
+    fake = _FakeOM()
+    _seed_happy_path(fake, expected)
+    table = fake.entities[(Table, f"{SCHEMA_FQN}.customers")]
+    table.columns[0].constraint = Constraint.PRIMARY_KEY
+    assert_service_matches(expected, fake)
+    table.columns[0].constraint = wrong_constraint
+    with pytest.raises(StructuralMismatch, match=r"column\[id\].constraint"):
+        assert_service_matches(expected, fake)
 
 
 def test_handwritten_unspecified_constraint_remains_unchecked():
@@ -232,7 +257,7 @@ def test_handwritten_unspecified_constraint_remains_unchecked():
     fake = _FakeOM()
     _seed_happy_path(fake, expected)
     fake.entities[(Table, f"{SCHEMA_FQN}.customers")].columns[0].constraint = Constraint.NOT_NULL
-    assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+    assert_service_matches(expected, fake)
 
 
 @pytest.mark.parametrize("collection", ["databases", "schemas", "tables", "procedures"])
@@ -241,7 +266,7 @@ def test_strict_rejects_duplicate_entity_fqns(collection):
     fake = _FakeOM()
     _seed_happy_path(fake, expected)
     snapshot = read_catalog(fake, expected.name)
-    check = catalog_matches(expected, mode=MatchMode.STRICT)
+    check = catalog_matches(expected)
     check(snapshot)
     entities = getattr(snapshot, collection)
     corrupted = replace(snapshot, **{collection: (*entities, entities[0].model_copy(deep=True))})
@@ -264,7 +289,7 @@ def test_strict_rejects_duplicate_column_names_before_lookup(corruption):
     else:
         table.columns.append(duplicate)
     with pytest.raises(StructuralMismatch, match=r"column\[id\].duplicates"):
-        assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+        assert_service_matches(expected, fake)
 
 
 def test_strict_allows_same_local_names_in_different_parents():
@@ -272,7 +297,7 @@ def test_strict_allows_same_local_names_in_different_parents():
     expected.databases.append(replace(expected.databases[0], name="another_database"))
     fake = _FakeOM()
     _seed_happy_path(fake, expected)
-    assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+    assert_service_matches(expected, fake)
 
 
 # --------------------------------------------------------------------------- #
@@ -455,6 +480,80 @@ def test_missing_table_description() -> None:
         assert_service_matches(expected, fake)
 
 
+@pytest.mark.parametrize("entity_kind", ["table", "column", "procedure"])
+@pytest.mark.parametrize(
+    "wanted,observed,matches",
+    [
+        (None, "Unspecified description", True),
+        ("Fixture description", "Fixture description", True),
+        ("Fixture description", "Fixture description stale", False),
+        ("Fixture description", None, False),
+        ("None", None, False),
+        ("", "", True),
+        ("", None, False),
+        ("", "Unexpected description", False),
+    ],
+)
+def test_catalog_descriptions_are_exact_when_specified(entity_kind, wanted, observed, matches):
+    expected = _baseline_expected()
+    schema = expected.databases[0].schemas[0]
+    if entity_kind == "table":
+        schema.tables[0] = replace(schema.tables[0], description=wanted)
+    elif entity_kind == "column":
+        schema.tables[0].columns[0] = replace(schema.tables[0].columns[0], description=wanted)
+    else:
+        schema.stored_procedures[0] = replace(schema.stored_procedures[0], description=wanted)
+    fake = _FakeOM()
+    _seed_happy_path(fake, expected)
+    actual = fake.entities[(Table, f"{SCHEMA_FQN}.customers")]
+    if entity_kind == "column":
+        actual = actual.columns[0]
+    elif entity_kind == "procedure":
+        actual = fake.entities[(StoredProcedure, f"{SCHEMA_FQN}.sp_count")]
+    actual.description = observed
+
+    if matches:
+        assert_service_matches(expected, fake)
+    else:
+        with pytest.raises(StructuralMismatch) as raised:
+            assert_service_matches(expected, fake)
+        assert len(raised.value.diffs) == 1
+        diff = raised.value.diffs[0]
+        assert diff.path.endswith(".description")
+        assert diff.expected == wanted
+        assert diff.actual == observed
+
+
+@pytest.mark.parametrize(
+    "wanted,observed,matches",
+    [
+        (TableType.View, TableType.View, True),
+        (TableType.View, TableType.Regular, False),
+        (TableType.Regular, TableType.View, False),
+        (TableType.View, None, False),
+        (None, TableType.View, True),
+    ],
+)
+def test_catalog_table_type_comes_from_expectation_not_fixture_name(wanted, observed, matches):
+    expected = _baseline_expected()
+    schema = expected.databases[0].schemas[0]
+    schema.tables[0] = replace(schema.tables[0], table_type=wanted)
+    fake = _FakeOM()
+    _seed_happy_path(fake, expected)
+    _patch_table(fake, f"{SCHEMA_FQN}.customers", tableType=observed)
+
+    if matches:
+        assert_service_matches(expected, fake)
+    else:
+        with pytest.raises(StructuralMismatch) as raised:
+            assert_service_matches(expected, fake)
+        assert len(raised.value.diffs) == 1
+        diff = raised.value.diffs[0]
+        assert diff.path.endswith(".tableType")
+        assert diff.expected == wanted
+        assert diff.actual == observed
+
+
 def test_missing_owner() -> None:
     expected = ExpectedService(
         name="svc",
@@ -486,7 +585,7 @@ def test_missing_owner() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# STRICT mode catches extras that SUPERSET tolerates.                         #
+# Complete inventory rejects extra entities and columns.                     #
 # --------------------------------------------------------------------------- #
 
 
@@ -494,6 +593,7 @@ def test_strict_flags_extra_table_unexpected() -> None:
     expected = _baseline_expected()
     fake = _FakeOM()
     _seed_happy_path(fake, expected)
+    assert_service_matches(expected, fake)
     fake.register_list(
         Table,
         "databaseSchema",
@@ -505,18 +605,15 @@ def test_strict_flags_extra_table_unexpected() -> None:
         ],
     )
 
-    # SUPERSET tolerates the extra.
-    assert_service_matches(expected, fake, mode=MatchMode.SUPERSET)
-
-    # STRICT flags it.
     with pytest.raises(StructuralMismatch, match=r"phantom"):
-        assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+        assert_service_matches(expected, fake)
 
 
 def test_strict_flags_extra_column() -> None:
     expected = _baseline_expected()
     fake = _FakeOM()
     _seed_happy_path(fake, expected)
+    assert_service_matches(expected, fake)
     _patch_table(
         fake,
         f"{SCHEMA_FQN}.customers",
@@ -527,10 +624,8 @@ def test_strict_flags_extra_column() -> None:
         ],
     )
 
-    assert_service_matches(expected, fake, mode=MatchMode.SUPERSET)
-
     with pytest.raises(StructuralMismatch, match=r"phantom"):
-        assert_service_matches(expected, fake, mode=MatchMode.STRICT)
+        assert_service_matches(expected, fake)
 
 
 @pytest.mark.parametrize(
@@ -545,11 +640,11 @@ def test_strict_detects_extra_entities_at_each_parent(entity, fqn):
     fake = _FakeOM()
     expected = _baseline_expected()
     _seed_happy_path(fake, expected)
+    assert_service_matches(expected, fake)
     fake.register(entity, fqn, _stub(name="extra"))
     snapshot = read_catalog(fake, "svc")
-    catalog_matches(expected, mode=MatchMode.SUPERSET)(snapshot)
     with pytest.raises(StructuralMismatch, match="extra") as raised:
-        catalog_matches(expected, mode=MatchMode.STRICT)(snapshot)
+        catalog_matches(expected)(snapshot)
     assert any(diff.kind is DiffKind.UNEXPECTED for diff in raised.value.diffs)
 
 
@@ -562,7 +657,7 @@ def test_same_named_table_in_another_schema_does_not_satisfy_expected():
         Table, "svc.default.other.customers", _stub(name="customers", columns=[_column("id", DataType.BIGINT)])
     )
     with pytest.raises(StructuralMismatch, match=r"table\[customers\]: missing"):
-        catalog_matches(_baseline_expected(), mode=MatchMode.SUPERSET)(read_catalog(fake, "svc"))
+        catalog_matches(_baseline_expected())(read_catalog(fake, "svc"))
 
 
 @pytest.mark.parametrize(
@@ -580,7 +675,7 @@ def test_strict_rejects_expected_entity_with_inconsistent_parent(collection, par
     expected = _baseline_expected()
     _seed_happy_path(fake, expected)
     snapshot = read_catalog(fake, "svc")
-    catalog_matches(expected, mode=MatchMode.STRICT)(snapshot)
+    catalog_matches(expected)(snapshot)
     entities = getattr(snapshot, collection)
     payload = entities[0].model_dump(mode="json")
     if corruption == "id":
@@ -591,7 +686,7 @@ def test_strict_rejects_expected_entity_with_inconsistent_parent(collection, par
     snapshot = replace(snapshot, **{collection: (changed, *entities[1:])})
 
     with pytest.raises(StructuralMismatch, match=parent_field):
-        catalog_matches(expected, mode=MatchMode.STRICT)(snapshot)
+        catalog_matches(expected)(snapshot)
 
 
 @pytest.mark.parametrize(
@@ -609,6 +704,7 @@ def test_strict_checks_complete_inventory_including_unattached_entities(collecti
     expected = _baseline_expected()
     _seed_happy_path(fake, expected)
     snapshot = read_catalog(fake, "svc")
+    catalog_matches(expected)(snapshot)
     entities = getattr(snapshot, collection)
     payload = entities[0].model_dump(mode="json")
     payload["id"] = "00000000-0000-0000-0000-000000000001"
@@ -620,13 +716,11 @@ def test_strict_checks_complete_inventory_including_unattached_entities(collecti
     extra = type(entities[0]).model_validate(payload)
     snapshot = replace(snapshot, **{collection: (*entities, extra)})
 
-    catalog_matches(expected, mode=MatchMode.SUPERSET)(snapshot)
     with pytest.raises(StructuralMismatch):
-        catalog_matches(expected, mode=MatchMode.STRICT)(snapshot)
+        catalog_matches(expected)(snapshot)
 
 
-@pytest.mark.parametrize("mode", [MatchMode.STRICT, MatchMode.SUPERSET])
-def test_catalog_uses_canonical_quoted_identifiers_at_every_level(mode):
+def test_catalog_uses_canonical_quoted_identifiers_at_every_level():
     fake = _FakeOM()
     _seed_happy_path(fake, _baseline_expected())
     snapshot = read_catalog(fake, "svc")
@@ -680,13 +774,13 @@ def test_catalog_uses_canonical_quoted_identifiers_at_every_level(mode):
             for collection in ("databases", "schemas", "tables", "procedures")
         },
     )
-    catalog_matches(expected, mode=mode)(snapshot)
+    catalog_matches(expected)(snapshot)
 
     payload = snapshot.tables[0].model_dump(mode="json")
     payload["fullyQualifiedName"] = '"svc.prod"."db.prod"."schema.prod".orders.archive'
     malformed = Table.model_validate(payload)
     with pytest.raises(StructuralMismatch, match=r"table\[orders.archive\]: missing"):
-        catalog_matches(expected, mode=mode)(replace(snapshot, tables=(malformed, snapshot.tables[1])))
+        catalog_matches(expected)(replace(snapshot, tables=(malformed, snapshot.tables[1])))
 
 
 def test_catalog_reader_quotes_dotted_service_name():
@@ -759,4 +853,4 @@ def test_catalog_reader_uses_sdk_pagination_parent_scope_and_requested_fields():
     om.client = SimpleNamespace(get=get)
     snapshot = read_catalog(om, "svc")
     assert [table.name.root for table in snapshot.tables] == ["customers", "transactions"]
-    catalog_matches(_baseline_expected(), mode=MatchMode.STRICT)(snapshot)
+    catalog_matches(_baseline_expected())(snapshot)

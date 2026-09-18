@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
+from ..features.database.catalog.differ import StructuralMismatch, catalog_matches
 from ..features.database.catalog.snapshot import CatalogSnapshot
 from ..features.database.catalog.types import (
     ExpectedColumn,
@@ -34,9 +35,9 @@ from ..features.database.catalog.types import (
     ExpectedTable,
 )
 from ..features.database.entities import table_query
-from ..features.database.pipelines import cli_subcommand_for
+from ..features.database.pipelines import pipeline_spec
 from ..features.database.samples import sample_query
-from ..mysql.checks import mysql_catalog_matches, native_sample_rows, native_samples_match
+from ..mysql.checks import native_sample_rows, native_samples_match
 from ..mysql.expected import mysql_expected
 from ..mysql.test_samples import test_reingest_replaces_persisted_samples as sample_replacement_scenario
 from ..runtime import expect
@@ -151,22 +152,23 @@ def catalog():
     )
 
 
-def catalog_check():
-    return mysql_catalog_matches(
+def catalog_check(*, service="svc", database="default", schema="demo", table="customer_txn_summary"):
+    return catalog_matches(
         ExpectedService(
-            "svc",
+            service,
             DatabaseServiceType.Mysql,
             [
                 ExpectedDatabase(
-                    "default",
+                    database,
                     [
                         ExpectedSchema(
-                            "demo",
+                            schema,
                             [
                                 ExpectedTable(
-                                    "customer_txn_summary",
+                                    table,
                                     [ExpectedColumn("customer_id", DataType.INT, description="Customer identity")],
                                     description="Fixture view",
+                                    table_type=TableType.View,
                                 )
                             ],
                         )
@@ -175,6 +177,43 @@ def catalog_check():
             ],
         )
     )
+
+
+@pytest.mark.parametrize(
+    "table_name,table_fqn",
+    [
+        ("customer_txn_summary", '"svc.prod"."db.prod"."schema.prod".customer_txn_summary'),
+        ("summary.archive", '"svc.prod"."db.prod"."schema.prod"."summary.archive"'),
+    ],
+)
+def test_catalog_field_checks_resolve_canonical_quoted_identifiers(catalog, table_name, table_fqn):
+    identities = {
+        "svc": ("svc.prod", '"svc.prod"'),
+        "svc.default": ("db.prod", '"svc.prod"."db.prod"'),
+        "svc.default.demo": ("schema.prod", '"svc.prod"."db.prod"."schema.prod"'),
+        "svc.default.demo.customer_txn_summary": (table_name, table_fqn),
+    }
+
+    def rename(entity):
+        payload = entity.model_dump(mode="json")
+        payload["name"], payload["fullyQualifiedName"] = identities[payload["fullyQualifiedName"]]
+        for field in ("service", "database", "databaseSchema"):
+            if payload.get(field):
+                payload[field]["fullyQualifiedName"] = identities[payload[field]["fullyQualifiedName"]][1]
+        return type(entity).model_validate(payload)
+
+    catalog = replace(
+        catalog,
+        service=rename(catalog.service),
+        databases=tuple(rename(entity) for entity in catalog.databases),
+        schemas=tuple(rename(entity) for entity in catalog.schemas),
+        tables=tuple(rename(entity) for entity in catalog.tables),
+    )
+    check = catalog_check(service="svc.prod", database="db.prod", schema="schema.prod", table=table_name)
+    check(catalog)
+    changed = catalog.tables[0].model_copy(update={"description": "Fixture view with stale suffix"})
+    with pytest.raises(AssertionError, match="description"):
+        check(replace(catalog, tables=(changed,)))
 
 
 def test_catalog_requires_exact_descriptions_view_type_and_no_extra_entities(catalog):
@@ -199,6 +238,45 @@ def test_catalog_requires_exact_descriptions_view_type_and_no_extra_entities(cat
         check(replace(catalog, tables=(changed,)))
 
 
+def test_mysql_view_declaration_rejects_a_persisted_regular_table(catalog):
+    view = next(
+        table
+        for table in mysql_expected("svc", schema="demo").databases[0].schemas[0].tables
+        if table.name == "customer_txn_summary"
+    )
+    expected = ExpectedService(
+        "svc", DatabaseServiceType.Mysql, [ExpectedDatabase("default", [ExpectedSchema("demo", [view])])]
+    )
+    payload = catalog.tables[0].model_dump(mode="json")
+    payload["columns"] = [
+        {"name": "customer_id", "dataType": "INT"},
+        {"name": "full_name", "dataType": "VARCHAR"},
+        {"name": "customer_status", "dataType": "VARCHAR"},
+        {"name": "txn_count", "dataType": "BIGINT"},
+        {"name": "total_amount", "dataType": "DECIMAL"},
+    ]
+    snapshot = replace(catalog, tables=(Table.model_validate(payload),))
+    check = catalog_matches(expected)
+    check(snapshot)
+    changed = snapshot.tables[0].model_copy(update={"tableType": TableType.Regular})
+    with pytest.raises(StructuralMismatch, match="tableType"):
+        check(replace(snapshot, tables=(changed,)))
+
+
+def test_catalog_reports_all_field_mismatches_in_one_observation(catalog):
+    changed = catalog.tables[0].model_copy(deep=True)
+    changed.tableType = TableType.Regular
+    changed.description.root = "Fixture view stale"
+    changed.columns[0].description.root = "Customer identity stale"
+    with pytest.raises(StructuralMismatch) as raised:
+        catalog_check()(replace(catalog, tables=(changed,)))
+    assert {diff.path for diff in raised.value.diffs} == {
+        "svc.default.demo.table[customer_txn_summary].tableType",
+        "svc.default.demo.table[customer_txn_summary].description",
+        "svc.default.demo.table[customer_txn_summary].column[customer_id].description",
+    }
+
+
 @pytest.mark.parametrize(
     "field, expected, actual",
     [
@@ -219,10 +297,10 @@ def test_catalog_poll_failure_identifies_entity_and_mismatched_values(catalog, p
     with pytest.raises(AssertionError) as raised:
         expect.poll(query, timeout=1).satisfies(catalog_check())
     message = str(raised.value)
-    assert "Last mismatch: svc.default.demo.customer_txn_summary" in message
+    assert "svc.default.demo.table[customer_txn_summary]" in message
     if field == "column_description":
-        assert ".customer_id:" in message
-    assert "expected" in message and "got" in message
+        assert ".column[customer_id].description" in message
+    assert "expected" in message and "actual" in message
     assert expected in message and actual in message
 
 
@@ -424,7 +502,7 @@ Path(sys.argv[sys.argv.index("--status-file") + 1]).write_text(json.dumps(status
             mysql=SimpleNamespace(
                 om=om,
                 invocation=lambda options, *, filters: WorkflowInvocation(
-                    cli_subcommand_for(options), {"database": str(database), "sampler": sampler}
+                    pipeline_spec(options).cli_subcommand, {"database": str(database), "sampler": sampler}
                 ),
                 table_query=lambda name: table_query(om, f"svc.default.demo.{name}"),
                 source=SimpleNamespace(schema="demo", set_value=set_value),

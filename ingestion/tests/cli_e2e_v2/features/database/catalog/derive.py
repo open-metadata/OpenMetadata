@@ -54,7 +54,6 @@ def _derive_column(col: SqlColumn, type_map: TypeMap) -> ExpectedColumn:
     return ExpectedColumn(
         name=col.name,
         data_type=resolve_om_type(col.type, type_map),
-        primary_key=bool(col.primary_key),
         constraint=_constraint_for(col),
         description=col.comment,
     )

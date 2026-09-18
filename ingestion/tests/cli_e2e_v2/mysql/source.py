@@ -157,8 +157,8 @@ def _seed_source(source: MySqlSource) -> None:
         for seed in source.baseline.seeds:
             table = source.baseline.metadata.tables[f"{source.schema}.{seed.table_name}"]
             connection.execute(table.insert(), seed.rows)
-        for definition in [*source.baseline.views, *source.baseline.stored_procedures]:
-            connection.execute(text(definition.definition_sql))
+        for statement in source.baseline.ddl:
+            connection.execute(text(statement))
 
 
 @contextmanager

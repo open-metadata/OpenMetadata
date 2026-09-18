@@ -8,12 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Database-family dispatch for generated pipeline models.
-
-Dispatch (CLI subcommand, source-type suffix) is
-centralised in `_SPECS`. Adding a pipeline touches only that dict plus
-the re-export block.
-"""
+"""Command, source suffix, and processor for generated database pipeline models."""
 
 from __future__ import annotations
 
@@ -44,32 +39,24 @@ class _PipelineSpec:
 
     cli_subcommand: str
     source_type_suffix: str = ""
+    processor: str | None = None
 
 
 _SPECS: dict[type, _PipelineSpec] = {
     MetadataPipeline: _PipelineSpec("ingest"),
-    ProfilerPipeline: _PipelineSpec("profile"),
+    ProfilerPipeline: _PipelineSpec("profile", processor="orm-profiler"),
     LineagePipeline: _PipelineSpec("ingest", "-lineage"),
     TestPipeline: _PipelineSpec("test"),
-    AutoClassificationPipeline: _PipelineSpec("classify"),
+    AutoClassificationPipeline: _PipelineSpec("classify", processor="tag-pii-processor"),
 }
 
 
-def _spec_for(options: PipelineOptions) -> _PipelineSpec:
+def pipeline_spec(options: PipelineOptions) -> _PipelineSpec:
+    """Resolve a supported pipeline's complete dispatch specification."""
     try:
         return _SPECS[type(options)]
     except KeyError:
         raise ValueError(f"Unsupported database pipeline: {type(options).__name__}") from None
-
-
-def cli_subcommand_for(options: PipelineOptions) -> str:
-    """Return the `metadata <cmd>` subcommand to run for these options."""
-    return _spec_for(options).cli_subcommand
-
-
-def source_type_suffix_for(options: PipelineOptions) -> str:
-    """Suffix to append to `source.type` for this pipeline (e.g. `-lineage`)."""
-    return _spec_for(options).source_type_suffix
 
 
 __all__ = [
@@ -79,6 +66,5 @@ __all__ = [
     "PipelineOptions",
     "ProfilerPipeline",
     "TestPipeline",
-    "cli_subcommand_for",
-    "source_type_suffix_for",
+    "pipeline_spec",
 ]

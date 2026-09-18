@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@36e9a5af4eddb91fc11aec4c6f6f79b3cc0cb523 # main
         with:
           tool-cache: false
           android: true
@@ -56,7 +56,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload tests artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: tests-v2-${{ matrix.connector }}
           path: ingestion/junit/test-results-v2-*.xml
@@ -97,4 +97,4 @@ jobs:
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"

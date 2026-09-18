@@ -16,6 +16,7 @@ from sqlalchemy import text
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.utils import model_str
 
+from ..features.database.catalog.differ import catalog_matches
 from ..features.database.entities import (
     column_has_no_tag,
     column_has_tag,
@@ -28,7 +29,7 @@ from ..features.database.lineage import lineage_has_columns, lineage_has_edge, l
 from ..features.database.pipelines import AutoClassificationPipeline, LineagePipeline, MetadataPipeline
 from ..features.database.samples import sample_query
 from ..runtime import expect
-from .checks import mysql_catalog_matches, native_sample_rows, procedures_have_bodies
+from .checks import native_sample_rows, procedures_have_bodies
 from .expected import mysql_expected
 from .source import fresh_mysql_source
 
@@ -37,7 +38,7 @@ from .source import fresh_mysql_source
 def test_catalog(cli, mysql):
     cli.run(mysql.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True)))
     expected = mysql_expected(mysql.service_name, schema=mysql.source.schema)
-    expect.poll(mysql.catalog_query()).satisfies(mysql_catalog_matches(expected))
+    expect.poll(mysql.catalog_query()).satisfies(catalog_matches(expected))
 
 
 @pytest.mark.e2e_contract("procedure.code")
@@ -115,7 +116,7 @@ def test_mark_deleted_tables_on_reingest(cli, mysql):
 def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, mysql):
     expected = mysql_expected(mysql.service_name, schema=mysql.source.schema)
     cli.run(mysql.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True)))
-    before = expect.poll(mysql.catalog_query()).satisfies(mysql_catalog_matches(expected))
+    before = expect.poll(mysql.catalog_query()).satisfies(catalog_matches(expected))
     original_ids = {model_str(table.fullyQualifiedName): table.id for table in before.tables}
     quoted = mysql.source.admin_engine.dialect.identifier_preparer.quote_identifier(mysql.source.schema)
     with mysql.source.admin_engine.begin() as connection:
@@ -124,7 +125,7 @@ def test_repeat_ingest_preserves_ids_and_updates_metadata(cli, mysql):
     cli.run(mysql.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True, overrideMetadata=True)))
 
     def updated(snapshot):
-        mysql_catalog_matches(expected)(snapshot)
+        catalog_matches(expected)(snapshot)
         assert len(snapshot.tables) == len(original_ids)
         assert {model_str(table.fullyQualifiedName): table.id for table in snapshot.tables} == original_ids
         table = snapshot.find(Table, mysql.table_fqn("all_types"))
@@ -203,7 +204,7 @@ def test_error_containment_one_broken_view(cli, mysql):
 def test_table_filter(filters, expected_tables, cli, mysql):
     cli.run(mysql.invocation(MetadataPipeline(includeDDL=True, includeStoredProcedures=True), filters=filters))
     expected = mysql_expected(mysql.service_name, schema=mysql.source.schema, tables=expected_tables)
-    expect.poll(mysql.catalog_query()).satisfies(mysql_catalog_matches(expected))
+    expect.poll(mysql.catalog_query()).satisfies(catalog_matches(expected))
 
 
 @pytest.mark.parametrize(
@@ -230,4 +231,4 @@ def test_schema_filter(filter_kind, cli, mysql, mysql_admin_engine, mysql_ingest
         assert "databaseSchema" not in invocation.config["source"]["serviceConnection"]["config"]
         cli.run(invocation)
         expected = mysql_expected(mysql.service_name, schema=mysql.source.schema)
-        expect.poll(mysql.catalog_query()).satisfies(mysql_catalog_matches(expected))
+        expect.poll(mysql.catalog_query()).satisfies(catalog_matches(expected))

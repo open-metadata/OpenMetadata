@@ -56,6 +56,8 @@ class StepStatus:
             for key in ("name", "error", "stackTrace"):
                 if failure.get(key) is not None and not isinstance(failure[key], str):
                     raise ValueError(f"status failure.{key} must be a string or null")
+        if len(failures) > counts["errors"]:
+            raise ValueError("status step.failures cannot outnumber step.errors")
         return cls(name=data["name"], failures=deepcopy(failures), **counts)
 
     @property

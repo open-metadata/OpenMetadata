@@ -10,42 +10,9 @@
 #  limitations under the License.
 """Pure MySQL fixture-specific persisted-state checks."""
 
-from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.ingestion.ometa.utils import model_str
 
-from ..features.database.catalog.differ import catalog_matches
-from ..features.database.catalog.types import MatchMode
-from ..features.database.entities import column, entity_exists, procedure_has_code
-
-
-def mysql_catalog_matches(expected):
-    structural = catalog_matches(expected, mode=MatchMode.STRICT)
-
-    def check(snapshot):
-        structural(snapshot)
-        for database in expected.databases:
-            for schema in database.schemas:
-                base = f"{expected.name}.{database.name}.{schema.name}"
-                for wanted in schema.tables:
-                    fqn = f"{base}.{wanted.name}"
-                    table = snapshot.find(Table, fqn)
-                    if wanted.name == "customer_txn_summary":
-                        assert table.tableType == TableType.View, (
-                            f"{fqn}: table type: expected View, got {table.tableType}"
-                        )
-                    if wanted.description is not None:
-                        actual = model_str(table.description)
-                        assert actual == wanted.description, (
-                            f"{fqn}: description: expected {wanted.description!r}, got {actual!r}"
-                        )
-                    for item in wanted.columns:
-                        if item.description is not None:
-                            actual = model_str(column(table, item.name).description)
-                            assert actual == item.description, (
-                                f"{fqn}.{item.name}: description: expected {item.description!r}, got {actual!r}"
-                            )
-
-    return check
+from ..features.database.entities import entity_exists, procedure_has_code
 
 
 def procedures_have_bodies(snapshot):

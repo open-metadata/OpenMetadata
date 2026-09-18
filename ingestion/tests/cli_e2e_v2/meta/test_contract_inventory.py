@@ -10,27 +10,13 @@
 #  limitations under the License.
 """Collection contracts are checked in isolated, network-blocked pytest sessions."""
 
-import os
 import shlex
 from pathlib import Path
 
 import pytest
 import yaml
 
-NETWORK_GUARD = """
-import socket
-
-def reject_network(*args, **kwargs):
-    raise AssertionError("Offline contract probe attempted network access")
-
-socket.socket.connect = reject_network
-socket.socket.connect_ex = reject_network
-socket.getaddrinfo = reject_network
-socket.gethostbyname = reject_network
-socket.gethostbyname_ex = reject_network
-socket.gethostbyaddr = reject_network
-socket.getnameinfo = reject_network
-"""
+from .support import configure_child
 
 MYSQL_IDS = (
     "catalog.metadata",
@@ -64,10 +50,7 @@ POSTGRES_IDS = (
 
 
 def _child(pytester, monkeypatch, *, directory="cli_e2e_v2"):
-    root = Path(__file__).resolve().parents[4]
-    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((str(pytester.path), str(root), str(root / "ingestion/src"))))
-    pytester.makeini("[pytest]\naddopts = -p ingestion.tests.cli_e2e_v2.conftest")
-    pytester.makepyfile(sitecustomize=NETWORK_GUARD)
+    configure_child(pytester, monkeypatch)
     suite = pytester.path / directory
     suite.mkdir(parents=True)
     return suite
@@ -403,17 +386,17 @@ def test_child_process_blocks_tcp_and_dns(pytester, monkeypatch):
         "mysql",
         "import socket\nimport pytest\n"
         "def test_guard():\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.socket().connect(('127.0.0.1', 1))\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.getaddrinfo('example.com', 80)\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.gethostbyname('example.com')\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.gethostbyname_ex('example.com')\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.gethostbyaddr('127.0.0.1')\n"
-        "    with pytest.raises(AssertionError, match='Offline contract probe'):\n"
+        "    with pytest.raises(AssertionError, match='Offline framework probe'):\n"
         "        socket.getnameinfo(('127.0.0.1', 80), 0)\n",
     )
     result = pytester.runpytest_subprocess(str(mysql), "-q")

@@ -16,10 +16,7 @@ Handle workflow execution
 from pathlib import Path
 from typing import Any
 
-from metadata.utils.logger import cli_logger
 from metadata.workflow.base import BaseWorkflow
-
-logger = cli_logger()
 
 
 def execute_workflow(
@@ -33,9 +30,6 @@ def execute_workflow(
     finally:
         workflow.stop()
         if status_file is not None:
-            try:
-                workflow.write_status_file(status_file)
-            except Exception:
-                logger.warning("Failed to write status file to %s", status_file, exc_info=True)
+            workflow.write_status_file(status_file)
     if config_dict.get("workflowConfig", {}).get("raiseOnError", True):
         workflow.raise_from_status()

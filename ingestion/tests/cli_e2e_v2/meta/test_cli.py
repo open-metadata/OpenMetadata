@@ -20,49 +20,13 @@ import pytest
 import yaml
 
 from ..runtime.cli import CliExecutionError, CliRunner, WorkflowInvocation
-
-PROBE = """
-import json
-import sys
-from pathlib import Path
-import yaml
-
-config_path = Path(sys.argv[sys.argv.index("-c") + 1])
-status_path = Path(sys.argv[sys.argv.index("--status-file") + 1])
-config = yaml.safe_load(config_path.read_text())
-probe = config.get("probe", {})
-assert sys.argv[1] == probe.get("subcommand", "ingest")
-print(probe.get("stdout", "source output"), flush=True)
-print(probe.get("stderr", "source error"), file=sys.stderr, flush=True)
-if probe.get("block"):
-    import threading
-    threading.Event().wait()
-if probe.get("descendant"):
-    import subprocess
-    import signal
-    child = subprocess.Popen([sys.executable, "-c", "import os, sys; from pathlib import Path; Path(sys.argv[1]).write_text(str(os.getpid())); sys.stdin.read(); Path(sys.argv[2]).touch()", str(config_path.parent / "descendant.pid"), probe["descendant"]], stdin=subprocess.PIPE)
-    signal.pause()
-if not probe.get("missing"):
-    status = {
-        "pipeline_type": "example",
-        "ingestion_pipeline_fqn": None,
-        "success": probe.get("success", True),
-        "steps": [{
-            "name": probe.get("step_name", "Example"), "records": 2, "updated_records": 1, "warnings": 0,
-            "errors": probe.get("errors", 0), "filtered": 0,
-            "failures": probe.get("failures"), "progress": None,
-            "operationMetrics": None, "sourceTimeMs": None, "sinkTimeMs": None,
-        }],
-    }
-    status_path.write_text(probe.get("raw_status", json.dumps(status)))
-sys.exit(probe.get("exit", 0))
-"""
+from .support import CLI_PROBE
 
 
 @pytest.fixture
 def runner(tmp_path):
     script = tmp_path / "probe.py"
-    script.write_text(PROBE)
+    script.write_text(CLI_PROBE)
     return CliRunner(tmp_path / "cli", command=(sys.executable, str(script)))
 
 
@@ -151,7 +115,14 @@ def test_expected_record_errors_must_match_exactly(runner, errors):
 
 
 @pytest.mark.parametrize(
-    "probe", [{"missing": True}, {"raw_status": "not JSON"}, {"raw_status": "{}"}, {"success": "false"}]
+    "probe",
+    [
+        {"missing": True},
+        {"raw_status": "not JSON"},
+        {"raw_status": "{}"},
+        {"success": "false"},
+        {"errors": 0, "failures": [{"name": "my_table", "error": "source failed"}]},
+    ],
 )
 def test_missing_or_malformed_status_cannot_pass(runner, probe, capfd):
     with pytest.raises(CliExecutionError, match="missing or malformed"):

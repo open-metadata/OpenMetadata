@@ -40,16 +40,22 @@ manual Python workflow runs include it. The live connector workflow remains manu
 
 ```text
 cli_e2e_v2/
-  runtime/             subprocess, typed status, polling, three-field cases
+  runtime/             subprocess, typed status, polling
   features/database/   generated pipeline options, catalog/profile/sample/lineage checks
-  contracts/           coverage-inventory schema/loader and optional shared workflow test
+  contracts/           coverage inventory, collection validation, required-result enforcement
   mysql/               owned source, context, expectations, checks, named feature tests
   meta/                offline runtime and framework behavior tests
   server.py            explicit OM configuration and authentication
-  conftest.py          shared fixtures and collection validation
+  conftest.py          shared fixtures and thin pytest hooks
 ```
 
-MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while tests show the actions and assertions in execution order. `WorkflowCase(invocation, persisted, check)` remains an optional shared helper, not a required authoring pattern.
+MySQL tests explicitly call `cli.run(mysql.invocation(options))`, then `expect.poll(query).satisfies(check)`. The `mysql` context binds source identity, configuration, and fresh queries; it does not run ingestion, own cleanup, or cache observations. Fixtures provision the source and service, while named pytest tests show the actions and assertions in execution order.
+
+`catalog_matches(expected)` always compares complete catalog inventory, including duplicate and parent-reference checks. Supplied table, column, and procedure descriptions match exactly; `ExpectedTable.table_type` checks table/view type when supplied. Optional fields set to `None` remain unchecked. Feature prerequisites use targeted entity queries instead of partial catalog matching.
+
+Catalog checks traverse the fixed database tree through typed functions, without a node registry. Database pipeline command, source suffix, and processor selection share one specification. SQL baselines contain table metadata, seeds, and ordered DDL statements; persisted expectations remain independent of those statements.
+
+Shared offline subprocess setup, network guards, and executable probes live in `meta/support.py`. Meta-tests import these helpers directly instead of importing infrastructure from other meta-test modules.
 
 Only checker `AssertionError` mismatches retry. SDK, transport, parsing, and checker programming errors fail immediately. Every polling assertion gets a fresh budget; increasing that budget cannot cancel a blocking SDK read or repair an incorrect expectation.
 

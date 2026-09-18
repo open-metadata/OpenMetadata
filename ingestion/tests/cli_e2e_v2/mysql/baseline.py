@@ -38,9 +38,7 @@ from ..features.database.common_baseline import (
 )
 from ..features.database.source import (
     SqlSourceBaseline,
-    StoredProcedureDefinition,
     TableSeed,
-    ViewDefinition,
 )
 
 # -----------------------------------------------------------------------------
@@ -137,10 +135,8 @@ def build_mysql_baseline(schema: str) -> SqlSourceBaseline:
     ):
         seeds.append(TableSeed(name, values))
 
-    view = ViewDefinition(
-        schema=schema,
-        name="customer_txn_summary",
-        definition_sql=f"""
+    ddl = [
+        f"""
         CREATE VIEW {quoted}.customer_txn_summary AS
         SELECT
             c.id AS customer_id,
@@ -152,11 +148,7 @@ def build_mysql_baseline(schema: str) -> SqlSourceBaseline:
         LEFT JOIN {quoted}.transactions t ON c.id = t.customer_id
         GROUP BY c.id, c.full_name, c.status
     """,
-    )
-    active_count = StoredProcedureDefinition(
-        schema=schema,
-        name="sp_active_customer_count",
-        definition_sql=f"""
+        f"""
         CREATE PROCEDURE {quoted}.sp_active_customer_count()
         BEGIN
             SELECT COUNT(*) AS active_count
@@ -164,11 +156,7 @@ def build_mysql_baseline(schema: str) -> SqlSourceBaseline:
             WHERE status = 'active';
         END
     """,
-    )
-    update_status = StoredProcedureDefinition(
-        schema=schema,
-        name="sp_update_customer_status",
-        definition_sql=f"""
+        f"""
         CREATE PROCEDURE {quoted}.sp_update_customer_status(
             IN p_customer_id INT,
             IN p_status VARCHAR(20)
@@ -179,11 +167,9 @@ def build_mysql_baseline(schema: str) -> SqlSourceBaseline:
             WHERE id = p_customer_id;
         END
     """,
-    )
+    ]
     return SqlSourceBaseline(
-        schemas=[schema],
         metadata=metadata,
         seeds=seeds,
-        views=[view],
-        stored_procedures=[active_count, update_status],
+        ddl=ddl,
     )

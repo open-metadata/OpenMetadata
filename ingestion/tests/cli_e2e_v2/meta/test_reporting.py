@@ -14,26 +14,22 @@ from xml.etree import ElementTree as ET
 
 import pytest
 
-from .test_cli import PROBE
-from .test_workflow_case import _configure_child
+from .support import CHILD_CONFTEST, CLI_PROBE, configure_child
 
 
 @pytest.mark.parametrize("capture", ["fd", "no", "tee-sys"])
 def test_cli_streams_remain_visible_when_a_persisted_check_fails(pytester, monkeypatch, capture):
-    _configure_child(pytester, monkeypatch)
-    pytester.makepyfile(probe=PROBE)
+    configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST, probe=CLI_PROBE)
     pytester.makepyfile("""
-from ingestion.tests.cli_e2e_v2.runtime.case import WorkflowCase, run_and_check
+from ingestion.tests.cli_e2e_v2.runtime import expect
 from ingestion.tests.cli_e2e_v2.runtime.cli import WorkflowInvocation
 from ingestion.tests.cli_e2e_v2.runtime.expect import Query
 
 def test_persisted_result(cli):
     def check(actual):
         assert actual == 'expected table', f'expected table, got {actual}'
-    run_and_check(cli, WorkflowCase(
-        WorkflowInvocation('ingest', {}),
-        Query('my_service.my_table', lambda: 'wrong table'), check,
-    ), poll_timeout=0.25)
+    cli.run(WorkflowInvocation('ingest', {}))
+    expect.poll(Query('my_service.my_table', lambda: 'wrong table'), timeout=0.25).satisfies(check)
 """)
     result = pytester.runpytest_subprocess("-q", f"--capture={capture}", "--junitxml=report.xml")
     result.assert_outcomes(failed=1)
@@ -50,8 +46,7 @@ def test_persisted_result(cli):
 
 
 def test_passing_cli_output_can_be_displayed_without_an_artifact_bundle(pytester, monkeypatch):
-    _configure_child(pytester, monkeypatch)
-    pytester.makepyfile(probe=PROBE)
+    configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST, probe=CLI_PROBE)
     pytester.makepyfile("""
 from ingestion.tests.cli_e2e_v2.runtime.cli import WorkflowInvocation
 
@@ -67,7 +62,7 @@ def test_cli(cli):
 
 @pytest.mark.parametrize("phase", ["setup", "call", "teardown"])
 def test_fixture_and_test_failures_keep_their_original_diagnostics(pytester, monkeypatch, phase):
-    _configure_child(pytester, monkeypatch)
+    configure_child(pytester, monkeypatch, conftest=CHILD_CONFTEST)
     monkeypatch.setenv("REPORT_FAILURE_PHASE", phase)
     pytester.makepyfile("""
 import os
