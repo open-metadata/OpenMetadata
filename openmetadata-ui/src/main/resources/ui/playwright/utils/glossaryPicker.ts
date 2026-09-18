@@ -55,6 +55,8 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
+// In slower CI environments the first click can land before the react-aria
+// trigger is fully interactive, so retry once if the popover doesn't appear.
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
@@ -62,7 +64,16 @@ export const openGlossaryPicker = async (
 ) => {
   await expect(trigger).toBeVisible();
   await trigger.click({ force: options?.force });
-  await tree(page).waitFor({ state: 'visible' });
+
+  const treeLocator = tree(page);
+
+  try {
+    await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
+  } catch {
+    // eslint-disable-next-line playwright/no-force-option -- retry: first click may not have registered on the react-aria trigger
+    await trigger.click({ force: true });
+    await treeLocator.waitFor({ state: 'visible' });
+  }
 };
 
 // Search results arrive nested and pre-expanded, so no manual expanding.
