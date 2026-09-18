@@ -212,6 +212,10 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
     value: string;
     className?: string;
     dataTestId?: string;
+    // Absolute character offset of this segment in `input`. Each segment
+    // occupies a distinct slice of the input, so `offset` is unique across
+    // segments and stable for a given input — a sound React `key`.
+    offset: number;
   }
 
   SPAN_TAG_RE.lastIndex = 0;
@@ -227,13 +231,18 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
       continue;
     }
     if (match.index > cursor) {
-      segments.push({ kind: 'text', value: input.slice(cursor, match.index) });
+      segments.push({
+        kind: 'text',
+        value: input.slice(cursor, match.index),
+        offset: cursor,
+      });
     }
     segments.push({
       kind: 'span',
       value: match[2],
       className: props.className,
       dataTestId: props.dataTestId,
+      offset: match.index,
     });
     cursor = match.index + match[0].length;
   }
@@ -245,7 +254,7 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
   }
 
   if (cursor < input.length) {
-    segments.push({ kind: 'text', value: input.slice(cursor) });
+    segments.push({ kind: 'text', value: input.slice(cursor), offset: cursor });
   }
 
   // Whole input is a single wrapper — return the bare React element rather
@@ -263,15 +272,14 @@ export const renderHighlightedText = (input?: string | null): ReactNode => {
     );
   }
 
-  return segments.map((segment, index) =>
+  return segments.map((segment) =>
     segment.kind === 'text' ? (
       segment.value
     ) : (
       <span
         className={segment.className}
         data-testid={segment.dataTestId}
-        // eslint-disable-next-line react/no-array-index-key -- deterministic single-render, no reordering
-        key={`hl-${index}`}>
+        key={`hl-${segment.offset}`}>
         {segment.value}
       </span>
     )
