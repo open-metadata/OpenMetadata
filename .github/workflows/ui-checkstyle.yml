@@ -508,6 +508,30 @@ jobs:
             exit 1
           fi
 
+      # `yarn build` no longer asserts the budget, so this is the only thing
+      # enforcing it — the filter has to cover everything that can move the
+      # entry bundle, not just app source. The last two breaches arrived
+      # through a dependency bump (#33482, moment 2.31.0 growing vendor-antd)
+      # and a core-components change, neither of which touches `src/**` here.
+      - name: Get changed bundle inputs
+        id: changed-bundle-inputs
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          files_ignore: |
+            openmetadata-ui/src/main/resources/ui/src/generated/**
+            openmetadata-ui/src/main/resources/ui/src/jsons/**
+          files: |
+            openmetadata-ui/src/main/resources/ui/src/**
+            openmetadata-ui/src/main/resources/ui/package.json
+            openmetadata-ui/src/main/resources/ui/yarn.lock
+            openmetadata-ui/src/main/resources/ui/vite.config.ts
+            openmetadata-ui/src/main/resources/ui/index.html
+            openmetadata-ui/src/main/resources/ui/scripts/check-bundle-chunks.mjs
+            openmetadata-ui-core-components/src/main/resources/ui/src/**
+            openmetadata-ui-core-components/src/main/resources/ui/package.json
+            openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+            openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts
+
       # The budget used to be chained onto `yarn build`, so a breach failed
       # every workflow that builds the UI — visual regression, the RDF e2e
       # suite, the maven builds — each reporting it under its own build step's
@@ -519,7 +543,7 @@ jobs:
       # #32384 moved to Rolldown, so owning the build here is cheap.
       - name: UI Build (for the bundle budget)
         id: bundle_build
-        if: steps.changed-src-files.outputs.any_changed == 'true'
+        if: steps.changed-bundle-inputs.outputs.any_changed == 'true'
         continue-on-error: true
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
