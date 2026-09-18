@@ -517,9 +517,9 @@ jobs:
         id: changed-bundle-inputs
         uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
         with:
-          files_ignore: |
-            openmetadata-ui/src/main/resources/ui/src/generated/**
-            openmetadata-ui/src/main/resources/ui/src/jsons/**
+          # Nothing ignored here, unlike the lint filter: generated types and
+          # the connection schemas under src/jsons are emitted into the build,
+          # so they are bundle inputs even though they are not worth linting.
           files: |
             openmetadata-ui/src/main/resources/ui/src/**
             openmetadata-ui/src/main/resources/ui/package.json
