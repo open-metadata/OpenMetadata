@@ -43,4 +43,15 @@ export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   'data-tag-index'?: number;
   /** data-testid for the close/remove button when onDelete is provided. */
   closeButtonTestId?: string;
+  /**
+   * Marks the entity as inherited (e.g. a domain propagated from a parent),
+   * rendering a trailing inherit glyph inside the chip.
+   */
+  inherited?: boolean;
+  /**
+   * Accessible name for the inherit glyph, supplied translated by the consumer
+   * (the library does not own this app string). When omitted the glyph is
+   * decorative (`aria-hidden`).
+   */
+  inheritedLabel?: string;
 }

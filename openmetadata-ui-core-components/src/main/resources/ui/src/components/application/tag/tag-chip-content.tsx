@@ -34,6 +34,8 @@ interface TagChipContentProps {
   labelClassName?: string;
   iconSize: number;
   iconTestId?: string;
+  /** Rendered after the label, inside the chip (e.g. an inherit glyph). */
+  trailing?: ReactNode;
 }
 
 /**
@@ -49,6 +51,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
   labelClassName,
   iconSize,
   iconTestId,
+  trailing,
 }) => {
   const iconNode = icon ? (
     <Suspense fallback={null}>
@@ -77,6 +80,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
         </span>
       )}
       {labelNode}
+      {trailing}
     </div>
   );
 };
