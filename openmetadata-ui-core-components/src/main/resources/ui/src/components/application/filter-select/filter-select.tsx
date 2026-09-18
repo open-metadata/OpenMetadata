@@ -91,7 +91,7 @@ export const TriggerButton = ({
         iconTrailing={ChevronDown}
         size={bordered ? 'md' : 'sm'}>
         <span data-testid={`search-dropdown-${label}`}>
-          <Typography inline>{text}</Typography>
+          <Typography>{text}</Typography>
         </span>
         {countBadge}
       </Button>
@@ -114,9 +114,7 @@ export const TriggerButton = ({
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
           data-testid={`search-dropdown-${label}`}>
-          <Typography inline>
-            {hasSelection ? text : placeholder ?? text}
-          </Typography>
+          <Typography>{hasSelection ? text : placeholder ?? text}</Typography>
         </span>
         {countBadge}
         <ChevronDown
@@ -139,7 +137,7 @@ export const TriggerButton = ({
       )}
       data-testid={testId}>
       <span data-testid={`search-dropdown-${label}`}>
-        <Typography inline>{text}</Typography>
+        <Typography>{text}</Typography>
       </span>
       {countBadge}
       <ChevronDown
@@ -191,9 +189,7 @@ const ChipsField = ({
           className="tw:flex tw:max-w-44 tw:items-center tw:gap-0.5 tw:rounded-md tw:border tw:border-secondary tw:bg-secondary tw:py-px tw:pr-0.5 tw:pl-2 tw:text-xs tw:font-medium tw:text-secondary"
           data-testid="filter-chip"
           key={chip.value}>
-          <Typography inline className="tw:truncate">
-            {chip.label}
-          </Typography>
+          <Typography className="tw:truncate">{chip.label}</Typography>
           <button
             aria-label={t('label.remove-filter')}
             className="tw:flex tw:cursor-pointer tw:rounded-xs tw:p-0.5 tw:text-placeholder tw:outline-brand tw:hover:text-secondary tw:focus-visible:outline-2"
@@ -212,7 +208,6 @@ const ChipsField = ({
         data-testid={testId}>
         {chips.length === 0 ? (
           <Typography
-            inline
             className="tw:truncate tw:text-placeholder"
             size="text-sm"
             weight="regular">
@@ -283,14 +278,12 @@ const OptionRow = ({
             </span>
           )}
           <Typography
-            inline
             className="tw:grow tw:truncate"
             title={optionText(option)}>
             {option.label}
           </Typography>
           {!hideCounts && option.count !== undefined && (
             <Typography
-              inline
               className={cx(
                 'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
                 !showCheckbox && state.isSelected

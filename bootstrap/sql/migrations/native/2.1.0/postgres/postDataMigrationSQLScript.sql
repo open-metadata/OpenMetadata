@@ -214,6 +214,29 @@ WHERE name IN (
   )
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);
 
+-- NUMERIC is a distinct member of the column dataType enum and is what BigQuery, Postgres,
+-- Snowflake and DB2 numeric columns are ingested as, but the numeric system test definitions were
+-- only ever seeded with NUMBER/DECIMAL. The "Add test case" dropdown filters on the column's exact
+-- dataType, so mean/min/max/median/stddev/sum were unreachable on any NUMERIC column. Seeding only
+-- covers fresh installs (initializeEntity returns early when the entity exists), hence this
+-- backfill. The guard on NUMERIC being absent keeps re-runs a no-op, and it also skips a definition
+-- with no supportedDataTypes at all -- that already means "every data type" (issue #27718), so
+-- appending to it would narrow it to exactly one.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{supportedDataTypes}',
+    (json->'supportedDataTypes')::jsonb || '["NUMERIC"]'::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValuesToBeAtExpectedLocation', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet'
+  )
+  AND json->'supportedDataTypes' IS NOT NULL
+  AND NOT ((json->'supportedDataTypes')::jsonb @> '["NUMERIC"]'::jsonb);
+
 -- Normalize user emails to lowercase: email is the primary identity lookup key and the
 -- application always compares lowercased values. No collision guard is needed -- the 1.5.0
 -- migration already deleted rows duplicated by LOWER(email) and lowercased the survivors, and
