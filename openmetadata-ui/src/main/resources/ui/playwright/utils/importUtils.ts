@@ -474,7 +474,14 @@ const selectOwnersOnTab = async (
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
 
+    // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
+    // picker keeps a visited tab's panel mounted, so after the Users pass the
+    // Teams options are still in the DOM. `hasText` is a case-insensitive
+    // substring match, so a page-wide match can resolve to an option in the
+    // other panel -- a strict-mode violation, or a click on the wrong owner
+    // when a user and a team share overlapping display text.
     await page
+      .getByTestId(`owner-select-${tab.toLowerCase()}-panel`)
       .locator('[data-testid="owner-option"]')
       .filter({ hasText: owner })
       .click();

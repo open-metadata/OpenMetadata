@@ -1900,7 +1900,11 @@ export const addMultiOwnerInDialog = async (data: {
     await searchOwner;
     await waitForAllLoadersToDisappear(page);
 
+    // Scope to the Users panel: the picker opens on Teams and keeps that panel
+    // mounted once this helper switches to Users, so a page-wide `hasText`
+    // (case-insensitive substring) match can reach a team option instead.
     const ownerItem = page
+      .getByTestId('owner-select-users-panel')
       .locator('[data-testid="owner-option"]')
       .filter({ hasText: ownerName });
 
