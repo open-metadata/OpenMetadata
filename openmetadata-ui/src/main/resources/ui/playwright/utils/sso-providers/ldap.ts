@@ -87,9 +87,9 @@ const buildBrokenConfig = () => {
 
 /**
  * LDAP (OpenLDAP) fixture. Backed by the openldap service in
- * docker/development/docker-compose.yml under the `sso-playwright` profile —
- * `docker compose --profile sso-playwright up openldap` before running the
- * scenarios spec locally.
+ * docker/local-sso/openldap/docker-compose.yml —
+ * `docker compose -f docker/local-sso/openldap/docker-compose.yml up -d`
+ * before running the scenarios spec locally.
  *
  * LDAP is a variant of the Generic authenticator with a form login on
  * /signin (see GenericAuthenticator.tsx): the UI POSTs email+password to
@@ -115,6 +115,7 @@ export const ldapProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,
+  supportsColdLoadRefresh: true,
 
   // The compose service is expected up when this profile runs; when it is
   // not, the container is unreachable and the configureBackend PUT will
