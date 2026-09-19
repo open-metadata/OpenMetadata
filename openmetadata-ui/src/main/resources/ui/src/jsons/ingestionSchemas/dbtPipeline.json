@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "dbtPipeline",
   "description": "DBT Pipeline Configuration.",
   "type": "object",
@@ -28,7 +28,7 @@
       "description": "Available sources to fetch DBT catalog and manifest files.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT Cloud Config",
           "description": "dbt Cloud configuration.",
           "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig",
@@ -79,7 +79,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT Local Config",
           "description": "DBT Catalog, Manifest and Run Results file path config.",
           "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtLocalConfig",
@@ -121,7 +121,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT HTTP Config",
           "description": "DBT Catalog, Manifest and Run Results HTTP path configuration.",
           "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig",
@@ -182,7 +182,7 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -237,7 +237,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT S3 Config",
           "description": "DBT Catalog, Manifest and Run Results files in S3 bucket. We will search for catalog.json, manifest.json and run_results.json.",
           "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config",
@@ -253,7 +253,7 @@
             },
             "dbtSecurityConfig": {
               "title": "DBT S3 Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -344,7 +344,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT GCS Config",
           "type": "object",
           "description": "DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.",
@@ -360,7 +360,7 @@
             },
             "dbtSecurityConfig": {
               "title": "DBT GCS Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "GCP credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -459,7 +459,7 @@
                   "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                   "oneOf": [
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                       "title": "GCP Credentials Values",
@@ -592,7 +592,7 @@
                       }
                     },
                     {
-                      "$schema": "http://json-schema.org/draft-07/schema#",
+                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                       "title": "GCP External Account",
@@ -723,7 +723,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DBT Azure Config",
           "type": "object",
           "description": "DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for catalog.json, manifest.json and run_results.json.",
@@ -739,7 +739,7 @@
             },
             "dbtSecurityConfig": {
               "title": "DBT Azure Security Config",
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Azure Cloud Credentials",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",

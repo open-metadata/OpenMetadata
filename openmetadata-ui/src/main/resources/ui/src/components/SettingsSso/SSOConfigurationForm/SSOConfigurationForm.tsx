@@ -20,12 +20,12 @@ import {
   RegistryFieldsType,
   RJSFSchema,
 } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { Check, UploadCloud02, X } from '@untitledui/icons';
 import { Button, Card, Typography, Upload } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getJSONSchemaFormValidator } from '../../../utils/JSONSchemaFormValidator';
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -163,6 +163,8 @@ const widgets = {
   SelectWidget: SelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
+
+const validator = getJSONSchemaFormValidator<FormData>();
 
 // Providers whose public-client login can be exercised end-to-end in the browser
 // for an interactive Test Login (the browser obtains an id_token directly).

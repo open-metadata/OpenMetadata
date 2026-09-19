@@ -12,7 +12,6 @@
  */
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { isEmpty } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,7 @@ import {
   EntityReference,
 } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';

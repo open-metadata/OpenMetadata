@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CassandraConnection",
   "description": "Cassandra Connection Config",
   "type": "object",
@@ -34,7 +34,7 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Basic Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -50,7 +50,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Cloud Config",
           "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
           "javaType": "org.openmetadata.schema.services.connections.database.cassandra.CloudConfig",
@@ -131,7 +131,7 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

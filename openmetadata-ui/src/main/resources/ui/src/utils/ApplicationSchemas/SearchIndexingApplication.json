@@ -1,6 +1,6 @@
 {
   "$id": "SearchReindexAppSchema.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Search Indexing Application",
   "description": "This schema defines configuration for Search Reindexing Application.",
   "properties": {

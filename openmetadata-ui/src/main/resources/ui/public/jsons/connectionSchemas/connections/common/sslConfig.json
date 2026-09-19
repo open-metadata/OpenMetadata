@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SSL Config",
   "description": "SSL Config",
   "javaType": "org.openmetadata.schema.services.common.SSLConfig",
@@ -11,7 +11,7 @@
       "description": "SSL Certificates",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "SSL Certificates By Path",
           "description": "SSL Certificates By Path",
           "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
@@ -36,7 +36,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "SSL Certificates By Values",
           "description": "SSL Certificates By Values",
           "javaType": "org.openmetadata.schema.services.common.SSLCertValues",

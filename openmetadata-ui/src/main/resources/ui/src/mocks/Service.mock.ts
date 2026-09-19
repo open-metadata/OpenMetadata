@@ -369,7 +369,7 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
 };
 
 export const MOCK_ATHENA_SERVICE = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
   title: 'AthenaConnection',
   description: 'AWS Athena Connection Config',
   type: 'object',
@@ -406,7 +406,7 @@ export const MOCK_ATHENA_SERVICE = {
     },
     awsConfig: {
       title: 'AWS Credentials Configuration',
-      $schema: 'http://json-schema.org/draft-07/schema#',
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
       description: 'AWS credentials configs.',
       type: 'object',
       javaType: 'org.openmetadata.schema.security.credentials.AWSCredentials',
@@ -577,7 +577,7 @@ export const MOCK_ATHENA_SERVICE = {
                   oneOf: [
                     {
                       title: 'AWS S3 Storage Config',
-                      $schema: 'http://json-schema.org/draft-07/schema#',
+                      $schema: 'https://json-schema.org/draft/2020-12/schema',
                       description: 'AWS credentials configs.',
                       type: 'object',
                       javaType:
@@ -664,7 +664,7 @@ export const MOCK_ATHENA_SERVICE = {
 };
 
 export const AIR_BYTE_CONNECTION = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
   title: 'AirbyteConnection',
   description: 'Airbyte Metadata Database Connection Config',
   type: 'object',
@@ -715,7 +715,7 @@ export const AIR_BYTE_CONNECTION = {
 };
 
 export const ATLAS_CONNECTION = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
   title: 'AtlasConnection',
   description: 'Atlas Connection Config',
   type: 'object',

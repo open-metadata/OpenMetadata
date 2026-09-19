@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import validator from '@rjsf/validator-ajv8';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { transformErrors } from '../../../utils/formPureUtils';
+import { jsonSchemaFormValidator as validator } from '../../../utils/JSONSchemaFormValidator';
 import FormBuilder, { Props } from './FormBuilder';
 
 describe('FormBuilder', () => {

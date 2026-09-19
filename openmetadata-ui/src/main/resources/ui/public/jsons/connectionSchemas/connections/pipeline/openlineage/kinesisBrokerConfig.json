@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Kinesis",
   "description": "AWS Kinesis Data Streams configuration for OpenLineage events.",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig",
@@ -14,7 +14,7 @@
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "description": "AWS credentials configuration.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
       "properties": {

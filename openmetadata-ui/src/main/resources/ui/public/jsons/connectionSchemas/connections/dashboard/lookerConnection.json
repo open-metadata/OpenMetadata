@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LookerConnection",
   "description": "Looker Connection Config",
   "type": "object",
@@ -78,7 +78,7 @@
           "default": null
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "GitHubCredentials",
           "description": "Credentials for a GitHub repository",
           "type": "object",
@@ -134,7 +134,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "BitBucketCredentials",
           "description": "Credentials for a BitBucket repository",
           "type": "object",
@@ -196,7 +196,7 @@
           ]
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "GitlabCredentials",
           "description": "Credentials for a Gitlab repository",
           "type": "object",

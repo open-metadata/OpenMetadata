@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RestConnection",
   "description": "REST Connection Config",
   "type": "object",
@@ -29,7 +29,7 @@
       "description": "OpenAPI Schema source config. Either a URL or a file path must be provided.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "OpenAPISchemaURL",
           "description": "Open API Schema URL Connection Config",
           "type": "object",
@@ -49,7 +49,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "OpenAPISchemaFilePath",
           "description": "Open API Schema File Path Connection Config",
           "type": "object",
@@ -68,7 +68,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "OpenAPISchemaS3",
           "description": "Open API Schema S3 Connection Config",
           "type": "object",
@@ -84,7 +84,7 @@
             "awsCredentials": {
               "title": "AWS Credentials",
               "description": "AWS credentials required to access the S3 file.",
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
               "properties": {
@@ -235,7 +235,7 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

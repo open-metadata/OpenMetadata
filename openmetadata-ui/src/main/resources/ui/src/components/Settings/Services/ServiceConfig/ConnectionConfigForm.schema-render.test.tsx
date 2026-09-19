@@ -13,9 +13,9 @@
 
 import Form from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
+import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import {
   getFilteredSchema,
   getSchemaWithSynthesizedAuthType,

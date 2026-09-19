@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MessagingServiceAutoClassificationPipeline",
   "description": "MessagingService AutoClassification Pipeline Configuration.",
   "type": "object",
@@ -80,7 +80,7 @@
     "classificationLanguage": {
       "description": "Language used for classification. Supported languages include: en (English).",
       "default": "en",
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "ClassificationLanguage",
       "type": "string",
       "javaType": "org.openmetadata.schema.type.ClassificationLanguage",

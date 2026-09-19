@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateAndRunIngestionPipelineTask",
   "description": "Creates and Runs an Ingestion Pipeline",
   "javaInterfaces": [
@@ -96,7 +96,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -122,7 +121,6 @@
         "success",
         "failure"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SetEntityAttributeTaskDefinition",
   "description": "Sets any Entity attribute field to the configured value.",
   "javaInterfaces": [
@@ -70,7 +70,6 @@
         "relatedEntity",
         "updatedBy"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     },
@@ -97,7 +96,6 @@
         "type": "string"
       },
       "default": [],
-      "additionalItems": false,
       "minItems": 0,
       "maxItems": 0
     }

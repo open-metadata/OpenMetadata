@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TableauConnection",
   "description": "Tableau Connection Config",
   "type": "object",
@@ -37,7 +37,7 @@
       "description": "Types of methods used to authenticate to the tableau instance",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "BasicAuth",
           "description": "Basic Auth Credentials",
           "type": "object",
@@ -62,7 +62,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "AccessTokenAuth",
           "description": "Access Token Auth Credentials",
           "type": "object",
@@ -133,7 +133,7 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

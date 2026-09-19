@@ -113,6 +113,7 @@
     "@tiptap/suggestion": "^2.27.3",
     "@untitledui/icons": "^0.0.21",
     "@windmillcode/quill-emoji": "2.0.3000",
+    "ajv": "^8.12.0",
     "analytics": "^0.8.1",
     "antd": "4.24.16",
     "antlr4": "4.9.2",

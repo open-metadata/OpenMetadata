@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PubSubConnection",
   "description": "Google Cloud Pub/Sub Connection Config",
   "type": "object",
@@ -27,7 +27,7 @@
     "gcpConfig": {
       "title": "GCP Credentials Configuration",
       "description": "GCP credentials configuration for authenticating with Pub/Sub.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
       "definitions": {
@@ -125,7 +125,7 @@
           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
               "title": "GCP Credentials Values",
@@ -258,7 +258,7 @@
               }
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
               "title": "GCP External Account",

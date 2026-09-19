@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabaseServiceProfilerPipeline",
   "description": "DatabaseService Profiler Pipeline Configuration.",
   "type": "object",
@@ -17,7 +17,7 @@
       "description": "Processing Engine Configuration. If not provided, the Native Engine will be used by default.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Native Engine Configuration",
           "description": "Configuration for the native metadata ingestion engine",
           "type": "object",
@@ -37,7 +37,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Spark Engine Configuration",
           "description": "This schema defines the configuration for a Spark Engine runner.",
           "type": "object",
@@ -180,7 +180,7 @@
         "config": {
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "DynamicSamplingConfig",
               "javaType": "org.openmetadata.schema.type.DynamicSamplingConfig",
               "description": "Configuration for dynamic sampling based on table row count.",
@@ -230,7 +230,7 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "StaticSamplingConfig",
               "javaType": "org.openmetadata.schema.type.StaticSamplingConfig",
               "description": "Configuration for static sampling based on table row count.",
