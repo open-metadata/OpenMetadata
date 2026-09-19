@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
@@ -88,6 +89,9 @@ public final class ClassConverterFactory {
             Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+            Map.entry(
+                StorageServiceMetadataPipeline.class,
+                new StorageServiceMetadataPipelineClassConverter()),
             Map.entry(ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),

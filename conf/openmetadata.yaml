@@ -739,6 +739,7 @@ pipelineServiceClientConfiguration:
     ## Airflow parameters
     username: ${AIRFLOW_USERNAME:-admin}
     password: ${AIRFLOW_PASSWORD:-admin}
+    # Seconds per complete runner HTTP request, including the response body (Airflow and Kubernetes).
     timeout: ${AIRFLOW_TIMEOUT:-10}
     # If we need to use SSL to reach Airflow
     truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}

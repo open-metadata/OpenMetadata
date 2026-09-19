@@ -16,6 +16,7 @@ package org.openmetadata.service.clients.pipeline.k8s;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.JsonParseException;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.kubernetes.client.custom.Quantity;
@@ -275,6 +276,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     if (!skipInit) {
       ApiClient client = initializeK8sClient(params);
+      final Duration requestTimeout =
+          Duration.ofSeconds(Long.parseLong(getStringParam(params, "timeout", "30")));
+      if (requestTimeout.isZero() || requestTimeout.isNegative()) {
+        throw new PipelineServiceClientException("Kubernetes request timeout must be positive");
+      }
+      client.setHttpClient(client.getHttpClient().newBuilder().callTimeout(requestTimeout).build());
       Configuration.setDefaultApiClient(client);
       this.batchApi = new BatchV1Api(client);
       this.coreApi = new CoreV1Api(client);
@@ -452,7 +459,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         LOG.info("Pipeline deployment completed successfully [correlationId={}]", correlationId);
         return buildSuccessResponse("Pipeline deployed successfully to Kubernetes");
 
-      } catch (ApiException e) {
+      } catch (ApiException | JsonParseException e) {
         // Rollback created resources in reverse order
         LOG.warn(
             "Deployment failed, rolling back {} created resources [correlationId={}]",
@@ -466,7 +473,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
             LOG.warn("Rollback failed: {}", rollbackError.getMessage());
           }
         }
-        throw e;
+        throw e instanceof ApiException apiException ? apiException : new ApiException(e);
       }
 
     } catch (ApiException e) {
