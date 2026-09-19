@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.RECONCILE_COLUMN_LINEAGE_SCRIPT;
@@ -34,6 +35,7 @@ import es.co.elastic.clients.elasticsearch.core.GetResponse;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
@@ -73,6 +75,7 @@ import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -417,24 +420,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params = convertToJsonDataMap(doc);
-
-      SearchRetryUtil.executeWithRetry(
-          () ->
-              client.update(
-                  u ->
-                      u.index(indexName)
-                          .id(docId)
-                          .refresh(Refresh.True)
-                          .retryOnConflict(3)
-                          .scriptedUpsert(true)
-                          .upsert(params)
-                          .script(
-                              s ->
-                                  s.source(ss -> ss.scriptString(scriptTxt))
-                                      .lang(ScriptLanguage.Painless)
-                                      .params(params)),
-                  Map.class));
+      UpdateRequest<Map, Map> request = buildUpdateEntityRequest(indexName, docId, doc, scriptTxt);
+      SearchRetryUtil.executeWithRetry(() -> client.update(request, Map.class));
 
       LOG.info(
           "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
@@ -461,6 +448,24 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error(
           "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
+  }
+
+  UpdateRequest<Map, Map> buildUpdateEntityRequest(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    Map<String, JsonData> params = convertToJsonDataMap(doc);
+    return UpdateRequest.of(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .retryOnConflict(3)
+                .scriptedUpsert(true)
+                .upsert(SearchIndexUtils.toUpsertDocument(doc))
+                .script(
+                    s ->
+                        s.source(ss -> ss.scriptString(scriptTxt))
+                            .lang(ScriptLanguage.Painless)
+                            .params(params)));
   }
 
   @Override
@@ -1590,7 +1595,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
 
     if (!fieldsToRemove.isEmpty()) {
-      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+      result.put(FIELDS_TO_REMOVE, JsonData.of(fieldsToRemove));
     }
 
     return result;

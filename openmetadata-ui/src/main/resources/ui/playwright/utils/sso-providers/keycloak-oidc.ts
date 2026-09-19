@@ -10,13 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
-import { ProviderConfigOverride } from '../ssoAuth';
+import {
+  applyProviderConfig,
+  fetchSecurityConfig,
+  ProviderConfigOverride,
+  restoreSecurityConfig,
+} from '../ssoAuth';
+import { SsoProviderFixture } from './fixture';
+import { forceTokenExpiry } from './force-token-expiry';
 import { ProviderHelper } from './index';
 import {
   assertSupportedBaseUrl,
   escapeRegExp,
   KEYCLOAK_SAML,
+  KEYCLOAK_SEEDED_CREDS,
   performProviderLogin,
 } from './keycloak-saml';
 
@@ -84,4 +93,81 @@ export const keycloakOidcConfidentialProviderHelper: ProviderHelper = {
   ),
   buildConfigPayload,
   performProviderLogin,
+};
+
+// ── New SsoProviderFixture surface ────────────────────────────────────────
+
+export const keycloakOidcConfidentialProviderFixture: SsoProviderFixture = {
+  name: 'Keycloak OIDC (confidential)',
+  slug: 'keycloak-oidc-confidential',
+  clientType: 'confidential',
+  loginKind: 'redirect',
+
+  supportsCrossTab: true,
+  supportsSelfSignup: true,
+  supportsSilentCallback: false,
+  usesBackendRefresh: true,
+
+  signInButtonPattern: /(sign in|log in) with Keycloak/i,
+
+  isAvailable: () => Boolean(process.env[SSO_ENV.KEYCLOAK_SAML_BASE_URL]),
+  unavailableReason: () =>
+    `Set ${SSO_ENV.KEYCLOAK_SAML_BASE_URL} to run the Keycloak OIDC fixture.`,
+
+  async configureBackend(apiContext: APIRequestContext) {
+    const snapshot = await fetchSecurityConfig(apiContext);
+    await applyProviderConfig(apiContext, snapshot, buildConfigPayload());
+
+    return {
+      restore: async () => {
+        await restoreSecurityConfig(apiContext, snapshot);
+      },
+    };
+  },
+
+  async performLogin(page: Page) {
+    await page.goto('/signin');
+    await page.getByRole('button', { name: this.signInButtonPattern }).click();
+    await performProviderLogin(page, {
+      username: KEYCLOAK_SEEDED_CREDS.username,
+      password: KEYCLOAK_SEEDED_CREDS.password,
+    });
+    // Diagnostic (round-10): scenarios 1-6 all time out on the sidebar
+    // after the Keycloak login submission — the real IdP round-trip
+    // completes but the SPA never lands on the authenticated shell.
+    // Capture the actual URL + loggedInUser response so the next CI
+    // log tells us why (session cookie missing / JWT rejected / stuck
+    // on /callback / etc.).
+    try {
+      await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
+        timeout: 60_000,
+      });
+    } catch (originalError) {
+      const url = page.url();
+      const loggedInUserResp = await page.request
+        .get('/api/v1/users/loggedInUser?fields=profile')
+        .then(async (r) => `${r.status()} ${(await r.text()).slice(0, 200)}`)
+        .catch((err) => `<request failed: ${(err as Error).message}>`);
+      const bodyText = await page
+        .locator('body')
+        .innerText({ timeout: 2_000 })
+        .catch(() => '<innerText failed>');
+
+      throw new Error(
+        `keycloak-oidc-confidential performLogin: sidebar never appeared.\n` +
+          `  page.url()               = ${url}\n` +
+          `  GET /users/loggedInUser  = ${loggedInUserResp}\n` +
+          `  body.innerText (first 300) = ${bodyText.slice(0, 300)}\n` +
+          `  original: ${(originalError as Error).message}`
+      );
+    }
+  },
+
+  async performLogout(page: Page) {
+    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByTestId('confirm-logout').click();
+    await expect(page).toHaveURL(/\/signin$/);
+  },
+
+  forceTokenExpiry,
 };

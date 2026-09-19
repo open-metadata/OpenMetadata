@@ -29,7 +29,7 @@ import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import Loader from '../../components/common/Loader/Loader';
 import LoginButton from '../../components/common/LoginButton/LoginButton';
