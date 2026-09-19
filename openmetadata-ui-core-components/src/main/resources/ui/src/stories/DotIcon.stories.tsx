@@ -28,9 +28,10 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     // Dot paints with `currentColor`; without a color it inherits the ambient
-    // text color, which is invisible on the dark canvas. Use a theme token so
-    // the default renders in both light and dark.
-    className: 'tw:text-fg-primary',
+    // text color, which is invisible on the dark canvas. Match the icon-library
+    // glyph color (featured-icon gray: gray-500 light / gray-200 dark) so it
+    // renders consistently in both themes.
+    className: 'tw:text-featured-icon-light-fg-gray',
     size: 'md',
   },
 };
@@ -38,8 +39,8 @@ export const Default: Story = {
 export const Sizes: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <Dot className="tw:text-fg-primary" size="sm" />
-      <Dot className="tw:text-fg-primary" size="md" />
+      <Dot className="tw:text-featured-icon-light-fg-gray" size="sm" />
+      <Dot className="tw:text-featured-icon-light-fg-gray" size="md" />
     </div>
   ),
 };
