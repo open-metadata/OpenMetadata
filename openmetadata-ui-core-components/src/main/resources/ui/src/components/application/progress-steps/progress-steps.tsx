@@ -126,8 +126,11 @@ const sizes = sortCx({
 
 const circleStatusStyles = sortCx({
   complete: 'tw:bg-brand-solid tw:text-fg-white',
+  // Light: pale brand-secondary circle (#d1e9ff) + brand number. Dark:
+  // brand-secondary resolves to a saturated blue (#1570ef) ~equal to
+  // fg-brand-primary (#2e90fa), so the number vanishes — use white in dark.
   current:
-    'tw:bg-brand-secondary tw:text-fg-brand-primary tw:outline-2 tw:-outline-offset-2 tw:outline-bg-brand-solid',
+    'tw:bg-brand-secondary tw:text-fg-brand-primary tw:dark:text-fg-white tw:outline-2 tw:-outline-offset-2 tw:outline-bg-brand-solid',
   incomplete:
     'tw:bg-primary tw:text-fg-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
 });

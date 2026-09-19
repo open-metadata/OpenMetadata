@@ -61,8 +61,10 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
         <input
           placeholder={`Search ${ALL_ICONS.length} icons…`}
           style={{
-            border: '1px solid #d0d5dd',
+            background: 'var(--tw-background-color-primary)',
+            border: '1px solid var(--tw-border-color-primary)',
             borderRadius: '6px',
+            color: 'var(--tw-text-color-primary)',
             fontSize: '13px',
             outline: 'none',
             padding: '7px 12px',
@@ -74,7 +76,11 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
         />
         {query && (
           <span
-            style={{ color: '#667085', fontSize: '12px', marginLeft: '10px' }}>
+            style={{
+              color: 'var(--tw-text-color-tertiary)',
+              fontSize: '12px',
+              marginLeft: '10px',
+            }}>
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -83,7 +89,11 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
       {/* Flat icon grid */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filtered.length === 0 && (
-          <p style={{ color: '#667085', fontSize: '13px' }}>
+          <p
+            style={{
+              color: 'var(--tw-text-color-tertiary)',
+              fontSize: '13px',
+            }}>
             No icons match &ldquo;{search}&rdquo;
           </p>
         )}
@@ -98,8 +108,15 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
               key={name}
               style={{
                 alignItems: 'center',
-                background: copied === name ? '#f0fdf4' : '#fff',
-                border: `1px solid ${copied === name ? '#86efac' : '#f2f4f7'}`,
+                background:
+                  copied === name
+                    ? 'var(--tw-background-color-success-primary)'
+                    : 'var(--tw-background-color-primary)',
+                border: `1px solid ${
+                  copied === name
+                    ? 'var(--tw-border-color-success)'
+                    : 'var(--tw-border-color-secondary)'
+                }`,
                 borderRadius: '6px',
                 cursor: 'pointer',
                 display: 'flex',
@@ -111,12 +128,19 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
               title={`Click to copy import for ${name}`}
               onClick={() => handleCopy(name)}>
               <Icon
-                color={copied === name ? '#16a34a' : '#344054'}
+                color={
+                  copied === name
+                    ? 'var(--tw-text-color-fg-success-primary)'
+                    : 'var(--tw-text-color-secondary)'
+                }
                 size={size}
               />
               <span
                 style={{
-                  color: copied === name ? '#16a34a' : '#667085',
+                  color:
+                    copied === name
+                      ? 'var(--tw-text-color-fg-success-primary)'
+                      : 'var(--tw-text-color-tertiary)',
                   fontSize: '9px',
                   lineHeight: 1.3,
                   overflowWrap: 'break-word',
