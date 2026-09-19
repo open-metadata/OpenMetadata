@@ -92,6 +92,8 @@ import {
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import {
   closeTask as closeTaskAPI,
+  deleteTaskComment,
+  editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
   TaskEntityStatus,
@@ -142,6 +144,7 @@ import {
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
+import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
@@ -1709,18 +1712,50 @@ export const TaskTabNew = ({
 
     return (
       <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-        {sortedComments.map((comment, index, arr) => (
-          <TaskCommentCard
-            closeFeedEditor={closeFeedEditor}
-            comment={comment}
-            isLastReply={index === arr.length - 1}
-            key={comment.id}
-            task={task}
-          />
-        ))}
+        {sortedComments.map((comment, index, arr) => {
+          const { canEdit, canDelete } = resolveCommentPermissions(
+            currentUser,
+            comment
+          );
+
+          return (
+            <TaskCommentCard
+              canDelete={canDelete}
+              canEdit={canEdit}
+              closeFeedEditor={closeFeedEditor}
+              comment={comment}
+              isLastReply={index === arr.length - 1}
+              key={comment.id}
+              onDelete={async () => {
+                try {
+                  await deleteTaskComment(task.id, comment.id);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  // The REST helpers throw without surfacing anything of their
+                  // own. Rethrow after toasting so the card leaves the
+                  // confirmation open for a retry instead of dismissing it as
+                  // though the delete had succeeded.
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+              onEdit={async (message) => {
+                try {
+                  await editTaskComment(task.id, comment.id, message);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+            />
+          );
+        })}
       </Col>
     );
-  }, [task, closeFeedEditor, isPostsLoading]);
+  }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
 
   useEffect(() => {
     closeFeedEditor();
