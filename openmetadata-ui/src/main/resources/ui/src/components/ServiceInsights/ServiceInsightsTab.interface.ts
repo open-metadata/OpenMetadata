@@ -60,6 +60,7 @@ export interface AgentsLiveInfo
     | 'id'
     | 'fullyQualifiedName'
     | 'displayName'
+    | 'enabled'
   > {
   status: PipelineState;
 }

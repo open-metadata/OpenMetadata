@@ -22,6 +22,10 @@ import org.junit.jupiter.api.Test;
 class IngestionPipelineStatusParserTest {
 
   private static String searchResponse(String pipelineStatusesJson) {
+    return searchResponse(pipelineStatusesJson, "true");
+  }
+
+  private static String searchResponse(String pipelineStatusesJson, String enabledJson) {
     return """
         {
           "hits": {
@@ -34,6 +38,7 @@ class IngestionPipelineStatusParserTest {
                   "fullyQualifiedName": "service.pipeline_1",
                   "pipelineType": "metadata",
                   "provider": "user",
+                  "enabled": %s,
                   "pipelineStatuses": %s
                 }
               }
@@ -41,7 +46,7 @@ class IngestionPipelineStatusParserTest {
           }
         }
         """
-        .formatted(pipelineStatusesJson);
+        .formatted(enabledJson, pipelineStatusesJson);
   }
 
   @Test
@@ -80,6 +85,24 @@ class IngestionPipelineStatusParserTest {
 
     assertEquals(1, result.size());
     assertEquals("unknown", result.getFirst().get("status"));
+  }
+
+  // A disabled pipeline keeps the state of the run it last completed, so the flag is what lets the
+  // agents widget show it as disabled instead of as whatever it last did.
+  @Test
+  void parse_carriesTheEnabledFlag() {
+    String response =
+        searchResponse(
+            """
+            [{"pipelineState": "success"}]
+            """,
+            "false");
+
+    List<Map> result = IngestionPipelineStatusParser.parse(response);
+
+    assertEquals(1, result.size());
+    assertEquals(Boolean.FALSE, result.getFirst().get("enabled"));
+    assertEquals("success", result.getFirst().get("status"));
   }
 
   @Test

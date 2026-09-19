@@ -74,6 +74,9 @@ const AGENT_STATUS_TO_UI_STATUS: Record<AgentStatus, UiAgentStatus> = {
   [AgentStatus.Successful]: 'success',
   [AgentStatus.Failed]: 'failed',
   [AgentStatus.Pending]: 'queued',
+  // The agent cards carry `enabled` themselves and render their own "Paused" badge in place of the
+  // status pill, so a disabled agent has no run status of its own to show here.
+  [AgentStatus.Disabled]: 'none',
 };
 
 const COMPLETED_PIPELINE_STATES = new Set<PipelineState>([

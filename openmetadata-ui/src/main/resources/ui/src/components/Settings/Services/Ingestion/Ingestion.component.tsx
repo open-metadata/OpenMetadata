@@ -96,15 +96,19 @@ const Ingestion: React.FC<IngestionProps> = ({
   const { platform } = useMemo(() => airflowInformation, [airflowInformation]);
 
   // The group's skeletons stand in for "we do not know yet whether this service has any agents",
-  // which stops being true once the first response lands — including when it lands empty. A ref,
-  // not state: it is only ever read alongside `isLoading`, whose change already re-renders.
-  const hasLoadedOnceRef = useRef(false);
+  // which stops being true once the first response lands — including when it lands empty. Held as
+  // the service the response landed for, not as a bare flag: `ServiceDetailsPage` renders this
+  // component without a key, so React Router reuses the instance across FQN changes and a bare flag
+  // would carry "already loaded" into the next service, showing its first fetch against the
+  // previous service's list instead of the skeletons. A ref, not state: it is only ever read
+  // alongside `isLoading`, whose change already re-renders.
+  const loadedServiceFQNRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!isLoading) {
-      hasLoadedOnceRef.current = true;
+      loadedServiceFQNRef.current = decodedServiceFQN;
     }
-  }, [isLoading]);
+  }, [isLoading, decodedServiceFQN]);
 
   // Only the pipeline fetch. The airflow status is deliberately not folded in — it gates the
   // actions on the agents, not whether the agents can be listed.
@@ -112,7 +116,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   // `isLoading` is true for *every* pipeline fetch, so feeding it in unqualified blanks a list that
   // is already on screen: killing a run refetches, and every agent disappeared until the request
   // came back. `isRefreshing` is the prop that reports a refetch, and it leaves the cards alone.
-  const isAgentsLoading = Boolean(isLoading) && !hasLoadedOnceRef.current;
+  const isAgentsLoading =
+    Boolean(isLoading) && loadedServiceFQNRef.current !== decodedServiceFQN;
 
   const showAddAgent = useMemo(
     () =>

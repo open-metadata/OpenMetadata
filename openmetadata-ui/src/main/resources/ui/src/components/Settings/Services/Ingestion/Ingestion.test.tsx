@@ -59,6 +59,19 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   triggerIngestionPipelineById: jest.fn().mockResolvedValue({}),
 }));
 
+// The FQN comes from the route, and one of the cases below is what happens when it changes under a
+// component instance React Router has reused.
+let mockServiceFQN = 'sample_data';
+
+jest.mock('../../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: mockServiceFQN,
+    ingestionFQN: '',
+    ruleName: '',
+    entityFqn: mockServiceFQN,
+  })),
+}));
+
 jest.mock('../../../../hoc/LimitWrapper', () => {
   return jest
     .fn()
@@ -94,6 +107,7 @@ jest.mock(
 describe('Ingestion', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockServiceFQN = 'sample_data';
     (useAirflowStatus as jest.Mock).mockImplementation(() => ({
       isAirflowAvailable: true,
       isFetchingStatus: false,
@@ -320,6 +334,41 @@ describe('Ingestion', () => {
       });
 
       expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    });
+
+    // `ServiceDetailsPage` renders this component without a key, so React Router reuses the
+    // instance when the service FQN changes. "A response has already landed" belongs to the
+    // service it landed for: carried over, the next service's first fetch would be shown against
+    // the agents of the one before it.
+    it('should show skeletons again for the first load of another service', async () => {
+      let view!: RenderResult;
+
+      await act(async () => {
+        view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion
+            {...ingestionProps}
+            agents={[mockAgent]}
+            isLoading={false}
+          />
+        );
+      });
+
+      mockServiceFQN = 'another_service';
+
+      await act(async () => {
+        view.rerender(
+          <Ingestion {...ingestionProps} isLoading agents={[mockAgent]} />
+        );
+      });
+
+      expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+      expect(screen.queryByTestId(`agent-card-${mockAgent.fqn}`)).toBeNull();
     });
   });
 });
