@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.dqtests;
+package org.openmetadata.service.resources.services.ingestionpipelines.run;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.resources.dqtests.TestCaseResource.runnablePipelineAmong;
+import static org.openmetadata.service.resources.services.ingestionpipelines.run.EntityPipelineRunner.runnablePipelineAmong;
 
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 
-class TestCaseRunnablePipelineTest {
+class RunnablePipelineSelectionTest {
 
   private static final UUID LOWEST_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
   private static final UUID MIDDLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");

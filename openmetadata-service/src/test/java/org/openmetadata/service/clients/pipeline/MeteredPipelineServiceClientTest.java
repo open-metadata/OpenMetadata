@@ -18,6 +18,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -42,7 +43,8 @@ class MeteredPipelineServiceClientTest {
             .withName("orders_suite_pipeline")
             .withPipelineType(PipelineType.TEST_SUITE)
             .withSourceConfig(new SourceConfig().withConfig(new TestSuitePipeline()));
-    RunOptions options = RunOptions.forTestCases(List.of("table_row_count"));
+    RunOptions options =
+        RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("table_row_count")));
     PipelineServiceClientResponse accepted = new PipelineServiceClientResponse().withCode(200);
     when(wrappedClient.runPipelineWithOptions(pipeline, null, options)).thenReturn(accepted);
 

@@ -13,53 +13,60 @@
 
 package org.openmetadata.sdk;
 
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * What applies to a single run of an ingestion pipeline, as opposed to the configuration the
  * pipeline is deployed with.
  *
- * @param testCases names of the test cases a test suite run executes; empty runs the whole suite
+ * <p>The source config override is a partial source config: its top-level keys replace the
+ * pipeline's own for this run only, such as the test cases a test suite runs or the filter patterns
+ * that narrow a profiler run to one table. It stays a map because it is a partial of whichever
+ * config type the pipeline has, overlaid by every runner the same way.
+ *
+ * @param sourceConfigOverride source config keys that replace the pipeline's for this run
  * @param appConfigOverride application config merged over the deployed one, or null
  */
-public record RunOptions(List<String> testCases, Map<String, Object> appConfigOverride) {
+public record RunOptions(
+    Map<String, Object> sourceConfigOverride, Map<String, Object> appConfigOverride) {
 
-  public static final RunOptions NONE = new RunOptions(List.of(), null);
+  public static final RunOptions NONE = new RunOptions(Map.of(), null);
 
   public RunOptions {
-    testCases = testCases == null ? List.of() : List.copyOf(testCases);
+    sourceConfigOverride =
+        sourceConfigOverride == null ? Map.of() : Map.copyOf(sourceConfigOverride);
   }
 
-  public static RunOptions forTestCases(List<String> testCases) {
-    return new RunOptions(testCases, null);
+  public static RunOptions withSourceConfigOverride(Map<String, Object> sourceConfigOverride) {
+    return new RunOptions(sourceConfigOverride, null);
   }
 
   public static RunOptions withAppConfigOverride(Map<String, Object> appConfigOverride) {
-    return new RunOptions(List.of(), appConfigOverride);
+    return new RunOptions(Map.of(), appConfigOverride);
   }
 
   /**
    * The pipeline as a runner that rebuilds its run from the entity has to see it for this run:
-   * {@code pipeline} itself when nothing is scoped, otherwise a copy whose test suite config runs
-   * only {@link #testCases}. A copy, because scoping the stored entity would narrow every later
-   * scheduled run of the whole suite.
+   * {@code pipeline} itself when there is no override, otherwise a copy whose source config has the
+   * override laid over it. A copy, because overriding the stored entity would change every later
+   * scheduled run.
    */
   public IngestionPipeline applyTo(IngestionPipeline pipeline) {
-    if (testCases.isEmpty()) {
+    if (sourceConfigOverride.isEmpty()) {
       return pipeline;
     }
-    IngestionPipeline scopedPipeline = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
-    TestSuitePipeline sourceConfig =
-        Optional.ofNullable(
-                JsonUtils.convertValue(
-                    scopedPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class))
-            .orElseGet(TestSuitePipeline::new);
-    scopedPipeline.getSourceConfig().setConfig(sourceConfig.withTestCases(testCases));
-    return scopedPipeline;
+    IngestionPipeline pipelineForRun = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    Map<String, Object> sourceConfig =
+        new HashMap<>(
+            JsonUtils.getMap(
+                Optional.ofNullable(pipelineForRun.getSourceConfig().getConfig())
+                    .orElseGet(Map::of)));
+    sourceConfig.putAll(sourceConfigOverride);
+    pipelineForRun.getSourceConfig().setConfig(sourceConfig);
+    return pipelineForRun;
   }
 }

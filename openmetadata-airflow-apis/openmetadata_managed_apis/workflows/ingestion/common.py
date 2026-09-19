@@ -78,6 +78,7 @@ from openmetadata_managed_apis.utils.parser import (
 logger = workflow_logger()
 
 PIPELINE_RUN_ID_PARAM = "pipelineRunId"
+SOURCE_CONFIG_OVERRIDE_PARAM = "sourceConfigOverride"
 
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
@@ -376,18 +377,39 @@ def send_failed_run_status_callback(workflow_config: OpenMetadataWorkflowConfig,
         send_failed_status_callback(workflow_config.model_copy(update={"pipelineRunId": Uuid(run_id)}))
 
 
+def apply_source_config_override(
+    workflow_config: OpenMetadataWorkflowConfig, source_config_override: dict | None
+) -> None:
+    """
+    Lay a run's source config override over the config the DAG was deployed with. Airflow bakes a
+    DAG's config at deploy time, so what applies to one run only - the test case a scoped test suite
+    run executes, the filters narrowing a profiler or metadata run to one table - can reach it only
+    through the trigger conf. Top-level keys of the override replace the deployed ones.
+    """
+    if not source_config_override:
+        return
+    source_config = workflow_config.source.sourceConfig
+    deployed_config = source_config.config
+    overridden = {**deployed_config.model_dump(mode="json"), **source_config_override}
+    source_config.config = type(deployed_config).model_validate(overridden)
+
+
 class CustomPythonOperator(PythonOperator):
     def execute(self, context):
         """
         A run triggered from the server carries the run id the server already recorded as queued.
         Reporting under that id, instead of the one minted when the DAG was parsed, makes the
         workflow's statuses - and the failure callback's, which shares this config - update the
-        queued run rather than show up as a separate one.
+        queued run rather than show up as a separate one. It may also carry a source config
+        override that applies to this run alone; see apply_source_config_override.
         """
-        run_id = (context.get("params") or {}).get(PIPELINE_RUN_ID_PARAM)
+        params = context.get("params") or {}
         workflow_config = self.op_kwargs.get("workflow_config")
-        if run_id and workflow_config:
-            workflow_config.pipelineRunId = Uuid(run_id)
+        if workflow_config:
+            run_id = params.get(PIPELINE_RUN_ID_PARAM)
+            if run_id:
+                workflow_config.pipelineRunId = Uuid(run_id)
+            apply_source_config_override(workflow_config, params.get(SOURCE_CONFIG_OVERRIDE_PARAM))
         return super().execute(context)
 
     def on_kill(self) -> None:
@@ -460,7 +482,7 @@ def build_dag(
         if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
         else "openmetadata",
         # Declared so the trigger conf can override it; see CustomPythonOperator.execute
-        params={PIPELINE_RUN_ID_PARAM: None, **(params or {})},
+        params={PIPELINE_RUN_ID_PARAM: None, SOURCE_CONFIG_OVERRIDE_PARAM: None, **(params or {})},
         dag=dag,
     )
 

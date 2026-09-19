@@ -998,8 +998,7 @@ export const isPipelinePermissionResponse =
     response.url().includes(pipelineName);
 
 export const isRunTestCaseResponse = (response: Response) =>
-  response.url().includes('/api/v1/dataQuality/testCases/') &&
-  response.url().endsWith('/run') &&
+  response.url().endsWith('/api/v1/services/ingestionPipelines/run') &&
   response.request().method() === 'POST';
 
 export const expectRunTestCaseDisabledWithReason = async (

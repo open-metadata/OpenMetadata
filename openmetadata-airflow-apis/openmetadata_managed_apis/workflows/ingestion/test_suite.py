@@ -37,7 +37,6 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
 
 def test_suite_workflow(
     workflow_config: OpenMetadataWorkflowConfig,
-    **context,
 ):
     """
     Task that creates and runs the test suite workflow.
@@ -51,13 +50,6 @@ def test_suite_workflow(
     set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False))
-
-    # Airflow bakes the DAG's config at deploy time, so an ad-hoc scope - running a single
-    # test case instead of the whole suite - can only reach the run through the trigger conf.
-    test_cases = (context.get("params") or {}).get("testCases")
-    if test_cases:
-        config["source"]["sourceConfig"]["config"]["testCases"] = test_cases
-
     workflow = TestSuiteWorkflow.create(config)
     execute_workflow(workflow, workflow_config)
 
@@ -98,7 +90,6 @@ def build_test_suite_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=workflow_config,
         workflow_fn=test_suite_workflow,
-        params={"testCases": None},  # overridden by the trigger conf for a scoped run
     )
 
     return dag  # noqa: RET504

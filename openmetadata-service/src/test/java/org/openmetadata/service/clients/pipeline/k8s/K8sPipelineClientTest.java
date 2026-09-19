@@ -264,7 +264,9 @@ class K8sPipelineClientTest {
     when(createJobRequest.execute()).thenReturn(new V1Job());
 
     client.runPipelineWithOptions(
-        pipeline, testService, RunOptions.forTestCases(List.of("row_count")));
+        pipeline,
+        testService,
+        RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("row_count"))));
 
     ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());

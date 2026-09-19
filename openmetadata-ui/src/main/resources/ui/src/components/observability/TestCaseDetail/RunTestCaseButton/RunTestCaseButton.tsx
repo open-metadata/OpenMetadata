@@ -20,13 +20,18 @@ import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
+import { PipelineType as RunPipelineType } from '../../../../generated/api/services/ingestionPipelines/runIngestionPipelineForEntity';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { TEST_SUITE_PIPELINE_LIMIT } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
-import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
-import { runTestCase } from '../../../../rest/testAPI';
+import {
+  getIngestionPipelines,
+  runIngestionPipelineForEntity,
+} from '../../../../rest/ingestionPipelineAPI';
+import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
@@ -109,7 +114,13 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
   const handleRun = async () => {
     setIsTriggering(true);
     try {
-      await runTestCase(testCase.id ?? '');
+      await runIngestionPipelineForEntity({
+        entityLink: getEntityFeedLink(
+          EntityType.TEST_CASE,
+          testCase.fullyQualifiedName
+        ),
+        pipelineType: RunPipelineType.TestSuite,
+      });
       showSuccessToast(t('message.test-case-run-queued'));
       await refetch();
     } catch (error) {

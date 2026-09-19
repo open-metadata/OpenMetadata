@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -24,7 +23,6 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -40,23 +38,18 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
-import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -69,18 +62,15 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.Filter;
-import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineSecrets;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
@@ -740,100 +730,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
-  }
-
-  @POST
-  @Path("/{id}/run")
-  @Operation(
-      operationId = "runTestCase",
-      summary = "Run this test case on demand",
-      description =
-          "Trigger the ingestion pipeline of this test case's test suite, scoped to this test "
-              + "case so that the rest of the suite is not executed.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Run request accepted by the pipeline service",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description =
-                "Test suite of test case {id} has no enabled, deployed ingestion pipeline")
-      })
-  public PipelineServiceClientResponse runTestCase(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    TestCase testCase = repository.get(uriInfo, id, getFields("testSuite"));
-    IngestionPipeline pipeline = runnablePipelineOf(testCase);
-    authorizeTrigger(securityContext, pipeline);
-    resolveSecrets(pipeline, securityContext);
-    ServiceEntityInterface service =
-        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    // The ingestion source filters on test case name, not FQN - an FQN here would run nothing.
-    RunOptions options = RunOptions.forTestCases(List.of(testCase.getName()));
-    return ingestionPipelineRepository().runIngestionPipeline(uriInfo, pipeline, service, options);
-  }
-
-  // Same check as the pipeline's own /trigger endpoint, so running a single test case is never a
-  // way around a policy that withholds Trigger on the suite's pipeline.
-  private void authorizeTrigger(SecurityContext securityContext, IngestionPipeline pipeline) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.TRIGGER),
-        new ResourceContext<>(Entity.INGESTION_PIPELINE, pipeline.getId(), null));
-  }
-
-  // As the pipeline's own /trigger does: the runner needs the decrypted connection and the bot's
-  // server connection, and a caller without ViewAll on the pipeline does not get its source config.
-  private void resolveSecrets(IngestionPipeline pipeline, SecurityContext securityContext) {
-    IngestionPipelineSecrets.decryptOrNullify(
-        authorizer,
-        securityContext,
-        ingestionPipelineRepository().getOpenMetadataApplicationConfig(),
-        pipeline,
-        true);
-  }
-
-  private IngestionPipeline runnablePipelineOf(TestCase testCase) {
-    TestSuite testSuite =
-        Entity.getEntity(testCase.getTestSuite(), "pipelines", Include.NON_DELETED);
-    List<IngestionPipeline> pipelines =
-        listOrEmpty(testSuite.getPipelines()).stream()
-            .<IngestionPipeline>map(
-                reference -> Entity.getEntity(reference, Entity.FIELD_OWNERS, Include.NON_DELETED))
-            .toList();
-    return runnablePipelineAmong(pipelines)
-        .orElseThrow(
-            () ->
-                new NotFoundException(
-                    String.format(
-                        "Test suite '%s' has no enabled, deployed ingestion pipeline to run.",
-                        testSuite.getFullyQualifiedName())));
-  }
-
-  // A suite can have several runnable pipelines. The lowest id keeps the choice stable, so a client
-  // listing the suite's pipelines can check permission and run state on this one.
-  static Optional<IngestionPipeline> runnablePipelineAmong(List<IngestionPipeline> pipelines) {
-    return pipelines.stream()
-        .filter(TestCaseResource::isRunnable)
-        .min(Comparator.comparing(pipeline -> pipeline.getId().toString()));
-  }
-
-  // Same rule as the pipeline's own Run action: a disabled pipeline's schedule is paused, so a run
-  // would never start, and an undeployed one has nothing for the runner to execute.
-  private static boolean isRunnable(IngestionPipeline pipeline) {
-    return Boolean.TRUE.equals(pipeline.getEnabled())
-        && Boolean.TRUE.equals(pipeline.getDeployed());
-  }
-
-  private static IngestionPipelineRepository ingestionPipelineRepository() {
-    return (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
   }
 
   @POST

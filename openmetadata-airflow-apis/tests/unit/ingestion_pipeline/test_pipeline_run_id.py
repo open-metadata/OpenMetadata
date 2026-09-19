@@ -105,7 +105,7 @@ def test_without_a_trigger_run_id_the_parse_time_id_is_kept(suite_task):
 
 def test_dag_declares_the_run_id_param_next_to_its_own_params(suite_task):
     assert suite_task.params["pipelineRunId"] is None
-    assert suite_task.params["testCases"] is None
+    assert suite_task.params["sourceConfigOverride"] is None
 
 
 @pytest.fixture

@@ -71,7 +71,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
   private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
-  private static final String TEST_CASES = "testCases";
+  private static final String SOURCE_CONFIG_OVERRIDE = "sourceConfigOverride";
   private static final String PIPELINE_RUN_ID = "pipelineRunId";
   private String detectedAirflowVersion = null;
   private final Object detectionLock = new Object();
@@ -446,8 +446,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
     if (options.appConfigOverride() != null) {
       conf.put(APP_CONFIG_OVERRIDE, options.appConfigOverride());
     }
-    if (!options.testCases().isEmpty()) {
-      conf.put(TEST_CASES, options.testCases());
+    if (!options.sourceConfigOverride().isEmpty()) {
+      conf.put(SOURCE_CONFIG_OVERRIDE, options.sourceConfigOverride());
     }
     return conf;
   }

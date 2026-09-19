@@ -22,8 +22,10 @@ import {
   PipelineType,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
-import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
-import { runTestCase } from '../../../../rest/testAPI';
+import {
+  getIngestionPipelines,
+  runIngestionPipelineForEntity,
+} from '../../../../rest/ingestionPipelineAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -40,10 +42,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelines: jest.fn(),
-}));
-
-jest.mock('../../../../rest/testAPI', () => ({
-  runTestCase: jest.fn(),
+  runIngestionPipelineForEntity: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -73,6 +72,12 @@ const testCase = {
     fullyQualifiedName: 'svc.db.schema.orders.testSuite',
   },
 } as TestCase;
+
+// The run is scoped by the test case's entity link to its suite's test suite pipeline.
+const RUN_THIS_TEST_CASE = {
+  entityLink: '<#E::testCase::svc.db.schema.orders.row_count>',
+  pipelineType: 'TestSuite',
+};
 
 const pipeline = (overrides: Partial<IngestionPipeline> = {}) =>
   ({
@@ -195,7 +200,7 @@ describe('RunTestCaseButton', () => {
   it('runs the test case on click, confirms it was queued and reloads the run state', async () => {
     setPipelines([pipeline()]);
     setPipelinePermission(true);
-    (runTestCase as jest.Mock).mockResolvedValue({});
+    (runIngestionPipelineForEntity as jest.Mock).mockResolvedValue({});
 
     renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
     fireEvent.click(await screen.findByTestId('run-test-case-button'));
@@ -206,7 +211,9 @@ describe('RunTestCaseButton', () => {
       )
     );
 
-    expect(runTestCase).toHaveBeenCalledWith('test-case-id');
+    expect(runIngestionPipelineForEntity).toHaveBeenCalledWith(
+      RUN_THIS_TEST_CASE
+    );
     expect(getIngestionPipelines).toHaveBeenCalledTimes(2);
   });
 
@@ -214,7 +221,7 @@ describe('RunTestCaseButton', () => {
     const error = new AxiosError('Failed to trigger IngestionPipeline');
     setPipelines([pipeline()]);
     setPipelinePermission(true);
-    (runTestCase as jest.Mock).mockRejectedValue(error);
+    (runIngestionPipelineForEntity as jest.Mock).mockRejectedValue(error);
 
     renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
     fireEvent.click(await screen.findByTestId('run-test-case-button'));
@@ -239,7 +246,7 @@ describe('RunTestCaseButton', () => {
       }),
     ]);
     setPipelinePermission(true);
-    (runTestCase as jest.Mock).mockResolvedValue({});
+    (runIngestionPipelineForEntity as jest.Mock).mockResolvedValue({});
 
     renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
     const runButton = await screen.findByTestId('run-test-case-button');
@@ -257,7 +264,9 @@ describe('RunTestCaseButton', () => {
     await user.click(runButton);
 
     await waitFor(() =>
-      expect(runTestCase).toHaveBeenCalledWith('test-case-id')
+      expect(runIngestionPipelineForEntity).toHaveBeenCalledWith(
+        RUN_THIS_TEST_CASE
+      )
     );
   });
 });

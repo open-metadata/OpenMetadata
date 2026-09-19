@@ -73,6 +73,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -102,6 +103,7 @@ import org.openmetadata.service.monitoring.MicrometerBundle;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.services.ingestionpipelines.run.EntityPipelineRunner;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
@@ -125,6 +127,7 @@ import org.openmetadata.service.util.RestUtil;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
+  private final EntityPipelineRunner entityPipelineRunner;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   static final String SORT_FIELD_DISPLAY_NAME = "displayName";
   static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
@@ -149,6 +152,7 @@ public class IngestionPipelineResource
 
   public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
     super(Entity.INGESTION_PIPELINE, authorizer, limits);
+    this.entityPipelineRunner = new EntityPipelineRunner(authorizer, limits, repository);
   }
 
   @Override
@@ -838,6 +842,39 @@ public class IngestionPipelineResource
           UUID id,
       @Context SecurityContext securityContext) {
     return triggerPipelineInternal(id, uriInfo, securityContext, null);
+  }
+
+  @POST
+  @Path("/run")
+  @Operation(
+      operationId = "runIngestionPipelineForEntity",
+      summary = "Run the pipeline that owns an entity, scoped to that entity",
+      description =
+          "Run the enabled, deployed pipeline of the given type that owns the linked entity, scoped"
+              + " so that it processes only that entity: a test suite pipeline for a test case, or a"
+              + " profiler, metadata or auto classification pipeline for a table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Run request accepted by the pipeline service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "The pipeline type cannot be run scoped to the linked entity, or the scope is not"
+                    + " safe for its pipeline"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "The entity, or an enabled, deployed pipeline of the type that owns it")
+      })
+  public PipelineServiceClientResponse runIngestionPipelineForEntity(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid RunIngestionPipelineForEntity request) {
+    return entityPipelineRunner.run(uriInfo, securityContext, request);
   }
 
   @POST

@@ -612,12 +612,15 @@ class AirflowRESTClientTest {
 
       AirflowRESTClient client = newClient(server, basePath);
       IngestionPipeline pipeline = testSuitePipeline("orders_suite", null);
-      RunOptions options = RunOptions.forTestCases(List.of("table_row_count"));
+      RunOptions options =
+          RunOptions.withSourceConfigOverride(Map.of("testCases", List.of("table_row_count")));
 
       assertEquals(200, client.runPipelineWithOptions(pipeline, null, options).getCode());
 
       JSONObject conf = triggerConf(server, prefix);
-      assertEquals(List.of("table_row_count"), conf.getJSONArray("testCases").toList());
+      assertEquals(
+          List.of("table_row_count"),
+          conf.getJSONObject("sourceConfigOverride").getJSONArray("testCases").toList());
       assertFalse(conf.has("appConfigOverride"));
     }
   }
