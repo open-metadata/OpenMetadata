@@ -71,6 +71,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
@@ -1107,12 +1108,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * database-backed claim on the pipeline would close.
    */
   public PipelineServiceClientResponse runIngestionPipelineUnlessInProgress(
-      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+      UriInfo uriInfo,
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      RunOptions options) {
     Lock runLock = PIPELINE_RUN_LOCKS.get(ingestionPipeline.getId());
     runLock.lock();
     try {
       ensureNoRunInProgress(ingestionPipeline);
-      return runIngestionPipeline(uriInfo, ingestionPipeline, service);
+      return runIngestionPipeline(uriInfo, ingestionPipeline, service, options);
     } finally {
       runLock.unlock();
     }
@@ -1717,13 +1721,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse runIngestionPipeline(
       UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, RunOptions.NONE);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo,
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      RunOptions options) {
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
     PipelineServiceClientResponse response =
-        pipelineServiceClient.runPipeline(ingestionPipeline, service);
+        pipelineServiceClient.runPipelineWithOptions(ingestionPipeline, service, options);
     recordQueuedPipelineStatus(
         uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
     return response;

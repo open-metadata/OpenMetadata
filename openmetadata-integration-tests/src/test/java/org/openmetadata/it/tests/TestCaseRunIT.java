@@ -60,8 +60,9 @@ import org.openmetadata.sdk.network.HttpMethod;
  * POST /v1/dataQuality/testCases/{id}/run resolves the test case's suite pipeline and triggers it
  * scoped to that one test case. Whether the shared IT server has a pipeline service client depends
  * on which suites ran first - the Kubernetes pipeline tests install one - so an accepted run is
- * asserted by its 200 response, not by what the client reports. The scoping itself and the Airflow
- * trigger payload are covered by TestCaseRunScopeTest and AirflowRESTClientTest.
+ * asserted by its 200 response, not by what the client reports. How the scope reaches each client
+ * is covered by RunOptionsTest, AirflowRESTClientTest, K8sPipelineClientTest and
+ * MeteredPipelineServiceClientTest.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)

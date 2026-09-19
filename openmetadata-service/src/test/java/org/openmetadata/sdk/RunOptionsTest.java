@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.dqtests;
+package org.openmetadata.sdk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.service.resources.dqtests.TestCaseResource.scopedToTestCase;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -28,17 +28,25 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 
-class TestCaseRunScopeTest {
+class RunOptionsTest {
 
   private static final String TEST_CASE_NAME = "table_row_count_to_equal";
-  private static final Consumer<IngestionPipeline> SECRETS_UNCHANGED = pipeline -> {};
+  private static final String SUITE_ENTITY_FQN = "red.dev.orders";
 
   @Test
-  void scopedCopyRunsOnlyTheRequestedTestCase() {
-    IngestionPipeline scoped =
-        scopedToTestCase(testSuitePipeline(), TEST_CASE_NAME, SECRETS_UNCHANGED);
+  void anUnscopedRunUsesThePipelineAsItIs() {
+    IngestionPipeline suitePipeline = testSuitePipeline();
 
-    assertEquals(List.of(TEST_CASE_NAME), scopedTestCases(scoped));
+    assertSame(suitePipeline, RunOptions.NONE.applyTo(suitePipeline));
+  }
+
+  @Test
+  void aScopedRunExecutesOnlyTheRequestedTestCases() {
+    IngestionPipeline scoped =
+        RunOptions.forTestCases(List.of(TEST_CASE_NAME)).applyTo(testSuitePipeline());
+
+    assertEquals(List.of(TEST_CASE_NAME), suiteConfigOf(scoped).getTestCases());
+    assertEquals(SUITE_ENTITY_FQN, suiteConfigOf(scoped).getEntityFullyQualifiedName());
   }
 
   /**
@@ -46,13 +54,14 @@ class TestCaseRunScopeTest {
    * scheduled runs would silently execute a single test case from then on.
    */
   @Test
-  void scopingDoesNotMutateTheSourcePipeline() {
+  void scopingARunLeavesThePipelineItWasGivenUntouched() {
     IngestionPipeline suitePipeline = testSuitePipeline();
 
-    IngestionPipeline scoped = scopedToTestCase(suitePipeline, TEST_CASE_NAME, SECRETS_UNCHANGED);
+    IngestionPipeline scoped =
+        RunOptions.forTestCases(List.of(TEST_CASE_NAME)).applyTo(suitePipeline);
 
     assertNotSame(suitePipeline, scoped);
-    assertNull(scopedTestCases(suitePipeline));
+    assertNull(suiteConfigOf(suitePipeline).getTestCases());
   }
 
   /**
@@ -60,32 +69,27 @@ class TestCaseRunScopeTest {
    * caller who may still trigger it must run the one test case, not the whole suite.
    */
   @Test
-  void theScopeSurvivesSecretsResolutionThatWithholdsTheSourceConfig() {
-    IngestionPipeline scoped =
-        scopedToTestCase(
-            testSuitePipeline(),
-            TEST_CASE_NAME,
-            pipeline -> pipeline.getSourceConfig().setConfig(null));
+  void theScopeSurvivesAWithheldSourceConfig() {
+    IngestionPipeline suitePipeline = testSuitePipeline();
+    suitePipeline.getSourceConfig().setConfig(null);
 
-    assertEquals(List.of(TEST_CASE_NAME), scopedTestCases(scoped));
+    IngestionPipeline scoped =
+        RunOptions.forTestCases(List.of(TEST_CASE_NAME)).applyTo(suitePipeline);
+
+    assertEquals(List.of(TEST_CASE_NAME), suiteConfigOf(scoped).getTestCases());
   }
 
   @Test
-  void secretsAreResolvedOnTheCopyAndNotOnTheStoredPipeline() {
+  void noTestCasesMeansTheWholeSuite() {
+    RunOptions options = new RunOptions(null, null);
+
+    assertTrue(options.testCases().isEmpty());
     IngestionPipeline suitePipeline = testSuitePipeline();
-
-    scopedToTestCase(
-        suitePipeline, TEST_CASE_NAME, pipeline -> pipeline.getSourceConfig().setConfig(null));
-
-    assertEquals(
-        "red.dev.orders",
-        JsonUtils.convertValue(suitePipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
-            .getEntityFullyQualifiedName());
+    assertSame(suitePipeline, options.applyTo(suitePipeline));
   }
 
-  private static List<String> scopedTestCases(IngestionPipeline pipeline) {
-    return JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class)
-        .getTestCases();
+  private static TestSuitePipeline suiteConfigOf(IngestionPipeline pipeline) {
+    return JsonUtils.convertValue(pipeline.getSourceConfig().getConfig(), TestSuitePipeline.class);
   }
 
   private static IngestionPipeline testSuitePipeline() {
@@ -96,6 +100,6 @@ class TestCaseRunScopeTest {
         .withSourceConfig(
             new SourceConfig()
                 .withConfig(
-                    new TestSuitePipeline().withEntityFullyQualifiedName("red.dev.orders")));
+                    new TestSuitePipeline().withEntityFullyQualifiedName(SUITE_ENTITY_FQN)));
   }
 }

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.clients.pipeline.airflow;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -44,10 +42,9 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -395,7 +392,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    return runPipeline(ingestionPipeline, service, null);
+    return runPipelineWithOptions(ingestionPipeline, service, RunOptions.NONE);
   }
 
   @Override
@@ -403,6 +400,15 @@ public class AirflowRESTClient extends PipelineServiceClient {
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       Map<String, Object> config) {
+    return runPipelineWithOptions(
+        ingestionPipeline, service, RunOptions.withAppConfigOverride(config));
+  }
+
+  // Airflow bakes a DAG's config at deploy time, so a run's options reach it only through the
+  // trigger conf, never through the pipeline passed in.
+  @Override
+  public PipelineServiceClientResponse runPipelineWithOptions(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service, RunOptions options) {
     String pipelineName = ingestionPipeline.getName();
     HttpResponse<String> response;
     try {
@@ -410,7 +416,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
       String runId = UUID.randomUUID().toString();
-      requestPayload.put(CONF, buildRunConf(ingestionPipeline, config, runId));
+      requestPayload.put(CONF, buildRunConf(options, runId));
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return getResponse(200, response.body()).withRunId(runId);
@@ -431,37 +437,18 @@ public class AirflowRESTClient extends PipelineServiceClient {
         Response.Status.fromStatusCode(response.statusCode()));
   }
 
-  // Airflow bakes a DAG's config at deploy time, so anything specific to one run reaches it only
-  // through the trigger conf: the run id - which the worker reports under, so the queued status
-  // the server records for this id is the one that progresses - and an ad-hoc test case scope.
-  private Map<String, Object> buildRunConf(
-      IngestionPipeline ingestionPipeline, Map<String, Object> config, String runId) {
+  // The run id goes along too: the worker reports under it, so the queued status the server records
+  // for this id is the one that progresses.
+  private Map<String, Object> buildRunConf(RunOptions options, String runId) {
     Map<String, Object> conf = new HashMap<>();
     conf.put(PIPELINE_RUN_ID, runId);
-    if (config != null) {
-      conf.put(APP_CONFIG_OVERRIDE, config);
+    if (options.appConfigOverride() != null) {
+      conf.put(APP_CONFIG_OVERRIDE, options.appConfigOverride());
     }
-    List<String> testCases = getScopedTestCases(ingestionPipeline);
-    if (!testCases.isEmpty()) {
-      conf.put(TEST_CASES, testCases);
+    if (!options.testCases().isEmpty()) {
+      conf.put(TEST_CASES, options.testCases());
     }
     return conf;
-  }
-
-  private List<String> getScopedTestCases(IngestionPipeline ingestionPipeline) {
-    if (!isTestSuitePipelineWithConfig(ingestionPipeline)) {
-      return Collections.emptyList();
-    }
-    TestSuitePipeline testSuitePipeline =
-        JsonUtils.convertValue(
-            ingestionPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class);
-    return listOrEmpty(testSuitePipeline.getTestCases());
-  }
-
-  private boolean isTestSuitePipelineWithConfig(IngestionPipeline ingestionPipeline) {
-    return PipelineType.TEST_SUITE.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getSourceConfig() != null
-        && ingestionPipeline.getSourceConfig().getConfig() != null;
   }
 
   @Override

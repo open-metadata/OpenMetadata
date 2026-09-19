@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 
 /**
  * A run's queued status is recorded only after the orchestrator accepts the trigger, so without
@@ -50,7 +51,7 @@ class IngestionPipelineRunLockTest {
     CountDownLatch releaseTrigger = new CountDownLatch(1);
     PipelineServiceClientInterface pipelineServiceClient =
         mock(PipelineServiceClientInterface.class);
-    when(pipelineServiceClient.runPipeline(any(), any()))
+    when(pipelineServiceClient.runPipelineWithOptions(any(), any(), any(RunOptions.class)))
         .thenAnswer(
             invocation -> {
               firstTriggerStarted.countDown();
@@ -76,7 +77,8 @@ class IngestionPipelineRunLockTest {
     ClientErrorException conflict =
         assertInstanceOf(ClientErrorException.class, rejection.getCause());
     assertEquals(409, conflict.getResponse().getStatus());
-    verify(pipelineServiceClient, times(1)).runPipeline(any(), any());
+    verify(pipelineServiceClient, times(1))
+        .runPipelineWithOptions(any(), any(), any(RunOptions.class));
   }
 
   private static IngestionPipelineRepository repositoryRecordingQueuedRuns(
@@ -111,7 +113,7 @@ class IngestionPipelineRunLockTest {
         new FutureTask<>(
             () ->
                 repository.runIngestionPipelineUnlessInProgress(
-                    null, pipeline, mock(ServiceEntityInterface.class)));
+                    null, pipeline, mock(ServiceEntityInterface.class), RunOptions.NONE));
     Thread thread = new Thread(result);
     thread.start();
     return new StartedRun(result, thread);

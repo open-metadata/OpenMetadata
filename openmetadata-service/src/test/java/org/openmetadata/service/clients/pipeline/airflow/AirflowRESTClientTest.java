@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
@@ -603,16 +604,17 @@ class AirflowRESTClientTest {
   }
 
   @Test
-  void runPipelineScopesTestSuiteRunToItsConfiguredTestCases() throws Exception {
+  void runPipelineSendsTheRunsTestCaseScopeInTheTriggerConf() throws Exception {
     try (AirflowTestServer server = new AirflowTestServer()) {
       String basePath = "/airflow";
       String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
       enqueueTriggerHandshake(server, prefix, "scoped");
 
       AirflowRESTClient client = newClient(server, basePath);
-      IngestionPipeline pipeline = testSuitePipeline("orders_suite", List.of("table_row_count"));
+      IngestionPipeline pipeline = testSuitePipeline("orders_suite", null);
+      RunOptions options = RunOptions.forTestCases(List.of("table_row_count"));
 
-      assertEquals(200, client.runPipeline(pipeline, null).getCode());
+      assertEquals(200, client.runPipelineWithOptions(pipeline, null, options).getCode());
 
       JSONObject conf = triggerConf(server, prefix);
       assertEquals(List.of("table_row_count"), conf.getJSONArray("testCases").toList());
@@ -620,15 +622,19 @@ class AirflowRESTClientTest {
     }
   }
 
+  /**
+   * Test cases a pipeline is configured with are part of its deployed DAG, so only a scope given for
+   * the run belongs in the conf.
+   */
   @Test
-  void runPipelineSendsOnlyTheRunIdWhenTestSuiteRunIsNotScoped() throws Exception {
+  void runPipelineDoesNotResendThePipelinesConfiguredTestCases() throws Exception {
     try (AirflowTestServer server = new AirflowTestServer()) {
       String basePath = "/airflow";
       String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
       enqueueTriggerHandshake(server, prefix, "unscoped");
 
       AirflowRESTClient client = newClient(server, basePath);
-      IngestionPipeline pipeline = testSuitePipeline("orders_suite", null);
+      IngestionPipeline pipeline = testSuitePipeline("orders_suite", List.of("table_row_count"));
 
       assertEquals(200, client.runPipeline(pipeline, null).getCode());
 
