@@ -13,6 +13,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 /**
  * The counter is a measuring instrument: if it miscounts, every SQL-count assertion built on it is
@@ -153,6 +154,50 @@ class SqlQueryCounterTest {
 
       assertEquals(1, counter.count());
       assertEquals(2, consulted.get(), "every matching candidate is offered to the predicate");
+    }
+  }
+
+  @Test
+  void forRequestsCountsNothingOutsideARequest() {
+    // The composed scope is `a request is in flight AND the caller's predicate accepts`. Tested
+    // through forRequests rather than by injecting a predicate, because the composition itself is
+    // the part that can regress: get it wrong and every REST-driven statement is rejected, or
+    // every one is accepted, and no test that supplies its own predicate would notice.
+    Jdbi jdbi = unconnectedJdbi();
+    try (var counter = SqlQueryCounter.forRequests(jdbi, "entity_relationship")) {
+      assertFalse(
+          counter.record(null, "select * from entity_relationship"),
+          "no request in flight, so there is nothing to attribute the statement to");
+      assertEquals(0, counter.count());
+
+      RequestLatencyContext.startRequest("/v1/test", "GET");
+      try {
+        assertTrue(counter.record(null, "select * from entity_relationship"));
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertEquals(1, counter.count());
+
+      assertFalse(
+          counter.record(null, "select * from entity_relationship"),
+          "the request ended, so later statements fall back out of scope");
+      assertEquals(1, counter.count());
+    }
+  }
+
+  @Test
+  void forRequestsStillHonoursTheCallerPredicate() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var counter = SqlQueryCounter.forRequests(jdbi, "entity_relationship", ignored -> false)) {
+      RequestLatencyContext.startRequest("/v1/test", "GET");
+      try {
+        assertFalse(
+            counter.record(null, "select * from entity_relationship"),
+            "a request is in flight but the caller's predicate rejects this statement");
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertEquals(0, counter.count());
     }
   }
 }

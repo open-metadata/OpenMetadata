@@ -17,6 +17,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 /** Exactly-once is the probe's whole contract; these pin it, including under concurrency. */
 class SqlFailureProbeTest {
@@ -155,6 +156,52 @@ class SqlFailureProbeTest {
       assertNull(
           probe.failureFor(null, "update chart_entity set json = ?"),
           "a spent probe must let the replay through");
+    }
+  }
+
+  @Test
+  void forRequestsClaimsNothingOutsideARequest() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe =
+        SqlFailureProbe.forRequests(
+            jdbi,
+            "insert into chart_entity",
+            () -> new IllegalStateException("injected"),
+            ignored -> true)) {
+      assertFalse(
+          probe.claimInjection(null, "insert into chart_entity (id) values (?)"),
+          "no request in flight, so the probe must not spend itself");
+      assertFalse(probe.injected());
+
+      RequestLatencyContext.startRequest("/v1/test", "POST");
+      try {
+        assertTrue(probe.claimInjection(null, "insert into chart_entity (id) values (?)"));
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertTrue(probe.injected());
+    }
+  }
+
+  @Test
+  void forRequestsStillHonoursTheCallerPredicate() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var probe =
+        SqlFailureProbe.forRequests(
+            jdbi,
+            "insert into chart_entity",
+            () -> new IllegalStateException("injected"),
+            ignored -> false)) {
+      RequestLatencyContext.startRequest("/v1/test", "POST");
+      try {
+        assertFalse(
+            probe.claimInjection(null, "insert into chart_entity (id) values (?)"),
+            "a request is in flight but the caller's predicate rejects this statement — the point"
+                + " of the overload is that a concurrent request cannot consume the injection");
+      } finally {
+        RequestLatencyContext.clearContext();
+      }
+      assertFalse(probe.injected());
     }
   }
 }
