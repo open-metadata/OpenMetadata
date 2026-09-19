@@ -18,7 +18,7 @@ import type {
 import {
   GraphEdge,
   GraphFilterOptions,
-} from '../../types/knowledgeGraph.types';
+} from '../types/knowledgeGraph.types';
 import { EntityReference } from '../generated/entity/type';
 import { GraphData as RdfGraphData } from '../rest/rdfAPI.interface';
 import type { RelationCategory } from './knowledgeGraphRelations.interface';
