@@ -15,6 +15,7 @@ Validator for table row count to equal test case
 
 import traceback
 from abc import abstractmethod
+from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
@@ -64,7 +65,11 @@ class BaseTableRowCountToEqualValidator(BaseTestValidator):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(expected_count == res),
+            # `value` defaults to an infinity, so it is never None despite what the loosely
+            # typed parameter reader declares.
+            self.get_test_case_status(
+                self.matches_expected(res, cast("float", expected_count), "the expected rowCount")
+            ),
             f"Found rowCount={res} rows vs. the expected {expected_count}",
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )
