@@ -1136,6 +1136,74 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_bulkRemoveTestCasesFromLogicalTestSuite(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase testCase2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_remove_2"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_remove"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    addTestCasesToLogicalTestSuite(
+        client, logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
+
+    Map<String, Object> request = new HashMap<>();
+    request.put("testSuiteId", logicalSuite.getId().toString());
+    request.put("testCaseIds", List.of(testCase1.getId().toString()));
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/dataQuality/testCases/logicalTestCases/bulk/remove",
+            request,
+            RequestOptions.builder().build());
+
+    TestSuite suiteWithTests = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(suiteWithTests.getTests());
+    assertEquals(1, suiteWithTests.getTests().size());
+    assertEquals(testCase2.getId(), suiteWithTests.getTests().get(0).getId());
+
+    TestCase removed = client.testCases().get(testCase1.getId().toString(), "testSuites");
+    assertTrue(
+        removed.getTestSuites().stream().noneMatch(ts -> ts.getId().equals(logicalSuite.getId())),
+        "testCase1 should no longer belong to the logical suite");
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("test case removed from the logical suite is reindexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase2.getId()),
+                    logicalSuite.getId());
+                JsonNode removedSource = queryTestCaseSearchSource(searchClient, testCase1.getId());
+                assertFalse(
+                    searchDocContainsTestSuite(removedSource, logicalSuite.getId()),
+                    "removed test case should not list the logical suite in search");
+              });
+    }
+  }
+
+  @Test
   void test_concurrentLogicalSuiteAddsPreserveEverySearchMembership(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -5773,16 +5841,23 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private void assertSearchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
     assertNotNull(source);
-    JsonNode testSuites = source.path("testSuites");
-    assertTrue(testSuites.isArray(), "testSuites should be indexed in the search document");
-    boolean found = false;
-    for (JsonNode suite : testSuites) {
+    assertTrue(
+        source.path("testSuites").isArray(), "testSuites should be indexed in the search document");
+    assertTrue(
+        searchDocContainsTestSuite(source, testSuiteId),
+        "search document testSuites should contain " + testSuiteId);
+  }
+
+  private boolean searchDocContainsTestSuite(JsonNode source, UUID testSuiteId) {
+    if (source == null) {
+      return false;
+    }
+    for (JsonNode suite : source.path("testSuites")) {
       if (testSuiteId.toString().equals(suite.path("id").asText())) {
-        found = true;
-        break;
+        return true;
       }
     }
-    assertTrue(found, "search document testSuites should contain " + testSuiteId);
+    return false;
   }
 
   private void assertSearchDocContainsTestCase(JsonNode source, UUID testCaseId) {
