@@ -31,7 +31,7 @@ export const authenticateAdminPage = async (page: Page) => {
   // noise that points at a login stall that never happened. any() consumes it.
   const requiresLogin = await Promise.any([
     page
-      .locator('#email')
+      .locator('input[name="email"]')
       .waitFor({ state: 'visible' })
       .then(() => true),
     page

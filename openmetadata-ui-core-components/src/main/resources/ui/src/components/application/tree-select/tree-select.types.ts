@@ -26,6 +26,8 @@ export interface TreeSelectNode<T = unknown> {
   allowSelection?: boolean;
   lazyLoad?: boolean;
   isParentMutuallyExclusive?: boolean;
+  /** Parent id, for selections seeded before that branch is in the tree. */
+  parentId?: string;
   /** Child count displayed as a trailing badge on parent nodes. */
   count?: number;
   /**
@@ -54,6 +56,19 @@ export type TreeSelectDataFetcher<T = unknown> = (
 ) => Promise<TreeSelectDataResponse<T>>;
 
 export type TreeSelectTriggerVariant = 'input' | 'button';
+
+/** 'staged' buffers toggles and reports once on Apply; any other close discards. */
+export type TreeSelectCommitMode = 'immediate' | 'staged';
+
+/** Arguments handed to `renderTrigger` for a consumer-owned trigger. */
+export interface TreeSelectTriggerRenderProps {
+  isOpen: boolean;
+  toggle: () => void;
+  open: () => void;
+  close: () => void;
+  /** Selected node count — the draft count while staged. */
+  selectedCount: number;
+}
 
 export interface TreeSelectProps<T = unknown> {
   /** Label text rendered above the field. */
@@ -116,6 +131,13 @@ export interface TreeSelectProps<T = unknown> {
    * Only applies when `multiple` is `true`. @default false
    */
   showSelectAll?: boolean;
+  /** @default 'immediate' */
+  commitMode?: TreeSelectCommitMode;
+  /** Controls the dropdown; omit to let the component own its open state. */
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Consumer-owned trigger, rendered in place of the built-in one. */
+  renderTrigger?: (props: TreeSelectTriggerRenderProps) => ReactNode;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;
