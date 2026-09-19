@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import {
-  FieldKind,
+  CheckType as Type,
   Operator,
   Role,
+} from '../../../src/generated/entity/governance/onboardingPlaybook';
+import {
+  FieldKind,
   TargetEntityType,
-  Type,
 } from '../../../src/generated/governance/intakeForm';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { expect } from '../../support/fixtures/base';
@@ -61,7 +63,7 @@ test.describe(
           {
             id: 'name',
             title: 'Display Name',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: 'displayName',
             assignment: { role: Role.DomainOwners },
           },
@@ -133,7 +135,7 @@ test.describe(
           {
             id: 'tags',
             title: 'Tags',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: 'tags',
             rules: { minItems: 2 },
             assignment: {
@@ -233,14 +235,14 @@ test.describe(
           {
             id: 'name',
             title: 'Display Name',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: 'displayName',
             assignment,
           },
           {
             id: 'reason',
             title: 'Justification',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: `extension.${property}`,
             assignment,
             rules: { minLength: 10 },
@@ -313,7 +315,7 @@ test.describe(
           {
             id: 'expression',
             title: 'Expression',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: 'metricExpression.code',
             rules: { minLength: 5 },
           },

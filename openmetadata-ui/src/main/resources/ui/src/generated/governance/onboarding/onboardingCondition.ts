@@ -26,4 +26,5 @@ export enum Operator {
     Contains = "contains",
     Equals = "equals",
     Present = "present",
+    StartsWith = "startsWith",
 }

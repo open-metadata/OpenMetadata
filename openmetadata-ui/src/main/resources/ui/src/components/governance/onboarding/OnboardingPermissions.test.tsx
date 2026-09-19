@@ -12,11 +12,11 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import {
+  CheckType,
   FieldKind,
-  OnboardingStage,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { OnboardingJourney } from './OnboardingJourney';
@@ -40,10 +40,11 @@ it.each([
   render(
     <OnboardingJourney
       advance={advance}
+      entityType={TargetEntityType.DataProduct}
       loadField={jest.fn()}
       permissions={{ ...DEFAULT_ENTITY_PERMISSION, ...grant }}
       progress={{
-        stage: OnboardingStage.Draft,
+        stage: 'draft',
         canAdvance: true,
         blockingSteps: [],
         steps: [],
@@ -65,7 +66,7 @@ it('lets the assigned user edit reviewers with the existing EditReviewers permis
   const result = {
     step: {
       id: 'reviewers',
-      type: Type.Field,
+      type: CheckType.Attribute,
       fieldPath: 'reviewers',
       title: 'Reviewers',
     },
@@ -83,6 +84,7 @@ it('lets the assigned user edit reviewers with the existing EditReviewers permis
     render(
       <OnboardingJourney
         advance={async () => undefined}
+        entityType={TargetEntityType.DataProduct}
         loadField={async () => ({
           value: [],
           properties: [],
@@ -90,7 +92,7 @@ it('lets the assigned user edit reviewers with the existing EditReviewers permis
         })}
         permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditReviewers: true }}
         progress={{
-          stage: OnboardingStage.Draft,
+          stage: 'draft',
           canAdvance: false,
           blockingSteps: ['reviewers'],
           steps: [result],

@@ -12,23 +12,24 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDataProductCreateDrawer } from '../../../DataProduct/hooks/useDataProductCreateDrawer';
+import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
 import { useDomainCreateDrawer } from '../../../DomainListing/hooks/useDomainCreateDrawer';
 
 /**
  * "Add New" split action for the Data Marketplace overview header: a primary
- * button opening a menu that opens the shared Domain / Data Product create
- * drawers in place (the same drawers the list pages use).
+ * button opening a menu that opens the shared Domain create drawer in place and
+ * sends a data product to the Creation-gate page, which is where the playbook
+ * enforces what a product cannot be created without.
  */
 export const AddNewMenu: FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { formDrawer: domainDrawer, openDrawer: openDomainDrawer } =
     useDomainCreateDrawer();
-  const { formDrawer: dataProductDrawer, openDrawer: openDataProductDrawer } =
-    useDataProductCreateDrawer();
 
   return (
     <>
@@ -53,7 +54,7 @@ export const AddNewMenu: FC = () => {
             <Dropdown.Item
               data-testid="marketplace-add-data-product"
               id="add-data-product"
-              onAction={openDataProductDrawer}>
+              onAction={() => navigate(ROUTES.ADD_DATA_PRODUCT)}>
               <span className="tw:text-sm tw:text-secondary">
                 {t('label.add-data-product')}
               </span>
@@ -62,7 +63,6 @@ export const AddNewMenu: FC = () => {
         </Dropdown.Popover>
       </Dropdown.Root>
       {domainDrawer}
-      {dataProductDrawer}
     </>
   );
 };

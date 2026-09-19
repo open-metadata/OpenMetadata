@@ -13,14 +13,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { TargetEntityType } from '../../../generated/governance/intakeForm';
+import { TargetEntityType } from '../../../generated/entity/governance/onboardingPlaybook';
 import {
-  EntityStatus,
+  CheckType,
   FieldKind,
   OnboardingProgress,
-  OnboardingStage,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import {
   getOnboardingAsset,
@@ -43,16 +41,16 @@ jest.mock('react-i18next', () => ({
 }));
 
 const progress: OnboardingProgress = {
-  stage: OnboardingStage.Draft,
+  stage: 'draft',
   entityVersion: 0.3,
-  nextStatus: EntityStatus.InReview,
+  nextStage: 'approved',
   canAdvance: false,
   blockingSteps: ['display-name'],
   steps: [
     {
       step: {
         id: 'display-name',
-        type: Type.Field,
+        type: CheckType.Attribute,
         title: 'Display name',
         fieldPath: 'displayName',
       },
@@ -130,11 +128,13 @@ it('saves a field, shows completion, and reopens its persisted value', async () 
 
   expect(
     screen.getByRole('button', { name: 'Display name' })
-  ).toHaveTextContent('label.onboarding-state-complete');
+  ).toHaveTextContent('label.complete');
 
   fireEvent.click(screen.getByRole('button', { name: 'Display name' }));
 
-  expect(await editField()).toHaveValue('Completed metadata');
+  expect(
+    await screen.findByRole('textbox', { name: /Display name/ })
+  ).toHaveValue('Completed metadata');
 });
 
 it('preserves or confirms dirty input when collapsing and reopening the checklist', async () => {
@@ -216,7 +216,7 @@ it('checks unsaved edits before advancing a gate whose persisted fields already 
   });
   (transitionOnboarding as jest.Mock).mockResolvedValue({
     ...progress,
-    stage: OnboardingStage.InReview,
+    stage: 'inReview',
     canAdvance: false,
   });
   await mountChecklist();

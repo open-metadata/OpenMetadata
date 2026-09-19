@@ -10,55 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/**
+ * The body of a playbook: the lifecycle it declares and what it takes to pass each gate.
+ */
 export interface OnboardingConfiguration {
     enabled?: boolean;
     gates?:   OnboardingGate[];
-}
-
-export interface OnboardingGate {
-    stage: OnboardingStage;
-    steps: OnboardingStep[];
-}
-
-export enum OnboardingStage {
-    Approved = "Approved",
-    Creation = "Creation",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-}
-
-export interface OnboardingStep {
-    assignment?: OnboardingAssignment;
-    conditions?: OnboardingCondition[];
     /**
-     * Reference to formFields; requiredness is defined there.
+     * Lifecycle declared by this playbook, in order. Empty means the default lifecycle.
      */
-    fieldPath?: string;
-    /**
-     * Instructions for the person completing this step.
-     */
-    guidance?: string;
-    id:        string;
-    rules?:    OnboardingRules;
-    /**
-     * Step display name.
-     */
-    title?:    string;
-    type:      Type;
-    workflow?: EntityReference;
-}
-
-export interface OnboardingAssignment {
-    assignees?: EntityReference[];
-    role?:      Role;
+    stages?: OnboardingStageDefinition[];
 }
 
 /**
+ * What it takes to leave a stage. Nothing moves on until every blocking check passes;
+ * recommended checks stay open as tasks. The gate decides when a workflow may start - it
+ * never changes the asset's status itself.
+ */
+export interface OnboardingGate {
+    /**
+     * Hard stop. When false, a failing gate raises a warning and a notification instead of
+     * blocking.
+     */
+    blockTransition?: boolean;
+    /**
+     * Workflow started once every blocking check passes. The workflow owns the approval and the
+     * resulting status change; the playbook only decides when it is allowed to start.
+     */
+    handoffWorkflow?: EntityReference;
+    notifyOnStall?:   StallPolicy;
+    reassignOnStall?: ReassignPolicy;
+    /**
+     * Stage this gate governs the exit from.
+     */
+    stage: string;
+    steps: OnboardingStep[];
+}
+
+/**
+ * Workflow started once every blocking check passes. The workflow owns the approval and the
+ * resulting status change; the playbook only decides when it is allowed to start.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * For `approval` checks, the workflow that records the decision.
  */
 export interface EntityReference {
     /**
@@ -103,12 +101,97 @@ export interface EntityReference {
     type: string;
 }
 
+/**
+ * Tell the playbook maintainer when an asset stops moving.
+ */
+export interface StallPolicy {
+    /**
+     * Days with no activity on an open task before notifying.
+     */
+    afterDays?: number;
+    enabled?:   boolean;
+}
+
+/**
+ * Keep onboarding moving when the assignee goes quiet.
+ */
+export interface ReassignPolicy {
+    afterDays?: number;
+    enabled?:   boolean;
+    /**
+     * Role the open tasks are reassigned to.
+     */
+    role?: OnboardingAssignment;
+}
+
+/**
+ * Role the open tasks are reassigned to.
+ */
+export interface OnboardingAssignment {
+    assignees?: EntityReference[];
+    role?:      Role;
+}
+
 export enum Role {
     Creator = "creator",
     DomainOwners = "domainOwners",
     Experts = "experts",
     Explicit = "explicit",
     Owners = "owners",
+}
+
+/**
+ * A single check inside a gate. A field is only ever asked for once per playbook; the gate
+ * it sits in decides when it is due and who is asked.
+ */
+export interface OnboardingStep {
+    assignment?: OnboardingAssignment;
+    /**
+     * Help offered to the person completing the check.
+     */
+    assistance?: Assistance;
+    /**
+     * Conditions are how one playbook covers a whole asset type, rather than competing
+     * playbooks.
+     */
+    conditions?: OnboardingCondition[];
+    /**
+     * Field this check captures, e.g. `description` or `extension.accessRequestInfo`.
+     */
+    fieldPath?: string;
+    /**
+     * Instructions for the person completing this step.
+     */
+    guidance?: string;
+    id:        string;
+    /**
+     * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+     * optional checks stay open as tasks.
+     */
+    requirement?: Requirement;
+    rules?:       OnboardingRules;
+    /**
+     * Step display name.
+     */
+    title?: string;
+    /**
+     * What kind of check this is.
+     */
+    type: CheckType;
+    /**
+     * For `approval` checks, the workflow that records the decision.
+     */
+    workflow?: EntityReference;
+}
+
+/**
+ * Help offered to the person completing the check.
+ */
+export enum Assistance {
+    AI = "ai",
+    Autofill = "autofill",
+    Example = "example",
+    None = "none",
 }
 
 export interface OnboardingCondition {
@@ -127,6 +210,17 @@ export enum Operator {
     Contains = "contains",
     Equals = "equals",
     Present = "present",
+    StartsWith = "startsWith",
+}
+
+/**
+ * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+ * optional checks stay open as tasks.
+ */
+export enum Requirement {
+    Blocking = "blocking",
+    Optional = "optional",
+    Recommended = "recommended",
 }
 
 export interface OnboardingRules {
@@ -134,7 +228,61 @@ export interface OnboardingRules {
     minLength?: number;
 }
 
-export enum Type {
+/**
+ * What kind of check this is.
+ */
+export enum CheckType {
     Approval = "approval",
-    Field = "field",
+    Assessment = "assessment",
+    Attribute = "attribute",
+    Relationship = "relationship",
+    Responsibility = "responsibility",
+}
+
+/**
+ * A stage in a playbook's lifecycle. The playbook declares the order; `entityStatus` is the
+ * status the handoff workflow is expected to set when the asset arrives here, so the
+ * playbook and the workflow agree on one vocabulary.
+ */
+export interface OnboardingStageDefinition {
+    description?: string;
+    /**
+     * Label shown on the lifecycle rail, e.g. `In Review`.
+     */
+    displayName?: string;
+    /**
+     * Status the asset carries while in this stage. Set by the handoff workflow, never by
+     * onboarding.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * The stage an asset is created into. Exactly one stage per playbook is the entry stage.
+     */
+    entryStage?: boolean;
+    key:         string;
+    /**
+     * Position in the lifecycle, ascending.
+     */
+    order: number;
+    /**
+     * No further gates after this stage.
+     */
+    terminal?: boolean;
+}
+
+/**
+ * Status the asset carries while in this stage. Set by the handoff workflow, never by
+ * onboarding.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }

@@ -17,7 +17,7 @@ import { AddNewMenu } from './AddNewMenu';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const openDomainDrawer = jest.fn();
-const openDataProductDrawer = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -30,11 +30,8 @@ jest.mock('components/DomainListing/hooks/useDomainCreateDrawer', () => ({
   }),
 }));
 
-jest.mock('components/DataProduct/hooks/useDataProductCreateDrawer', () => ({
-  useDataProductCreateDrawer: () => ({
-    formDrawer: <div data-testid="data-product-drawer" />,
-    openDrawer: openDataProductDrawer,
-  }),
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -56,17 +53,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 describe('AddNewMenu', () => {
   beforeEach(() => {
     openDomainDrawer.mockClear();
-    openDataProductDrawer.mockClear();
+    mockNavigate.mockClear();
   });
 
-  it('mounts both create drawers and the trigger', () => {
+  it('mounts the domain create drawer and the trigger', () => {
     render(<AddNewMenu />);
 
     expect(
       screen.getByTestId('marketplace-add-new-button')
     ).toBeInTheDocument();
     expect(screen.getByTestId('domain-drawer')).toBeInTheDocument();
-    expect(screen.getByTestId('data-product-drawer')).toBeInTheDocument();
   });
 
   it('opens the domain create drawer in place on Add Domain', () => {
@@ -77,11 +73,11 @@ describe('AddNewMenu', () => {
     expect(openDomainDrawer).toHaveBeenCalledTimes(1);
   });
 
-  it('opens the data product create drawer in place on Add Data Product', () => {
+  it('sends Add Data Product to the Creation-gate page', () => {
     render(<AddNewMenu />);
 
     fireEvent.click(screen.getByTestId('marketplace-add-data-product'));
 
-    expect(openDataProductDrawer).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith('/dataProduct/add');
   });
 });

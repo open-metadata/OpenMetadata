@@ -46,14 +46,12 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
+import { OnboardingPlaybook } from '../../../generated/entity/governance/onboardingPlaybook';
 import { CustomProperty } from '../../../generated/entity/type';
-import {
-  IntakeForm,
-  TargetEntityType,
-} from '../../../generated/governance/intakeForm';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -71,7 +69,7 @@ const AddMetricPage = () => {
   const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
-  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [intakeForm, setIntakeForm] = useState<OnboardingPlaybook | null>(null);
   const [properties, setProperties] = useState<CustomProperty[]>([]);
   const supplementalRef = useRef<OnboardingSupplementalHandle>(null);
   const onboardingValues = Form.useWatch([], form);
@@ -87,12 +85,12 @@ const AddMetricPage = () => {
   useEffect(() => {
     let active = true;
     Promise.all([
-      getIntakeFormByEntityType(TargetEntityType.Metric),
+      getOnboardingPlaybookForEntityType(TargetEntityType.Metric),
       getCustomPropertiesByEntityType(TargetEntityType.Metric),
     ])
       .then(([config, custom]) => {
         if (active) {
-          setIntakeForm(config);
+          setIntakeForm(config ?? null);
           setProperties(custom ?? []);
         }
       })

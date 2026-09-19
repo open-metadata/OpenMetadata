@@ -10,11 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/**
+ * A single check inside a gate. A field is only ever asked for once per playbook; the gate
+ * it sits in decides when it is due and who is asked.
+ */
 export interface OnboardingStep {
     assignment?: OnboardingAssignment;
+    /**
+     * Help offered to the person completing the check.
+     */
+    assistance?: Assistance;
+    /**
+     * Conditions are how one playbook covers a whole asset type, rather than competing
+     * playbooks.
+     */
     conditions?: OnboardingCondition[];
     /**
-     * Reference to formFields; requiredness is defined there.
+     * Field this check captures, e.g. `description` or `extension.accessRequestInfo`.
      */
     fieldPath?: string;
     /**
@@ -22,12 +34,23 @@ export interface OnboardingStep {
      */
     guidance?: string;
     id:        string;
-    rules?:    OnboardingRules;
+    /**
+     * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+     * optional checks stay open as tasks.
+     */
+    requirement?: Requirement;
+    rules?:       OnboardingRules;
     /**
      * Step display name.
      */
-    title?:    string;
-    type:      Type;
+    title?: string;
+    /**
+     * What kind of check this is.
+     */
+    type: CheckType;
+    /**
+     * For `approval` checks, the workflow that records the decision.
+     */
     workflow?: EntityReference;
 }
 
@@ -41,6 +64,8 @@ export interface OnboardingAssignment {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * For `approval` checks, the workflow that records the decision.
  */
 export interface EntityReference {
     /**
@@ -93,6 +118,16 @@ export enum Role {
     Owners = "owners",
 }
 
+/**
+ * Help offered to the person completing the check.
+ */
+export enum Assistance {
+    AI = "ai",
+    Autofill = "autofill",
+    Example = "example",
+    None = "none",
+}
+
 export interface OnboardingCondition {
     /**
      * Native or extension field to test.
@@ -109,6 +144,17 @@ export enum Operator {
     Contains = "contains",
     Equals = "equals",
     Present = "present",
+    StartsWith = "startsWith",
+}
+
+/**
+ * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+ * optional checks stay open as tasks.
+ */
+export enum Requirement {
+    Blocking = "blocking",
+    Optional = "optional",
+    Recommended = "recommended",
 }
 
 export interface OnboardingRules {
@@ -116,7 +162,13 @@ export interface OnboardingRules {
     minLength?: number;
 }
 
-export enum Type {
+/**
+ * What kind of check this is.
+ */
+export enum CheckType {
     Approval = "approval",
-    Field = "field",
+    Assessment = "assessment",
+    Attribute = "attribute",
+    Relationship = "relationship",
+    Responsibility = "responsibility",
 }

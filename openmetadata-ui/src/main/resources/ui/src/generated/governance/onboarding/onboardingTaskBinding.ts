@@ -11,18 +11,23 @@
  *  limitations under the License.
  */
 export interface OnboardingTaskBinding {
-    approved?:  boolean;
-    attempt:    number;
-    decidedAt?: number;
+    attempt: number;
     /**
      * Fingerprint of metadata covered by the approval.
      */
     fingerprint?: string;
+    /**
+     * When the stall policy reassigned this task. Assignee refreshes never revert it.
+     */
+    reassignedAt?: number;
+    /**
+     * When the playbook owners were told this task had stopped moving.
+     */
+    stallNotifiedAt?: number;
     /**
      * Stable step identifier.
      */
     stepId:                string;
     taskId:                string;
     workflowDefinitionId?: string;
-    workflowInstanceId?:   string;
 }

@@ -19,6 +19,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  DATA_PRODUCT_TYPE_LABEL_KEYS,
+  PORTFOLIO_PRIORITY_LABEL_KEYS,
+  VISIBILITY_LABEL_KEYS,
+} from '../../../constants/DataProduct.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
@@ -49,6 +54,16 @@ interface Props {
   onChange: (value: unknown) => void;
   permissions?: OperationPermission;
 }
+/**
+ * Enum options the producer picks from. The label maps are the ones the create form already uses,
+ * so an enum reads the same everywhere; an enum with no map falls back to its own value rather
+ * than to a missing translation key.
+ */
+const ENUM_LABEL_KEYS: Record<string, Record<string, string>> = {
+  dataProductType: DATA_PRODUCT_TYPE_LABEL_KEYS,
+  portfolioPriority: PORTFOLIO_PRIORITY_LABEL_KEYS,
+  visibility: VISIBILITY_LABEL_KEYS,
+};
 const ENUM_OPTIONS: Record<string, string[]> = {
   metricType: Object.values(MetricType),
   granularity: Object.values(MetricGranularity),
@@ -195,7 +210,15 @@ export const OnboardingNativeInput = ({
         selectedKey={typeof value === 'string' ? value : null}
         onSelectionChange={onChange}>
         {ENUM_OPTIONS[path].map((option) => (
-          <Select.Item id={option} key={option} label={option} />
+          <Select.Item
+            id={option}
+            key={option}
+            label={
+              ENUM_LABEL_KEYS[path]?.[option]
+                ? t(ENUM_LABEL_KEYS[path][option])
+                : option
+            }
+          />
         ))}
       </Select>
     );

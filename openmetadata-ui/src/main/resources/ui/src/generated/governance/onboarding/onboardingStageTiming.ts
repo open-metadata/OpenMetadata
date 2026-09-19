@@ -13,13 +13,5 @@
 export interface OnboardingStageTiming {
     enteredAt: number;
     exitedAt:  number;
-    stage:     OnboardingStage;
-}
-
-export enum OnboardingStage {
-    Approved = "Approved",
-    Creation = "Creation",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
+    stage:     string;
 }

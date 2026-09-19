@@ -12,40 +12,24 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Package, Plus } from '@untitledui/icons';
+import { Package, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  addDataProducts,
-  patchDataProduct,
-} from '../../../rest/dataProductAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
-import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
-import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CreatePlaceholder } from '../../common/EmptyPlaceholder';
 import Loader from '../../common/Loader/Loader';
-import AddDomainForm, {
-  DOMAIN_FORM_DEFAULTS,
-  transformDomainFormData,
-} from '../../Domain/AddDomainForm/AddDomainForm.component';
-import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.interface';
-import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
 
@@ -59,14 +43,10 @@ const MarketplaceDataProductsWidget = ({
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
-  const form = useForm<DomainFormValues>({
-    defaultValues: DOMAIN_FORM_DEFAULTS,
-  });
   const [dataProducts, setDataProducts] = useState<DataProduct[]>(
     isEditView ? dataMarketplaceClassBase.getDummyDataProducts() : []
   );
   const [loading, setLoading] = useState(!isEditView);
-  const [isFormLoading, setIsFormLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
 
   const fetchDataProducts = useCallback(async () => {
@@ -101,67 +81,11 @@ const MarketplaceDataProductsWidget = ({
     fetchDataProducts();
   }, [fetchDataProducts]);
 
-  const handleDataProductSubmit = useCallback(
-    async (data: DomainFormValues) => {
-      const formData = transformDomainFormData(
-        data,
-        DomainFormType.DATA_PRODUCT
-      ) as CreateDataProduct;
-      setIsFormLoading(true);
-      try {
-        await createEntityWithCoverImage({
-          formData,
-          entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
-          entityPluralLabel: 'data-products',
-          createEntity: addDataProducts,
-          patchEntity: patchDataProduct,
-          onSuccess: () => {
-            form.reset();
-          },
-          t,
-        });
-      } finally {
-        setIsFormLoading(false);
-      }
-    },
-    [form, t]
+  /** Creating goes through the Creation-gate page, where the playbook is enforced. */
+  const openCreatePage = useCallback(
+    () => navigate(ROUTES.ADD_DATA_PRODUCT),
+    [navigate]
   );
-
-  const { formDrawer, openDrawer, closeDrawer } =
-    useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
-      width: 670,
-      className: 'tw:z-[20]',
-      closeOnEscape: false,
-      hookForm: form,
-      form: (
-        <AddDomainForm
-          isFormInDialog
-          form={form}
-          loading={isFormLoading}
-          type={DomainFormType.DATA_PRODUCT}
-          onCancel={() => {
-            // No-op: handled by useFormDrawerWithHook
-          }}
-          onSubmit={(data: DomainFormValues): Promise<void> =>
-            submitAndClose(
-              data,
-              handleDataProductSubmit,
-              closeDrawer,
-              fetchDataProducts
-            )
-          }
-        />
-      ),
-      onSubmit: (data: DomainFormValues): Promise<void> =>
-        submitAndClose(
-          data,
-          handleDataProductSubmit,
-          closeDrawer,
-          fetchDataProducts
-        ),
-    });
 
   const handleClick = useCallback(
     (dp: DataProduct) => {
@@ -242,7 +166,7 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
-                onPress={openDrawer}>
+                onPress={openCreatePage}>
                 + {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
@@ -270,7 +194,7 @@ const MarketplaceDataProductsWidget = ({
                       }),
                       color: 'primary',
                       iconLeading: Plus,
-                      onPress: openDrawer,
+                      onPress: openCreatePage,
                     },
                   ]
                 : undefined
@@ -284,7 +208,6 @@ const MarketplaceDataProductsWidget = ({
       ) : (
         cardList
       )}
-      {!isEditView && formDrawer}
     </div>
   );
 };

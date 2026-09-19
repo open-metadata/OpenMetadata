@@ -13,19 +13,8 @@
 export interface TransitionOnboarding {
     expectedVersion: number;
     retry?:          boolean;
-    targetStatus:    EntityStatus;
-}
-
-/**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
+    /**
+     * Stage the caller expects to advance to. Guards against acting on a stale board.
+     */
+    targetStage?: string;
 }

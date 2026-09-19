@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
-import {
-  IntakeForm,
-  TargetEntityType,
-} from '../../generated/governance/intakeForm';
-
-export interface IntakeFormDesignerModalProps {
-  open: boolean;
-  /** Pre-selected entity type. Required for create; derived from initialValue for edit. */
-  entityType: TargetEntityType;
-  initialValue: IntakeForm | null;
-  onCancel: () => void;
-  onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
+/**
+ * Ask the people a check is assigned to to get on with it.
+ */
+export interface NudgeOnboarding {
+    /**
+     * Optional note added to the reminder.
+     */
+    message?: string;
+    /**
+     * Check to nudge. Defaults to the first open blocking check with assigned work.
+     */
+    stepId?: string;
 }

@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import {
-  IntakeForm,
-  OnboardingStage,
+  OnboardingPlaybook,
   OnboardingStep,
   Role,
-} from '../../../generated/governance/intakeForm';
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import {
-  EntityStatus,
+  CheckType,
+  FieldKind,
   OnboardingProgress,
   OnboardingStepResult,
+  Requirement,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getIntakeFormFields } from '../../IntakeFormUtils';
+import { ONBOARDING_STAGE } from './Onboarding.constants';
 import {
   CREATION_FIELDS,
   getStepState,
@@ -70,9 +70,9 @@ const uniqueReferences = (refs: EntityReference[]) =>
   );
 
 export interface PreviewContext {
-  form: IntakeForm;
+  form: OnboardingPlaybook;
   values: Record<string, unknown>;
-  stage: OnboardingStage;
+  stage: string;
   creator: EntityReference;
   workflows: WorkflowDefinition[];
   domainOwners: EntityReference[];
@@ -124,7 +124,7 @@ const previewState = (context: PreviewContext, step: OnboardingStep) => {
   const evaluated = getStepState(step, context.values);
   const state =
     Object.values(State).find((state) => state === evaluated) ?? State.Pending;
-  if (step.type !== Type.Approval || state === State.NotApplicable) {
+  if (step.type !== CheckType.Approval || state === State.NotApplicable) {
     return state;
   }
   const workflow = context.workflows.find(
@@ -142,21 +142,37 @@ const previewState = (context: PreviewContext, step: OnboardingStep) => {
   return context.decisions[step.id] ?? State.Pending;
 };
 
+/**
+ * Display descriptor for a check. The check is the source of truth - a field is defined once, by the
+ * check that asks for it, at whichever gate that is.
+ */
+const describeField = (step: OnboardingStep, required: boolean) =>
+  step.fieldPath
+    ? {
+        fieldPath: step.fieldPath,
+        fieldLabel: step.title ?? step.fieldPath,
+        fieldKind: step.fieldPath.startsWith('extension.')
+          ? FieldKind.CustomProperty
+          : FieldKind.Native,
+        required,
+      }
+    : undefined;
+
 const previewStep = (
   context: PreviewContext,
-  stage: OnboardingStage,
+  stage: string,
   step: OnboardingStep
 ): OnboardingStepResult => {
-  const field = getIntakeFormFields(context.form).find(
-    (candidate) => candidate.fieldPath === step.fieldPath
-  );
   const intrinsic = CREATION_FIELDS[context.form.entityType].includes(
     step.fieldPath ?? ''
   );
   const required =
-    step.type === Type.Approval || Boolean(field?.required) || intrinsic;
+    step.type === CheckType.Approval ||
+    step.requirement === Requirement.Blocking ||
+    intrinsic;
+  const field = describeField(step, required);
   const assignees =
-    step.type === Type.Approval
+    step.type === CheckType.Approval
       ? approvalAssignees(step, context)
       : fieldAssignees(step, context);
   const state = previewState(context, step);
@@ -197,12 +213,10 @@ export const previewProgress = (
     canAdvance: !blockingSteps.length,
     blockingSteps,
     steps,
-    nextStatus: Object.values(EntityStatus).find(
-      (status) => status === String(next)
-    ),
+    nextStage: next,
     completed:
       !blockingSteps.length &&
-      (stage === OnboardingStage.Approved ||
-        stage === OnboardingStage.Deprecated),
+      (stage === ONBOARDING_STAGE.APPROVED ||
+        stage === ONBOARDING_STAGE.DEPRECATED),
   };
 };

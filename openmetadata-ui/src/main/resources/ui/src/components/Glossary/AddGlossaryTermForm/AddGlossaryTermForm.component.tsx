@@ -27,13 +27,13 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { OnboardingPlaybook } from '../../../generated/entity/governance/onboardingPlaybook';
 import {
   CustomProperty,
   EntityReference,
 } from '../../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
@@ -45,7 +45,7 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
@@ -221,7 +221,7 @@ const AddGlossaryTermForm = ({
     }),
     [watchedValues, supplementalValues, extensionValues]
   );
-  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [intakeForm, setIntakeForm] = useState<OnboardingPlaybook | null>(null);
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
@@ -238,10 +238,10 @@ const AddGlossaryTermForm = ({
       return;
     }
 
-    getIntakeFormByEntityType(TargetEntityType.GlossaryTerm)
+    getOnboardingPlaybookForEntityType(TargetEntityType.GlossaryTerm)
       .then((result) => {
         if (!cancelled) {
-          setIntakeForm(result);
+          setIntakeForm(result ?? null);
         }
       })
       .catch((error: AxiosError) => {
@@ -804,7 +804,7 @@ const AddGlossaryTermForm = ({
         fields={getCreationIntakeFields(intakeForm, onboardingValues).filter(
           (field) => field.fieldPath === 'domains'
         )}
-        properties={[]}
+        properties={customProperties}
         ref={supplementalRef}
         onValuesChange={setSupplementalValues}
       />

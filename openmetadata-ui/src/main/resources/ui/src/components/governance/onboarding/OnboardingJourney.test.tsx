@@ -18,12 +18,12 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import {
+  CheckType,
   FieldKind,
   OnboardingProgress,
-  OnboardingStage,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { OnboardingJourney } from './OnboardingJourney';
@@ -33,14 +33,14 @@ jest.mock('react-i18next', () => ({
 }));
 const viewer = { id: 'producer' };
 const progress: OnboardingProgress = {
-  stage: OnboardingStage.Draft,
+  stage: 'draft',
   canAdvance: false,
   blockingSteps: ['name', 'owners'],
   steps: [
     {
       step: {
         id: 'name',
-        type: Type.Field,
+        type: CheckType.Attribute,
         title: 'Display name',
         fieldPath: 'displayName',
       },
@@ -54,7 +54,12 @@ const progress: OnboardingProgress = {
       assignees: [{ id: viewer.id, type: 'user', name: 'Producer' }],
     },
     {
-      step: { id: 'note', type: Type.Field, title: 'Note', fieldPath: 'name' },
+      step: {
+        id: 'note',
+        type: CheckType.Attribute,
+        title: 'Note',
+        fieldPath: 'name',
+      },
       field: {
         fieldPath: 'name',
         fieldLabel: 'Note',
@@ -67,7 +72,7 @@ const progress: OnboardingProgress = {
     {
       step: {
         id: 'owners',
-        type: Type.Field,
+        type: CheckType.Attribute,
         title: 'Owners',
         fieldPath: 'owners',
       },
@@ -96,6 +101,7 @@ it('saves a personal check, skips optional work, and shows the cross-assignee ha
   render(
     <OnboardingJourney
       advance={advance}
+      entityType={TargetEntityType.DataProduct}
       loadField={loadField}
       permissions={{ ...permissions, EditAll: true }}
       progress={progress}
@@ -117,7 +123,7 @@ it('saves a personal check, skips optional work, and shows the cross-assignee ha
     await screen.findByRole('textbox', { name: /Note/ })
   ).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: 'label.skip' }));
+  fireEvent.click(screen.getByRole('button', { name: 'label.skip-for-now' }));
   const handoff = await screen.findByTestId('onboarding-handoff');
 
   expect(within(handoff).getByText('Domain steward')).toBeInTheDocument();
@@ -126,7 +132,7 @@ it('saves a personal check, skips optional work, and shows the cross-assignee ha
   ).toHaveAttribute('href', '/tasks/assigned-task');
   expect(screen.getByTestId('onboarding-advance')).toBeDisabled();
   expect(
-    screen.queryByRole('button', { name: 'label.skip' })
+    screen.queryByRole('button', { name: 'label.skip-for-now' })
   ).not.toBeInTheDocument();
 });
 
@@ -135,6 +141,7 @@ it('keeps a required check selected when the saved server result is still pendin
   render(
     <OnboardingJourney
       advance={advance}
+      entityType={TargetEntityType.DataProduct}
       loadField={loadField}
       permissions={permissions}
       progress={progress}
@@ -169,6 +176,7 @@ it('shows a permission handoff without exposing an editor to a viewer', async ()
   render(
     <OnboardingJourney
       advance={advance}
+      entityType={TargetEntityType.DataProduct}
       loadField={loadField}
       permissions={DEFAULT_ENTITY_PERMISSION}
       progress={progress}
@@ -186,6 +194,7 @@ it('keeps unsaved input when navigation is cancelled and discards only after con
   render(
     <OnboardingJourney
       advance={advance}
+      entityType={TargetEntityType.DataProduct}
       loadField={loadField}
       permissions={permissions}
       progress={progress}

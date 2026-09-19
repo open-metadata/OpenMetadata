@@ -12,12 +12,10 @@
  */
 import { render, screen, within } from '@testing-library/react';
 import {
-  FieldKind,
-  IntakeForm,
-  OnboardingStage,
+  CheckType,
+  OnboardingPlaybook,
   TargetEntityType,
-  Type,
-} from '../../../generated/governance/intakeForm';
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import { State } from '../../../generated/governance/onboarding/onboardingProgress';
 import { evaluateOnboarding } from '../../../rest/governance/onboarding/Onboarding.api';
 import { OnboardingCreationChecklist } from './OnboardingCreationChecklist';
@@ -30,30 +28,21 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const form: IntakeForm = {
+const form: OnboardingPlaybook = {
   id: 'form',
   name: 'form',
   entityType: TargetEntityType.Metric,
-  enabled: true,
-  formFields: [
-    {
-      fieldPath: 'displayName',
-      fieldLabel: 'Display name',
-      fieldKind: FieldKind.Native,
-      required: true,
-    },
-  ],
   onboarding: {
     enabled: true,
     gates: [
       {
-        stage: OnboardingStage.Creation,
+        stage: 'creation',
         steps: [
           {
             id: 'name',
             title: 'Display name',
             fieldPath: 'displayName',
-            type: Type.Field,
+            type: CheckType.Attribute,
             rules: { minLength: 5 },
           },
         ],
@@ -67,14 +56,14 @@ describe('producer checklist', () => {
     const step = {
       id: 'name',
       title: 'Display name',
-      type: Type.Field,
+      type: CheckType.Attribute,
       fieldPath: 'displayName',
       guidance: 'Use the published business name',
     };
     (
       evaluateOnboarding as jest.MockedFunction<typeof evaluateOnboarding>
     ).mockResolvedValueOnce({
-      stage: OnboardingStage.Creation,
+      stage: 'creation',
       canAdvance: false,
       blockingSteps: ['name'],
       steps: [
@@ -92,7 +81,7 @@ describe('producer checklist', () => {
           ...form,
           onboarding: {
             enabled: true,
-            gates: [{ stage: OnboardingStage.Creation, steps: [step] }],
+            gates: [{ stage: 'creation', steps: [step] }],
           },
         }}
         values={{ displayName: 'Entered name' }}

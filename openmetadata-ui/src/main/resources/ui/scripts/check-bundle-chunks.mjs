@@ -30,7 +30,11 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 975 * 1024;
+// Raised from 975 KiB for the Onboarding Playbooks copy (2026-09): en-us.json ships in the
+// bootstrap chunk, and the producer wizard, playbook builder and board add ~130 keys of
+// design-mandated text after pruning every orphaned key. Ratchet it back down once locale
+// bundles are split out of the bootstrap chunk.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 979 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));

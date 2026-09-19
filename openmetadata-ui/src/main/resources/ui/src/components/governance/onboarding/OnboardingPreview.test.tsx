@@ -10,43 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { useState } from 'react';
 import {
-  FieldKind,
-  IntakeForm,
-  OnboardingStage,
+  CheckType,
+  OnboardingPlaybook,
   Role,
   TargetEntityType,
-  Type,
-} from '../../../generated/governance/intakeForm';
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import { OnboardingPreview } from './OnboardingPreview';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 const creator = { id: 'creator', type: 'user', name: 'Producer' };
-const form: IntakeForm = {
+const form: OnboardingPlaybook = {
   id: 'preview',
   name: 'metric',
   entityType: TargetEntityType.Metric,
-  formFields: [
-    {
-      fieldPath: 'name',
-      fieldLabel: 'Name',
-      fieldKind: FieldKind.Native,
-      required: true,
-    },
-  ],
   onboarding: {
     enabled: true,
     gates: [
       {
-        stage: OnboardingStage.Creation,
+        stage: 'creation',
         steps: [
           {
             id: 'name',
-            type: Type.Field,
+            title: 'Name',
+            type: CheckType.Attribute,
             fieldPath: 'name',
             rules: { minLength: 5 },
           },
@@ -68,19 +66,19 @@ const workflow = {
     },
   ],
 };
-const reviewedForm: IntakeForm = {
+const reviewedForm: OnboardingPlaybook = {
   ...form,
   onboarding: {
     enabled: true,
     gates: [
       ...(form.onboarding?.gates ?? []),
       {
-        stage: OnboardingStage.InReview,
+        stage: 'inReview',
         steps: [
           {
             id: 'approval',
             title: 'Steward approval',
-            type: Type.Approval,
+            type: CheckType.Approval,
             workflow: {
               id: workflow.id,
               name: workflow.name,
@@ -94,10 +92,10 @@ const reviewedForm: IntakeForm = {
 };
 const Example = ({
   configuration = form,
-  initialStage = OnboardingStage.Creation,
+  initialStage = 'creation',
 }: {
-  configuration?: IntakeForm;
-  initialStage?: OnboardingStage;
+  configuration?: OnboardingPlaybook;
+  initialStage?: string;
 }) => {
   const [stage, setStage] = useState(initialStage);
 
@@ -139,19 +137,16 @@ it('uses the full journey in preview and advances only after its required values
       screen.getByRole('button', { name: 'label.onboarding-save-continue' })
     );
   });
-  await screen.findByRole('button', { name: 'label.advance-to-stage' });
+  await waitFor(() =>
+    expect(screen.getByTestId('onboarding-advance')).toBeEnabled()
+  );
   fireEvent.click(screen.getByTestId('onboarding-advance'));
 
   expect(await screen.findByText('label.draft')).toBeInTheDocument();
 });
 
 it('simulates rejection and approval, then invalidates the review after metadata changes', async () => {
-  render(
-    <Example
-      configuration={reviewedForm}
-      initialStage={OnboardingStage.InReview}
-    />
-  );
+  render(<Example configuration={reviewedForm} initialStage="inReview" />);
   fireEvent.change(await screen.findByRole('textbox', { name: /Name/ }), {
     target: { value: 'Revenue' },
   });
@@ -183,39 +178,31 @@ it('simulates rejection and approval, then invalidates the review after metadata
   });
   await act(async () => {
     fireEvent.click(
-      screen.getByRole('button', { name: 'label.onboarding-save-continue' })
+      screen.getByRole('button', { name: 'label.saved-next-check' })
     );
   });
 
   expect(screen.getByTestId('onboarding-advance')).toBeDisabled();
   expect(screen.getByTestId('onboarding-handoff')).toHaveTextContent(
-    'label.onboarding-state-pending'
+    'label.open-task'
   );
 });
 
 it('previews team work separately from the creator requirements', async () => {
-  const teamForm: IntakeForm = {
+  const teamForm: OnboardingPlaybook = {
     ...form,
-    formFields: [
-      ...(form.formFields ?? []),
-      {
-        fieldPath: 'displayName',
-        fieldLabel: 'Display name',
-        fieldKind: FieldKind.Native,
-        required: true,
-      },
-    ],
     onboarding: {
       enabled: true,
       gates: [
         ...(form.onboarding?.gates ?? []),
         {
-          stage: OnboardingStage.Draft,
+          stage: 'draft',
           steps: [
             {
               id: 'displayName',
+              title: 'Display name',
               fieldPath: 'displayName',
-              type: Type.Field,
+              type: CheckType.Attribute,
               assignment: {
                 role: Role.Explicit,
                 assignees: [{ id: 'stewards', type: 'team', name: 'Stewards' }],
@@ -226,9 +213,7 @@ it('previews team work separately from the creator requirements', async () => {
       ],
     },
   };
-  render(
-    <Example configuration={teamForm} initialStage={OnboardingStage.Draft} />
-  );
+  render(<Example configuration={teamForm} initialStage="draft" />);
   fireEvent.click(
     screen.getByRole('button', { name: /label.onboarding-preview-as/ })
   );
@@ -238,10 +223,12 @@ it('previews team work separately from the creator requirements', async () => {
     await screen.findByRole('textbox', { name: /Display name/ })
   ).toBeInTheDocument();
 
-  const personal = screen.getByRole('navigation', {
-    name: 'label.onboarding-your-checks',
-  });
+  const rail = screen.getByTestId('onboarding-journey-rail');
 
-  expect(personal).toHaveTextContent('Display name');
-  expect(personal).not.toHaveTextContent('Name');
+  expect(
+    within(rail).getByRole('button', { name: 'Display name' })
+  ).toHaveTextContent('label.assigned-to-you');
+  expect(within(rail).getByRole('button', { name: 'Name' })).toHaveTextContent(
+    'label.with-person'
+  );
 });

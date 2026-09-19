@@ -12,7 +12,9 @@
  */
 import { isAxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
+import Qs from 'qs';
 import { EvaluateOnboarding } from '../../../generated/api/governance/evaluateOnboarding';
+import { NudgeOnboarding } from '../../../generated/api/governance/nudgeOnboarding';
 import { TransitionOnboarding } from '../../../generated/api/governance/transitionOnboarding';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -22,6 +24,7 @@ import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import { OnboardingBackfill } from '../../../generated/governance/onboarding/onboardingBackfill';
 import { OnboardingBoard } from '../../../generated/governance/onboarding/onboardingBoard';
 import { OnboardingProgress } from '../../../generated/governance/onboarding/onboardingProgress';
+import { OnboardingSummary } from '../../../generated/governance/onboarding/onboardingSummary';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import APIClient from '../../index';
 
@@ -49,7 +52,16 @@ export interface OnboardingBoardFilters {
   assignee?: string;
   after?: string;
   limit?: number;
+  /** Hydrate exactly these assets instead of scanning. Capped at 100; rejected with `after`. */
+  entityId?: string[];
 }
+
+/** The board's `entityId` filter is repeatable; the client default folds arrays into one comma list. */
+const REPEATED_PARAMS = {
+  paramsSerializer: (params: OnboardingBoardFilters) =>
+    Qs.stringify(params, { arrayFormat: 'repeat' }),
+};
+
 export const getOnboardingProgress = async (
   type: TargetEntityType,
   id: string
@@ -89,7 +101,45 @@ export const transitionOnboarding = async (
 export const listOnboarding = async (
   params: OnboardingBoardFilters,
   signal?: AbortSignal
-) => (await APIClient.get<OnboardingBoard>(BASE, { params, signal })).data;
+) =>
+  (
+    await APIClient.get<OnboardingBoard>(BASE, {
+      params,
+      signal,
+      ...REPEATED_PARAMS,
+    })
+  ).data;
+
+/**
+ * Aggregate onboarding health for the board's stat tiles. Every measure is null when its window
+ * holds no sample, so the tiles can say `no data yet` rather than show a zero nobody measured.
+ */
+export const getOnboardingSummary = async (
+  entityType: TargetEntityType,
+  signal?: AbortSignal
+) =>
+  (
+    await APIClient.get<OnboardingSummary>(`${BASE}/summary`, {
+      params: { entityType },
+      signal,
+    })
+  ).data;
+
+/**
+ * Remind whoever a check is assigned to. The server refuses a second reminder for the same check
+ * within 24 hours with a 429, so the caller must surface that rather than retry.
+ */
+export const nudgeOnboarding = async (
+  type: TargetEntityType,
+  id: string,
+  request: NudgeOnboarding = {}
+) =>
+  (
+    await APIClient.post<OnboardingProgress>(
+      `${BASE}/${type}/${id}/nudge`,
+      request
+    )
+  ).data;
 export const getOnboardingBackfill = async (type: TargetEntityType) =>
   (await APIClient.get<OnboardingBackfill | null>(`${BASE}/backfill/${type}`))
     .data;

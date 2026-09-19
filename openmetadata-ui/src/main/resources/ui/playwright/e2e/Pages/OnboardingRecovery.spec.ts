@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import {
-  FieldKind,
+  CheckType as Type,
   Role,
+} from '../../../src/generated/entity/governance/onboardingPlaybook';
+import {
+  FieldKind,
   TargetEntityType,
-  Type,
 } from '../../../src/generated/governance/intakeForm';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { expect } from '../../support/fixtures/base';
@@ -35,7 +37,7 @@ const displayName = {
 };
 const nameCheck = {
   id: 'display-name',
-  type: Type.Field,
+  type: Type.Attribute,
   fieldPath: 'displayName',
   title: 'Display Name',
   rules: { minLength: 5 },
@@ -317,7 +319,7 @@ test.describe(
             {
               id: 'reviewers',
               title: 'Reviewers',
-              type: Type.Field,
+              type: Type.Attribute,
               fieldPath: 'reviewers',
               rules: { minItems: 2 },
               assignment: {
@@ -405,7 +407,7 @@ test.describe(
           {
             id: 'synonyms',
             title: 'Synonyms',
-            type: Type.Field,
+            type: Type.Attribute,
             fieldPath: 'synonyms',
             rules: { minItems: 2 },
           },

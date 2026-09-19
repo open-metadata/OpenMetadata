@@ -29,6 +29,10 @@ export interface SettingMenuItem {
   category?: string;
   label?: string;
   isBeta?: boolean;
+  /** i18n key for a small pill rendered inline with the card title, e.g. `New`. */
+  inlineBadgeKey?: string;
+  /** i18n key for an outlined notice pill on its own line below the title. */
+  noticeBadgeKey?: string;
   isProtected?: boolean;
   items?: SettingMenuItem[];
 }

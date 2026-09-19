@@ -30,12 +30,17 @@ import {
 } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import {
+  CheckType,
+  OnboardingPlaybook,
+  OnboardingStep,
+  Requirement,
+} from '../../../generated/entity/governance/onboardingPlaybook';
+import {
   CustomProperty,
   EntityReference,
 } from '../../../generated/entity/type';
 import {
   FieldKind,
-  IntakeForm,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
 import {
@@ -44,7 +49,7 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
-import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { DomainFormType } from '../DomainPage.interface';
@@ -73,8 +78,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../../rest/intakeFormsAPI', () => ({
-  getIntakeFormByEntityType: jest
+jest.mock('../../../rest/governance/onboarding/OnboardingPlaybook.api', () => ({
+  getOnboardingPlaybookForEntityType: jest
     .fn()
     .mockImplementation(() => new Promise(() => undefined)),
 }));
@@ -83,6 +88,13 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   getCustomPropertiesByEntityType: jest
     .fn()
     .mockImplementation(() => new Promise(() => undefined)),
+}));
+
+// The checklist has its own suite; here only the playbook it is handed matters.
+jest.mock('../../governance/onboarding/OnboardingCreationChecklist', () => ({
+  OnboardingCreationChecklist: ({ form }: { form: { id?: string } | null }) => (
+    <div data-testid="creation-checklist">{form?.id ?? 'none'}</div>
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -284,10 +296,24 @@ jest.mock('./AddDomainFormExtensionFields', () =>
     )
 );
 
-const mockedGetIntakeFormByEntityType =
-  getIntakeFormByEntityType as jest.MockedFunction<
-    typeof getIntakeFormByEntityType
+const mockedGetPlaybook =
+  getOnboardingPlaybookForEntityType as jest.MockedFunction<
+    typeof getOnboardingPlaybookForEntityType
   >;
+
+/** A published playbook whose Creation gate asks for exactly these checks. */
+const creationPlaybook = (
+  entityType: TargetEntityType,
+  steps: OnboardingStep[]
+): OnboardingPlaybook => ({
+  entityType,
+  id: 'playbook-id',
+  name: `${entityType}Playbook`,
+  onboarding: {
+    enabled: true,
+    gates: [{ stage: 'creation', steps }],
+  },
+});
 const mockedGetCustomPropertiesByEntityType =
   getCustomPropertiesByEntityType as jest.MockedFunction<
     typeof getCustomPropertiesByEntityType
@@ -306,6 +332,7 @@ type HarnessProps = {
   isFormInDialog?: boolean;
   type?: DomainFormType;
   parentDomain?: Domain;
+  playbook?: OnboardingPlaybook | null;
 };
 
 const AddDomainFormHarness = ({
@@ -314,6 +341,7 @@ const AddDomainFormHarness = ({
   isFormInDialog = false,
   type = DomainFormType.DOMAIN,
   parentDomain,
+  playbook,
 }: HarnessProps) => {
   const form = useForm<DomainFormValues>({
     defaultValues,
@@ -325,6 +353,7 @@ const AddDomainFormHarness = ({
       isFormInDialog={isFormInDialog}
       loading={loading}
       parentDomain={parentDomain}
+      playbook={playbook}
       type={type}
       onCancel={mockOnCancel}
       onSubmit={mockOnSubmit}
@@ -403,18 +432,17 @@ describe('AddDomainForm', () => {
         type: 'type',
       },
     };
-    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
-      entityType: TargetEntityType.Domain,
-      id: 'intake-form-id',
-      name: 'domainIntake',
-      requiredFields: [
+    mockedGetPlaybook.mockResolvedValueOnce(
+      creationPlaybook(TargetEntityType.Domain, [
         {
-          fieldKind: FieldKind.CustomProperty,
-          fieldLabel: 'Count',
           fieldPath: 'extension.count',
+          id: 'creation_count',
+          requirement: Requirement.Blocking,
+          title: 'Count',
+          type: CheckType.Attribute,
         },
-      ],
-    } as IntakeForm);
+      ])
+    );
     mockedGetCustomPropertiesByEntityType.mockResolvedValueOnce([definition]);
 
     render(
@@ -479,22 +507,46 @@ describe('AddDomainForm', () => {
   });
 
   it('renders reviewers required by an intake form without a class override', async () => {
-    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
-      id: 'intake-form-id',
-      name: 'dataProductIntake',
-      entityType: TargetEntityType.DataProduct,
-      formFields: [
+    mockedGetPlaybook.mockResolvedValueOnce(
+      creationPlaybook(TargetEntityType.DataProduct, [
         {
           fieldPath: 'reviewers',
-          fieldKind: FieldKind.Native,
-          fieldLabel: 'Reviewers',
-          required: true,
+          id: 'creation_reviewers',
+          requirement: Requirement.Blocking,
+          title: 'Reviewers',
+          type: CheckType.Responsibility,
         },
-      ],
-    } as IntakeForm);
+      ])
+    );
     render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
 
     expect(await screen.findByTestId('root/reviewers')).toBeInTheDocument();
+  });
+
+  it('hands the creation checklist the playbook governing this asset type', async () => {
+    mockedGetPlaybook.mockResolvedValueOnce(
+      creationPlaybook(TargetEntityType.DataProduct, [])
+    );
+
+    render(<AddDomainFormHarness type={DomainFormType.DATA_PRODUCT} />);
+
+    expect(await screen.findByTestId('creation-checklist')).toHaveTextContent(
+      'playbook-id'
+    );
+  });
+
+  it('prefers a playbook supplied by the host over fetching one', async () => {
+    render(
+      <AddDomainFormHarness
+        playbook={creationPlaybook(TargetEntityType.DataProduct, [])}
+        type={DomainFormType.DATA_PRODUCT}
+      />
+    );
+
+    expect(await screen.findByTestId('creation-checklist')).toHaveTextContent(
+      'playbook-id'
+    );
+    expect(mockedGetPlaybook).not.toHaveBeenCalled();
   });
 
   it('wires the configured entity-reference and hyperlink intake fields', async () => {
@@ -512,6 +564,15 @@ describe('AddDomainForm', () => {
         required: true,
       },
     ];
+    const steps: OnboardingStep[] = formFields.map((field, index) => ({
+      fieldPath: field.fieldPath,
+      id: `creation_${index}`,
+      requirement: field.required
+        ? Requirement.Blocking
+        : Requirement.Recommended,
+      title: field.fieldLabel,
+      type: CheckType.Attribute,
+    }));
     const customProperties: CustomProperty[] = [
       {
         customPropertyConfig: { config: ['glossaryTerm'] },
@@ -533,12 +594,9 @@ describe('AddDomainForm', () => {
         },
       },
     ];
-    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
-      entityType: TargetEntityType.DataProduct,
-      id: 'intake-form-id',
-      name: 'dataProductIntake',
-      formFields,
-    } as IntakeForm);
+    mockedGetPlaybook.mockResolvedValueOnce(
+      creationPlaybook(TargetEntityType.DataProduct, steps)
+    );
     mockedGetCustomPropertiesByEntityType.mockResolvedValueOnce(
       customProperties
     );
@@ -582,12 +640,18 @@ describe('AddDomainForm', () => {
       resolveCustomProperties = resolve;
     });
 
-    mockedGetIntakeFormByEntityType.mockResolvedValueOnce({
-      entityType: TargetEntityType.DataProduct,
-      id: 'intake-form-id',
-      name: 'dataProductIntake',
-      requiredFields,
-    } as IntakeForm);
+    mockedGetPlaybook.mockResolvedValueOnce(
+      creationPlaybook(
+        TargetEntityType.DataProduct,
+        requiredFields.map((field) => ({
+          fieldPath: field.fieldPath,
+          id: 'creation_businessTerm',
+          requirement: Requirement.Blocking,
+          title: field.fieldLabel,
+          type: CheckType.Attribute,
+        }))
+      )
+    );
     mockedGetCustomPropertiesByEntityType.mockReturnValueOnce(
       customPropertiesRequest
     );

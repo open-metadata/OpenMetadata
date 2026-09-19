@@ -17,24 +17,29 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
+import { AxiosError, isAxiosError } from 'axios';
 import { Operation as PatchOperation } from 'fast-json-patch';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { TargetEntityType } from '../../../generated/governance/intakeForm';
 import {
+  OnboardingPlaybook,
+  TargetEntityType,
+} from '../../../generated/entity/governance/onboardingPlaybook';
+import {
+  CheckType,
   OnboardingProgress,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getOnboardingAsset,
   getOnboardingProgress,
+  nudgeOnboarding,
   OnboardingAsset,
   patchOnboardingAsset,
   transitionOnboarding,
 } from '../../../rest/governance/onboarding/Onboarding.api';
+import { getOnboardingPlaybookForEntityType } from '../../../rest/governance/onboarding/OnboardingPlaybook.api';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import {
   fieldValue,
@@ -70,8 +75,16 @@ export const OnboardingChecklist = ({
   const { t } = useTranslation();
   const currentUser = useApplicationStore((state) => state.currentUser);
   const [progress, setProgress] = useState<OnboardingProgress | null>(null);
+  const [playbook, setPlaybook] = useState<OnboardingPlaybook | null>(null);
   const [busy, setBusy] = useState(false);
+  const [submittedStage, setSubmittedStage] = useState<string>();
   const [expanded, setExpanded] = useState(true);
+  // Read off the URL rather than through `useSearchParams`: the checklist is embedded in entity
+  // pages that are inside a router, but also rendered bare in tests and previews, and a router hook
+  // would make it throw there. The link is only read on arrival, so a subscription buys nothing.
+  const [requestedStep] = useState(
+    () => new URLSearchParams(window.location.search).get('check') ?? undefined
+  );
   const refreshEntity = useRef(onRefresh);
   const request = useRef(0);
   const journey = useRef<OnboardingJourneyHandle>(null);
@@ -80,7 +93,7 @@ export const OnboardingChecklist = ({
   }, [onRefresh]);
   const awaitingWorkflow = progress?.steps.some(
     (result) =>
-      result.step.type === Type.Approval &&
+      result.step.type === CheckType.Approval &&
       result.taskId &&
       !result.workflowInstanceId &&
       !isCheckComplete(result)
@@ -105,6 +118,25 @@ export const OnboardingChecklist = ({
       showErrorToast(error as AxiosError);
     }
   }, [refresh]);
+  useEffect(() => {
+    if (isVersionView) {
+      return;
+    }
+    let cancelled = false;
+    // Fetched next to the progress rather than after it: the wizard needs the playbook's names and
+    // gate only to describe what the progress already says, so neither has to wait for the other.
+    getOnboardingPlaybookForEntityType(entityType)
+      .then((result) => {
+        if (!cancelled) {
+          setPlaybook(result ?? null);
+        }
+      })
+      .catch(() => !cancelled && setPlaybook(null));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entityType, isVersionView]);
   useEffect(() => {
     if (isVersionView) {
       return;
@@ -159,7 +191,7 @@ export const OnboardingChecklist = ({
     [entityType, asset.id, refresh]
   );
   const advance = async () => {
-    if (!progress?.nextStatus || progress.entityVersion === undefined) {
+    if (!progress?.nextStage || progress.entityVersion === undefined) {
       return;
     }
     setBusy(true);
@@ -167,17 +199,34 @@ export const OnboardingChecklist = ({
       request.current++;
       const updated = await transitionOnboarding(entityType, asset.id, {
         expectedVersion: progress.entityVersion,
-        targetStatus: progress.nextStatus,
+        targetStage: progress.nextStage,
         retry: true,
       });
       request.current++;
       setProgress(updated);
+      setSubmittedStage(progress.nextStage);
       await refreshEntity.current?.();
     } catch (error) {
       showErrorToast(error as AxiosError);
       await refreshSafely();
     } finally {
       setBusy(false);
+    }
+  };
+  /**
+   * A nudge answers with the refreshed progress, so `Reminder sent` survives a reload. A 429 means
+   * the server already sent one inside its cooldown - the same outcome from the producer's side, so
+   * it refreshes rather than complains.
+   */
+  const nudge = async (stepId: string) => {
+    try {
+      setProgress(await nudgeOnboarding(entityType, asset.id, { stepId }));
+    } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 429) {
+        await refreshSafely();
+      } else {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
   if (!progress || isVersionView) {
@@ -231,13 +280,19 @@ export const OnboardingChecklist = ({
           <OnboardingJourney
             advance={advance}
             busy={busy}
+            entityType={entityType}
+            initialStepId={requestedStep}
+            justSubmitted={Boolean(submittedStage)}
             key={`${asset.id}-${progress.stage}`}
             loadField={loadField}
             permissions={permissions}
+            playbook={playbook}
             progress={progress}
             ref={journey}
             refresh={refreshSafely}
+            submittedStage={submittedStage}
             viewer={currentUser}
+            onNudge={nudge}
           />
         </Card.Content>
       )}

@@ -14,20 +14,20 @@ import { Alert, Box, Button, Select } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  OnboardingPlaybook,
+  TargetEntityType,
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import { CustomProperty } from '../../../generated/entity/type';
 import {
-  IntakeForm,
-  OnboardingStage,
-  TargetEntityType,
-} from '../../../generated/governance/intakeForm';
-import {
+  CheckType,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getOnboardingAsset } from '../../../rest/governance/onboarding/Onboarding.api';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { ONBOARDING_STAGE } from '../../../utils/governance/onboarding/Onboarding.constants';
 import {
   fieldValue,
   ONBOARDING_STAGES,
@@ -44,12 +44,12 @@ import { OnboardingJourney } from './OnboardingJourney';
 import { OnboardingFieldSession } from './OnboardingJourney.types';
 
 interface Props {
-  form: IntakeForm;
+  form: OnboardingPlaybook;
   properties: CustomProperty[];
   workflows: WorkflowDefinition[];
   creator: EntityReference;
-  stage: OnboardingStage;
-  onStageChange: (stage: OnboardingStage) => void;
+  stage: string;
+  onStageChange: (stage: string) => void;
 }
 const PREVIEW_PERMISSIONS = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
 
@@ -151,7 +151,7 @@ export const OnboardingPreview = ({
     setDecisions({});
     setDomainOwners([]);
     setViewerId(creator.id);
-    onStageChange(OnboardingStage.Creation);
+    onStageChange(ONBOARDING_STAGE.CREATION);
   };
 
   return (
@@ -175,6 +175,7 @@ export const OnboardingPreview = ({
         </Button>
       </Box>
       <OnboardingJourney
+        includeCompletedHistory
         advance={async () => {
           if (!progress.canAdvance) {
             return;
@@ -184,9 +185,11 @@ export const OnboardingPreview = ({
             onStageChange(next);
           }
         }}
+        entityType={form.entityType}
         key={`${stage}-${selectedViewer.id}`}
         loadField={loadField}
         permissions={PREVIEW_PERMISSIONS}
+        playbook={form}
         progress={progress}
         refresh={async () => {
           try {
@@ -201,7 +204,7 @@ export const OnboardingPreview = ({
           }
         }}
         renderApprovalActions={(result) =>
-          result.step.type === Type.Approval ? (
+          result.step.type === CheckType.Approval ? (
             <Box gap={2} wrap="wrap">
               <Button
                 color="secondary"

@@ -15,34 +15,34 @@ import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  IntakeForm,
-  OnboardingStage,
+  CheckType,
+  OnboardingPlaybook,
   OnboardingStep,
   Role,
-  Type,
-} from '../../../generated/governance/intakeForm';
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import { OnboardingProgress } from '../../../generated/governance/onboarding/onboardingProgress';
 import { evaluateOnboarding } from '../../../rest/governance/onboarding/Onboarding.api';
+import { ONBOARDING_STAGE } from '../../../utils/governance/onboarding/Onboarding.constants';
 import {
+  getCreationIntakeFields,
   getStepState,
   isRecord,
   ONBOARDING_STAGES,
   STAGE_LABELS,
   stepsAtStage,
 } from '../../../utils/governance/onboarding/Onboarding.utils';
-import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 interface Props {
-  form: IntakeForm | null;
+  form: OnboardingPlaybook | null;
   values?: unknown;
-  stage?: OnboardingStage;
+  stage?: string;
   preview?: boolean;
 }
 
 const UpcomingAssignment = ({ step }: { step: OnboardingStep }) => {
   const { t } = useTranslation();
-  if (step.type === Type.Approval) {
+  if (step.type === CheckType.Approval) {
     return (
       <>
         {t('label.workflow')}:{' '}
@@ -75,7 +75,7 @@ const UpcomingAssignment = ({ step }: { step: OnboardingStep }) => {
 export const OnboardingCreationChecklist = ({
   form,
   values,
-  stage = OnboardingStage.Creation,
+  stage = ONBOARDING_STAGE.CREATION,
   preview = false,
 }: Props) => {
   const { t } = useTranslation();
@@ -116,7 +116,7 @@ export const OnboardingCreationChecklist = ({
   if (!form?.onboarding?.enabled) {
     return null;
   }
-  const fields = getIntakeFormFields(form);
+  const fields = getCreationIntakeFields(form);
 
   return (
     <Box
@@ -173,7 +173,7 @@ export const OnboardingCreationChecklist = ({
           );
         })}
       </ol>
-      {stage === OnboardingStage.Creation && (
+      {stage === ONBOARDING_STAGE.CREATION && (
         <Box data-testid="onboarding-upcoming-work" direction="col" gap={2}>
           <Typography size="text-sm" weight="semibold">
             {t('message.onboarding-after-creation')}
@@ -181,7 +181,8 @@ export const OnboardingCreationChecklist = ({
           {form.onboarding.gates
             ?.filter(
               (gate) =>
-                gate.stage !== OnboardingStage.Creation && gate.steps.length > 0
+                gate.stage !== ONBOARDING_STAGE.CREATION &&
+                gate.steps.length > 0
             )
             .map((gate) => (
               <Box direction="col" gap={1} key={gate.stage}>

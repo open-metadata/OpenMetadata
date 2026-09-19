@@ -28,6 +28,15 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
+const CreateDataProductPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/governance/onboarding/CreateDataProductPage/CreateDataProductPage'
+      )
+  )
+);
+
 const OnboardingBoardPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/governance/onboarding/OnboardingBoardPage')
@@ -818,6 +827,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
+      <Route
+        element={<CreateDataProductPage />}
+        path={ROUTES.ADD_DATA_PRODUCT}
+      />
       <Route
         element={<DataProductListPage pageTitle={t('label.data-product')} />}
         path={ROUTES.DATA_PRODUCT}

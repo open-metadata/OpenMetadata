@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CheckType as Type } from '../../../src/generated/entity/governance/onboardingPlaybook';
 import {
   FieldKind,
   TargetEntityType,
-  Type,
 } from '../../../src/generated/governance/intakeForm';
 import { OnboardingBoard } from '../../../src/generated/governance/onboarding/onboardingBoard';
 import { DOMAIN_TAGS } from '../../constant/config';
@@ -40,7 +40,7 @@ const fields = [
 const checks = [
   {
     id: 'display-name',
-    type: Type.Field,
+    type: Type.Attribute,
     fieldPath: 'displayName',
     title: 'Display Name',
     rules: { minLength: 5 },

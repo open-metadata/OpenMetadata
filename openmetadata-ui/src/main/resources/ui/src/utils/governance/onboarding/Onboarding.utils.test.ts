@@ -11,60 +11,52 @@
  *  limitations under the License.
  */
 import {
-  FieldKind,
-  IntakeForm,
-  OnboardingStage,
+  CheckType,
+  OnboardingPlaybook,
   Operator,
+  Requirement,
   TargetEntityType,
-  Type,
-} from '../../../generated/governance/intakeForm';
+} from '../../../generated/entity/governance/onboardingPlaybook';
 import {
+  applicableSteps,
   checkApplies,
+  conditionalTriggers,
   getCreationIntakeFields,
   getStepState,
+  missingCreationChecks,
   stepsAtStage,
 } from './Onboarding.utils';
 
-const form: IntakeForm = {
+const form: OnboardingPlaybook = {
   id: 'configuration',
   name: 'onboarding',
   entityType: TargetEntityType.Metric,
-  enabled: true,
-  formFields: [
-    {
-      fieldPath: 'displayName',
-      fieldLabel: 'Display name',
-      fieldKind: FieldKind.Native,
-      required: true,
-    },
-    {
-      fieldPath: 'owners',
-      fieldLabel: 'Owners',
-      fieldKind: FieldKind.Native,
-      required: true,
-    },
-    {
-      fieldPath: 'extension.purpose',
-      fieldLabel: 'Purpose',
-      fieldKind: FieldKind.CustomProperty,
-      required: true,
-    },
-  ],
   onboarding: {
     enabled: true,
     gates: [
       {
-        stage: OnboardingStage.Draft,
+        stage: 'creation',
+        steps: [
+          {
+            id: 'displayName',
+            type: CheckType.Attribute,
+            requirement: Requirement.Blocking,
+            fieldPath: 'displayName',
+          },
+        ],
+      },
+      {
+        stage: 'draft',
         steps: [
           {
             id: 'owners',
-            type: Type.Field,
+            type: CheckType.Attribute,
             fieldPath: 'owners',
             rules: { minItems: 2 },
           },
           {
             id: 'purpose',
-            type: Type.Field,
+            type: CheckType.Attribute,
             fieldPath: 'extension.purpose',
             rules: { minLength: 10 },
           },
@@ -84,23 +76,21 @@ describe('onboarding field requirements', () => {
         fields.filter((field) => field.required).map((field) => field.fieldPath)
       ).toEqual(['displayName']);
       expect(
-        stepsAtStage(form, OnboardingStage.Creation).map(
-          (step) => step.fieldPath
-        )
+        stepsAtStage(form, 'creation').map((step) => step.fieldPath)
       ).toEqual(['displayName']);
     }
   );
 
-  it('preserves legacy required fields when staging is disabled', () => {
-    expect(
-      getCreationIntakeFields({ ...form, onboarding: undefined }).every(
-        (field) => field.required
-      )
-    ).toBe(true);
+  it('enforces nothing at creation when no playbook governs the asset type', () => {
+    expect(getCreationIntakeFields({ ...form, onboarding: undefined })).toEqual(
+      []
+    );
   });
 
   it('evaluates custom values and relationship counts without accepting checklist flags', () => {
-    const [owners, purpose] = form.onboarding?.gates?.[0].steps ?? [];
+    const [owners, purpose] =
+      form.onboarding?.gates?.find((gate) => gate.stage === 'draft')?.steps ??
+      [];
 
     expect(
       getStepState(owners, { owners: [{ id: 'a' }], complete: true })
@@ -121,7 +111,7 @@ describe('onboarding field requirements', () => {
   it('evaluates tag, domain and typed field conditions together', () => {
     const step = {
       id: 'conditional',
-      type: Type.Field,
+      type: CheckType.Attribute,
       fieldPath: 'displayName',
       conditions: [
         {
@@ -153,9 +143,121 @@ describe('onboarding field requirements', () => {
   it('never marks an approval complete from draft values', () => {
     expect(
       getStepState(
-        { id: 'review', type: Type.Approval },
+        { id: 'review', type: CheckType.Approval },
         { approved: true, completed: true }
       )
     ).toBe('Pending');
+  });
+});
+
+describe('creation gate helpers', () => {
+  const playbook = {
+    id: 'playbook',
+    name: 'dataProduct',
+    entityType: TargetEntityType.DataProduct,
+    onboarding: {
+      enabled: true,
+      gates: [
+        {
+          stage: 'creation',
+          steps: [
+            {
+              id: 'displayName',
+              type: CheckType.Attribute,
+              title: 'Name & display name',
+              fieldPath: 'displayName',
+              requirement: Requirement.Blocking,
+              rules: { minLength: 3 },
+            },
+            {
+              id: 'tags',
+              type: CheckType.Relationship,
+              title: 'Tags',
+              fieldPath: 'tags',
+              requirement: Requirement.Recommended,
+            },
+          ],
+        },
+        {
+          stage: 'draft',
+          steps: [
+            {
+              id: 'experts',
+              type: CheckType.Responsibility,
+              title: 'Experts',
+              fieldPath: 'experts',
+              requirement: Requirement.Optional,
+            },
+            {
+              id: 'certification',
+              type: CheckType.Attribute,
+              title: 'Certification',
+              fieldPath: 'certification',
+              requirement: Requirement.Blocking,
+              conditions: [
+                {
+                  fieldPath: 'tags',
+                  operator: Operator.StartsWith,
+                  value: 'PII.',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  } as unknown as Parameters<typeof missingCreationChecks>[0];
+
+  it('matches a tag classification by prefix rather than by exact name', () => {
+    const step = {
+      id: 'conditional',
+      type: CheckType.Attribute,
+      conditions: [
+        { fieldPath: 'tags', operator: Operator.StartsWith, value: 'PII.' },
+      ],
+    };
+
+    expect(checkApplies(step, { tags: [{ tagFQN: 'PII.Sensitive' }] })).toBe(
+      true
+    );
+    expect(checkApplies(step, { tags: [{ tagFQN: 'NonPII.Safe' }] })).toBe(
+      false
+    );
+  });
+
+  it('keeps a blocking creation check open until its rule passes, not merely until it is filled', () => {
+    expect(
+      missingCreationChecks(playbook, { displayName: 'ab' }).map(
+        (step) => step.id
+      )
+    ).toEqual(['displayName']);
+    expect(missingCreationChecks(playbook, { displayName: 'Orders' })).toEqual(
+      []
+    );
+  });
+
+  it('counts only the later checks this asset actually earns', () => {
+    expect(
+      applicableSteps(playbook, 'draft', {}).map((step) => step.id)
+    ).toEqual(['experts']);
+    expect(
+      applicableSteps(playbook, 'draft', {
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+      }).map((step) => step.id)
+    ).toEqual(['experts', 'certification']);
+  });
+
+  it('names the value that switched a conditional check on', () => {
+    expect(
+      conditionalTriggers(playbook, 'draft', {
+        tags: [{ tagFQN: 'PII.Sensitive' }],
+      })
+    ).toEqual([
+      {
+        value: 'PII.Sensitive',
+        steps: [expect.objectContaining({ id: 'certification' })],
+      },
+    ]);
+    expect(conditionalTriggers(playbook, 'draft', {})).toEqual([]);
   });
 });

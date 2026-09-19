@@ -18,7 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { ReactNode, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CustomProperty } from '../../../generated/entity/type';
@@ -47,6 +47,10 @@ interface Props {
   onDirtyChange?: (dirty: boolean) => void;
   isDisabled?: boolean;
   permissions?: OperationPermission;
+  /** Reported on every keystroke so the wizard can count characters or chips as they are typed. */
+  onValueChange?: (value: unknown) => void;
+  /** Shown under the control - the rule the value is measured against. */
+  annotation?: ReactNode;
 }
 const NativeEditor = ({
   field,
@@ -58,11 +62,17 @@ const NativeEditor = ({
   onDirtyChange,
   isDisabled,
   permissions,
+  onValueChange,
+  annotation,
 }: Props) => {
   const form = useForm<{ value: unknown }>({ defaultValues: { value } });
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const dirty = form.formState.isDirty;
+  const current = useWatch({ control: form.control, name: 'value' });
+  useEffect(() => {
+    onValueChange?.(current);
+  }, [current, onValueChange]);
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -121,6 +131,7 @@ const NativeEditor = ({
           )}
         </FormField>
       </fieldset>
+      {annotation}
       <Box className="tw:mt-4 tw:justify-end tw:gap-2" wrap="wrap">
         {children}
         {onCancel && (
@@ -145,6 +156,7 @@ const CustomEditor = ({
   submitLabel,
   onDirtyChange,
   isDisabled,
+  annotation,
 }: Props) => {
   const propertyName = getExtensionPropertyName(field.fieldPath);
   const key = getExtensionFormKey(propertyName);
@@ -210,6 +222,7 @@ const CustomEditor = ({
           formFields={[{ ...field, required: false }]}
         />
       </fieldset>
+      {annotation}
       <Box className="tw:mt-4 tw:justify-end tw:gap-2" wrap="wrap">
         {children}
         {onCancel && (

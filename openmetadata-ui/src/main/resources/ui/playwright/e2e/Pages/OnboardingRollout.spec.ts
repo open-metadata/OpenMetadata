@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CheckType as Type } from '../../../src/generated/entity/governance/onboardingPlaybook';
 import {
   FieldKind,
   TargetEntityType,
-  Type,
 } from '../../../src/generated/governance/intakeForm';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { expect } from '../../support/fixtures/base';
@@ -40,7 +40,7 @@ const checks = [
   {
     id: 'name',
     title: 'Display Name',
-    type: Type.Field,
+    type: Type.Attribute,
     fieldPath: 'displayName',
   },
 ];
@@ -69,7 +69,7 @@ test.describe(
           {
             data: {
               expectedVersion: progress.entityVersion,
-              targetStatus: progress.nextStatus,
+              targetStage: progress.nextStage,
             },
           }
         );

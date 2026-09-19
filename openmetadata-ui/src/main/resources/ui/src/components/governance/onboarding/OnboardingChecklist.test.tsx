@@ -10,15 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { TargetEntityType } from '../../../generated/governance/intakeForm';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TargetEntityType } from '../../../generated/entity/governance/onboardingPlaybook';
 import {
-  EntityStatus,
+  CheckType,
   FieldKind,
   OnboardingProgress,
-  OnboardingStage,
   State,
-  Type,
 } from '../../../generated/governance/onboarding/onboardingProgress';
 import {
   getOnboardingProgress,
@@ -36,14 +34,18 @@ jest.mock('react-i18next', () => ({
 }));
 
 const progress: OnboardingProgress = {
-  stage: OnboardingStage.InReview,
+  stage: 'inReview',
   entityVersion: 0.3,
-  nextStatus: EntityStatus.Approved,
+  nextStage: 'approved',
   blockingSteps: ['review'],
   canAdvance: false,
   steps: [
     {
-      step: { id: 'review', type: Type.Approval, title: 'Steward approval' },
+      step: {
+        id: 'review',
+        type: CheckType.Approval,
+        title: 'Steward approval',
+      },
       state: State.Pending,
       required: true,
       message: 'Workflow approval is required',
@@ -82,7 +84,7 @@ describe('saved onboarding checklist', () => {
     };
     mockTransition.mockResolvedValue({
       ...reviewed,
-      stage: OnboardingStage.Approved,
+      stage: 'approved',
       completed: true,
     });
     render(
@@ -97,25 +99,35 @@ describe('saved onboarding checklist', () => {
     expect(
       screen.getByRole('link', { name: 'label.view-task' })
     ).toHaveAttribute('href', '/tasks/review-task');
+    // The only thing holding the gate is the workflow's decision, so there is nothing to submit.
     expect(screen.getByTestId('onboarding-advance')).toHaveTextContent(
-      'label.request-onboarding-transition'
+      'label.waiting-for-approval'
     );
+    expect(screen.getByTestId('onboarding-advance')).toBeDisabled();
 
     mockGetProgress.mockResolvedValue(reviewed);
     fireEvent.click(screen.getByRole('button', { name: 'label.refresh' }));
-    await screen.findByRole('button', { name: 'label.advance-to-stage' });
+    await waitFor(() =>
+      expect(screen.getByTestId('onboarding-advance')).toBeEnabled()
+    );
+
+    expect(screen.getByTestId('onboarding-advance')).toHaveTextContent(
+      'label.send-to-stage'
+    );
+
+    expect(
+      screen.getByText('message.onboarding-workflow-evidence')
+    ).toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId('onboarding-advance'));
 
     expect(
       await screen.findByTestId('onboarding-current-stage')
     ).toHaveTextContent('label.approved');
     expect(screen.queryByTestId('onboarding-advance')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Steward approval' }));
-
-    expect(
-      screen.getByText('message.onboarding-workflow-evidence')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('onboarding-submitted')).toHaveTextContent(
+      'label.sent-to-stage'
+    );
   });
 
   it('keeps field editing and gate advancement disabled for a viewer', async () => {
@@ -123,7 +135,11 @@ describe('saved onboarding checklist', () => {
       ...progress,
       steps: [
         {
-          step: { id: 'name', type: Type.Field, fieldPath: 'displayName' },
+          step: {
+            id: 'name',
+            type: CheckType.Attribute,
+            fieldPath: 'displayName',
+          },
           field: {
             fieldPath: 'displayName',
             fieldLabel: 'Display name',

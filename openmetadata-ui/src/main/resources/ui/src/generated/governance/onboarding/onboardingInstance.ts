@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 export interface OnboardingInstance {
-    bindings?:     OnboardingTaskBinding[];
-    configuration: IntakeForm;
+    bindings?: OnboardingTaskBinding[];
+    /**
+     * Playbook snapshot the asset was enrolled under.
+     */
+    configuration: OnboardingPlaybook;
+    /**
+     * updatedAt of the asset's version 0.1, captured at enrolment.
+     */
+    createdAt?: number;
     /**
      * Creation checks passed when enrolled or after revising a backfilled asset.
      */
@@ -21,36 +28,48 @@ export interface OnboardingInstance {
     enteredAt:          number;
     entity:             EntityReference;
     id:                 string;
-    revision:           number;
-    stage:              OnboardingStage;
-    stageHistory?:      OnboardingStageTiming[];
-    steps?:             OnboardingStepResult[];
+    /**
+     * Latest reminder per check and kind. The full log lives in onboarding_reminder.
+     */
+    reminders?:    OnboardingReminder[];
+    revision:      number;
+    stage:         string;
+    stageHistory?: OnboardingStageTiming[];
+    steps?:        OnboardingStepResult[];
 }
 
 export interface OnboardingTaskBinding {
-    approved?:  boolean;
-    attempt:    number;
-    decidedAt?: number;
+    attempt: number;
     /**
      * Fingerprint of metadata covered by the approval.
      */
     fingerprint?: string;
+    /**
+     * When the stall policy reassigned this task. Assignee refreshes never revert it.
+     */
+    reassignedAt?: number;
+    /**
+     * When the playbook owners were told this task had stopped moving.
+     */
+    stallNotifiedAt?: number;
     /**
      * Stable step identifier.
      */
     stepId:                string;
     taskId:                string;
     workflowDefinitionId?: string;
-    workflowInstanceId?:   string;
 }
 
 /**
- * One intake and onboarding configuration per governance entity type. Field requirements
- * are shared by creation forms and lifecycle gates.
+ * Playbook snapshot the asset was enrolled under.
+ *
+ * One playbook per asset type - the same rule intake forms already follow, so creation-time
+ * enforcement has exactly one answer. Variation inside an asset type is handled by
+ * conditions on individual checks, not by competing playbooks.
  */
-export interface IntakeForm {
+export interface OnboardingPlaybook {
     /**
-     * Change that lead to this version of the entity.
+     * Change that led to this version of the entity.
      */
     changeDescription?: ChangeDescription;
     /**
@@ -58,29 +77,19 @@ export interface IntakeForm {
      */
     deleted?: boolean;
     /**
-     * Description of what governance policy this IntakeForm enforces.
+     * Description of the playbook.
      */
     description?: string;
     /**
-     * Name used for display purposes.
+     * Display Name that identifies this playbook.
      */
     displayName?: string;
     /**
-     * Whether this IntakeForm is currently enforced. Disabling is a soft toggle that lets
-     * admins pause validation without deleting the form.
-     */
-    enabled?: boolean;
-    /**
-     * The entity type this IntakeForm applies to. Only one IntakeForm may exist per entityType.
+     * The asset type this playbook governs. Only one playbook may exist per asset type.
      */
     entityType: TargetEntityType;
     /**
-     * Fields included in this IntakeForm. Fields with required=true are enforced on top of the
-     * schema-required fields.
-     */
-    formFields?: IntakeFormField[];
-    /**
-     * Fully qualified name of the IntakeForm.
+     * FullyQualifiedName of the playbook.
      */
     fullyQualifiedName?: string;
     /**
@@ -88,26 +97,30 @@ export interface IntakeForm {
      */
     href?: string;
     /**
-     * Unique ID of the IntakeForm.
+     * Unique identifier of this playbook.
      */
     id: string;
     /**
-     * Incremental change that lead to this version of the entity.
+     * Change that led to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Unique name of the IntakeForm.
+     * Intake form migrated into this playbook's Creation gate. Retained so the legacy read path
+     * keeps resolving.
      */
-    name:        string;
+    intakeForm?: EntityReference;
+    /**
+     * Name that identifies this playbook.
+     */
+    name: string;
+    /**
+     * The lifecycle and gates this playbook enforces.
+     */
     onboarding?: OnboardingConfiguration;
     /**
-     * Owners of this IntakeForm configuration.
+     * Owners of this playbook - shown as `maintained by`.
      */
     owners?: EntityReference[];
-    /**
-     * Deprecated compatibility view of the required entries in formFields.
-     */
-    requiredFields?: RequiredField[];
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -124,11 +137,9 @@ export interface IntakeForm {
 }
 
 /**
- * Change that lead to this version of the entity.
+ * Change that led to this version of the entity.
  *
  * Description of the change.
- *
- * Incremental change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     changeSummary?: { [key: string]: ChangeSummary };
@@ -191,10 +202,9 @@ export interface FieldChange {
 }
 
 /**
- * The entity type this IntakeForm applies to. Only one IntakeForm may exist per
- * entityType.
+ * The asset type this playbook governs. Only one playbook may exist per asset type.
  *
- * Entity types supported by IntakeForm today.
+ * Asset types that support an onboarding playbook today.
  */
 export enum TargetEntityType {
     DataProduct = "dataProduct",
@@ -204,100 +214,20 @@ export enum TargetEntityType {
 }
 
 /**
- * A field included in this IntakeForm.
- */
-export interface IntakeFormField {
-    /**
-     * Optional override for the validation error message when a required field is missing.
-     */
-    errorMessage?: string;
-    /**
-     * Whether a form field refers to a native entity attribute or a custom property defined via
-     * the Type system.
-     */
-    fieldKind: FieldKind;
-    /**
-     * Human-friendly label used on the intake form UI and in validation error messages.
-     */
-    fieldLabel: string;
-    /**
-     * Path to the field on the entity. Native paths are simple attribute names (e.g.,
-     * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
-     */
-    fieldPath: string;
-    /**
-     * An optional field recommended for onboarding.
-     */
-    recommended?: boolean;
-    /**
-     * Whether this field must have a value before the entity can be created or updated.
-     */
-    required?: boolean;
-}
-
-/**
- * Whether a form field refers to a native entity attribute or a custom property defined via
- * the Type system.
+ * Intake form migrated into this playbook's Creation gate. Retained so the legacy read path
+ * keeps resolving.
  *
- * Whether a required field refers to a native entity attribute or a custom property defined
- * via the Type system.
- */
-export enum FieldKind {
-    CustomProperty = "customProperty",
-    Native = "native",
-}
-
-export interface OnboardingConfiguration {
-    enabled?: boolean;
-    gates?:   OnboardingGate[];
-}
-
-export interface OnboardingGate {
-    stage: OnboardingStage;
-    steps: OnboardingStep[];
-}
-
-export enum OnboardingStage {
-    Approved = "Approved",
-    Creation = "Creation",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-}
-
-export interface OnboardingStep {
-    assignment?: OnboardingAssignment;
-    conditions?: OnboardingCondition[];
-    /**
-     * Reference to formFields; requiredness is defined there.
-     */
-    fieldPath?: string;
-    /**
-     * Instructions for the person completing this step.
-     */
-    guidance?: string;
-    id:        string;
-    rules?:    OnboardingRules;
-    /**
-     * Step display name.
-     */
-    title?:    string;
-    type:      Type;
-    workflow?: EntityReference;
-}
-
-export interface OnboardingAssignment {
-    assignees?: EntityReference[];
-    role?:      Role;
-}
-
-/**
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this IntakeForm configuration.
+ * Workflow started once every blocking check passes. The workflow owns the approval and the
+ * resulting status change; the playbook only decides when it is allowed to start.
+ *
+ * For `approval` checks, the workflow that records the decision.
+ *
+ * Owners of this playbook - shown as `maintained by`.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -347,12 +277,136 @@ export interface EntityReference {
     type: string;
 }
 
+/**
+ * The lifecycle and gates this playbook enforces.
+ *
+ * The body of a playbook: the lifecycle it declares and what it takes to pass each gate.
+ */
+export interface OnboardingConfiguration {
+    enabled?: boolean;
+    gates?:   OnboardingGate[];
+    /**
+     * Lifecycle declared by this playbook, in order. Empty means the default lifecycle.
+     */
+    stages?: OnboardingStageDefinition[];
+}
+
+/**
+ * What it takes to leave a stage. Nothing moves on until every blocking check passes;
+ * recommended checks stay open as tasks. The gate decides when a workflow may start - it
+ * never changes the asset's status itself.
+ */
+export interface OnboardingGate {
+    /**
+     * Hard stop. When false, a failing gate raises a warning and a notification instead of
+     * blocking.
+     */
+    blockTransition?: boolean;
+    /**
+     * Workflow started once every blocking check passes. The workflow owns the approval and the
+     * resulting status change; the playbook only decides when it is allowed to start.
+     */
+    handoffWorkflow?: EntityReference;
+    notifyOnStall?:   StallPolicy;
+    reassignOnStall?: ReassignPolicy;
+    /**
+     * Stage this gate governs the exit from.
+     */
+    stage: string;
+    steps: OnboardingStep[];
+}
+
+/**
+ * Tell the playbook maintainer when an asset stops moving.
+ */
+export interface StallPolicy {
+    /**
+     * Days with no activity on an open task before notifying.
+     */
+    afterDays?: number;
+    enabled?:   boolean;
+}
+
+/**
+ * Keep onboarding moving when the assignee goes quiet.
+ */
+export interface ReassignPolicy {
+    afterDays?: number;
+    enabled?:   boolean;
+    /**
+     * Role the open tasks are reassigned to.
+     */
+    role?: OnboardingAssignment;
+}
+
+/**
+ * Role the open tasks are reassigned to.
+ */
+export interface OnboardingAssignment {
+    assignees?: EntityReference[];
+    role?:      Role;
+}
+
 export enum Role {
     Creator = "creator",
     DomainOwners = "domainOwners",
     Experts = "experts",
     Explicit = "explicit",
     Owners = "owners",
+}
+
+/**
+ * A single check inside a gate. A field is only ever asked for once per playbook; the gate
+ * it sits in decides when it is due and who is asked.
+ */
+export interface OnboardingStep {
+    assignment?: OnboardingAssignment;
+    /**
+     * Help offered to the person completing the check.
+     */
+    assistance?: Assistance;
+    /**
+     * Conditions are how one playbook covers a whole asset type, rather than competing
+     * playbooks.
+     */
+    conditions?: OnboardingCondition[];
+    /**
+     * Field this check captures, e.g. `description` or `extension.accessRequestInfo`.
+     */
+    fieldPath?: string;
+    /**
+     * Instructions for the person completing this step.
+     */
+    guidance?: string;
+    id:        string;
+    /**
+     * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+     * optional checks stay open as tasks.
+     */
+    requirement?: Requirement;
+    rules?:       OnboardingRules;
+    /**
+     * Step display name.
+     */
+    title?: string;
+    /**
+     * What kind of check this is.
+     */
+    type: CheckType;
+    /**
+     * For `approval` checks, the workflow that records the decision.
+     */
+    workflow?: EntityReference;
+}
+
+/**
+ * Help offered to the person completing the check.
+ */
+export enum Assistance {
+    AI = "ai",
+    Autofill = "autofill",
+    Example = "example",
+    None = "none",
 }
 
 export interface OnboardingCondition {
@@ -371,6 +425,17 @@ export enum Operator {
     Contains = "contains",
     Equals = "equals",
     Present = "present",
+    StartsWith = "startsWith",
+}
+
+/**
+ * Whether the check holds the gate. Only blocking checks stop a transition; recommended and
+ * optional checks stay open as tasks.
+ */
+export enum Requirement {
+    Blocking = "blocking",
+    Optional = "optional",
+    Recommended = "recommended",
 }
 
 export interface OnboardingRules {
@@ -378,22 +443,137 @@ export interface OnboardingRules {
     minLength?: number;
 }
 
-export enum Type {
+/**
+ * What kind of check this is.
+ */
+export enum CheckType {
     Approval = "approval",
-    Field = "field",
+    Assessment = "assessment",
+    Attribute = "attribute",
+    Relationship = "relationship",
+    Responsibility = "responsibility",
 }
 
 /**
- * A single field declared as required by this IntakeForm.
+ * A stage in a playbook's lifecycle. The playbook declares the order; `entityStatus` is the
+ * status the handoff workflow is expected to set when the asset arrives here, so the
+ * playbook and the workflow agree on one vocabulary.
  */
-export interface RequiredField {
+export interface OnboardingStageDefinition {
+    description?: string;
     /**
-     * Optional override for the validation error message when this field is missing.
+     * Label shown on the lifecycle rail, e.g. `In Review`.
+     */
+    displayName?: string;
+    /**
+     * Status the asset carries while in this stage. Set by the handoff workflow, never by
+     * onboarding.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * The stage an asset is created into. Exactly one stage per playbook is the entry stage.
+     */
+    entryStage?: boolean;
+    key:         string;
+    /**
+     * Position in the lifecycle, ascending.
+     */
+    order: number;
+    /**
+     * No further gates after this stage.
+     */
+    terminal?: boolean;
+}
+
+/**
+ * Status the asset carries while in this stage. Set by the handoff workflow, never by
+ * onboarding.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * A follow-up sent about an onboarding check - by a person from the board, or by the
+ * playbook's stall policy.
+ */
+export interface OnboardingReminder {
+    kind:   ReminderKind;
+    sentAt: number;
+    /**
+     * User who sent a manual reminder, or the bot that sent an automatic one.
+     */
+    sentBy?: string;
+    /**
+     * Check the reminder is about.
+     */
+    stepId?: string;
+    taskId?: string;
+}
+
+export enum ReminderKind {
+    Manual = "manual",
+    SoftGateNotice = "softGateNotice",
+    StallNotice = "stallNotice",
+    StallReassignment = "stallReassignment",
+}
+
+export interface OnboardingStageTiming {
+    enteredAt: number;
+    exitedAt:  number;
+    stage:     string;
+}
+
+export interface OnboardingStepResult {
+    assignees?: EntityReference[];
+    /**
+     * When the check's task is due, copied from the task. Set only when the gate has a stall
+     * policy - the wizard shows `Due in N days` from it and says `Open` otherwise.
+     */
+    dueDate?: number;
+    field?:   IntakeFormField;
+    /**
+     * When someone last chased this check.
+     */
+    lastReminderAt?: number;
+    /**
+     * Explanation of an incomplete check.
+     */
+    message?:            string;
+    reassignedAt?:       number;
+    required:            boolean;
+    stage?:              string;
+    stallNotifiedAt?:    number;
+    state:               State;
+    step:                OnboardingStep;
+    taskId?:             string;
+    workflowInstanceId?: string;
+}
+
+/**
+ * A field included in this IntakeForm.
+ */
+export interface IntakeFormField {
+    /**
+     * Optional override for the validation error message when a required field is missing.
      */
     errorMessage?: string;
-    fieldKind:     FieldKind;
     /**
-     * Human-friendly label used in validation error messages and on the intake form UI.
+     * Whether a form field refers to a native entity attribute or a custom property defined via
+     * the Type system.
+     */
+    fieldKind: FieldKind;
+    /**
+     * Human-friendly label used on the intake form UI and in validation error messages.
      */
     fieldLabel: string;
     /**
@@ -401,27 +581,23 @@ export interface RequiredField {
      * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
      */
     fieldPath: string;
-}
-
-export interface OnboardingStageTiming {
-    enteredAt: number;
-    exitedAt:  number;
-    stage:     OnboardingStage;
-}
-
-export interface OnboardingStepResult {
-    assignees?: EntityReference[];
-    field?:     IntakeFormField;
     /**
-     * Explanation of an incomplete check.
+     * An optional field recommended for onboarding.
      */
-    message?:            string;
-    required:            boolean;
-    stage?:              OnboardingStage;
-    state:               State;
-    step:                OnboardingStep;
-    taskId?:             string;
-    workflowInstanceId?: string;
+    recommended?: boolean;
+    /**
+     * Whether this field must have a value before the entity can be created or updated.
+     */
+    required?: boolean;
+}
+
+/**
+ * Whether a form field refers to a native entity attribute or a custom property defined via
+ * the Type system.
+ */
+export enum FieldKind {
+    CustomProperty = "customProperty",
+    Native = "native",
 }
 
 export enum State {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Type } from '../../../src/generated/governance/intakeForm';
+import { CheckType as Type } from '../../../src/generated/entity/governance/onboardingPlaybook';
 import { DOMAIN_TAGS } from '../../constant/config';
 import { expect } from '../../support/fixtures/base';
 import { uuid } from '../../utils/common';
@@ -68,7 +68,7 @@ test.describe(
                 steps: [
                   {
                     id: 'display-name',
-                    type: Type.Field,
+                    type: Type.Attribute,
                     title: 'Display Name',
                     fieldPath: 'displayName',
                   },
@@ -79,7 +79,7 @@ test.describe(
                 steps: [
                   {
                     id: 'tags',
-                    type: Type.Field,
+                    type: Type.Attribute,
                     title: 'Tags',
                     fieldPath: 'tags',
                   },

@@ -10,10 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum OnboardingStage {
-    Approved = "Approved",
-    Creation = "Creation",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
+/**
+ * A follow-up sent about an onboarding check - by a person from the board, or by the
+ * playbook's stall policy.
+ */
+export interface OnboardingReminder {
+    kind:   ReminderKind;
+    sentAt: number;
+    /**
+     * User who sent a manual reminder, or the bot that sent an automatic one.
+     */
+    sentBy?: string;
+    /**
+     * Check the reminder is about.
+     */
+    stepId?: string;
+    taskId?: string;
+}
+
+export enum ReminderKind {
+    Manual = "manual",
+    SoftGateNotice = "softGateNotice",
+    StallNotice = "stallNotice",
+    StallReassignment = "stallReassignment",
 }

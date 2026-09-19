@@ -13,7 +13,7 @@
 export interface EvaluateOnboarding {
     entity:     { [key: string]: any };
     entityType: TargetEntityType;
-    stage:      OnboardingStage;
+    stage:      string;
 }
 
 /**
@@ -24,12 +24,4 @@ export enum TargetEntityType {
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
     Metric = "metric",
-}
-
-export enum OnboardingStage {
-    Approved = "Approved",
-    Creation = "Creation",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
 }

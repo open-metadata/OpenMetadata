@@ -12,10 +12,14 @@
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
 import {
-  IntakeFormField,
+  CheckType as Type,
+  OnboardingGate,
   OnboardingStep,
+  Requirement,
+} from '../../src/generated/entity/governance/onboardingPlaybook';
+import {
+  IntakeFormField,
   TargetEntityType,
-  Type,
 } from '../../src/generated/governance/intakeForm';
 import { OnboardingProgress } from '../../src/generated/governance/onboarding/onboardingProgress';
 import { EntityReference } from '../../src/generated/type/entityReference';
@@ -53,6 +57,31 @@ export const ONBOARDING_TYPES = [
   },
 ];
 export type OnboardingAssetType = (typeof ONBOARDING_TYPES)[number];
+
+/** A check that asks for one field, in the shape the playbook stores it. */
+export const fieldStep = (
+  id: string,
+  fieldPath: string,
+  overrides: Partial<OnboardingStep> = {}
+): OnboardingStep => ({
+  id,
+  title: overrides.title ?? id,
+  type: Type.Attribute,
+  requirement: Requirement.Blocking,
+  fieldPath,
+  conditions: [],
+  ...overrides,
+});
+
+/** The Creation gate asks for the fields the old intake form listed, one check each. */
+const creationStep = (field: IntakeFormField): OnboardingStep => ({
+  id: `creation_${field.fieldPath.replaceAll('.', '_')}`,
+  title: field.fieldLabel ?? field.fieldPath,
+  type: Type.Attribute,
+  requirement: field.required ? Requirement.Blocking : Requirement.Recommended,
+  fieldPath: field.fieldPath,
+  conditions: [],
+});
 export interface OnboardingTestAsset extends EntityReference {
   name: string;
   fullyQualifiedName: string;
@@ -77,26 +106,67 @@ export class OnboardingFixtures {
     return resource;
   }
 
+  /**
+   * Publish a playbook for this asset type.
+   *
+   * <p>Only one playbook may govern a type, so an existing one is upserted by name and restored
+   * when the fixture is disposed; a type with no playbook gets a throwaway one that is deleted.
+   */
   async publish(
     type: OnboardingAssetType,
     fields: IntakeFormField[],
     draft: OnboardingStep[],
-    review: OnboardingStep[] = []
+    review: OnboardingStep[] = [],
+    gate: Partial<OnboardingGate> = {}
   ) {
-    return this.createResource('governance/intakeForms', {
-      name: `onboarding_${uuid()}`,
+    const existing = await this.api.get(
+      `/api/v1/governance/onboardingPlaybooks/entityType/${type.type}?fields=owners`
+    );
+    const current = existing.ok() ? await existing.json() : undefined;
+    const name = current?.name ?? `onboarding_${uuid()}`;
+    const body = {
+      name,
+      displayName: current?.displayName ?? `${type.label} playbook`,
+      description: current?.description ?? 'Browser test playbook',
       entityType: type.type,
-      enabled: true,
-      formFields: fields,
       onboarding: {
         enabled: true,
         gates: [
-          { stage: 'Creation', steps: [] },
-          { stage: 'Draft', steps: draft },
-          { stage: 'In Review', steps: review },
+          { stage: 'creation', steps: fields.map(creationStep) },
+          { stage: 'draft', steps: draft, blockTransition: true, ...gate },
+          { stage: 'inReview', steps: review, blockTransition: true },
         ],
       },
+    };
+    const response = await this.api.put(
+      '/api/v1/governance/onboardingPlaybooks',
+      { data: body }
+    );
+    expect(response.status(), await response.text()).toBe(200);
+    const playbook = await response.json();
+    this.cleanupActions.push(async () => {
+      if (current) {
+        await this.api.put('/api/v1/governance/onboardingPlaybooks', {
+          data: {
+            name: current.name,
+            displayName: current.displayName,
+            description: current.description,
+            entityType: current.entityType,
+            owners: (current.owners ?? []).map((owner: EntityReference) => ({
+              id: owner.id,
+              type: owner.type,
+            })),
+            onboarding: current.onboarding,
+          },
+        });
+      } else {
+        await this.api.delete(
+          `/api/v1/governance/onboardingPlaybooks/${playbook.id}?hardDelete=true`
+        );
+      }
     });
+
+    return playbook;
   }
 
   async createAsset(
