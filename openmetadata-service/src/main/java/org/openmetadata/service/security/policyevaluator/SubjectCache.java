@@ -23,6 +23,7 @@ import com.google.common.cache.LoadingCache;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -49,15 +49,60 @@ public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   private static final String USER_CONTEXT_FIELDS =
       "roles,teams,isAdmin,profile,domains,personas,defaultPersona";
-  private static final String TEAM_FIELDS = "defaultRoles,policies,parents,profile,domains";
 
   static class UserPoliciesContext {
     final List<PolicyContext> policies;
     final List<UUID> teamsVisited;
+    final TeamHierarchySummary hierarchy;
 
-    UserPoliciesContext(List<PolicyContext> policies, List<UUID> teamsVisited) {
+    UserPoliciesContext(
+        List<PolicyContext> policies, List<UUID> teamsVisited, TeamHierarchySummary hierarchy) {
       this.policies = policies;
       this.teamsVisited = teamsVisited;
+      this.hierarchy = hierarchy;
+    }
+  }
+
+  /**
+   * The answers {@code inAnyTeam()}, {@code matchTeam()} and {@code hasAnyRole()} need, flattened
+   * out of the team hierarchy the policy loader already walked. Those are rule conditions, so they
+   * are evaluated once per rule per entity; resolving the hierarchy on each call is what made a
+   * listing request for a member of many teams issue thousands of queries (#19778).
+   */
+  record TeamHierarchySummary(Set<UUID> teamIds, Set<String> teamNames, Set<String> roleNames) {
+
+    static TeamHierarchySummary of(List<EntityReference> teams) {
+      return of(teams, TeamHierarchyResolver.closure(teams));
+    }
+
+    static TeamHierarchySummary of(
+        List<EntityReference> teams, Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy) {
+      Set<String> teamNames = new HashSet<>();
+      Set<String> roleNames = new HashSet<>();
+      for (TeamHierarchyResolver.TeamNode node : hierarchy.values()) {
+        teamNames.add(node.name());
+        node.defaultRoles().forEach(role -> roleNames.add(role.getName()));
+      }
+      return new TeamHierarchySummary(teamIdsOf(teams), teamNames, roleNames);
+    }
+
+    /**
+     * Whether this summary was built for exactly {@code teams}. A {@link SubjectContext} can be
+     * constructed around a {@code User} that did not come from this cache, and answering such a
+     * caller from the cached hierarchy would silently authorize against the wrong memberships.
+     */
+    boolean covers(List<EntityReference> teams) {
+      return teamIds.equals(teamIdsOf(teams));
+    }
+
+    private static Set<UUID> teamIdsOf(List<EntityReference> teams) {
+      Set<UUID> ids = new HashSet<>();
+      for (EntityReference team : listOrEmpty(teams)) {
+        if (team != null && team.getId() != null) {
+          ids.add(team.getId());
+        }
+      }
+      return ids;
     }
   }
 
@@ -113,6 +158,28 @@ public class SubjectCache {
       LOG.warn("Failed to load policies from cache for user {}", userName, e);
       return loadPoliciesForUser(userName).policies;
     }
+  }
+
+  /** Names of every team the user belongs to or sits under, including the teams themselves. */
+  public static Set<String> getTeamNamesInHierarchy(String userName, List<EntityReference> teams) {
+    return hierarchyFor(userName, teams).teamNames();
+  }
+
+  /** Names of the default roles the user inherits from the team hierarchy. */
+  public static Set<String> getInheritedRoleNames(String userName, List<EntityReference> teams) {
+    return hierarchyFor(userName, teams).roleNames();
+  }
+
+  private static TeamHierarchySummary hierarchyFor(String userName, List<EntityReference> teams) {
+    try {
+      TeamHierarchySummary cached = USER_POLICIES_CACHE.get(userName).hierarchy;
+      if (cached.covers(teams)) {
+        return cached;
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to load the team hierarchy from cache for user {}", userName, e);
+    }
+    return TeamHierarchySummary.of(teams);
   }
 
   public static List<UUID> getVisitedTeams(String userName) {
@@ -234,6 +301,8 @@ public class SubjectCache {
   private static UserPoliciesContext loadPoliciesForUser(String userName) {
     LOG.debug("Loading policies for user: {}", userName);
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    List<EntityReference> teams = listOrEmpty(user.getTeams());
+    Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy = TeamHierarchyResolver.closure(teams);
     List<PolicyContext> policies = new ArrayList<>();
     List<UUID> teamsVisited = new ArrayList<>();
 
@@ -244,13 +313,14 @@ public class SubjectCache {
 
     // 2. Team policies (skip for bots)
     if (!Boolean.TRUE.equals(user.getIsBot())) {
-      for (EntityReference teamRef : listOrEmpty(user.getTeams())) {
-        policies.addAll(loadTeamPolicies(teamRef.getId(), teamsVisited, false));
+      for (EntityReference teamRef : teams) {
+        policies.addAll(loadTeamPolicies(teamRef.getId(), hierarchy, teamsVisited, false));
       }
     }
 
     LOG.debug("Loaded {} policies for user: {}", policies.size(), userName);
-    return new UserPoliciesContext(policies, teamsVisited);
+    return new UserPoliciesContext(
+        policies, teamsVisited, TeamHierarchySummary.of(teams, hierarchy));
   }
 
   private static List<PolicyContext> loadRolePolicies(
@@ -268,34 +338,37 @@ public class SubjectCache {
   }
 
   private static List<PolicyContext> loadTeamPolicies(
-      UUID teamId, List<UUID> visited, boolean skipRoles) {
+      UUID teamId,
+      Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy,
+      List<UUID> visited,
+      boolean skipRoles) {
     List<PolicyContext> policies = new ArrayList<>();
     if (visited.contains(teamId)) {
       return policies;
     }
     visited.add(teamId);
 
-    try {
-      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, NON_DELETED);
+    TeamHierarchyResolver.TeamNode team = hierarchy.get(teamId);
+    if (team == null) {
+      LOG.warn("Failed to load team: {}", teamId);
+      return policies;
+    }
 
-      // Team's default roles
-      if (!skipRoles) {
-        for (EntityReference roleRef : listOrEmpty(team.getDefaultRoles())) {
-          policies.addAll(loadRolePolicies(Entity.TEAM, team.getName(), roleRef));
-        }
+    // Team's default roles
+    if (!skipRoles) {
+      for (EntityReference roleRef : team.defaultRoles()) {
+        policies.addAll(loadRolePolicies(Entity.TEAM, team.name(), roleRef));
       }
+    }
 
-      // Direct policies on team
-      for (EntityReference policyRef : listOrEmpty(team.getPolicies())) {
-        policies.add(loadPolicyContext(Entity.TEAM, team.getName(), null, policyRef));
-      }
+    // Direct policies on team
+    for (EntityReference policyRef : team.policies()) {
+      policies.add(loadPolicyContext(Entity.TEAM, team.name(), null, policyRef));
+    }
 
-      // Parent teams
-      for (EntityReference parentRef : listOrEmpty(team.getParents())) {
-        policies.addAll(loadTeamPolicies(parentRef.getId(), visited, skipRoles));
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to load team: {}", teamId, e);
+    // Parent teams
+    for (EntityReference parentRef : team.parents()) {
+      policies.addAll(loadTeamPolicies(parentRef.getId(), hierarchy, visited, skipRoles));
     }
     return policies;
   }
@@ -312,6 +385,8 @@ public class SubjectCache {
 
   public static List<PolicyContext> getTeamPoliciesForResource(
       UUID teamId, List<UUID> teamsVisited) {
-    return loadTeamPolicies(teamId, teamsVisited, true);
+    EntityReference teamRef = new EntityReference().withId(teamId).withType(Entity.TEAM);
+    return loadTeamPolicies(
+        teamId, TeamHierarchyResolver.closure(List.of(teamRef)), teamsVisited, true);
   }
 }
