@@ -86,7 +86,7 @@ for (const scenario of CLAIM_SCENARIOS) {
         await test.step('Authenticate at Okta', async () => {
           await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
-          const signInButton = page.locator('button.signin-button');
+          const signInButton = page.getByTestId('sso-login-button');
 
           await expect(signInButton).toBeVisible();
           await signInButton.click();

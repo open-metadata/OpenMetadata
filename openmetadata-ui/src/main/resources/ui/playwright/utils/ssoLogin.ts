@@ -27,7 +27,7 @@ export const loginViaSso = async (
 ): Promise<void> => {
   await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
-  const signInButton = page.locator('button.signin-button');
+  const signInButton = page.getByTestId('sso-login-button');
 
   await expect(signInButton).toBeVisible();
   await signInButton.click();

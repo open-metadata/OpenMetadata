@@ -40,7 +40,7 @@ import {
 const completeOidcSelfSignup = async (page: Page): Promise<void> => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-  const ssoButton = page.locator('button.signin-button');
+  const ssoButton = page.getByTestId('sso-login-button');
   await ssoButton.waitFor({ state: 'visible', timeout: 30000 });
   await ssoButton.click();
 

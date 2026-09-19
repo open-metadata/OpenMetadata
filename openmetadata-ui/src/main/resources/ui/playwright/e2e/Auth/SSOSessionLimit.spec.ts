@@ -98,7 +98,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
       waitUntil: 'domcontentloaded',
       timeout: 30_000,
     });
-    await expect(evicted.locator('button.signin-button')).toBeVisible();
+    await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
 
     // The newest session is within the cap and stays authenticated.
     await survivor.reload({ waitUntil: 'domcontentloaded' });
