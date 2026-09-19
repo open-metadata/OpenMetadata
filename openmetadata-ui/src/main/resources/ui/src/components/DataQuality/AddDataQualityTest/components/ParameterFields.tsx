@@ -39,13 +39,13 @@ import {
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { isSelectParam } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import {
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { isSelectParam } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -446,30 +446,37 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     ? params?.find((param) => param.name === THRESHOLD_UNIT_PARAM)
     : undefined;
 
+  const getThresholdRow = (
+    thresholdParam: TestCaseParameterDefinition,
+    unitParam: TestCaseParameterDefinition
+  ) => {
+    const thresholdField = getFieldProp(thresholdParam);
+    const unitField = getFieldProp(unitParam);
+
+    return (
+      <div
+        className="tw:flex tw:items-start tw:gap-3"
+        data-testid="threshold-row"
+        key={thresholdParam.name}>
+        <div className="tw:flex-1">
+          {thresholdField && getField(thresholdField)}
+        </div>
+        <div className="tw:flex-1">{unitField && getField(unitField)}</div>
+      </div>
+    );
+  };
+
   return (
     <>
       {params?.map((data) => {
-        if (thresholdUnitParam && data.name === THRESHOLD_UNIT_PARAM) {
-          return null;
-        }
+        if (thresholdUnitParam) {
+          if (data.name === THRESHOLD_UNIT_PARAM) {
+            return null;
+          }
 
-        if (thresholdUnitParam && data.name === THRESHOLD_PARAM) {
-          const thresholdField = getFieldProp(data);
-          const unitField = getFieldProp(thresholdUnitParam);
-
-          return (
-            <div
-              className="tw:flex tw:items-start tw:gap-3"
-              data-testid="threshold-row"
-              key={data.name}>
-              <div className="tw:flex-1">
-                {thresholdField && getField(thresholdField)}
-              </div>
-              <div className="tw:flex-1">
-                {unitField && getField(unitField)}
-              </div>
-            </div>
-          );
+          if (data.name === THRESHOLD_PARAM) {
+            return getThresholdRow(data, thresholdUnitParam);
+          }
         }
 
         // Enum params (optionValues) render as a single select even when the

@@ -22,6 +22,7 @@ import {
   getParamOptionLabelKey,
   getThresholdNoun,
   getThresholdPreviewData,
+  getThresholdPreviewTarget,
   getThresholdSampling,
   getThresholdTestSemantic,
   getThresholdUnitLabelParts,
@@ -174,6 +175,39 @@ describe('hasThresholdUnitParam', () => {
     expect(hasThresholdUnitParam(definitionOf('columnValuesToBeUnique'))).toBe(
       true
     );
+  });
+});
+
+describe('getThresholdPreviewTarget', () => {
+  it('names the column for a column-level test', () => {
+    expect(
+      getThresholdPreviewTarget({
+        isColumnLevel: true,
+        columnName: 'email',
+        tableName: 'customers',
+        tableFqn: 'svc.db.schema.customers',
+      })
+    ).toBe('email');
+  });
+
+  it('names the table for a table-level test', () => {
+    expect(
+      getThresholdPreviewTarget({
+        isColumnLevel: false,
+        columnName: 'email',
+        tableName: 'customers',
+        tableFqn: 'svc.db.schema.customers',
+      })
+    ).toBe('customers');
+  });
+
+  it('falls back to the FQN while the table entity is still loading', () => {
+    expect(
+      getThresholdPreviewTarget({
+        isColumnLevel: false,
+        tableFqn: 'svc.db.schema.customers',
+      })
+    ).toBe('svc.db.schema.customers');
   });
 });
 

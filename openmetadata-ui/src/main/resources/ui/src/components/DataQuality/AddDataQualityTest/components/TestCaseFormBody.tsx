@@ -55,25 +55,20 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
-import {
-  Table,
-  TableProfilerConfig,
-} from '../../../../generated/entity/data/table';
+import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   EntityType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import {
-  getTableDetailsByFQN,
-  getTableProfilerConfig,
-} from '../../../../rest/tableAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import {
   getListTestCaseBySearch,
   getListTestDefinitions,
@@ -87,7 +82,7 @@ import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
-import { hasThresholdUnitParam } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { getThresholdPreviewTarget } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
@@ -1409,43 +1404,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
-  // A threshold is measured on whatever the profiler actually reads, so the
-  // preview has to say when that is a sample. `tableProfilerConfig` is not a
-  // `fields` option on GET /tables, hence its own request — and it is only
-  // worth making for a test that has a threshold at all. Any failure (most
-  // likely a missing ViewDataProfile permission) just drops the note.
-  const [tableProfilerConfig, setTableProfilerConfig] =
-    useState<TableProfilerConfig>();
-  const profiledTableId = hasThresholdUnitParam(selectedTestDefinition)
-    ? selectedTableData?.id
-    : undefined;
-
-  useEffect(() => {
-    if (!profiledTableId) {
-      setTableProfilerConfig(undefined);
-
-      return;
-    }
-
-    let cancelled = false;
-    const fetchProfilerConfig = async () => {
-      try {
-        const response = await getTableProfilerConfig(profiledTableId);
-        if (!cancelled) {
-          setTableProfilerConfig(response?.tableProfilerConfig);
-        }
-      } catch {
-        if (!cancelled) {
-          setTableProfilerConfig(undefined);
-        }
-      }
-    };
-    fetchProfilerConfig();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profiledTableId]);
+  const tableProfilerConfig = useThresholdProfilerConfig(
+    selectedTestDefinition,
+    selectedTableData?.id
+  );
+  const thresholdPreviewTarget = getThresholdPreviewTarget({
+    isColumnLevel: selectedTestLevel === TestLevel.COLUMN,
+    columnName: selectedColumn,
+    tableName: selectedTableData?.name,
+    tableFqn: selectedTableFqn,
+  });
 
   const canShowSchedulerSection = getCanShowSchedulerSection(
     showOnlyParameter,
@@ -1512,11 +1480,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
               definition={selectedTestDefinition}
               form={form}
               profilerConfig={tableProfilerConfig}
-              target={
-                selectedTestLevel === TestLevel.COLUMN
-                  ? selectedColumn
-                  : selectedTableData?.name ?? selectedTableFqn
-              }
+              target={thresholdPreviewTarget}
             />
           )
         }

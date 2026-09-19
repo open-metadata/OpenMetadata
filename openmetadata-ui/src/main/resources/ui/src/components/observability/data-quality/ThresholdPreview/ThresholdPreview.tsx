@@ -19,12 +19,12 @@ import { useTranslation } from 'react-i18next';
 import {
   CustomSqlStrategy,
   getThresholdPreviewData,
-  THRESHOLD_NOUN_KEYS,
   ThresholdNoun,
   ThresholdPreviewData,
   ThresholdSampling,
   ThresholdSamplingKind,
   ThresholdTestSemantic,
+  THRESHOLD_NOUN_KEYS,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { ThresholdPreviewProps } from './ThresholdPreview.types';
 

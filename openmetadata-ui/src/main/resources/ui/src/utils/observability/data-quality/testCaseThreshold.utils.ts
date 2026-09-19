@@ -282,6 +282,24 @@ export const hasThresholdUnitParam = (
     )
   );
 
+/**
+ * What the preview names as the thing being measured: the column for a
+ * column-level test, otherwise the table. The table falls back to its FQN
+ * because the full entity — and with it `name` — is only loaded once the table
+ * has been picked and fetched.
+ */
+export const getThresholdPreviewTarget = ({
+  isColumnLevel,
+  columnName,
+  tableName,
+  tableFqn,
+}: {
+  isColumnLevel: boolean;
+  columnName?: string;
+  tableName?: string;
+  tableFqn?: string;
+}): string | undefined => (isColumnLevel ? columnName : tableName ?? tableFqn);
+
 // ─── Live preview ────────────────────────────────────────────────────────────
 
 /**
