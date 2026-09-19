@@ -1271,7 +1271,13 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
 // Deliberately unlike the Elasticsearch variant above: this one passes the raw
 // `config` to buildEsRule, excludes select_not_any_in from the per-option
 // expansion, and keeps undefined entries in the clause list.
-function buildJsonLogicMultiselectRule(field, value, operator, config, valueSrc) {
+function buildJsonLogicMultiselectRule(
+  field,
+  value,
+  operator,
+  config,
+  valueSrc
+) {
   const useAndLogic =
     operator === 'multiselect_equals' || operator === 'multiselect_not_equals';
 
