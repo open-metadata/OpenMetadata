@@ -35,3 +35,17 @@
   align-items: center;
   justify-content: center;
 }
+
+// Hidden rather than unmounted so revealing them never reflows the comment,
+// and shown on focus as well as hover so they stay reachable by keyboard.
+.task-comment-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.task-comment-card:hover .task-comment-actions,
+.task-comment-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
