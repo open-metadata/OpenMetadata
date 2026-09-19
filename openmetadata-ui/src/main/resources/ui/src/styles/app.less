@@ -26,7 +26,14 @@ body {
 // than the design recording's page base (#0c0e12). Override dark only to the
 // page token; light keeps the frozen gray-blue-50 (#f8f9fc).
 .dark-mode body {
-  background: var(--om-color-bg-primary);
+  background: var(--tw-background-color-primary);
+}
+
+// AI-mode shell background in dark: page-dark so the sidebar's margin doesn't
+// expose the gray-blue app body behind it (seamless with the canvas sidebar).
+// Dark only; light is unchanged (inherits the body as before).
+.dark-mode .assistant-layout {
+  background: var(--tw-color-bg-primary);
 }
 
 .main-container {
@@ -857,7 +864,13 @@ a[href].link-text-grey,
   --om-grey-2: var(--color-bg-secondary);
   --om-grey-5: var(--color-bg-secondary);
   --om-grey-50: var(--color-bg-secondary);
-  --om-grey-15: var(--color-border-secondary);
+  // @grey-15 (= @border-color / @global-border) is the primary neutral border
+  // across antd + legacy components (cards, tabs, tables, panels, dividers).
+  // In dark, map it to the subtle white-alpha border (rgba(255,255,255,0.08))
+  // so every antd surface reads consistently instead of a solid gray edge —
+  // one change themes all @border-color borders app-wide (OSS + Collate via
+  // submodule). Light keeps the frozen #eaecf5 fallback.
+  --om-grey-15: var(--color-border-subtle);
   --om-grey-7: var(--color-text-quaternary);
   // Status — utility tokens auto-invert to readable dark values
   --om-blue-13: var(--tw-color-utility-blue-light-100);
