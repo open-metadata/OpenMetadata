@@ -114,6 +114,34 @@ public class CsvAsyncJobResourceIT {
   }
 
   @Test
+  void test_importResultIsRetrievableViaRest(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "importresult");
+    String csv = exportMetricCsv(metric);
+
+    String jobId =
+        startJob(
+            "PUT",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/importAsync?dryRun=true",
+            csv,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    // The websocket frame that normally carries this result is dropped whenever the pod that ran
+    // the job is not the pod holding the user's socket (multi-node). REST must serve it instead.
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/importResult", null, adminToken());
+    assertEquals(
+        200,
+        result.statusCode(),
+        "A completed import must expose its validation result over REST: " + result.body());
+    JsonNode body = MAPPER.readTree(result.body());
+    assertEquals("success", body.path("status").asText());
+    assertTrue(
+        body.path("numberOfRowsProcessed").asInt() >= 1,
+        "The import result must report the rows it validated: " + result.body());
+  }
+
+  @Test
   void test_importPayloadOverRowCapIsRejected(TestNamespace ns) throws Exception {
     Metric metric = createMetric(ns, "capped");
     String oversized = "name\n" + "row\n".repeat(100_001);
