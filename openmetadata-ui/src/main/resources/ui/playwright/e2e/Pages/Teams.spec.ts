@@ -43,6 +43,7 @@ import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { getCellByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
@@ -247,9 +248,9 @@ test.describe('Teams Page', () => {
 
       // Select the user to remove
       await page
-        .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-        )
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
         .click();
 
       const updateTeamResponse = page.waitForResponse('/api/v1/users*');
@@ -395,9 +396,7 @@ test.describe('Teams Page', () => {
       await expect
         .poll(
           async () =>
-            page
-              .getByRole('cell', { name: teamDetails?.displayName ?? '' })
-              .count(),
+            getCellByName(page, teamDetails?.displayName ?? '').count(),
           { timeout: 60000, intervals: [500, 1000, 2000] }
         )
         .toBe(0);
@@ -424,6 +423,11 @@ test.describe('Teams Page', () => {
   });
 
   test('Create a new public team', async ({ page }) => {
+    // Full UI create flow plus per-test admin login: nightly runs measured
+    // 66-84s under load against the 60s default budget (all three attempts of
+    // run 35066461002 timed out just past it).
+    test.slow();
+
     await settingClick(page, GlobalSettingOptions.TEAMS);
 
     await openAddTeamModal(page);
@@ -545,6 +549,12 @@ test.describe('Teams Page', () => {
   test('Permanently deleting a team without soft deleting should work properly', async ({
     page,
   }) => {
+    // Per-test admin login, a settings navigation that reloads the whole
+    // Organization listing, and the two-step hard-delete flow: 20s on the
+    // release lane, but run 35144854437 (main, both databases) measured every
+    // attempt past the 60s default and timed out waiting for the team link.
+    test.slow();
+
     const { apiContext, afterAction } = await getApiContext(page);
     const team = new TeamClass();
     await team.create(apiContext);
@@ -877,15 +887,16 @@ test.describe('Teams Page', () => {
       .fill(user.getUserDisplayName());
 
     await page
-      .locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      .locator('[data-testid="selectable-list"]')
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.getUserDisplayName() })
       .click();
 
     await expect(
-      page.locator(
-        `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
-      )
+      page
+        .locator('[data-testid="selectable-list"]')
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() })
     ).toHaveClass(/active/);
 
     const updateTeamResponse = page.waitForResponse('/api/v1/users*');

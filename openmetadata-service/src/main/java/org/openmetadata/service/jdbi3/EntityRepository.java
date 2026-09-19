@@ -2862,30 +2862,79 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 page.cursorId(),
                 fetchLimit);
 
-    List<T> entities = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
-    boolean hasMoreInCurrentDirection = entities.size() > limit;
+    List<T> pageRows = new ArrayList<>(JsonUtils.readObjects(jsons, getEntityClass()));
+    boolean hasMoreInCurrentDirection = pageRows.size() > limit;
     if (hasMoreInCurrentDirection) {
-      entities = new ArrayList<>(entities.subList(0, limit));
+      pageRows = new ArrayList<>(pageRows.subList(0, limit));
     }
     if (page.isBackward()) {
-      Collections.reverse(entities);
+      Collections.reverse(pageRows);
     }
-    setFieldsInBulk(putFields, entities);
-    hydrateHistoryEntities(entities);
+    // Cursors describe the rows the SQL page held, not the rows that survive hydration. Hydration
+    // drops an entity that was hard-deleted mid-request, and a cursor taken from the survivors
+    // would re-read those dropped rows on the next page -- or, when none survive, end the walk
+    // before its last page.
+    String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
+    String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
+    List<T> entities = hydrateHistoryPage(pageRows);
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
-    return historyPageResult(entities, page, hasMoreInCurrentDirection, total);
+    return historyPageResult(
+        entities, page, hasMoreInCurrentDirection, total, firstCursor, lastCursor);
+  }
+
+  private String historyCursor(T entity) {
+    return entity.getUpdatedAt() + ":" + entity.getId().toString();
+  }
+
+  /**
+   * Hydrate a history page, tolerating an entity hard-deleted between the version query (which
+   * takes no lock) and this call. {@link #setFieldsInBulk} resolves live relationships for the
+   * whole page in one go, so one vanished entity throws and takes every other row down with it:
+   * the reader gets a 404 for a window it never asked about. Retrying row by row keeps the page
+   * and drops only what actually vanished.
+   */
+  private List<T> hydrateHistoryPage(List<T> entities) {
+    try {
+      hydrateHistoryRows(entities);
+      return entities;
+    } catch (EntityNotFoundException e) {
+      return hydrateHistoryRowByRow(entities);
+    }
+  }
+
+  private void hydrateHistoryRows(List<T> entities) {
+    setFieldsInBulk(putFields, entities);
+    hydrateHistoryEntities(entities);
+  }
+
+  private List<T> hydrateHistoryRowByRow(List<T> entities) {
+    List<T> hydrated = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      try {
+        hydrateHistoryRows(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Dropping {} {} from history page, deleted mid-request: {}",
+            entityType,
+            entity.getId(),
+            e.getMessage());
+      }
+    }
+    return hydrated;
   }
 
   private ResultList<T> historyPageResult(
-      List<T> entities, HistoryPage page, boolean hasMoreInCurrentDirection, int total) {
-    if (entities.isEmpty()) {
+      List<T> entities,
+      HistoryPage page,
+      boolean hasMoreInCurrentDirection,
+      int total,
+      String firstCursor,
+      String lastCursor) {
+    if (firstCursor == null) {
       return getResultList(entities, null, null, total);
     }
-    T first = entities.getFirst();
-    T last = entities.getLast();
-    String firstCursor = first.getUpdatedAt() + ":" + first.getId().toString();
-    String lastCursor = last.getUpdatedAt() + ":" + last.getId().toString();
     boolean hasNewerVersions = page.isBackward() ? hasMoreInCurrentDirection : !page.isFirstPage();
     boolean hasOlderVersions = page.isBackward() || hasMoreInCurrentDirection;
     return getResultList(
@@ -2976,6 +3025,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     setDefaultStatus(entity, update);
+    if (!update) {
+      // Only on create: on PATCH the incoming entity carries the *stored* certification even when
+      // the patch never touched it, so validating there would start rejecting unrelated edits to
+      // every already-certified entity the moment an admin changes allowedClassification.
+      prepareCertification(entity);
+    }
     // Domain is already validated
   }
 
@@ -3175,13 +3230,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFqn = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-      }
-    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -5095,12 +5143,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
-   * connection and starve the pool. Tag RDF is deferred via {@link RdfTagUpdater#beginDeferral()},
-   * the domain/data-product lineage-ES leaf via {@link LineageUtil#beginLineageDeferral()}, and the
-   * Redis-L2 cache invalidation issued by {@code addRelationship}/{@code deleteRelationship}/{@code
-   * invalidateCacheForEntity} via {@link #beginCacheInvalidationDeferral()} — all drained
-   * post-commit on the request thread. Only the cheap local Guava-L1 eviction stays inline. Redis
-   * cache write-through likewise happens post-commit on the request thread (read-your-write safe).
+   * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
+   * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
+   * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
+   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
+   * cheap local Guava-L1 eviction stays inline. Redis cache write-through likewise happens
+   * post-commit on the request thread (read-your-write safe).
+   *
+   * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
+   * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
+   * in favor of the async snapshot writer ({@code RdfUpdater.updateEntity}), so the scope always
+   * drains an empty closure list today. Left in place rather than torn out here — see the PR
+   * description for the follow-up to remove it along with {@code ownsRdf}/{@code rdfCheckpoint}.
    */
   private void runInTransactionWithRetry(Runnable flushBody) {
     DeadlockRetry.execute(
@@ -5997,23 +6051,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     collectColumnTags(columns, tagsByTarget);
-    applyTagsBatchWithRdf(tagsByTarget);
+    applyTagsBatch(tagsByTarget);
   }
 
-  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+  protected void applyTagsBatch(Map<String, List<TagLabel>> tagsByTarget) {
     if (tagsByTarget == null || tagsByTarget.isEmpty()) {
       return;
     }
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFQN = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
-        }
-      }
-    }
   }
 
   protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
@@ -6033,7 +6078,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void applyTags(T entity) {
     if (supportsTags) {
-      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName(), entityType, entity.getId());
+      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName());
     }
   }
 
@@ -6042,15 +6087,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
-    applyTags(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
-   */
-  @Transaction
-  public final void applyTags(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
@@ -6065,10 +6101,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getReason(),
                 tagLabel.getAppliedBy(),
                 tagLabel.getMetadata());
-
-        // Update RDF store
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -6078,15 +6110,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsAdd(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsAdd(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -6098,12 +6121,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
-
-      // Update RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -6112,15 +6129,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsDelete(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Delete multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsDelete(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -6132,12 +6140,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
-
-      // Remove from RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -6198,6 +6200,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .withAppliedDate(tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
         .withExpiryDate(
             tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
+  }
+
+  /**
+   * Validate a request-supplied certification and replace its {@code appliedDate}/{@code
+   * expiryDate} with the server-computed validity window.
+   *
+   * <p>Both the create and the update paths have to run this. {@link
+   * EntityUpdater#updateCertification} reaches it for an entity that already exists, but create and
+   * bulk-create go straight from {@code storeRelationshipsInternal} to {@link #applyCertification}
+   * without ever constructing an updater — so without a second call site a certification supplied
+   * on a create request would be written to {@code tag_usage} with no classification check and with
+   * whatever dates the client happened to send.
+   */
+  protected void validateAndStampCertification(AssetCertification certification) {
+    AssetCertificationSettings settings =
+        Entity.getSystemRepository().getAssetCertificationSettingOrDefault();
+    validateCertification(certification.getTagLabel().getTagFQN(), settings);
+
+    long appliedDate = System.currentTimeMillis();
+    certification.setAppliedDate(appliedDate);
+    LocalDateTime appliedDateTime =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC);
+    LocalDateTime expiryDateTime = appliedDateTime.plus(Period.parse(settings.getValidityPeriod()));
+    certification.setExpiryDate(expiryDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+  }
+
+  protected static void validateCertification(
+      String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
+    if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
+      throw new IllegalArgumentException(
+          "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
+    } else {
+      String allowedClassification = assetCertificationSettings.getAllowedClassification();
+      String[] fqnParts = FullyQualifiedName.split(certificationLabel);
+      String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
+      if (!allowedClassification.equals(parentFqn)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid Classification: %s is not valid for Certification.", certificationLabel));
+      }
+    }
+  }
+
+  /**
+   * Certification arriving on a create request never passes through {@link EntityUpdater}, so
+   * validate it and stamp the server-authoritative dates here instead. Mirrors {@link
+   * #applyCertification} in tolerating a certification with no usable tag rather than failing the
+   * create — that shape is already a no-op downstream.
+   */
+  private void prepareCertification(T entity) {
+    if (!supportsCertification || entity.getCertification() == null) {
+      return;
+    }
+    AssetCertification certification = entity.getCertification();
+    if (certification.getTagLabel() == null
+        || nullOrEmpty(certification.getTagLabel().getTagFQN())) {
+      return;
+    }
+    validateAndStampCertification(certification);
   }
 
   protected void applyCertification(T entity) {
@@ -8755,6 +8816,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
+    /**
+     * True while the diff pass being run has the persisted entity as its baseline — the state the
+     * search index and the stored lineage rows mirror. Consolidation replays the diff against
+     * reverted baselines (see {@link #flushUpdateBody}); side effects that reconcile an external
+     * store against {@code original} are only correct on a baseline pass. Defaults to true so the
+     * single-pass paths (no consolidation, bulk {@code updateWithDeferredStore}) need no opt-in.
+     */
+    private boolean indexBaselinePass = true;
+
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
     // 'previous',
@@ -8856,6 +8926,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
       this.deferredReactExecuted = false;
+    }
+
+    /**
+     * Whether the diff pass currently running is baselined on the persisted entity. See {@link
+     * #indexBaselinePass}.
+     */
+    protected final boolean isIndexBaselinePass() {
+      return indexBaselinePass;
     }
 
     protected final void deferReactOperation(Runnable operation) {
@@ -8984,10 +9062,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       versionChanged = snapshot.versionChanged;
       entityStored = snapshot.entityStored;
       majorVersionChange = snapshot.majorVersionChange;
-      // The flush body repopulates deferredReactOperations (tag-RDF closures) via
-      // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
+      // The flush body repopulates deferredReactOperations via deferReactOperation; clear them
+      // so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
+      indexBaselinePass = true;
       resetForRetryAttempt();
     }
 
@@ -9046,6 +9125,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
             incrementalChangeForImport();
           }
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevertImport")) {
             revertForImport();
           }
@@ -9053,6 +9133,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChange")) {
             incrementalChange();
           }
+          // Everything from here on diffs against a reverted baseline the external stores never
+          // saw: revert() inverts this request, replays it, then rebases original onto the
+          // pre-session version.
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevert")) {
             revert();
           }
@@ -9583,10 +9667,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Apply differential updates - only modify what changed
       if (!deletedTags.isEmpty()) {
-        applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
+        applyTagsDeleteInFlush(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
@@ -9616,7 +9700,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTagsReplaceInFlushAndDeferRdf(origTags, updatedTags, fqn);
+      applyTagsAddInFlush(updatedTags, fqn);
     }
 
     private List<TagLabel> getNonDerivedTags(List<TagLabel> tags) {
@@ -9628,51 +9712,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .toList();
     }
 
-    protected final void applyTagsAddInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-            }
-          });
     }
 
-    protected final void applyTagsDeleteInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsDeleteInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-            }
-          });
-    }
-
-    private void applyTagsReplaceInFlushAndDeferRdf(
-        List<TagLabel> originalTags, List<TagLabel> updatedTags, String targetFqn) {
-      List<TagLabel> originalNonDerived = getNonDerivedTags(originalTags);
-      if (!originalNonDerived.isEmpty()) {
-        List<TagLabel> tagsToRemove = List.copyOf(originalNonDerived);
-        deferReactOperation(
-            () -> {
-              for (TagLabel tagLabel : tagsToRemove) {
-                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-              }
-            });
-      }
-      applyTagsAddInFlushAndDeferRdf(updatedTags, targetFqn);
     }
 
     private void updateExtension(boolean consolidatingChanges) {
@@ -10029,10 +10082,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origCertification,
           updatedCertification);
 
-      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
-        // Revert change to non-empty certification if it is being updated by a bot
-        // This is to prevent bots from overwriting the certification. Certification need to be
-        // updated with a PATCH request
+      if (operation.isPut()
+          && !nullOrEmpty(original.getCertification())
+          && updatedByBot()
+          && !overrideMetadata) {
+        // Revert change to non-empty certification if it is being updated by a bot, matching the
+        // guard on description/owners: a stored value wins over anything a scheduled re-sync
+        // sends. Certification can still be updated with a PATCH request, or via the bulk path
+        // with overrideMetadata=true.
         updated.setCertification(original.getCertification());
         return;
       }
@@ -10044,49 +10101,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (Objects.equals(origCertification, updatedCertification)) {
+      // Compare by tagLabel.tagFQN only, not full-object equality: appliedDate/expiryDate are
+      // always recomputed server-side below and stored back, so a request that legitimately
+      // doesn't know the server's current dates (e.g. an ingestion connector re-sending the same
+      // certification every run) would otherwise never compare equal, causing a spurious
+      // version bump and re-apply on every non-bulk PUT. Other TagLabel fields (labelType,
+      // state, etc.) are ignored - only the certification tag's identity matters here.
+      boolean certificationTagUnchanged =
+          origCertification != null
+              && origCertification.getTagLabel() != null
+              && updatedCertification.getTagLabel() != null
+              && Objects.equals(
+                  origCertification.getTagLabel().getTagFQN(),
+                  updatedCertification.getTagLabel().getTagFQN());
+      if (certificationTagUnchanged) {
         LOG.debug("Certification unchanged");
+        // Restore the stored (server-authoritative) certification, including its real
+        // appliedDate/expiryDate, so the request's arbitrary date fields are never persisted -
+        // this method only skips the re-apply/recordChange, not the eventual entity write.
+        updated.setCertification(origCertification);
         return;
       }
 
-      SystemRepository systemRepository = Entity.getSystemRepository();
-      AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettingOrDefault();
-
-      String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
-
-      validateCertification(certificationLabel, assetCertificationSettings);
-
-      long certificationDate = System.currentTimeMillis();
-      updatedCertification.setAppliedDate(certificationDate);
-
-      LocalDateTime nowDateTime =
-          LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
-      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
-      LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
-      updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+      validateAndStampCertification(updatedCertification);
 
       applyCertification(updated);
 
       recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
-    }
-
-    private void validateCertification(
-        String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
-      if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
-        throw new IllegalArgumentException(
-            "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
-      } else {
-        String allowedClassification = assetCertificationSettings.getAllowedClassification();
-        String[] fqnParts = FullyQualifiedName.split(certificationLabel);
-        String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
-        if (!allowedClassification.equals(parentFqn)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid Classification: %s is not valid for Certification.",
-                  certificationLabel));
-        }
-      }
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -10832,6 +10873,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<Column> origColumns,
         List<Column> updatedColumns,
         BiPredicate<Column, Column> columnMatch) {
+      ColumnLineageChanges lineageChanges = new ColumnLineageChanges();
+      updateColumns(fieldName, origColumns, updatedColumns, columnMatch, lineageChanges);
+      handleColumnLineageUpdates(
+          lineageChanges.deletedColumnFqns(), lineageChanges.renamedColumnFqns());
+    }
+
+    private void updateColumns(
+        String fieldName,
+        List<Column> origColumns,
+        List<Column> updatedColumns,
+        BiPredicate<Column, Column> columnMatch,
+        ColumnLineageChanges lineageChanges) {
       origColumns = listOrEmpty(origColumns);
       updatedColumns = listOrEmpty(updatedColumns);
       UUID entityId = updated.getId();
@@ -10870,7 +10923,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             listOrEmpty(added.getTags()).stream()
                 .map(tag -> tag.withAppliedBy(updatingUser.getName()))
                 .toList(),
@@ -10881,7 +10934,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
         Column stored =
             origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
@@ -10920,19 +10972,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
+          updateColumns(
+              columnPrefix,
+              stored.getChildren(),
+              updated.getChildren(),
+              columnMatch,
+              lineageChanges);
         }
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-      List<String> deletedColumnFqnList =
-          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
-      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+      lineageChanges.include(deletedColumns, originalUpdatedColumnFqns);
     }
 
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    private static final class ColumnLineageChanges {
+      private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
+      private final HashMap<String, String> renamedColumnFqns = new HashMap<>();
+
+      private void include(
+          List<Column> deletedColumns, HashMap<String, String> originalUpdatedColumnFqns) {
+        deletedColumns.stream()
+            .map(Column::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .forEach(deletedColumnFqns::add);
+        renamedColumnFqns.putAll(originalUpdatedColumnFqns);
+      }
+
+      private List<String> deletedColumnFqns() {
+        return List.copyOf(deletedColumnFqns);
+      }
+
+      private HashMap<String, String> renamedColumnFqns() {
+        return new HashMap<>(renamedColumnFqns);
+      }
     }
 
     private void updateColumnDescription(
@@ -13184,7 +13261,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * response filter that records change events for synchronous operations. Without this, async
    * deletes and restores are invisible to audit logs, alerts, and webhooks. Recursive deletes pass
    * a single root event here; cascaded descendants are intentionally not recorded individually (see
-   * {@link #persistBulkUpdaters}).
+   * {@link #persistBulkUpdaters}). Writes that never produce a single-entity REST response, such as
+   * internal workflow transitions or per-item bulk updates, record their events here too.
    */
   public final void storeChangeEventForAsyncOperation(
       T entity, EventType eventType, boolean recursive, String userName) {

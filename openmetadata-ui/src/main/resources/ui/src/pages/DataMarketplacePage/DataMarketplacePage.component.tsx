@@ -51,7 +51,7 @@ import './data-marketplace-page.less';
 // customize page still uses the grid, which is where drag and resize happen.
 const WIDGET_GAP = 18;
 
-// In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
+// In AI mode the caller's `PageHeader` owns the 20px gap to the content below
 // through its own bottom margin, matching the Domains/Data Products list pages —
 // the column must not stack another offset on top of it. The classic hero keeps
 // the original 8px offset it was designed against.

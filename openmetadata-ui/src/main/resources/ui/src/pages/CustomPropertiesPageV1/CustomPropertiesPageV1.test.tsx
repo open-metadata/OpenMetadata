@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ENTITY_PATH } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
 import CustomEntityDetailV1 from './CustomPropertiesPageV1';
@@ -91,14 +92,24 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div>AddCustomProperty</div>)
 );
 
-const mockGetEntityPermission = jest.fn().mockResolvedValue({
-  EditAll: true,
-});
+// CustomPropertiesPageV1 now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) rather than an imperative usePermissionProvider().getEntityPermission call —
+// mock the hook directly, mirroring RolesDetailPage.test.tsx's setMockPermissions helper.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermission: jest.fn(() => mockGetEntityPermission()),
-  })),
+const setMockPermissions = (
+  canEditAll = true,
+  { error = null as unknown } = {}
+) => {
+  mockUseEntityPermissions.mockReturnValue({
+    canEditAll,
+    error,
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
@@ -129,13 +140,39 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 describe('CustomPropertiesPageV1 component', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('actions check during render', async () => {
     await act(async () => {
       render(<CustomEntityDetailV1 />);
     });
 
     expect(mockGetTypeByFQN).toHaveBeenCalled();
-    expect(mockGetEntityPermission).toHaveBeenCalled();
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.TYPE,
+      { id: 'id' },
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  it('shows the add-property button when EditAll is granted', async () => {
+    setMockPermissions(true);
+
+    render(<CustomEntityDetailV1 />);
+
+    expect(await screen.findByTestId('add-field-button')).toBeInTheDocument();
+  });
+
+  it('hides the add-property button when EditAll is denied', async () => {
+    setMockPermissions(false);
+
+    await act(async () => {
+      render(<CustomEntityDetailV1 />);
+    });
+
+    expect(screen.queryByTestId('add-field-button')).not.toBeInTheDocument();
   });
 
   it('tab change should work properly', async () => {
@@ -170,11 +207,17 @@ describe('CustomPropertiesPageV1 component', () => {
 
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(ERROR));
 
-    expect(mockGetEntityPermission).not.toHaveBeenCalled();
+    // selectedEntityTypeDetail never gets an id, so the hook's `enabled` gate stays false —
+    // the equivalent of "permission was never fetched" under the old imperative shape.
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.TYPE,
+      { id: '' },
+      expect.objectContaining({ enabled: false })
+    );
   });
 
   it('errors check', async () => {
-    mockGetEntityPermission.mockRejectedValueOnce('Error');
+    setMockPermissions(true, { error: 'Error' });
     mockUpdateType.mockRejectedValueOnce('Error');
 
     render(<CustomEntityDetailV1 />);

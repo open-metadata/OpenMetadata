@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -154,7 +155,6 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -1606,6 +1606,18 @@ export const TaskTabNew = ({
     setIsEditAssignee(true);
   };
 
+  const editAssigneeButton = shouldEditAssignee ? (
+    <EditIconButton
+      className="p-0"
+      data-testid="edit-assignees"
+      size="small"
+      title={t('label.edit-entity', {
+        entity: t('label.assignee-plural'),
+      })}
+      onClick={handleEditClick}
+    />
+  ) : null;
+
   function renderTaskHeader() {
     return isTaskTestCaseResult ? (
       <TaskTabIncidentManagerHeaderNewFromTask task={task} />
@@ -1721,26 +1733,15 @@ export const TaskTabNew = ({
                       <Typography.Text className="text-grey-body">
                         {getEntityName(task?.assignees[0])}
                       </Typography.Text>
-                      {shouldEditAssignee && (
-                        <EditIconButton
-                          className="p-0"
-                          data-testid="edit-assignees"
-                          size="small"
-                          title={t('label.edit-entity', {
-                            entity: t('label.assignee-plural'),
-                          })}
-                          onClick={handleEditClick}
-                        />
-                      )}
+                      {editAssigneeButton}
                     </div>
                   ) : (
-                    <OwnerLabel
-                      isAssignee
+                    <Owner
                       hasPermission={shouldEditAssignee}
                       isCompactView={false}
                       owners={task?.assignees}
+                      selectorContent={editAssigneeButton}
                       showLabel={false}
-                      onEditClick={handleEditClick}
                     />
                   )}
                 </Col>

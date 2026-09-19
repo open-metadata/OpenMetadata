@@ -45,7 +45,7 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#F14C75',
+  color: '#C11574',
   icon: 'Cube01',
 };
 
@@ -617,9 +617,10 @@ export const verifyEntityTypeFilterInTagAssets = async (
   await page.getByRole('menuitem', { name: 'Entity Type' }).click();
   await expect(page.getByRole('button', { name: 'Entity Type' })).toBeVisible();
   await page.getByRole('button', { name: 'Entity Type' }).click();
-  await page.getByTestId('table-checkbox').check();
-  await page.getByTestId('topic-checkbox').check();
-  await page.getByTestId('dashboard-checkbox').check();
+  const entityTypeMenu = page.getByTestId('drop-down-menu');
+  await entityTypeMenu.getByTestId('table').click();
+  await entityTypeMenu.getByTestId('topic').click();
+  await entityTypeMenu.getByTestId('dashboard').click();
   const filterResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await page.getByTestId('update-btn').click();
   await filterResponse;

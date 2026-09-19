@@ -278,6 +278,7 @@ export const navigateToArticles = async (page: Page) => {
     .getByTestId('context-center-articles-page')
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
 };
 
 export const navigateToDocuments = async (page: Page) => {
@@ -387,7 +388,7 @@ export const selectFolderInSidebar = async (
 
 export const openUploadModal = async (page: Page): Promise<void> => {
   await page
-    .getByTestId('header-shell')
+    .getByTestId('page-header')
     .getByRole('button', { name: /upload file/i })
     .click();
   await expect(

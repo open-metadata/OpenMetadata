@@ -110,9 +110,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Verify each cell value sits under its own column', async () => {
-      const rows = page
-        .getByTestId('sample-data-table')
-        .locator('tbody tr.ant-table-row');
+      const rows = page.getByTestId('sample-data-table').locator('tbody tr');
 
       for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
         for (const rowIndex of [0, 2]) {

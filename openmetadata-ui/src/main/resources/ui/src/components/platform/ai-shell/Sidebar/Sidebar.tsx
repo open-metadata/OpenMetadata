@@ -12,10 +12,11 @@
  */
 
 import classNames from 'classnames';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Intent, SubNavConfig } from '../AppModule.types';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { Intent, SubNavConfig, SubNavItem } from '../AppModule.types';
 import { useAllAppModules } from '../sharedAppModules';
 import { useActiveModuleStore } from '../state/useActiveModule';
 import { emitIntent } from '../useIntent';
@@ -28,11 +29,7 @@ import SubPanel from './SubPanel';
 import SubRail from './SubRail';
 import { useContextCenterBadges } from './useContextCenterBadges';
 import { useCustomizedMainNav } from './useCustomizedMainNav';
-import {
-  SIDEBAR_COLLAPSED_STORAGE_KEY,
-  SUB_COLLAPSED_STORAGE_KEY,
-  usePersistedCollapse,
-} from './useSidebarState';
+import { useMainCollapse } from './useSidebarState';
 
 // Sub-nav config key for the Context Center module — its sub-panel carries
 // the dynamic Quick Actions / Recently Viewed / Bookmarks sections below the
@@ -44,18 +41,6 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const { pathname, state } = useLocation();
   const modules = useAllAppModules();
-
-  // Both collapse states are persisted in localStorage so an explicit
-  // expand/collapse choice survives a full reload (matching the pre-migration
-  // AskCollate sidebar). Main defaults expanded; submenus default collapsed
-  // (sub-rail) and open only when the user explicitly expands them —
-  // navigating into a sub-mode module must not pop the panel.
-  const [collapsed, toggleCollapsed, setCollapsed] = usePersistedCollapse(
-    SIDEBAR_COLLAPSED_STORAGE_KEY,
-    false
-  );
-  const [subCollapsed, toggleSubCollapsed, setSubCollapsed] =
-    usePersistedCollapse(SUB_COLLAPSED_STORAGE_KEY, true);
 
   const mainNavItems = useMemo(() => buildMainNavItems(modules), [modules]);
 
@@ -78,6 +63,30 @@ const Sidebar: React.FC = () => {
   }, [activeModuleId, modules]);
 
   const inSubMode = activeSubNav !== null;
+
+  // Main nav collapse. Top level: the user's persisted preference (localStorage).
+  // Inside a sub-context: always the icon rail — the persisted preference does
+  // NOT keep it expanded, and any expand there is transient, re-railing when the
+  // active sub-context (`activeModuleId`) changes or on reload.
+  const [collapsed, toggleCollapsed, setCollapsed] = useMainCollapse(
+    inSubMode,
+    activeModuleId
+  );
+
+  // Submenu: always expanded on entering a module that has one, collapsing only
+  // when the user intentionally collapses it. Deliberately NOT persisted — it
+  // re-expands on reload and whenever the active sub-context changes.
+  const [subCollapsed, setSubCollapsed] = useState(false);
+
+  useEffect(() => {
+    setSubCollapsed(false);
+  }, [activeModuleId]);
+
+  const toggleSubCollapsed = useCallback(
+    () => setSubCollapsed((prev) => !prev),
+    []
+  );
+
   const isContextCenter = activeSubNav?.key === CONTEXT_CENTER_SUBNAV_KEY;
 
   // Live sub-nav counts for the Context Center items (Articles / Documents /
@@ -85,6 +94,8 @@ const Sidebar: React.FC = () => {
   // for the count queries. Consumed by `SubPanel` via its `badges` prop, keyed
   // by sub-nav item key.
   const contextCenterBadges = useContextCenterBadges(isContextCenter);
+
+  const { permissions } = usePermissionProvider();
 
   const handleUploadFile = useCallback(() => emitIntent(Intent.UploadFile), []);
   const handleCreateArticle = useCallback(
@@ -107,11 +118,8 @@ const Sidebar: React.FC = () => {
     />
   ) : undefined;
 
-  // Collapsed/expanded state (both main and sub) is purely user-controlled via
-  // the explicit toggle handlers below — navigating to a route never changes
-  // it, otherwise every click into a submenu item would rail the main nav / pop
-  // the submenu open on its own.
-
+  // Expanding one full panel rails the other (`handleToggle*` below) so at most
+  // one of MainPanel / SubPanel is open at a time.
   const showRail = collapsed;
   const showSubPanel = inSubMode && !subCollapsed;
   const showSubRail = inSubMode && subCollapsed;
@@ -132,6 +140,20 @@ const Sidebar: React.FC = () => {
     toggleSubCollapsed();
   }, [subCollapsed, toggleSubCollapsed, setCollapsed]);
 
+  const handleSubRailItemClick = useCallback(
+    (item: SubNavItem) => {
+      if (item.intent) {
+        emitIntent(item.intent);
+
+        return;
+      }
+      if (item.path) {
+        navigate(item.path);
+      }
+    },
+    [navigate]
+  );
+
   const subRailItems: RailItem[] = useMemo(() => {
     if (!activeSubNav) {
       return [];
@@ -150,19 +172,27 @@ const Sidebar: React.FC = () => {
           return [];
         }
 
+        const { requiredPermission: required } = item;
+        if (
+          required &&
+          !permissions?.[required.resource]?.[required.operation]
+        ) {
+          return [];
+        }
+
         const railItem: RailItem = {
           key: item.key,
           icon,
           activeIcon: item.railActiveIcon ?? item.activeIcon,
           label: t(item.railLabelKey ?? item.labelKey),
           href: item.path,
-          onClick: () => item.path && navigate(item.path),
+          onClick: () => handleSubRailItemClick(item),
           isActive: activeKey === item.key,
         };
 
         return [railItem];
       });
-  }, [activeSubNav, pathname, state, navigate, t]);
+  }, [activeSubNav, pathname, state, handleSubRailItemClick, permissions, t]);
 
   return (
     <div

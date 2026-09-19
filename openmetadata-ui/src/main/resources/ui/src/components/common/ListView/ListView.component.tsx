@@ -24,7 +24,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
-import Table from '../Table/Table';
+import Table from '../Table/TableV2';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
 export const ListView = <T extends object = Record<string, unknown>>({
@@ -106,6 +106,9 @@ export const ListView = <T extends object = Record<string, unknown>>({
             entityType={EntityType.SERVICE}
             staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
             {...tableProps}
+            // customPaginationProps drives paging (NextPrevious), so internal
+            // pagination must stay off or TableV2 would slice the page again.
+            pagination={false}
           />
         ) : (
           cardRender

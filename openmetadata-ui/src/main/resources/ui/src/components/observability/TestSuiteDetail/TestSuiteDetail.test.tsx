@@ -44,7 +44,7 @@ jest.mock('components/PageLayoutV1/PageLayoutV1', () => ({
 
 jest.mock('components/common/DocumentTitle/DocumentTitle', () => ({
   __esModule: true,
-  default: () => null,
+  default: jest.fn(() => null),
 }));
 
 jest.mock('components/common/Loader/Loader', () => ({
@@ -95,9 +95,69 @@ jest.mock('components/common/DomainLabel/DomainLabel.component', () => ({
   DomainLabel: () => <div data-testid="domain-label">domain-label</div>,
 }));
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: () => <div data-testid="owner-label">owner-label</div>,
-}));
+jest.mock('@openmetadata/ui-core-components', () => {
+  const React = require('react');
+  const TabsCtx = React.createContext<((key: string) => void) | undefined>(
+    undefined
+  );
+
+  const Box = ({ children, ...props }: any) => <div {...props}>{children}</div>;
+  const Button = ({ children, onPress, onClick, ...props }: any) => (
+    <button onClick={onPress ?? onClick} {...props}>
+      {children}
+    </button>
+  );
+  const Dialog = Object.assign(
+    ({ children }: any) => <div role="dialog">{children}</div>,
+    { Content: ({ children }: any) => <div>{children}</div> }
+  );
+  const DialogTrigger = ({ children }: any) => <div>{children}</div>;
+  const Modal = ({ children }: any) => <div>{children}</div>;
+  const ModalOverlay = ({ children }: any) => <div>{children}</div>;
+  const Owner = () => <div data-testid="owner-label">owner-label</div>;
+  const TabsList = ({ children }: any) => <div role="tablist">{children}</div>;
+  const TabsItem = ({ children, id, label }: any) => {
+    const onSelectionChange = React.useContext(TabsCtx);
+
+    return (
+      <button role="tab" onClick={() => onSelectionChange?.(id)}>
+        {label ?? children}
+      </button>
+    );
+  };
+  const TabsPanel = ({ children }: any) => (
+    <div role="tabpanel">{children}</div>
+  );
+  const Tabs = Object.assign(
+    ({ children, onSelectionChange, ...props }: any) => (
+      <TabsCtx.Provider value={onSelectionChange}>
+        <div data-testid="tabs" {...props}>
+          {children}
+        </div>
+      </TabsCtx.Provider>
+    ),
+    { List: TabsList, Item: TabsItem, Panel: TabsPanel }
+  );
+  const Tooltip = ({ children, title }: any) => (
+    <div title={title}>{children}</div>
+  );
+  const Typography = ({ children, as: As = 'span', ...props }: any) => (
+    <As {...props}>{children}</As>
+  );
+
+  return {
+    Box,
+    Button,
+    Dialog,
+    DialogTrigger,
+    Modal,
+    ModalOverlay,
+    Owner,
+    Tabs,
+    Tooltip,
+    Typography,
+  };
+});
 
 jest.mock('components/common/EntityDescription/Description', () => ({
   __esModule: true,
@@ -224,6 +284,14 @@ describe('TestSuiteDetail', () => {
     );
   });
 
+  it('should align the detail header card with the inset tab content', () => {
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('test-suite-header-container')).toHaveClass(
+      'tw:mx-4'
+    );
+  });
+
   it('should render the pipeline tab body when the pipeline tab is active', () => {
     mockUseTestSuiteDetailsPage.mockReturnValue({
       ...baseHookReturn,
@@ -271,6 +339,52 @@ describe('TestSuiteDetail', () => {
       'data-type',
       'PERMISSION'
     );
+  });
+
+  it('should render the permission placeholder before the undefined guard when permission is denied and testSuite is undefined', () => {
+    const DocumentTitleMock = jest.requireMock(
+      'components/common/DocumentTitle/DocumentTitle'
+    ).default;
+
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testSuite: undefined,
+      isLoading: false,
+      testSuitePermissions: { ViewAll: false, ViewBasic: false },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
+      'data-type',
+      'PERMISSION'
+    );
+    expect(DocumentTitleMock).not.toHaveBeenCalled();
+  });
+
+  it('should render ErrorPlaceHolder and skip the page shell when testSuite is undefined after a fetch error', () => {
+    const DocumentTitleMock = jest.requireMock(
+      'components/common/DocumentTitle/DocumentTitle'
+    ).default;
+
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testSuite: undefined,
+      isLoading: false,
+      testSuitePermissions: { ViewAll: true, ViewBasic: true },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
+      'data-type',
+      'default'
+    );
+    expect(
+      screen.queryByTestId('test-suite-detail-page')
+    ).not.toBeInTheDocument();
+    expect(DocumentTitleMock).not.toHaveBeenCalled();
   });
 
   it('should show the add test case button with edit permission', () => {

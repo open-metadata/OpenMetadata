@@ -13,13 +13,14 @@
 
 import { HTMLAttributes, ReactNode } from 'react';
 import { OwnerType } from '../../../enums/user.enum';
+import { User } from '../../../generated/entity/teams/user';
 
 export interface UserTeamsProps {
-  userName: string;
+  user: User;
 }
 
 export interface UserRolesProps {
-  userName: string;
+  user: User;
 }
 
 export interface PopoverContentProps {
