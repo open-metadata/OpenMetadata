@@ -2559,6 +2559,10 @@ om:directory a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "directory" .
 
+om:discoveryContext a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "discoveryContext" .
+
 om:disjointWith a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "disjointWith" .
