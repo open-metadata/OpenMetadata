@@ -170,24 +170,25 @@ public class RdfLiveProjectionIT {
         .put("path", "/tags/-")
         .set("value", JsonUtils.valueToTree(tag));
     SdkClients.adminClient().tables().patch(table.getId(), patch);
-    final var store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
-    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+    // Waiting on pendingWrites() == 0 is not a barrier for this patch: the queue is a single global
+    // table (SELECT COUNT(*) FROM rdf_live_write_queue) shared by every test in the lane, so it can
+    // already read zero before this write is even enqueued and the wait returns immediately. Poll
+    // the outcome the assertion needs instead — it is specific to this table and cannot be
+    // satisfied by somebody else's drain.
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertHasGlossaryTerm(table.getId(), term.getId(), true));
     assertEquals(RdfProjectionState.READY, status());
-    try (var storage = new JenaFusekiStorage(servingConfig)) {
-      final Model model = storage.getEntity(Entity.TABLE, table.getId());
-      try {
-        assertTrue(
-            model.contains(
-                model.createResource("https://open-metadata.org/entity/table/" + table.getId()),
-                model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
-                model.createResource(
-                    "https://open-metadata.org/entity/glossaryTerm/" + term.getId())));
-      } finally {
-        model.close();
-      }
-    }
+
     GlossaryTestFactory.delete(glossary);
-    Awaitility.await().atMost(Duration.ofSeconds(30)).until(() -> store.pendingWrites() == 0);
+    // Same reasoning in reverse: the delete is hard, recursive and permanent, so the projection
+    // must
+    // drop the edge. Polling for its removal is what proves the delete's writes drained, rather
+    // than
+    // a shared counter that may never have counted them.
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertHasGlossaryTerm(table.getId(), term.getId(), false));
     assertEquals(RdfProjectionState.READY, status());
   }
 
@@ -230,5 +231,24 @@ public class RdfLiveProjectionIT {
         .withPassword("test-admin")
         .withRequestTimeoutMs(10000)
         .withWriteMaxRetries(0);
+  }
+
+  /** Whether the table's projection carries the om:hasGlossaryTerm edge to the given term. */
+  private void assertHasGlossaryTerm(final UUID tableId, final UUID termId, final boolean expected)
+      throws Exception {
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      final Model model = storage.getEntity(Entity.TABLE, tableId);
+      try {
+        assertEquals(
+            expected,
+            model.contains(
+                model.createResource("https://open-metadata.org/entity/table/" + tableId),
+                model.createProperty("https://open-metadata.org/ontology/hasGlossaryTerm"),
+                model.createResource("https://open-metadata.org/entity/glossaryTerm/" + termId)),
+            "om:hasGlossaryTerm edge from table " + tableId + " to term " + termId);
+      } finally {
+        model.close();
+      }
+    }
   }
 }
