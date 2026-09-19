@@ -47,6 +47,7 @@ export interface UserPreferences {
    * checkbox writes this field; runtime mode-switching does NOT touch it.
    */
   appMode: string | null;
+  timeFormat?: '12h' | '24h';
 }
 
 interface Store {
