@@ -28,6 +28,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
@@ -51,6 +52,7 @@ public final class TeamGraphFixture {
       new CopyOnWriteArrayList<>();
   private static final Map<String, Map<UUID, EntityReference>> REFS = new ConcurrentHashMap<>();
   private static final AtomicInteger QUERIES = new AtomicInteger();
+  private static final AtomicReference<Runnable> DURING_NEXT_READ = new AtomicReference<>();
 
   private TeamGraphFixture() {}
 
@@ -59,6 +61,7 @@ public final class TeamGraphFixture {
     ROWS.clear();
     REFS.clear();
     QUERIES.set(0);
+    DURING_NEXT_READ.set(null);
     TeamHierarchyResolver.invalidateAll();
     Entity.setCollectionDAO(collectionDAO());
   }
@@ -70,6 +73,14 @@ public final class TeamGraphFixture {
 
   public static void resetQueryCount() {
     QUERIES.set(0);
+  }
+
+  /**
+   * Runs {@code action} once, in the middle of the next relationship read, so a test can land a
+   * concurrent write between a cache miss and the memoizing that follows it.
+   */
+  public static void duringNextRead(final Runnable action) {
+    DURING_NEXT_READ.set(action);
   }
 
   /** Records the parent, default-role and policy edges a team declares on its POJO. */
@@ -186,6 +197,10 @@ public final class TeamGraphFixture {
   private static List<CollectionDAO.EntityRelationshipObject> findRows(
       final RowPredicate idMatches, final int relation, final RowPredicate typeMatches) {
     QUERIES.incrementAndGet();
+    final Runnable interleaved = DURING_NEXT_READ.getAndSet(null);
+    if (interleaved != null) {
+      interleaved.run();
+    }
     final List<CollectionDAO.EntityRelationshipObject> matched = new ArrayList<>();
     for (final CollectionDAO.EntityRelationshipObject row : ROWS) {
       if (row.getRelation() == relation && idMatches.test(row) && typeMatches.test(row)) {

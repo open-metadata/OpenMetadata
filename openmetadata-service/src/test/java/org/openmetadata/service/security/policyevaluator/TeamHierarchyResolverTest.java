@@ -15,6 +15,7 @@ package org.openmetadata.service.security.policyevaluator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -39,6 +40,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver.TeamNode;
 
 /**
  * Issue #19778: a user in many teams made every authorization read walk the team hierarchy one
@@ -127,6 +129,35 @@ class TeamHierarchyResolverTest {
     TeamHierarchyResolver.invalidateAll();
     TeamHierarchyResolver.closure(refs(leaf));
     assertTrue(TeamGraphFixture.queryCount() > 0, "Invalidation must send the walk back to the DB");
+  }
+
+  /**
+   * An invalidation that lands while a read is in flight must not be undone by that read putting
+   * its pre-write view back — the stale hierarchy would then serve authorization for the full TTL.
+   */
+  @Test
+  void aReadRacingAnInvalidationDoesNotRepopulateTheCache() {
+    final Team leaf = team("racedLeaf", team("racedRoot"));
+    TeamGraphFixture.duringNextRead(TeamHierarchyResolver::invalidateAll);
+
+    TeamHierarchyResolver.closure(refs(leaf));
+
+    TeamGraphFixture.resetQueryCount();
+    TeamHierarchyResolver.closure(refs(leaf));
+    assertTrue(
+        TeamGraphFixture.queryCount() > 0,
+        "A read overtaken by an invalidation must not leave its view memoized");
+  }
+
+  /** Nothing may edit a node in place: every reader of the cache shares the same instance. */
+  @Test
+  void cachedNodeCollectionsAreImmutable() {
+    final Team leaf = team("frozenRoot", List.of(), List.of(role("frozenRole")));
+    final TeamNode node = TeamHierarchyResolver.closure(refs(leaf)).get(leaf.getId());
+
+    assertThrows(
+        UnsupportedOperationException.class, () -> node.defaultRoles().add(role("intruder")));
+    assertThrows(UnsupportedOperationException.class, () -> node.parents().clear());
   }
 
   /**

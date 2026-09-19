@@ -224,6 +224,56 @@ public class SubjectCacheTest {
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
   }
 
+  /**
+   * The policy entry carries the team names and inherited role names that {@code inAnyTeam()} and
+   * {@code hasAnyRole()} answer from, and both used to be read from the database on every
+   * evaluation. A peer's team write has to drop it, or this pod keeps authorizing against the
+   * hierarchy as it was before that write.
+   */
+  @Test
+  void testRemoteTeamWriteDropsPoliciesAndTheTeamGraph() {
+    SubjectCache.getPolicies("testUser");
+    TeamGraphFixture.resetQueryCount();
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+    assertTrue(
+        TeamGraphFixture.queryCount() > 0, "The resolved team graph must be read again as well");
+  }
+
+  /** Role names are copied into the resolved graph, so a rename on a peer has to reach it. */
+  @Test
+  void testRemoteRoleWriteDropsPoliciesAndTheTeamGraph() {
+    SubjectCache.getPolicies("testUser");
+    TeamGraphFixture.resetQueryCount();
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.ROLE, UUID.randomUUID(), "DataSteward");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+    assertTrue(
+        TeamGraphFixture.queryCount() > 0, "The resolved team graph must be read again as well");
+  }
+
+  /** A membership or role change reaches peers as a user write; the policy entry holds both. */
+  @Test
+  void testRemoteUserWriteDropsThatUsersPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
   @Test
   void testRemotePersonaWriteDropsAllUserContexts() {
     SubjectCache.getUserContext("testUser");

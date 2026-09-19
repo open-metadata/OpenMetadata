@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -65,40 +66,37 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 @Slf4j
 public final class TeamHierarchyResolver {
 
-  /** The team facts authorization needs. Anything else is a field the walk must not pay for. */
+  /**
+   * The team facts authorization needs. Anything else is a field the walk must not pay for.
+   *
+   * <p>Shared with every reader of the cache, so the lists are immutable and the references they
+   * hold are only ever read here -- see {@link #detachedRef} for the one path that hands a
+   * reference out to a caller that will mutate it.
+   */
   public record TeamNode(
       UUID id,
       String name,
       List<EntityReference> parents,
       List<EntityReference> defaultRoles,
-      List<EntityReference> policies) {
-
-    /**
-     * A node handed to a caller must not share references with the cached one. Callers hang these
-     * on the entity they are building, and the serialization path then stamps an {@code href} onto
-     * each reference -- mutating the cached copy, and every later reader with it.
-     */
-    TeamNode detached() {
-      return new TeamNode(
-          id,
-          name,
-          JsonUtils.deepCopyList(parents, EntityReference.class),
-          JsonUtils.deepCopyList(defaultRoles, EntityReference.class),
-          JsonUtils.deepCopyList(policies, EntityReference.class));
-    }
-  }
+      List<EntityReference> policies) {}
 
   /** Matches the freshness contract of {@code SubjectCache}'s policy cache. */
   private static final long CACHE_TTL_MINUTES = 2;
 
-  private static final int MAX_CACHED_TEAMS = 10_000;
+  /**
+   * Teams are an administrator-managed set, so a small cache holds an entire deployment's graph.
+   * Sized with the other authorization caches through {@code authCacheMaxEntries}.
+   */
+  private static final int DEFAULT_MAX_CACHED_TEAMS = 1_000;
 
-  private static final Cache<UUID, TeamNode> NODES =
-      CacheBuilder.newBuilder()
-          .maximumSize(MAX_CACHED_TEAMS)
-          .expireAfterWrite(CACHE_TTL_MINUTES, TimeUnit.MINUTES)
-          .recordStats()
-          .build();
+  private static volatile Cache<UUID, TeamNode> nodes = buildCache(DEFAULT_MAX_CACHED_TEAMS);
+
+  /**
+   * Bumped by every invalidation so a read that began before one does not put its pre-write view
+   * back into the cache. {@code EntityRepository} guards its loaders with a write epoch for the
+   * same reason.
+   */
+  private static final AtomicLong generation = new AtomicLong();
 
   /**
    * A team with no {@code PARENT_OF} row is a child of the organization, matching {@code
@@ -150,7 +148,18 @@ public final class TeamHierarchyResolver {
         pushInReverse(stack, node.parents());
       }
     }
-    return roles.stream().distinct().toList();
+    return roles.stream().distinct().map(TeamHierarchyResolver::detachedRef).toList();
+  }
+
+  /**
+   * Inherited roles are hung on the user or team being serialized, and the response path stamps an
+   * {@code href} onto every reference it is given. This is the only place a cached node's
+   * references reach such a caller, so it is the only place that has to copy: everything else --
+   * policy loading, the team-name and role-name summaries, the ancestry walk -- reads ids and
+   * names and hands nothing on.
+   */
+  private static EntityReference detachedRef(final EntityReference ref) {
+    return JsonUtils.deepCopy(ref, EntityReference.class);
   }
 
   /** True if {@code team} is {@code parentTeam} or sits anywhere under it. */
@@ -181,34 +190,64 @@ public final class TeamHierarchyResolver {
     return List.copyOf(resolveRefs(Entity.DOMAIN, flatten(domainIds)).values());
   }
 
+  /** Rebuilds the cache at the configured size, alongside the other authorization caches. */
+  public static void initCache(final int maxEntries) {
+    nodes = buildCache(maxEntries);
+  }
+
   /** Drops every memoized node. Called by {@link SubjectCache#invalidateAll} on team writes. */
   public static void invalidateAll() {
-    NODES.invalidateAll();
+    generation.incrementAndGet();
+    nodes.invalidateAll();
     organization = null;
   }
 
   public static String getCacheStats() {
-    return String.format("TeamHierarchyCache: %s, size=%d", NODES.stats(), NODES.size());
+    final Cache<UUID, TeamNode> cache = nodes;
+    return String.format("TeamHierarchyCache: %s, size=%d", cache.stats(), cache.size());
+  }
+
+  private static Cache<UUID, TeamNode> buildCache(final int maxEntries) {
+    return CacheBuilder.newBuilder()
+        .maximumSize(maxEntries)
+        .expireAfterWrite(CACHE_TTL_MINUTES, TimeUnit.MINUTES)
+        .recordStats()
+        .build();
   }
 
   /** Serves the nodes already memoized and reads the rest in one batch. */
   private static Map<UUID, TeamNode> loadNodes(final Set<UUID> ids) {
-    final Map<UUID, TeamNode> nodes = new LinkedHashMap<>();
+    final Cache<UUID, TeamNode> cache = nodes;
+    final Map<UUID, TeamNode> resolved = new LinkedHashMap<>();
     final Set<UUID> misses = new LinkedHashSet<>();
     for (final UUID id : ids) {
-      final TeamNode cached = NODES.getIfPresent(id);
+      final TeamNode cached = cache.getIfPresent(id);
       if (cached == null) {
         misses.add(id);
       } else {
-        nodes.put(id, cached.detached());
+        resolved.put(id, cached);
       }
     }
     if (!misses.isEmpty()) {
-      final Map<UUID, TeamNode> read = readNodes(misses);
-      read.forEach((id, node) -> NODES.put(id, node.detached()));
-      nodes.putAll(read);
+      resolved.putAll(readAndMemoize(cache, misses));
     }
-    return nodes;
+    return resolved;
+  }
+
+  /**
+   * Reads the missing nodes and memoizes them -- unless an invalidation landed while the read was
+   * in flight, in which case this view may predate the write that triggered it and caching it
+   * would serve the old hierarchy for the rest of the TTL. The caller still gets the rows that
+   * were read; only the memoizing is skipped.
+   */
+  private static Map<UUID, TeamNode> readAndMemoize(
+      final Cache<UUID, TeamNode> cache, final Set<UUID> misses) {
+    final long before = generation.get();
+    final Map<UUID, TeamNode> read = readNodes(misses);
+    if (generation.get() == before) {
+      cache.putAll(read);
+    }
+    return read;
   }
 
   /** Reads the parents, default roles and policies of every team in {@code ids}. */
@@ -248,8 +287,8 @@ public final class TeamHierarchyResolver {
                 id,
                 self.getName(),
                 parentsOf(self, parentIds.get(id), teamRefs),
-                refsFor(roleIds.get(id), roleRefs),
-                refsFor(policyIds.get(id), policyRefs)));
+                List.copyOf(refsFor(roleIds.get(id), roleRefs)),
+                List.copyOf(refsFor(policyIds.get(id), policyRefs))));
       }
     }
     return nodes;
@@ -261,7 +300,7 @@ public final class TeamHierarchyResolver {
       final Map<UUID, EntityReference> teamRefs) {
     final List<EntityReference> parents = refsFor(parentIds, teamRefs);
     if (!parents.isEmpty()) {
-      return parents;
+      return List.copyOf(parents);
     }
     final EntityReference org = organization();
     return org == null || org.getId().equals(self.getId()) ? List.of() : List.of(org);

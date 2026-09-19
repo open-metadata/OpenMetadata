@@ -122,13 +122,12 @@ public class SubjectCache {
 
   private static final Invalidatable INVALIDATOR =
       (type, id, fqn) -> {
-        if (Entity.PERSONA.equals(type) || Entity.TEAM.equals(type)) {
+        if (Entity.TEAM.equals(type) || Entity.ROLE.equals(type) || Entity.POLICY.equals(type)) {
+          invalidateAll();
+        } else if (Entity.PERSONA.equals(type)) {
           invalidateAllUserContexts();
-          if (Entity.TEAM.equals(type)) {
-            TeamHierarchyResolver.invalidateAll();
-          }
         } else if (Entity.USER.equals(type) && fqn != null) {
-          invalidateUserContextByFqn(fqn);
+          invalidateUserByFqn(fqn);
         }
       };
 
@@ -136,7 +135,8 @@ public class SubjectCache {
 
   /**
    * Rebuild auth caches with configured max entries. TTLs are kept at their original values
-   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   * (2 min for policies and the resolved team graph, 15 min for user context) because they serve
+   * different freshness needs.
    */
   public static void initCaches(int maxEntries) {
     USER_POLICIES_CACHE =
@@ -151,6 +151,7 @@ public class SubjectCache {
             .expireAfterWrite(15, TimeUnit.MINUTES)
             .recordStats()
             .build(new UserContextLoader());
+    TeamHierarchyResolver.initCache(maxEntries);
     LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
   }
 
@@ -236,8 +237,14 @@ public class SubjectCache {
    * A context {@code refresh} is published under {@code TYPE_PERSONA_CONTEXT} and so does not land
    * here.
    *
-   * <p>Scoped to user contexts. {@code USER_POLICIES_CACHE} has its own 2-minute TTL and peers
-   * relying on it is pre-existing behaviour that this persona fix deliberately doesn't widen.
+   * <p>A team, role or policy write drops the policy cache and the resolved team graph as well,
+   * not just the user contexts. Those caches carry the answers {@code hasAnyRole()} and
+   * {@code inAnyTeam()} give, and both used to be read from the database on every evaluation; if
+   * only the writing pod dropped them, a peer would keep granting access through a role that was
+   * removed from a team, or through a parent that was reparented away, until the entry expired.
+   * The same message also reaches the role names copied into the resolved graph. These are rare
+   * administrative writes, so dropping every entry is the cheaper trade against deriving the
+   * affected users from the message.
    */
   public static Invalidatable invalidator() {
     return INVALIDATOR;
@@ -256,12 +263,15 @@ public class SubjectCache {
    * size and only runs on user writes, which are logins and profile edits — per-request activity
    * tracking updates the row through a raw {@code JSON_SET} that publishes nothing.
    */
-  private static void invalidateUserContextByFqn(String fqn) {
+  private static void invalidateUserByFqn(String fqn) {
     try {
       String userName = FullyQualifiedName.unquoteName(fqn);
       USER_CONTEXT_CACHE.asMap().keySet().removeIf(key -> key.equalsIgnoreCase(userName));
+      // The policy entry holds this user's roles and their resolved team hierarchy, so a
+      // membership or role change on a peer has to drop it too.
+      USER_POLICIES_CACHE.asMap().keySet().removeIf(key -> key.equalsIgnoreCase(userName));
     } catch (Exception e) {
-      LOG.debug("Could not invalidate user context for fqn {}", fqn, e);
+      LOG.debug("Could not invalidate caches for user fqn {}", fqn, e);
     }
   }
 
