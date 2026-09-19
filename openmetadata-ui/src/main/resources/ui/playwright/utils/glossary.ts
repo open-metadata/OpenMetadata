@@ -2226,8 +2226,12 @@ export const verifyMutualExclusivitySelection = async (
 
 // -- Glossary Tree Select helpers --
 
+// `display: contents` has no box, so scope with this but assert on the tree.
 export const getTreeDropdown = (page: Page) =>
   page.getByTestId('glossary-terms-popover');
+
+export const getTreeDropdownContent = (page: Page) =>
+  page.getByTestId('glossary-terms-popover').locator('[role="treegrid"]');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2278,15 +2282,15 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
+  // `display: contents` has no box, so wait on the tree inside it.
+  await expect(getTreeDropdownContent(page)).toBeVisible({
     timeout: 10000,
   });
 
-  await expandTreeNodeByName(page, glossaryDisplayName);
+  await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, parentTermDisplayName, {
-      search: false,
-    });
+    // Not searched: a nested search returns a leaf, whose chevron stays hidden.
+    await expandTreeNodeByName(page, parentTermDisplayName, { search: false });
   }
 };
 
