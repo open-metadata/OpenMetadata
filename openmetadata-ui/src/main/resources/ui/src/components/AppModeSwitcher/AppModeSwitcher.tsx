@@ -257,7 +257,8 @@ const AppModeSwitcher: React.FC<{
                 'tw:w-5 tw:h-5 tw:rounded-md tw:shrink-0 tw:transition',
                 {
                   'tw:bg-blue-600 tw:border-0': isRemembered,
-                  'tw:bg-surface tw:border tw:border-utility-gray-400': !isRemembered,
+                  'tw:bg-surface tw:border tw:border-utility-gray-400':
+                    !isRemembered,
                 }
               )}
               justify="center"
