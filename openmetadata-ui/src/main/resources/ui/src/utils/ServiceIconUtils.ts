@@ -21,6 +21,7 @@ import clickzetta from '../assets/img/service-icon-clickzetta.svg';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import data360 from '../assets/img/service-icon-data360.png';
+import databend from '../assets/img/service-icon-databend.svg';
 import databrick from '../assets/img/service-icon-databrick.webp';
 import datalake from '../assets/img/service-icon-datalake.webp';
 import deltalake from '../assets/img/service-icon-delta-lake.webp';
@@ -162,6 +163,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   clickhouse: clickhouse,
   clickzetta: clickzetta,
   databricks: databrick,
+  databend: databend,
   unitycatalog: unitycatalog,
   db2: ibmdb2,
   doris: doris,

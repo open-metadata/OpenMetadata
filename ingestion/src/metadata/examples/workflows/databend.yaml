@@ -1,0 +1,30 @@
+source:
+  type: databend
+  serviceName: local_databend
+  serviceConnection:
+    config:
+      type: Databend
+      username: databend
+      password: databend
+      hostPort: localhost:8000
+      catalog: default
+      database: default
+      connectionOptions:
+        sslmode: disable
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      schemaFilterPattern:
+        excludes:
+          - ^information_schema$
+          - ^system$
+          - ^system_history$
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "<ingestion-bot-jwt>"
