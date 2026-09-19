@@ -111,7 +111,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                 background:
                   copied === name
                     ? 'var(--tw-background-color-success-primary)'
-                    : 'var(--tw-background-color-primary)',
+                    : 'var(--tw-background-color-secondary)',
                 border: `1px solid ${
                   copied === name
                     ? 'var(--tw-border-color-success)'
