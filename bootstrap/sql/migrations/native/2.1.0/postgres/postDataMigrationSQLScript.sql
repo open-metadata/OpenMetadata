@@ -142,6 +142,58 @@ WHERE name IN (
   )
   AND json->'parameterDefinition' IS NULL;
 
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617). The 1.12.0 script already adds them back, but only reaches deployments that
+-- upgraded through that release, so repeat it here as a plain guarded append. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "columnName"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeType"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )::jsonb
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "rangeInterval"}]'::jsonb);
+
 UPDATE test_definition
 SET json = jsonb_set(
     json::jsonb,

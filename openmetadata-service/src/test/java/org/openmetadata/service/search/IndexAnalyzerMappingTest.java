@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -45,6 +46,7 @@ class IndexAnalyzerMappingTest {
   private static final String LOWERCASE = "lowercase";
   private static final String STEMMER = "om_stemmer";
   private static final String PLURAL_STEMMER = "om_plural_stemmer";
+  private static final String ASCII_FOLDING = "asciifolding";
 
   @BeforeAll
   static void loadMappings() throws IOException {
@@ -153,6 +155,51 @@ class IndexAnalyzerMappingTest {
   }
 
   @Test
+  void everyLowercasingChainAlsoFoldsAccents() {
+    // Issue #22011: without asciifolding, "Manutencao" cannot reach a table named "Manutencao"
+    // with a cedilla and tilde, and "Operatorio" cannot reach "Operat\u00f3rio" -- the indexed term
+    // and the query term never unify, so the n-gram band cannot rescue it either. Accent folding
+    // has to sit in every chain that lowercases, and directly after it: folding is a
+    // case-sensitive mapping, so running it before lowercase leaves the uppercase forms alone,
+    // and running it after a stemmer means the stemmer never saw the folded token. The keyword
+    // normalizer is included because the exact-match ranking stage queries name.keyword.
+    List<String> offenders = new ArrayList<>();
+    for (String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+      forEachAnalysisBlock(
+          language,
+          (name, analysis) ->
+              Stream.of("analyzer", "normalizer")
+                  .forEach(
+                      kind ->
+                          analysis
+                              .path(kind)
+                              .fields()
+                              .forEachRemaining(
+                                  chain -> {
+                                    List<String> filters = filterList(chain.getValue());
+                                    if (!filters.contains(LOWERCASE)) {
+                                      return;
+                                    }
+                                    String where =
+                                        language
+                                            + "/"
+                                            + name
+                                            + " "
+                                            + chain.getKey()
+                                            + " "
+                                            + filters;
+                                    if (!filters.contains(ASCII_FOLDING)) {
+                                      offenders.add(where);
+                                    } else if (filters.indexOf(ASCII_FOLDING)
+                                        != filters.indexOf(LOWERCASE) + 1) {
+                                      offenders.add(where + " (not directly after lowercase)");
+                                    }
+                                  })));
+    }
+    assertTrue(offenders.isEmpty(), "chains that lowercase but do not fold accents: " + offenders);
+  }
+
+  @Test
   void everyAnalyzerFilterIsDefinedOrBuiltIn() {
     // A dangling filter name fails index creation at startup rather than at review time.
     List<String> builtIn =
@@ -248,8 +295,12 @@ class IndexAnalyzerMappingTest {
   }
 
   private List<String> filtersOf(JsonNode analysis, String analyzer) {
+    return filterList(analysis.path("analyzer").path(analyzer));
+  }
+
+  private List<String> filterList(JsonNode chain) {
     List<String> filters = new ArrayList<>();
-    analysis.path("analyzer").path(analyzer).path("filter").forEach(f -> filters.add(f.asText()));
+    chain.path("filter").forEach(filter -> filters.add(filter.asText()));
     return filters;
   }
 }
