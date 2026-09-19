@@ -220,14 +220,21 @@ public final class OntologyChangeSetValidator {
       case UPSERT_AXIOM -> validateAxiomTarget(operation);
       case CREATE_RELATIONSHIP_TYPE -> requireEntityId(
           operation, operation.getRelationshipType().getId(), "relationship type");
+      case BIND_ASSET, UNBIND_ASSET -> {
+        requireEntityId(operation, operation.getTargetId(), "asset binding target term");
+        requireEntityId(
+            operation,
+            operation.getAssetBinding().getAsset() == null
+                ? null
+                : operation.getAssetBinding().getAsset().getId(),
+            "asset binding asset");
+      }
       case DELETE_TERM,
           UPSERT_ATTRIBUTE,
           DELETE_ATTRIBUTE,
           UPSERT_MAPPING,
           DELETE_MAPPING,
-          DELETE_AXIOM,
-          BIND_ASSET,
-          UNBIND_ASSET -> {}
+          DELETE_AXIOM -> {}
     }
   }
 
