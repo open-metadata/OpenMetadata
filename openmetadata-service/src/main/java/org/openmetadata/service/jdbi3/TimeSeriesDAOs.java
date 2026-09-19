@@ -136,6 +136,27 @@ public interface TimeSeriesDAOs {
    * issue #27718.
    */
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
+    /**
+     * Listing order for test definitions: the display name, falling back to the name when a
+     * definition has none. The Test Library lists rules by the label it renders, so paging has to
+     * walk that order instead of the internal {@code columnValuesToBeBetween}-style name (issue
+     * #27257). {@link TestDefinitionRepository#getCursorValue} builds the page cursors from the
+     * same key, so the keyset comparisons below stay aligned with it.
+     *
+     * <p>Both halves are read out of {@code json} rather than falling back to the {@code name}
+     * column: on MySQL a {@code COALESCE} across the JSON string and the column raises "Illegal
+     * mix of collations". {@code LOWER} makes the order case-insensitive on both engines and is
+     * mirrored by the Java-side cursor. The expression is not indexable, so this costs a sort —
+     * acceptable because the test definition catalog is a bounded list of rules, not a catalog
+     * table.
+     */
+    String MYSQL_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name'))))";
+
+    String POSTGRES_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(json->>'displayName', ''), json->>'name'))";
+
     @Override
     default String getTableName() {
       return "test_definition";
@@ -205,14 +226,6 @@ public interface TimeSeriesDAOs {
       String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
-      }
-
       StringBuilder mysqlCondition = new StringBuilder();
       StringBuilder psqlCondition = new StringBuilder();
 
@@ -278,14 +291,6 @@ public interface TimeSeriesDAOs {
       String supportedService = filter.getQueryParam("supportedService");
       String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
-      }
 
       StringBuilder mysqlCondition = new StringBuilder();
       StringBuilder psqlCondition = new StringBuilder();
@@ -419,20 +424,32 @@ public interface TimeSeriesDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <mysqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC  "
+                + "SELECT "
+                + MYSQL_LIST_SORT_KEY
+                + " AS sort_key, id, json FROM <table> <mysqlCond> AND "
+                + "("
+                + MYSQL_LIST_SORT_KEY
+                + " < :beforeName OR ("
+                + MYSQL_LIST_SORT_KEY
+                + " = :beforeName AND <table>.id < :beforeId))  "
+                + "ORDER BY sort_key DESC,id DESC  "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key,id",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <psqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC "
+                + "SELECT "
+                + POSTGRES_LIST_SORT_KEY
+                + " AS sort_key, id, json FROM <table> <psqlCond> AND "
+                + "("
+                + POSTGRES_LIST_SORT_KEY
+                + " < :beforeName OR ("
+                + POSTGRES_LIST_SORT_KEY
+                + " = :beforeName AND <table>.id < :beforeId))  "
+                + "ORDER BY sort_key DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key,id",
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
@@ -445,11 +462,23 @@ public interface TimeSeriesDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <mysqlCond> AND ("
+                + MYSQL_LIST_SORT_KEY
+                + " > :afterName OR ("
+                + MYSQL_LIST_SORT_KEY
+                + " = :afterName AND <table>.id > :afterId))  ORDER BY "
+                + MYSQL_LIST_SORT_KEY
+                + ",id LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <psqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <psqlCond> AND ("
+                + POSTGRES_LIST_SORT_KEY
+                + " > :afterName OR ("
+                + POSTGRES_LIST_SORT_KEY
+                + " = :afterName AND <table>.id > :afterId))  ORDER BY "
+                + POSTGRES_LIST_SORT_KEY
+                + ",id LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
@@ -459,6 +488,38 @@ public interface TimeSeriesDAOs {
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,
         @Bind("afterId") String afterId);
+
+    /**
+     * Keyset partitioning (the distributed indexers) seeds itself with the cursor at an absolute
+     * offset and then pages forward through {@link #listAfter}. The inherited lookup walks {@code
+     * ORDER BY name, id}, so it has to be re-pointed at the display-name order above — otherwise
+     * the seed cursor names a row from a different position in the sequence and the partition
+     * silently skips or repeats definitions.
+     */
+    @Override
+    default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+      return getCursorAtOffsetByDisplayName(
+          getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + MYSQL_LIST_SORT_KEY
+                + " AS name, id FROM <table> <cond> ORDER BY 1,2 LIMIT 1 OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT "
+                + POSTGRES_LIST_SORT_KEY
+                + " AS name, id FROM <table> <cond> ORDER BY 1,2 LIMIT 1 OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.CursorRowMapper.class)
+    CursorRow getCursorAtOffsetByDisplayName(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("offset") int offset);
 
     @ConnectionAwareSqlQuery(
         value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",

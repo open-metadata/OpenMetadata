@@ -160,6 +160,38 @@ describe('useTestDefinitionData', () => {
       });
     });
 
+    // Search runs server side - the listing is cursor-paged, so filtering the
+    // rows already fetched would only ever search the current page.
+    it('should forward the trimmed search term as the q list param', async () => {
+      await renderAndSettle(makeProps({ urlParams: { q: '  column  ' } }));
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ q: 'column' })
+      );
+    });
+
+    it('should omit q entirely for a blank search term', async () => {
+      await renderAndSettle(makeProps({ urlParams: { q: '   ' } }));
+
+      expect(getListTestDefinitions).toHaveBeenCalledWith(
+        expect.objectContaining({ q: undefined })
+      );
+    });
+
+    it('should refetch when the search term changes', async () => {
+      const { rerender } = await renderAndSettle();
+
+      (getListTestDefinitions as jest.Mock).mockClear();
+
+      rerender(makeProps({ urlParams: { q: 'rows' } }));
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'rows' })
+        );
+      });
+    });
+
     it('should surface a list failure through showErrorToast and stop loading', async () => {
       (getListTestDefinitions as jest.Mock).mockRejectedValueOnce(
         new Error('list failed')

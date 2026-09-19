@@ -36,10 +36,17 @@ export interface UseTestDefinitionFiltersProps {
 export const useTestDefinitionFilters = ({
   handlePageChange,
 }: UseTestDefinitionFiltersProps) => {
-  const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
+  const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters<{
+    entityType?: string;
+    testPlatforms?: string;
+    q?: string;
+  }>({
     entityType: undefined,
     testPlatforms: undefined,
+    q: undefined,
   });
+
+  const searchQuery = urlParams.q ?? '';
 
   const urlFilters = useMemo(() => {
     const filters: Record<string, string[]> = {};
@@ -65,6 +72,18 @@ export const useTestDefinitionFilters = ({
     }));
   }, [urlFilters]);
 
+  const applyUrlParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      updateUrlParams(updates);
+
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [updateUrlParams, handlePageChange]
+  );
+
   const handleFilterChange = useCallback(
     (filters: ExploreQuickFilterField[]) => {
       const filterUpdates: Record<string, string | null> = {};
@@ -80,41 +99,55 @@ export const useTestDefinitionFilters = ({
         }
       });
 
-      updateUrlParams(filterUpdates);
-
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
+      applyUrlParams(filterUpdates);
     },
-    [updateUrlParams, handlePageChange]
+    [applyUrlParams]
   );
 
   const setSingleFilter = useCallback(
     (key: string, value?: string) => {
-      updateUrlParams({ [key]: value || null });
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
+      applyUrlParams({ [key]: value || null });
     },
-    [updateUrlParams, handlePageChange]
+    [applyUrlParams]
   );
 
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      applyUrlParams({ q: value || null });
+    },
+    [applyUrlParams]
+  );
+
+  // "Clear all" is the single exit from an empty result set, so it has to drop
+  // the search term too - leaving it behind keeps the list empty and the button
+  // reads as broken. Cleared in the same update as the quick filters:
+  // useTableFilters merges each call against the URL as it is now, so a second
+  // call in the same tick would be built from the pre-navigation search string
+  // and put the quick filters back.
   const clearAllFilters = useCallback(() => {
-    handleFilterChange([]);
-  }, [handleFilterChange]);
+    const filterUpdates: Record<string, string | null> = { q: null };
+
+    TEST_DEFINITION_DEFAULT_QUICK_FILTERS.forEach((key) => {
+      filterUpdates[key] = null;
+    });
+
+    applyUrlParams(filterUpdates);
+  }, [applyUrlParams]);
 
   const hasActiveFilters = useMemo(
-    () => Object.values(urlFilters).some((value) => value.length > 0),
-    [urlFilters]
+    () =>
+      Boolean(searchQuery.trim()) ||
+      Object.values(urlFilters).some((value) => value.length > 0),
+    [urlFilters, searchQuery]
   );
 
   return {
     urlParams,
     urlFilters,
     parsedFilters,
+    searchQuery,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,

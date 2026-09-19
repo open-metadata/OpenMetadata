@@ -32,7 +32,7 @@ export interface UseTestDefinitionDataProps {
   handlePagingChange: UsePagingInterface['handlePagingChange'];
   pagingCursor: UsePagingInterface['pagingCursor'];
   urlFilters: Record<string, string[]>;
-  urlParams: { entityType?: string; testPlatforms?: string };
+  urlParams: { entityType?: string; testPlatforms?: string; q?: string };
   fetchTestDefinitionPermissions: (
     definitions: TestDefinition[]
   ) => Promise<void>;
@@ -69,6 +69,10 @@ export const useTestDefinitionData = ({
         const testPlatformFilter = urlFilters.testPlatforms?.[0] as
           | TestPlatform
           | undefined;
+        // The listing is cursor-paged, so the search has to run server side -
+        // filtering the current page would only ever search the rows already on
+        // screen.
+        const searchQuery = urlParams.q?.trim();
 
         const { data, paging: responsePaging } = await getListTestDefinitions({
           after: pagingOffset?.after,
@@ -76,6 +80,7 @@ export const useTestDefinitionData = ({
           limit: pageSize,
           entityType: entityTypeFilter,
           testPlatform: testPlatformFilter,
+          q: searchQuery || undefined,
         });
         setTestDefinitions(data);
         handlePagingChange(responsePaging);
@@ -86,7 +91,13 @@ export const useTestDefinitionData = ({
         setIsLoading(false);
       }
     },
-    [pageSize, handlePagingChange, fetchTestDefinitionPermissions, urlFilters]
+    [
+      pageSize,
+      handlePagingChange,
+      fetchTestDefinitionPermissions,
+      urlFilters,
+      urlParams.q,
+    ]
   );
 
   useEffect(() => {
@@ -97,7 +108,13 @@ export const useTestDefinitionData = ({
     } else {
       fetchTestDefinitions();
     }
-  }, [pageSize, pagingCursor, urlParams.entityType, urlParams.testPlatforms]);
+  }, [
+    pageSize,
+    pagingCursor,
+    urlParams.entityType,
+    urlParams.testPlatforms,
+    urlParams.q,
+  ]);
 
   const handleEnableToggle = async (
     record: TestDefinition,

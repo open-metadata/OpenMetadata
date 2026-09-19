@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,22 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
         Entity.getCollectionDAO().testDefinitionDAO(),
         "",
         "");
+  }
+
+  /**
+   * Paging follows the display-name order that {@code CollectionDAO.TestDefinitionDAO} lists in,
+   * so the cursor has to carry the same key — the default {@code entity.getName()} cursor would be
+   * compared against a display name in SQL and land on the wrong row. Lower-cased to match the
+   * {@code LOWER(...)} in that ordering expression.
+   */
+  @Override
+  public String getCursorValue(TestDefinition entity) {
+    String label =
+        CommonUtil.nullOrEmpty(entity.getDisplayName())
+            ? entity.getName()
+            : entity.getDisplayName();
+    return getCursorValue(
+        label == null ? "" : label.toLowerCase(Locale.ROOT), String.valueOf(entity.getId()));
   }
 
   @Override

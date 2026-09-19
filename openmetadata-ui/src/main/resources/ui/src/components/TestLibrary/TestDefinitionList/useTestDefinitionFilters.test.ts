@@ -216,18 +216,58 @@ describe('useTestDefinitionFilters', () => {
   });
 
   describe('clearAllFilters', () => {
-    it('should null every default quick filter and reset paging', () => {
+    // The search term has to go out in the SAME update as the quick filters:
+    // useTableFilters merges each call against the URL as it stands, so a
+    // follow-up call in the same tick would be built from the stale search
+    // string and undo the clearing.
+    it('should null every default quick filter and the search term in one update', () => {
       const { result } = renderFilters();
 
       act(() => {
         result.current.clearAllFilters();
       });
 
+      expect(mockUpdateUrlParams).toHaveBeenCalledTimes(1);
       expect(mockUpdateUrlParams).toHaveBeenCalledWith({
+        q: null,
         entityType: null,
         testPlatforms: null,
       });
       expect(mockHandlePageChange).toHaveBeenCalledWith(1, PAGE_RESET);
+    });
+  });
+
+  describe('handleSearchChange', () => {
+    it('should push the term to the url and reset paging', () => {
+      const { result } = renderFilters();
+
+      act(() => {
+        result.current.handleSearchChange('column values');
+      });
+
+      expect(mockUpdateUrlParams).toHaveBeenCalledWith({ q: 'column values' });
+      expect(mockHandlePageChange).toHaveBeenCalledWith(1, PAGE_RESET);
+    });
+
+    it('should drop the param entirely when the term is emptied', () => {
+      const { result } = renderFilters();
+
+      act(() => {
+        result.current.handleSearchChange('');
+      });
+
+      expect(mockUpdateUrlParams).toHaveBeenCalledWith({ q: null });
+    });
+
+    // The empty-state placeholder and the "clear all" button both key off
+    // hasActiveFilters, so a search with no quick filter still has to count.
+    it('should report hasActiveFilters for a search-only url state', () => {
+      mockUrlFilters = { q: 'column' };
+
+      const { result } = renderFilters();
+
+      expect(result.current.searchQuery).toBe('column');
+      expect(result.current.hasActiveFilters).toBe(true);
     });
   });
 });

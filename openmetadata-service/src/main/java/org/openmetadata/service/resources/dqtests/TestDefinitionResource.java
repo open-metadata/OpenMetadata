@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -172,9 +174,19 @@ public class TestDefinitionResource
                   "Filter by enabled status (true/false). If not specified, returns all test definitions.",
               schema = @Schema(type = "boolean"))
           @QueryParam("enabled")
-          Boolean enabledParam) {
+          Boolean enabledParam,
+      @Parameter(
+              description =
+                  "Search test definitions whose name or display name contains this text. "
+                      + "Case-insensitive and combinable with the filters above.",
+              schema = @Schema(type = "string"))
+          @QueryParam("q")
+          String searchQuery) {
     ListFilter filter = new ListFilter(include);
     TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
+    if (!nullOrEmpty(searchQuery)) {
+      filter.addQueryParam("nameFilter", searchQuery);
+    }
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
     }
