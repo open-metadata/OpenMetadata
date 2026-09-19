@@ -34,6 +34,12 @@
       "description": "Description of the Node.",
       "$comment": "@om-field-type",
       "type": "string"
+    },
+    "terminateAll": {
+      "title": "Terminate all executions",
+      "description": "Whether reaching this event cancels every other active execution in the workflow instance.",
+      "type": "boolean",
+      "default": false
     }
   }
 }
