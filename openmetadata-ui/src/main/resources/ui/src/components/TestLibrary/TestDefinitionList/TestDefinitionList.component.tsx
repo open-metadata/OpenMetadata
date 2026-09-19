@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Input } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import {
   SelectMode,
   useQuickFiltersWithComponent,
@@ -46,7 +48,9 @@ const TestDefinitionList = () => {
     showPagination,
     urlFilters,
     parsedFilters,
+    searchQuery,
     handleFilterChange,
+    handleSearchChange,
     isFormVisible,
     selectedDefinition,
     isDeleteModalVisible,
@@ -76,10 +80,19 @@ const TestDefinitionList = () => {
     mode: SelectMode.SINGLE,
   });
 
+  const { searchInputProps } = useListSearchInput({
+    searchQuery,
+    onSearchChange: handleSearchChange,
+  });
+
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.test-definition-plural'),
+  });
+
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: {
       filters: urlFilters,
-      searchQuery: '',
+      searchQuery,
       currentPage,
       pageSize,
     },
@@ -135,6 +148,14 @@ const TestDefinitionList = () => {
             }}>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
+                <Input
+                  {...searchInputProps}
+                  aria-label={searchLabel}
+                  className="tw:w-72"
+                  inputDataTestId="test-definition-search"
+                  placeholder={searchLabel}
+                  size="sm"
+                />
                 {quickFilters}
               </div>
               {!isEmpty(urlFilters) && <div>{filterSelectionDisplay}</div>}

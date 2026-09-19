@@ -98,6 +98,8 @@ export type ListTestDefinitionsParams = ListParams & {
   supportedDataType?: string;
   enabled?: boolean;
   supportedService?: string;
+  /** Free-text match against the test definition name and display name. */
+  q?: string;
 };
 
 export type ListTestCaseResultsParams = Omit<

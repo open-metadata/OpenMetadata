@@ -385,6 +385,7 @@ describe('useTestDefinitionListPage', () => {
       });
 
       expect(mockUpdateUrlParams).toHaveBeenCalledWith({
+        q: null,
         entityType: null,
         testPlatforms: null,
       });

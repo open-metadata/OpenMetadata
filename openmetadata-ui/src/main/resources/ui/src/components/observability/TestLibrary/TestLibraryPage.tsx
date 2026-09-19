@@ -45,7 +45,9 @@ const TestLibraryPage = () => {
     pagingData,
     showPagination,
     urlFilters,
+    searchQuery,
     setSingleFilter,
+    handleSearchChange,
     clearAllFilters,
     hasActiveFilters,
     isFormVisible,
@@ -124,8 +126,10 @@ const TestLibraryPage = () => {
             <TestDefinitionFilterBar
               filterValues={urlFilters}
               hasActiveFilters={hasActiveFilters}
+              searchQuery={searchQuery}
               onClearAll={clearAllFilters}
               onFilterChange={setSingleFilter}
+              onSearchChange={handleSearchChange}
             />
           </div>
           <TestDefinitionTable

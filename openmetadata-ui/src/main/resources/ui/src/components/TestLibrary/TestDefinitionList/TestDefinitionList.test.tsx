@@ -131,6 +131,25 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    CloseButton: jest
+      .fn()
+      .mockImplementation(({ onPress }) => (
+        <button
+          aria-label="clear"
+          data-testid="clear-search"
+          onClick={onPress}
+        />
+      )),
+    Input: jest
+      .fn()
+      .mockImplementation(({ value, onChange, inputDataTestId }) => (
+        <input
+          aria-label="search"
+          data-testid={inputDataTestId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      )),
     EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
       <div data-testid="empty-placeholder">
         <span>{title}</span>
