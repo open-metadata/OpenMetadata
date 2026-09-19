@@ -89,6 +89,19 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
     String requestUri = req.getRequestURI();
 
+    // The oidc-client silent-refresh iframe renders a dedicated HTML entry
+    // (`silent-callback.html`) rather than the SPA shell, so its bundle
+    // graph is exactly `oidc-client` + a tiny bootstrap and never inherits
+    // the SPA's `<link rel=modulepreload>` sibling set (which drags in
+    // `vendor-antd` — see scenario 7 of SsoScenarios.spec). oidc-client's
+    // configured callback URL has no `.html` extension, so intercept the
+    // extensionless `/silent-callback` route here — before the SPA
+    // fallback catches it — and hand back the pre-built HTML.
+    if (isSilentCallbackRoute(requestUri)) {
+      writeSilentCallbackHtml(req, resp);
+      return;
+    }
+
     if (requestUri.endsWith("/")) {
       final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
       writeIndexHtml(req, resp, cspNonce);
@@ -174,6 +187,62 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     }
     resp.setContentType("text/html");
     resp.getWriter().write(IndexResource.getIndexFile(this.basePath, cspNonce));
+  }
+
+  /**
+   * Match extensionless {@code /silent-callback} (with or without the
+   * deploy-time base-path prefix). Path-equality — never a substring —
+   * to make sure a user-authored route like {@code /silent-callback-help}
+   * still falls through to the SPA. The trailing-slash variant is
+   * accepted for parity with the SPA fallback's directory-index handling.
+   */
+  boolean isSilentCallbackRoute(String requestUri) {
+    if (requestUri == null) {
+      return false;
+    }
+    String pathToCheck = requestUri;
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      pathToCheck = requestUri.substring(normalizedBasePath.length());
+    }
+    return "/silent-callback".equals(pathToCheck) || "/silent-callback/".equals(pathToCheck);
+  }
+
+  /**
+   * Serve the Vite-built {@code silent-callback.html} shell. Substitutes
+   * {@code ${basePath}} the same way {@link IndexResource#getIndexFile}
+   * does for the SPA, so the emitted {@code <script>} tag resolves to the
+   * correct deploy-time prefix. Cached by {@link IndexResource} keyed on
+   * base path.
+   */
+  private void writeSilentCallbackHtml(HttpServletRequest req, HttpServletResponse resp)
+      throws IOException {
+    // Same 304 rule as the SPA shell: skip ETag revalidation when the response body
+    // carries a per-request CSP nonce (a cached body would carry a stale one and the
+    // browser would refuse to execute the script). Everywhere else the strong ETag
+    // makes the second load a ~150-byte 304.
+    String etag = IndexResource.getSilentCallbackEtag(this.basePath);
+    if (etag != null && !cspRequiresPerRequestBody()) {
+      resp.setHeader("ETag", etag);
+      String ifNoneMatch = req.getHeader("If-None-Match");
+      if (etag.equals(ifNoneMatch)) {
+        resp.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
+        return;
+      }
+    }
+    final String cspNonce = (String) req.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE);
+    String body = IndexResource.getSilentCallbackFile(this.basePath, cspNonce);
+    if (body == null) {
+      // UI assets not on classpath (no-ui mode) — behave like the SPA fallback would.
+      resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+      return;
+    }
+    resp.setStatus(HttpServletResponse.SC_OK);
+    resp.setContentType("text/html");
+    resp.getWriter().write(body);
   }
 
   /**
