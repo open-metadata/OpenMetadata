@@ -568,11 +568,13 @@ test.describe('Task Comments - UI Tests', () => {
       await taskFeeds;
 
       await getTaskCard(page, task.taskId).click();
+      // #33178 deleted TaskCommentCard from the entity task tab -- that testid
+      // now exists only on the Inbox page's TaskDetailPanel, so this assertion
+      // was waiting 15s for an element that is never rendered here. Assert the
+      // comment text inside the panel, which is how main's rewritten
+      // Features/Tasks/TaskComments.spec.ts reads a comment back.
       await expect(
-        page
-          .locator('#task-panel')
-          .getByTestId('task-comment-card')
-          .filter({ hasText: 'Test comment for UI display' })
+        page.locator('#task-panel').getByText('Test comment for UI display')
       ).toBeVisible();
     } finally {
       await deleteTaskViaAPI(apiContext, task.id);

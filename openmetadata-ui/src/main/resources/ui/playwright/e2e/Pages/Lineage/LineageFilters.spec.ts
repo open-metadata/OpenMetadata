@@ -684,6 +684,15 @@ test.describe('Lineage Filters', () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
+    // Measured from a failing run's trace: the beforeEach costs 17.8s and each
+    // of the 13 service-type selections ~3.2s, so the body alone is 41.8s --
+    // 59.6s against a 60s budget, which is why this times out while its
+    // siblings (57.6s) squeak through. The work is inherent to asserting every
+    // entity type, so give this one test the longer slot rather than trimming
+    // coverage. Scoped to the test, not the hook: a `beforeEach` slow() would
+    // hand every test in the file a budget it has not earned.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
