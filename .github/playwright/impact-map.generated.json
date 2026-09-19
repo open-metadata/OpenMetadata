@@ -6216,9 +6216,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/EntityExportModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts"
       ]
     },
     {
@@ -10659,16 +10657,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/AddCustomMetricPage/AddCustomMetricPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/AddQueryPage/AddQueryPage.component.tsx"
       ],
       "specs": [
@@ -11012,7 +11000,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LoginPage/SignInPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
@@ -11132,16 +11119,6 @@
       ],
       "specs": [
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/ResetPassword.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
