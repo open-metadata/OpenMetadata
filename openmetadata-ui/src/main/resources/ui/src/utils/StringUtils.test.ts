@@ -619,6 +619,24 @@ describe('StringUtils', () => {
         String.raw`\"customer`
       );
     });
+
+    it('should escape a raw double quote from a caller that skips escapeESReservedCharacters (e.g. TagsUtils#fetchGlossaryList)', () => {
+      expect(getQueryWithSlash('*"customer"*')).toBe(
+        String.raw`*\"customer\"*`
+      );
+    });
+
+    it('should escape a leading raw double quote but leave a trailing already-escaped one alone', () => {
+      expect(getQueryWithSlash(String.raw`"customer\"`)).toBe(
+        String.raw`\"customer\"`
+      );
+    });
+
+    it('should escape both single and double quotes in the same query', () => {
+      expect(getQueryWithSlash(String.raw`o'brien "test"`)).toBe(
+        String.raw`o\'brien \"test\"`
+      );
+    });
   });
 
   describe('getBase64EncodedString', () => {
