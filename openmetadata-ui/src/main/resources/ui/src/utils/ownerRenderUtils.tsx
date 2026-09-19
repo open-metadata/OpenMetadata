@@ -10,9 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { OwnerType } from '../enums/user.enum';
+
+// `index.tsx` registers this util at startup, so a static import of
+// UserPopOverCard put the hover-card tree — and with it most of
+// ui-core-components — on the entry graph, costing ~95 KiB Brotli of first
+// paint for a card nobody has hovered yet.
+const loadUserPopOverCard = () =>
+  import('../components/common/PopOverCard/UserPopOverCard');
+
+const UserPopOverCard = lazy(loadUserPopOverCard);
+
+// Warm the chunk, but never against first paint. Resolving the lazy component
+// before any owner chip exists is what keeps the first hover working: a pointer
+// already resting on the fallback when the boundary resolves would miss the
+// `mouseenter` the real trigger needs, and the card would stay shut until the
+// pointer left and came back.
+//
+// `import()` is still a split point, so this costs the entry bundle nothing
+// (measured: 4 bytes). The scheduling is what matters — `requestIdleCallback`
+// where it exists, and otherwise only once `load` has fired, so browsers
+// without it (Safari 16) still cannot race this fetch against the page's own
+// resources.
+if (typeof window !== 'undefined') {
+  const warm = () => void loadUserPopOverCard().catch(() => undefined);
+  const idle = (
+    window as typeof window & {
+      requestIdleCallback?: (
+        callback: () => void,
+        options?: { timeout: number }
+      ) => number;
+    }
+  ).requestIdleCallback;
+
+  if (idle) {
+    idle(warm, { timeout: 2000 });
+  } else if (document.readyState === 'complete') {
+    window.setTimeout(warm, 500);
+  } else {
+    window.addEventListener('load', () => window.setTimeout(warm, 500), {
+      once: true,
+    });
+  }
+}
 
 /**
  * Wraps an owner chip in a UserPopOverCard so hovering the owner avatar/name
@@ -27,9 +69,16 @@ export const renderOwnerPopover = (
   owner: { name?: string; type?: string },
   chip: ReactNode
 ): ReactNode => (
-  <UserPopOverCard
-    type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
-    userName={owner.name ?? ''}>
-    {chip}
-  </UserPopOverCard>
+  // A hover card that fails to load must not take the page with it: a
+  // `React.lazy` rejection otherwise reaches the app-level boundary. Both
+  // fallbacks are the chip itself, so the owner name survives either way.
+  <ErrorBoundary fallbackRender={() => <>{chip}</>}>
+    <Suspense fallback={chip}>
+      <UserPopOverCard
+        type={owner.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
+        {chip}
+      </UserPopOverCard>
+    </Suspense>
+  </ErrorBoundary>
 );

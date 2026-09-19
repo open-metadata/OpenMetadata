@@ -101,6 +101,7 @@
         "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/Markdown.spec.ts",
@@ -304,6 +305,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
@@ -419,7 +421,9 @@
         "playwright/e2e/Features/DataProductRename.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -537,6 +541,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AppMode/fixtures.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts"
@@ -654,6 +659,7 @@
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
@@ -763,6 +769,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
@@ -794,6 +801,7 @@
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
@@ -877,6 +885,7 @@
         "playwright/e2e/Features/DataProductRename.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -1014,6 +1023,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
       ]
@@ -1511,17 +1521,24 @@
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
+        "playwright/e2e/Features/DataQuality/ColumnProfileGraphsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -1545,6 +1562,7 @@
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/GlobalSearchSuggestions.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
@@ -1942,6 +1960,7 @@
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerLocaleLayout.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
@@ -1962,6 +1981,7 @@
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivityDataProductTree.spec.ts",
@@ -2163,6 +2183,7 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
@@ -2170,6 +2191,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
@@ -2241,6 +2263,7 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
@@ -2248,6 +2271,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
@@ -2352,6 +2376,7 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -2389,6 +2414,7 @@
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -2513,6 +2539,7 @@
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
@@ -2734,6 +2761,7 @@
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
@@ -3007,17 +3035,24 @@
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
+        "playwright/e2e/Features/DataQuality/ColumnProfileGraphsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -3049,6 +3084,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryExpandAllWithStatusFilter.spec.ts",
@@ -3398,8 +3434,10 @@
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
@@ -3414,6 +3452,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -3500,6 +3539,7 @@
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
@@ -3535,8 +3575,10 @@
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
@@ -3826,6 +3868,9 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/incidentManager.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts"
@@ -3950,6 +3995,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/pagination.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/permission.ts"
       ],
       "specs": [
@@ -4039,6 +4092,19 @@
       ],
       "specs": [
         "playwright/e2e/Features/QueryEntity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/reindex.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts"
       ]
     },
     {
@@ -4209,7 +4275,9 @@
         "playwright/e2e/Features/DataProductRename.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
@@ -4406,6 +4474,7 @@
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -4885,6 +4954,7 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -5731,6 +5801,7 @@
       "specs": [
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/Table.spec.ts"
       ]
     },
@@ -5812,6 +5883,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts"
       ]
     },
@@ -5837,7 +5909,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/ProfilerSettings/CustomRangeWidget.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
       ]
     },
     {
@@ -5845,7 +5918,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/ProfilerSettings/ProfilerSettings.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
       ]
     },
     {
@@ -5861,7 +5935,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/TableProfiler/ProfilerSettingsModal/ProfilerSettingsModal.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
       ]
     },
     {
@@ -5947,6 +6022,7 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
@@ -6418,6 +6494,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
@@ -6638,6 +6715,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/IncidentManager/IncidentManagerTable.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts"
@@ -7251,6 +7329,8 @@
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
@@ -8591,6 +8671,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/ExpandableCard/ExpandableCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/FeedsFilterPopover/FeedsFilterPopover.component.tsx"
       ],
       "specs": [
@@ -8735,6 +8823,8 @@
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
@@ -8759,6 +8849,8 @@
         "playwright/e2e/Features/Container.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
@@ -9014,7 +9106,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/SliderWithInput/SliderWithInput.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/Profiler.spec.ts"
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts"
       ]
     },
     {
@@ -9199,6 +9292,14 @@
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/WidgetCard/WidgetCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
       ]
     },
     {
@@ -9394,6 +9495,14 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionsPage/ConnectionsListView.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts"
       ]
     },
     {
@@ -9896,6 +10005,7 @@
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAuthGating.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
@@ -9941,17 +10051,24 @@
         "playwright/e2e/Features/DataQuality/BundleSuiteBulkOperations.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/ColumnLevelTests.spec.ts",
+        "playwright/e2e/Features/DataQuality/ColumnProfileGraphsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TableLevelTests.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseCrudAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -9989,6 +10106,7 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryDisplayNameEdit.spec.ts",
@@ -10269,6 +10387,7 @@
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityTabsAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -10452,6 +10571,9 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/entity/services/ingestionPipelines/ingestionPipeline.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQualityDashboardAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerAfterReindex.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerSettingsAfterReindex.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainIncidentIsolation.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts"
@@ -10689,6 +10811,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ExplorePage/ExplorePageV1.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
