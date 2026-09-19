@@ -1050,8 +1050,8 @@ test.describe('Lineage Filters', () => {
       .fill(topicEntity.entity.name);
 
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
     await page.getByTestId(`option-${topicFqn}`).click();
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
     await page.locator('.lineage-entity-panel').waitFor();
     await page
