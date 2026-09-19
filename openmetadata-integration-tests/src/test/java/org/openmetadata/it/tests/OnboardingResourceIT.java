@@ -33,27 +33,28 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
-import org.openmetadata.schema.api.governance.CreateIntakeForm;
-import org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType;
+import org.openmetadata.schema.api.governance.CreateOnboardingPlaybook;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.governance.TransitionOnboarding;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateUser;
-import org.openmetadata.schema.entity.governance.IntakeForm;
-import org.openmetadata.schema.entity.governance.IntakeFormField;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
+import org.openmetadata.schema.entity.governance.PlaybookEntityType;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.onboarding.OnboardingAssignment;
 import org.openmetadata.schema.governance.onboarding.OnboardingBackfill;
 import org.openmetadata.schema.governance.onboarding.OnboardingBoard;
+import org.openmetadata.schema.governance.onboarding.OnboardingCheckType;
 import org.openmetadata.schema.governance.onboarding.OnboardingCondition;
 import org.openmetadata.schema.governance.onboarding.OnboardingConfiguration;
 import org.openmetadata.schema.governance.onboarding.OnboardingGate;
 import org.openmetadata.schema.governance.onboarding.OnboardingProgress;
+import org.openmetadata.schema.governance.onboarding.OnboardingRequirement;
 import org.openmetadata.schema.governance.onboarding.OnboardingRules;
-import org.openmetadata.schema.governance.onboarding.OnboardingStage;
 import org.openmetadata.schema.governance.onboarding.OnboardingStep;
 import org.openmetadata.schema.governance.onboarding.OnboardingStepResult;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -70,7 +71,9 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 @Isolated("Onboarding intake configurations apply to every asset of their type")
 @ExtendWith(TestNamespaceExtension.class)
 class OnboardingResourceIT {
-  private static final String CONFIG_PATH = "/v1/governance/intakeForms";
+  private static final String CONFIG_PATH = "/v1/governance/onboardingPlaybooks";
+  private static final String STATUS_SETTING_WORKFLOW = "GlossaryTermApprovalWorkflow";
+  private static final String NO_STATUS_WORKFLOW = "RequestApprovalTaskWorkflow";
   private static final String ONBOARDING_PATH = "/v1/governance/onboarding/";
   private final List<UUID> configurations = new ArrayList<>();
   private final List<UUID> workflows = new ArrayList<>();
@@ -137,13 +140,12 @@ class OnboardingResourceIT {
         List.of(approvalStep("first-review", workflow), approvalStep("second-review", workflow));
     form.getOnboarding()
         .getGates()
-        .add(new OnboardingGate().withStage(OnboardingStage.IN_REVIEW).withSteps(approvals));
+        .add(new OnboardingGate().withStage("inReview").withSteps(approvals));
     publish(form);
     var asset = createAsset(type, namespace);
     patch(type, asset.getId(), "displayName", "Ready for review");
-    var draft = progress(type, asset.getId());
     assertBoardProgress(type, asset.getId());
-    transition(type, asset.getId(), draft.getEntityVersion(), EntityStatus.IN_REVIEW);
+    advance(type, asset.getId(), "inReview");
     var pending =
         await()
             .atMost(Duration.ofSeconds(30))
@@ -151,7 +153,7 @@ class OnboardingResourceIT {
                 () -> progress(type, asset.getId()),
                 value ->
                     value.getSteps().stream()
-                        .filter(step -> step.getStep().getType() == OnboardingStep.Type.APPROVAL)
+                        .filter(step -> step.getStep().getType() == OnboardingCheckType.APPROVAL)
                         .allMatch(
                             step ->
                                 step.getTaskId() != null && step.getWorkflowInstanceId() != null));
@@ -209,17 +211,12 @@ class OnboardingResourceIT {
     assertTrue(ready.getCanAdvance());
     assertBoardProgress(type, asset.getId());
     assertNotNull(step(ready, "first-review").getWorkflowInstanceId());
-    assertTrue(
-        transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.APPROVED)
-            .getCompleted());
+    assertTrue(advance(type, asset.getId(), "approved").getCompleted());
     patch(type, asset.getId(), "displayName", "Maintained after approval");
     var maintained = progress(type, asset.getId());
     assertBoardProgress(type, asset.getId());
     assertEquals(OnboardingStepResult.State.COMPLETE, step(maintained, "first-review").getState());
-    assertEquals(
-        OnboardingStage.DEPRECATED,
-        transition(type, asset.getId(), maintained.getEntityVersion(), EntityStatus.DEPRECATED)
-            .getStage());
+    assertEquals("deprecated", advance(type, asset.getId(), "deprecated").getStage());
   }
 
   @Test
@@ -248,7 +245,7 @@ class OnboardingResourceIT {
                 task -> task.getWorkflowInstanceId() != null);
     createConfiguration("metric", namespace);
     var enrolled = progress("metric", eligible.getId());
-    assertEquals(OnboardingStage.DRAFT, enrolled.getStage());
+    assertEquals("draft", enrolled.getStage());
     await()
         .atMost(Duration.ofSeconds(45))
         .untilAsserted(
@@ -325,26 +322,31 @@ class OnboardingResourceIT {
   void creationRequirementsCannotBeBypassedOrMoved(String type, TestNamespace namespace)
       throws Exception {
     var form = createConfiguration(type, namespace);
-    form.getOnboarding().getGates().getFirst().setStage(OnboardingStage.CREATION);
+    form.getOnboarding().getGates().getFirst().setStage("creation");
     form = publish(form);
     assertThrows(InvalidRequestException.class, () -> createAsset(type, namespace));
-    form.getFormFields()
+    form.getOnboarding().getGates().stream()
+        .filter(candidate -> "creation".equals(candidate.getStage()))
+        .findFirst()
+        .orElseThrow()
+        .getSteps()
         .add(
-            new IntakeFormField()
-                .withFieldPath("name")
-                .withFieldLabel("Name")
-                .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                .withRequired(true));
+            new OnboardingStep()
+                .withId("name")
+                .withTitle("Name")
+                .withType(OnboardingCheckType.ATTRIBUTE)
+                .withRequirement(OnboardingRequirement.BLOCKING)
+                .withFieldPath("name"));
     form.getOnboarding()
         .getGates()
         .add(
             new OnboardingGate()
-                .withStage(OnboardingStage.DRAFT)
+                .withStage("draft")
                 .withSteps(
                     List.of(
                         new OnboardingStep()
                             .withId("intrinsic-name")
-                            .withType(OnboardingStep.Type.FIELD)
+                            .withType(OnboardingCheckType.ATTRIBUTE)
                             .withFieldPath("name"))));
     var invalid = form;
     assertThrows(InvalidRequestException.class, () -> publish(invalid));
@@ -361,18 +363,11 @@ class OnboardingResourceIT {
     gate.getSteps()
         .getFirst()
         .setAssignment(new OnboardingAssignment().withRole(OnboardingAssignment.Role.OWNERS));
-    form.getFormFields()
-        .add(
-            new IntakeFormField()
-                .withFieldPath("owners")
-                .withFieldLabel("Owners")
-                .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                .withRequired(true));
     gate.getSteps()
         .add(
             new OnboardingStep()
                 .withId("owners")
-                .withType(OnboardingStep.Type.FIELD)
+                .withType(OnboardingCheckType.ATTRIBUTE)
                 .withFieldPath("owners")
                 .withRules(new OnboardingRules().withMinItems(2))
                 .withAssignment(
@@ -409,7 +404,7 @@ class OnboardingResourceIT {
     var ready = progress(type, asset.getId());
     assertTrue(ready.getCanAdvance());
     assertBoardProgress(type, asset.getId());
-    transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.IN_REVIEW);
+    advance(type, asset.getId(), "inReview");
     assertThrows(
         InvalidRequestException.class, () -> patch(type, asset.getId(), "owners", List.of(user1)));
   }
@@ -480,11 +475,12 @@ class OnboardingResourceIT {
         .getGates()
         .add(
             new OnboardingGate()
-                .withStage(OnboardingStage.IN_REVIEW)
+                .withStage("inReview")
                 .withSteps(List.of(approvalStep("review", workflow))));
     publish(form);
     var asset = createAsset("metric", namespace);
     patch("metric", asset.getId(), "displayName", "Ready for review");
+    advance("metric", asset.getId(), "inReview");
     var pending = retry("metric", asset.getId());
     UUID task = step(pending, "review").getTaskId();
     var http = SdkClients.adminClient().getHttpClient();
@@ -536,13 +532,6 @@ class OnboardingResourceIT {
             .withPropertyType(stringType.getEntityReference()),
         org.openmetadata.schema.entity.Type.class);
     var form = createConfiguration("metric", namespace);
-    form.getFormFields()
-        .add(
-            new IntakeFormField()
-                .withFieldPath(property)
-                .withFieldLabel("Justification")
-                .withFieldKind(IntakeFormField.FieldKind.CUSTOM_PROPERTY)
-                .withRequired(true));
     form.getOnboarding()
         .getGates()
         .getFirst()
@@ -550,13 +539,14 @@ class OnboardingResourceIT {
         .add(
             new OnboardingStep()
                 .withId("justification")
-                .withType(OnboardingStep.Type.FIELD)
+                .withType(OnboardingCheckType.ATTRIBUTE)
                 .withFieldPath(property)
                 .withRules(new OnboardingRules().withMinLength(10)));
     var published = publish(form);
     assertTrue(
-        published.getFormFields().stream()
-            .anyMatch(field -> ("extension." + property).equals(field.getFieldPath())));
+        published.getOnboarding().getGates().stream()
+            .flatMap(gate -> gate.getSteps().stream())
+            .anyMatch(step -> ("extension." + property).equals(step.getFieldPath())));
     var asset = createAsset("metric", namespace);
     patch("metric", asset.getId(), "displayName", "Complete name");
     patch("metric", asset.getId(), "extension", Map.of(property, "short"));
@@ -565,7 +555,7 @@ class OnboardingResourceIT {
         "metric", asset.getId(), "extension", Map.of(property, "Reviewed business justification"));
     var ready = progress("metric", asset.getId());
     assertTrue(ready.getCanAdvance());
-    transition("metric", asset.getId(), ready.getEntityVersion(), EntityStatus.IN_REVIEW);
+    advance("metric", asset.getId(), "inReview");
     assertThrows(
         InvalidRequestException.class, () -> patch("metric", asset.getId(), "extension", Map.of()));
   }
@@ -579,11 +569,12 @@ class OnboardingResourceIT {
         .getGates()
         .add(
             new OnboardingGate()
-                .withStage(OnboardingStage.IN_REVIEW)
+                .withStage("inReview")
                 .withSteps(List.of(approvalStep("review", workflow))));
     publish(form);
     var asset = createAsset("metric", namespace);
     patch("metric", asset.getId(), "displayName", "Ready for review");
+    advance("metric", asset.getId(), "inReview");
     retry("metric", asset.getId());
     var started =
         await()
@@ -619,16 +610,72 @@ class OnboardingResourceIT {
     form.getOnboarding().getGates().getFirst().getSteps().getFirst().setId("creation_name");
     assertThrows(InvalidRequestException.class, () -> publish(form));
     form.getOnboarding().getGates().getFirst().getSteps().getFirst().setId("display-name");
-    form.getFormFields()
-        .add(JsonUtils.deepCopy(form.getFormFields().getFirst(), IntakeFormField.class));
+    var duplicate =
+        JsonUtils.deepCopy(
+            form.getOnboarding().getGates().getFirst().getSteps().getFirst(), OnboardingStep.class);
+    form.getOnboarding().getGates().getFirst().getSteps().add(duplicate.withId("duplicate"));
     assertThrows(InvalidRequestException.class, () -> publish(form));
+  }
+
+  @Test
+  void republishingAPlaybookUpdatesItRatherThanReportingADuplicate(TestNamespace namespace)
+      throws Exception {
+    var form = createConfiguration("metric", namespace);
+    form.getOnboarding()
+        .getGates()
+        .getFirst()
+        .setHandoffWorkflow(workflowReference(STATUS_SETTING_WORKFLOW));
+
+    // PUT mints a fresh UUID for the incoming entity, so a uniqueness check keyed on id would
+    // reject every republish of the same playbook.
+    var republished = publish(form);
+
+    var handoff = republished.getOnboarding().getGates().getFirst().getHandoffWorkflow();
+    assertNotNull(handoff);
+    assertEquals(STATUS_SETTING_WORKFLOW, handoff.getName());
+    assertNotNull(handoff.getId(), "The handoff is started by name, so publish must resolve it");
+  }
+
+  @Test
+  void fieldCatalogueOffersOnlyPathsTheValidatorAccepts() throws Exception {
+    String[] dataProductFields = onboardingFields("dataProduct");
+    String[] metricFields = onboardingFields("metric");
+
+    assertTrue(List.of(dataProductFields).contains("displayName"));
+    assertTrue(List.of(dataProductFields).contains("domains"));
+    // `glossaryTerms` reads as a plausible field but a data product has none - offering it would
+    // build a check the playbook validator rejects on publish.
+    assertFalse(List.of(dataProductFields).contains("glossaryTerms"));
+    assertFalse(List.of(metricFields).contains("domainType"));
+    for (String derived :
+        List.of("id", "version", "updatedAt", "href", "extension", "followers", "usageSummary")) {
+      assertFalse(List.of(metricFields).contains(derived), derived);
+    }
+  }
+
+  private String[] onboardingFields(String entityType) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.GET, CONFIG_PATH + "/fields/" + entityType, null, String[].class);
+  }
+
+  private EntityReference workflowReference(String name) throws Exception {
+    var workflow =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/governance/workflowDefinitions/name/" + name,
+                null,
+                WorkflowDefinition.class);
+    return workflow.getEntityReference();
   }
 
   private OnboardingStep approvalStep(String id, WorkflowDefinition workflow) {
     return new OnboardingStep()
         .withId(id)
         .withTitle(id)
-        .withType(OnboardingStep.Type.APPROVAL)
+        .withType(OnboardingCheckType.APPROVAL)
         .withWorkflow(workflow.getEntityReference());
   }
 
@@ -641,14 +688,12 @@ class OnboardingResourceIT {
         .getGates()
         .add(
             new OnboardingGate()
-                .withStage(OnboardingStage.IN_REVIEW)
+                .withStage("inReview")
                 .withSteps(List.of(approvalStep("review", workflow))));
     publish(form);
     var asset = createAsset("metric", namespace);
     patch("metric", asset.getId(), "displayName", "Threshold review");
-    var draft = progress("metric", asset.getId());
-    var reviewing =
-        transition("metric", asset.getId(), draft.getEntityVersion(), EntityStatus.IN_REVIEW);
+    var reviewing = advance("metric", asset.getId(), "inReview");
     UUID task = step(reviewing, "review").getTaskId();
     decide(task, true);
     assertFalse(progress("metric", asset.getId()).getCanAdvance());
@@ -718,19 +763,17 @@ class OnboardingResourceIT {
     return workflow;
   }
 
-  private IntakeForm publish(IntakeForm form) throws Exception {
+  private OnboardingPlaybook publish(OnboardingPlaybook form) throws Exception {
     return SdkClients.adminClient()
         .getHttpClient()
         .execute(
             HttpMethod.PUT,
             CONFIG_PATH,
-            new CreateIntakeForm()
+            new CreateOnboardingPlaybook()
                 .withName(form.getName())
-                .withEntityType(TargetEntityType.fromValue(form.getEntityType().value()))
-                .withEnabled(form.getEnabled())
-                .withFormFields(form.getFormFields())
+                .withEntityType(form.getEntityType())
                 .withOnboarding(form.getOnboarding()),
-            IntakeForm.class);
+            OnboardingPlaybook.class);
   }
 
   private OnboardingStepResult step(OnboardingProgress progress, String id) {
@@ -750,7 +793,7 @@ class OnboardingResourceIT {
               ONBOARDING_PATH + type + "/" + id + "/transition",
               new TransitionOnboarding()
                   .withExpectedVersion(progress.getEntityVersion())
-                  .withTargetStatus(progress.getNextStatus())
+                  .withTargetStage(progress.getNextStage())
                   .withRetry(true),
               OnboardingProgress.class);
     } catch (Exception exception) {
@@ -793,18 +836,17 @@ class OnboardingResourceIT {
     var snapshot =
         org.openmetadata.service.governance.onboarding.OnboardingService.entity(
             type, asset.getId());
-    var review = transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.IN_REVIEW);
+    var review = advance(type, asset.getId(), "inReview");
     org.openmetadata.service.governance.onboarding.OnboardingService.synchronize(
         snapshot, type, false);
     assertEquals(
-        OnboardingStage.IN_REVIEW,
+        "inReview",
         org.openmetadata.service.governance.onboarding.OnboardingStore.find(asset.getId())
             .getStage());
-    assertEquals(OnboardingStage.IN_REVIEW, review.getStage());
+    assertEquals("inReview", review.getStage());
     assertThrows(
         InvalidRequestException.class, () -> patch(type, asset.getId(), "displayName", ""));
-    var approved =
-        transition(type, asset.getId(), review.getEntityVersion(), EntityStatus.APPROVED);
+    var approved = advance(type, asset.getId(), "approved");
     assertTrue(approved.getCompleted());
     assertTrue(progress(type, asset.getId()).getCompleted());
   }
@@ -812,25 +854,20 @@ class OnboardingResourceIT {
   @Test
   void configurationVersionsRemainPinnedAndLegacyUpdatesPreserveGates(TestNamespace namespace)
       throws Exception {
-    IntakeForm form = createConfiguration("metric", namespace);
+    OnboardingPlaybook form = createConfiguration("metric", namespace);
     EntityInterface first = createAsset("metric", namespace);
     var pinned = progress("metric", first.getId());
-    var legacy =
-        new CreateIntakeForm()
+    // Republishing the playbook must not disturb assets already pinned to an earlier version.
+    form.getOnboarding().getGates().getFirst().getSteps().getFirst().setTitle("Revised title");
+    var republished =
+        new CreateOnboardingPlaybook()
             .withName(form.getName())
-            .withEntityType(TargetEntityType.METRIC)
-            .withEnabled(true)
-            .withFormFields(
-                List.of(
-                    new IntakeFormField()
-                        .withFieldPath("displayName")
-                        .withFieldLabel("Name")
-                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                        .withRequired(false)));
+            .withEntityType(PlaybookEntityType.METRIC)
+            .withOnboarding(form.getOnboarding());
     var updated =
         SdkClients.adminClient()
             .getHttpClient()
-            .execute(HttpMethod.PUT, CONFIG_PATH, legacy, IntakeForm.class);
+            .execute(HttpMethod.PUT, CONFIG_PATH, republished, OnboardingPlaybook.class);
     assertNotNull(updated.getOnboarding());
     assertEquals(
         pinned.getConfigurationVersion(),
@@ -842,28 +879,34 @@ class OnboardingResourceIT {
         pinned.getConfigurationVersion(),
         progress("metric", second.getId()).getConfigurationVersion());
     assertThrows(
-        ConflictException.class,
-        () -> transition("metric", first.getId(), -1.0, EntityStatus.IN_REVIEW));
+        ConflictException.class, () -> transition("metric", first.getId(), -1.0, "inReview"));
   }
 
   @Test
   void metricLegacyIntakeStillEnforcesCreation(TestNamespace namespace) throws Exception {
     var request =
-        new CreateIntakeForm()
+        new CreateOnboardingPlaybook()
             .withName(namespace.prefix("legacy"))
-            .withEntityType(TargetEntityType.METRIC)
-            .withFormFields(
-                List.of(
-                    new IntakeFormField()
-                        .withFieldPath("displayName")
-                        .withFieldLabel("Display name")
-                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                        .withRequired(true)))
-            .withEnabled(true);
+            .withEntityType(PlaybookEntityType.METRIC)
+            .withOnboarding(
+                new OnboardingConfiguration()
+                    .withEnabled(true)
+                    .withGates(
+                        List.of(
+                            new OnboardingGate()
+                                .withStage("creation")
+                                .withSteps(
+                                    List.of(
+                                        new OnboardingStep()
+                                            .withId("display-name")
+                                            .withTitle("Display name")
+                                            .withType(OnboardingCheckType.ATTRIBUTE)
+                                            .withRequirement(OnboardingRequirement.BLOCKING)
+                                            .withFieldPath("displayName"))))));
     var form =
         SdkClients.adminClient()
             .getHttpClient()
-            .execute(HttpMethod.POST, CONFIG_PATH, request, IntakeForm.class);
+            .execute(HttpMethod.POST, CONFIG_PATH, request, OnboardingPlaybook.class);
     configurations.add(form.getId());
     assertThrows(
         InvalidRequestException.class,
@@ -886,7 +929,7 @@ class OnboardingResourceIT {
       String type, TestNamespace namespace) throws Exception {
     var form = createConfiguration(type, namespace);
     var asset = createAsset(type, namespace);
-    form.getOnboarding().getGates().getFirst().setStage(OnboardingStage.CREATION);
+    form.getOnboarding().getGates().getFirst().setStage("creation");
     publish(form);
 
     putAsset(type, asset);
@@ -894,8 +937,7 @@ class OnboardingResourceIT {
         EntityStatus.DRAFT, OnboardingService.entity(type, asset.getId()).getEntityStatus());
     assertEquals(form.getVersion(), progress(type, asset.getId()).getConfigurationVersion());
     patch(type, asset.getId(), "displayName", "Complete metadata");
-    var ready = progress(type, asset.getId());
-    transition(type, asset.getId(), ready.getEntityVersion(), EntityStatus.IN_REVIEW);
+    advance(type, asset.getId(), "inReview");
     putAsset(type, OnboardingService.entity(type, asset.getId()));
     assertEquals(
         EntityStatus.IN_REVIEW, OnboardingService.entity(type, asset.getId()).getEntityStatus());
@@ -935,40 +977,30 @@ class OnboardingResourceIT {
         .executeForString(HttpMethod.PUT, "/v1/" + collection(type), request);
   }
 
-  private IntakeForm createConfiguration(String type, TestNamespace namespace) throws Exception {
+  private OnboardingPlaybook createConfiguration(String type, TestNamespace namespace)
+      throws Exception {
     var step =
         new OnboardingStep()
             .withId("display-name")
             .withTitle("Display name")
-            .withType(OnboardingStep.Type.FIELD)
+            .withType(OnboardingCheckType.ATTRIBUTE)
             .withFieldPath("displayName")
             .withRules(new OnboardingRules().withMinLength(5));
     var request =
-        new CreateIntakeForm()
+        new CreateOnboardingPlaybook()
             .withName(namespace.prefix("onboarding"))
-            .withEntityType(TargetEntityType.fromValue(type))
-            .withEnabled(true)
-            .withFormFields(
-                List.of(
-                    new IntakeFormField()
-                        .withFieldPath("displayName")
-                        .withFieldLabel("Display name")
-                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                        .withRequired(true)))
+            .withEntityType(PlaybookEntityType.fromValue(type))
             .withOnboarding(
                 new OnboardingConfiguration()
                     .withEnabled(true)
                     .withGates(
-                        List.of(
-                            new OnboardingGate()
-                                .withStage(OnboardingStage.DRAFT)
-                                .withSteps(List.of(step)))));
-    var form =
+                        List.of(new OnboardingGate().withStage("draft").withSteps(List.of(step)))));
+    var playbook =
         SdkClients.adminClient()
             .getHttpClient()
-            .execute(HttpMethod.POST, CONFIG_PATH, request, IntakeForm.class);
-    configurations.add(form.getId());
-    return form;
+            .execute(HttpMethod.POST, CONFIG_PATH, request, OnboardingPlaybook.class);
+    configurations.add(playbook.getId());
+    return playbook;
   }
 
   private OpenMetadataClient delegatedConsumer() {
@@ -1110,14 +1142,34 @@ class OnboardingResourceIT {
             });
   }
 
-  private OnboardingProgress transition(String type, UUID id, Double version, EntityStatus status)
+  /**
+   * Pass the gate, then apply the status change its handoff workflow would have made. Onboarding
+   * deliberately never moves an asset itself, so a test that needs the asset in the next stage has
+   * to stand in for the workflow - and the write is refused unless the gate really did pass.
+   */
+  private OnboardingProgress advance(String type, UUID id, String stage) throws Exception {
+    transition(type, id, progress(type, id).getEntityVersion(), null);
+    patch(type, id, "entityStatus", statusFor(stage));
+    return progress(type, id);
+  }
+
+  private String statusFor(String stage) {
+    return switch (stage) {
+      case "draft" -> "Draft";
+      case "inReview" -> "In Review";
+      case "approved" -> "Approved";
+      default -> "Deprecated";
+    };
+  }
+
+  private OnboardingProgress transition(String type, UUID id, Double version, String status)
       throws Exception {
     return SdkClients.adminClient()
         .getHttpClient()
         .execute(
             HttpMethod.POST,
             ONBOARDING_PATH + type + "/" + id + "/transition",
-            new TransitionOnboarding().withExpectedVersion(version).withTargetStatus(status),
+            new TransitionOnboarding().withExpectedVersion(version).withTargetStage(status),
             OnboardingProgress.class);
   }
 

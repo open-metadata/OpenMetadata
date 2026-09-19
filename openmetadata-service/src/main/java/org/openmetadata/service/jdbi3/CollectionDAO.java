@@ -23,6 +23,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transactional;
 import org.openmetadata.schema.entity.governance.IntakeForm;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
@@ -79,6 +80,9 @@ public interface CollectionDAO
   IntakeFormDAO intakeFormDAO();
 
   @CreateSqlObject
+  OnboardingPlaybookDAO onboardingPlaybookDAO();
+
+  @CreateSqlObject
   OnboardingDAO onboardingDAO();
 
   interface IntakeFormDAO extends EntityDAO<IntakeForm> {
@@ -109,6 +113,38 @@ public interface CollectionDAO
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM intake_form_entity WHERE json->>'entityType' = :entityType LIMIT 1",
+        connectionType = POSTGRES)
+    String findByEntityType(@Bind("entityType") String entityType);
+  }
+
+  interface OnboardingPlaybookDAO extends EntityDAO<OnboardingPlaybook> {
+    @Override
+    default String getTableName() {
+      return "onboarding_playbook_entity";
+    }
+
+    @Override
+    default Class<OnboardingPlaybook> getEntityClass() {
+      return OnboardingPlaybook.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM onboarding_playbook_entity WHERE JSON_EXTRACT(json, '$.entityType') = :entityType LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM onboarding_playbook_entity WHERE json->>'entityType' = :entityType LIMIT 1",
         connectionType = POSTGRES)
     String findByEntityType(@Bind("entityType") String entityType);
   }

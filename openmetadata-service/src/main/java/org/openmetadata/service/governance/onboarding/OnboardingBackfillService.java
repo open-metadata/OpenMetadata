@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.governance.IntakeForm;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
 import org.openmetadata.schema.governance.onboarding.Failure;
 import org.openmetadata.schema.governance.onboarding.OnboardingBackfill;
 import org.openmetadata.schema.type.EntityStatus;
@@ -21,18 +21,18 @@ public final class OnboardingBackfillService {
 
   public static OnboardingBackfill get(String type) {
     OnboardingService.requireType(type);
-    IntakeForm form = OnboardingService.configured(type);
-    if (!OnboardingEvaluator.isEnabled(form)) return null;
-    String json = OnboardingStore.dao().getBackfill(form.getId().toString());
+    OnboardingPlaybook playbook = OnboardingService.configured(type);
+    if (!OnboardingEvaluator.isEnabled(playbook)) return null;
+    String json = OnboardingStore.dao().getBackfill(playbook.getId().toString());
     return json == null ? null : JsonUtils.readValue(json, OnboardingBackfill.class);
   }
 
   public static OnboardingBackfill retry(String type) {
-    IntakeForm form = OnboardingService.configured(type);
-    if (!OnboardingEvaluator.isEnabled(form))
+    OnboardingPlaybook playbook = OnboardingService.configured(type);
+    if (!OnboardingEvaluator.isEnabled(playbook))
       throw new IllegalArgumentException("Enable onboarding before starting backfill");
-    initialize(form);
-    String lease = claim(form);
+    initialize(playbook);
+    String lease = claim(playbook);
     if (lease == null)
       throw new WebApplicationException("Backfill is processing a page; retry shortly", 409);
     try {
@@ -41,23 +41,23 @@ public final class OnboardingBackfillService {
       save(progress);
       return progress;
     } finally {
-      OnboardingStore.dao().releaseBackfill(form.getId().toString(), lease);
+      OnboardingStore.dao().releaseBackfill(playbook.getId().toString(), lease);
     }
   }
 
   public static void runPage(String type) {
-    IntakeForm form = OnboardingService.configured(type);
-    if (!OnboardingEvaluator.isEnabled(form)) return;
-    initialize(form);
-    String lease = claim(form);
+    OnboardingPlaybook playbook = OnboardingService.configured(type);
+    if (!OnboardingEvaluator.isEnabled(playbook)) return;
+    initialize(playbook);
+    String lease = claim(playbook);
     if (lease == null) return;
     try {
       var progress = get(type);
-      if (!Objects.equals(progress.getConfigurationVersion(), form.getVersion())) {
+      if (!Objects.equals(progress.getConfigurationVersion(), playbook.getVersion())) {
         progress =
             new OnboardingBackfill()
-                .withConfigurationId(form.getId())
-                .withConfigurationVersion(form.getVersion());
+                .withConfigurationId(playbook.getId())
+                .withConfigurationVersion(playbook.getVersion());
       }
       if (Boolean.TRUE.equals(progress.getComplete())) return;
       var repository = Entity.getEntityRepository(type);
@@ -75,34 +75,35 @@ public final class OnboardingBackfillService {
           .withComplete(page.getPaging().getAfter() == null);
       save(progress);
     } finally {
-      OnboardingStore.dao().releaseBackfill(form.getId().toString(), lease);
+      OnboardingStore.dao().releaseBackfill(playbook.getId().toString(), lease);
     }
   }
 
-  private static String claim(IntakeForm form) {
+  private static String claim(OnboardingPlaybook playbook) {
     String owner = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
-    return OnboardingStore.dao().claimBackfill(form.getId().toString(), owner, now, now + 600_000)
+    return OnboardingStore.dao()
+                .claimBackfill(playbook.getId().toString(), owner, now, now + 600_000)
             == 1
         ? owner
         : null;
   }
 
-  private static OnboardingBackfill initialize(IntakeForm form) {
-    String json = OnboardingStore.dao().getBackfill(form.getId().toString());
+  private static OnboardingBackfill initialize(OnboardingPlaybook playbook) {
+    String json = OnboardingStore.dao().getBackfill(playbook.getId().toString());
     OnboardingBackfill progress =
         json == null ? null : JsonUtils.readValue(json, OnboardingBackfill.class);
     if (progress != null) return progress;
     progress =
         new OnboardingBackfill()
-            .withConfigurationId(form.getId())
-            .withConfigurationVersion(form.getVersion());
+            .withConfigurationId(playbook.getId())
+            .withConfigurationVersion(playbook.getVersion());
     if (json == null) {
       try {
         OnboardingStore.dao()
-            .insertBackfill(form.getId().toString(), JsonUtils.pojoToJson(progress));
+            .insertBackfill(playbook.getId().toString(), JsonUtils.pojoToJson(progress));
       } catch (RuntimeException exception) {
-        if (OnboardingStore.dao().getBackfill(form.getId().toString()) == null) throw exception;
+        if (OnboardingStore.dao().getBackfill(playbook.getId().toString()) == null) throw exception;
       }
     }
     return progress;

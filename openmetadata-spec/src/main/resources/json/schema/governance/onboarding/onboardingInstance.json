@@ -12,13 +12,19 @@
       "$ref": "../../type/entityReference.json"
     },
     "configuration": {
-      "$ref": "../intakeForm.json"
+      "description": "Playbook snapshot the asset was enrolled under.",
+      "$ref": "../../entity/governance/onboardingPlaybook.json"
     },
     "creator": {
       "$ref": "../../type/entityReference.json"
     },
     "stage": {
       "$ref": "./onboardingStage.json"
+    },
+    "createdAt": {
+      "description": "updatedAt of the asset's version 0.1, captured at enrolment.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
     },
     "enteredAt": {
       "type": "integer",
@@ -54,6 +60,14 @@
       "description": "Creation checks passed when enrolled or after revising a backfilled asset.",
       "type": "boolean",
       "default": false
+    },
+    "reminders": {
+      "description": "Latest reminder per check and kind. The full log lives in onboarding_reminder.",
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingReminder.json"
+      },
+      "default": []
     }
   },
   "required": [

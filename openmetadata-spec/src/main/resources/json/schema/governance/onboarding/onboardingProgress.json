@@ -24,6 +24,11 @@
       "type": "integer",
       "existingJavaType": "java.lang.Long"
     },
+    "createdAt": {
+      "description": "When the asset was created - the start of its onboarding clock.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
     "steps": {
       "type": "array",
       "items": {
@@ -38,8 +43,9 @@
       },
       "default": []
     },
-    "nextStatus": {
-      "$ref": "../../type/status.json"
+    "nextStage": {
+      "description": "Stage the asset moves to once this gate's workflow completes. Onboarding does not perform the move.",
+      "$ref": "./onboardingStage.json"
     },
     "canAdvance": {
       "type": "boolean"
@@ -54,6 +60,19 @@
       "type": "array",
       "items": {
         "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "gateBlocking": {
+      "description": "False when the gate lets an asset move with checks open and notifies the playbook owners instead.",
+      "type": "boolean",
+      "default": true
+    },
+    "warnings": {
+      "description": "Required checks still open at a non-blocking gate.",
+      "type": "array",
+      "items": {
+        "type": "string"
       },
       "default": []
     }

@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.onboarding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.onboarding.OnboardingAssignment;
 import org.openmetadata.schema.governance.onboarding.OnboardingInstance;
@@ -11,6 +12,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 public final class OnboardingAssignments {
+  private static final Set<String> ASSIGNABLE_TYPES = Set.of(Entity.USER, Entity.TEAM);
+
   private OnboardingAssignments() {}
 
   public static List<EntityReference> resolve(
@@ -23,7 +26,14 @@ public final class OnboardingAssignments {
       EntityInterface entity,
       OnboardingInstance instance,
       OnboardingReadContext reads) {
-    OnboardingAssignment assignment = step.getAssignment();
+    return resolve(effectiveAssignment(step, instance), entity, instance, reads);
+  }
+
+  static List<EntityReference> resolve(
+      OnboardingAssignment assignment,
+      EntityInterface entity,
+      OnboardingInstance instance,
+      OnboardingReadContext reads) {
     if (assignment == null || assignment.getRole() == null)
       return active(list(instance.getCreator()), reads);
     return active(
@@ -37,13 +47,22 @@ public final class OnboardingAssignments {
         reads);
   }
 
+  /**
+   * A stall reassignment sticks. Without this, the next assignee refresh would hand the task back
+   * to whoever the gate already gave up waiting on.
+   */
+  private static OnboardingAssignment effectiveAssignment(
+      OnboardingStep step, OnboardingInstance instance) {
+    var binding = OnboardingTasks.binding(instance, step.getId());
+    if (binding == null || binding.getReassignedAt() == null) return step.getAssignment();
+    return OnboardingGates.reassignRole(OnboardingGates.gateForStep(instance, step.getId()));
+  }
+
   private static List<EntityReference> active(
       List<EntityReference> references, OnboardingReadContext reads) {
     List<EntityReference> result = new ArrayList<>();
     for (var reference : references) {
-      if (reference == null
-          || reference.getId() == null
-          || !List.of(Entity.USER, Entity.TEAM).contains(reference.getType())) continue;
+      if (!assignable(reference)) continue;
       try {
         EntityInterface assignee = reads.entity(reference, "");
         result.add(assignee.getEntityReference());
@@ -52,6 +71,14 @@ public final class OnboardingAssignments {
       }
     }
     return result;
+  }
+
+  /** Only people and teams hold a role; a reference stored without a type holds nothing. */
+  private static boolean assignable(EntityReference reference) {
+    return reference != null
+        && reference.getId() != null
+        && reference.getType() != null
+        && ASSIGNABLE_TYPES.contains(reference.getType());
   }
 
   private static List<EntityReference> domainOwners(

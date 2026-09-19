@@ -22,6 +22,7 @@ public final class OnboardingWorker implements Managed, EntityLifecycleEventHand
   public void start() {
     EntityLifecycleEventDispatcher.getInstance().registerHandler(this);
     executor.scheduleWithFixedDelay(this::recover, 10, 10, TimeUnit.SECONDS);
+    executor.scheduleWithFixedDelay(this::checkStalls, 60, 600, TimeUnit.SECONDS);
   }
 
   @Override
@@ -62,6 +63,8 @@ public final class OnboardingWorker implements Managed, EntityLifecycleEventHand
         .useTransaction(
             dao -> {
               dao.onboardingDAO().deleteTasks(instance.getId().toString());
+              dao.onboardingDAO().deleteStageHistory(instance.getId().toString());
+              dao.onboardingDAO().deleteReminders(instance.getId().toString());
               dao.onboardingDAO().delete(entity.getId().toString());
             });
   }
@@ -86,6 +89,14 @@ public final class OnboardingWorker implements Managed, EntityLifecycleEventHand
     }
     var asset = OnboardingService.entity(reference.getType(), reference.getId());
     OnboardingService.synchronize(asset, reference.getType(), false);
+  }
+
+  private void checkStalls() {
+    try {
+      OnboardingStalls.runPass(System.currentTimeMillis());
+    } catch (RuntimeException exception) {
+      LOG.error("Could not run the onboarding stall pass", exception);
+    }
   }
 
   private void recover() {

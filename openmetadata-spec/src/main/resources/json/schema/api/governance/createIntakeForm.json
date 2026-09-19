@@ -52,9 +52,6 @@
       "description": "Owners of this IntakeForm configuration.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
-    },
-    "onboarding": {
-      "$ref": "../../governance/onboarding/onboardingConfiguration.json"
     }
   },
   "required": [

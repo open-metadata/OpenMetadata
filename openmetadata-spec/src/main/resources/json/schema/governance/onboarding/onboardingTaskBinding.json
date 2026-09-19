@@ -23,13 +23,13 @@
     "workflowDefinitionId": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
-    "workflowInstanceId": {
-      "$ref": "../../type/basic.json#/definitions/uuid"
+    "stallNotifiedAt": {
+      "description": "When the playbook owners were told this task had stopped moving.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
     },
-    "approved": {
-      "type": "boolean"
-    },
-    "decidedAt": {
+    "reassignedAt": {
+      "description": "When the stall policy reassigned this task. Assignee refreshes never revert it.",
       "type": "integer",
       "existingJavaType": "java.lang.Long"
     }

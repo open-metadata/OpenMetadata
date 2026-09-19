@@ -5,8 +5,9 @@
   "javaType": "org.openmetadata.schema.api.governance.TransitionOnboarding",
   "type": "object",
   "properties": {
-    "targetStatus": {
-      "$ref": "../../type/status.json"
+    "targetStage": {
+      "description": "Stage the caller expects to advance to. Guards against acting on a stale board.",
+      "$ref": "../../governance/onboarding/onboardingStage.json"
     },
     "expectedVersion": {
       "type": "number"
@@ -17,7 +18,6 @@
     }
   },
   "required": [
-    "targetStatus",
     "expectedVersion"
   ],
   "additionalProperties": false

@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/createOnboardingPlaybook.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateOnboardingPlaybook",
+  "description": "Create or update the onboarding playbook for an asset type.",
+  "javaType": "org.openmetadata.schema.api.governance.CreateOnboardingPlaybook",
+  "type": "object",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this playbook.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this playbook.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the playbook.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "description": "The asset type this playbook governs.",
+      "$ref": "../../entity/governance/onboardingPlaybook.json#/definitions/targetEntityType"
+    },
+    "onboarding": {
+      "description": "The lifecycle and gates this playbook enforces.",
+      "$ref": "../../governance/onboarding/onboardingConfiguration.json"
+    },
+    "intakeForm": {
+      "description": "Intake form whose fields were migrated into the Creation gate.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "owners": {
+      "description": "Owners of this playbook.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    }
+  },
+  "required": [
+    "name",
+    "entityType"
+  ],
+  "additionalProperties": false
+}

@@ -28,6 +28,7 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.OnboardingPlaybookMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -56,5 +57,8 @@ public class Migration extends MigrationProcessImpl {
     // migration.
     // Idempotent.
     repairFieldNamesAggregations();
+    // An intake form was only ever the first gate. Give each asset type a playbook whose
+    // Creation gate holds the form's fields, so required metadata is configured in one place.
+    OnboardingPlaybookMigration.migrateIntakeFormsToPlaybooks(handle, false);
   }
 }

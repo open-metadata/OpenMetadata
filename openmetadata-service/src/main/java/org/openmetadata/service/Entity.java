@@ -276,6 +276,7 @@ public final class Entity {
   public static final String DATA_CONTRACT = "dataContract";
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
   public static final String INTAKE_FORM = "intakeForm";
+  public static final String ONBOARDING_PLAYBOOK = "onboardingPlaybook";
 
   //
   // Other entities

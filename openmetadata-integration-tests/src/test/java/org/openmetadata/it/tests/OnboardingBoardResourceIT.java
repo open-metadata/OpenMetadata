@@ -26,15 +26,14 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.entity.governance.IntakeForm;
-import org.openmetadata.schema.entity.governance.IntakeFormField;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.onboarding.OnboardingBoard;
+import org.openmetadata.schema.governance.onboarding.OnboardingCheckType;
 import org.openmetadata.schema.governance.onboarding.OnboardingConfiguration;
 import org.openmetadata.schema.governance.onboarding.OnboardingGate;
 import org.openmetadata.schema.governance.onboarding.OnboardingInstance;
 import org.openmetadata.schema.governance.onboarding.OnboardingProgress;
-import org.openmetadata.schema.governance.onboarding.OnboardingStage;
 import org.openmetadata.schema.governance.onboarding.OnboardingStep;
 import org.openmetadata.schema.governance.onboarding.OnboardingStepResult;
 import org.openmetadata.schema.governance.onboarding.OnboardingTaskBinding;
@@ -67,10 +66,13 @@ class OnboardingBoardResourceIT {
               tasks.forEach(id -> dao.taskDAO().delete(dao.taskDAO().getTableName(), id));
               for (UUID id : assets) {
                 var json = dao.onboardingDAO().find(id.toString());
-                if (json != null)
-                  dao.onboardingDAO()
-                      .deleteTasks(
-                          JsonUtils.readValue(json, OnboardingInstance.class).getId().toString());
+                if (json != null) {
+                  String instanceId =
+                      JsonUtils.readValue(json, OnboardingInstance.class).getId().toString();
+                  dao.onboardingDAO().deleteTasks(instanceId);
+                  dao.onboardingDAO().deleteStageHistory(instanceId);
+                  dao.onboardingDAO().deleteReminders(instanceId);
+                }
                 dao.onboardingDAO().delete(id.toString());
                 dao.relationshipDAO().deleteAll(id, Entity.METRIC);
                 dao.metricDAO().delete(dao.metricDAO().getTableName(), id);
@@ -116,7 +118,7 @@ class OnboardingBoardResourceIT {
   @Test
   void deniedCandidatesConsumeTheBudgetAndContinuationsTerminate(TestNamespace namespace) {
     seed(namespace, 2501, 0);
-    Filter filter = new Filter(Entity.METRIC, OnboardingStage.DRAFT.value(), domain.getId(), null);
+    Filter filter = new Filter(Entity.METRIC, "draft", domain.getId(), null);
     AtomicInteger authorized = new AtomicInteger();
     String cursor = null;
     for (int index = 0; index < 3; index++) {
@@ -171,7 +173,7 @@ class OnboardingBoardResourceIT {
   void deletedAndUnauthorizedRowsDoNotConsumePageSlots(TestNamespace namespace) {
     seed(namespace, 8, 0);
     Entity.getCollectionDAO().metricDAO().delete(assets.get(0));
-    Filter filter = new Filter(Entity.METRIC, OnboardingStage.DRAFT.value(), domain.getId(), null);
+    Filter filter = new Filter(Entity.METRIC, "draft", domain.getId(), null);
     var first =
         OnboardingBoardService.list(filter, null, 2, ref -> !ref.getId().equals(assets.get(1)));
     assertEquals(assets.subList(2, 4), ids(first));
@@ -218,11 +220,7 @@ class OnboardingBoardResourceIT {
         measureReads(
             () ->
                 OnboardingBoardService.list(
-                    new Filter(
-                        Entity.METRIC,
-                        OnboardingStage.DRAFT.value(),
-                        domain.getId(),
-                        assignee.getId()),
+                    new Filter(Entity.METRIC, "draft", domain.getId(), assignee.getId()),
                     null,
                     25,
                     ref -> true));
@@ -316,7 +314,8 @@ class OnboardingBoardResourceIT {
                 dao.onboardingDAO()
                     .update(
                         asset.toString(),
-                        instance.getStage().value(),
+                        instance.getStage(),
+                        instance.getEnteredAt(),
                         revision,
                         JsonUtils.pojoToJson(instance));
                 dao.onboardingDAO()
@@ -343,30 +342,22 @@ class OnboardingBoardResourceIT {
             .create(new CreateUser().withName(userName).withEmail(userName + "@example.com"))
             .getEntityReference();
     var configuration =
-        new IntakeForm()
+        new OnboardingPlaybook()
             .withId(UUID.randomUUID())
             .withVersion(0.1)
-            .withEntityType(
-                org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType.METRIC)
-            .withEnabled(true)
-            .withFormFields(
-                List.of(
-                    new IntakeFormField()
-                        .withFieldPath("displayName")
-                        .withFieldKind(IntakeFormField.FieldKind.NATIVE)
-                        .withRequired(true)))
+            .withEntityType(org.openmetadata.schema.entity.governance.PlaybookEntityType.METRIC)
             .withOnboarding(
                 new OnboardingConfiguration()
                     .withEnabled(true)
                     .withGates(
                         List.of(
                             new OnboardingGate()
-                                .withStage(OnboardingStage.DRAFT)
+                                .withStage("draft")
                                 .withSteps(
                                     List.of(
                                         new OnboardingStep()
                                             .withId("display-name")
-                                            .withType(OnboardingStep.Type.FIELD)
+                                            .withType(OnboardingCheckType.ATTRIBUTE)
                                             .withFieldPath("displayName"))))));
     // Bulk storage fixtures exercise a sparse catalog without starting thousands of workflows.
     TestSuiteBootstrap.getJdbi()
@@ -392,7 +383,8 @@ class OnboardingBoardResourceIT {
                         .withId(instanceId(index))
                         .withEntity(metric.getEntityReference())
                         .withConfiguration(configuration)
-                        .withStage(OnboardingStage.DRAFT)
+                        .withStage("draft")
+                        .withCreatedAt(System.currentTimeMillis())
                         .withEnteredAt(System.currentTimeMillis())
                         .withRevision(0L)
                         .withCreationCompleted(true)
@@ -403,7 +395,9 @@ class OnboardingBoardResourceIT {
                         metric.getId().toString(),
                         Entity.METRIC,
                         configuration.getId().toString(),
-                        instance.getStage().value(),
+                        instance.getStage(),
+                        instance.getCreatedAt(),
+                        instance.getEnteredAt(),
                         JsonUtils.pojoToJson(instance));
                 if (index >= firstMatch)
                   dao.relationshipDAO()
@@ -426,7 +420,7 @@ class OnboardingBoardResourceIT {
         .getHttpClient()
         .execute(
             HttpMethod.GET,
-            "/v1/governance/onboarding?entityType=metric&stage=Draft&limit="
+            "/v1/governance/onboarding?entityType=metric&stage=draft&limit="
                 + limit
                 + "&"
                 + filter

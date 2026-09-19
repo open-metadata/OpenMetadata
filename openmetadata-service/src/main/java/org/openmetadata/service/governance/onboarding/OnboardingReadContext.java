@@ -22,8 +22,17 @@ class OnboardingReadContext {
         reference.getType(), reference.getId(), fields, Include.NON_DELETED, false);
   }
 
+  /**
+   * A task's assignees are relationships, not columns of its JSON row, so the committed-row read
+   * comes back without them. Onboarding names the assignee everywhere ("Waiting on", the handoff
+   * card), so hydrate that one field before handing the task out.
+   */
   Task task(UUID id) {
-    return ((TaskRepository) Entity.getEntityRepository(Entity.TASK)).findCommittedTask(id);
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task task = repository.findCommittedTask(id);
+    return task == null
+        ? null
+        : repository.setFieldsInternal(task, repository.getFields(TaskRepository.FIELD_ASSIGNEES));
   }
 
   WorkflowInstance execution(UUID id) {

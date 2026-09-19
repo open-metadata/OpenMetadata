@@ -11,17 +11,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.onboarding.OnboardingCheckType;
 import org.openmetadata.schema.governance.onboarding.OnboardingInstance;
-import org.openmetadata.schema.governance.onboarding.OnboardingStep;
 import org.openmetadata.schema.governance.onboarding.OnboardingTaskBinding;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 /** Request-local reads; both hits and misses are bounded even when a filter scans many batches. */
 final class OnboardingBoardContext extends OnboardingReadContext {
@@ -50,7 +50,7 @@ final class OnboardingBoardContext extends OnboardingReadContext {
       }
       for (var gate : instance.getConfiguration().getOnboarding().getGates()) {
         for (var step : gate.getSteps()) {
-          if (step.getType() == OnboardingStep.Type.APPROVAL) {
+          if (step.getType() == OnboardingCheckType.APPROVAL) {
             workflows.add(
                 new EntityReference()
                     .withType(Entity.WORKFLOW_DEFINITION)
@@ -114,6 +114,10 @@ final class OnboardingBoardContext extends OnboardingReadContext {
             .toList();
     for (var batch : Lists.partition(ids, 100)) {
       List<Task> values = Entity.getCollectionDAO().taskDAO().findEntitiesByIds(batch, Include.ALL);
+      // Assignees are relationships the raw row does not carry; the board shows them per row.
+      TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      var assigneeField = repository.getFields(TaskRepository.FIELD_ASSIGNEES);
+      values.forEach(task -> repository.setFieldsInternal(task, assigneeField));
       batch.forEach(id -> tasks.put(id, Optional.empty()));
       values.forEach(task -> tasks.put(task.getId(), Optional.of(task)));
       loadExecutions(values);
@@ -137,7 +141,7 @@ final class OnboardingBoardContext extends OnboardingReadContext {
         .forEach(execution -> executions.put(execution.getId(), Optional.of(execution)));
     var finished =
         values.stream()
-            .filter(task -> task.getStatus() == TaskEntityStatus.Approved)
+            .filter(task -> task.getResolution() != null && task.getResolution().getType() != null)
             .filter(task -> task.getWorkflowInstanceId() != null)
             .filter(
                 task ->

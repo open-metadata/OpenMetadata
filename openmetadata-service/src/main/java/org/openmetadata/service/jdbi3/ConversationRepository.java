@@ -194,6 +194,48 @@ public class ConversationRepository {
     return withHref(uriInfo, conversation);
   }
 
+  /**
+   * Post a conversation on behalf of the platform rather than a signed-in user. Same persistence as
+   * {@link #create}, without the REST authorizer - a background job has no request principal to
+   * authorize - and with the change event recorded here instead of by the resource's response
+   * header, so mentions and alert subscriptions fire exactly as they do for a user-written post.
+   */
+  public Conversation createSystemConversation(
+      EntityReference author, String about, String message) {
+    validateMessage(message);
+    Target target = resolveTarget(about, NON_DELETED);
+    long now = System.currentTimeMillis();
+    Conversation conversation =
+        new Conversation()
+            .withId(UUID.randomUUID())
+            .withSource(ConversationSource.User)
+            .withAbout(about)
+            .withEntityRef(target.reference())
+            .withDomains(target.domains())
+            .withMessage(message)
+            .withCreatedBy(author)
+            .withCreatedAt(now)
+            .withUpdatedAt(now)
+            .withUpdatedBy(author.getName())
+            .withResolved(false)
+            .withReplyCount(0)
+            .withReplies(List.of());
+    validateSourceInvariants(conversation);
+    Entity.getJdbi()
+        .useTransaction(
+            handle -> {
+              CollectionDAO.ConversationDAO dao =
+                  handle.attach(CollectionDAO.ConversationDAO.class);
+              insertRoot(dao, conversation, false);
+              storeDomains(dao, conversation);
+              replaceMentions(
+                  dao, conversation.getId(), ROOT_TARGET, conversation.getId(), message, now);
+            });
+    ChangeEvent event = buildChangeEvent(author.getName(), EventType.THREAD_CREATED, conversation);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(event));
+    return conversation;
+  }
+
   public Conversation get(
       UriInfo uriInfo,
       SecurityContext securityContext,

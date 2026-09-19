@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingReminder.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingReminder",
+  "description": "A follow-up sent about an onboarding check - by a person from the board, or by the playbook's stall policy.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingReminder",
+  "type": "object",
+  "properties": {
+    "stepId": {
+      "type": "string",
+      "description": "Check the reminder is about."
+    },
+    "taskId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "kind": {
+      "$ref": "#/definitions/reminderKind"
+    },
+    "sentAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "sentBy": {
+      "type": "string",
+      "description": "User who sent a manual reminder, or the bot that sent an automatic one."
+    }
+  },
+  "definitions": {
+    "reminderKind": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingReminderKind",
+      "type": "string",
+      "enum": [
+        "manual",
+        "stallNotice",
+        "stallReassignment",
+        "softGateNotice"
+      ],
+      "javaEnums": [
+        {
+          "name": "MANUAL",
+          "description": "Someone nudged the assignees from the board or the wizard."
+        },
+        {
+          "name": "STALL_NOTICE",
+          "description": "The gate's notifyOnStall policy told the playbook owners."
+        },
+        {
+          "name": "STALL_REASSIGNMENT",
+          "description": "The gate's reassignOnStall policy moved the task to another role."
+        },
+        {
+          "name": "SOFT_GATE_NOTICE",
+          "description": "An asset left a non-blocking gate with required checks still open."
+        }
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "sentAt"
+  ],
+  "additionalProperties": false
+}

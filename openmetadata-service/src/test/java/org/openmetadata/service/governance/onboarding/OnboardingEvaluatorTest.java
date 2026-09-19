@@ -7,35 +7,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.entity.governance.IntakeForm;
-import org.openmetadata.schema.governance.onboarding.OnboardingStage;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class OnboardingEvaluatorTest {
-  private static final IntakeForm FORM =
+  private static final OnboardingPlaybook FORM =
       JsonUtils.readValue(
           """
-      {"name":"metric","entityType":"metric","enabled":true,
-       "formFields":[{"fieldPath":"displayName","fieldLabel":"Display name","fieldKind":"native","required":true},
-                     {"fieldPath":"extension.purpose","fieldLabel":"Purpose","fieldKind":"customProperty","required":true}],
-       "onboarding":{"enabled":true,"gates":[{"stage":"Draft","steps":[
-         {"id":"purpose","type":"field","fieldPath":"extension.purpose","rules":{"minLength":10}}
-       ]}]}}
+      {"name":"metricPlaybook","entityType":"metric",
+       "onboarding":{"enabled":true,"gates":[
+         {"stage":"creation","steps":[
+           {"id":"displayName","type":"attribute","requirement":"blocking","fieldPath":"displayName","title":"Display name"}
+         ]},
+         {"stage":"draft","steps":[
+           {"id":"purpose","type":"attribute","requirement":"blocking","fieldPath":"extension.purpose","rules":{"minLength":10}}
+         ]}]}}
       """,
-          IntakeForm.class);
+          OnboardingPlaybook.class);
 
   @Test
   void creationDoesNotRequireFieldsScheduledForDraft() {
     var results =
         OnboardingEvaluator.evaluate(
-            FORM, Map.of("name", "orders", "displayName", "Orders"), OnboardingStage.CREATION);
+            FORM, Map.of("name", "orders", "displayName", "Orders"), OnboardingLifecycle.CREATION);
     assertTrue(results.stream().allMatch(OnboardingEvaluator::isSatisfied));
   }
 
   @Test
   void draftGateEvaluatesTheStoredCustomPropertyRule() {
     var missing =
-        OnboardingEvaluator.evaluate(FORM, Map.of("displayName", "Orders"), OnboardingStage.DRAFT);
+        OnboardingEvaluator.evaluate(
+            FORM, Map.of("displayName", "Orders"), OnboardingLifecycle.DRAFT);
     assertTrue(
         missing.stream()
             .anyMatch(result -> result.getRequired() && !OnboardingEvaluator.isSatisfied(result)));
@@ -47,7 +49,7 @@ class OnboardingEvaluatorTest {
                 "Orders",
                 "extension",
                 Map.of("purpose", "Measures fulfilled orders")),
-            OnboardingStage.DRAFT);
+            OnboardingLifecycle.DRAFT);
     assertTrue(complete.stream().allMatch(OnboardingEvaluator::isSatisfied));
   }
 
@@ -61,7 +63,7 @@ class OnboardingEvaluatorTest {
 
   @Test
   void absentStepAssignmentDefaultsToCreation() {
-    var results = OnboardingEvaluator.evaluate(FORM, Map.of(), OnboardingStage.CREATION);
+    var results = OnboardingEvaluator.evaluate(FORM, Map.of(), OnboardingLifecycle.CREATION);
     assertEquals(2, results.size());
     assertEquals("displayName", results.getFirst().getStep().getFieldPath());
     assertFalse(OnboardingEvaluator.isSatisfied(results.getFirst()));
@@ -97,5 +99,45 @@ class OnboardingEvaluatorTest {
             JsonUtils.readValue(
                 "{\"fieldPath\":\"domains\",\"operator\":\"contains\",\"value\":\"Marketing\"}",
                 org.openmetadata.schema.governance.onboarding.OnboardingCondition.class)));
+  }
+
+  /**
+   * "PII tags present" is a statement about a classification, not about one tag. Without a prefix
+   * match a playbook would have to list every tag under PII and would silently miss new ones.
+   */
+  @Test
+  void aPrefixMatchesAWholeTagClassificationWithoutMatchingASimilarlyNamedOne() {
+    var tagged = JsonUtils.valueToTree(Map.of("tags", List.of(Map.of("tagFQN", "PII.Sensitive"))));
+    var similar = JsonUtils.valueToTree(Map.of("tags", List.of(Map.of("tagFQN", "NonPII.Public"))));
+
+    assertTrue(OnboardingEvaluator.matches(tagged, startsWith("tags", "PII.")));
+    assertFalse(OnboardingEvaluator.matches(similar, startsWith("tags", "PII.")));
+  }
+
+  @Test
+  void aPrefixMatchesText() {
+    var entity = JsonUtils.valueToTree(Map.of("name", "finance_orders"));
+
+    assertTrue(OnboardingEvaluator.matches(entity, startsWith("name", "finance_")));
+    assertFalse(OnboardingEvaluator.matches(entity, startsWith("name", "marketing_")));
+  }
+
+  @Test
+  void aCheckWithNoStatedRequirementBlocksTheGate() {
+    var step =
+        JsonUtils.readValue(
+            "{\"id\":\"terms\",\"type\":\"attribute\",\"fieldPath\":\"description\"}",
+            org.openmetadata.schema.governance.onboarding.OnboardingStep.class);
+
+    assertTrue(OnboardingEvaluator.isBlocking(step));
+  }
+
+  private org.openmetadata.schema.governance.onboarding.OnboardingCondition startsWith(
+      String fieldPath, String value) {
+    return JsonUtils.readValue(
+        String.format(
+            "{\"fieldPath\":\"%s\",\"operator\":\"startsWith\",\"value\":\"%s\"}",
+            fieldPath, value),
+        org.openmetadata.schema.governance.onboarding.OnboardingCondition.class);
   }
 }

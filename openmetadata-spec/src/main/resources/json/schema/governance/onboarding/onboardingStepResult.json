@@ -40,11 +40,29 @@
     "taskId": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "dueDate": {
+      "description": "When the check's task is due, copied from the task. Set only when the gate has a stall policy - the wizard shows `Due in N days` from it and says `Open` otherwise.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
     "workflowInstanceId": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "stage": {
       "$ref": "./onboardingStage.json"
+    },
+    "lastReminderAt": {
+      "description": "When someone last chased this check.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "stallNotifiedAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
+    },
+    "reassignedAt": {
+      "type": "integer",
+      "existingJavaType": "java.lang.Long"
     }
   },
   "required": [

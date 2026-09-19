@@ -1264,19 +1264,10 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     Task original = get(null, task.getId(), getFields("*"));
     Task updated = JsonUtils.deepCopy(original, Task.class);
-    TaskEntityStatus newStatus = mapResolutionToStatus(resolution.getType());
-    updated.setStatus(newStatus);
+    updated.setStatus(mapResolutionToStatus(resolution.getType()));
     updated.setResolution(resolution);
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    // The onboarding binding's decision has to land in the same transaction as the task's own
-    // lifecycle write: a board that recorded an approval the task never got (or vice versa) would
-    // stay wrong until the next backfill.
-    return daoCollection.inTransaction(
-        dao -> {
-          Task persisted = persistLifecycleChange(original, updated, updatedBy);
-          OnboardingTasks.recordDecision(updated, newStatus == TaskEntityStatus.Approved);
-          return persisted;
-        });
+    return persistLifecycleChange(original, updated, updatedBy);
   }
 
   private void applyTransitionTarget(

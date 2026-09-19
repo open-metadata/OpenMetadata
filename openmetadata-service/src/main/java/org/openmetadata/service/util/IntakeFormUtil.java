@@ -51,16 +51,6 @@ public final class IntakeFormUtil {
     if (removed) {
       form.setFormFields(formFields);
       form.setRequiredFields(toRequiredFields(formFields));
-      if (form.getOnboarding() != null) {
-        form.getOnboarding()
-            .getGates()
-            .forEach(
-                gate ->
-                    gate.setSteps(
-                        gate.getSteps().stream()
-                            .filter(step -> !extensionPath.equals(step.getFieldPath()))
-                            .toList()));
-      }
     }
     return removed;
   }

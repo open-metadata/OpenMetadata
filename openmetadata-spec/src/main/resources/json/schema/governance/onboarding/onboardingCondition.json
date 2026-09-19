@@ -14,7 +14,26 @@
       "enum": [
         "present",
         "equals",
-        "contains"
+        "contains",
+        "startsWith"
+      ],
+      "javaEnums": [
+        {
+          "name": "PRESENT",
+          "description": "The field holds any value."
+        },
+        {
+          "name": "EQUALS",
+          "description": "The field equals the value exactly."
+        },
+        {
+          "name": "CONTAINS",
+          "description": "A text field contains the value, or a list holds a matching member."
+        },
+        {
+          "name": "STARTS_WITH",
+          "description": "A text field, tag or reference starts with the value - `PII.` matches every tag in the PII classification."
+        }
       ]
     },
     "value": {

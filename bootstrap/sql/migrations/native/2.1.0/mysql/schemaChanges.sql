@@ -375,19 +375,48 @@ CREATE TABLE IF NOT EXISTS onboarding_instance (
   entityId VARCHAR(36) NOT NULL,
   entityType VARCHAR(64) NOT NULL,
   configurationId VARCHAR(36) NOT NULL,
-  stage VARCHAR(32) NOT NULL,
+  stage VARCHAR(64) NOT NULL,
+  createdAt BIGINT,
+  enteredAt BIGINT,
   revision BIGINT NOT NULL DEFAULT 0,
   json JSON NOT NULL,
   UNIQUE KEY onboarding_entity_unique (entityId),
   KEY onboarding_board_stage (entityType, stage, id),
-  KEY onboarding_configuration (configurationId, id)
+  KEY onboarding_configuration (configurationId, id),
+  KEY onboarding_cohort (entityType, createdAt)
 );
 CREATE TABLE IF NOT EXISTS onboarding_task (
   taskId VARCHAR(36) NOT NULL PRIMARY KEY,
   instanceId VARCHAR(36) NOT NULL,
   stepId VARCHAR(64) NOT NULL,
   attempt INT NOT NULL,
+  stallNotifiedAt BIGINT,
+  reassignedAt BIGINT,
   UNIQUE KEY onboarding_task_attempt (instanceId, stepId, attempt)
+);
+-- Stage timings are appended to the instance JSON and projected here in the same transaction:
+-- the board's medians are range scans over completed stays, which a JSON array cannot answer.
+CREATE TABLE IF NOT EXISTS onboarding_stage_history (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  instanceId VARCHAR(36) NOT NULL,
+  entityType VARCHAR(64) NOT NULL,
+  stage VARCHAR(64) NOT NULL,
+  enteredAt BIGINT NOT NULL,
+  exitedAt BIGINT NOT NULL,
+  UNIQUE KEY onboarding_stage_history_unique (instanceId, stage, enteredAt),
+  KEY onboarding_stage_exit (entityType, stage, exitedAt)
+);
+CREATE TABLE IF NOT EXISTS onboarding_reminder (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  instanceId VARCHAR(36) NOT NULL,
+  entityType VARCHAR(64) NOT NULL,
+  stepId VARCHAR(64),
+  taskId VARCHAR(36),
+  kind VARCHAR(32) NOT NULL,
+  sentAt BIGINT NOT NULL,
+  sentBy VARCHAR(256),
+  KEY onboarding_reminder_window (entityType, kind, sentAt),
+  KEY onboarding_reminder_step (instanceId, stepId, kind, sentAt)
 );
 CREATE TABLE IF NOT EXISTS onboarding_backfill (
   configurationId VARCHAR(36) NOT NULL PRIMARY KEY,
@@ -395,3 +424,20 @@ CREATE TABLE IF NOT EXISTS onboarding_backfill (
   leaseUntil BIGINT NOT NULL DEFAULT 0,
   json JSON NOT NULL
 );
+
+-- Onboarding playbooks. One per asset type, so creation-time enforcement has exactly one answer;
+-- the UNIQUE KEY on entityType is what makes "no competing playbooks" a storage invariant rather
+-- than an application convention.
+CREATE TABLE IF NOT EXISTS onboarding_playbook_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.id'))) STORED NOT NULL,
+  name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.name'))) VIRTUAL NOT NULL,
+  fqnHash varchar(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  entityType varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.entityType'))) VIRTUAL NOT NULL,
+  json json NOT NULL,
+  updatedAt bigint UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedAt'))) VIRTUAL NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,'$.updatedBy'))) VIRTUAL NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (IF(json_extract(json,'$.deleted') = TRUE, 1, 0)) VIRTUAL,
+  PRIMARY KEY (id),
+  UNIQUE KEY fqnHash (fqnHash),
+  UNIQUE KEY onboarding_playbook_entity_type_unique (entityType)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -14,7 +14,10 @@ public final class OnboardingStore {
   }
 
   public static OnboardingInstance find(UUID entityId) {
-    return entityId == null ? null : read(dao().find(entityId.toString()));
+    // Entity writes are validated during bootstrap too, before the persistence layer is wired -
+    // same guard as forTask below.
+    if (entityId == null || Entity.getCollectionDAO() == null) return null;
+    return read(dao().find(entityId.toString()));
   }
 
   public static OnboardingInstance forTask(UUID taskId) {
@@ -33,7 +36,8 @@ public final class OnboardingStore {
     if (dao()
             .update(
                 instance.getEntity().getId().toString(),
-                instance.getStage().value(),
+                instance.getStage(),
+                instance.getEnteredAt(),
                 revision,
                 JsonUtils.pojoToJson(instance))
         != 1) {

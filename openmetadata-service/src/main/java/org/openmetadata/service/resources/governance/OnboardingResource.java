@@ -16,19 +16,26 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.governance.EvaluateOnboarding;
+import org.openmetadata.schema.api.governance.NudgeOnboarding;
 import org.openmetadata.schema.api.governance.TransitionOnboarding;
+import org.openmetadata.schema.entity.governance.OnboardingPlaybook;
 import org.openmetadata.schema.governance.onboarding.OnboardingBackfill;
 import org.openmetadata.schema.governance.onboarding.OnboardingBoard;
 import org.openmetadata.schema.governance.onboarding.OnboardingProgress;
+import org.openmetadata.schema.governance.onboarding.OnboardingSummary;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.onboarding.OnboardingBackfillService;
 import org.openmetadata.service.governance.onboarding.OnboardingBoardService;
 import org.openmetadata.service.governance.onboarding.OnboardingEvaluator;
+import org.openmetadata.service.governance.onboarding.OnboardingLifecycle;
+import org.openmetadata.service.governance.onboarding.OnboardingNudge;
 import org.openmetadata.service.governance.onboarding.OnboardingService;
+import org.openmetadata.service.governance.onboarding.OnboardingSummaryService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.AuthorizationException;
@@ -69,7 +76,7 @@ public class OnboardingResource {
         .withSteps(steps)
         .withBlockingSteps(blockers)
         .withCanAdvance(blockers.isEmpty())
-        .withNextStatus(OnboardingEvaluator.nextStatus(request.getStage()));
+        .withNextStage(OnboardingLifecycle.next(form.getOnboarding(), request.getStage()));
   }
 
   @GET
@@ -80,6 +87,29 @@ public class OnboardingResource {
       @PathParam("id") UUID id) {
     authorize(context, type, id, MetadataOperation.VIEW_ALL);
     return OnboardingService.get(type, id);
+  }
+
+  @GET
+  @Path("/summary")
+  public OnboardingSummary summary(
+      @Context SecurityContext context, @QueryParam("entityType") String type) {
+    authorize(context, type, null, MetadataOperation.VIEW_ALL);
+    return OnboardingSummaryService.get(type);
+  }
+
+  @POST
+  @Path("/{entityType}/{id}/nudge")
+  public OnboardingProgress nudge(
+      @Context SecurityContext context,
+      @PathParam("entityType") String type,
+      @PathParam("id") UUID id,
+      @Valid NudgeOnboarding request) {
+    authorizeNudge(context, type, id);
+    return OnboardingNudge.send(
+        type,
+        id,
+        request == null ? new NudgeOnboarding() : request,
+        context.getUserPrincipal().getName());
   }
 
   @POST
@@ -100,10 +130,12 @@ public class OnboardingResource {
       @QueryParam("stage") String stage,
       @QueryParam("domain") UUID domain,
       @QueryParam("assignee") UUID assignee,
+      @QueryParam("entityId") List<UUID> entityIds,
       @QueryParam("after") String after,
       @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(100) int limit) {
     return OnboardingBoardService.list(
-        new OnboardingBoardService.Filter(type, stage, domain, assignee),
+        new OnboardingBoardService.Filter(
+            type, stage, domain, assignee, entityIds == null ? List.of() : entityIds),
         after,
         limit,
         entity ->
@@ -127,6 +159,28 @@ public class OnboardingResource {
       @Context SecurityContext context, @PathParam("entityType") String type) {
     authorizer.authorizeAdmin(context);
     return OnboardingBackfillService.retry(type);
+  }
+
+  /**
+   * Chasing someone is an edit on the asset. A playbook owner may also chase work their own playbook
+   * created, even on assets they do not otherwise edit - that is the job the board exists for.
+   */
+  private void authorizeNudge(SecurityContext context, String type, UUID id) {
+    try {
+      authorize(context, type, id, MetadataOperation.EDIT_ALL);
+    } catch (AuthorizationException deniedOnAsset) {
+      authorizePlaybook(context, type, deniedOnAsset);
+    }
+  }
+
+  private void authorizePlaybook(
+      SecurityContext context, String type, AuthorizationException deniedOnAsset) {
+    OnboardingPlaybook playbook = OnboardingService.configured(type);
+    if (playbook == null) throw deniedOnAsset;
+    authorizer.authorize(
+        context,
+        new OperationContext(Entity.ONBOARDING_PLAYBOOK, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(Entity.ONBOARDING_PLAYBOOK, playbook.getId(), null));
   }
 
   private void authorize(

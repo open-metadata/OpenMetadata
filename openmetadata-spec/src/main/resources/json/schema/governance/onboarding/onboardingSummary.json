@@ -1,0 +1,118 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingSummary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingSummary",
+  "description": "Aggregate onboarding health for one asset type. Every measure is null when its window holds no sample, so a board can say `no data yet` instead of showing a zero it did not measure.",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingSummary",
+  "type": "object",
+  "properties": {
+    "entityType": {
+      "type": "string"
+    },
+    "reachedReviewInTime": {
+      "$ref": "#/definitions/reachedReviewInTime"
+    },
+    "daysInEntryStage": {
+      "$ref": "#/definitions/daysInEntryStage"
+    },
+    "followUps": {
+      "$ref": "#/definitions/followUps"
+    }
+  },
+  "definitions": {
+    "reachedReviewInTime": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingReviewTimeliness",
+      "description": "Share of a cohort that left the entry stage within the threshold.",
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "./onboardingStage.json"
+        },
+        "thresholdDays": {
+          "type": "integer"
+        },
+        "windowDays": {
+          "type": "integer"
+        },
+        "share": {
+          "description": "Percentage of the cohort that reached the next stage in time.",
+          "type": "number"
+        },
+        "previousShare": {
+          "type": "number"
+        },
+        "deltaPoints": {
+          "description": "Percentage points gained against the pre-playbook baseline.",
+          "type": "number"
+        },
+        "cohortSize": {
+          "type": "integer"
+        },
+        "previousCohortSize": {
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "daysInEntryStage": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStageDuration",
+      "description": "Median time assets spent in the entry stage before the gate let them move.",
+      "type": "object",
+      "properties": {
+        "stage": {
+          "$ref": "./onboardingStage.json"
+        },
+        "windowDays": {
+          "type": "integer"
+        },
+        "medianDays": {
+          "type": "number"
+        },
+        "previousMedianDays": {
+          "type": "number"
+        },
+        "deltaDays": {
+          "description": "Days saved against the previous window. Negative means slower.",
+          "type": "number"
+        },
+        "sampleSize": {
+          "type": "integer"
+        },
+        "previousSampleSize": {
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "followUps": {
+      "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingFollowUps",
+      "description": "Reminders sent in the window, split by who sent them.",
+      "type": "object",
+      "properties": {
+        "windowDays": {
+          "type": "integer"
+        },
+        "manual": {
+          "type": "integer"
+        },
+        "previousManual": {
+          "type": "integer"
+        },
+        "stallNotices": {
+          "type": "integer"
+        },
+        "reassignments": {
+          "type": "integer"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "entityType"
+  ],
+  "additionalProperties": false
+}
