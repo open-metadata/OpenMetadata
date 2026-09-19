@@ -134,25 +134,25 @@ const test = base.extend<{
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editOnlyUser.login(page);
+    await editOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   ownerUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await ownerUser.login(page);
+    await ownerUser.signIn(page);
     await use(page);
     await page.close();
   },
   scopedUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },

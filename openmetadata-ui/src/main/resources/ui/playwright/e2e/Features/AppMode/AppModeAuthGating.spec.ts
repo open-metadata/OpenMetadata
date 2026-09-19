@@ -47,6 +47,7 @@ test.beforeAll(
 
     const contextA = await browser.newContext();
     const pageA = await contextA.newPage();
+    // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
     await userA.login(pageA);
     const resultA = await getApiContext(pageA);
     userAApiContext = resultA.apiContext;
@@ -57,6 +58,7 @@ test.beforeAll(
 
     const contextB = await browser.newContext();
     const pageB = await contextB.newPage();
+    // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- the route the app lands on after sign-in is the assertion here, and signInViaApi finishes on /my-data, which would mask it
     await userB.login(pageB);
     const resultB = await getApiContext(pageB);
     userBApiContext = resultB.apiContext;

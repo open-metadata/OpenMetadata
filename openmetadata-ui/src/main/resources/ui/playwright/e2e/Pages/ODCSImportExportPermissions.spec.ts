@@ -76,13 +76,13 @@ const test = base.extend<{
 }>({
   dataContractEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataContractEditUser.login(page);
+    await dataContractEditUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataContractViewPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataContractViewUser.login(page);
+    await dataContractViewUser.signIn(page);
     await use(page);
     await page.close();
   },
