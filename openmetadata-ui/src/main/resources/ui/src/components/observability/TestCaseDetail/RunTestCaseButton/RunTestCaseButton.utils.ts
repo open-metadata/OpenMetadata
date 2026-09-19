@@ -18,9 +18,8 @@ import {
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 
-// The server's default timeout for a run that never reports again; see
-// IngestionPipelineRepository.hasRunInProgress, whose rules these mirror so
-// the button and the endpoint agree on whether a run is still in progress.
+// The server's default timeout for a run that never reports again, so a run
+// whose worker died does not show as running, and keep polling, for good.
 const DEFAULT_RUN_TIMEOUT_MS = 60 * 60 * 1000;
 
 const ACTIVE_RUN_LABEL_KEYS: Partial<Record<PipelineState, string>> = {
@@ -63,7 +62,7 @@ export const getRunButtonLabelKey = (activeRunState?: PipelineState) =>
  * The state of the pipeline's active run, if one is queued or running. The
  * server already drops queued runs that never started; a running one counts
  * only until it outlives the workflow timeout, so a run whose worker died
- * cannot disable the button for good. A running run wins over a queued one.
+ * does not show as running for good. A running run wins over a queued one.
  */
 export const getActiveRunState = (
   pipeline: IngestionPipeline | undefined,
@@ -100,22 +99,18 @@ export const isRunInProgress = (
 
 /**
  * The translation key explaining why a user who may run the test case cannot
- * run it right now, if they cannot. Users without the permission never see
- * the button, so a missing permission is not a reason here.
+ * run it, if there is nothing to run. Users without the permission never see
+ * the button, so a missing permission is not a reason here. A run already in
+ * progress is not one either: it may belong to another suite's pipeline, be
+ * stuck, or predate the change the user wants to re-check, so that is their
+ * call.
  */
-export const getRunDisabledReasonKey = ({
-  pipelines,
-  runInProgress,
-}: {
-  pipelines: IngestionPipeline[];
-  runInProgress: boolean;
-}) => {
+export const getRunDisabledReasonKey = (pipelines: IngestionPipeline[]) => {
   if (pipelines.length === 0) {
     return 'message.no-pipeline-linked';
   }
-  if (!getRunnablePipeline(pipelines)) {
-    return 'message.pipeline-not-deployed';
-  }
 
-  return runInProgress ? 'label.in-progress' : undefined;
+  return getRunnablePipeline(pipelines)
+    ? undefined
+    : 'message.pipeline-not-deployed';
 };

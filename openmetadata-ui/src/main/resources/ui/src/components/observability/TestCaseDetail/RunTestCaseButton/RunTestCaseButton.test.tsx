@@ -12,6 +12,7 @@
  */
 import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -210,7 +211,7 @@ describe('RunTestCaseButton', () => {
   });
 
   it('shows the server error when the run is rejected', async () => {
-    const error = new AxiosError('A run is already queued or running.');
+    const error = new AxiosError('Failed to trigger IngestionPipeline');
     setPipelines([pipeline()]);
     setPipelinePermission(true);
     (runTestCase as jest.Mock).mockRejectedValue(error);
@@ -224,7 +225,8 @@ describe('RunTestCaseButton', () => {
     expect(screen.getByTestId('run-test-case-button')).toBeEnabled();
   });
 
-  it('shows a queued run and blocks another until it finishes', async () => {
+  it('shows a queued run and still lets the user start another', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     setPipelines([
       pipeline({
         pipelineStatuses: [
@@ -237,14 +239,25 @@ describe('RunTestCaseButton', () => {
       }),
     ]);
     setPipelinePermission(true);
+    (runTestCase as jest.Mock).mockResolvedValue({});
 
     renderWithQueryClient(<RunTestCaseButton testCase={testCase} />);
     const runButton = await screen.findByTestId('run-test-case-button');
 
-    expect(runButton).toBeDisabled();
+    expect(runButton).toBeEnabled();
     expect(runButton).toHaveTextContent('label.queued');
-    expect(
-      screen.getByRole('group', { name: 'label.in-progress' })
-    ).toBeInTheDocument();
+
+    fireEvent.mouseMove(document);
+    await user.hover(runButton);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'message.test-case-run-already-in-progress'
+    );
+
+    await user.click(runButton);
+
+    await waitFor(() =>
+      expect(runTestCase).toHaveBeenCalledWith('test-case-id')
+    );
   });
 });

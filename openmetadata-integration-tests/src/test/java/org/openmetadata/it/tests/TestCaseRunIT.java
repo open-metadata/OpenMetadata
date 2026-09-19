@@ -18,12 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -159,114 +156,18 @@ public class TestCaseRunIT {
   }
 
   /**
-   * With several runnable pipelines the endpoint runs the one with the lowest id, so the details
-   * page, which picks by the same rule from the listed pipelines, reflects that pipeline's state.
+   * A run already in progress does not block another: it may belong to a different suite's
+   * pipeline, be stuck, or predate the data change the user wants to re-check.
    */
   @Test
-  void runUsesTheRunnablePipelineWithTheLowestId(TestNamespace ns) {
-    TestCase testCase = createTestCase(ns);
-    List<IngestionPipeline> pipelinesById =
-        Stream.of(
-                createTestSuitePipeline(ns, testCase.getTestSuite()),
-                createTestSuitePipeline(ns, testCase.getTestSuite()))
-            .sorted(Comparator.comparing(pipeline -> pipeline.getId().toString()))
-            .toList();
-    long now = System.currentTimeMillis();
-
-    reportStatus(
-        pipelinesById.getLast(), UUID.randomUUID().toString(), PipelineStatusType.RUNNING, now);
-    PipelineServiceClientResponse response =
-        JsonUtils.readValue(
-            run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
-    assertEquals(200, response.getCode());
-
-    reportStatus(
-        pipelinesById.getFirst(), UUID.randomUUID().toString(), PipelineStatusType.RUNNING, now);
-    OpenMetadataException error =
-        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
-    assertEquals(409, error.getStatusCode());
-    assertTrue(
-        error.getMessage().contains(pipelinesById.getFirst().getFullyQualifiedName()),
-        error.getMessage());
-  }
-
-  @Test
-  void runIsRejectedWhileAnEarlierRunIsStillQueued(TestNamespace ns) {
+  void runIsAcceptedWhileTheSuitePipelineIsRunning(TestNamespace ns) {
     TestCase testCase = createTestCase(ns);
     IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
     reportStatus(
         pipeline,
         UUID.randomUUID().toString(),
-        PipelineStatusType.QUEUED,
+        PipelineStatusType.RUNNING,
         System.currentTimeMillis());
-
-    OpenMetadataException error =
-        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
-
-    assertEquals(409, error.getStatusCode());
-  }
-
-  /**
-   * A running run counts only until it outlives the pipeline's own workflow timeout, so a pipeline
-   * with a short timeout is not blocked by a run whose worker died minutes ago.
-   */
-  @Test
-  void runIgnoresARunningRunOlderThanThePipelineWorkflowTimeout(TestNamespace ns) {
-    TestCase testCase = createTestCase(ns);
-    IngestionPipeline pipeline =
-        createTestSuitePipeline(
-            ns, testCase.getTestSuite(), new AirflowConfig().withWorkflowTimeout(60));
-    long fiveMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
-    reportStatus(
-        pipeline, UUID.randomUUID().toString(), PipelineStatusType.RUNNING, fiveMinutesAgo);
-
-    PipelineServiceClientResponse response =
-        JsonUtils.readValue(
-            run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
-
-    assertEquals(200, response.getCode());
-  }
-
-  @Test
-  void runIsRejectedForARunningRunWithinTheDefaultTimeout(TestNamespace ns) {
-    TestCase testCase = createTestCase(ns);
-    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
-    long fiveMinutesAgo = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(5);
-    reportStatus(
-        pipeline, UUID.randomUUID().toString(), PipelineStatusType.RUNNING, fiveMinutesAgo);
-
-    OpenMetadataException error =
-        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
-
-    assertEquals(409, error.getStatusCode());
-  }
-
-  @Test
-  void runIsRejectedWhileTheSuitePipelineRunsAndAllowedOnceItFinishes(TestNamespace ns) {
-    TestCase testCase = createTestCase(ns);
-    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
-    String scheduledRunId = UUID.randomUUID().toString();
-    long now = System.currentTimeMillis();
-    reportStatus(pipeline, scheduledRunId, PipelineStatusType.RUNNING, now);
-
-    OpenMetadataException error =
-        assertThrows(OpenMetadataException.class, () -> run(SdkClients.adminClient(), testCase));
-    assertEquals(409, error.getStatusCode());
-    assertTrue(error.getMessage().contains(pipeline.getFullyQualifiedName()), error.getMessage());
-
-    reportStatus(pipeline, scheduledRunId, PipelineStatusType.SUCCESS, now);
-    PipelineServiceClientResponse response =
-        JsonUtils.readValue(
-            run(SdkClients.adminClient(), testCase), PipelineServiceClientResponse.class);
-    assertEquals(200, response.getCode());
-  }
-
-  @Test
-  void runIgnoresARunThatOutlivedItsTimeout(TestNamespace ns) {
-    TestCase testCase = createTestCase(ns);
-    IngestionPipeline pipeline = createTestSuitePipeline(ns, testCase.getTestSuite());
-    long twoHoursAgo = System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2);
-    reportStatus(pipeline, UUID.randomUUID().toString(), PipelineStatusType.RUNNING, twoHoursAgo);
 
     PipelineServiceClientResponse response =
         JsonUtils.readValue(

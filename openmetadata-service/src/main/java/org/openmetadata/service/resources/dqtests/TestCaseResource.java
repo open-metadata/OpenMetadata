@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -760,10 +761,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         @ApiResponse(
             responseCode = "404",
             description =
-                "Test suite of test case {id} has no enabled, deployed ingestion pipeline"),
-        @ApiResponse(
-            responseCode = "409",
-            description = "A run of the test suite's ingestion pipeline is already in progress")
+                "Test suite of test case {id} has no enabled, deployed ingestion pipeline")
       })
   public PipelineServiceClientResponse runTestCase(
       @Context UriInfo uriInfo,
@@ -779,8 +777,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.NON_DELETED);
     // The ingestion source filters on test case name, not FQN - an FQN here would run nothing.
     RunOptions options = RunOptions.forTestCases(List.of(testCase.getName()));
-    return ingestionPipelineRepository()
-        .runIngestionPipelineUnlessInProgress(uriInfo, pipeline, service, options);
+    return ingestionPipelineRepository().runIngestionPipeline(uriInfo, pipeline, service, options);
   }
 
   // Same check as the pipeline's own /trigger endpoint, so running a single test case is never a
@@ -806,19 +803,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private IngestionPipeline runnablePipelineOf(TestCase testCase) {
     TestSuite testSuite =
         Entity.getEntity(testCase.getTestSuite(), "pipelines", Include.NON_DELETED);
-    return listOrEmpty(testSuite.getPipelines()).stream()
-        .<IngestionPipeline>map(
-            reference -> Entity.getEntity(reference, Entity.FIELD_OWNERS, Include.NON_DELETED))
-        .filter(TestCaseResource::isRunnable)
-        // A suite can have several runnable pipelines. The lowest id keeps the choice stable, so a
-        // client listing the suite's pipelines can check permission and run state on this one.
-        .min(Comparator.comparing(pipeline -> pipeline.getId().toString()))
+    List<IngestionPipeline> pipelines =
+        listOrEmpty(testSuite.getPipelines()).stream()
+            .<IngestionPipeline>map(
+                reference -> Entity.getEntity(reference, Entity.FIELD_OWNERS, Include.NON_DELETED))
+            .toList();
+    return runnablePipelineAmong(pipelines)
         .orElseThrow(
             () ->
                 new NotFoundException(
                     String.format(
                         "Test suite '%s' has no enabled, deployed ingestion pipeline to run.",
                         testSuite.getFullyQualifiedName())));
+  }
+
+  // A suite can have several runnable pipelines. The lowest id keeps the choice stable, so a client
+  // listing the suite's pipelines can check permission and run state on this one.
+  static Optional<IngestionPipeline> runnablePipelineAmong(List<IngestionPipeline> pipelines) {
+    return pipelines.stream()
+        .filter(TestCaseResource::isRunnable)
+        .min(Comparator.comparing(pipeline -> pipeline.getId().toString()));
   }
 
   // Same rule as the pipeline's own Run action: a disabled pipeline's schedule is paused, so a run

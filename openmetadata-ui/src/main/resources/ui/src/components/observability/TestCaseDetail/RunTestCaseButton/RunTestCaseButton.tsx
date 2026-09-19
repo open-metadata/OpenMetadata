@@ -93,10 +93,7 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
   ).can(Operation.Trigger);
   const activeRunState = getActiveRunState(pipeline);
   const runInProgress = !isUndefined(activeRunState);
-  const disabledReasonKey = getRunDisabledReasonKey({
-    pipelines,
-    runInProgress,
-  });
+  const disabledReasonKey = getRunDisabledReasonKey(pipelines);
 
   // A finished run changed the test case's latest result, so reload the test case the page shows.
   const wasRunInProgress = useRef(runInProgress);
@@ -134,7 +131,7 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
       data-testid="run-test-case-button"
       iconLeading={Play}
       isDisabled={Boolean(disabledReasonKey)}
-      isLoading={isTriggering || runInProgress}
+      isLoading={isTriggering}
       size="sm"
       onClick={handleRun}>
       {t(getRunButtonLabelKey(activeRunState))}
@@ -144,16 +141,27 @@ const RunTestCaseButton = ({ testCase }: RunTestCaseButtonProps) => {
   // A disabled button ignores the tooltip's trigger context, so the tooltip would
   // never open on it. Focusable hands that context to the span instead, keeping
   // the reason reachable by hover and keyboard without nesting a button in a button.
-  return disabledReasonKey ? (
-    <Tooltip placement="top" title={t(disabledReasonKey)}>
-      <Focusable>
-        <span
-          aria-label={t(disabledReasonKey)}
-          className="tw:inline-flex"
-          role="group">
-          {button}
-        </span>
-      </Focusable>
+  if (disabledReasonKey) {
+    return (
+      <Tooltip placement="top" title={t(disabledReasonKey)}>
+        <Focusable>
+          <span
+            aria-label={t(disabledReasonKey)}
+            className="tw:inline-flex"
+            role="group">
+            {button}
+          </span>
+        </Focusable>
+      </Tooltip>
+    );
+  }
+
+  // A run in progress does not block another; the button stays usable and says what a click does.
+  return runInProgress ? (
+    <Tooltip
+      placement="top"
+      title={t('message.test-case-run-already-in-progress')}>
+      {button}
     </Tooltip>
   ) : (
     button

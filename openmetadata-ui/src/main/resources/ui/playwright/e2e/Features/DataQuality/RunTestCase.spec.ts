@@ -214,9 +214,17 @@ test.describe('Run Test Case', { tag: ['@Observability'] }, () => {
         }).toPass({ intervals: [2_000, 5_000], timeout: 60_000 });
       });
 
-      await test.step('The button reports the run and blocks another', async () => {
+      await test.step('The button reports the run and still allows another', async () => {
         await expect(runButton).toHaveText(/Queued|Running/);
-        await expect(runButton).toBeDisabled();
+        await expect(runButton).toBeEnabled();
+
+        // The click above closed any tooltip; leaving and re-entering opens it again.
+        await page.mouse.move(0, 0);
+        await runButton.hover();
+
+        await expect(page.getByRole('tooltip')).toHaveText(
+          "A run of this test case's suite pipeline is already in progress. Running again will start another."
+        );
       });
     });
   });

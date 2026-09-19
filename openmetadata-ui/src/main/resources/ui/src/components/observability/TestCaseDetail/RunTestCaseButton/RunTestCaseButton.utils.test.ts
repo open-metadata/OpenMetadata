@@ -91,7 +91,7 @@ describe('isRunInProgress', () => {
     ).toBe(true);
   });
 
-  it('ignores a running run past the default timeout so a dead worker cannot block runs', () => {
+  it('ignores a running run past the default timeout so a dead worker does not show as running', () => {
     expect(
       isRunInProgress(withStatus(PipelineState.Running, NOW - 2 * HOUR), NOW)
     ).toBe(false);
@@ -120,39 +120,24 @@ describe('isRunInProgress', () => {
 
 describe('getRunDisabledReasonKey', () => {
   it('explains a suite without any pipeline', () => {
-    expect(
-      getRunDisabledReasonKey({
-        pipelines: [],
-        runInProgress: false,
-      })
-    ).toBe('message.no-pipeline-linked');
+    expect(getRunDisabledReasonKey([])).toBe('message.no-pipeline-linked');
   });
 
   it('explains a suite whose pipelines are not enabled and deployed', () => {
-    expect(
-      getRunDisabledReasonKey({
-        pipelines: [pipeline({ deployed: false })],
-        runInProgress: false,
-      })
-    ).toBe('message.pipeline-not-deployed');
+    expect(getRunDisabledReasonKey([pipeline({ deployed: false })])).toBe(
+      'message.pipeline-not-deployed'
+    );
   });
 
-  it('explains a run that is already in progress', () => {
-    expect(
-      getRunDisabledReasonKey({
-        pipelines: [pipeline()],
-        runInProgress: true,
-      })
-    ).toBe('label.in-progress');
+  it("allows a run while another is in progress, since that is the user's call", () => {
+    const runningPipeline = withStatus(PipelineState.Running, NOW);
+
+    expect(isRunInProgress(runningPipeline, NOW)).toBe(true);
+    expect(getRunDisabledReasonKey([runningPipeline])).toBeUndefined();
   });
 
   it('allows the run otherwise', () => {
-    expect(
-      getRunDisabledReasonKey({
-        pipelines: [pipeline()],
-        runInProgress: false,
-      })
-    ).toBeUndefined();
+    expect(getRunDisabledReasonKey([pipeline()])).toBeUndefined();
   });
 });
 
