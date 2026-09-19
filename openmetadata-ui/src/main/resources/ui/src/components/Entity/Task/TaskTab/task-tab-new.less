@@ -13,6 +13,22 @@
 
 @import (reference) '../../../../styles/variables.less';
 
+// TaskTabNew renders .activity-feed-comments-container, but that class is only
+// styled in activity-feed-tab.less and feed-panel-body-v1.less - neither of
+// which loads on a surface that mounts the task tab on its own, such as the
+// incident page's Issues tab. Without this the box lost its background, border
+// and padding on a hard refresh there. Scoped to the task panel so it cannot
+// cross-talk with the activity feed's own copies of the class.
+.task-details-panel {
+  .activity-feed-comments-container {
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-16);
+    margin: var(--om-space-20) 0 0 0;
+    border: 0.5px solid var(--om-color-gray-blue-100);
+    background: @grey-9;
+  }
+}
+
 .assignees-edit-input {
   .ant-space-item:first-child {
     width: 100%;
