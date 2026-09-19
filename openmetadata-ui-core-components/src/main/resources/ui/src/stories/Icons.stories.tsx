@@ -114,7 +114,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                     : 'var(--tw-background-color-secondary)',
                 border: `1px solid ${
                   copied === name
-                    ? 'var(--tw-border-color-success)'
+                    ? 'var(--tw-border-color-success-subtle)'
                     : 'var(--tw-border-color-secondary)'
                 }`,
                 borderRadius: '6px',
@@ -130,7 +130,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
               <Icon
                 className={
                   copied === name
-                    ? 'tw:text-fg-success-primary'
+                    ? 'tw:text-success-primary'
                     : 'tw:text-featured-icon-light-fg-gray'
                 }
                 size={size}
@@ -139,7 +139,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                 style={{
                   color:
                     copied === name
-                      ? 'var(--tw-text-color-fg-success-primary)'
+                      ? 'var(--tw-text-color-success-primary)'
                       : 'var(--tw-text-color-tertiary)',
                   fontSize: '9px',
                   lineHeight: 1.3,
