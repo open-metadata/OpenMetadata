@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -41,7 +42,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
@@ -53,19 +53,26 @@ import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 @ExtendWith(TestNamespaceExtension.class)
 class EntityRepositoryGoldenIT {
   private enum Kind {
-    TABLE(Entity.TABLE, "/v1/tables", "table_search_index"),
-    GLOSSARY_TERM(Entity.GLOSSARY_TERM, "/v1/glossaryTerms", "glossary_term_search_index"),
-    USER(Entity.USER, "/v1/users", "user_search_index"),
-    TEST_CASE(Entity.TEST_CASE, "/v1/dataQuality/testCases", "test_case_search_index");
+    // renameAllowed mirrors the repository flag of the same name. It is declared here rather than
+    // read from the repository because that field is protected, and the point of this suite is to
+    // freeze the extension surface rather than widen it for a test. Asserted on every run, so a
+    // kind that starts or stops honouring renames fails here instead of silently changing what the
+    // rename fixtures mean.
+    TABLE(Entity.TABLE, "/v1/tables", "table_search_index", false),
+    GLOSSARY_TERM(Entity.GLOSSARY_TERM, "/v1/glossaryTerms", "glossary_term_search_index", true),
+    USER(Entity.USER, "/v1/users", "user_search_index", false),
+    TEST_CASE(Entity.TEST_CASE, "/v1/dataQuality/testCases", "test_case_search_index", false);
 
     private final String type;
     private final String path;
     private final String index;
+    private final boolean renameAllowed;
 
-    Kind(String type, String path, String index) {
+    Kind(String type, String path, String index, boolean renameAllowed) {
       this.type = type;
       this.path = path;
       this.index = index;
+      this.renameAllowed = renameAllowed;
     }
   }
 
@@ -316,14 +323,34 @@ class EntityRepositoryGoldenIT {
       capture(name);
     }
 
+    /**
+     * Renames the entity, for the kinds that allow it.
+     *
+     * <p>Only GlossaryTerm sets {@code renameAllowed}. For Table, User and TestCase the PATCH
+     * returns 200 and the new name is silently ignored, so capturing a "rename" fixture for them
+     * recorded a duplicate of patch-noop that could never detect a rename regression. The
+     * post-condition is asserted rather than assumed: a kind that starts honouring or rejecting a
+     * rename has to be dealt with here instead of quietly changing what the baseline means.
+     */
+    /**
+     * Renames the entity and pins the outcome, which differs by kind.
+     *
+     * <p>Only GlossaryTerm sets {@code renameAllowed}. For the others the PATCH still returns 200
+     * and {@code EntityRepository:1325} puts the original name back, so without an assertion the
+     * captured fixture is indistinguishable from patch-noop and could never detect a rename
+     * regression. The fixture is still captured for every kind, because "the name was rejected"
+     * does not mean "nothing was written": {@code table/rename.json} records a column whose
+     * fullyQualifiedName was rebuilt from the rejected name while the table kept the old one.
+     */
     private void rename(String name) throws IOException {
-      try {
-        patch(path(), "name", name);
-        capture("rename");
-      } catch (OpenMetadataException denied) {
-        assertEquals(400, denied.getStatusCode(), "Only an unsupported rename may be rejected");
-        capture("rename-denied");
+      final JsonNode result = patch(path(), "name", name);
+      if (kind.renameAllowed) {
+        assertEquals(name, result.path("name").asText(), kind.type + " did not honour the rename");
+      } else {
+        assertNotEquals(
+            name, result.path("name").asText(), kind.type + " unexpectedly honoured a rename");
       }
+      capture("rename");
     }
 
     private void importDescription() throws IOException {
@@ -382,6 +409,12 @@ class EntityRepositoryGoldenIT {
         printer.printRecord(headers);
         for (var record : records.subList(1, records.size())) {
           final var values = new ArrayList<>(record.toList());
+          // Commons CSV does not pad short records, and a row that omits trailing empty fields is
+          // narrower than the header. For Kind.TABLE the description index sits well to the right,
+          // so setting it without padding throws IndexOutOfBoundsException.
+          while (values.size() <= description) {
+            values.add("");
+          }
           values.set(description, "csv");
           printer.printRecord(values);
         }
