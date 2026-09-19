@@ -92,7 +92,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -156,6 +158,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         Entity.TASK, "approvedById", MetadataOperation.RESOLVE_TASK);
     ResourceRegistry.mapEntityFieldOperation(
         Entity.TASK, "approvedAt", MetadataOperation.RESOLVE_TASK);
+    // PATCH on description must require EditAll, not the default EditDescription. `description`
+    // is the task's body text, and DataConsumerPolicy grants EditDescription on every resource to
+    // every authenticated user — without this any user could rewrite any task's text (issue
+    // #18158). EditAll still reaches the filer (TaskAuthorPolicy) and the target entity's owners.
+    ResourceRegistry.mapEntityFieldOperation(
+        Entity.TASK, Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_ALL);
   }
 
   @Override
@@ -1102,7 +1110,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task original = repository.get(uriInfo, id, repository.getPatchFields());
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
-    return patchInternal(uriInfo, securityContext, id, patch);
+    // Authorize against TaskResourceContext for the same reason DELETE does: the generic
+    // ResourceContext leaves createdBy null and resolves isOwner() to the Task's own owners
+    // rather than the target entity's, so both isTaskFiler() and the entity-owner rule would
+    // silently fail to match on PATCH while matching on DELETE.
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
+    return patchInternal(uriInfo, securityContext, authRequests, AuthorizationLogic.ALL, id, patch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
