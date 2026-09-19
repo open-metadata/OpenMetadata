@@ -27,6 +27,7 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   private final String RUN_AUTOMATIONS_WORKFLOW = "run_automations_workflow";
   private final String RUN_APPLICATION_FLOW = "run_application_flow";
   private final String VALIDATE_APP_REGISTRATION = "validate_app_registration";
+  private static final String UNKNOWN_STATUS = "unknown";
 
   private final PipelineServiceClientInterface decoratedClient;
 
@@ -56,7 +57,7 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
           .increment();
       throw e;
     } catch (Exception e) {
-      Metrics.counter("pipeline_client_request_status", "operation", name, "status", "unknown")
+      Metrics.counter("pipeline_client_request_status", "operation", name, "status", UNKNOWN_STATUS)
           .increment();
       throw e;
     }
@@ -67,11 +68,7 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
     try {
       PipelineServiceClientResponse result = operation.get();
       Metrics.counter(
-              "pipeline_client_request_status",
-              "operation",
-              name,
-              "status",
-              Integer.toString(result.getCode()))
+              "pipeline_client_request_status", "operation", name, "status", statusOf(result))
           .increment();
       return result;
     } catch (PipelineServiceClientException e) {
@@ -84,10 +81,21 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
           .increment();
       throw e;
     } catch (Exception e) {
-      Metrics.counter("pipeline_client_request_status", "operation", name, "status", "unknown")
+      Metrics.counter("pipeline_client_request_status", "operation", name, "status", UNKNOWN_STATUS)
           .increment();
       throw e;
     }
+  }
+
+  /**
+   * Metering only observes the decorated client, so a client that answers with no response - or with
+   * no status code - is labelled unknown and handed back untouched. Reading the code straight off
+   * the response used to turn such an answer into a NullPointerException inside this decorator.
+   */
+  private static String statusOf(PipelineServiceClientResponse result) {
+    return result == null || result.getCode() == null
+        ? UNKNOWN_STATUS
+        : Integer.toString(result.getCode());
   }
 
   @Override
