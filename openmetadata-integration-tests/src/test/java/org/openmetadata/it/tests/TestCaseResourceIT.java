@@ -3857,6 +3857,104 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_testWithInvalidFailureThreshold_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    InvalidRequestException negative =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "negative_threshold",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("-1"))));
+    assertTrue(
+        negative.getMessage().contains("threshold")
+            && negative.getMessage().contains("must not be negative"),
+        "The error must explain the negative threshold but was: " + negative.getMessage());
+
+    // A percentage of the failing rows cannot go past 100 for a row-countable test.
+    InvalidRequestException overHundred =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "percentage_over_100",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("150"),
+                        new TestCaseParameterValue()
+                            .withName("thresholdUnit")
+                            .withValue("PERCENTAGE"))));
+    assertTrue(
+        overHundred.getMessage().contains("cannot exceed 100"),
+        "The error must explain the 100% cap but was: " + overHundred.getMessage());
+
+    // A row tolerance means nothing on the `matchEnum: false` branch.
+    InvalidRequestException withoutMatchEnum =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "in_set_without_match_enum",
+                        columnLink,
+                        "columnValuesToBeInSet",
+                        new TestCaseParameterValue().withName("allowedValues").withValue("[1,2]"),
+                        new TestCaseParameterValue().withName("matchEnum").withValue("false"),
+                        new TestCaseParameterValue().withName("threshold").withValue("10"))));
+    assertTrue(
+        withoutMatchEnum.getMessage().contains("matchEnum"),
+        "The error must name matchEnum but was: " + withoutMatchEnum.getMessage());
+  }
+
+  @Test
+  void post_testWithStatisticalPercentageThresholdOver100_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    // The threshold is a deviation from the bounds here, not a share of the rows, so tolerating the
+    // mean being 200% off is loose but coherent — the cap is class-aware, not a blanket range
+    // check.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "mean_percentage_over_100",
+                columnLink,
+                "columnValueMeanToBeBetween",
+                new TestCaseParameterValue().withName("minValueForMeanInCol").withValue("10"),
+                new TestCaseParameterValue().withName("maxValueForMeanInCol").withValue("20"),
+                new TestCaseParameterValue().withName("threshold").withValue("200"),
+                new TestCaseParameterValue().withName("thresholdUnit").withValue("PERCENTAGE")));
+
+    assertNotNull(testCase.getId());
+  }
+
+  private CreateTestCase thresholdRequest(
+      TestNamespace ns,
+      String name,
+      String entityLink,
+      String testDefinition,
+      TestCaseParameterValue... parameterValues) {
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
+    request.setTestDefinition(testDefinition);
+    request.setParameterValues(List.of(parameterValues));
+    return request;
+  }
+
+  @Test
   void post_testWithWrongCaseColumnName_4xx(TestNamespace ns) {
     // Note: The original test uses "C1" literal against column "c'_+# 1" - completely different
     // strings
