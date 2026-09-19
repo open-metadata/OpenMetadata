@@ -120,7 +120,10 @@
 // surface / gray-blue-page values (frozen); only dark collapses to canvas.
 .dark-mode {
   .ask-sidebar,
-  .ask-main-panel {
+  .ask-main-panel,
+  // User card: match the flattened sidebar (canvas) instead of the raised
+  // surface, so it doesn't read as a lighter box against the sidebar.
+  .ask-user-card {
     background: var(--color-bg-canvas);
   }
   // The rail is styled at `.ask-sidebar .ask-rail` (0,2,0); match that depth so
