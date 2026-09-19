@@ -47,11 +47,16 @@ export interface OntologyDiscoveryContext {
     evidenceFingerprint: string;
     generatedAt?:        number;
     /**
-     * Model identifier returned by the configured provider.
+     * Generative model identifier returned by the ontology draft provider.
      */
-    modelId?:             string;
-    ruleVersion:          string;
-    serviceFqn:           string;
+    modelId?:    string;
+    ruleVersion: string;
+    serviceFqn:  string;
+    /**
+     * Immutable source-local verifier checkpoint identifier when a separate verifier such as
+     * Laya is used.
+     */
+    verificationModelId?: string;
     verificationProvider: VerificationProvider;
 }
 
@@ -82,6 +87,7 @@ export interface OntologyDiscoveryEvidence {
 
 export enum VerificationProvider {
     Jev = "jev",
+    Laya = "laya",
     Model = "model",
 }
 

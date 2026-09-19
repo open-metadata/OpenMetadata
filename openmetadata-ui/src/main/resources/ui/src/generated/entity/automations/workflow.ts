@@ -692,6 +692,12 @@ export interface TestServiceConnectionRequest {
      */
     maxResultSize?: number;
     /**
+     * INTERNAL FIELD - Source-local ontology inference requested only by the Ontology Agent.
+     * When present, the worker must replace raw query rows with bounded semantic decisions
+     * before invoking its result sink.
+     */
+    ontologyInference?: OntologyInferenceRequest;
+    /**
      * Query to be executed.
      */
     query?: string;
@@ -5800,6 +5806,88 @@ export enum AirflowConnectionType {
 export enum CredentialSourceType {
     Team = "team",
     User = "user",
+}
+
+/**
+ * INTERNAL FIELD - Source-local ontology inference requested only by the Ontology Agent.
+ * When present, the worker must replace raw query rows with bounded semantic decisions
+ * before invoking its result sink.
+ *
+ * Internal, ontology-agent-only request to replace source rows with Laya semantic decisions
+ * before any result sink receives them.
+ */
+export interface OntologyInferenceRequest {
+    /**
+     * Closed candidate vocabulary. The small upper bound preserves useful Laya option-token
+     * budgets.
+     */
+    candidates: OntologyInferenceCandidate[];
+    /**
+     * Catalog columns to classify. Source values for all other query columns are discarded
+     * locally.
+     */
+    columns:  OntologyInferenceColumn[];
+    provider: OntologyInferenceProvider;
+    purpose:  OntologyInferencePurpose;
+    /**
+     * Maximum source rows inspected locally. Raw values never enter the result sink.
+     */
+    sampleRows: number;
+    /**
+     * Canonical catalog FQN of the table being sampled.
+     */
+    tableFqn: string;
+}
+
+/**
+ * One bounded ontology concept candidate. The worker can select only one of these IDs or
+ * the built-in unmapped outcome.
+ */
+export interface OntologyInferenceCandidate {
+    /**
+     * Bounded semantic criterion that distinguishes this candidate from the others.
+     */
+    description: string;
+    /**
+     * Stable candidate identifier returned in the inference signal.
+     */
+    id: string;
+    /**
+     * Short human-readable candidate name.
+     */
+    label: string;
+}
+
+/**
+ * Catalog context for a source column whose values remain inside the query worker.
+ */
+export interface OntologyInferenceColumn {
+    /**
+     * Catalog data type display text, when available.
+     */
+    dataType?: string;
+    /**
+     * Catalog column description, when available.
+     */
+    description?: string;
+    /**
+     * Exact top-level column name returned by the source query.
+     */
+    name: string;
+}
+
+/**
+ * Source-local inference implementation. Laya is loaded only for this request mode.
+ */
+export enum OntologyInferenceProvider {
+    Laya = "laya",
+}
+
+/**
+ * The only workflow allowed to request source-local ontology inference.
+ */
+export enum OntologyInferencePurpose {
+    OntologyDiscovery = "ontologyDiscovery",
 }
 
 /**
