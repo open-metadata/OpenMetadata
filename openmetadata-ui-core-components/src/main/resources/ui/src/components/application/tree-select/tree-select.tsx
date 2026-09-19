@@ -43,7 +43,10 @@ import {
   getVisibleNodeIds,
   useTreeSelectSearch,
 } from './use-tree-select-search';
-import { useTreeSelectSelection } from './use-tree-select-selection';
+import {
+  hasExclusiveChildren,
+  useTreeSelectSelection,
+} from './use-tree-select-selection';
 
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
 const DROPDOWN_CHROME_WIDTH = 320;
@@ -460,10 +463,7 @@ export const TreeSelect = <T = unknown,>({
       const visibleNodes = nodes.filter((node) => isNodeVisible(node.id));
 
       return visibleNodes.map((node) => {
-        const hasExclusiveChildren =
-          node.hasExclusiveChildren ??
-          node.children?.some((c) => c.isParentMutuallyExclusive) ??
-          false;
+        const isExclusiveGroup = hasExclusiveChildren(node);
 
         return (
           <Tree.Item id={node.id} key={node.id} textValue={node.label}>
@@ -476,10 +476,10 @@ export const TreeSelect = <T = unknown,>({
               isSelected={isNodeSelected(node.id)}
               multiple={multiple}
               node={node}
-              showCheckbox={showCheckbox && !hasExclusiveChildren}
+              showCheckbox={showCheckbox && !isExclusiveGroup}
               showIcon={showIcon}
               onNodeClick={() => {
-                if (!hasExclusiveChildren) {
+                if (!isExclusiveGroup) {
                   handleNodeAction(node, parentNode);
                 }
               }}
@@ -715,11 +715,7 @@ export const TreeSelect = <T = unknown,>({
               if (!node) {
                 return;
               }
-              const isExclusiveParent =
-                node.hasExclusiveChildren ??
-                node.children?.some((c) => c.isParentMutuallyExclusive) ??
-                false;
-              if (!isExclusiveParent) {
+              if (!hasExclusiveChildren(node)) {
                 handleNodeAction(node);
               }
             }}

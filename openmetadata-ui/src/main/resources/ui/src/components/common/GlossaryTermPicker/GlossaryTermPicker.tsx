@@ -19,6 +19,7 @@ import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import Fqn from '../../../utils/Fqn';
 import { useGlossaryTreeData } from './useGlossaryTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.
@@ -67,6 +68,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
             id: tag.tagFQN,
             label: tag.displayName || tag.name || tag.tagFQN,
             value: tag.tagFQN,
+            // Glossary nodes are keyed by name, which is the term FQN's root.
+            parentId: Fqn.split(tag.tagFQN)[0],
             data: tag,
           })
         ),

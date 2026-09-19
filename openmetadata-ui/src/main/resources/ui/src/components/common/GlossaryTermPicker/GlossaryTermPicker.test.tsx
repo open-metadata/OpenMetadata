@@ -72,6 +72,7 @@ describe('GlossaryTermPicker', () => {
         id: 'Finance.MRR',
         label: 'Monthly Recurring Revenue',
         value: 'Finance.MRR',
+        parentId: 'Finance',
         data: APPLIED_TERM,
       },
     ]);

@@ -39,11 +39,21 @@ const getAllChildrenIds = <T>(node: TreeSelectNode<T>): string[] => {
   return ids;
 };
 
-// A cascade cannot choose between mutually exclusive siblings, so it stops there.
+// A node whose children are mutually exclusive: it renders no control of its own.
+export const hasExclusiveChildren = <T>(node: TreeSelectNode<T>): boolean =>
+  node.hasExclusiveChildren ??
+  node.children?.some((child) => child.isParentMutuallyExclusive) ??
+  false;
+
+// A cascade cannot choose between mutually exclusive siblings, so it stops at
+// them and at the group node above them, which is not selectable either.
 const collectNodes = <T>(node: TreeSelectNode<T>): TreeSelectNode<T>[] => {
   const nodes = [node];
   node.children
-    ?.filter((child) => !child.isParentMutuallyExclusive)
+    ?.filter(
+      (child) =>
+        !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+    )
     .forEach((child) => nodes.push(...collectNodes(child)));
 
   return nodes;
@@ -111,12 +121,14 @@ export const useTreeSelectSelection = <T = unknown>({
           }
         });
         if (parent) {
-          // Seeded values have no recorded parent, so fall back to the tree.
-          next.forEach((_selected, selectedId) => {
+          // A search-filtered tree can drop a seeded sibling, so fall back to
+          // its own hint and then to whatever parent was discovered earlier.
+          next.forEach((selected, selectedId) => {
             if (selectedId === node.id) {
               return;
             }
             const selectedParent =
+              selected.parentId ??
               parentOfSelected.current.get(selectedId) ??
               findParentNode(selectedId, treeDataRef.current)?.id;
             if (selectedParent === parent.id) {
@@ -149,12 +161,20 @@ export const useTreeSelectSelection = <T = unknown>({
   );
 
   const setSelection = useCallback((nodes: TreeSelectNode<T>[]) => {
-    // Rebuild the parents so a seeded value keeps its exclusivity on reopen.
-    const parents = new Map<string, string>();
+    // Keep parents discovered earlier — a search-filtered tree cannot re-resolve
+    // them — and drop only the entries no longer selected.
+    const parents = new Map(parentOfSelected.current);
+    const ids = new Set(nodes.map((node) => node.id));
+    parents.forEach((_parentId, id) => {
+      if (!ids.has(id)) {
+        parents.delete(id);
+      }
+    });
     nodes.forEach((node) => {
-      const parent = findParentNode(node.id, treeDataRef.current);
-      if (parent) {
-        parents.set(node.id, parent.id);
+      const parentId =
+        node.parentId ?? findParentNode(node.id, treeDataRef.current)?.id;
+      if (parentId) {
+        parents.set(node.id, parentId);
       }
     });
     parentOfSelected.current = parents;

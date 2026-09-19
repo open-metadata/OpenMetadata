@@ -26,6 +26,8 @@ export interface TreeSelectNode<T = unknown> {
   allowSelection?: boolean;
   lazyLoad?: boolean;
   isParentMutuallyExclusive?: boolean;
+  /** Parent id, for selections seeded before that branch is in the tree. */
+  parentId?: string;
   /** Child count displayed as a trailing badge on parent nodes. */
   count?: number;
   /**
