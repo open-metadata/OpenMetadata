@@ -42,6 +42,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
+  isThresholdUnitOptionDisabled,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
@@ -335,6 +336,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     (data.optionValues ?? []).map((optionValue) => ({
       id: optionValue as string,
       label: getOptionLabel(data, optionValue as string),
+      // A unit this test's validator never reads is shown but not selectable,
+      // rather than offered and then warned about in the preview.
+      isDisabled:
+        data.name === THRESHOLD_UNIT_PARAM &&
+        isThresholdUnitOptionDisabled(definition.name, optionValue as string),
     }));
 
   const getStringFieldProp = (

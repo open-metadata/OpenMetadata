@@ -27,6 +27,7 @@ import {
   getThresholdTestSemantic,
   getThresholdUnitLabelParts,
   hasThresholdUnitParam,
+  isThresholdUnitOptionDisabled,
   ThresholdNoun,
   ThresholdSamplingKind,
   ThresholdTestSemantic,
@@ -158,6 +159,23 @@ describe('getParamOptionLabelKey', () => {
     expect(
       getParamOptionLabelKey('someOtherTest', 'operator', '<=')
     ).toBeUndefined();
+  });
+});
+
+describe('isThresholdUnitOptionDisabled', () => {
+  it('does not let custom SQL pick a unit its validator never reads', () => {
+    expect(
+      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'PERCENTAGE')
+    ).toBe(true);
+    expect(
+      isThresholdUnitOptionDisabled('tableCustomSQLQuery', 'ABSOLUTE')
+    ).toBe(false);
+  });
+
+  it('leaves both units selectable for every other test', () => {
+    expect(
+      isThresholdUnitOptionDisabled('columnValuesToBeNotNull', 'PERCENTAGE')
+    ).toBe(false);
   });
 });
 
@@ -516,6 +534,52 @@ describe('getThresholdPreviewData', () => {
 
     expect(data?.isUnitIgnored).toBe(true);
     expect(data?.isThresholdIgnored).toBe(false);
+  });
+
+  it('does not promise the in-set tolerance while Match enum is off', () => {
+    // `columnValuesToBeInSet` passes as soon as one value is in the set unless
+    // `matchEnum` is on, and only then is `_apply_row_threshold` reached.
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValuesToBeInSet', [
+        { name: 'matchEnum' },
+      ]),
+      params: { threshold: 10 },
+      target: 'status',
+    });
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.NotEnforced,
+      needsMatchEnum: true,
+      // The match-enum case has its own, more specific warning.
+      isThresholdIgnored: false,
+    });
+  });
+
+  it('reads the in-set threshold as a row tolerance once Match enum is on', () => {
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValuesToBeInSet', [
+        { name: 'matchEnum' },
+      ]),
+      params: { threshold: 10, matchEnum: true },
+      target: 'status',
+    });
+
+    expect(data).toMatchObject({
+      semantic: ThresholdTestSemantic.RowCountable,
+      needsMatchEnum: false,
+      noun: ThresholdNoun.Rows,
+    });
+  });
+
+  it('reads a Match enum prefilled from a saved test case as its stored string', () => {
+    const data = getThresholdPreviewData({
+      definition: definitionOf('columnValuesToBeInSet', [
+        { name: 'matchEnum' },
+      ]),
+      params: { threshold: 10, matchEnum: 'true' },
+    });
+
+    expect(data?.needsMatchEnum).toBe(false);
   });
 
   it('flags a test whose threshold no validator reads yet', () => {

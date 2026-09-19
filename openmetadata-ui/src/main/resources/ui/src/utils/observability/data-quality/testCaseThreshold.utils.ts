@@ -24,8 +24,10 @@ export const THRESHOLD_UNIT_PARAM = 'thresholdUnit';
 const OPERATOR_PARAM = 'operator';
 const STRATEGY_PARAM = 'strategy';
 const DIMENSION_FAILURE_POLICY_PARAM = 'dimensionFailurePolicy';
+const MATCH_ENUM_PARAM = 'matchEnum';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
+const COLUMN_VALUES_TO_BE_IN_SET = 'columnValuesToBeInSet';
 
 export enum ThresholdUnit {
   Absolute = 'ABSOLUTE',
@@ -160,6 +162,20 @@ export const THRESHOLD_NOUN_KEYS: Record<ThresholdNoun, string> = {
   [ThresholdNoun.Bound]: 'label.threshold-noun-the-bound',
 };
 
+/**
+ * The same nouns in the form used after a count. A threshold of 1 would read
+ * "1 rows" with the plural keys above, and this codebase writes the count into
+ * the string with "(s)" rather than using i18next `_one`/`_other` keys (see
+ * `label.bundle-test-case-selected-count`), so the count form is its own key.
+ */
+export const THRESHOLD_COUNT_NOUN_KEYS: Record<ThresholdNoun, string> = {
+  [ThresholdNoun.Rows]: 'label.threshold-count-noun-rows',
+  [ThresholdNoun.NonNullValues]: 'label.threshold-count-noun-non-null-values',
+  [ThresholdNoun.TableRows]: 'label.threshold-count-noun-table-rows',
+  [ThresholdNoun.Units]: 'label.threshold-count-noun-units',
+  [ThresholdNoun.Bound]: 'label.threshold-count-noun-the-bound',
+};
+
 const OPERATOR_LABEL_KEYS: Record<string, string> = {
   '<=': 'label.threshold-operator-at-most',
   '<': 'label.threshold-operator-fewer-than',
@@ -215,7 +231,7 @@ export const getThresholdNoun = (
 
     case ThresholdTestSemantic.RowCountable:
       return isPercentage
-        ? ROW_COUNTABLE_DENOMINATORS[definitionName as string]
+        ? ROW_COUNTABLE_DENOMINATORS[definitionName ?? '']
         : ThresholdNoun.Rows;
 
     default:
@@ -273,6 +289,20 @@ export const getParamOptionLabelKey = (
   return undefined;
 };
 
+/**
+ * Whether a `thresholdUnit` option may be picked for this test.
+ * `tableCustomSQLQuery` compares its threshold as a raw count
+ * (`evaluate_threshold(threshold, operator, len_rows)`) and never reads the
+ * unit, so PERCENTAGE is offered disabled rather than dropped: a test case
+ * already saved with it would otherwise lose its selected option.
+ */
+export const isThresholdUnitOptionDisabled = (
+  definitionName: string | undefined,
+  optionValue: string
+): boolean =>
+  definitionName === TABLE_CUSTOM_SQL_QUERY &&
+  optionValue === ThresholdUnit.Percentage;
+
 export const hasThresholdUnitParam = (
   definition: TestDefinition | undefined
 ): boolean =>
@@ -316,6 +346,15 @@ const normalizeValue = (value: number): number =>
   Number.isFinite(value)
     ? Number(value.toPrecision(SIGNIFICANT_DIGITS))
     : value;
+
+/**
+ * Reads a BOOLEAN param the way ingestion's `get_bool_test_case_param` does:
+ * the switch gives a real boolean, a value prefilled from a saved test case
+ * gives the string it was stored as, and anything missing is false.
+ */
+const isBooleanParamOn = (value: unknown): boolean =>
+  value === true ||
+  (typeof value === 'string' && value.toLowerCase() === 'true');
 
 const toNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number') {
@@ -420,6 +459,11 @@ export interface ThresholdPreviewData {
    */
   isThresholdIgnored: boolean;
   /**
+   * `columnValuesToBeInSet` with `matchEnum` off — the threshold is only read
+   * once that flag is on, so the preview says so instead of promising one.
+   */
+  needsMatchEnum: boolean;
+  /**
    * The test reads `threshold` but ignores `thresholdUnit` — true for
    * `tableCustomSQLQuery` with a PERCENTAGE unit, which `evaluate_threshold`
    * still compares as a raw count.
@@ -499,8 +543,48 @@ const getStatisticalPreview = (
     effectiveRange:
       effectiveMin !== undefined && effectiveMax !== undefined
         ? `${effectiveMin} – ${effectiveMax}`
-        : (formatBound(effectiveMin, effectiveMax) as string),
+        : formatBound(effectiveMin, effectiveMax),
     hasZeroBound: unit === ThresholdUnit.Percentage && (min === 0 || max === 0),
+  };
+};
+
+/**
+ * The semantic that governs this test *as currently configured*.
+ *
+ * `columnValuesToBeInSet` only applies the threshold when `matchEnum` is on;
+ * with it off (the default, since `get_bool_test_case_param` returns `False`)
+ * the test passes as soon as one value is in the set and
+ * `_apply_row_threshold` is never reached — so nothing may be promised about
+ * the tolerance, however row-countable the test is on paper.
+ */
+const getEffectiveSemantic = (
+  definition: TestDefinition,
+  params: Record<string, unknown>
+): { semantic: ThresholdTestSemantic; needsMatchEnum: boolean } => {
+  const needsMatchEnum =
+    definition.name === COLUMN_VALUES_TO_BE_IN_SET &&
+    !isBooleanParamOn(params[MATCH_ENUM_PARAM]);
+
+  return {
+    needsMatchEnum,
+    semantic: needsMatchEnum
+      ? ThresholdTestSemantic.NotEnforced
+      : getThresholdTestSemantic(definition.name),
+  };
+};
+
+const getCustomSqlPreview = (
+  params: Record<string, unknown>
+): Pick<ThresholdPreviewData, 'operator' | 'operatorLabelKey' | 'strategy'> => {
+  const operator = unwrapSelectValue(params[OPERATOR_PARAM]) ?? '<=';
+
+  return {
+    operator,
+    operatorLabelKey: OPERATOR_LABEL_KEYS[operator],
+    strategy:
+      unwrapSelectValue(params[STRATEGY_PARAM]) === CustomSqlStrategy.Count
+        ? CustomSqlStrategy.Count
+        : CustomSqlStrategy.Rows,
   };
 };
 
@@ -521,7 +605,7 @@ export const getThresholdPreviewData = (
   const threshold = toNumber(params[THRESHOLD_PARAM]) ?? 0;
   const unit =
     unwrapSelectValue(params[THRESHOLD_UNIT_PARAM]) ?? ThresholdUnit.Absolute;
-  const semantic = getThresholdTestSemantic(definition.name);
+  const { semantic, needsMatchEnum } = getEffectiveSemantic(definition, params);
   const isPercentage = unit === ThresholdUnit.Percentage;
 
   const common = {
@@ -532,7 +616,10 @@ export const getThresholdPreviewData = (
     target: input.target,
     sampling: getThresholdSampling(input.profilerConfig),
     hasZeroBound: false,
-    isThresholdIgnored: semantic === ThresholdTestSemantic.NotEnforced,
+    needsMatchEnum,
+    // The match-enum case has its own, more specific warning.
+    isThresholdIgnored:
+      semantic === ThresholdTestSemantic.NotEnforced && !needsMatchEnum,
     isUnitIgnored: semantic === ThresholdTestSemantic.CustomSql && isPercentage,
   };
 
@@ -543,15 +630,7 @@ export const getThresholdPreviewData = (
   }
 
   if (semantic === ThresholdTestSemantic.CustomSql) {
-    const operator = unwrapSelectValue(params[OPERATOR_PARAM]) ?? '<=';
-
-    return {
-      ...common,
-      operator,
-      operatorLabelKey: OPERATOR_LABEL_KEYS[operator],
-      strategy: (unwrapSelectValue(params[STRATEGY_PARAM]) ??
-        CustomSqlStrategy.Rows) as CustomSqlStrategy,
-    };
+    return { ...common, ...getCustomSqlPreview(params) };
   }
 
   return common;

@@ -12,10 +12,10 @@
  */
 
 import { Alert, FormItemLabel } from '@openmetadata/ui-core-components';
-import { TFunction } from 'i18next';
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { t } from '../../../../utils/i18next/LocalUtil';
 import {
   CustomSqlStrategy,
   getThresholdPreviewData,
@@ -24,37 +24,34 @@ import {
   ThresholdSampling,
   ThresholdSamplingKind,
   ThresholdTestSemantic,
+  THRESHOLD_COUNT_NOUN_KEYS,
   THRESHOLD_NOUN_KEYS,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { ThresholdPreviewProps } from './ThresholdPreview.types';
 
 /**
- * The threshold restated as "10 rows" / "1% of non-null values". Composed from
- * two keys rather than one pre-built sentence per case, because the noun is
- * contextual: the same stored unit reads as rows, non-null values or units
+ * The threshold restated as "10 row(s)" / "1% of non-null values". Composed
+ * from two keys rather than one pre-built sentence per case, because the noun
+ * is contextual: the same stored unit reads as rows, non-null values or units
  * depending on the test.
  */
 const formatAmount = (
-  t: TFunction,
   threshold: number,
   isPercentage: boolean,
   noun: ThresholdNoun
-): string => {
-  const nounText = t(THRESHOLD_NOUN_KEYS[noun]);
-
-  return isPercentage
+): string =>
+  isPercentage
     ? t('message.threshold-amount-percentage', {
         value: threshold,
-        noun: nounText,
+        noun: t(THRESHOLD_NOUN_KEYS[noun]),
       })
     : t('message.threshold-amount-absolute', {
         value: threshold,
-        noun: nounText,
+        // "1 row(s)" — a bare count takes the noun's count form.
+        noun: t(THRESHOLD_COUNT_NOUN_KEYS[noun]),
       });
-};
 
 const formatSamplingNote = (
-  t: TFunction,
   sampling: ThresholdSampling | undefined
 ): string | undefined => {
   if (!sampling) {
@@ -71,7 +68,7 @@ const formatSamplingNote = (
     sampling.kind === ThresholdSamplingKind.StaticRows
       ? t('message.threshold-amount-absolute', {
           value: sampling.value,
-          noun: t(THRESHOLD_NOUN_KEYS[ThresholdNoun.Rows]),
+          noun: t(THRESHOLD_COUNT_NOUN_KEYS[ThresholdNoun.Rows]),
         })
       : t('label.percentage-value', { value: sampling.value });
 
@@ -79,15 +76,11 @@ const formatSamplingNote = (
 };
 
 /**
- * "…falls outside 90 – 110, allowing a 5% deviation (effective range
+ * "…falls outside 90 – 110, allowing a deviation of 5% (effective range
  * 85.5 – 115.5)" — the effective range is the number users reason about, and
  * showing it is what makes the zero-bound degenerate case visible.
  */
-const formatStatisticalSentence = (
-  t: TFunction,
-  data: ThresholdPreviewData,
-  amount: string
-): string => {
+const formatStatisticalSentence = (data: ThresholdPreviewData): string => {
   const { bound, effectiveRange, isPercentage, threshold } = data;
 
   if (!effectiveRange) {
@@ -96,18 +89,20 @@ const formatStatisticalSentence = (
 
   return t('message.dq-threshold-preview-statistical-deviation', {
     bound,
-    // The bound the deviation is measured against is already in the sentence,
-    // so the clause reads "a 5% deviation", not "a 5% of the bound deviation".
+    // The quantity the deviation is measured in is the metric's own — rows for
+    // a row count, currency for a mean — so it is left unnamed rather than
+    // called "units"; the effective range spells the result out anyway. The
+    // bound a percentage is taken of is already in the sentence, so the clause
+    // reads "a deviation of 5%", not "of 5% of the bound".
     amount: isPercentage
       ? t('label.percentage-value', { value: threshold })
-      : amount,
+      : String(threshold),
     range: effectiveRange,
   });
 };
 
 /** `tableCustomSQLQuery` compares its own result through its own operator. */
 const formatCustomSqlSentence = (
-  t: TFunction,
   data: ThresholdPreviewData,
   amount: string
 ): string => {
@@ -131,17 +126,13 @@ const formatCustomSqlSentence = (
  * `tableCustomSQLQuery`'s own comparison. A test whose threshold no validator
  * reads yet gets no sentence at all, only the warning beside it.
  */
-const formatSentence = (
-  t: TFunction,
-  data: ThresholdPreviewData
-): string | undefined => {
+const formatSentence = (data: ThresholdPreviewData): string | undefined => {
   const { semantic, threshold, isPercentage, noun, target, isUnitIgnored } =
     data;
 
   // When the unit is not read for this test the threshold is a raw count
   // whatever the dropdown says, so the sentence says what will happen.
   const amount = formatAmount(
-    t,
     threshold,
     isUnitIgnored ? false : isPercentage,
     isUnitIgnored ? ThresholdNoun.Rows : noun
@@ -149,10 +140,10 @@ const formatSentence = (
 
   switch (semantic) {
     case ThresholdTestSemantic.Statistical:
-      return formatStatisticalSentence(t, data, amount);
+      return formatStatisticalSentence(data);
 
     case ThresholdTestSemantic.CustomSql:
-      return formatCustomSqlSentence(t, data, amount);
+      return formatCustomSqlSentence(data, amount);
 
     case ThresholdTestSemantic.RowCountable:
       return t('message.dq-threshold-preview-row-countable', {
@@ -177,7 +168,11 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
   target,
   profilerConfig,
 }) => {
-  const { t } = useTranslation();
+  // The sentence is composed by the helpers above, which translate through
+  // `LocalUtil`'s `t` like the rest of `utils/`. The hook is still called so
+  // the component re-renders — and the sentence is rebuilt — on a language
+  // change.
+  useTranslation();
   const params = useWatch({ control: form.control, name: 'params' });
 
   const data = useMemo(
@@ -195,17 +190,32 @@ const ThresholdPreview: FC<ThresholdPreviewProps> = ({
     return null;
   }
 
-  const sentence = formatSentence(t, data);
-  const samplingNote = formatSamplingNote(t, data.sampling);
+  const sentence = formatSentence(data);
+  const samplingNote = formatSamplingNote(data.sampling);
 
   return (
-    <div className="threshold-preview" data-testid="threshold-preview">
+    <div
+      className="tw:flex tw:flex-col tw:gap-2"
+      data-testid="threshold-preview">
       <FormItemLabel label={t('label.preview')} />
-      {sentence && <p data-testid="threshold-preview-sentence">{sentence}</p>}
+      {sentence && (
+        <p className="tw:mb-0" data-testid="threshold-preview-sentence">
+          {sentence}
+        </p>
+      )}
       {samplingNote && (
-        <p className="text-grey-muted" data-testid="threshold-sampling-warning">
+        <p
+          className="tw:mb-0 tw:text-tertiary"
+          data-testid="threshold-sampling-warning">
           {samplingNote}
         </p>
+      )}
+      {data.needsMatchEnum && (
+        <Alert
+          data-testid="threshold-match-enum-warning"
+          title={t('message.dq-threshold-preview-match-enum-required')}
+          variant="warning"
+        />
       )}
       {data.isThresholdIgnored && (
         <Alert

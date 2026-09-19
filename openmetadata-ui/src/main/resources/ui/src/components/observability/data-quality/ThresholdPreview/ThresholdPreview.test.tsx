@@ -28,19 +28,25 @@ import ThresholdPreview from './ThresholdPreview';
 // user actually sees.
 const catalog = enUs as unknown as Record<string, Record<string, string>>;
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      const [namespace, ...rest] = key.split('.');
-      const template = catalog[namespace]?.[rest.join('.')] ?? key;
+const mockTranslate = (key: string, options?: Record<string, unknown>) => {
+  const [namespace, ...rest] = key.split('.');
+  const template = catalog[namespace]?.[rest.join('.')] ?? key;
 
-      return Object.entries(options ?? {}).reduce(
-        (result, [name, value]) =>
-          result.split(`{{${name}}}`).join(String(value)),
-        template
-      );
-    },
-  }),
+  return Object.entries(options ?? {}).reduce(
+    (result, [name, value]) => result.split(`{{${name}}}`).join(String(value)),
+    template
+  );
+};
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: mockTranslate }),
+}));
+
+// The sentence helpers translate through LocalUtil, the convention for
+// non-JSX translation in this codebase.
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  t: (key: string, options?: Record<string, unknown>) =>
+    mockTranslate(key, options),
 }));
 
 const thresholdParams = [
@@ -137,14 +143,14 @@ describe('ThresholdPreview', () => {
     );
 
     expect(sentence()).toBe(
-      'Fail when the measured value falls outside 90 – 110, allowing a 5% deviation (effective range 85.5 – 115.5).'
+      'Fail when the measured value falls outside 90 – 110, allowing a deviation of 5% (effective range 85.5 – 115.5).'
     );
     expect(
       screen.queryByTestId('threshold-zero-bound-warning')
     ).not.toBeInTheDocument();
   });
 
-  it('spells the unit out for an absolute statistical deviation', () => {
+  it('leaves an absolute statistical deviation unnamed but exact', () => {
     renderPreview(
       definitionOf('tableRowCountToBeBetween', [
         { name: 'minValue' },
@@ -154,7 +160,7 @@ describe('ThresholdPreview', () => {
     );
 
     expect(sentence()).toBe(
-      'Fail when the measured value falls outside 100 – 200, allowing a 10 units deviation (effective range 90 – 210).'
+      'Fail when the measured value falls outside 100 – 200, allowing a deviation of 10 (effective range 90 – 210).'
     );
   });
 
@@ -196,7 +202,7 @@ describe('ThresholdPreview', () => {
       { operator: { id: '<=' }, strategy: { id: 'ROWS' }, threshold: 10 }
     );
 
-    expect(sentence()).toBe('Pass when the query returns at most 10 rows.');
+    expect(sentence()).toBe('Pass when the query returns at most 10 row(s).');
   });
 
   it('reads the single number when the custom SQL strategy is COUNT', () => {
@@ -221,10 +227,43 @@ describe('ThresholdPreview', () => {
     });
 
     // The sentence states the raw-count reading that will actually run.
-    expect(sentence()).toBe('Pass when the query returns at most 10 rows.');
+    expect(sentence()).toBe('Pass when the query returns at most 10 row(s).');
     expect(
       screen.getByTestId('threshold-unit-not-enforced-warning')
     ).toHaveTextContent('the threshold unit is not applied');
+  });
+
+  it('warns that the in-set threshold needs Match enum, instead of promising one', () => {
+    renderPreview(
+      definitionOf('columnValuesToBeInSet', [{ name: 'matchEnum' }]),
+      { threshold: 10 },
+      'status'
+    );
+
+    expect(
+      screen.queryByTestId('threshold-preview-sentence')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('threshold-match-enum-warning')
+    ).toHaveTextContent('only applies the threshold when Match enum is on');
+    expect(
+      screen.queryByTestId('threshold-not-enforced-warning')
+    ).not.toBeInTheDocument();
+  });
+
+  it('states the in-set tolerance once Match enum is on', () => {
+    renderPreview(
+      definitionOf('columnValuesToBeInSet', [{ name: 'matchEnum' }]),
+      { threshold: 10, matchEnum: true },
+      'status'
+    );
+
+    expect(sentence()).toBe(
+      'Fail when more than 10 row(s) in status fail this test.'
+    );
+    expect(
+      screen.queryByTestId('threshold-match-enum-warning')
+    ).not.toBeInTheDocument();
   });
 
   it('warns instead of promising a tolerance no validator applies', () => {
@@ -261,7 +300,7 @@ describe('ThresholdPreview', () => {
     );
 
     expect(sentence()).toBe(
-      'Fail when more than 50 rows in email fail this test.'
+      'Fail when more than 50 row(s) in email fail this test.'
     );
     expect(screen.getByTestId('threshold-sampling-warning')).toHaveTextContent(
       'Measured on the 10% sample this table is profiled with.'
@@ -284,7 +323,7 @@ describe('ThresholdPreview', () => {
     );
 
     expect(screen.getByTestId('threshold-sampling-warning')).toHaveTextContent(
-      'Measured on the 500 rows sample this table is profiled with.'
+      'Measured on the 500 row(s) sample this table is profiled with.'
     );
   });
 
