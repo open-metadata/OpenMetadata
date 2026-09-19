@@ -288,11 +288,11 @@ export class UserClass {
       await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
     }
     await page.waitForLoadState('domcontentloaded');
-    const emailInput = page.locator('input[id="email"]');
+    const emailInput = page.locator('input[name="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
-    await page.locator('#email').press('Tab');
-    await page.fill('input[id="password"]', password);
+    await emailInput.press('Tab');
+    await page.fill('input[name="password"]', password);
     const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
