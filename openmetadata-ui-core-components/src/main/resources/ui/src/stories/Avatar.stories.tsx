@@ -67,7 +67,12 @@ export const Colors: Story = {
         <Avatar alt="Candice Wu" initials="CW" size="lg" />
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-        <Avatar alt="Olivia Rhye" colorVariant="solid" initials="OR" size="lg" />
+        <Avatar
+          alt="Olivia Rhye"
+          colorVariant="solid"
+          initials="OR"
+          size="lg"
+        />
         <Avatar
           alt="Phoenix Baker"
           colorVariant="solid"
