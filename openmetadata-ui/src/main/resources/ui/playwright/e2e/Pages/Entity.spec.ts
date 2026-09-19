@@ -459,17 +459,14 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page.getByTestId('glossary-term-picker-popover')
         ).not.toBeAttached();
 
-        // Open Glossary Selector — should close Tag Selector
-        await glossaryRow
-          .getByTestId('glossary-container')
-          .getByTestId('add-tag')
-          .click();
+        // Open Glossary Selector — should close Tag Selector.
+        // Uses the helper so the trigger click retries on slow CI, matching every
+        // other glossary flow migrated in the picker refactor.
+        await openGlossaryPicker(
+          page,
+          glossaryRow.getByTestId('glossary-container').getByTestId('add-tag')
+        );
 
-        await expect(
-          page
-            .getByTestId('glossary-term-picker-popover')
-            .locator('[role="treegrid"]')
-        ).toBeVisible();
         await expect(
           page.locator('.async-select-list-dropdown')
         ).not.toBeVisible();
