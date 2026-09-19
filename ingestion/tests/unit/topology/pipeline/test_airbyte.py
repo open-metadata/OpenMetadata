@@ -574,13 +574,14 @@ class AirbyteUnitTest(TestCase):
         assert postgres.database == "pg_db"
         assert postgres.schema == "mock_namespace"
 
-        # MySQL: no database concept -> config database becomes the schema
+        # MySQL: reported as Airbyte names it; table_fqn_candidates moves it to the
+        # schema slot once the target service is known to be single-database.
         mysql = get_source_table_details(
             stream,
             AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mysql_db"}),
         )
-        assert mysql.database is None
-        assert mysql.schema == "mysql_db"
+        assert mysql.database == "mysql_db"
+        assert mysql.schema == "mock_namespace"
 
         # MSSQL: database from config, schema from the stream namespace
         mssql = get_source_table_details(
@@ -615,7 +616,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_source_table_details(
                 stream,
-                AirbyteSourceResponse(sourceType="bigquery", configuration={"database": "x"}),
+                AirbyteSourceResponse(sourceType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -635,13 +636,14 @@ class AirbyteUnitTest(TestCase):
         assert postgres.database == "pg_db"
         assert postgres.schema == "pg_schema"
 
-        # MySQL: no database concept -> config database becomes the schema
+        # MySQL: reported as Airbyte names it; the destination declares no schema, so
+        # table_fqn_candidates is what moves the value into the schema slot.
         mysql = get_destination_table_details(
             stream,
             AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mysql_db"}),
         )
-        assert mysql.database is None
-        assert mysql.schema == "mysql_db"
+        assert mysql.database == "mysql_db"
+        assert mysql.schema is None
 
         # MSSQL: database and schema both taken from config
         mssql = get_destination_table_details(
@@ -660,7 +662,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_destination_table_details(
                 stream,
-                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+                AirbyteDestinationResponse(destinationType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -838,11 +840,11 @@ def _stream(name="mock_table_name", namespace="mock_source_schema"):
 
 def test_get_source_table_details_public_slugs():
     """Public-API slugs must resolve for every supported source connector type."""
-    # MySQL: schema is taken from the database, database is dropped
+    # MySQL: levels as Airbyte reports them (the single-database remap is a candidate concern)
     mysql = get_source_table_details(
         _stream(), AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mydb"})
     )
-    assert (mysql.schema, mysql.database) == ("mydb", None)
+    assert (mysql.schema, mysql.database) == ("mock_source_schema", "mydb")
 
     # MSSQL: schema from the stream namespace, database from config
     mssql = get_source_table_details(
@@ -868,15 +870,16 @@ def test_get_source_table_details_mongodb_null_database_config():
 
 
 def test_get_source_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="dynamodb")) is None
 
 
 def test_get_source_table_details_snowflake():
     """Snowflake source (issue #26993): database from config, schema from the stream namespace.
 
-    Unlike the destination, the source schema comes from the per-stream namespace,
-    not the config `schema`, so a config schema is deliberately ignored here.
+    Unlike the destination, the source schema comes from the per-stream namespace, not the
+    config `schema` — only connectors in TABLE_KEY_ALIASES read a schema off the config.
     """
     td = get_source_table_details(
         _stream(),
@@ -886,11 +889,11 @@ def test_get_source_table_details_snowflake():
 
 
 def test_get_destination_table_details_public_slugs():
-    # MySQL: schema from database, database dropped
+    # MySQL: levels as Airbyte reports them (the single-database remap is a candidate concern)
     mysql = get_destination_table_details(
         _stream(), AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mydb"})
     )
-    assert (mysql.schema, mysql.database) == ("mydb", None)
+    assert (mysql.schema, mysql.database) == (None, "mydb")
 
     # MSSQL/Postgres-style: schema + database straight from config
     mssql = get_destination_table_details(
@@ -903,8 +906,9 @@ def test_get_destination_table_details_public_slugs():
 
 
 def test_get_destination_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="dynamodb")) is None
 
 
 def test_get_destination_table_details_snowflake():

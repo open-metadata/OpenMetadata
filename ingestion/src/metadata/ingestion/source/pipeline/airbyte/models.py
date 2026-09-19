@@ -13,7 +13,7 @@
 Airbyte Source Model module
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class AirbyteWorkspace(BaseModel):
@@ -42,6 +42,24 @@ class AirbyteSyncCatalog(BaseModel):
     streams: list[AirbyteSyncCatalogEntry] | None = None
 
 
+class AirbyteConnectionConfigurations(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    streams: list[AirbyteStream] | None = None
+
+    @field_validator("streams", mode="before")
+    @classmethod
+    def _drop_streams_without_name(cls, value: object) -> object:
+        """Drop malformed entries before validation instead of failing the whole connection.
+
+        The public API is not guaranteed to omit a stray nameless entry; one bad stream
+        must not block lineage for every other stream on the connection.
+        """
+        if not isinstance(value, list):
+            return value
+        return [item for item in value if isinstance(item, dict) and item.get("name")]
+
+
 class AirbyteConnectionModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -49,25 +67,19 @@ class AirbyteConnectionModel(BaseModel):
     name: str | None = None
     sourceId: str | None = None  # noqa: N815
     destinationId: str | None = None  # noqa: N815
-    # Internal API (`api/v1`) returns a full `syncCatalog`; the public API
-    # (`api/public/v1`) returns the stream list under `configurations.streams`.
+    # The internal API (`/connections/list`) nests streams under `syncCatalog.streams[].stream`,
+    # while the public API (`api/public/v1`) returns them flat under `configurations.streams`.
     syncCatalog: AirbyteSyncCatalog | None = None  # noqa: N815
-    configurations: dict | None = None
+    configurations: AirbyteConnectionConfigurations | None = None
 
     @property
     def resolved_streams(self) -> list[AirbyteStream]:
-        """Streams from whichever API responded (cf. resolved_type/resolved_configuration).
-
-        A database source's public-API entries carry `name` + `namespace`;
-        schemaless sources omit `namespace`. Issue #26993.
-        """
+        """Streams from whichever API responded (cf. resolved_type/resolved_configuration)."""
         if self.syncCatalog and self.syncCatalog.streams:
             return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
-        return [
-            AirbyteStream(name=s["name"], namespace=s.get("namespace"))
-            for s in (self.configurations or {}).get("streams") or []
-            if isinstance(s, dict) and s.get("name")
-        ]
+        if self.configurations and self.configurations.streams:
+            return self.configurations.streams
+        return []
 
 
 class AirbyteJobAttempt(BaseModel):
