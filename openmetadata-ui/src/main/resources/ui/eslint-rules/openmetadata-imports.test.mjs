@@ -59,7 +59,7 @@ const EXPECTED_SEVERITY = {
   'no-hook-ui-imports': 2,
   'no-impure-pure-utils': 1,
   'no-internal-barrel-imports': 2,
-  'no-lodash-default-import': 1,
+  'no-lodash-default-import': 2,
   'no-lower-layer-page-imports': 1,
   'no-rest-ui-imports': 1,
   'review-sequential-api-calls': 1,
