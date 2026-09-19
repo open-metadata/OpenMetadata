@@ -13,17 +13,16 @@
 
 package org.openmetadata.service.util;
 
-import lombok.extern.slf4j.Slf4j;
+import jakarta.ws.rs.client.ClientRequestContext;
+import jakarta.ws.rs.client.ClientRequestFilter;
 
 /**
- * Validates a URL supplied through the API before it is stored. The decision itself lives in {@link
- * OutboundUrlPolicy}; the same policy is applied again when the request is dispatched.
+ * Applies the outbound URL policy at the point a request is about to leave, so every caller of the
+ * client this filter is registered on is covered whether or not it remembered to validate.
  */
-@Slf4j
-public class URLValidator {
-  private URLValidator() {}
-
-  public static void validateURL(String urlString) {
-    OutboundUrlPolicy.getInstance().checkForSave(urlString);
+public class OutboundUrlPolicyFilter implements ClientRequestFilter {
+  @Override
+  public void filter(ClientRequestContext requestContext) {
+    OutboundUrlPolicy.getInstance().checkForConnect(requestContext.getUri());
   }
 }
