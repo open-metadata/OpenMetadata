@@ -745,6 +745,12 @@ export const openLineageNodeDrawer = async (
 
   await expect(async () => {
     await fitToScreen(page);
+    // Same limit verifyNodePresent hits: a re-fit alone does not always bring
+    // the node back into the viewport, and React Flow does not render what is
+    // outside it, so the click below would have nothing to land on.
+    if ((await page.getByTestId(`lineage-node-${fqn}`).count()) === 0) {
+      await performZoomOut(page, 3);
+    }
     await trigger.click({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
 };
@@ -767,6 +773,19 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   await expect(async () => {
     if ((await lineageNode.count()) === 0) {
       await fitToScreen(page);
+
+      // "Fit to screen" is not enough on a wide graph. Traced from a failing
+      // 16-node scene: the canvas sat at scale(0.9) through ten consecutive
+      // re-fits, moving by less than 3px each time, while the node under test
+      // stayed off-viewport and therefore out of the DOM. A real fit of that
+      // graph lands near scale(0.3), so the menu action is fitting to what is
+      // already on screen rather than to the whole graph. Zooming out drives
+      // the scale directly -- it dispatches at the zoom control instead of
+      // going through the Antd menu -- and React Flow clamps at minZoom, so
+      // repeated attempts settle rather than shrink without bound.
+      if ((await lineageNode.count()) === 0) {
+        await performZoomOut(page, 3);
+      }
     }
     await expect(lineageNode).toBeAttached({ timeout: 5_000 });
   }).toPass({ timeout: 60_000 });
