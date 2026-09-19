@@ -359,7 +359,8 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       ResourceEntity.TABLE,
-      'fqn'
+      'fqn',
+      { enabled: true }
     );
   });
 
