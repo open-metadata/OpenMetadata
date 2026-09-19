@@ -12,7 +12,6 @@
  */
 
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as DisabledIcon } from '../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-inherited-roles.svg';
@@ -106,18 +105,6 @@ export const getAgentIconFromType = (agentType: string) => {
   );
 };
 
-// A disabled agent stays on the list — it is still configured, it just will not run until it is
-// resumed — but its last run's state describes a run it is no longer going to repeat, so reporting
-// it as "Successful" reads as a healthy agent. The disabled state wins over it.
-// `enabled` defaults to true in the IngestionPipeline schema, so only an explicit false counts.
-const getAgentStatus = (
-  enabled: boolean | undefined,
-  pipelineState?: Parameters<typeof getAgentStatusLabelFromStatus>[0]
-) =>
-  enabled === false
-    ? AgentStatus.Disabled
-    : getAgentStatusLabelFromStatus(pipelineState);
-
 export const getFormattedAgentsList = (
   recentRunStatuses: Record<string, AppRunRecord[]>,
   agentsList: IngestionPipeline[] = [],
@@ -132,8 +119,7 @@ export const getFormattedAgentsList = (
     agentType: agent.pipelineType,
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
-    status: getAgentStatus(
-      agent.enabled,
+    status: getAgentStatusLabelFromStatus(
       agent.pipelineStatuses?.[0]?.pipelineState
     ),
   }));
@@ -173,10 +159,9 @@ export const getFormattedAgentsList = (
 };
 
 // Every list this is handed is authoritative: an empty one means the service has no such agent
-// left, so a deleted one drops off the widget. A disabled one does not — the stream reports it like
-// any other, and it is shown as disabled. Frames that report nothing at all — the payload-less ones
-// that close the stream — are dropped by the caller instead, since there is no way to tell them
-// apart from here.
+// left, so a deleted one drops off the widget. Frames that report nothing at all — the payload-less
+// ones that close the stream — are dropped by the caller instead, since there is no way to tell
+// them apart from here.
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
   collateAIagentsLiveInfo: CollateAgentLiveInfo[]
@@ -190,7 +175,7 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     agentType: agent.pipelineType,
     isCollateAgent: false,
     label: getAgentLabelFromType(agent.pipelineType),
-    status: getAgentStatus(agent.enabled, agent.status),
+    status: getAgentStatusLabelFromStatus(agent.status),
   }));
 
   const liveCollateAgents = collateAIagentsLiveInfo.map((agent) => {
@@ -244,10 +229,6 @@ export const getIconFromStatus = (status?: string) => {
       break;
     case AgentStatus.Pending:
       Icon = PendingIcon;
-
-      break;
-    case AgentStatus.Disabled:
-      Icon = DisabledIcon;
 
       break;
   }

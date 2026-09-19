@@ -76,9 +76,6 @@ final class IngestionPipelineStatusParser {
     metadata.put("fullyQualifiedName", source.get("fullyQualifiedName"));
     metadata.put("pipelineType", source.get("pipelineType"));
     metadata.put("provider", source.get("provider"));
-    // A disabled pipeline keeps the state of the run it last completed, so without this the UI
-    // reports it as whatever it last did rather than as disabled.
-    metadata.put("enabled", source.get("enabled"));
     metadata.put("status", latestState(source));
     return metadata;
   }

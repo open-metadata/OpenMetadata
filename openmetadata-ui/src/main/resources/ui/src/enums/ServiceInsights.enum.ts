@@ -29,7 +29,4 @@ export enum AgentStatus {
   Failed = 'Failed',
   Running = 'Running',
   Pending = 'Pending',
-  // A disabled agent will not run again until it is resumed, so its last run's state says nothing
-  // about what it is doing now. The widget renders these values as the status label.
-  Disabled = 'Disabled',
 }

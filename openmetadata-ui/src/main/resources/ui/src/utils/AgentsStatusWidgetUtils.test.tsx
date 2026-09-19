@@ -202,41 +202,6 @@ describe('getFormattedAgentsList', () => {
     expect(agent.status).toBe('Failed');
   });
 
-  // A disabled agent is still configured, so it stays on the list — but it will not run again
-  // until it is resumed, and reporting the run it last finished reads as a healthy agent.
-  it('reports a disabled agent as disabled rather than as its last run', () => {
-    const [agent] = getFormattedAgentsList(
-      {},
-      [
-        {
-          pipelineType: PipelineType.Metadata,
-          provider: ProviderType.Automation,
-          enabled: false,
-          pipelineStatuses: [{ pipelineState: PipelineState.Success }],
-        },
-      ] as never,
-      []
-    );
-
-    expect(agent.status).toBe('Disabled');
-  });
-
-  it('reports an agent with no enabled flag by its last run', () => {
-    const [agent] = getFormattedAgentsList(
-      {},
-      [
-        {
-          pipelineType: PipelineType.Metadata,
-          provider: ProviderType.Automation,
-          pipelineStatuses: [{ pipelineState: PipelineState.Success }],
-        },
-      ] as never,
-      []
-    );
-
-    expect(agent.status).toBe('Successful');
-  });
-
   it('orders Collate agents by the AutoPilot template sequence', () => {
     const agents = getFormattedAgentsList(
       {},
@@ -272,25 +237,6 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
       PipelineType.Metadata,
       'TierAutomation',
     ]);
-  });
-
-  // The stream carries a disabled agent like any other, so it keeps its place on the widget — what
-  // changes is the status, since the run it last finished says nothing about an agent that will
-  // not run again until it is resumed.
-  it('reports a disabled agent as disabled rather than as its last run', () => {
-    const [agent] = getFormattedAgentsListFromAgentsLiveInfo(
-      [
-        {
-          pipelineType: PipelineType.Metadata,
-          provider: ProviderType.Automation,
-          enabled: false,
-          status: PipelineState.Success,
-        },
-      ] as never,
-      []
-    );
-
-    expect(agent.status).toBe('Disabled');
   });
 
   // Each list is the service's current set, so an agent that was deleted has to leave the widget
