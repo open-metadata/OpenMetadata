@@ -20,6 +20,7 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   Button,
   Checkbox,
@@ -52,7 +53,6 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -78,7 +78,6 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
@@ -401,7 +400,6 @@ const GlossaryTermNameCell = ({
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1147,11 +1145,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return (
             <Owner
               isCompactView={false}
-              owners={toOwnersWithHref(reviewers ?? [])}
+              owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}
-              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );

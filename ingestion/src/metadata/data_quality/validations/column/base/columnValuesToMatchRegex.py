@@ -130,23 +130,24 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         return metrics
 
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
-        """Evaluate the in-set test condition
+        """Evaluate the regex match test condition
 
-        For in-set test, behavior depends on match_enum flag:
-        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        Test passes if the values not matching the regex (valuesCount - regexCount) stay
+        within the failure threshold. Violations are counted against the non-null values,
+        not the table row count: a column that is half NULL and otherwise matches the regex
+        must not report half of its rows as failing. With the default threshold, that means
+        valuesCount == regexCount.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
-                          e.g., {"COUNT_IN_SET": 50, "ROW_COUNT": 100}
-            test_params: Dictionary with 'allowed_values' and 'match_enum'.
-                        Required for this validator.
+                          e.g., {"COUNT": 50, "REGEX_COUNT": 45, "ROW_COUNT": 100}
+            test_params: Dictionary with 'regex'. Required for this validator.
 
         Returns:
             TestEvaluation: TypedDict with keys:
-                - matched: bool - whether test passed
-                - passed_rows: int - number of values in set
-                - failed_rows: int - number of values not in set (0 if not match_enum)
+                - matched: bool - whether the non-matching values are within the threshold
+                - passed_rows: int - number of values matching the regex
+                - failed_rows: int - number of values not matching the regex
                 - total_rows: int - total row count for reporting
         """
         if test_params is None:
@@ -155,7 +156,7 @@ class BaseColumnValuesToMatchRegexValidator(BaseTestValidator):
         count = metric_values[Metrics.valuesCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = count == match_regex_count
+        matched = self._apply_row_threshold(count - match_regex_count, count)
         failed_count = count - match_regex_count
         passed_count = match_regex_count
 

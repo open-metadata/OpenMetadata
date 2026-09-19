@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 import type { ReactNode } from 'react';
-import type { AvatarSize, OwnerRef } from '../../../types';
+import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { Divider } from '../../base/divider/divider';
 import { OwnerChip } from './owner-chip';
 
 export interface OwnerOverflowPopoverContentProps {
-  owners: OwnerRef[];
+  owners: OwnerEntityReference[];
   avatarSize: AvatarSize;
   ownerDisplayName?: Map<string, ReactNode>;
   overflowTitleLabel?: string;
   overflowTeamsLabel?: string;
   overflowUsersLabel?: string;
+  /** Show the "N Owners" title and per-group ("Users (n)") labels (default
+   * true). Set false to render a bare list of avatars + names — used where the
+   * stack is not an owners list (e.g. chat collaborators). */
+  showHeadings?: boolean;
 }
 
 // The overflow popover lists every owner (not just the hidden ones) grouped
@@ -35,16 +39,19 @@ export const OwnerOverflowPopoverContent = ({
   overflowTitleLabel = 'Owners',
   overflowTeamsLabel = 'Teams',
   overflowUsersLabel = 'Users',
+  showHeadings = true,
 }: OwnerOverflowPopoverContentProps) => {
   const teamOwners = owners.filter((owner) => owner.type === 'team');
   const userOwners = owners.filter((owner) => owner.type !== 'team');
 
-  const renderGroup = (label: string, group: OwnerRef[]) =>
+  const renderGroup = (label: string, group: OwnerEntityReference[]) =>
     group.length > 0 && (
       <div className="tw:flex tw:flex-col tw:gap-1">
-        <span className="tw:px-2 tw:pb-1 tw:text-xs tw:font-medium tw:text-quaternary">
-          {label} ({group.length})
-        </span>
+        {showHeadings && (
+          <span className="tw:px-2 tw:pb-1 tw:text-xs tw:font-medium tw:text-quaternary">
+            {label} ({group.length})
+          </span>
+        )}
         {group.map((owner) => (
           <div
             className="tw:rounded-md tw:transition-colors hover:tw:bg-secondary"
@@ -63,12 +70,18 @@ export const OwnerOverflowPopoverContent = ({
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-3 tw:p-4 tw:min-w-56 tw:max-w-72">
-      <span className="tw:text-sm tw:font-medium tw:text-primary">
-        {owners.length} {overflowTitleLabel}
-      </span>
-      <Divider />
+      {showHeadings && (
+        <>
+          <span className="tw:text-sm tw:font-medium tw:text-primary">
+            {owners.length} {overflowTitleLabel}
+          </span>
+          <Divider />
+        </>
+      )}
       {renderGroup(overflowTeamsLabel, teamOwners)}
-      {teamOwners.length > 0 && userOwners.length > 0 && <Divider />}
+      {showHeadings && teamOwners.length > 0 && userOwners.length > 0 && (
+        <Divider />
+      )}
       {renderGroup(overflowUsersLabel, userOwners)}
     </div>
   );

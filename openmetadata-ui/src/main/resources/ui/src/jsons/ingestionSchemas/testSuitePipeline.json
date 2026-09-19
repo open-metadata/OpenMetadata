@@ -297,6 +297,13 @@
                           "type": "string",
                           "format": "uri"
                         },
+                        "displayUrl": {
+                          "expose": true,
+                          "title": "Looker UI URL",
+                          "description": "Optional URL for human-facing Looker links when the API URL differs from the browser URL.",
+                          "type": "string",
+                          "format": "uri"
+                        },
                         "gitCredentials": {
                           "title": "GitHub Credentials",
                           "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
@@ -10215,7 +10222,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/56/definitions/data360Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/data360Type",
                           "default": "Data360"
                         },
                         "consumerKey": {
@@ -10281,7 +10288,7 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/57/definitions/sapBw4HanaType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/58/definitions/sapBw4HanaType",
                           "default": "SapBw4Hana"
                         },
                         "hostPort": {

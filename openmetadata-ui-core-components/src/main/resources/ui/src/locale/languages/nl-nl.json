@@ -28,12 +28,14 @@
     "pagination-navigation": "Pagineringsnavigatie",
     "previous-page": "Naar vorige pagina",
     "records": "Records",
+    "remove-entity": "{{entity}} verwijderen",
     "remove-filter": "Filter verwijderen",
     "search": "Zoeken",
     "select-all": "Alles selecteren",
     "select-dates": "Datums selecteren",
     "select-only-one-row": "Eén rij selecteren",
     "show-hidden-breadcrumbs": "Verborgen kruimelpad weergeven",
-    "today": "Vandaag"
+    "today": "Vandaag",
+    "tree-select": "Boomselectie"
   }
 }

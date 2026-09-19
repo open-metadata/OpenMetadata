@@ -53,8 +53,22 @@ public class DefaultOperationalConfigProvider {
   private void parseOperationsConfig(String filePath) {
     // parse limits config file
     OperationalConfiguration configuration = readOperationsConfig(filePath);
-    this.emailSettings = configuration.getEmail();
-    this.serverUrl = configuration.getServerUrl();
+    applyConfiguration(configuration);
+  }
+
+  void applyConfiguration(OperationalConfiguration configuration) {
+    SmtpSettings email = configuration.getEmail();
+    OpenMetadataBaseUrlConfiguration serverUrl = configuration.getServerUrl();
+    if (email == null) {
+      throw new IllegalStateException(
+          "Operations configuration is missing the required 'email' block.");
+    }
+    if (serverUrl == null) {
+      throw new IllegalStateException(
+          "Operations configuration is missing the required 'serverUrl' block.");
+    }
+    this.emailSettings = email;
+    this.serverUrl = serverUrl;
   }
 
   @SneakyThrows

@@ -49,6 +49,13 @@ jest.mock('./MainPanel', () => ({
   default: () => <div data-testid="ask-main-panel" />,
 }));
 
+// The main nav is railed inside a sub-context; stub the Rail so this focused
+// test doesn't pull in the app-mode extension registry it depends on.
+jest.mock('./Rail', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ask-rail" />,
+}));
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
@@ -92,8 +99,8 @@ const permissionsWith = (testSuiteCreate: boolean): UIPermission =>
     [ResourceEntity.TEST_SUITE]: { [Operation.Create]: testSuiteCreate },
   } as unknown as UIPermission);
 
-const renderShell = () =>
-  render(
+const renderShell = () => {
+  const result = render(
     <MemoryRouter initialEntries={[DATA_QUALITY_PATH]}>
       <PathnameProbe />
       <ObservabilityLayout>
@@ -101,6 +108,13 @@ const renderShell = () =>
       </ObservabilityLayout>
     </MemoryRouter>
   );
+
+  // The submenu opens expanded on entering a sub-context; collapse it to the
+  // sub-rail, which is where these intent CTAs live.
+  fireEvent.click(screen.getByTestId('ask-sub-panel-collapse-btn'));
+
+  return result;
+};
 
 describe('Sidebar collapsed sub-rail intent CTAs', () => {
   beforeEach(() => {
