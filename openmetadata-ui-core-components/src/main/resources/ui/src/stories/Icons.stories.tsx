@@ -131,7 +131,7 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
                 color={
                   copied === name
                     ? 'var(--tw-text-color-fg-success-primary)'
-                    : 'var(--tw-text-color-secondary)'
+                    : 'var(--tw-text-color-quaternary)'
                 }
                 size={size}
               />
