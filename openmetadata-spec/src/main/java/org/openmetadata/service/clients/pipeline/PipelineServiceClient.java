@@ -68,7 +68,6 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
-  private static final String DISABLED_STATUS = "disabled";
 
   protected static final String SERVER_VERSION;
 

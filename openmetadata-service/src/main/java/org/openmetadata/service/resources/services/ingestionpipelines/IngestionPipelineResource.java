@@ -931,8 +931,13 @@ public class IngestionPipelineResource
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     if (pipelineServiceClient == null) {
+      // `platform` is required by the response schema, and it is the only field that separates a
+      // client switched off in the configuration from a healthy one — the code is 200 either way.
+      // Without it the agents tab cannot say that deploying or running an agent will do nothing,
+      // since every one of those calls answers 200 here too.
       return new PipelineServiceClientResponse()
           .withCode(200)
+          .withPlatform(PipelineServiceClientInterface.DISABLED_STATUS)
           .withReason("Pipeline Client Disabled");
     }
     return pipelineServiceClient.getServiceStatus();

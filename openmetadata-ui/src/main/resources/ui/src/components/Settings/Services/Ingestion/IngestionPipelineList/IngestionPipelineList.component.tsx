@@ -302,8 +302,12 @@ export const IngestionPipelineList = ({
   return (
     <Row className={className} gutter={[16, 16]}>
       <Col span={24}>
-        {/* Says why re-deploy is unavailable; the list itself stays readable. */}
+        {/* Says why re-deploy is unavailable, or why it will not do anything; the list itself
+            stays readable. */}
         <AirflowMessageBanner
+          disabledFallbackMessage={t(
+            'message.pipeline-service-disabled-agent-actions'
+          )}
           unreachableFallbackMessage={t(
             'message.pipeline-service-unreachable-agent-actions'
           )}

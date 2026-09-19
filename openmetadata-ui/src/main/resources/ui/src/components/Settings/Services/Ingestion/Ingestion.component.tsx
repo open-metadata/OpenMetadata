@@ -181,11 +181,16 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      {/* Carries the reason the pipeline service cannot be reached. It is the one place that
-          explains why the agent controls below are disabled, so the tab keeps listing the agents
-          instead of being replaced by a setup guide. */}
+      {/* Carries the reason the pipeline service cannot be reached, or that there is no pipeline
+          service at all. It is the one place that explains why the agent controls below are
+          disabled — and, when the client is switched off, why the ones that are still offered do
+          nothing — so the tab keeps listing the agents instead of being replaced by a setup
+          guide. */}
       <AirflowMessageBanner
         className="tw:mb-4"
+        disabledFallbackMessage={t(
+          'message.pipeline-service-disabled-agent-actions'
+        )}
         unreachableFallbackMessage={t(
           'message.pipeline-service-unreachable-agent-actions'
         )}

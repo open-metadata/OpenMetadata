@@ -4068,6 +4068,7 @@
     "pipeline-killed-successfully": "Fluxos de traballo en execución para {{pipelineName}} detidos correctamente",
     "pipeline-not-deployed": "O pipeline non está despregado",
     "pipeline-scheduler-message": "O Programador de Inxestión non pode responder. Por favor, contacta co soporte de {{brandName}}. Grazas.",
+    "pipeline-service-disabled-agent-actions": "O servizo de pipelines está desactivado nesta instalación. Os axentes móstranse no seu último estado rexistrado, e despregalos ou executalos non terá ningún efecto ata que se active.",
     "pipeline-service-unreachable-agent-actions": "Non se pode acceder ao servizo de pipelines. Os axentes e o seu historial de execucións móstranse no seu último estado rexistrado, e as accións sobre os axentes seguirán non dispoñibles ata que o servizo volva responder.",
     "pipeline-will-trigger-manually": "O pipeline só se activará manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só se activará manualmente",

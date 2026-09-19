@@ -86,9 +86,15 @@ jest.mock(
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () =>
   jest
     .fn()
-    .mockImplementation(({ unreachableFallbackMessage }) => (
-      <div data-fallback={unreachableFallbackMessage}>AirflowMessageBanner</div>
-    ))
+    .mockImplementation(
+      ({ unreachableFallbackMessage, disabledFallbackMessage }) => (
+        <div
+          data-disabled-fallback={disabledFallbackMessage}
+          data-fallback={unreachableFallbackMessage}>
+          AirflowMessageBanner
+        </div>
+      )
+    )
 );
 
 // `Ingestion` takes the status as a prop, but the agent controls below it read the same status from
@@ -126,6 +132,45 @@ describe('Ingestion', () => {
       'data-fallback',
       'message.pipeline-service-unreachable-agent-actions'
     );
+  });
+
+  it('should give the banner a message for a deployment with the pipeline client switched off', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    // A disabled client answers every call with a healthy 200, so the banner is the only thing
+    // that can say the agents listed below will not deploy or run.
+    expect(screen.getByText('AirflowMessageBanner')).toHaveAttribute(
+      'data-disabled-fallback',
+      'message.pipeline-service-disabled-agent-actions'
+    );
+  });
+
+  it('should keep listing the agents when the pipeline client is disabled', async () => {
+    // A disabled client reports itself *available* — a healthy 200 — so this is a different status
+    // shape from the unreachable case below, and the list has to survive it too.
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: DISABLED,
+    }));
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            platform: DISABLED,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('metadata-agent-group')).toBeInTheDocument();
+    expect(screen.getByText('AirflowMessageBanner')).toBeInTheDocument();
+    expect(screen.queryByText('ErrorPlaceHolderIngestion')).toBeNull();
   });
 
   it('should keep listing the agents when the pipeline service is unavailable', async () => {
