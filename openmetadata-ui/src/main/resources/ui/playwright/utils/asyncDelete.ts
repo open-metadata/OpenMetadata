@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { waitForResponseWithStatus } from './waitHelpers';
 import {
   cleanupWebSocketMock,
   getWebSocketMock,
@@ -144,9 +145,12 @@ export const initiateDelete = async (page: Page) => {
  * Waits for a response from the glossaries list API.
  */
 export const waitForGlossaryListRefetch = (page: Page) => {
-  return page.waitForResponse(
+  return waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/glossaries') && response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/glossaries'),
+    200
   );
 };
 

@@ -13,7 +13,6 @@ Metadata DAG common functions
 """
 
 import json
-import uuid
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import partial
@@ -74,6 +73,7 @@ from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
 )
+from openmetadata_managed_apis.utils.pipeline_run_id import pipeline_run_id
 
 logger = workflow_logger()
 
@@ -315,7 +315,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return dag_kwargs
 
 
-def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_, **__):
+def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, context=None, *_, **__):
     """
     Airflow on_failure_callback to update workflow status if something unexpected
     happens or if the DAG is externally killed.
@@ -338,6 +338,11 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
     try:
         logger.info("Sending failed status from callback...")
 
+        # Callbacks can run in a different process with the original DAG config.
+        if context:
+            dag_run = context["dag_run"]
+            workflow_config.pipelineRunId = Uuid(pipeline_run_id(dag_run.dag_id, dag_run.run_id))
+
         metadata_config = workflow_config.workflowConfig.openMetadataServerConfig
         metadata = OpenMetadata(config=metadata_config)
 
@@ -346,7 +351,7 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
 
             pipeline_status = metadata.get_pipeline_status(
                 workflow_config.ingestionPipelineFQN,
-                str(workflow_config.pipelineRunId.root),
+                model_str(workflow_config.pipelineRunId),
             )
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
@@ -360,6 +365,11 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
 
 
 class CustomPythonOperator(PythonOperator):
+    def execute(self, context):
+        dag_run = context["dag_run"]
+        self.op_kwargs["workflow_config"].pipelineRunId = Uuid(pipeline_run_id(dag_run.dag_id, dag_run.run_id))
+        return super().execute(context)
+
     def on_kill(self) -> None:
         """
         Override this method to clean up subprocesses when a task instance
@@ -407,10 +417,6 @@ def build_dag(
     # __exit__ (see issue #28500). The DAG is registered into the module globals
     # explicitly by WorkflowFactory.register_dag, so autoregister is not needed here.
     dag = DAG(**build_dag_configs(ingestion_pipeline))
-
-    # Initialize with random UUID4. Will be used by the callback instead of
-    # generating it inside the Workflow itself.
-    workflow_config.pipelineRunId = Uuid(uuid.uuid4())
 
     CustomPythonOperator(
         task_id=task_name,

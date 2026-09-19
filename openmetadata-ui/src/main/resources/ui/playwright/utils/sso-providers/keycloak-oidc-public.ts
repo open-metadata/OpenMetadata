@@ -137,7 +137,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: KEYCLOAK_SEEDED_CREDS.username,
@@ -166,9 +166,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     const sidebarLocator = page.getByTestId('app-bar-item-my-data');
     const createButton = page.getByTestId('create-button');
     const submissionPending = page
-      .waitForResponse(
-        (resp) => resp.url().includes('/api/v1/users') && resp.status() < 400
-      )
+      .waitForResponse((resp) => resp.url().includes('/api/v1/users'))
       .catch(() => undefined);
     const signupAppeared = await Promise.race([
       createButton.waitFor({ state: 'visible', timeout: 30_000 }).then(

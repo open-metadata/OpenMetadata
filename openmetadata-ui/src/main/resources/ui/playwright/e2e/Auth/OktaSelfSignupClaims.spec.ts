@@ -84,13 +84,16 @@ for (const scenario of CLAIM_SCENARIOS) {
         const page = userPage!;
 
         await test.step('Authenticate at Okta', async () => {
-          await page.goto('/signin');
+          await page.goto('/signin', { waitUntil: 'domcontentloaded' });
 
           const signInButton = page.locator('button.signin-button');
 
           await expect(signInButton).toBeVisible();
           await signInButton.click();
-          await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
+          await page.waitForURL(helper.loginUrlPattern, {
+            waitUntil: 'domcontentloaded',
+            timeout: 45_000,
+          });
           await helper.performProviderLogin(page, { username, password });
         });
 
@@ -99,7 +102,7 @@ for (const scenario of CLAIM_SCENARIOS) {
             (url) =>
               url.pathname.endsWith('/signup') ||
               url.pathname.endsWith('/my-data'),
-            { timeout: 60_000 }
+            { waitUntil: 'domcontentloaded', timeout: 60_000 }
           );
 
           expect(page.url()).toContain('/signup');

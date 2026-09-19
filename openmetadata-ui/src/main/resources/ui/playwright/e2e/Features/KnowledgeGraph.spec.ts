@@ -15,7 +15,7 @@ import test, { expect, Page, Route } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { parse } from 'papaparse';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage } from '../../utils/common';
+import { chooseSelectOption, createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 interface GraphData {
   nodes: {
@@ -69,6 +69,9 @@ const chooseView = async (page: Page, name: string) => {
     Balanced: 'graph-presentation-chooser',
   };
   const chooser = choosers[name] ?? 'graph-label-chooser';
+  // EXPERIMENT (see commit message): reverted to the direct open-then-click so
+  // the RDF lane can say whether this branch's helper perturbs the canvas, or
+  // whether main's pixel assertions are simply brittle.
   await page.getByTestId(chooser).getByRole('button').click();
   await page.getByRole('option', { name, exact: true }).click();
   await expect(page.getByRole('listbox')).toHaveCount(0);
@@ -297,7 +300,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.goto(
       `/table/${getEncodedFqn(
         table.entityResponseData.fullyQualifiedName!
-      )}/knowledge_graph?fullscreen=true`
+      )}/knowledge_graph?fullscreen=true`,
+      { waitUntil: 'domcontentloaded' }
     );
     await expect(page.getByTestId('knowledge-graph-canvas')).toHaveAttribute(
       'data-ready',
@@ -403,11 +407,33 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('renders every returned node and predicate from the live RDF endpoint', async ({
     page,
   }) => {
-    const response = page.waitForResponse(
-      (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
-    );
-    await open(page);
-    const graph = (await (await response).json()) as GraphData;
+    // Match on the request alone and assert the status after: filtering on 200
+    // inside the predicate makes a failing explore call look like a call that
+    // never happened, and the wait then times out without naming the HTTP error.
+    //
+    // The project waits on ontology-rdf-setup, so the projection is known to be
+    // writing by the time beforeAll builds the fixture table — but that table's
+    // own write still has to drain, and it reaches the store as a bare node
+    // before its relationships follow. Reopen until the drain has caught up
+    // rather than asserting on whichever half of it exists on the first paint.
+    let graph!: GraphData;
+    await expect
+      .poll(
+        async () => {
+          const response = page.waitForResponse((r) =>
+            r.url().includes('/rdf/graph/explore?')
+          );
+          await open(page);
+          const exploreResponse = await response;
+          expect(exploreResponse.status()).toBe(200);
+          graph = (await exploreResponse.json()) as GraphData;
+
+          return graph.edges.length;
+        },
+        { timeout: 40_000 }
+      )
+      .toBeGreaterThan(0);
+
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length
@@ -415,7 +441,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.locator('[data-edge-id]')).toHaveCount(
       graph.edges.length
     );
-    expect(graph.edges.length).toBeGreaterThan(0);
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect(page.getByTestId('graph-status')).toContainText(
       `${graph.nodes.length} entities`
@@ -1262,8 +1287,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .click();
     await expect(page.locator('.kg-node-group.kg-node-gap')).toHaveCount(1);
     await expect(page.locator('[data-edge-id]')).toHaveCount(324);
-    await coverage.click();
-    await page.getByRole('option', { name: 'Not mapped', exact: true }).click();
+    await chooseSelectOption(
+      coverage,
+      page.getByRole('option', { name: 'Not mapped', exact: true })
+    );
     await expect(page.getByTestId('graph-status')).toContainText(
       '316 entities'
     );

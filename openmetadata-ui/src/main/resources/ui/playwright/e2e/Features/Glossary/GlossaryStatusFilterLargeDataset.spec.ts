@@ -18,6 +18,7 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -97,10 +98,12 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
     // Wait for API response after clicking Save
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/glossaryTerms') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/glossaryTerms'),
+        200
       ),
       page.getByTestId('glossary-status-save-btn').click(),
     ]);
@@ -198,6 +201,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   };
 
   test.beforeAll(async ({ browser }) => {
+    createdTerms.length = 0;
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);

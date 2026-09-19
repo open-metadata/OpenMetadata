@@ -30,16 +30,22 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// Taking the owner hover card off the entry graph (see ownerRenderUtils) puts
-// main at 1045275 bootstrap bytes, against 1141354 before it. This branch adds
-// the AuthCoordinator subgraph (CrossTabLock + RefreshQueue + ProactiveTimer +
-// VisibilityWatcher) statically imported from AuthProvider, so the current
-// build sits a few KB above main. 1150 KiB leaves room for that coordinator
-// footprint plus the ~45 KiB still owed by `setOwnerHrefResolver`, which
-// reaches RouterUtils and drags `useMarketplaceStore`, `qs` and the service
-// constants onto the entry graph. Once those two are unpicked this should
-// come down well below where it started.
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 1150 * 1024;
+// Both halves main was holding 1150 KiB open for are now accounted for. The
+// hover card came off the entry graph in #33563, and the ~45 KiB
+// `setOwnerHrefResolver` owed it is paid: its two route builders live in a leaf
+// `RouterPaths` module, so registering a profile URL no longer drags
+// `useMarketplaceStore`, `qs` and the service constants in. With #31675's
+// AuthCoordinator subgraph also on the entry graph the build measures 1003178
+// bootstrap bytes -- under the 990 KiB that was in force before the regression,
+// so the budget returns there rather than banking 174 KiB of slack the gate
+// would then stop catching regressions with.
+//
+// Headroom is ~10 KiB, thinner than the sibling ratchets above. That is
+// deliberate: AuthCoordinator is still statically imported from AuthProvider,
+// and keeping the bound close is what will surface the next static import that
+// lands on first paint. If it starts failing on legitimate growth, unpick that
+// import rather than raising this number.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 990 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));

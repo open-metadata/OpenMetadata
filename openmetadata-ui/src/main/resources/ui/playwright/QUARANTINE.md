@@ -27,13 +27,15 @@ coverage, a retried one looks green.
 
 ## Entries
 
-1 entry. Most evidence is failures observed across 11 merge_group runs sampled on
+No entries — nothing is quarantined. Evidence for the entries that used to be
+here is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
-| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | 2/2 | Quarantined 2026-09-11 (BE bug, not a test flake). On both merge_group attempts of run 34588697338 the contract's quality/test-suite run finished without writing a result: `GET /dataContracts/{id}/results/{resultId}` shows `schemaValidation` (5/5) and `semanticsValidation` (1/1) populated but **`qualityValidation` absent**, so the aggregate `contractExecutionStatus` hangs on `Running` and never reaches a terminal state. The test suite + DQ ingestion pipeline were created and deployed fine (`POST …/ingestionPipelines/deploy` → 200), but the triggered Airflow DagRun completed in ~0.03s executing zero test cases, so no test-case result came back. `waitForDataContractExecution` then polls the full 600s and the fallback derives `suiteStatus = 'Running'`, failing `expect(...).toMatch(/^(Aborted\|Success\|Failed)$/)`. Fix is in BE: reap contract validation to a terminal state (`Aborted`/`Failed`) when the quality run fails to trigger or returns no result, instead of hanging on `Running`; plus BE/Ingestion should confirm test cases are attached before the pipeline is triggered so the run isn't empty. Owner: BE team. |
+
+*(empty — see "Released from quarantine" below.)*
 
 ### Triage, 2026-09-09
 
@@ -54,20 +56,20 @@ been root-caused and released — see *Released from quarantine* below. The lead
 recorded here for the test suite entry had the timing backwards and has been
 removed.
 
-`PLAYWRIGHT_RUN_QUARANTINED=true` selects the quarantined tests plus the 7 setup/teardown
+`PLAYWRIGHT_RUN_QUARANTINED=true` selects the quarantined tests plus the 9 setup/teardown
 fixture projects, which the soak lane deliberately leaves unfiltered so login and
 entity seeding still happen — a project-level `grep` *is* applied to dependency
 projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4603 of 4619**; the quarantined lane lists
-23, which is 16 quarantined tests plus the 7 fixture projects above. The 16 are the
-DataContracts entry in the table and the whole
-`e2e/Pages/Lineage/LineageFilters.spec.ts` describe (15 tests), tagged in #33357
-without an entry here yet. (It was 4601 of 4618 with 2 entries plus
-LineageFilters, 4586 of 4605 with 4 entries plus LineageFilters, 4575 of 4580
-with 5 entries, 4576 of 4580 with 4, and 4543 of 4555 when the list held 13.)
+default-lane count here. It is **4631 of 4631** — with nothing tagged, the
+default lane is the whole suite. The quarantined lane lists 9, which is the 9
+fixture projects above and no tests at all; it stays wired up so re-tagging
+something is a one-line change rather than a lane that has to be rebuilt.
+(It was 4624 of 4625 with 1 entry, 4609 of 4625 with 2, 4601 of 4618 with 2
+plus LineageFilters, 4586 of 4605 with 4 plus LineageFilters, 4576 of 4580
+with 4, 4575 of 4580 with 5, and 4543 of 4555 when the list held 13.)
 
 ## Not quarantined — fixed instead
 
@@ -99,6 +101,8 @@ entry.
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should cancel drag and drop operation | `dragAndDropTerm` pressed at coordinates computed before the glossary page finished hydrating — the description block lands last and pushes every row down about a row height — and `force: true` skipped the actionability check that would have waited. It now holds both rows still before pressing. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | `changeTermHierarchyFromModal` calls the `moveAsync` API, which returns 200 immediately while the actual move is processed asynchronously. The test navigated to glossary2 and asserted the moved term without waiting for the async move to complete — a race the test lost 9/11 times. Added an `expect.poll` that waits for the term's `glossary.fullyQualifiedName` to update (same pattern as the passing H-M05 test). The misleading "Drag-and-drop" symptom label was from the quarantine entry; this test uses the modal, not drag-and-drop. |
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | Released in #33395. The Explore summary panel renders owners from the search document, which is refreshed asynchronously after the owner PATCH, so polling the DOM and re-navigating raced the index refresh in both the add and remove steps. The test now gates on `/api/v1/search/query` through `waitForOwnerIndexed` (a nested `owners.id` query filter, since `owners` is nested in `knowledge_page_search_index`; removal waits on a `must_not` of the same clause), then navigates once and asserts. |
+| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | The wait demanded `Success` from a step that is meant to end `Failed`. The test saves a contract whose semantics the table deliberately violates ("should fail initially"), but `waitForContractExecutionWithFallback` had no expected-status parameter, so it polled for `Success` for the full 600s and then derived `suiteStatus = 'Running'` from its own timeout and asserted that against `/^(Aborted|Success|Failed)$/`. The wait is now `waitForContractResult`: it polls the specific `results/{resultId}`, takes the terminal status the scenario actually produces (`ContractExecutionStatus.Failed` at these call sites), and throws with the server's status and message as soon as a *different* terminal status arrives. **The BE gap in the old entry is not disproven** — a quality run that writes no `qualityValidation` would still leave the status non-terminal. What changed is that it can no longer hide inside a 600s timeout: it now fails within the poll window naming the status it saw. Re-quarantine on that evidence if it recurs. |
+| `e2e/Pages/Lineage/LineageFilters.spec.ts` | `Lineage Filters` (whole describe) | Released in #33336, which also repaired the lineage export test. It was tagged wholesale in #33357 with no symptom on record, so there was never anything here to reproduce against -- the release is upstream's call and its 15 tests are back in the default lane. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | A test-side race, not a product bug. The key-column selects sit in the Add Test Case drawer's scroll container; when a trigger is partly clipped by it, Playwright's click scrolls it just before `pointerdown`. The browser delivers that `scroll` event a frame later, after react-aria has opened the non-modal popover, and react-aria closes a popover when an ancestor of its trigger scrolls — so the option click timed out against a list that had already gone. A trace from a local repro showed the list open with the wanted option, then closed 160ms later with no click in between. `selectOptionWithRetry` now centres the trigger and lets two frames run before clicking (`scrollIntoViewAndSettle` in `utils/common.ts`; `scrollIntoViewIfNeeded` reveals only the minimum and could leave the click point clipped), and every key- and use-column pick in the test goes through one of the two. Before table 2's pick the test waits for every listbox to detach with `toHaveCount(0)`: table 1's popover and table 2's search popover can both still be exiting, and `not.toBeVisible` fails on strict mode with two matches rather than waiting. The evidence is thinner than for the rows above. The flake reproduced locally only at 4 workers (about 1 run in 12-20), which also runs the local stack out of memory; at 1 worker the unfixed test passed 20/20, and 10/10 under 4x CPU throttling, so there is no local A/B. The fixed test passed 20/20 at 1 worker and 10/10 throttled. Run it with tracing off: tracing slows each action enough to hide the strict-mode failure above, which failed 17/20 untraced and 0/10 traced. CI is the soak — if it fails at a column pick again, re-quarantine it with the trace. |
 
 ## Left running deliberately

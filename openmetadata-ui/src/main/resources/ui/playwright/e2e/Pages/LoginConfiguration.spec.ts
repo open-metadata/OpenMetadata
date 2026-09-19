@@ -16,17 +16,19 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.configure({ mode: 'serial' });
 
 const settingsSaveResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
       response.request().method() === 'PUT' &&
-      response.url().includes('/api/v1/system/settings') &&
-      response.status() === 200
+      response.url().includes('/api/v1/system/settings'),
+    200
   );
 
 const expectSavedLoginConfig = async (

@@ -57,7 +57,9 @@ test.describe('Table Sorting', () => {
       );
       schema.entityResponseData = await schemaResponse.json();
 
-      await page.goto(`/database/${database.entity.fullyQualifiedName}`);
+      await page.goto(`/database/${database.entity.fullyQualifiedName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testTableSorting(page, 'Name');
 
       await afterAction();
@@ -65,7 +67,9 @@ test.describe('Table Sorting', () => {
   });
 
   test('Services page should have sorting on name column', async ({ page }) => {
-    await page.goto('/settings/services/databases');
+    await page.goto('/settings/services/databases', {
+      waitUntil: 'domcontentloaded',
+    });
     await testTableSorting(page, 'Name');
   });
 
@@ -91,7 +95,8 @@ test.describe('Table Sorting', () => {
       apiEndpoint2.entityResponseData = await apiEndpoint2Response.json();
 
       await page.goto(
-        `/apiCollection/${apiEndpoint1.apiCollection.fullyQualifiedName}`
+        `/apiCollection/${apiEndpoint1.apiCollection.fullyQualifiedName}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
 
@@ -130,7 +135,8 @@ test.describe('Table Sorting', () => {
 
     test('should have sorting on name column', async ({ page }) => {
       await page.goto(
-        `/apiEndpoint/${apiEndpoint2.entityResponseData.fullyQualifiedName}`
+        `/apiEndpoint/${apiEndpoint2.entityResponseData.fullyQualifiedName}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
     });
@@ -159,7 +165,9 @@ test.describe('Table Sorting', () => {
       );
       table2.entityResponseData = await table2Response.json();
 
-      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
+      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testTableSorting(page, 'Name');
 
       await afterAction();
@@ -209,7 +217,9 @@ test.describe('Table Sorting', () => {
       'should have sorting on name column',
       { tag: '@ingestion' },
       async ({ page }) => {
-        await page.goto('/settings/services/dataObservability?tab=pipelines');
+        await page.goto('/settings/services/dataObservability?tab=pipelines', {
+          waitUntil: 'domcontentloaded',
+        });
         await testTableSorting(page, 'Name', 1);
       }
     );
@@ -235,7 +245,8 @@ test.describe('Table Sorting', () => {
       dataModel2.entityResponseData = await dataModel2Response.json();
 
       await page.goto(
-        `/service/dashboardServices/${dataModel1.service.name}/data-model`
+        `/service/dashboardServices/${dataModel1.service.name}/data-model`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
 
@@ -269,7 +280,8 @@ test.describe('Table Sorting', () => {
         await storedProcedure2Response.json();
 
       await page.goto(
-        `/databaseSchema/${storedProcedure1.schema.fullyQualifiedName}/stored_procedure`
+        `/databaseSchema/${storedProcedure1.schema.fullyQualifiedName}/stored_procedure`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
 
@@ -297,7 +309,8 @@ test.describe('Table Sorting', () => {
       topic2.entityResponseData = await topic2Response.json();
 
       await page.goto(
-        `/service/messagingServices/${topic1.service.name}/topics`
+        `/service/messagingServices/${topic1.service.name}/topics`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
 
@@ -341,7 +354,9 @@ test.describe('Table Sorting', () => {
         )
       );
 
-      await page.goto(`/service/driveServices/${file1.service.name}/files`);
+      await page.goto(`/service/driveServices/${file1.service.name}/files`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testTableSorting(page, 'Name');
 
       await afterAction();
@@ -372,7 +387,8 @@ test.describe('Table Sorting', () => {
       spreadsheet2.entityResponseData = await spreadsheet2Response.json();
 
       await page.goto(
-        `/service/driveServices/${spreadsheet1.service.name}/spreadsheets`
+        `/service/driveServices/${spreadsheet1.service.name}/spreadsheets`,
+        { waitUntil: 'domcontentloaded' }
       );
       await testTableSorting(page, 'Name');
 

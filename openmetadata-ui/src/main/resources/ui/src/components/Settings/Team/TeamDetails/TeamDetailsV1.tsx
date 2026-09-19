@@ -268,9 +268,7 @@ const TeamDetailsV1 = ({
    */
   const deleteUserHandler = useCallback(
     (id: string, leave = false) => {
-      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-        (u) => u.id === id
-      );
+      const user = currentTeam.users?.find((u) => u.id === id);
       setDeletingUser({ user, state: true, leave });
     },
     [currentTeam, setDeletingUser]

@@ -183,7 +183,10 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  const control = comboboxInput.or(triggerButton).first();
+  await expect(control).toBeVisible();
+  await control.hover();
+  await control.focus();
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -215,7 +218,6 @@ export const selectOption = async (
   // interaction (MultiSelect keeps its popup open by design). The popup can
   // also close and reopen under a new id while the builder re-renders, so
   // re-resolve it (and reopen if needed) on every retry.
-  const control = comboboxInput.or(triggerButton).first();
   await expect(async () => {
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await control.press('ArrowDown');
@@ -274,7 +276,7 @@ export const selectOption = async (
 };
 
 export const selectRange = async (
-  page: Page,
+  _page: Page,
   ruleLocator: Locator,
   startDate: string,
   endDate: string
@@ -353,24 +355,17 @@ export const fillRule = async (
               .count();
       };
 
+      // These widgets are react-aria (`Autocomplete`/`Select` from
+      // ui-core-components), and `fill` sets .value with one synthetic input
+      // event, which closes the popover -- the ArrowDown below was added to
+      // force it open again. A list reopened that way can be empty, because
+      // the query the fill kicked off is still in flight and nothing re-runs
+      // the filter. Real keystrokes keep it open and filter per character.
+      await dropdownInput.clear();
+      await dropdownInput.pressSequentially(searchData);
+      await dropdownInput.press('ArrowDown');
       await expect
-        .poll(
-          async () => {
-            await dropdownInput.fill('');
-            await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
-
-            return countMatchingOptions();
-          },
-          { timeout: 30_000, intervals: [1_000, 2_000, 3_000] }
-        )
+        .poll(countMatchingOptions, { timeout: 30_000 })
         .toBeGreaterThan(0);
 
       const listboxId = await dropdownInput.getAttribute('aria-controls');
@@ -809,9 +804,6 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
   await expect(listbox).toBeVisible();
-
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-  await page.waitForTimeout(1000);
 
   // allowsEmptyCollection keeps the popup open and renders the "No data"
   // empty state (as an option row) instead of an empty listbox.

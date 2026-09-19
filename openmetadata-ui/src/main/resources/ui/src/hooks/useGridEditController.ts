@@ -759,7 +759,6 @@ export function useGridEditController({
             endRow: indices.row,
             endCol: indices.col,
           });
-          focusCell(e.target as HTMLElement);
         }
       }
     }

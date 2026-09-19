@@ -268,7 +268,8 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     await page.goto(
       `/service/databaseServices/${getEncodedFqn(
         service.entityResponseData.fullyQualifiedName
-      )}/agents/metadata`
+      )}/agents/metadata`,
+      { waitUntil: 'domcontentloaded' }
     );
     await page.getByTestId('data-assets-header').waitFor();
 

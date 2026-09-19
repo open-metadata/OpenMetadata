@@ -156,6 +156,9 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('./utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+  showWarningToast: jest.fn(),
+  showInfoToast: jest.fn(),
 }));
 
 jest.mock('./components/ActivityFeed/FeedEditor/FeedEditor.tsx', () => ({

@@ -134,7 +134,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     [metricDetails, onMetricUpdate]
   );
 
-  const handleRestoreMetric = async () => {
+  const handleRestoreMetric = async (): Promise<boolean> => {
     try {
       const { version: newVersion } = await restoreMetric(metricDetails.id);
       showSuccessToast(
@@ -143,6 +143,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         })
       );
       onToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -150,6 +152,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           entity: t('label.metric'),
         })
       );
+
+      return false;
     }
   };
 

@@ -94,7 +94,9 @@ test.describe(
       test.slow();
 
       await test.step('Navigate to marketplace as consumer', async () => {
-        await consumerPage.goto('/data-marketplace');
+        await consumerPage.goto('/data-marketplace', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(consumerPage);
       });
 

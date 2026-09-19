@@ -15,6 +15,7 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import * as useGlossaryStoreModule from '../../../components/Glossary/useGlossary.store';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import {
   getGlossariesByName,
@@ -28,7 +29,7 @@ const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'Business glossary' }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -189,6 +190,56 @@ const mockProps = {
   pageTitle: 'glossary',
 };
 
+beforeEach(() => {
+  jest.clearAllMocks();
+  (useFqn as jest.Mock).mockReturnValue({
+    fqn: MOCK_GLOSSARY.fullyQualifiedName,
+  });
+  (
+    useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
+  ).mockImplementation(() => ({
+    glossaries: [MOCK_GLOSSARY],
+    setGlossaries: mockSetGlossaries,
+    activeGlossary: MOCK_GLOSSARY,
+    setActiveGlossary: mockSetActiveGlossary,
+    updateActiveGlossary: mockUpdateActiveGlossary,
+    updateGlossary: mockUpdateGlossaryInList,
+  }));
+  (getGlossariesByName as jest.Mock).mockResolvedValue(MOCK_GLOSSARY);
+  (getGlossariesList as jest.Mock).mockResolvedValue({
+    data: [MOCK_GLOSSARY],
+    paging: { total: 1 },
+  });
+});
+
+it.each([true, false])(
+  'shows an unknown glossary instead of stale content when another glossary exists: %s',
+  async (hasGlossary) => {
+    const fqn = 'Missing glossary';
+    (useFqn as jest.Mock).mockReturnValue({ fqn });
+    (
+      useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
+    ).mockReturnValue({
+      glossaries: hasGlossary ? [MOCK_GLOSSARY] : [],
+      setGlossaries: mockSetGlossaries,
+      activeGlossary: MOCK_GLOSSARY,
+      setActiveGlossary: mockSetActiveGlossary,
+      updateActiveGlossary: mockUpdateActiveGlossary,
+      updateGlossary: mockUpdateGlossaryInList,
+    });
+    (getGlossariesList as jest.Mock).mockResolvedValue({
+      data: hasGlossary ? [MOCK_GLOSSARY] : [],
+      paging: { total: hasGlossary ? 1 : 0 },
+    });
+    renderWithQueryClient(<GlossaryPage {...mockProps} />);
+
+    expect(await screen.findByTestId('empty-placeholder')).toHaveTextContent(
+      fqn
+    );
+    expect(screen.queryByText(/Glossary.component/i)).not.toBeInTheDocument();
+  }
+);
+
 describe('Glossary list paging', () => {
   const pageOneGlossary = {
     ...MOCK_GLOSSARY,
@@ -199,18 +250,9 @@ describe('Glossary list paging', () => {
   const pageTwoGlossary = {
     ...MOCK_GLOSSARY,
     id: 'page-two-glossary-id',
-    name: 'Business Glossary',
-    fullyQualifiedName: 'Business Glossary',
+    name: MOCK_GLOSSARY.name,
+    fullyQualifiedName: MOCK_GLOSSARY.fullyQualifiedName,
   };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getGlossariesByName as jest.Mock).mockResolvedValue(MOCK_GLOSSARY);
-    (getGlossariesList as jest.Mock).mockResolvedValue({
-      data: [MOCK_GLOSSARY],
-      paging: { total: 1 },
-    });
-  });
 
   it('should publish paging once the whole list has settled', async () => {
     (getGlossariesList as jest.Mock)
@@ -252,7 +294,7 @@ describe('Glossary list paging', () => {
     });
 
     expect(getGlossariesByName).toHaveBeenCalledWith(
-      'Business Glossary',
+      MOCK_GLOSSARY.fullyQualifiedName,
       expect.anything()
     );
     expect(mockUpdateGlossaryInList).toHaveBeenCalledWith(MOCK_GLOSSARY);
@@ -403,6 +445,9 @@ describe('Test GlossaryComponent page', () => {
         updateActiveGlossary: mockUpdateActiveGlossary,
       }));
 
+      (useFqn as jest.Mock).mockReturnValue({
+        fqn: glossary2.fullyQualifiedName,
+      });
       renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
       const handleGlossaryDelete = await screen.findByTestId(

@@ -20,6 +20,7 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
@@ -237,7 +238,12 @@ export const createQuickLink = async (
   );
 
   await assetInput.click();
-  await assetInput.fill(dataAsset.entity.name);
+  // `fill` sets .value and fires one synthetic input event; react-aria's
+  // combobox closes its popover on that, so the query still runs but the
+  // results have nowhere to render and the option below never appears. The
+  // trace shows the listbox present at the end of the click above and gone
+  // from every snapshot after the fill. Real keystrokes keep it open.
+  await assetInput.pressSequentially(dataAsset.entity.name);
 
   await expect(
     page.getByRole('option', { name: dataAsset.entity.name })
@@ -323,7 +329,8 @@ export const updateQuickLink = async (
   );
 
   await tagInput.click();
-  await tagInput.fill(knowledgePageQuickLink.tag);
+  // Same react-aria combobox as the data-asset one above; same reason.
+  await tagInput.pressSequentially(knowledgePageQuickLink.tag);
 
   await expect(
     page.getByRole('option', { name: knowledgePageQuickLink.tag })
@@ -783,7 +790,7 @@ export const verifyContentPersistence = async (
 ): Promise<void> => {
   await waitForAutoSave(page);
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const editor = await getEditor(page, true);
@@ -892,16 +899,16 @@ export const typeInTableCell = async (
 
 export const navigateToArticle = async (page: Page, articleFqn: string) => {
   // Wait for GET API response when navigating to the article
-  const getArticleResponse = page.waitForResponse(
+  const getArticleResponse = waitForResponseWithStatus(
+    page,
     (response) =>
-      response
-        .url()
-        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
-      response.status() === 200
+      response.request().method() === 'GET' &&
+      response.url().includes(`/api/v1/contextCenter/pages/name/${articleFqn}`),
+    200
   );
 
   const articlePath = ARTICLE_PAGE_ROUTE.replace(FQN_PLACEHOLDER, articleFqn);
-  await page.goto(articlePath);
+  await page.goto(articlePath, { waitUntil: 'domcontentloaded' });
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
   await getArticleResponse;

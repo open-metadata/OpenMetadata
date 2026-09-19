@@ -14,8 +14,11 @@ import { APIRequestContext } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { getTableFqn } from '../../utils/activityAPI';
+import { okJson } from '../../utils/apiResponse';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
+import { getTaskCard } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
 const adminFile = 'playwright/.auth/admin.json';
@@ -48,7 +51,7 @@ const createTaskViaAPI = async (
     },
   });
 
-  const task = await response.json();
+  const task = await okJson<TaskData>(response, 'Create comment task');
   return { id: task.id, taskId: task.taskId };
 };
 
@@ -61,10 +64,14 @@ const addCommentViaAPI = async (
     data: { message },
   });
 
-  const task = await response.json();
+  const task = await okJson<{ comments: { id: string; message: string }[] }>(
+    response,
+    'Add task comment'
+  );
   const comments = task.comments ?? [];
-  const lastComment = comments[comments.length - 1];
-  return { commentId: lastComment?.id };
+  const comment = comments.find((entry) => entry.message === message);
+  expect(comment).toBeDefined();
+  return { commentId: comment!.id };
 };
 
 const deleteTaskViaAPI = async (
@@ -84,9 +91,10 @@ test.describe('Task Comments - API Tests', () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const result = await getApiContext(page);
     apiContext = result.apiContext;
@@ -111,7 +119,7 @@ test.describe('Task Comments - API Tests', () => {
   test('Add comment to a task', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -140,7 +148,7 @@ test.describe('Task Comments - API Tests', () => {
   test('Add multiple comments to a task', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -177,7 +185,7 @@ test.describe('Task Comments - API Tests', () => {
   test('Edit own comment - author can edit', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -210,7 +218,7 @@ test.describe('Task Comments - API Tests', () => {
   test('Delete own comment - author can delete', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -235,19 +243,20 @@ test.describe('Task Comments - API Tests', () => {
     }
   });
 
-  test('Admin can delete any comment', async () => {
+  test('Admin can delete another user’s comment', async ({ browser }) => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
 
+    const commenter = await performUserLogin(browser, regularUser);
     try {
       const { commentId } = await addCommentViaAPI(
-        apiContext,
+        commenter.apiContext,
         task.id,
-        'Comment by admin'
+        'Comment by another user'
       );
 
       const deleteResponse = await apiContext.delete(
@@ -255,7 +264,13 @@ test.describe('Task Comments - API Tests', () => {
       );
 
       expect(deleteResponse.ok()).toBeTruthy();
+      const stored = await okJson<{ comments: unknown[] }>(
+        await apiContext.get(`/api/v1/tasks/${task.id}?fields=comments`),
+        'Verify admin comment deletion'
+      );
+      expect(stored.comments).toHaveLength(0);
     } finally {
+      await commenter.afterAction();
       await deleteTaskViaAPI(apiContext, task.id);
     }
   });
@@ -263,7 +278,7 @@ test.describe('Task Comments - API Tests', () => {
   test('Comment supports markdown formatting', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -300,7 +315,7 @@ def hello():
   test('Comment with @mention syntax', async () => {
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -333,9 +348,10 @@ test.describe('Task Comments - Permission Tests', () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext, afterAction } = await getApiContext(page);
 
@@ -353,9 +369,10 @@ test.describe('Task Comments - Permission Tests', () => {
   test.afterAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext, afterAction } = await getApiContext(page);
 
@@ -372,9 +389,10 @@ test.describe('Task Comments - Permission Tests', () => {
   test('Non-author cannot edit comment - returns 403', async ({ browser }) => {
     const adminContext = await browser.newContext({ storageState: adminFile });
     const adminPage = await adminContext.newPage();
-    await adminPage.goto('/');
+    await adminPage.goto('/', { waitUntil: 'domcontentloaded' });
     await adminPage.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext: adminApiContext, afterAction } = await getApiContext(
       adminPage
@@ -382,7 +400,7 @@ test.describe('Task Comments - Permission Tests', () => {
 
     const task = await createTaskViaAPI(
       adminApiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -423,9 +441,10 @@ test.describe('Task Comments - Permission Tests', () => {
   }) => {
     const adminContext = await browser.newContext({ storageState: adminFile });
     const adminPage = await adminContext.newPage();
-    await adminPage.goto('/');
+    await adminPage.goto('/', { waitUntil: 'domcontentloaded' });
     await adminPage.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext: adminApiContext, afterAction } = await getApiContext(
       adminPage
@@ -433,7 +452,7 @@ test.describe('Task Comments - Permission Tests', () => {
 
     const task = await createTaskViaAPI(
       adminApiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -474,9 +493,10 @@ test.describe('Task Comments - UI Tests', () => {
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext, afterAction } = await getApiContext(page);
 
@@ -492,9 +512,10 @@ test.describe('Task Comments - UI Tests', () => {
   test.afterAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const page = await context.newPage();
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext, afterAction } = await getApiContext(page);
 
@@ -513,15 +534,16 @@ test.describe('Task Comments - UI Tests', () => {
   test('View comments on task in activity feed', async ({ page, browser }) => {
     const context = await browser.newContext({ storageState: adminFile });
     const apiPage = await context.newPage();
-    await apiPage.goto('/');
+    await apiPage.goto('/', { waitUntil: 'domcontentloaded' });
     await apiPage.waitForURL(
-      (url) => url.pathname === '/' || url.pathname === '/my-data'
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { waitUntil: 'domcontentloaded' }
     );
     const { apiContext, afterAction } = await getApiContext(apiPage);
 
     const task = await createTaskViaAPI(
       apiContext,
-      table.entityResponseData?.['fullyQualifiedName'],
+      getTableFqn(table),
       'table',
       adminUser.responseData?.name ?? ''
     );
@@ -545,10 +567,13 @@ test.describe('Task Comments - UI Tests', () => {
         .click();
       await taskFeeds;
 
-      const taskCard = page
-        .locator('[data-testid="task-feed-card"], .task-feed-card-v1-new')
-        .first();
-      await expect(taskCard).toBeVisible({ timeout: 10000 });
+      await getTaskCard(page, task.taskId).click();
+      await expect(
+        page
+          .locator('#task-panel')
+          .getByTestId('task-comment-card')
+          .filter({ hasText: 'Test comment for UI display' })
+      ).toBeVisible();
     } finally {
       await deleteTaskViaAPI(apiContext, task.id);
       await afterAction();

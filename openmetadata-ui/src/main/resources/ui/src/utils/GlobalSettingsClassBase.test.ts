@@ -55,6 +55,38 @@ describe('GlobalSettingsClassBase', () => {
   });
 
   describe('getGlobalSettingsMenuWithPermission', () => {
+    it.each([
+      { isAdmin: false, auditLogs: false, expected: false },
+      { isAdmin: false, auditLogs: true, expected: true },
+      { isAdmin: true, auditLogs: false, expected: true },
+    ])(
+      'requires AuditLogs access independently of ViewAll: %j',
+      ({ isAdmin, auditLogs, expected }) => {
+        (userPermissions.hasViewPermissions as jest.Mock).mockImplementation(
+          jest.requireActual('./PermissionsUtils').userPermissions
+            .hasViewPermissions
+        );
+        const permissions = {
+          [ResourceEntity.AUDIT_LOG]: {
+            ...ENTITY_PERMISSIONS,
+            ViewAll: true,
+            ViewBasic: true,
+            AuditLogs: auditLogs,
+          },
+        } as UIPermission;
+        const menu =
+          globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
+            permissions,
+            isAdmin
+          );
+        const auditItem = menu
+          .find((item) => item.key === 'access')
+          ?.items?.find((item) => item.key === 'access.audit-logs');
+
+        expect(auditItem?.isProtected).toBe(expected);
+      }
+    );
+
     it('should return menu items for admin user with all permissions', () => {
       (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(true);
 

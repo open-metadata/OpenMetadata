@@ -360,7 +360,7 @@ test.describe('Lineage Filters', () => {
         }
 
         await test.step('Verify filters working for Lineage tab', async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await setLineageDepthAndVerify(page, 2, 2);
           await waitForAllLoadersToDisappear(page);

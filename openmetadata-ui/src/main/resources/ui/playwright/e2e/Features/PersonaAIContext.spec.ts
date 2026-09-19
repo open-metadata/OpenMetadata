@@ -23,14 +23,15 @@ import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
+  chooseSelectOption,
   getDefaultAdminAPIContext,
-  selectOptionWithRetry,
   toastNotification,
 } from '../../utils/common';
 import {
   enablePersonaRulePreloading,
   openPersonaAIContext,
 } from '../../utils/personaAIContext';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const persona = new PersonaClass();
 const dbService = new DatabaseServiceClass();
@@ -469,11 +470,16 @@ test.describe.serial('Persona AI Context', () => {
       await entityTypeOption.scrollIntoViewIfNeeded();
       await expect(entityTypeOption).toBeVisible();
     }
-    await entityTypePopup.getByText('Data Product', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Data Product', { exact: true })
+    );
     await expect(adminPage.getByText(/every asset it contains/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Article', { exact: true })
+    );
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
@@ -500,8 +506,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Metric', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Metric', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Formula / expression',
@@ -516,8 +524,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/27 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Glossary Term', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Glossary Term', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Synonyms',
@@ -531,8 +541,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/143 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Table', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Table', { exact: true })
+    );
     for (const section of [
       'Description',
       'Schema',
@@ -564,8 +576,10 @@ test.describe.serial('Persona AI Context', () => {
     );
     await adminPage.getByTestId('delete-condition-button').last().click();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Article', { exact: true })
+    );
     await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
@@ -885,11 +899,12 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage.getByTestId('empty-add-context-rule').click();
     await adminPage.getByTestId('context-rule-name').fill('Doomed rule');
 
-    const failedCreate = adminPage.waitForResponse(
+    const failedCreate = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().endsWith('/aiContext/rules') &&
-        response.request().method() === 'POST' &&
-        response.status() === 500
+        response.request().method() === 'POST',
+      500
     );
     await adminPage.getByRole('button', { name: 'Save Rule' }).click();
     await failedCreate;
@@ -928,11 +943,12 @@ test.describe.serial('Persona AI Context', () => {
       .getByRole('switch');
     await expect(toggle).toBeChecked();
 
-    const failedUpdate = adminPage.waitForResponse(
+    const failedUpdate = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().endsWith('/aiContext') &&
-        response.request().method() === 'PUT' &&
-        response.status() === 500
+        response.request().method() === 'PUT',
+      500
     );
     await adminPage.getByTestId('persona-context-enabled').click();
     await failedUpdate;
@@ -1524,10 +1540,10 @@ test.describe.serial('Persona AI Context', () => {
     // Switch to Glossary Term — href must change to the glossaries tab.
     // react-aria can close the listbox mid-click and detach the option, dropping
     // the selection so the entity type never changes and the href stays on
-    // /explore/tables — the source of this test's flakiness. selectOptionWithRetry
+    // /explore/tables — the source of this test's flakiness. selectOption
     // re-resolves the trigger's expanded state and reopens the popover before
     // retrying the option click.
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       adminPage.getByTestId('context-rule-entity-type'),
       adminPage.getByRole('listbox').getByText('Glossary Term', { exact: true })
     );

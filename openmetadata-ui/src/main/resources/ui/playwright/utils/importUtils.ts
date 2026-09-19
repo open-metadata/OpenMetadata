@@ -37,6 +37,7 @@ import {
   fillDescriptionBox,
   getApiContext,
   getDescriptionBox,
+  toastNotification,
   uuid,
 } from './common';
 import {
@@ -45,11 +46,11 @@ import {
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 const EDITOR_OPEN_TIMEOUT = 1500;
-const TEXT_EDITOR_FILL_TIMEOUT = 2000;
 const IMPORT_STATUS_TIMEOUT = 90000;
 
 type CsvExportResponse = {
@@ -137,42 +138,14 @@ export const suppressCsvJobsTray = async (page: Page) => {
     .catch(() => undefined);
 };
 
-const getTextEditorCandidates = (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
-
-  return [
-    activeCell.getByTestId('bulk-edit-text-cell-editor').first(),
-    activeCell.locator('input, textarea').first(),
-    page.getByTestId('bulk-edit-text-cell-editor').first(),
-    page.locator('.bulk-edit-text-cell-editor, .rdg-text-editor').first(),
-    page.locator('.ant-layout-content').getByRole('textbox').first(),
-  ];
-};
-
-const fillVisibleTextEditor = async (page: Page, text: string) => {
-  for (const editor of getTextEditorCandidates(page)) {
-    if (!(await waitForVisibleLocator(editor, EDITOR_OPEN_TIMEOUT))) {
-      continue;
-    }
-
-    try {
-      await editor.evaluate((element) =>
-        element.scrollIntoView({ block: 'center', inline: 'nearest' })
-      );
-      await editor.fill(text, { timeout: TEXT_EDITOR_FILL_TIMEOUT });
-      await editor.press('Enter', { delay: 100 });
-
-      return true;
-    } catch {
-      await page.keyboard.press('Escape').catch(() => undefined);
-    }
-  }
-
-  return false;
-};
-
+// A single click on the already-selected cell: picker columns open their editor
+// on click, so this is the only affordance that opens them without a second
+// press landing outside the popover and closing it again. #32252 removed this
+// helper but left the call in openOwnerPickerEditor, where the resulting
+// ReferenceError was swallowed by that loop's catch.
 const clickActiveGridCell = async (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+  await expect(activeCell).toHaveCount(1);
   await scrollIntoViewCenter(activeCell);
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.click({ force: true });
@@ -259,6 +232,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
     await scrollIntoViewCenter(cellByClass);
     // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
     await cellByClass.click({ force: true });
+    await expect(cellByClass).toHaveAttribute('aria-selected', 'true');
 
     return true;
   }
@@ -277,6 +251,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
       await scrollIntoViewCenter(cellByIndex);
       // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
       await cellByIndex.click({ force: true });
+      await expect(cellByIndex).toHaveAttribute('aria-selected', 'true');
 
       return true;
     }
@@ -305,66 +280,29 @@ const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
   throw new Error(`Unable to select grid column "${columnKey}"`);
 };
 
-const getTextEditorOpenActions = (page: Page) => {
-  return [
-    async () => undefined,
-    async () => page.keyboard.press('Enter', { delay: 100 }),
-    async () => {
-      await clickActiveGridCell(page);
-      await page.keyboard.press('Enter', { delay: 100 });
-    },
-    async () => page.keyboard.press('F2'),
-    async () => doubleClickActiveGridCell(page),
-  ];
+const openSelectedGridEditor = async (page: Page) => {
+  const cell = page.locator('.rdg-cell[aria-selected="true"]');
+  await expect(cell).toHaveCount(1);
+  await cell.click({ position: { x: 5, y: 5 } });
+  // Picker cells open on click and move focus into a portal. Text cells still
+  // need Enter; focusing the cell again would close an already open picker.
+  if (
+    !(await cell.evaluate((element) =>
+      element.classList.contains('rdg-editor-container')
+    ))
+  ) {
+    await expect(cell).toBeFocused({ timeout: 5_000 });
+    await page.keyboard.press('Enter');
+  }
 };
 
-const fillAndCommitTextEditor = async (
-  page: Page,
-  text: string,
-  maxAttempts = 2
-) => {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    for (const openTextEditor of getTextEditorOpenActions(page)) {
-      try {
-        await openTextEditor();
-
-        if (await fillVisibleTextEditor(page, text)) {
-          return;
-        }
-      } catch (error) {
-        lastError = error;
-        await page.keyboard.press('Escape').catch(() => undefined);
-      }
-    }
-
-    await page.keyboard.press('Escape').catch(() => undefined);
-  }
-
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-
-  throw new Error('Unable to fill the active grid text editor');
-};
-
-const getDescriptionEditorCandidates = (page: Page) => {
-  return [
-    page.getByTestId('markdown-editor').locator(descriptionBox).first(),
-    page.locator(descriptionBox).first(),
-    page.locator('textarea.bulk-edit-description-editor-textarea').first(),
-  ];
-};
-
-const findVisibleDescriptionEditor = async (page: Page) => {
-  for (const editor of getDescriptionEditorCandidates(page)) {
-    if (await waitForVisibleLocator(editor, EDITOR_OPEN_TIMEOUT)) {
-      return editor;
-    }
-  }
-
-  return undefined;
+const fillAndCommitTextEditor = async (page: Page, text: string) => {
+  const editor = page.locator('.rdg-cell').getByRole('textbox');
+  if (!(await editor.isVisible())) await openSelectedGridEditor(page);
+  await expect(editor).toBeVisible();
+  await editor.fill(text);
+  await editor.press('Enter');
+  await expect(editor).toBeHidden();
 };
 
 const clickMarkdownEditorSave = async (page: Page) => {
@@ -379,51 +317,6 @@ const clickMarkdownEditorSave = async (page: Page) => {
   }
 
   await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
-};
-
-const fillVisibleDescriptionEditor = async (
-  page: Page,
-  description: string
-) => {
-  const editor = await findVisibleDescriptionEditor(page);
-
-  if (!editor) {
-    return false;
-  }
-
-  try {
-    await editor.evaluate((element) =>
-      element.scrollIntoView({ block: 'center', inline: 'nearest' })
-    );
-    await editor.fill(description, { timeout: 10000 });
-
-    const tagName = await editor.evaluate((el) => el.tagName.toLowerCase());
-    if (tagName === 'textarea') {
-      await editor.press('Control+Enter');
-      await editor.waitFor({ state: 'detached' });
-    } else {
-      await clickMarkdownEditorSave(page);
-    }
-
-    return true;
-  } catch {
-    await page.keyboard.press('Escape').catch(() => undefined);
-
-    return false;
-  }
-};
-
-const getDescriptionEditorOpenActions = (page: Page) => {
-  return [
-    async () => undefined,
-    async () => page.keyboard.press('Enter', { delay: 100 }),
-    async () => {
-      await clickActiveGridCell(page);
-      await page.keyboard.press('Enter', { delay: 100 });
-    },
-    async () => page.keyboard.press('F2'),
-    async () => doubleClickActiveGridCell(page),
-  ];
 };
 
 export const waitForImportGridLoadMaskToDisappear = async (
@@ -454,50 +347,47 @@ export const fillTextInputDetails = async (page: Page, text: string) => {
 
 export const fillDescriptionDetails = async (
   page: Page,
-  description: string,
-  maxAttempts = 2
+  description: string
 ) => {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    for (const openDescriptionEditor of getDescriptionEditorOpenActions(page)) {
-      try {
-        await openDescriptionEditor();
-
-        if (await fillVisibleDescriptionEditor(page, description)) {
-          return;
-        }
-      } catch (error) {
-        lastError = error;
-        await page.keyboard.press('Escape').catch(() => undefined);
-      }
-    }
-
-    await page.keyboard.press('Escape').catch(() => undefined);
+  const editor = page
+    .locator(descriptionBox + ':visible')
+    .or(page.locator('textarea.bulk-edit-description-editor-textarea:visible'));
+  if (!(await editor.isVisible())) await openSelectedGridEditor(page);
+  await expect(editor).toBeVisible();
+  await editor.fill(description);
+  if ((await editor.evaluate((element) => element.tagName)) === 'TEXTAREA') {
+    await editor.press('Control+Enter');
+    await expect(editor).toBeHidden();
+  } else {
+    await clickMarkdownEditorSave(page);
   }
-
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-
-  throw new Error('Unable to fill the active grid description editor');
 };
 
-const clickInlineSave = async (page: Page) => {
-  const saveButton = page.getByTestId('inline-save-btn');
+/**
+ * Press an inline-editor save button and wait for the editor to close.
+ *
+ * `force` used to be the remedy here, for "grid cells and the fixed import
+ * footer can overlap inline editors" — but force does not resolve an overlap,
+ * it only skips the check for one. The press still lands on whatever is on
+ * top, the button below never reacts, and the detach wait then burns the whole
+ * test: 1026 polls over nine minutes on 084f07e7. A real click either lands or
+ * names the element intercepting it, and a transient overlap is what the retry
+ * is for.
+ */
+const clickGridEditorSave = async (page: Page, testId: string) => {
+  const saveButton = page.getByTestId(testId);
 
-  // eslint-disable-next-line playwright/no-force-option -- grid cells and the fixed import footer can overlap inline editors.
-  await saveButton.click({ force: true });
-  await saveButton.waitFor({ state: 'detached' });
+  await expect(async () => {
+    await saveButton.click({ timeout: 5_000 });
+    await expect(saveButton).toHaveCount(0, { timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
 };
 
-const clickAssociatedTagSave = async (page: Page) => {
-  const saveButton = page.getByTestId('saveAssociatedTag');
+const clickInlineSave = async (page: Page) =>
+  clickGridEditorSave(page, 'inline-save-btn');
 
-  // eslint-disable-next-line playwright/no-force-option -- grid cells and the fixed import footer can overlap inline editors.
-  await saveButton.click({ force: true });
-  await saveButton.waitFor({ state: 'detached' });
-};
+const clickAssociatedTagSave = async (page: Page) =>
+  clickGridEditorSave(page, 'saveAssociatedTag');
 
 // The owner cell mounts a react-aria picker that is force-opened on mount
 // (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
@@ -584,7 +474,14 @@ const selectOwnersOnTab = async (
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
 
+    // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
+    // picker keeps a visited tab's panel mounted, so after the Users pass the
+    // Teams options are still in the DOM. `hasText` is a case-insensitive
+    // substring match, so a page-wide match can resolve to an option in the
+    // other panel -- a strict-mode violation, or a click on the wrong owner
+    // when a user and a team share overlapping display text.
     await page
+      .getByTestId(`owner-select-${tab.toLowerCase()}-panel`)
       .locator('[data-testid="owner-option"]')
       .filter({ hasText: owner })
       .click();
@@ -741,67 +638,35 @@ export const fillDomainDetails = async (
   await clickAssociatedTagSave(page);
 };
 
-const getActiveCellPopoverOpenActions = (page: Page) => {
-  return [
-    async () => page.keyboard.press('Enter', { delay: 100 }),
-    async () => {
-      await clickActiveGridCell(page);
-      await page.keyboard.press('Enter', { delay: 100 });
-    },
-    async () => page.keyboard.press('F2'),
-    async () => doubleClickActiveGridCell(page),
-  ];
-};
-
 const openActiveCellPopover = async (
   page: Page,
   targetLocator: Locator,
-  responseUrlPattern: string | undefined,
-  maxAttempts = 2
+  responseUrlPattern: string | undefined
 ) => {
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    for (const openEditor of getActiveCellPopoverOpenActions(page)) {
-      try {
-        const response = responseUrlPattern
-          ? page
-              .waitForResponse(responseUrlPattern, {
-                timeout: EDITOR_OPEN_TIMEOUT,
-              })
-              .catch(() => undefined)
-          : undefined;
-        await openEditor();
-        await response;
-
-        if (await waitForVisibleLocator(targetLocator, EDITOR_OPEN_TIMEOUT)) {
-          return;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-      await page.keyboard.press('Escape').catch(() => undefined);
-    }
+  // A bulk-edit click opens the editor before its options finish loading.
+  // Reopening that cell steals focus and can dismiss the pending picker.
+  const activeEditor = page.locator(
+    '.rdg-editor-container[aria-selected="true"]'
+  );
+  if ((await activeEditor.count()) === 0) {
+    const response = responseUrlPattern
+      ? page.waitForResponse(responseUrlPattern)
+      : undefined;
+    await openSelectedGridEditor(page);
+    if (response) expect((await response).status()).toBe(200);
   }
-
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-
-  throw new Error('Unable to open the active cell popover editor');
+  await expect(targetLocator).toBeVisible();
 };
 
 const openRadioCardEditor = async (
   page: Page,
   radioTestId: string,
-  responseUrlPattern: string,
-  maxAttempts = 2
+  responseUrlPattern: string
 ) => {
   await openActiveCellPopover(
     page,
     page.getByTestId(radioTestId),
-    responseUrlPattern,
-    maxAttempts
+    responseUrlPattern
   );
 };
 
@@ -1084,6 +949,60 @@ export const fillGlossaryRowDetails = async (
     await selectActiveRowCellByColumn(page, 'extension');
     await fillExtensionDetails(page, propertyListName);
   }
+};
+
+const waitForBulkImportResponse = (
+  page: Page,
+  endpoint: string,
+  dryRun: boolean
+) =>
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'PUT' &&
+        url.pathname.startsWith(`/api/v1/${endpoint}/name/`) &&
+        url.pathname.endsWith('/importAsync') &&
+        url.searchParams.get('dryRun') === String(dryRun)
+      );
+    },
+    200
+  );
+
+export const previewBulkImportChanges = async (
+  page: Page,
+  endpoint: string
+) => {
+  const validationResponse = waitForBulkImportResponse(page, endpoint, true);
+
+  await Promise.all([
+    validationResponse,
+    page.getByRole('button', { name: 'Next', exact: true }).click(),
+  ]);
+  // Preview counters remain visible while the edited CSV is validated. The
+  // Update step is entered only after that validation completes.
+  await expect(
+    page.getByRole('button', { name: 'Update', exact: true })
+  ).toBeVisible({
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+};
+
+export const saveBulkImport = async (
+  page: Page,
+  endpoint: string,
+  message: string | RegExp = /details updated successfully/
+) => {
+  const updateResponse = waitForBulkImportResponse(page, endpoint, false);
+
+  // The toast can expire while navigation renders the destination page.
+  await Promise.all([
+    updateResponse,
+    toastNotification(page, message, IMPORT_STATUS_TIMEOUT),
+    page.getByRole('button', { name: 'Update', exact: true }).click(),
+  ]);
 };
 
 export const validateImportStatus = async (

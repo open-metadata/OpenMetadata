@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import {
   descriptionBox,
+  dismissToasts,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -51,6 +52,12 @@ test.describe('Glossary CRUD Operations', () => {
 
       await page.fill('[data-testid="name"]', glossaryName);
       await fillDescriptionBox(page, 'Glossary with all optional fields');
+
+      // Save sits bottom-right of the form, under the fixed bottom-center toast
+      // region. Navigating to Glossary can leave an "Entity not found" error
+      // toast behind -- the landing page raises it restoring a glossary another
+      // worker already deleted -- and an error toast never drains on its own.
+      await dismissToasts(page);
 
       const createResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
@@ -102,6 +109,12 @@ test.describe('Glossary CRUD Operations', () => {
       if (await meToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
         await meToggle.click();
       }
+
+      // Save sits bottom-right of the form, under the fixed bottom-center toast
+      // region. Navigating to Glossary can leave an "Entity not found" error
+      // toast behind -- the landing page raises it restoring a glossary another
+      // worker already deleted -- and an error toast never drains on its own.
+      await dismissToasts(page);
 
       const createResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');

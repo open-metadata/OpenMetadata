@@ -99,7 +99,7 @@ test.describe('Glossary Voting', () => {
     const reloadResponse = page.waitForResponse(
       '/api/v1/glossaryTerms?directChildrenOf=*'
     );
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await reloadResponse;
 
     await expect(page.getByTestId('up-vote-btn')).toHaveClass(/\bactive\b/);
