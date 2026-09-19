@@ -193,9 +193,9 @@ class TableauClient:
                 all_projects[project.id] = project
             if len(all_projects) >= MAX_CACHED_PROJECTS:
                 logger.warning(
-                    f"Tableau site has at least {MAX_CACHED_PROJECTS} projects; the project "
-                    "cache is full and project hierarchy names may be incomplete for some "
-                    "workbooks."
+                    "Tableau site has at least %s projects; the project cache is full and "
+                    "project hierarchy names may be incomplete for some workbooks.",
+                    MAX_CACHED_PROJECTS,
                 )
             self.all_projects = all_projects
         except Exception as e:
