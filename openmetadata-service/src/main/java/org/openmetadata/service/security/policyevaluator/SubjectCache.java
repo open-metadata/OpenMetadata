@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.Invalidatable;
+import org.openmetadata.service.search.opensearch.OpenSearchSearchManager;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -199,6 +200,10 @@ public class SubjectCache {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
+    // The search-side RBAC query cache is keyed by the user's team/role membership, so any
+    // membership or policy change must drop those cached queries as well, otherwise
+    // access-controlled search/browse keeps reflecting stale membership until the TTL (#33137).
+    OpenSearchSearchManager.invalidateRbacCache();
   }
 
   public static User getUserContext(String userName) {
