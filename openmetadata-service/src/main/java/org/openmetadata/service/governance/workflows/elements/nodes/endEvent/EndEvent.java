@@ -14,15 +14,18 @@ public class EndEvent implements NodeInterface {
   private final org.flowable.bpmn.model.EndEvent endEvent;
 
   public EndEvent(String id) {
+    this(id, false);
+  }
+
+  public EndEvent(String id, boolean terminateAll) {
     this.endEvent = new EndEventBuilder().id(id).build();
-    addTerminationDefinition();
+    if (terminateAll) {
+      addTerminationDefinition();
+    }
   }
 
   public EndEvent(EndEventDefinition nodeDefinition, WorkflowConfiguration config) {
-    this.endEvent = new EndEventBuilder().id(nodeDefinition.getName()).build();
-    if (Boolean.TRUE.equals(nodeDefinition.getTerminateAll())) {
-      addTerminationDefinition();
-    }
+    this(nodeDefinition.getName(), Boolean.TRUE.equals(nodeDefinition.getTerminateAll()));
 
     if (config.getStoreStageStatus()) {
       attachWorkflowInstanceStageListeners(endEvent);

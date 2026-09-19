@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows.elements;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -110,8 +111,17 @@ class NodeFactoryTest {
   }
 
   @Test
-  void testProgrammaticErrorEndEventCancelsSiblingExecutions() {
+  void testProgrammaticErrorEndEventPreservesLegacyExecutionScope() {
     EndEvent node = new EndEvent("Error");
+
+    assertFalse(
+        node.getEndEvent().getEventDefinitions().stream()
+            .anyMatch(TerminateEventDefinition.class::isInstance));
+  }
+
+  @Test
+  void testProgrammaticTerminatingEndEventMustBeExplicit() {
+    EndEvent node = new EndEvent("Error", true);
 
     assertTrue(
         node.getEndEvent().getEventDefinitions().stream()
