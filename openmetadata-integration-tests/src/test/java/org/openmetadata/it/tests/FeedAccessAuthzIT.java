@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -205,7 +206,69 @@ class FeedAccessAuthzIT {
         404, hidden.getStatusCode(), "Denied reads must hide the conversation's existence");
   }
 
+  // ==================== Contract preserved for unresolvable links ====================
+
+  @Test
+  void listConversationsByEntityLink_unknownTarget_returnsEmptyPage() throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", "<#E::table::no.such.service.db.schema.table>")
+            .build();
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options);
+
+    assertTrue(
+        MAPPER.readTree(json).get("data").isEmpty(),
+        "A well-formed entityLink pointing at no entity must still page empty, not 404");
+  }
+
+  @Test
+  void getActivityByEntityLink_unknownTarget_returnsEmptyPage() throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", "<#E::table::no.such.service.db.schema.table>")
+            .build();
+
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/about", null, options);
+
+    assertTrue(
+        MAPPER.readTree(json).get("data").isEmpty(),
+        "A well-formed entityLink pointing at no entity must still page empty, not 404");
+  }
+
+  /**
+   * A malformed link has always been rejected by MessageParser.EntityLink.parse inside
+   * ConversationFilter and ActivityStreamRepository, so 400 is the pre-existing contract on both
+   * endpoints rather than something the authorization checks introduced.
+   */
+  @Test
+  void entityLinkFilters_malformedLink_stillBadRequest() {
+    RequestOptions options =
+        RequestOptions.builder().queryParam("entityLink", "not-a-link").build();
+
+    assertBadRequest(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options));
+    assertBadRequest(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/about", null, options));
+  }
+
   // ==================== Helpers ====================
+
+  private static void assertBadRequest(ThrowingCall call) {
+    assertThrows(InvalidRequestException.class, call::run, "Malformed entityLink must be a 400");
+  }
 
   /**
    * A denied read may surface either as a 403 or, where the endpoint deliberately hides the
