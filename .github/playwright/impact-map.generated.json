@@ -4438,6 +4438,7 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
     },
@@ -4550,7 +4551,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/waitHelpers.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts"
+        "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {
@@ -4595,7 +4597,9 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4605,7 +4609,9 @@
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
-        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4619,13 +4625,23 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedEditor/SendButton.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/ContextCenterPermission.spec.ts"
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4712,7 +4728,9 @@
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
-        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4750,7 +4768,9 @@
       "specs": [
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -4764,7 +4784,6 @@
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
         "playwright/e2e/Features/Tasks/DomainFiltering.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts",
@@ -6186,9 +6205,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/EntityExportModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts"
       ]
     },
     {
@@ -6368,6 +6385,7 @@
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
@@ -8999,6 +9017,7 @@
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -9022,6 +9041,7 @@
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -9045,6 +9065,7 @@
       "specs": [
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
@@ -9318,7 +9339,9 @@
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts"
+        "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskComments.spec.ts"
       ]
     },
     {
@@ -10624,16 +10647,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/AddCustomMetricPage/AddCustomMetricPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/AddQueryPage/AddQueryPage.component.tsx"
       ],
       "specs": [
@@ -10977,7 +10990,6 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LoginPage/SignInPage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
@@ -11097,16 +11109,6 @@
       ],
       "specs": [
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/ResetPassword.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Pages/TestSuite.spec.ts",
-        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
       ]
     },
     {
