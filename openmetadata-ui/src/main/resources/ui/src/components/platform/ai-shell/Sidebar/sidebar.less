@@ -67,31 +67,35 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Shared Gate 0 roles. Brand/text roles use the *utility* scale so they flip in
-// dark while keeping exact light values and staying customer-branding-aware.
+// Shared Gate 0 roles. Surface/text/border roles use the `--om-*` aliases (they
+// carry frozen light fallbacks) — a raw `var(--color-bg-surface)` is
+// guaranteed-invalid at runtime (self-referential shim in globals.css with no
+// fallback), so in LESS it resolves to transparent in light and only "works" in
+// dark where .dark-mode redeclares the token. Brand/selected roles use the
+// *utility*/tw scale so they flip in dark while keeping exact light values.
 // The selected surface diverges by theme to match the design recording: neutral
 // gray-blue-100 in light (#eaecf5, frozen) and translucent brand in dark. A solid
 // gray-blue-900 was invisible against the gray-blue-950 panel; the recording uses a
 // blue-tinted pill (brand-500 @16%). --ask-selected-surface (flipped under
 // .dark-mode below) carries the dark value; light falls back to gray-blue-100.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
-@ask-bg-card: var(--color-bg-surface);
+@ask-bg-card: var(--om-color-bg-surface);
 @ask-bg-active: var(
   --ask-selected-surface,
   var(--tw-color-utility-gray-blue-100)
 );
-@ask-bg-hover: var(--color-bg-secondary_hover);
-@ask-text-primary: var(--color-text-primary);
-@ask-text-secondary: var(--color-text-secondary);
-@ask-text-tertiary: var(--color-text-tertiary);
-@ask-text-quaternary: var(--color-text-quaternary);
+@ask-bg-hover: var(--om-color-bg-secondary-hover);
+@ask-text-primary: var(--om-color-text-primary);
+@ask-text-secondary: var(--om-color-text-secondary);
+@ask-text-tertiary: var(--om-color-text-tertiary);
+@ask-text-quaternary: var(--om-color-text-quaternary);
 // Rest-state nav/list icons: quaternary (gray-400) in light, gray-600 in dark to
 // match the recording — quaternary reads a step too bright on the dark surface.
-@ask-icon-rest: var(--ask-rest-icon, var(--color-text-quaternary));
+@ask-icon-rest: var(--ask-rest-icon, var(--om-color-text-quaternary));
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
 @ask-brand-50: var(--tw-color-utility-brand-50);
-@ask-border-secondary: var(--color-border-secondary);
+@ask-border-secondary: var(--om-color-border-secondary);
 
 // Utility palette — used by the count badges on nav items.
 @ask-util-gray-50: var(--tw-color-gray-50);
