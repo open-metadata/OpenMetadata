@@ -128,10 +128,10 @@ const IconGrid: FC<IconGridProps> = ({ size = 20 }) => {
               title={`Click to copy import for ${name}`}
               onClick={() => handleCopy(name)}>
               <Icon
-                color={
+                className={
                   copied === name
-                    ? 'var(--tw-text-color-fg-success-primary)'
-                    : 'var(--tw-text-color-quaternary)'
+                    ? 'tw:text-fg-success-primary'
+                    : 'tw:text-featured-icon-light-fg-gray'
                 }
                 size={size}
               />
