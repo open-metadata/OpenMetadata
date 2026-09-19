@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyDiscoveryContext.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDiscoveryContext",
+  "description": "Immutable provenance and deduplication context for an automated ontology draft.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyDiscoveryContext",
+  "definitions": {
+    "verificationProvider": {
+      "javaType": "org.openmetadata.schema.type.OntologyVerificationProvider",
+      "type": "string",
+      "enum": ["model", "jev"],
+      "default": "model"
+    }
+  },
+  "properties": {
+    "serviceFqn": {
+      "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "evidenceFingerprint": {
+      "description": "SHA-256 over canonicalized evidence identity, versions, runs, verifier, and rule version.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "automationId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "conversationId": {
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "verificationProvider": {
+      "$ref": "#/definitions/verificationProvider"
+    },
+    "ruleVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "modelId": {
+      "description": "Model identifier returned by the configured provider.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "generatedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyDiscoveryEvidence.json"
+      },
+      "minItems": 1,
+      "maxItems": 200
+    }
+  },
+  "required": [
+    "serviceFqn",
+    "evidenceFingerprint",
+    "automationId",
+    "conversationId",
+    "verificationProvider",
+    "ruleVersion",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

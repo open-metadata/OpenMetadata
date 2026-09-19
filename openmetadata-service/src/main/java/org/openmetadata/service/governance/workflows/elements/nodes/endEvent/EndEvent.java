@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.endEvent;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
+import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
@@ -14,10 +15,14 @@ public class EndEvent implements NodeInterface {
 
   public EndEvent(String id) {
     this.endEvent = new EndEventBuilder().id(id).build();
+    addTerminationDefinition();
   }
 
   public EndEvent(EndEventDefinition nodeDefinition, WorkflowConfiguration config) {
     this.endEvent = new EndEventBuilder().id(nodeDefinition.getName()).build();
+    if (Boolean.TRUE.equals(nodeDefinition.getTerminateAll())) {
+      addTerminationDefinition();
+    }
 
     if (config.getStoreStageStatus()) {
       attachWorkflowInstanceStageListeners(endEvent);
@@ -26,5 +31,11 @@ public class EndEvent implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(endEvent);
+  }
+
+  private void addTerminationDefinition() {
+    TerminateEventDefinition termination = new TerminateEventDefinition();
+    termination.setTerminateAll(true);
+    endEvent.addEventDefinition(termination);
   }
 }

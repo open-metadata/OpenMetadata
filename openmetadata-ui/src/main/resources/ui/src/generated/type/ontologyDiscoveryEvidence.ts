@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 /**
- * EndEvent.
+ * A versioned persisted-catalog observation used to support an ontology proposal. Raw
+ * source samples are never stored here.
  */
-export interface EndEvent {
+export interface OntologyDiscoveryEvidence {
     /**
-     * Description of the Node.
+     * Catalog entity type containing the evidence.
      */
-    description?: string;
+    entityType:         string;
+    fullyQualifiedName: string;
     /**
-     * Display Name that identifies this Node.
+     * Bounded labels for the catalog signals used; never raw sample values.
      */
-    displayName?: string;
+    signals?: string[];
     /**
-     * Name that identifies this Node.
+     * Originating completed ingestion or automation run when exposed by the catalog.
      */
-    name?:    string;
-    subType?: string;
+    sourceRunId?: string;
     /**
-     * Whether reaching this event cancels every other active execution in the workflow instance.
+     * Catalog entity version observed by discovery.
      */
-    terminateAll?: boolean;
-    type?:         string;
-    [property: string]: any;
+    sourceVersion?: number;
+    updatedAt?:     number;
 }

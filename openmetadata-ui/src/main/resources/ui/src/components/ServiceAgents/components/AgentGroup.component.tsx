@@ -57,6 +57,7 @@ interface AgentGroupProps {
   onRefresh?: () => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
+  renderAdditionalAction?: (agent: Agent) => ReactNode;
 }
 
 const AgentGroup: FC<AgentGroupProps> = ({
@@ -77,6 +78,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   onRefresh,
   onRun,
   onRunDetails,
+  renderAdditionalAction,
   titleKey,
 }) => {
   const { t } = useTranslation();
@@ -114,6 +116,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
       <div className="tw:grid tw:gap-2.5">
         {agents.map((agent) => (
           <AgentCard
+            additionalAction={renderAdditionalAction?.(agent)}
             agent={agent}
             allowedActions={allowedActions}
             key={agent.id}

@@ -24,7 +24,11 @@ export interface OntologyDomainDraftResult {
  */
 export interface CreateOntologyChangeSetRequest {
     description: string;
-    displayName: string;
+    /**
+     * Immutable source evidence and run attribution for an automatically discovered draft.
+     */
+    discoveryContext?: OntologyDiscoveryContext;
+    displayName:       string;
     /**
      * Fully qualified names of affected ontology models.
      */
@@ -38,22 +42,213 @@ export interface CreateOntologyChangeSetRequest {
 }
 
 /**
+ * Immutable source evidence and run attribution for an automatically discovered draft.
+ *
+ * Immutable provenance and deduplication context for an automated ontology draft.
+ */
+export interface OntologyDiscoveryContext {
+    automationId:   string;
+    conversationId: string;
+    evidence:       OntologyDiscoveryEvidence[];
+    /**
+     * SHA-256 over canonicalized evidence identity, versions, runs, verifier, and rule version.
+     */
+    evidenceFingerprint: string;
+    generatedAt?:        number;
+    /**
+     * Model identifier returned by the configured provider.
+     */
+    modelId?:             string;
+    ruleVersion:          string;
+    serviceFqn:           string;
+    verificationProvider: VerificationProvider;
+}
+
+/**
+ * A versioned persisted-catalog observation used to support an ontology proposal. Raw
+ * source samples are never stored here.
+ */
+export interface OntologyDiscoveryEvidence {
+    /**
+     * Catalog entity type containing the evidence.
+     */
+    entityType:         string;
+    fullyQualifiedName: string;
+    /**
+     * Bounded labels for the catalog signals used; never raw sample values.
+     */
+    signals?: string[];
+    /**
+     * Originating completed ingestion or automation run when exposed by the catalog.
+     */
+    sourceRunId?: string;
+    /**
+     * Catalog entity version observed by discovery.
+     */
+    sourceVersion?: number;
+    updatedAt?:     number;
+}
+
+export enum VerificationProvider {
+    Jev = "jev",
+    Model = "model",
+}
+
+/**
  * A typed, reversible operation in an ontology authoring session.
  */
 export interface OntologyChangeOperation {
-    attribute?: OntologyAttribute;
-    axiom?:     OntologyAxiom;
+    /**
+     * Reviewed association between a concept and the data asset that realizes it.
+     */
+    assetBinding?: AssetRealization;
+    attribute?:    OntologyAttribute;
+    axiom?:        OntologyAxiom;
     /**
      * Version used for optimistic concurrency. Omitted for create operations.
      */
-    baseVersion?:  number;
-    id:            string;
-    mapping?:      ConceptMapping;
-    operationType: OperationType;
-    relationship?: OntologyRelationship;
-    state:         OperationState;
-    targetId?:     string;
-    term?:         GlossaryTerm;
+    baseVersion?: number;
+    /**
+     * Fingerprint of the change-set discovery context supporting this operation.
+     */
+    evidenceFingerprint?: string;
+    id:                   string;
+    mapping?:             ConceptMapping;
+    operationType:        OperationType;
+    relationship?:        OntologyRelationship;
+    /**
+     * Administrator-reviewed semantic relationship type proposed by discovery.
+     */
+    relationshipType?: RelationshipType;
+    state:             OperationState;
+    targetId?:         string;
+    term?:             GlossaryTerm;
+}
+
+/**
+ * Reviewed association between a concept and the data asset that realizes it.
+ *
+ * A data asset that physically realizes an ontology concept. Unlike a tag label, which
+ * records that an asset merely references a concept, a realization records that the asset
+ * stores the instances of the concept.
+ */
+export interface AssetRealization {
+    /**
+     * Data asset realizing the concept.
+     */
+    asset: EntityReference;
+    /**
+     * Human-readable note about how the asset realizes the concept.
+     */
+    description?: string;
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id?: string;
+    /**
+     * How this realization edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    role?:       RealizationRole;
+}
+
+/**
+ * Data asset realizing the concept.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Resolved glossary term when the referenced resource is governed locally.
+ *
+ * Inverse relationship type. Symmetric types reference themselves.
+ *
+ * Replacement relationship type when this type is deprecated.
+ *
+ * Reference to the data contract for this entity.
+ *
+ * Glossary that this term belongs to.
+ *
+ * Parent glossary term that this term is child of. When `null` this term is the root term
+ * of the glossary.
+ *
+ * Resolved first-class relationship type.
+ *
+ * Reference to the related glossary term.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
+}
+
+/**
+ * How this realization edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ *
+ * How this relation edge originated. Defaults to 'Manual'.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
+}
+
+/**
+ * Role the asset plays in realizing the concept. At most one asset may be the primary store
+ * of a concept.
+ */
+export enum RealizationRole {
+    Derived = "DERIVED",
+    PrimaryStore = "PRIMARY_STORE",
+    Replica = "REPLICA",
 }
 
 /**
@@ -115,75 +310,6 @@ export enum DataType {
     Enum = "ENUM",
     Integer = "INTEGER",
     String = "STRING",
-}
-
-/**
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Reference to the data contract for this entity.
- *
- * Glossary that this term belongs to.
- *
- * Parent glossary term that this term is child of. When `null` this term is the root term
- * of the glossary.
- *
- * Data asset realizing the concept.
- *
- * Resolved first-class relationship type.
- *
- * Reference to the related glossary term.
- */
-export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * If true the relationship indicated by this entity reference is inherited from the parent
-     * entity.
-     */
-    inherited?: boolean;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
 }
 
 /**
@@ -390,20 +516,6 @@ export enum RestrictionKind {
 }
 
 /**
- * How this relation edge originated.
- *
- * How this realization edge originated. Defaults to 'Manual'.
- *
- * How this relation edge originated. Defaults to 'Manual'.
- */
-export enum Provenance {
-    AISuggested = "AiSuggested",
-    Imported = "Imported",
-    Inferred = "Inferred",
-    Manual = "Manual",
-}
-
-/**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
  * deleted and can only be disabled. Some apps such as AutoPilot create entities with
@@ -453,12 +565,15 @@ export enum ConceptMappingType {
 
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
+    BindAsset = "BIND_ASSET",
+    CreateRelationshipType = "CREATE_RELATIONSHIP_TYPE",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
     DeleteMapping = "DELETE_MAPPING",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
+    UnbindAsset = "UNBIND_ASSET",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
     UpsertAttribute = "UPSERT_ATTRIBUTE",
@@ -481,6 +596,116 @@ export interface OntologyRelationship {
     relationshipType: EntityReference;
     status:           EntityStatus;
     toTerm:           EntityReference;
+}
+
+/**
+ * Administrator-reviewed semantic relationship type proposed by discovery.
+ *
+ * An admin-governed semantic relationship definition used by Ontology.
+ */
+export interface RelationshipType {
+    cardinality?:         Cardinality;
+    category:             Category;
+    changeDescription?:   ChangeDescription;
+    characteristics:      Characteristic[];
+    crossGlossaryAllowed: boolean;
+    deleted?:             boolean;
+    description:          string;
+    /**
+     * Relationship types declared property-disjoint with this type.
+     */
+    disjointWith?:                 EntityReference[];
+    displayName:                   string;
+    domain?:                       SemanticReference[];
+    entityStatus?:                 EntityStatus;
+    fullyQualifiedName:            string;
+    href?:                         string;
+    id:                            string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Inverse relationship type. Symmetric types reference themselves.
+     */
+    inverse?: EntityReference;
+    /**
+     * IRI identifying the OWL object property.
+     */
+    iri?: string;
+    /**
+     * Immutable API key for this relationship type.
+     */
+    name:       string;
+    owners?:    EntityReference[];
+    paletteKey: PaletteKey;
+    /**
+     * Ordered property chain whose composition implies this relationship type.
+     */
+    propertyChain?: EntityReference[];
+    provider?:      ProviderType;
+    range?:         SemanticReference[];
+    /**
+     * Predicate emitted for authored relationship edges.
+     */
+    rdfPredicate: string;
+    /**
+     * Replacement relationship type when this type is deprecated.
+     */
+    replacedBy?: EntityReference;
+    reviewers?:  EntityReference[];
+    /**
+     * System types can be updated but cannot be deleted.
+     */
+    systemDefined: boolean;
+    updatedAt?:    number;
+    updatedBy?:    string;
+    version?:      number;
+}
+
+export interface Cardinality {
+    sourceMax?: number;
+    targetMax?: number;
+}
+
+export enum Category {
+    Core = "CORE",
+    Custom = "CUSTOM",
+    OwlSkos = "OWL_SKOS",
+}
+
+export enum Characteristic {
+    Asymmetric = "ASYMMETRIC",
+    Functional = "FUNCTIONAL",
+    InverseFunctional = "INVERSE_FUNCTIONAL",
+    Irreflexive = "IRREFLEXIVE",
+    Reflexive = "REFLEXIVE",
+    Symmetric = "SYMMETRIC",
+    Transitive = "TRANSITIVE",
+}
+
+/**
+ * Reference to a governed glossary term or an external semantic resource.
+ */
+export interface SemanticReference {
+    /**
+     * Canonical IRI of the referenced semantic resource.
+     */
+    iri: string;
+    /**
+     * Resolved glossary term when the referenced resource is governed locally.
+     */
+    term?: EntityReference;
+}
+
+export enum PaletteKey {
+    Amber = "AMBER",
+    Blue = "BLUE",
+    Gray = "GRAY",
+    Green = "GREEN",
+    Indigo = "INDIGO",
+    Pink = "PINK",
+    Purple = "PURPLE",
+    Rose = "ROSE",
+    Teal = "TEAL",
+    Violet = "VIOLET",
 }
 
 export enum OperationState {
@@ -729,41 +954,6 @@ export interface OntologyTermStructure {
 export interface Relationship {
     relationshipType:   EntityReference;
     targetSourceTermId: string;
-}
-
-/**
- * A data asset that physically realizes an ontology concept. Unlike a tag label, which
- * records that an asset merely references a concept, a realization records that the asset
- * stores the instances of the concept.
- */
-export interface AssetRealization {
-    /**
-     * Data asset realizing the concept.
-     */
-    asset: EntityReference;
-    /**
-     * Human-readable note about how the asset realizes the concept.
-     */
-    description?: string;
-    /**
-     * Stable identifier used by drafts and version diffs.
-     */
-    id?: string;
-    /**
-     * How this realization edge originated. Defaults to 'Manual'.
-     */
-    provenance?: Provenance;
-    role?:       RealizationRole;
-}
-
-/**
- * Role the asset plays in realizing the concept. At most one asset may be the primary store
- * of a concept.
- */
-export enum RealizationRole {
-    Derived = "DERIVED",
-    PrimaryStore = "PRIMARY_STORE",
-    Replica = "REPLICA",
 }
 
 export interface TermReference {

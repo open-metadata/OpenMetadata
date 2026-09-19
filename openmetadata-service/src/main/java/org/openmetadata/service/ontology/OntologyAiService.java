@@ -39,6 +39,8 @@ import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.OntologyDiscoveryContext;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.OntologyAiProviderException;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.OntologySparqlQueryValidator;
@@ -154,6 +156,15 @@ public final class OntologyAiService {
       final OntologyDomainDraftRequest request) {
     requireAvailable();
     final Glossary glossary = editableGlossary(request.getGlossary());
+    if (request.getDiscoveryContext() != null) {
+      request
+          .getDiscoveryContext()
+          .getEvidence()
+          .forEach(
+              evidence ->
+                  catalog.validateDiscoveryEvidence(
+                      evidence, request.getDiscoveryContext().getServiceFqn()));
+    }
     final OntologyAiCompletionGateway.DomainPrompt prompt =
         new OntologyAiCompletionGateway.DomainPrompt(
             glossary.getFullyQualifiedName(),
@@ -161,11 +172,32 @@ public final class OntologyAiService {
             request.getMaxConcepts());
     final OntologyAiCompletionGateway.Completion<OntologyAiCompletionGateway.DomainConceptCandidate>
         completion = gateway.generateDomainDraft(prompt);
+    final String generatedModelId = modelId(completion);
+    final long generatedAt = clock.millis();
     final CreateOntologyChangeSet draft = domainDraftFactory.create(request, glossary, completion);
+    attachDiscoveryContext(draft, request.getDiscoveryContext(), generatedModelId, generatedAt);
     return new OntologyDomainDraftResult()
-        .withModelId(modelId(completion))
-        .withGeneratedAt(clock.millis())
+        .withModelId(generatedModelId)
+        .withGeneratedAt(generatedAt)
         .withDraft(draft);
+  }
+
+  private static void attachDiscoveryContext(
+      final CreateOntologyChangeSet draft,
+      final OntologyDiscoveryContext requestedContext,
+      final String generatedModelId,
+      final long generatedAt) {
+    if (requestedContext == null) {
+      return;
+    }
+    final OntologyDiscoveryContext context =
+        JsonUtils.deepCopy(requestedContext, OntologyDiscoveryContext.class)
+            .withModelId(generatedModelId)
+            .withGeneratedAt(generatedAt);
+    draft.setDiscoveryContext(context);
+    draft
+        .getOperations()
+        .forEach(operation -> operation.setEvidenceFingerprint(context.getEvidenceFingerprint()));
   }
 
   private static <T> T withMetrics(final Supplier<T> operation) {

@@ -30,6 +30,10 @@
       "minimum": 1,
       "maximum": 100,
       "default": 25
+    },
+    "discoveryContext": {
+      "description": "Optional service-discovery provenance. The server adds the actual model identifier and generation time to the persisted draft.",
+      "$ref": "../../type/ontologyDiscoveryContext.json"
     }
   },
   "required": [

@@ -25,6 +25,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.AssetRealization;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
@@ -35,19 +37,23 @@ import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 
 public final class OntologyChangeOperationExecutor {
-  private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings";
+  private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings,realizedIn";
   private final GlossaryTermRepository termRepository;
   private final OntologyAxiomRepository axiomRepository;
+  private final RelationshipTypeRepository relationshipTypeRepository;
   private final Clock clock;
 
   public OntologyChangeOperationExecutor(
       final GlossaryTermRepository termRepository,
       final OntologyAxiomRepository axiomRepository,
+      final RelationshipTypeRepository relationshipTypeRepository,
       final Clock clock) {
     this.termRepository = termRepository;
     this.axiomRepository = axiomRepository;
+    this.relationshipTypeRepository = relationshipTypeRepository;
     this.clock = clock;
   }
 
@@ -66,6 +72,9 @@ public final class OntologyChangeOperationExecutor {
           case DELETE_MAPPING -> deleteMapping(uriInfo, user, operation);
           case UPSERT_AXIOM -> upsertAxiom(uriInfo, user, operation);
           case DELETE_AXIOM -> deleteAxiom(user, operation);
+          case BIND_ASSET -> bindAsset(uriInfo, user, operation);
+          case UNBIND_ASSET -> unbindAsset(uriInfo, user, operation);
+          case CREATE_RELATIONSHIP_TYPE -> createRelationshipType(uriInfo, user, operation);
         };
     return outcome;
   }
@@ -185,6 +194,41 @@ public final class OntologyChangeOperationExecutor {
     return first.getMappingType() == second.getMappingType()
         && first.getConceptIri().equals(second.getConceptIri())
         && Objects.equals(first.getSchemeIri(), second.getSchemeIri());
+  }
+
+  private OperationOutcome bindAsset(
+      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
+    final GlossaryTerm term = editableTerm(operation.getTargetId());
+    final AssetRealization binding = operation.getAssetBinding();
+    final List<AssetRealization> bindings = new ArrayList<>(listOrEmpty(term.getRealizedIn()));
+    bindings.removeIf(existing -> sameAsset(existing, binding));
+    bindings.add(binding);
+    term.setRealizedIn(bindings);
+    return persistTerm(uriInfo, user, term);
+  }
+
+  private OperationOutcome unbindAsset(
+      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
+    final GlossaryTerm term = editableTerm(operation.getTargetId());
+    final List<AssetRealization> bindings = new ArrayList<>(listOrEmpty(term.getRealizedIn()));
+    bindings.removeIf(existing -> sameAsset(existing, operation.getAssetBinding()));
+    term.setRealizedIn(bindings);
+    return persistTerm(uriInfo, user, term);
+  }
+
+  private static boolean sameAsset(final AssetRealization first, final AssetRealization second) {
+    return first.getAsset().getId().equals(second.getAsset().getId());
+  }
+
+  private OperationOutcome createRelationshipType(
+      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
+    final RelationshipType relationshipType =
+        JsonUtils.deepCopy(operation.getRelationshipType(), RelationshipType.class);
+    relationshipType.setUpdatedBy(user);
+    relationshipType.setUpdatedAt(clock.millis());
+    relationshipTypeRepository.prepareInternal(relationshipType, false);
+    return outcome(
+        relationshipTypeRepository.createOrUpdate(uriInfo, relationshipType, user).getEntity());
   }
 
   private GlossaryTerm editableTerm(final UUID termId) {

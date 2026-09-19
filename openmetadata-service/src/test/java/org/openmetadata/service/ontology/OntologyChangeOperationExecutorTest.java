@@ -37,6 +37,10 @@ import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.AssetRealization;
+import org.openmetadata.schema.type.AssetRealizationRole;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
@@ -44,6 +48,7 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -59,12 +64,16 @@ class OntologyChangeOperationExecutorTest {
   private final UriInfo uriInfo = mock(UriInfo.class);
   private final GlossaryTermRepository termRepository = mock(GlossaryTermRepository.class);
   private final OntologyAxiomRepository axiomRepository = mock(OntologyAxiomRepository.class);
+  private final RelationshipTypeRepository relationshipTypeRepository =
+      mock(RelationshipTypeRepository.class);
   private final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
   private OntologyChangeOperationExecutor executor;
 
   @BeforeEach
   void setUp() {
-    executor = new OntologyChangeOperationExecutor(termRepository, axiomRepository, clock);
+    executor =
+        new OntologyChangeOperationExecutor(
+            termRepository, axiomRepository, relationshipTypeRepository, clock);
   }
 
   @Test
@@ -283,6 +292,73 @@ class OntologyChangeOperationExecutorTest {
     assertEquals(NOW, captor.getValue().getUpdatedAt());
   }
 
+  @Test
+  void bindAssetAddsReviewedRealizationThroughTheTermRepository() {
+    final UUID termId = UUID.randomUUID();
+    final UUID assetId = UUID.randomUUID();
+    stubEditableTerm(termId, term(termId).withRealizedIn(List.of()));
+    stubTermUpsertEchoesEntity();
+    final AssetRealization binding =
+        new AssetRealization()
+            .withAsset(new EntityReference().withId(assetId).withType("table"))
+            .withRole(AssetRealizationRole.PRIMARY_STORE);
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.BIND_ASSET, termId).withAssetBinding(binding);
+
+    executor.execute(uriInfo, USER, operation);
+
+    final GlossaryTerm persisted = capturePersistedTerm();
+    assertEquals(1, persisted.getRealizedIn().size());
+    assertEquals(assetId, persisted.getRealizedIn().getFirst().getAsset().getId());
+  }
+
+  @Test
+  void unbindAssetRemovesOnlyTheReviewedRealization() {
+    final UUID termId = UUID.randomUUID();
+    final UUID removedId = UUID.randomUUID();
+    final UUID keptId = UUID.randomUUID();
+    final AssetRealization removed = realization(removedId);
+    stubEditableTerm(termId, term(termId).withRealizedIn(List.of(removed, realization(keptId))));
+    stubTermUpsertEchoesEntity();
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.UNBIND_ASSET, termId).withAssetBinding(removed);
+
+    executor.execute(uriInfo, USER, operation);
+
+    final GlossaryTerm persisted = capturePersistedTerm();
+    assertEquals(1, persisted.getRealizedIn().size());
+    assertEquals(keptId, persisted.getRealizedIn().getFirst().getAsset().getId());
+  }
+
+  @Test
+  void createRelationshipTypeUsesTheGovernedRepository() {
+    final RelationshipType relationshipType =
+        new RelationshipType()
+            .withId(UUID.randomUUID())
+            .withName("servedBy")
+            .withFullyQualifiedName("servedBy")
+            .withVersion(0.1);
+    when(relationshipTypeRepository.createOrUpdate(
+            eq(uriInfo), any(RelationshipType.class), eq(USER)))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.CREATED,
+                    invocation.getArgument(1, RelationshipType.class),
+                    EventType.ENTITY_CREATED));
+    final OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_RELATIONSHIP_TYPE)
+            .withRelationshipType(relationshipType);
+
+    executor.execute(uriInfo, USER, operation);
+
+    verify(relationshipTypeRepository).prepareInternal(any(RelationshipType.class), eq(false));
+    verify(relationshipTypeRepository)
+        .createOrUpdate(eq(uriInfo), any(RelationshipType.class), eq(USER));
+  }
+
   private void stubEditableTerm(final UUID termId, final GlossaryTerm term) {
     when(termRepository.get(isNull(), eq(termId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(term);
@@ -338,6 +414,12 @@ class OntologyChangeOperationExecutorTest {
         .withMappingType(type)
         .withConceptIri(conceptIri)
         .withSchemeIri(schemeIri);
+  }
+
+  private static AssetRealization realization(final UUID assetId) {
+    return new AssetRealization()
+        .withAsset(new EntityReference().withId(assetId).withType("table"))
+        .withRole(AssetRealizationRole.DERIVED);
   }
 
   private static OntologyAxiom axiom(final UUID axiomId) {

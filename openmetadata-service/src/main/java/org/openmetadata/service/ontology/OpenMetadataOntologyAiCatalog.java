@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.ontology;
 
+import java.util.Objects;
 import java.util.UUID;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
@@ -52,5 +56,59 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   public RelationshipType relationshipType(final UUID id) {
     return relationshipTypeRepository.get(
         null, id, relationshipTypeRepository.getFields("domain,range"), Include.NON_DELETED, false);
+  }
+
+  @Override
+  public void validateDiscoveryEvidence(
+      final OntologyDiscoveryEvidence evidence, final String expectedServiceFullyQualifiedName) {
+    final EntityInterface entity =
+        Entity.getEntityByName(
+            evidence.getEntityType(),
+            evidence.getFullyQualifiedName(),
+            "service",
+            Include.NON_DELETED);
+    if (evidence.getSourceVersion() != null
+        && !Objects.equals(evidence.getSourceVersion(), entity.getVersion())) {
+      throw staleEvidence(evidence, "version", evidence.getSourceVersion(), entity.getVersion());
+    }
+    if (evidence.getUpdatedAt() != null
+        && !Objects.equals(evidence.getUpdatedAt(), entity.getUpdatedAt())) {
+      throw staleEvidence(evidence, "updatedAt", evidence.getUpdatedAt(), entity.getUpdatedAt());
+    }
+    if (entity.getService() == null) {
+      throw new IllegalArgumentException(
+          "Ontology discovery evidence '"
+              + evidence.getFullyQualifiedName()
+              + "' is not scoped to a catalog service");
+    }
+    if (!Objects.equals(
+        expectedServiceFullyQualifiedName, entity.getService().getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          "Ontology discovery evidence '"
+              + evidence.getFullyQualifiedName()
+              + "' belongs to service '"
+              + entity.getService().getFullyQualifiedName()
+              + "', not '"
+              + expectedServiceFullyQualifiedName
+              + "'");
+    }
+  }
+
+  private static IllegalArgumentException staleEvidence(
+      final OntologyDiscoveryEvidence evidence,
+      final String field,
+      final Object observed,
+      final Object current) {
+    return new IllegalArgumentException(
+        "Stale ontology discovery evidence '"
+            + evidence.getEntityType()
+            + ":"
+            + evidence.getFullyQualifiedName()
+            + "': observed "
+            + field
+            + " "
+            + observed
+            + ", current "
+            + current);
   }
 }

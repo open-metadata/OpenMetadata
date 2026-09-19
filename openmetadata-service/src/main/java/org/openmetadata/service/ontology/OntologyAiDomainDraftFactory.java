@@ -56,7 +56,8 @@ final class OntologyAiDomainDraftFactory {
         .withState(OntologyChangeSetState.DRAFT)
         .withOperations(operations)
         .withUndoCursor(operations.size())
-        .withProvider(ProviderType.USER);
+        .withProvider(
+            request.getDiscoveryContext() == null ? ProviderType.USER : ProviderType.AUTOMATION);
   }
 
   private static List<OntologyChangeOperation> operations(

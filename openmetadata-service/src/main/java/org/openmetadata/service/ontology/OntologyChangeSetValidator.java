@@ -121,6 +121,8 @@ public final class OntologyChangeSetValidator {
     count += operation.getAttribute() == null ? 0 : 1;
     count += operation.getMapping() == null ? 0 : 1;
     count += operation.getAxiom() == null ? 0 : 1;
+    count += operation.getAssetBinding() == null ? 0 : 1;
+    count += operation.getRelationshipType() == null ? 0 : 1;
     return count;
   }
 
@@ -134,6 +136,8 @@ public final class OntologyChangeSetValidator {
           case ATTRIBUTE -> operation.getAttribute() != null;
           case MAPPING -> operation.getMapping() != null;
           case AXIOM -> operation.getAxiom() != null;
+          case ASSET_BINDING -> operation.getAssetBinding() != null;
+          case RELATIONSHIP_TYPE -> operation.getRelationshipType() != null;
         };
     return isPresent;
   }
@@ -142,6 +146,7 @@ public final class OntologyChangeSetValidator {
       final OntologyChangeOperation operation, final Set<UUID> plannedTermIds) {
     final boolean isCreate =
         operation.getOperationType() == OntologyChangeOperationType.CREATE_TERM
+            || operation.getOperationType() == OntologyChangeOperationType.CREATE_RELATIONSHIP_TYPE
             || (operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM
                 && operation.getTargetId() == null);
     final boolean targetsPlannedTerm =
@@ -213,12 +218,16 @@ public final class OntologyChangeSetValidator {
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> requireTarget(
           operation, operation.getRelationship().getFromTerm().getId(), "relationship source");
       case UPSERT_AXIOM -> validateAxiomTarget(operation);
+      case CREATE_RELATIONSHIP_TYPE -> requireEntityId(
+          operation, operation.getRelationshipType().getId(), "relationship type");
       case DELETE_TERM,
           UPSERT_ATTRIBUTE,
           DELETE_ATTRIBUTE,
           UPSERT_MAPPING,
           DELETE_MAPPING,
-          DELETE_AXIOM -> {}
+          DELETE_AXIOM,
+          BIND_ASSET,
+          UNBIND_ASSET -> {}
     }
   }
 
@@ -254,6 +263,8 @@ public final class OntologyChangeSetValidator {
           case UPSERT_ATTRIBUTE, DELETE_ATTRIBUTE -> PayloadKind.ATTRIBUTE;
           case UPSERT_MAPPING, DELETE_MAPPING -> PayloadKind.MAPPING;
           case UPSERT_AXIOM -> PayloadKind.AXIOM;
+          case BIND_ASSET, UNBIND_ASSET -> PayloadKind.ASSET_BINDING;
+          case CREATE_RELATIONSHIP_TYPE -> PayloadKind.RELATIONSHIP_TYPE;
         };
     return payloadKind;
   }
@@ -270,6 +281,8 @@ public final class OntologyChangeSetValidator {
     RELATIONSHIP,
     ATTRIBUTE,
     MAPPING,
-    AXIOM
+    AXIOM,
+    ASSET_BINDING,
+    RELATIONSHIP_TYPE
   }
 }

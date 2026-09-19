@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.AssetRealization;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
@@ -109,6 +110,25 @@ class OntologyChangeSetValidatorTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyChangeSetValidator.normalizeAndValidate(forwardReference));
+  }
+
+  @Test
+  void acceptsReviewedAssetBindingWithOptimisticVersionGuard() {
+    final UUID termId = UUID.randomUUID();
+    final OntologyChangeOperation binding =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.BIND_ASSET)
+            .withTargetId(termId)
+            .withBaseVersion(1.2)
+            .withAssetBinding(
+                new AssetRealization()
+                    .withAsset(new EntityReference().withId(UUID.randomUUID()).withType("table")));
+
+    assertDoesNotThrow(
+        () ->
+            OntologyChangeSetValidator.normalizeAndValidate(
+                new OntologyChangeSet().withOperations(List.of(binding)).withUndoCursor(1)));
   }
 
   private static void assertInvalid(final OntologyChangeOperation operation) {

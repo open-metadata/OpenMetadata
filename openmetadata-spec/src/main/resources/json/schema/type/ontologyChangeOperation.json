@@ -21,7 +21,10 @@
         "UPSERT_MAPPING",
         "DELETE_MAPPING",
         "UPSERT_AXIOM",
-        "DELETE_AXIOM"
+        "DELETE_AXIOM",
+        "BIND_ASSET",
+        "UNBIND_ASSET",
+        "CREATE_RELATIONSHIP_TYPE"
       ]
     },
     "state": {
@@ -61,6 +64,19 @@
     },
     "term": {
       "$ref": "../entity/data/glossaryTerm.json"
+    },
+    "assetBinding": {
+      "description": "Reviewed association between a concept and the data asset that realizes it.",
+      "$ref": "assetRealization.json"
+    },
+    "relationshipType": {
+      "description": "Administrator-reviewed semantic relationship type proposed by discovery.",
+      "$ref": "../entity/data/relationshipType.json"
+    },
+    "evidenceFingerprint": {
+      "description": "Fingerprint of the change-set discovery context supporting this operation.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "state": {
       "$ref": "#/definitions/state"

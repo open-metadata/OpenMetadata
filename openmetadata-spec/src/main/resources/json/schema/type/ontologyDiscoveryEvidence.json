@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyDiscoveryEvidence.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDiscoveryEvidence",
+  "description": "A versioned persisted-catalog observation used to support an ontology proposal. Raw source samples are never stored here.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyDiscoveryEvidence",
+  "properties": {
+    "entityType": {
+      "description": "Catalog entity type containing the evidence.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "fullyQualifiedName": {
+      "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "sourceVersion": {
+      "description": "Catalog entity version observed by discovery.",
+      "type": "number",
+      "minimum": 0.1,
+      "multipleOf": 0.1
+    },
+    "updatedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "sourceRunId": {
+      "description": "Originating completed ingestion or automation run when exposed by the catalog.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "signals": {
+      "description": "Bounded labels for the catalog signals used; never raw sample values.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240
+      },
+      "maxItems": 20,
+      "uniqueItems": true,
+      "default": []
+    }
+  },
+  "required": ["entityType", "fullyQualifiedName"],
+  "additionalProperties": false
+}

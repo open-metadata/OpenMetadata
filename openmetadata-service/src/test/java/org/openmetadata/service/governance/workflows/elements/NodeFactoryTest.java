@@ -16,7 +16,9 @@ package org.openmetadata.service.governance.workflows.elements;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,6 +96,26 @@ class NodeFactoryTest {
     NodeInterface node = NodeFactory.createNode(def, CFG, "TestWorkflow");
 
     assertInstanceOf(EndEvent.class, node);
+  }
+
+  @Test
+  void testTerminatingEndEventCancelsSiblingExecutions() {
+    EndEventDefinition def = new EndEventDefinition().withName("failure").withTerminateAll(true);
+
+    EndEvent node = (EndEvent) NodeFactory.createNode(def, CFG, "TestWorkflow");
+
+    assertTrue(
+        node.getEndEvent().getEventDefinitions().stream()
+            .anyMatch(TerminateEventDefinition.class::isInstance));
+  }
+
+  @Test
+  void testProgrammaticErrorEndEventCancelsSiblingExecutions() {
+    EndEvent node = new EndEvent("Error");
+
+    assertTrue(
+        node.getEndEvent().getEventDefinitions().stream()
+            .anyMatch(TerminateEventDefinition.class::isInstance));
   }
 
   @Test

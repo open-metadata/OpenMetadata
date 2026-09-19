@@ -11,26 +11,6 @@
  *  limitations under the License.
  */
 /**
- * Generate a reviewable ontology Draft without applying any entity mutation.
- */
-export interface OntologyDomainDraftRequest {
-    changeSetName: string;
-    description:   string;
-    /**
-     * Optional service-discovery provenance. The server adds the actual model identifier and
-     * generation time to the persisted draft.
-     */
-    discoveryContext?: OntologyDiscoveryContext;
-    displayName:       string;
-    domainDescription: string;
-    glossary:          string;
-    maxConcepts:       number;
-}
-
-/**
- * Optional service-discovery provenance. The server adds the actual model identifier and
- * generation time to the persisted draft.
- *
  * Immutable provenance and deduplication context for an automated ontology draft.
  */
 export interface OntologyDiscoveryContext {
