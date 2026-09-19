@@ -14,13 +14,11 @@ import type {
   EdgeData as G6EdgeData,
   Graph,
   NodeData as G6NodeData,
+  NodeData,
 } from '@antv/g6';
-import {
-  GraphEdge,
-  GraphFilterOptions,
-} from '../types/knowledgeGraph.types';
 import { EntityReference } from '../generated/entity/type';
 import { GraphData as RdfGraphData } from '../rest/rdfAPI.interface';
+import { GraphEdge, GraphFilterOptions } from '../types/knowledgeGraph.types';
 import type { RelationCategory } from './knowledgeGraphRelations.interface';
 
 export interface KnowledgeGraphProps {
@@ -215,4 +213,15 @@ export interface KnowledgeGraphViewControlsProps {
   onRefresh: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+}
+
+// The canvas hook renders nodes through a component the caller injects, so the
+// contract lives here rather than beside the component that implements it.
+export interface CustomNodeProps {
+  nodeData: NodeData;
+  nodeRenderKey: string;
+  onSelect?: (keyboard: boolean) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  onExpand?: () => void;
 }

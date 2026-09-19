@@ -60,6 +60,7 @@ export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
 import type { LineageConfig } from '../../../interface/lineage.interface';
+
 export type { LineageConfig };
 
 export interface LineageConfigModalProps {

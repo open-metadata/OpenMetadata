@@ -14,13 +14,11 @@
 import type { EdgeData, ElementDatum, IElementEvent, NodeData } from '@antv/g6';
 import { ExtensionCategory, Graph, register } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-// G6 registers a React component as a node type; there is no lower-layer form of one.
-// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
-import CustomNode from '../../components/KnowledgeGraph/GraphElements/CustomNode';
+import { ComponentType, useCallback, useEffect, useRef, useState } from 'react';
 import { ZOOM_RANGE } from '../../constants/KnowledgeGraph.constants';
 import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
+  CustomNodeProps,
   EdgeTooltipState,
   GraphData,
   GraphLevelRing,
@@ -271,6 +269,8 @@ interface CanvasOptions {
   viewportKey: string;
   onSelectionChange: (selection: GraphSelection) => void;
   onExpandGroup?: (id: string) => void;
+  /** Renders one graph node. Injected so this hook stays below the component layer. */
+  NodeComponent: ComponentType<CustomNodeProps>;
 }
 
 const getWorldRings = (
@@ -380,9 +380,11 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     }
   }, []);
 
-  const renderNode = useCallback(
-    (data: NodeData) => (
-      <CustomNode
+  const renderNode = useCallback((data: NodeData) => {
+    const { NodeComponent } = latest.current;
+
+    return (
+      <NodeComponent
         nodeData={data}
         nodeRenderKey={getNodeRenderKey(data)}
         onBlur={() => {
@@ -413,9 +415,8 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           }
         }}
       />
-    ),
-    []
-  );
+    );
+  }, []);
 
   const applyAppearance = useCallback((graph: Graph) => {
     const current = latest.current;
