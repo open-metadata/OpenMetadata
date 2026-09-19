@@ -49,6 +49,7 @@ import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
+import { getSettingPath } from './RouterPaths';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
 
@@ -59,7 +60,6 @@ export {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from './RouterPaths';
-import { getSettingPath } from './RouterPaths';
 
 /**
  * The landing page is reachable at two paths: `/` (rendered in place, where
