@@ -92,20 +92,29 @@ const findAccount = (_ctx, id) => {
   };
 };
 
+// Every browser-side SPA client (public OIDC, mocked Auth0 tenant, mocked
+// MSAL tenant) shares the same redirect set. Every SDK we host — oidc-client,
+// @auth0/auth0-react, @azure/msal-browser — points at the OM SPA's own
+// /callback (interactive) and /silent-callback (hidden iframe, oidc-client
+// only). Keeping the list on one constant means adding a new port later is a
+// single edit; forgetting to sync a client's list has bit us before.
+const SPA_REDIRECT_URIS = [
+  'http://localhost:8585/callback',
+  'http://localhost:3000/callback',
+  'http://localhost:8585/silent-callback',
+];
+const SPA_POST_LOGOUT_REDIRECT_URIS = [
+  'http://localhost:8585',
+  'http://localhost:3000',
+];
+
 const clients = [
   {
     client_id: 'openmetadata-test',
     client_secret: 'openmetadata-test-secret',
     grant_types: ['authorization_code', 'refresh_token'],
-    redirect_uris: [
-      'http://localhost:8585/callback',
-      'http://localhost:3000/callback',
-      'http://localhost:8585/silent-callback',
-    ],
-    post_logout_redirect_uris: [
-      'http://localhost:8585',
-      'http://localhost:3000',
-    ],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
     response_types: ['code'],
     token_endpoint_auth_method: 'client_secret_post',
     scope: 'openid email profile offline_access',
@@ -113,15 +122,40 @@ const clients = [
   {
     client_id: 'openmetadata-test-public',
     grant_types: ['authorization_code', 'refresh_token'],
-    redirect_uris: [
-      'http://localhost:8585/callback',
-      'http://localhost:3000/callback',
-      'http://localhost:8585/silent-callback',
-    ],
-    post_logout_redirect_uris: [
-      'http://localhost:8585',
-      'http://localhost:3000',
-    ],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+    scope: 'openid email profile offline_access',
+  },
+  // Auth0 SPA client. @auth0/auth0-react runs Authorization Code + PKCE with
+  // no client secret, discovering endpoints from
+  //   https://<domain>/.well-known/openid-configuration
+  // — we serve that at the /auth0 path prefix (see the tenant-shape
+  // responders below). This client_id is what the auth0-oidc fixture sets in
+  // OM's `authenticationConfiguration.clientId`, so the SDK sends it on the
+  // /authorize request and on the /oauth/token PKCE exchange.
+  {
+    client_id: 'openmetadata-auth0-client',
+    grant_types: ['authorization_code', 'refresh_token'],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+    scope: 'openid email profile offline_access',
+  },
+  // MSAL SPA client. @azure/msal-browser runs Authorization Code + PKCE
+  // against `${authority}/oauth2/v2.0/authorize` and
+  // `${authority}/oauth2/v2.0/token`; the fixture points `authority` at
+  //   http://localhost:9090/msal/<tid>/v2.0
+  // and MSAL will discover endpoints via
+  //   {authority}/.well-known/openid-configuration
+  // which the tenant responder below serves. Same PKCE-only flow as Auth0.
+  {
+    client_id: 'openmetadata-msal-client',
+    grant_types: ['authorization_code', 'refresh_token'],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
     response_types: ['code'],
     token_endpoint_auth_method: 'none',
     scope: 'openid email profile offline_access',
@@ -408,6 +442,34 @@ async function init() {
     metrics.authRequests++;
     next();
   });
+
+  // ── Auth0 SPA SDK path aliases ─────────────────────────────────────────
+  //
+  // @auth0/auth0-spa-js hard-codes tenant-flavored URL paths regardless of
+  // what discovery advertises: it POSTs `${domain}/oauth/token`, redirects
+  // to `${domain}/authorize`, logs out at `${domain}/v2/logout`, and pulls
+  // signing keys from `${domain}/.well-known/jwks.json`. Setting `domain`
+  // to this mock (http://localhost:9090) therefore needs those exact
+  // paths to work — which they can't hit oidc-provider directly because
+  // oidc-provider owns /auth, /token, /session/end, /jwks. The aliases
+  // below rewrite the URL in place and hand off to oidc-provider so the
+  // real SDK, running unmodified, drives the real protocol against the
+  // shared provider state (same clients, same JWKS, same accounts). See
+  // sso-providers/auth0.ts for the fixture that consumes these paths.
+  //
+  // The redirect_uri (http://localhost:8585/callback) and client_id
+  // (openmetadata-auth0-client) are already registered on the shared
+  // provider above, so no per-alias client bookkeeping is needed.
+  const rewriteTo = (targetPath) => (req, _res, next) => {
+    const [, search = ''] = req.originalUrl.split('?');
+    req.url = search ? `${targetPath}?${search}` : targetPath;
+    next();
+  };
+  app.all('/authorize', rewriteTo('/auth'));
+  app.all('/oauth/token', rewriteTo('/token'));
+  app.all('/userinfo', rewriteTo('/me'));
+  app.all('/v2/logout', rewriteTo('/session/end'));
+  app.get('/.well-known/jwks.json', rewriteTo('/jwks'));
 
   // Health check
   app.get('/health', (_req, res) => {

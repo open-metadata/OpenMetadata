@@ -17,12 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -30,8 +24,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.EntityLoadSpec;
+import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
+import org.openmetadata.it.factories.SeedData;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.server.ServerHandle;
@@ -39,11 +34,6 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
@@ -78,11 +68,14 @@ class ServiceDeleteSearchCleanupScaleIT {
       LoggerFactory.getLogger(ServiceDeleteSearchCleanupScaleIT.class);
   private static final int DEFAULT_TABLES = 100_000;
   private static final int COLUMNS_PER_TABLE = 5;
-  // Concurrency is intentionally modest: each create blocks on a synchronous table-doc index, and
-  // too many in flight saturates a single-node search engine's write queue. Tune with
-  // -Djpw.scale.workers.
-  private static final int LOAD_WORKERS = Integer.getInteger("jpw.scale.workers", 8);
-  private static final int CREATE_TIMEOUT_SECONDS = 300;
+  // Seeding runs through EntityLoader (the same path Scale100kEntitiesIT uses) rather than a
+  // local executor. Measured on nightly run 34443597282, both at parallelWorkers=8 against the
+  // same cluster and creating 100k tables x 5 columns: EntityLoader took 29m14s (~57 tables/s)
+  // where the executor here took 106m51s (~15.6/s). That 3.65x was 42% of the whole 5h workflow.
+  //
+  // EntityLoader also honours -Djpw.loader.maxWorkers, so one property now governs seed
+  // concurrency for every scale test instead of this one reading a second, easily-missed name.
+  private static final int LOAD_WORKERS = Integer.getInteger("jpw.scale.workers", 32);
   // How long the search cascade gets to drop this service's docs to zero after the async delete is
   // accepted. On an unloaded cluster this ran in 116s, which is what the original 5 minutes was
   // sized against. It no longer holds: POST /v1/tables now spends ~1.3s server-side per table
@@ -110,9 +103,26 @@ class ServiceDeleteSearchCleanupScaleIT {
       throws Exception {
     final int tableCount = Integer.getInteger("jpw.scale.tables", DEFAULT_TABLES);
 
-    final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    final String serviceId = service.getId().toString();
+    // EntityLoader builds its own service + schema (ensureTablesSchema) and tracks the service as
+    // a namespace root, so it is read back from there rather than created here — creating one up
+    // front would leave the seeded tables under a *different* service than the one deleted below,
+    // and the scoped doc counts would trivially pass against an empty service.
+    final long seedStart = System.currentTimeMillis();
+    SeedData.provision(
+        EntityLoadSpec.builder()
+            .count(EntityKind.TABLE, tableCount)
+            .columnsPerTable(COLUMNS_PER_TABLE)
+            .parallelWorkers(LOAD_WORKERS)
+            .build(),
+        ns,
+        server);
+    LOG.info(
+        "Seeded {} tables ({} columns each) in {} ms",
+        tableCount,
+        COLUMNS_PER_TABLE,
+        System.currentTimeMillis() - seedStart);
+
+    final String serviceId = seededServiceId(ns);
 
     // Resolve the entity indexes via the server (IndexAliasInspector), not the in-JVM
     // Entity.getSearchRepository() — that static is null in external mode, where the OM service
@@ -120,14 +130,6 @@ class ServiceDeleteSearchCleanupScaleIT {
     // openmetadata_column_search_index) so counts work regardless of clusterAlias.
     final String tableIndex = indexAliases.indexNameFor(Entity.TABLE);
     final String columnIndex = indexAliases.indexNameFor(Entity.TABLE_COLUMN);
-
-    final long seedStart = System.currentTimeMillis();
-    seedTables(ns, schema.getFullyQualifiedName(), tableCount);
-    LOG.info(
-        "Seeded {} tables ({} columns each) in {} ms",
-        tableCount,
-        COLUMNS_PER_TABLE,
-        System.currentTimeMillis() - seedStart);
 
     final long expectedColumns = (long) tableCount * COLUMNS_PER_TABLE;
     awaitCount(tableIndex, serviceId, tableCount);
@@ -150,46 +152,17 @@ class ServiceDeleteSearchCleanupScaleIT {
         deleteMs);
   }
 
-  private void seedTables(final TestNamespace ns, final String schemaFqn, final int count) {
-    final String namePrefix = ns.prefix("scale_tbl") + "_";
-    final ExecutorService executor = Executors.newFixedThreadPool(LOAD_WORKERS);
-    try {
-      final List<Future<?>> futures = new ArrayList<>(count);
-      for (int i = 0; i < count; i++) {
-        final int index = i;
-        futures.add(
-            executor.submit(
-                () -> {
-                  // Fetch the admin client fresh per task: a 100k seed outlives the operator
-                  // token's ~1h TTL, and ExternalTokenRefresher rebuilds SdkClients' cached client
-                  // on re-login. A captured reference would pin the pre-refresh (expired) token and
-                  // fail mid-seed with "401 Expired token!".
-                  SdkClients.adminClient()
-                      .tables()
-                      .create(
-                          new CreateTable()
-                              .withName(namePrefix + index)
-                              .withDatabaseSchema(schemaFqn)
-                              .withColumns(buildColumns()));
-                  return null;
-                }));
-      }
-      for (final Future<?> future : futures) {
-        future.get(CREATE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-      }
-    } catch (final Exception e) {
-      throw new IllegalStateException("Failed seeding scale tables", e);
-    } finally {
-      executor.shutdownNow();
-    }
-  }
-
-  private List<Column> buildColumns() {
-    final List<Column> columns = new ArrayList<>(COLUMNS_PER_TABLE);
-    for (int i = 0; i < COLUMNS_PER_TABLE; i++) {
-      columns.add(new Column().withName("col_" + i).withDataType(ColumnDataType.STRING));
-    }
-    return columns;
+  /** The databaseService EntityLoader created for this namespace's tables. */
+  private static String seededServiceId(final TestNamespace ns) {
+    return ns.trackedRoots().stream()
+        .filter(root -> Entity.DATABASE_SERVICE.equals(root.entityType()))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "EntityLoader seeded no databaseService root into the namespace"))
+        .id()
+        .toString();
   }
 
   private void recursiveHardDelete(final String serviceId) {

@@ -55,8 +55,7 @@ class BaseTableRowCountToBeBetweenValidator(BaseTestValidator):
                 [TestResultValue(name=ROW_COUNT, value=None)],
             )
 
-        min_bound = self.get_min_bound("minValue")
-        max_bound = self.get_max_bound("maxValue")
+        min_bound, max_bound = self.get_bounds("minValue", "maxValue")
 
         return self.get_test_case_result_object(
             self.execution_date,
