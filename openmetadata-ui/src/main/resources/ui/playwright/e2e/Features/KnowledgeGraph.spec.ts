@@ -69,10 +69,11 @@ const chooseView = async (page: Page, name: string) => {
     Balanced: 'graph-presentation-chooser',
   };
   const chooser = choosers[name] ?? 'graph-label-chooser';
-  await chooseSelectOption(
-    page.getByTestId(chooser),
-    page.getByRole('option', { name, exact: true })
-  );
+  // EXPERIMENT (see commit message): reverted to the direct open-then-click so
+  // the RDF lane can say whether this branch's helper perturbs the canvas, or
+  // whether main's pixel assertions are simply brittle.
+  await page.getByTestId(chooser).getByRole('button').click();
+  await page.getByRole('option', { name, exact: true }).click();
   await expect(page.getByRole('listbox')).toHaveCount(0);
   await page.getByTestId(chooser).getByRole('button').focus();
   await page.keyboard.press('Escape');
