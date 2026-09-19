@@ -368,11 +368,26 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('renders every returned node and predicate from the live RDF endpoint', async ({
     page,
   }) => {
-    const response = page.waitForResponse(
-      (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
-    );
-    await open(page);
-    const graph = (await (await response).json()) as GraphData;
+    // RDF projection is asynchronous, so the first explore response after the beforeAll fixture
+    // is created can legitimately carry the root table and none of its relationships yet. The
+    // node/edge equality assertions below are both satisfied by an empty graph, so without waiting
+    // for the projection to land this test reports "0 relationships" as a product failure. Re-open
+    // until the endpoint returns edges, then hold the canvas to exactly that response.
+    let graph: GraphData = { nodes: [], edges: [] };
+    await expect
+      .poll(
+        async () => {
+          const pending = page.waitForResponse(
+            (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
+          );
+          await open(page);
+          graph = (await (await pending).json()) as GraphData;
+
+          return graph.edges.length;
+        },
+        { timeout: 60_000 }
+      )
+      .toBeGreaterThan(0);
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length
@@ -380,7 +395,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.locator('[data-edge-id]')).toHaveCount(
       graph.edges.length
     );
-    expect(graph.edges.length).toBeGreaterThan(0);
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect(page.getByTestId('graph-status')).toContainText(
       `${graph.nodes.length} entities`

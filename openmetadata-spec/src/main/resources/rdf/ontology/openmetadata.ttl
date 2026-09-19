@@ -3707,6 +3707,10 @@ om:serverType a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "serverType" .
 
+om:serviceAttributes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "serviceAttributes" .
+
 om:shareConfig a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "shareConfig" .

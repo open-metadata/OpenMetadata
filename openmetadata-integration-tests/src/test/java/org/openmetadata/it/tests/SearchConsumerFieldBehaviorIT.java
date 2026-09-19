@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,8 +23,6 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -64,7 +61,6 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * documents (Assigned and Resolved), because a mapping that only ever sees one branch can declare a
  * shape the other branch can never produce and nothing notices.
  */
-@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SearchConsumerFieldBehaviorIT {
 
@@ -122,22 +118,22 @@ class SearchConsumerFieldBehaviorIT {
           "jp", new String[] {"東京タワーの売上", "東京"},
           "zh", new String[] {"北京大学的销售报表", "销售"});
 
-  @Container
-  static OpensearchContainer<?> opensearch =
-      new OpensearchContainer<>(
-              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
-          .withStartupTimeout(Duration.ofMinutes(5))
-          .withEnv("discovery.type", "single-node")
-          .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
-          .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-          .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-          .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
+  private static final String OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
+
+  /**
+   * Started by hand rather than through {@code @Container} so that a failure to build the
+   * plugin image can abort this suite instead of erroring it. The image is built in a field
+   * initializer under {@code @Container}, and a throw there surfaces as
+   * {@code ExceptionInInitializerError} before any assumption can run.
+   */
+  static OpensearchContainer<?> opensearch;
 
   private OpenSearchClient openSearchClient;
   private ObjectMapper mapper;
 
   @BeforeAll
   void setUp() throws Exception {
+    opensearch = SearchTestImages.startWithAnalysisPlugins(OPENSEARCH_IMAGE);
     HttpHost httpHost = new HttpHost("http", opensearch.getHost(), opensearch.getMappedPort(9200));
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
@@ -174,6 +170,9 @@ class SearchConsumerFieldBehaviorIT {
   void tearDown() throws Exception {
     if (openSearchClient != null) {
       openSearchClient._transport().close();
+    }
+    if (opensearch != null) {
+      opensearch.stop();
     }
   }
 

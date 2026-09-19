@@ -273,6 +273,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.TagPropagation;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import software.amazon.awssdk.utils.Either;
 
@@ -1033,7 +1034,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * not declare is rejected as an unknown field.
    */
   protected String getInheritableFields(String parentEntityType) {
-    return getInheritableFields();
+    return withPropagatedTags(getInheritableFields(), parentEntityType);
+  }
+
+  /**
+   * Adds {@code tags} to the fields loaded on a parent, but only while tag propagation is enabled
+   * and only when both sides declare the field. Requesting a field the parent type does not declare
+   * is rejected as unknown, and loading the parent's tags on every read would be wasted work for the
+   * deployments — the default — that have propagation switched off.
+   */
+  protected final String withPropagatedTags(String fields, String parentEntityType) {
+    if (!supportsTags || parentEntityType == null || !TagPropagation.isEnabled()) {
+      return fields;
+    }
+    if (!Entity.hasEntityRepository(parentEntityType)
+        || !Entity.entityHasField(parentEntityType, FIELD_TAGS)) {
+      return fields;
+    }
+    return EntityUtil.addField(fields, FIELD_TAGS);
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1058,11 +1076,59 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * whether the entity already has local values.
    */
   protected boolean requiresParentForInheritance(T entity, Fields fields) {
+    return requiresParentForOwnersOrDomains(entity, fields)
+        || requiresParentForPropagatedTags(fields);
+  }
+
+  /**
+   * The owners/domains half of {@link #requiresParentForInheritance}. Repositories that choose for
+   * themselves which fields to project onto the parent need to ask this separately, because needing
+   * the parent's tags does not mean owners and domains have to be loaded as well.
+   */
+  protected final boolean requiresParentForOwnersOrDomains(T entity, Fields fields) {
     boolean needsOwners =
         supportsOwners && fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners());
     boolean needsDomains =
         supportsDomains && fields.contains(FIELD_DOMAINS) && nullOrEmpty(entity.getDomains());
     return needsOwners || needsDomains;
+  }
+
+  /**
+   * Whether the parent has to be loaded so its propagated tags can be merged in.
+   *
+   * <p>Deliberately without the "only when the entity has none of its own" condition that owners and
+   * domains carry: inherited tags merge rather than fill a gap, so an asset that already carries
+   * tags still needs its ancestors'. Without this the gate stays shut on a {@code ?fields=tags}
+   * read, the parent is never loaded, and propagation silently does nothing.
+   */
+  protected final boolean requiresParentForPropagatedTags(Fields fields) {
+    return supportsTags
+        && fields != null
+        && fields.contains(FIELD_TAGS)
+        && TagPropagation.isEnabled();
+  }
+
+  private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
+
+  /**
+   * Field list to project onto a parent, covering only the inheritance kinds that actually need it.
+   * Repositories that load the parent themselves rather than going through {@link
+   * #setInheritedFields(Object, Fields)} share this so a newly inheritable field is wired in once.
+   */
+  protected static String inheritanceParentFields(
+      boolean needsOwnersOrDomains, boolean needsRetentionPeriod, boolean needsTags) {
+    List<String> parentFields = new ArrayList<>();
+    if (needsOwnersOrDomains) {
+      parentFields.add(FIELD_OWNERS);
+      parentFields.add(FIELD_DOMAINS);
+    }
+    if (needsRetentionPeriod) {
+      parentFields.add(RETENTION_PERIOD_FIELD);
+    }
+    if (needsTags) {
+      parentFields.add(FIELD_TAGS);
+    }
+    return String.join(",", parentFields);
   }
 
   public final T getForInheritance(UUID id, Fields fields, Include include) {
@@ -1082,6 +1148,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           resolveReferencesFromToRecords(
               inheritanceRelations, Relationship.HAS, DOMAIN, NON_DELETED));
     }
+    // find() above does not hydrate tags, so this ancestor would contribute only the tags it
+    // inherits in turn and never its own -- see fetchInheritableRelationships.
+    fetchAndSetTags(List.of(entity), fields);
     if (!requiresParentForInheritance(entity, fields)) {
       return entity;
     }
@@ -1094,7 +1163,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (containerRef != null) {
       // Preserve the requested inheritance shape (e.g. retentionPeriod-only), but only for this
       // repository's declared inheritable fields to avoid leaking invalid fields up the chain.
-      String parentFields = projectInheritanceFields(fields);
+      String parentFields = projectInheritanceFields(fields, containerRef.getType());
       EntityInterface parent =
           Entity.getEntityForInheritance(
               containerRef.getType(), containerRef.getId(), parentFields, ALL);
@@ -1118,13 +1187,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ArrayList<>(relations);
   }
 
-  private String projectInheritanceFields(Fields fields) {
+  private String projectInheritanceFields(Fields fields, String parentEntityType) {
     String inheritableFields = getInheritableFields();
     if (inheritableFields == null || inheritableFields.isBlank()) {
-      return "";
+      return withPropagatedTags("", parentEntityType);
     }
     if (fields == null || nullOrEmpty(fields.getFieldList())) {
-      return inheritableFields;
+      return withPropagatedTags(inheritableFields, parentEntityType);
     }
 
     List<String> projectedFields = new ArrayList<>();
@@ -1135,13 +1204,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    return projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    String projected =
+        projectedFields.isEmpty() ? inheritableFields : String.join(",", projectedFields);
+    return withPropagatedTags(projected, parentEntityType);
   }
 
   public void fetchInheritableRelationships(List<T> entities, Fields fields) {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
+    // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
+    // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
+    fetchAndSetTags(entities, fields);
   }
 
   @SuppressWarnings("unchecked")
@@ -1161,6 +1236,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
   protected void applyInheritance(T entity, Fields fields, EntityInterface parent) {
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   /**
@@ -8163,6 +8239,91 @@ public abstract class EntityRepository<T extends EntityInterface> {
           mergedInheritedEntityRefs(
               entity.getReviewers(), inheritedEntityReferences(parent.getReviewers())));
     }
+  }
+
+  /**
+   * Merges the parent's tags into the entity's own, when tag propagation is enabled.
+   *
+   * <p>Merge rather than replace, unlike {@link #inheritDomains}: a tag from the service is an
+   * addition to whatever the asset carries, not a fallback for an asset that has none. Applied at
+   * each hop, so a service tag reaches a table through database and schema.
+   *
+   * <p>Inherited labels are stamped {@code DERIVED}, which the platform already treats as
+   * not-user-editable, so a propagated tag cannot be removed from the asset — only from the parent
+   * it came from. Nothing is persisted; this is a read-time view, so turning the setting off
+   * restores the previous answer immediately and no {@code tag_usage} rows are written.
+   */
+  public final void inheritTags(T entity, Fields fields, EntityInterface parent) {
+    if (supportsTags) {
+      applyInheritedTags(entity, fields, parent);
+    }
+  }
+
+  /**
+   * The propagation rules themselves, free of any repository state so they can be exercised
+   * directly. Package-private for {@code InheritTagsTest}.
+   */
+  static void applyInheritedTags(EntityInterface entity, Fields fields, EntityInterface parent) {
+    if (fields == null
+        || !fields.contains(FIELD_TAGS)
+        || parent == null
+        || !TagPropagation.isEnabled()) {
+      return;
+    }
+    List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
+    if (inherited.isEmpty()) {
+      return;
+    }
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+    Set<String> existing =
+        merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
+    Set<String> ownParents =
+        merged.stream()
+            .map(tag -> FullyQualifiedName.getParentFQN(tag.getTagFQN()))
+            .collect(Collectors.toSet());
+    for (TagLabel tag : inherited) {
+      // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
+      if (existing.contains(tag.getTagFQN()) || conflictsWithOwnTag(tag, ownParents)) {
+        continue;
+      }
+      existing.add(tag.getTagFQN());
+      merged.add(tag);
+    }
+    entity.setTags(merged);
+  }
+
+  /**
+   * Whether an inherited label would put the entity in two classes at once. Under a mutually
+   * exclusive classification an entity may carry only one tag -- {@code Tier.Tier1} or
+   * {@code Tier.Tier2}, never both -- and the asset's own, more specific choice is the one to keep.
+   *
+   * <p>Inheritance runs on the read path, where {@code checkMutuallyExclusive} never does: that
+   * guard validates writes. Without this, a table tagged {@code Tier.Tier2} under a database tagged
+   * {@code Tier.Tier1} reports both, a combination the write path would have rejected. {@code Tier}
+   * is a system classification and mutually exclusive out of the box, so this needs no unusual
+   * setup to reach.
+   *
+   * <p>The cheap string comparison comes first so the classification lookup behind {@link
+   * TagLabelUtil#mutuallyExclusive} only happens for a label that actually collides.
+   */
+  private static boolean conflictsWithOwnTag(TagLabel inherited, Set<String> ownParents) {
+    return ownParents.contains(FullyQualifiedName.getParentFQN(inherited.getTagFQN()))
+        && TagLabelUtil.mutuallyExclusive(inherited);
+  }
+
+  /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
+  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+    if (nullOrEmpty(tags)) {
+      return Collections.emptyList();
+    }
+    return tags.stream()
+        .map(
+            tag -> {
+              TagLabel copy = JsonUtils.deepCopy(tag, TagLabel.class);
+              copy.setLabelType(TagLabel.LabelType.DERIVED);
+              return copy;
+            })
+        .toList();
   }
 
   private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {

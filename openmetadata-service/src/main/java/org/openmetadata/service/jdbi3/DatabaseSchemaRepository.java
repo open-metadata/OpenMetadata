@@ -68,10 +68,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TagPropagation;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
@@ -538,19 +540,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(schema, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(schema, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && schema.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     Database database =
-        loadInheritanceParentLeniently(schema.getDatabase(), inheritanceFields, Database.class);
+        loadInheritanceParentLeniently(
+            schema.getDatabase(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            Database.class);
     if (database == null) {
       return;
     }
@@ -561,6 +563,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (needsRetention) {
       schema.withRetentionPeriod(database.getRetentionPeriod());
     }
+    // The database was loaded through the inheritance path, so its tags already carry the
+    // service's -- that is what makes propagation transitive down to tables.
+    inheritTags(schema, fields, database);
   }
 
   @Override
@@ -575,6 +580,26 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     return entity.getDatabase();
   }
 
+  /**
+   * Carries a schema tag change down to the assets beneath it in the search index, matching the
+   * read-time inheritance in {@link EntityRepository#inheritTags}. Without it Explore would keep
+   * showing the pre-change tags while the API reported the new ones.
+   */
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    // Gated on the same setting as the read-time inheritance: this cascade carries this entity's
+    // OWN tags into its children, so leaving it ungated would show tags in Explore that
+    // GET /{entity}/{id} does not report while propagation is off.
+    if (TagPropagation.isEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
+    return descriptors;
+  }
+
   @Override
   protected String getInheritableFields() {
     return "owners,domains,retentionPeriod";
@@ -584,6 +609,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
     if (parent instanceof Database database) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null
