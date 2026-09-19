@@ -1205,6 +1205,9 @@ test.describe('Domains', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: tag.responseData.fullyQualifiedName,
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
       });
 
       await redirectToHomePage(page);
@@ -1347,6 +1350,9 @@ test.describe('Domains', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: tag.responseData.fullyQualifiedName,
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
         isDomain: false,
       });
     } finally {
@@ -2115,6 +2121,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: testTag.responseData.fullyQualifiedName,
         glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          testGlossaryTerm.responseData.displayName ??
+          testGlossaryTerm.responseData.name,
       });
 
       // Verify tag is visible before rename
@@ -2521,6 +2530,9 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: testTag.responseData.fullyQualifiedName,
         glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          testGlossaryTerm.responseData.displayName ??
+          testGlossaryTerm.responseData.name,
       });
 
       // Verify all relationships before rename
@@ -2974,6 +2986,9 @@ test.describe('Data Consumer Domain Ownership', () => {
       await addTagsAndGlossaryToDomain(dataConsumerPage, {
         tagFqn: tag.responseData.fullyQualifiedName,
         glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+        glossaryTermName:
+          glossaryTerm.responseData.displayName ??
+          glossaryTerm.responseData.name,
         isDomain: false,
       });
     });

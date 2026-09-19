@@ -12,6 +12,13 @@
  */
 import { expect, Page } from '@playwright/test';
 import { clickOutside, redirectToExplorePage } from './common';
+import {
+  applyGlossaryPicker,
+  glossaryPickerRow,
+  isGlossaryTermSelected,
+  openGlossaryPicker,
+  searchGlossaryPicker,
+} from './glossaryPicker';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { ENTITY_PATH } from '../support/entity/Entity.interface';
@@ -337,14 +344,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
   await page
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
-  await page
-    .locator(
-      '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]'
-    )
-    .first()
-    .waitFor({
-      state: 'visible',
-    });
 
   const editIcon = page.locator('[data-testid="edit-glossary-terms"]');
   // Fallback for ML Model, which uses an 'Add' chip instead of the edit icon.
@@ -360,36 +359,23 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     })
     .toBeGreaterThan(0);
 
-  if (await editIcon.isVisible()) {
-    await editIcon.click();
-  } else {
-    await addTermChip.click();
-  }
-
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
+  await openGlossaryPicker(
+    page,
+    (await editIcon.isVisible()) ? editIcon : addTermChip
+  );
 
   if (termName) {
-    const searchBar = page.locator(
-      '[data-testid="glossary-term-select-search-bar"]'
-    );
-
-    await searchBar.fill(termName);
-    await waitForAllLoadersToDisappear(page);
-    const termOption = page
-      .locator('.selectable-list-item')
-      .filter({ hasText: termName });
-
-    await termOption.click();
-  } else {
-    const firstTerm = page.locator('.selectable-list-item').first();
-    await firstTerm.click();
+    await searchGlossaryPicker(page, termName);
   }
 
-  const patchResp = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
-  await patchResp;
+  const row = termName
+    ? glossaryPickerRow(page, termName)
+    : page.locator('[data-testid^="tree-node-"]').first();
+
+  await row.waitFor({ state: 'visible' });
+  await row.click();
+
+  await applyGlossaryPicker(page);
 };
 
 export const editDomain = async (page: Page, domainName: string) => {
@@ -529,36 +515,22 @@ export const removeGlossaryTermFromPanel = async (
     .locator('[data-testid="edit-glossary-terms"]')
     .scrollIntoViewIfNeeded();
 
-  await page.getByTestId('edit-glossary-terms').waitFor({
-    state: 'visible',
+  await openGlossaryPicker(page, page.getByTestId('edit-glossary-terms'), {
+    force: true,
   });
-  // eslint-disable-next-line playwright/no-force-option -- popover trigger may be partially obstructed by animation
-  await page.getByTestId('edit-glossary-terms').click({ force: true });
 
-  await page
-    .locator('[data-testid="selectable-list"]')
-    .waitFor({ state: 'visible' });
-
-  await waitForAllLoadersToDisappear(page);
   for (const termName of termDisplayNames) {
-    const searchBar = page.getByTestId('glossary-term-select-search-bar');
-    await searchBar.fill(termName);
+    await searchGlossaryPicker(page, termName);
 
-    // Wait for the list to update with search results
-    const termItem = page
-      .locator('.selectable-list-item')
-      .filter({ hasText: termName });
-    await termItem.waitFor({ state: 'visible' });
+    const row = glossaryPickerRow(page, termName);
+    await row.waitFor({ state: 'visible' });
 
-    await termItem.click();
-
-    // Clear search for next iteration if there are multiple terms
-    await searchBar.clear();
+    if (await isGlossaryTermSelected(row)) {
+      await row.click();
+    }
   }
 
-  const patchPromise = waitForPatchResponse(page);
-  await page.getByRole('button', { name: 'Update' }).click();
-  await patchPromise;
+  await applyGlossaryPicker(page);
 };
 
 export const removeOwnerFromPanel = async (

@@ -12,6 +12,13 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import {
+  applyGlossaryPicker,
+  glossaryPickerRow,
+  isGlossaryTermSelected,
+  openGlossaryPicker,
+  searchGlossaryPicker,
+} from '../../../utils/glossaryPicker';
 import type { RightPanelPageObject } from './RightPanelPageObject';
 
 /**
@@ -66,7 +73,6 @@ export class OverviewPageObject extends RightPanelBase {
   private readonly tagSearchBar: Locator;
   private readonly domainSearchBar: Locator;
   private readonly domainList: Locator;
-  private readonly glossaryTermSearchBar: Locator;
   private readonly tagListContainer: Locator;
   private readonly tierListContainer: Locator;
   private readonly updateTierButton: Locator;
@@ -124,9 +130,6 @@ export class OverviewPageObject extends RightPanelBase {
     this.domainTree = this.page.getByTestId('domain-selectable-tree');
     this.domainSearchBar = this.domainTree.getByTestId('searchbar');
     this.domainList = this.page.locator('.domains-content');
-    this.glossaryTermSearchBar = this.searchBar.getByTestId(
-      'glossary-term-select-search-bar'
-    );
     this.tagListContainer = this.page.locator('.tags-section');
     this.tierListContainer = this.page.getByTestId('cards');
     this.updateTierButton = this.page.getByTestId('update-tier-card');
@@ -232,35 +235,22 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tag selection modal to be visible
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Wait for the ES search response as a deterministic signal that the
-    // list has settled with its final options.
-    const tagSearchResponse = this.page.waitForResponse(
-      (response) => {
-        const url = response.url();
-
-        return (
-          url.includes('/api/v1/search/query') && /[?&]index=tag(&|$)/.test(url)
-        );
-      },
-      { timeout: 20_000 }
-    );
+    // Use semantic search bar selector
     await this.tagSearchBar.fill(tagName);
-    await tagSearchResponse;
+
     // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page.
+    // multiple [data-testid="loader"] elements coexist on the page during
+    // parallel test runs (e.g. one inside lineage section, one inside the popover).
     await this.selectableList
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
 
-    // main's #32252 moved the 'active' class onto the .selectable-list-item
-    // button and dropped the title attribute this used to match, so the
-    // locator has to come from that side. Declared here rather than before
-    // the search because the list is only final once the response above has
-    // landed and the loader has gone.
+    // Target the .selectable-list-item button, which carries the
+    // 'active' CSS class when the tag is already selected.
     const tagItem = this.selectableList
       .locator('.selectable-list-item')
       .filter({ hasText: tagName });
-    await expect(tagItem).toBeVisible({ timeout: 15_000 });
+    await tagItem.waitFor({ state: 'visible' });
 
     // Only click if not already active — in parallel test runs another test may have added
     // this tag already. Clicking an already-active item would deselect (remove) it.
@@ -291,60 +281,26 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editGlossaryTerms(termName: string): Promise<OverviewPageObject> {
-    await this.editGlossaryTermsIcon.click();
+    await openGlossaryPicker(this.page, this.editGlossaryTermsIcon);
+    await searchGlossaryPicker(this.page, termName);
 
-    await this.selectableList.waitFor({ state: 'visible' });
+    const row = glossaryPickerRow(this.page, termName);
+    await row.waitFor({ state: 'visible' });
+    await row.scrollIntoViewIfNeeded();
 
-    // Wait for the ES search response as a deterministic signal that the
-    // list has settled with its final options.
-    const termSearchResponse = this.page.waitForResponse(
-      (response) => {
-        const url = response.url();
-
-        return (
-          url.includes('/api/v1/search/query') &&
-          /[?&]index=glossaryTerm(&|$)/.test(url)
-        );
-      },
-      { timeout: 20_000 }
-    );
-    await this.glossaryTermSearchBar.fill(termName);
-    await termSearchResponse;
-    // Scope loader to selectableList to avoid strict-mode violations when a
-    // parallel test has a lineage or other section loader visible at the
-    // same time.
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'hidden' });
-
-    // main's #32252 moved the 'active' class onto the .selectable-list-item
-    // button and dropped the title attribute this used to match, so the
-    // locator has to come from that side. Declared here rather than before
-    // the search because the list is only final once the response above has
-    // landed and the loader has gone.
-    const termItem = this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: termName });
-    await expect(termItem).toBeVisible({ timeout: 15_000 });
-    await termItem.scrollIntoViewIfNeeded();
-
-    // Only click if not already active — parallel tests may have added this term already.
-    // Clicking an already-active item would deselect (remove) it.
-    const isAlreadySelected = await termItem.evaluate((el) =>
-      el.classList.contains('active')
-    );
-    if (!isAlreadySelected) {
-      await termItem.click();
+    // A parallel test may have added it already; clicking would deselect it.
+    const alreadySelected = await isGlossaryTermSelected(row);
+    if (!alreadySelected) {
+      await row.click();
     }
 
-    await this.updateButton.waitFor({ state: 'visible' });
-    const glossaryPatchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
-    await glossaryPatchPromise;
-    // After update the popover closes; rely on glossary-term container assertion
-    // with built-in retry rather than a page-wide loader that may be ambiguous.
+    // Applying an unchanged selection sends no request, so nothing to await.
+    await applyGlossaryPicker(this.page, alreadySelected ? false : undefined);
+
     await this.glossaryTermListContainer.waitFor({ state: 'visible' });
+
     await expect(this.glossaryTermListContainer).toContainText(termName);
+
     return this;
   }
 
@@ -424,13 +380,26 @@ export class OverviewPageObject extends RightPanelBase {
     await this.openOwnerSelector();
 
     if (type === 'Users') {
-      if (
-        (await this.selectOwnerUsersTab.getAttribute('aria-selected')) !==
-        'true'
-      ) {
-        await this.selectOwnerUsersTab.click();
-      }
-      await expect(this.userSearchBar).toBeVisible();
+      await expect
+        .poll(
+          async () => {
+            const isAlreadyActive =
+              (await this.selectOwnerUsersTab.getAttribute('aria-selected')) ===
+              'true';
+            if (!isAlreadyActive) {
+              await this.selectOwnerUsersTab.click();
+            }
+
+            return await this.userSearchBar.isVisible().catch(() => false);
+          },
+          {
+            timeout: 120000,
+            intervals: [500, 1000, 2000],
+            message:
+              'Timed out waiting for owner search input to become visible',
+          }
+        )
+        .toBe(true);
     }
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
@@ -594,35 +563,22 @@ export class OverviewPageObject extends RightPanelBase {
     termDisplayNames: string[]
   ): Promise<OverviewPageObject> {
     await this.editGlossaryTermsIcon.scrollIntoViewIfNeeded();
-    await this.editGlossaryTermsIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editGlossaryTermsIcon.click({ force: true });
-
-    await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await openGlossaryPicker(this.page, this.editGlossaryTermsIcon, {
+      force: true,
+    });
 
     for (const termName of termDisplayNames) {
-      await this.glossaryTermSearchBar.fill(termName);
+      await searchGlossaryPicker(this.page, termName);
 
-      const termItem = this.listItem.filter({ hasText: termName });
-      await termItem.waitFor({ state: 'visible' });
+      const row = glossaryPickerRow(this.page, termName);
+      await row.waitFor({ state: 'visible' });
 
-      // Only click if it's currently active (selected)
-      const isActive = await termItem.evaluate((el) =>
-        el.classList.contains('active')
-      );
-      if (isActive) {
-        await termItem.click();
+      if (await isGlossaryTermSelected(row)) {
+        await row.click();
       }
-
-      await this.glossaryTermSearchBar.clear();
     }
 
-    const patchPromise = this.waitForPatchResponse();
-    await this.updateButton.click();
-    await patchPromise;
+    await applyGlossaryPicker(this.page);
 
     return this;
   }
@@ -773,33 +729,11 @@ export class OverviewPageObject extends RightPanelBase {
   async verifyDeletedGlossaryTermNotVisible(
     termName: string
   ): Promise<Locator> {
-    await this.editGlossaryTermsIcon.click();
-    await this.selectableList.waitFor({ state: 'visible' });
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await openGlossaryPicker(this.page, this.editGlossaryTermsIcon);
+    await searchGlossaryPicker(this.page, termName);
 
-    const searchResponsePromise = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=glossaryTerm')
-    );
-
-    await this.glossaryTermSearchBar.fill(termName);
-    const searchResponse = await searchResponsePromise;
-    expect(searchResponse.status()).toBe(200);
-
-    await this.selectableList
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
-
-    // Scope to the glossary-term selection dropdown, not the whole page: a
-    // page-wide match also hits the entity's still-assigned term chip in the
-    // panel, whose removal after the term hard-delete is eventually consistent
-    // and independent of this search-backed dropdown — the deleted-entity flake.
-    return this.selectableList
-      .locator('.selectable-list-item')
-      .filter({ hasText: termName });
+    // Scoped to the picker; a page-wide match also hits the assigned chip.
+    return glossaryPickerRow(this.page, termName);
   }
 
   // ============ HELPER METHODS ============

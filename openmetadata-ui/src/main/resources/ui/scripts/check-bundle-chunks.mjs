@@ -30,14 +30,21 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-// The ~45 KiB `setOwnerHrefResolver` owed the entry graph is now paid: its two
-// route builders live in a leaf `RouterPaths` module, so registering a profile
-// URL no longer drags `useMarketplaceStore`, `qs` and the service constants in.
-// With that and the hover card both off first paint the build measures 1000310
-// bootstrap bytes, against 1141354 on main before either landed -- so this
-// returns to the 990 KiB that was in force before the regression, rather than
-// banking 177 KiB of slack the gate would then stop catching regressions with.
-// ~13 KiB of headroom, in line with the sibling ratchets above.
+// Both halves main was holding 1150 KiB open for are now accounted for. The
+// hover card came off the entry graph in #33563, and the ~45 KiB
+// `setOwnerHrefResolver` owed it is paid: its two route builders live in a leaf
+// `RouterPaths` module, so registering a profile URL no longer drags
+// `useMarketplaceStore`, `qs` and the service constants in. With #31675's
+// AuthCoordinator subgraph also on the entry graph the build measures 1003178
+// bootstrap bytes -- under the 990 KiB that was in force before the regression,
+// so the budget returns there rather than banking 174 KiB of slack the gate
+// would then stop catching regressions with.
+//
+// Headroom is ~10 KiB, thinner than the sibling ratchets above. That is
+// deliberate: AuthCoordinator is still statically imported from AuthProvider,
+// and keeping the bound close is what will surface the next static import that
+// lands on first paint. If it starts failing on legitimate growth, unpick that
+// import rather than raising this number.
 const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 990 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;

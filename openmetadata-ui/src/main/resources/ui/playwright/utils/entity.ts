@@ -47,6 +47,13 @@ import {
   getEpochMillisForFutureDays,
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
+import {
+  applyGlossaryPicker,
+  glossaryWidgetTrigger,
+  openGlossaryPicker,
+  pickGlossaryTerm,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 import {
   waitForAntOverlayToOpen,
@@ -1143,49 +1150,27 @@ type GlossaryTermOption = {
   fullyQualifiedName: string;
 };
 
+// Column-level tags are patched through the columns endpoint, not the entity's.
+const childPatchUrl = (entityEndpoint: string) =>
+  entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
+    ? '/api/v1/columns/name/*'
+    : `/api/v1/${entityEndpoint}/*`;
+
 export const assignGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTermOption,
   action: 'Add' | 'Edit' = 'Add',
   entityEndpoint: string
 ) => {
-  await page
-    .getByTestId('KnowledgePanel.GlossaryTerms')
-    .getByTestId('glossary-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  await pickGlossaryTerm(
+    page,
+    glossaryWidgetTrigger(
+      page.getByTestId('KnowledgePanel.GlossaryTerms'),
+      action
+    ),
+    glossaryTerm,
+    `/api/v1/${entityEndpoint}/*`
   );
-  await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
-
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
-
-  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
-
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
-
-  await expect(
-    page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-  ).toBeEnabled();
-
-  const patchRequest = page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-  await page
-    .getByTestId('custom-drop-down-menu')
-    .getByTestId('saveAssociatedTag')
-    .click();
-
-  await patchRequest;
-  await page
-    .getByTestId('saveAssociatedTag')
-    .locator('[data-icon="loading"]')
-    .waitFor({ state: 'detached' });
-  await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
 
   await expect(
     page
@@ -1315,65 +1300,21 @@ export const assignGlossaryTermToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  // First, wait for the row itself to be visible
   const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
   await expect(rowLocator).toBeVisible();
-
-  // Scroll the row into view to ensure it's accessible
   await rowLocator.scrollIntoViewIfNeeded();
 
-  const addButton = rowLocator
-    .getByTestId('glossary-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first();
-
-  await expect(addButton).toBeVisible();
-  await addButton.click();
-
-  // Wait for input field to be visible
-  const glossaryInput = page.locator('#tagsForm_tags');
-  await expect(glossaryInput).toBeVisible();
-
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  await pickGlossaryTerm(
+    page,
+    glossaryWidgetTrigger(rowLocator, action).first(),
+    glossaryTerm,
+    childPatchUrl(entityEndpoint)
   );
-  await glossaryInput.fill(glossaryTerm.displayName);
-  await searchGlossaryTerm;
-
-  // Wait for loader to disappear after search
-  await waitForAllLoadersToDisappear(page);
-
-  // Wait for glossary term tag to be visible before clicking
-  const glossaryTermTag = page.getByTestId(
-    `tag-${glossaryTerm.fullyQualifiedName}`
-  );
-  await expect(glossaryTermTag).toBeVisible();
-
-  await glossaryTermTag.click();
-
-  await page
-    .locator('.ant-select-dropdown')
-    .getByTestId('saveAssociatedTag')
-    .waitFor({ state: 'visible' });
-
-  const patchRequest =
-    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
-      ? page.waitForResponse('/api/v1/columns/name/*')
-      : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-  const saveButton = page.getByTestId('saveAssociatedTag');
-  await expect(saveButton).toBeVisible();
-  await expect(saveButton).toBeEnabled();
-  await saveButton.click();
-  await patchRequest;
-
-  await expect(saveButton).not.toBeVisible();
 
   await waitForAllLoadersToDisappear(page);
 
   await expect(
-    page
-      .locator(`[${rowSelector}="${rowId}"]`)
+    rowLocator
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -1384,45 +1325,17 @@ export const removeGlossaryTerm = async (
   glossaryTerms: GlossaryTermOption[]
 ) => {
   for (const tag of glossaryTerms) {
-    await page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container')
-      .getByTestId('edit-button')
-      .click();
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- avoid popup collision with click
-    await page.waitForTimeout(500);
-
-    await page
-      .getByTestId('glossary-container')
-      .getByTestId(new RegExp(tag.name))
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
-
-    const patchRequest = page.waitForResponse(
-      (response) => response.request().method() === 'PATCH'
+    await openGlossaryPicker(
+      page,
+      page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
+        .getByTestId('glossary-container')
+        .getByTestId('edit-button')
     );
 
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
-
-    await expect(
-      page.getByTestId('custom-drop-down-menu').getByTestId('saveAssociatedTag')
-    ).toBeEnabled();
-
-    await page
-      .getByTestId('custom-drop-down-menu')
-      .getByTestId('saveAssociatedTag')
-      .click();
-    await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    // The term is already ticked, so toggling it clears the selection.
+    await toggleGlossaryTermInPicker(page, tag);
+    await applyGlossaryPicker(page);
 
     await expect(
       page
@@ -1446,52 +1359,28 @@ export const removeGlossaryTermFromChildren = async ({
   entityEndpoint: string;
   rowSelector?: string;
 }) => {
+  const rowLocator = page.locator(`[${rowSelector}="${rowId}"]`);
+
   for (const tag of glossaryTerms) {
-    await page
-      .locator(`[${rowSelector}="${rowId}"]`)
-      .getByTestId('glossary-container')
-      .getByTestId('edit-button')
-      .first()
-      .click();
+    await openGlossaryPicker(
+      page,
+      rowLocator
+        .getByTestId('glossary-container')
+        .getByTestId('edit-button')
+        .first()
+    );
 
-    await page
-      .getByTestId('glossary-container')
-      .getByTestId(new RegExp(tag.name))
-      .getByTestId('remove-tags')
-      .locator('svg')
-      .click();
-
-    const patchRequest =
-      entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
-        ? page.waitForResponse('/api/v1/columns/name/*')
-        : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
-
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('saveAssociatedTag')
-      .waitFor({ state: 'visible' });
-
-    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-    await page.getByTestId('saveAssociatedTag').click();
-
-    await patchRequest;
-
-    await page
-      .getByTestId('saveAssociatedTag')
-      .locator('[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    // The term is already ticked, so toggling it clears the selection.
+    await toggleGlossaryTermInPicker(page, tag);
+    await applyGlossaryPicker(page, childPatchUrl(entityEndpoint));
 
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
+      rowLocator
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
   }
 };
-
 export const upVote = async (page: Page, endPoint: string) => {
   const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
 

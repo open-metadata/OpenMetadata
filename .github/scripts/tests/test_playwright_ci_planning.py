@@ -2142,7 +2142,12 @@ def test_basic_project_excludes_dedicated_state_specs():
     playwright_config = (SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/playwright.config.ts").read_text()
     basic_project = playwright_config.split("name: 'Basic'", 1)[1].split("name: 'Ingestion'", 1)[0]
 
-    assert "testIgnore: dedicatedStateTestIgnore" in basic_project
+    # Match the reference, not one spelling of it: #31675 changed this from a
+    # bare `testIgnore: dedicatedStateTestIgnore` to
+    # `testIgnore: [...dedicatedStateTestIgnore, '**/Auth/**']`, which still
+    # honours the invariant (and tightens it). Asserting the literal form made
+    # a stricter config look like a regression.
+    assert "dedicatedStateTestIgnore" in basic_project.split("use:", 1)[0]
     assert "'**/SearchSettings.spec.ts'" in playwright_config
     assert "'**/SearchSeparation/**'" in playwright_config
     assert "'**/*AfterReindex.spec.ts'" in playwright_config

@@ -21,19 +21,19 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   setOidcToken,
   setRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import Loader from '../../common/Loader/Loader';
-import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../AuthProviders/BasicAuthContext';
 
 interface BasicAuthenticatorInterface {
   children: ReactNode;
@@ -63,24 +63,38 @@ const BasicAuthenticator = forwardRef(
         return Promise.resolve(response);
       }, [authConfig, setOidcToken, setRefreshToken, t]);
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 7). Kept alongside handleSilentSignIn/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const response = await getAccessTokenOnExpiry();
+        const decoded = extractDetailsFromToken(response.accessToken);
+
+        return {
+          idToken: response.accessToken,
+          expiresAt: (decoded.exp ?? 0) * 1000,
+        };
+      },
+      []
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
     }));
 
-    // Register the renewer with TokenService from this authenticator's own
-    // mount effect. The previous AuthProvider-side registration used a
-    // ref-deps `useEffect(..., [authenticatorRef.current?.renewIdToken])`
-    // which never re-ran when the lazy authenticator finished loading
-    // (ref changes don't schedule re-renders), so on cold-load the first
-    // 401 raced ahead of the registration and TokenService.refreshToken()
-    // returned null without ever firing the `/api/v1/auth/refresh` HTTP
-    // call — the interceptor then force-logged the user out.
+    // Register this authenticator's renewer with the AuthCoordinator as soon
+    // as the wrapper mounts (which is after the async config fetch + lazy
+    // chunk load). Doing it here — instead of via a parent-side effect that
+    // reads authenticatorRef.current?.getRenewer — avoids a race: a ref
+    // change does not schedule a re-render, so a parent-side dep on it can
+    // register late (or never, on some render paths).
     useEffect(() => {
-      TokenService.getInstance().updateRenewToken(handleSilentSignIn);
+      authCoordinator.registerRenewer(getRenewer());
 
-      return () => TokenService.getInstance().updateRenewToken(null);
-    }, [handleSilentSignIn]);
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     /**
      * isApplicationLoading is true when the application is loading in AuthProvider

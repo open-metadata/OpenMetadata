@@ -11,416 +11,909 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
-import { Task, TaskComment } from '../../../../src/generated/entity/tasks/task';
-import { TaskClass } from '../../../support/entity/TaskClass';
-import {
-  createActivityTask,
-  expect,
-  TaskActivityData,
-  test,
-} from '../../../support/fixtures/taskActivity';
+import type { Locator, Page } from '@playwright/test';
+import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
+import { waitForPageLoaded } from '../../../utils/polling';
 import {
-  assertFulfilled,
-  deleteFixtureEntity,
-  okJson,
-} from '../../../utils/apiResponse';
-import { getApiContext, uuid } from '../../../utils/common';
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
+  addCommentToTask,
+  CreatedTask,
+  openEntityTasksTab,
+  openTaskDetails,
+} from '../../../utils/taskWorkflow';
 
-const openInboxTask = async (
-  page: Page,
-  data: TaskActivityData,
-  task: TaskClass,
-  user: UserClass
-) => {
-  await user.login(page);
-  await okJson(
-    await data.apiContext.put(
-      `/api/v1/users/${user.responseData.id}/preferences/appMode`,
-      { data: { type: 'appMode', config: { value: 'ai' } } }
-    ),
-    'Set the isolated comment user’s app mode'
-  );
-  await page.goto('/inbox/tasks', { waitUntil: 'domcontentloaded' });
-  await page.getByTestId(`inbox-task-${task.responseData!.id}`).click();
-  const panel = page.getByTestId('task-detail-panel');
-  await expect(panel).toContainText(`#${task.responseData!.taskId}`);
-  return panel;
-};
+/**
+ * Task Comments Tests
+ *
+ * Tests all task comment scenarios including:
+ * - Adding comments to tasks
+ * - Editing comments
+ * - Deleting comments
+ * - @mention functionality in comments
+ * - Comment notifications
+ * - Permission to comment (anyone vs assignee only)
+ */
 
-const getPersistedComments = async (
-  data: TaskActivityData,
-  task: TaskClass
-) => {
-  const stored = await okJson<Task>(
-    await data.apiContext.get(`/api/v1/tasks/${task.responseData!.id}`, {
-      params: { fields: 'comments' },
-    }),
-    'Read saved task comments'
-  );
-  return stored.comments ?? [];
-};
+test.describe('Task Comments - Add Comment', () => {
+  let createdTask: CreatedTask;
+  const adminUser = new UserClass();
+  const assigneeUser = new UserClass();
+  const commentingUser = new UserClass();
+  const table = new TableClass();
 
-const addComment = async (page: Page, task: TaskClass, message: string) => {
-  const composer = page
-    .getByTestId('task-detail-panel')
-    .getByTestId('inbox-comment-composer');
-  await composer.locator('.ql-editor[contenteditable="true"]').fill(message);
-  return submitComment(page, task);
-};
+  let taskId: string;
 
-const submitComment = async (page: Page, task: TaskClass) => {
-  const response = waitForResponseWithStatus(
-    page,
-    (result) =>
-      result.request().method() === 'POST' &&
-      new URL(result.url()).pathname ===
-        `/api/v1/tasks/${task.responseData!.id}/comments`,
-    200
-  );
-  await page
-    .getByTestId('inbox-comment-composer')
-    .getByTestId('send-button')
-    .click();
-  return okJson<Task>(await response, 'Save task comment');
-};
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-const commentWithMessage = (
-  comments: TaskComment[] | undefined,
-  message: string
-) => {
-  const comment = comments?.find((item) =>
-    item.message.replaceAll('\u00a0', ' ').includes(message)
-  );
-  expect(comment, `Comment containing ${message}`).toBeDefined();
-  return comment!;
-};
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await assigneeUser.create(apiContext);
+      await commentingUser.create(apiContext);
 
-for (const actor of ['member', 'outsider', 'teammate'] as const) {
-  const role = {
-    member: 'assignee',
-    outsider: 'non-assignee',
-    teammate: 'admin',
-  }[actor];
-  test(`${role} can add a comment that persists after reload`, async ({
-    page,
-    activityData: data,
-  }) => {
-    if (actor === 'teammate') await data.teammate.setAdminRole(data.apiContext);
-    const task = await createActivityTask(data, data.member.responseData.name);
-    const panel = await openInboxTask(page, data, task, data[actor]);
-    const message = `Comment from ${role} ${uuid()}`;
-    const saved = await addComment(page, task, message);
-    const comment = commentWithMessage(saved.comments, message);
-    expect(comment.author?.name).toBe(data[actor].responseData.name);
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      // Create a task
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
+        data: {
+          name: `Test Task - ${Date.now()}`,
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [assigneeUser.responseData.name],
+        },
+      });
+      createdTask = (await taskResponse.json()) as CreatedTask;
+      const task = createdTask;
+      taskId = task.id;
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await commentingUser.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('assignee should be able to add comment to task', async ({ page }) => {
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    // Click on task to open detail drawer
+    await openTaskDetails(page, createdTask);
+
+    // Find comment input in drawer
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    await addCommentToTask(page, 'This is a test comment from assignee');
+
+    // Verify comment appears
     await expect(
-      panel.getByTestId('task-comment-card').filter({ hasText: message })
-    ).toBeVisible();
-    expect(await getPersistedComments(data, task)).toContainEqual(
-      expect.objectContaining({ id: comment.id, message: comment.message })
-    );
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByTestId(`inbox-task-${task.responseData!.id}`).click();
-    await expect(
-      panel.getByTestId('task-comment-card').filter({ hasText: message })
+      drawer.getByText('This is a test comment from assignee')
     ).toBeVisible();
   });
-}
 
-test('typing a mention shows the matching user suggestion', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const editor = panel
-    .getByTestId('inbox-comment-composer')
-    .locator('.ql-editor[contenteditable="true"]');
-  await editor.pressSequentially(
-    `@${data.outsider.responseData.name.slice(0, 12)}`
-  );
-  await expect(
-    page.locator(`[data-value="@${data.outsider.responseData.name}"]`)
-  ).toBeVisible();
-  expect(await getPersistedComments(data, task)).toHaveLength(0);
-});
+  // Replaces a Jest assertion that could only check Tailwind class names: jsdom has
+  // no layout engine, so it could not have caught an actual reflow. Here the delete
+  // affordance is positioned out of flow, so revealing it on hover must not shift
+  // the comment body by a single pixel.
+  test('revealing the delete affordance on hover must not reflow the comment body', async ({
+    page,
+  }) => {
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
 
-test('mention suggestions retain the closest match among alphabetical fuzzy matches', async ({
-  page,
-  activityData: data,
-}) => {
-  const names = [
-    'bright2e46f9c8.koalaf1acea3d',
-    'calm83fdc6d3.zebraf148de17',
-    'lively1b7cf3e8.fox2c76ab9d',
-    'nobled9733f8d.zebra03bdfcbe',
-    'pwteam1803d8d3d',
-    'sillyadaa0d14.zebra5e979e91',
-  ];
-  const suffix = uuid();
-  const users: Array<{ id: string; name: string }> = [];
+    await openEntityTasksTab(page);
 
-  try {
-    for (const name of names) {
-      users.push(
-        await okJson<{ id: string; name: string }>(
-          await data.apiContext.post('/api/v1/users', {
-            data: {
-              name: `${name}.${suffix}`,
-              email: `${name}.${suffix}@example.com`,
-              displayName: name.replaceAll('.', ''),
-              isBot: false,
-              isAdmin: false,
-            },
-          }),
-          'Create competing mention candidates'
-        )
-      );
-    }
-    const target = users[users.length - 1];
-    const task = await createActivityTask(data, data.member.responseData.name);
-    const panel = await openInboxTask(page, data, task, data.member);
-    const editor = panel
-      .getByTestId('inbox-comment-composer')
-      .locator('.ql-editor[contenteditable="true"]');
+    // This describe seeds exactly one task against a fresh table, so the card can
+    // be addressed directly rather than by position - a positional locator would
+    // silently pick up a different task if the fixture ever grows.
+    await openTaskDetails(page, createdTask);
 
-    await editor.pressSequentially('@sillyadaa0d1');
-    await expect(page.locator(`[data-value="@${target.name}"]`)).toBeVisible();
-    expect(await getPersistedComments(data, task)).toHaveLength(0);
-  } finally {
-    assertFulfilled(
-      await Promise.allSettled(
-        users.map(({ id }) =>
-          deleteFixtureEntity(data.apiContext, `/api/v1/users/${id}`)
-        )
+    const drawer = page.locator('#task-panel');
+    await expect(drawer).toBeVisible();
+
+    const message = `Layout probe ${Date.now()}`;
+    await addCommentToTask(page, message);
+
+    const card = drawer
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    const body = card.getByTestId('viewer-container');
+
+    // The markdown preview measures itself and applies its own clamp one frame
+    // after mount, so sample until the box stops moving - otherwise this test
+    // measures that clamp rather than the hover it is meant to guard.
+    let previous = await body.boundingBox();
+    await expect
+      .poll(
+        async () => {
+          const current = await body.boundingBox();
+          const settled = JSON.stringify(current) === JSON.stringify(previous);
+          previous = current;
+
+          return settled;
+        },
+        { timeout: 10_000 }
       )
-    );
-  }
-});
+      .toBe(true);
 
-test('selecting a mention saves the intended user and comment', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const editor = panel
-    .getByTestId('inbox-comment-composer')
-    .locator('.ql-editor[contenteditable="true"]');
-  await editor.pressSequentially(
-    `@${data.outsider.responseData.name.slice(0, 12)}`
-  );
-  await page
-    .locator(`[data-value="@${data.outsider.responseData.name}"]`)
-    .click();
-  const message = `Please review ${uuid()}`;
-  await editor.pressSequentially(` ${message}`);
-  const saved = await submitComment(page, task);
-  const comment = commentWithMessage(saved.comments, message);
-  const card = panel
-    .getByTestId('task-comment-card')
-    .filter({ hasText: message });
-  await expect(card).toContainText(data.outsider.responseData.name);
-  await expect(
-    card.getByRole('link', { name: `@${data.outsider.responseData.name}` })
-  ).toHaveAttribute(
-    'href',
-    new RegExp(
-      `/users/${data.outsider.responseData.name.replaceAll('.', '\\.')}$`
-    )
-  );
-  expect(await getPersistedComments(data, task)).toContainEqual(
-    expect.objectContaining({ id: comment.id, message: comment.message })
-  );
-});
+    const before = previous;
 
-test('comment author can edit and cancel without saving', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const message = `Unchanged comment ${uuid()}`;
-  const saved = await addComment(page, task, message);
-  const comment = commentWithMessage(saved.comments, message);
-  const card = panel
-    .getByTestId('task-comment-card')
-    .filter({ hasText: message });
-  await card.hover();
-  await expect(card.getByTestId('delete-task-comment')).toBeVisible();
-  await card.getByTestId('edit-task-comment').click();
-  const editor = panel.getByTestId('edit-task-comment-editor');
-  await editor
-    .locator('.ql-editor[contenteditable="true"]')
-    .fill('Discard this edit');
-  await editor.getByTestId('cancel-edit-task-comment').click();
-  await expect(card).toContainText(message);
-  expect(await getPersistedComments(data, task)).toContainEqual(
-    expect.objectContaining({ id: comment.id, message: comment.message })
-  );
-});
+    const actions = card.getByTestId('feed-actions');
+    const deleteAction = card.getByTestId('delete-message');
 
-test('comment author edits the saved comment through the inbox', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const original = `Original ${uuid()}`;
-  const saved = await addComment(page, task, original);
-  const comment = commentWithMessage(saved.comments, original);
-  const card = panel
-    .getByTestId('task-comment-card')
-    .filter({ hasText: original });
-  await card.hover();
-  await card.getByTestId('edit-task-comment').click();
-  const editor = panel.getByTestId('edit-task-comment-editor');
-  const message = `Edited ${uuid()}`;
-  await editor.locator('.ql-editor[contenteditable="true"]').fill(message);
-  const response = waitForResponseWithStatus(
-    page,
-    (result) =>
-      result.request().method() === 'PATCH' &&
-      new URL(result.url()).pathname ===
-        `/api/v1/tasks/${task.responseData!.id}/comments/${comment.id}`,
-    200
-  );
-  await editor.getByTestId('send-button').click();
-  await response;
-  await expect(
-    panel.getByTestId('task-comment-card').filter({ hasText: message })
-  ).toBeVisible();
-  await expect(
-    panel.getByTestId('task-comment-card').filter({ hasText: original })
-  ).toHaveCount(0);
-  expect(
-    commentWithMessage(await getPersistedComments(data, task), message).id
-  ).toBe(comment.id);
-});
+    // Posting the comment leaves the pointer over the card, which would hold
+    // the bar revealed - park it away first to sample the resting state.
+    await page.mouse.move(0, 0);
 
-test('comment author deletes only the selected comment', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const remove = `Remove ${uuid()}`;
-  const keep = `Keep ${uuid()}`;
-  const saved = await addComment(page, task, remove);
-  const comment = commentWithMessage(saved.comments, remove);
-  await addComment(page, task, keep);
-  const card = panel
-    .getByTestId('task-comment-card')
-    .filter({ hasText: remove });
-  // TaskDetailPanel renders the row's edit/delete icons behind `isHovered`, so
-  // they exist in the DOM only while the pointer is on the card. Anything that
-  // re-renders the comment list -- the refetch after the second comment lands,
-  // an activity-feed push -- resets that state and unmounts the icon, leaving a
-  // click issued after a one-shot hover waiting on a locator that will never
-  // resolve (chromium-19 burned its whole 60s timeout there). Re-hover on every
-  // attempt so a re-render costs a retry rather than the test.
-  await expect(async () => {
+    // Mounted before any hover so it stays reachable by keyboard and screen
+    // readers - the reveal is opacity, which Playwright's visibility check
+    // deliberately ignores, so assert the computed value directly.
+    await expect(deleteAction).toBeAttached();
+    await expect(actions).toHaveCSS('opacity', '0');
+
     await card.hover();
-    await card.getByTestId('delete-task-comment').click({ timeout: 5_000 });
-  }).toPass({ timeout: 30_000 });
 
-  const response = waitForResponseWithStatus(
+    await expect(actions).toHaveCSS('opacity', '1');
+    await expect(deleteAction).toBeVisible();
+
+    const after = await body.boundingBox();
+
+    expect(after).toEqual(before);
+  });
+
+  test('the comment actions are reachable and operable by keyboard alone', async ({
     page,
-    (result) =>
-      result.request().method() === 'DELETE' &&
-      new URL(result.url()).pathname ===
-        `/api/v1/tasks/${task.responseData!.id}/comments/${comment.id}`,
-    200
-  );
-  await page.getByTestId('delete-modal').getByTestId('confirm-button').click();
-  await response;
-  await expect(card).toHaveCount(0);
-  await expect(
-    panel.getByTestId('task-comment-card').filter({ hasText: keep })
-  ).toBeVisible();
-  const comments = await getPersistedComments(data, task);
-  expect(comments).toHaveLength(1);
-  expect(comments[0].message.replaceAll('\u00a0', ' ')).toBe(keep);
+  }) => {
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+    await expect(drawer).toBeVisible();
+
+    const message = `Keyboard probe ${Date.now()}`;
+    await addCommentToTask(page, message);
+
+    const card = drawer
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: message });
+    await expect(card).toBeVisible();
+
+    const actions = card.getByTestId('feed-actions');
+    const deleteAction = card.getByTestId('delete-message');
+
+    // Park the pointer away from the card first, so the reveal asserted below
+    // is attributable to focus-within and not to a leftover hover.
+    await page.mouse.move(0, 0);
+
+    await expect(actions).toHaveCSS('opacity', '0');
+
+    // Regression coverage for the affordance being an `<Icon onClick>` span:
+    // it could not hold focus at all, so none of this was possible without a
+    // mouse. Focusing it must also bring the bar into view via focus-within.
+    await deleteAction.focus();
+
+    await expect(deleteAction).toBeFocused();
+    await expect(actions).toHaveCSS('opacity', '1');
+
+    // Enter activates it, as it would any button.
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('save-button')).toBeVisible();
+  });
+
+  test('non-assignee should be able to add comment', async ({ page }) => {
+    await commentingUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    await addCommentToTask(page, 'Comment from non-assignee user');
+    await waitForPageLoaded(page);
+
+    // Comment should be added or access denied
+    // (depends on permission model)
+  });
+
+  test('admin should be able to add comment to any task', async ({ page }) => {
+    await adminUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    await addCommentToTask(page, 'Admin comment on task');
+    await waitForPageLoaded(page);
+
+    await expect(drawer.getByText('Admin comment on task')).toBeVisible();
+  });
 });
 
-test('non-author has no edit or delete controls and both API mutations are forbidden', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const message = `Admin authored ${uuid()}`;
-  const saved = await okJson<Task>(
-    await data.apiContext.post(
-      `/api/v1/tasks/${task.responseData!.id}/comments`,
-      { data: { message } }
-    ),
-    'Seed another author’s comment'
-  );
-  const comment = commentWithMessage(saved.comments, message);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const card = panel
-    .getByTestId('task-comment-card')
-    .filter({ hasText: message });
-  await expect(card).toBeVisible();
-  await card.hover();
-  await expect(card.getByTestId('edit-task-comment')).toHaveCount(0);
-  await expect(card.getByTestId('delete-task-comment')).toHaveCount(0);
-  const user = await getApiContext(page);
-  try {
-    const path = `/api/v1/tasks/${task.responseData!.id}/comments/${
-      comment.id
-    }`;
-    expect(
-      (
-        await user.apiContext.patch(path, {
-          data: { message: 'Forbidden change' },
-        })
-      ).status()
-    ).toBe(403);
-    expect((await user.apiContext.delete(path)).status()).toBe(403);
-    expect(await getPersistedComments(data, task)).toContainEqual(
-      expect.objectContaining({ id: comment.id, message: comment.message })
+test.describe('Task Comments - @Mention', () => {
+  let createdTask: CreatedTask;
+  const adminUser = new UserClass();
+  const assigneeUser = new UserClass();
+  const table = new TableClass();
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await assigneeUser.create(apiContext);
+
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
+        data: {
+          name: `Test Task - ${Date.now()}`,
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [assigneeUser.responseData.name],
+        },
+      });
+      createdTask = (await taskResponse.json()) as CreatedTask;
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('typing @ should show user suggestion dropdown', async ({ page }) => {
+    await adminUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    const commentTrigger = drawer.getByTestId('comments-input-field');
+
+    await expect(commentTrigger).toBeVisible();
+    await commentTrigger.click();
+
+    const commentInput = drawer.locator(
+      '[data-testid="editor-wrapper"] .ql-editor'
     );
-  } finally {
-    await user.afterAction();
-  }
+
+    await expect(commentInput).toBeVisible({ timeout: 15_000 });
+    await commentInput.click();
+    await page.keyboard.type('@');
+    await waitForPageLoaded(page);
+
+    // Should show mention dropdown
+    const mentionDropdown = page.locator(
+      '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
+    );
+
+    // The suggestion list is populated asynchronously, so this needs a wait - but
+    // it must actually arrive. A swallowed waitFor left this test asserting
+    // nothing, so it passed whether or not the dropdown ever rendered.
+    await expect(mentionDropdown).toHaveCount(1, { timeout: 10_000 });
+    await expect(mentionDropdown).toBeVisible();
+  });
+
+  test('selecting user from @ dropdown should add mention', async ({
+    page,
+  }) => {
+    await adminUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    const commentTrigger = drawer.getByTestId('comments-input-field');
+
+    await expect(commentTrigger).toBeVisible();
+    await commentTrigger.click();
+
+    const commentInput = drawer.locator(
+      '[data-testid="editor-wrapper"] .ql-editor'
+    );
+
+    await expect(commentInput).toBeVisible({ timeout: 15_000 });
+    await commentInput.click();
+
+    // Mention the seeded `admin` account rather than a user created in this
+    // describe's beforeAll: the suggestion list is search-index backed, and a
+    // seconds-old user is not reliably queryable yet. What this test guards is
+    // that picking from the dropdown inserts a mention, which any indexed user
+    // exercises identically.
+    const mentionTarget = 'admin';
+
+    // quill-mention only opens on a real keystroke - `fill()` sets the text in
+    // one shot and the module never sees the denotation char.
+    await commentInput.click();
+    await page.keyboard.type(`@${mentionTarget}`);
+
+    const mentionItem = page.locator(`[data-value="@${mentionTarget}"]`);
+
+    await expect(mentionItem.first()).toBeVisible({ timeout: 15_000 });
+    await mentionItem.first().click();
+
+    await page.keyboard.type(' please review this task');
+
+    const sendBtn = drawer.getByTestId('send-button');
+    await expect(sendBtn).toBeEnabled();
+    await sendBtn.click();
+    await waitForPageLoaded(page);
+  });
 });
 
-test('comments from separate authors retain their identities', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const adminMessage = `Admin ${uuid()}`;
-  await okJson<Task>(
-    await data.apiContext.post(
-      `/api/v1/tasks/${task.responseData!.id}/comments`,
-      { data: { message: adminMessage } }
-    ),
-    'Seed admin comment'
-  );
-  const panel = await openInboxTask(page, data, task, data.member);
-  const message = `Assignee ${uuid()}`;
-  await addComment(page, task, message);
-  await expect(panel.getByTestId('task-comment-card')).toHaveCount(2);
-  const comments = await getPersistedComments(data, task);
-  expect(commentWithMessage(comments, message).author?.name).toBe(
-    data.member.responseData.name
-  );
-  expect(commentWithMessage(comments, adminMessage).author?.name).toBe('admin');
+test.describe('Task Comments - Edit/Delete', () => {
+  let createdTask: CreatedTask;
+  const adminUser = new UserClass();
+  const assigneeUser = new UserClass();
+  const table = new TableClass();
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await assigneeUser.create(apiContext);
+
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      // Create task with comment
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
+        data: {
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [assigneeUser.responseData.name],
+        },
+      });
+      createdTask = (await taskResponse.json()) as CreatedTask;
+      const task = createdTask;
+
+      // Add a comment
+      await apiContext.post(`/api/v1/tasks/${task.id}/comments`, {
+        data: {
+          message: 'Initial comment for edit/delete test',
+        },
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('comment author should see edit/delete options', async ({ page }) => {
+    await adminUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+
+    // Post a comment of our own so the card can be addressed by its text rather
+    // than by position - the drawer already holds comments from earlier tests in
+    // this serial describe.
+    const message = `Author actions ${Date.now()}`;
+    await addCommentToTask(page, message);
+
+    const comment = drawer
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: message });
+    await expect(comment).toHaveCount(1);
+    await comment.hover();
+
+    // The author may both edit and delete their own comment.
+    await expect(comment.getByTestId('edit-message')).toBeVisible();
+    await expect(comment.getByTestId('delete-message')).toBeVisible();
+  });
+
+  test('should be able to edit own comment', async ({ page }) => {
+    await adminUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+
+    await expect(drawer).toBeVisible();
+    // Only the author may edit, so this test has to own the comment it edits
+    // rather than reaching for whatever card happens to be first.
+    const original = `Original comment ${Date.now()}`;
+    await addCommentToTask(page, original);
+
+    const comment = drawer
+      .locator('[data-testid="feed-reply-card"]')
+      .filter({ hasText: original });
+
+    await expect(comment).toBeVisible();
+    await comment.hover();
+
+    const editBtn = comment.getByTestId('edit-message');
+
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Scoped to the editing card, not to `comment` - that locator filters on
+    // the original text, which stops matching the moment the editor is
+    // refilled. Qualifying with feed-reply-card keeps the panel's own comment
+    // composer, which is the same editor component, out of the match.
+    const editor = drawer.locator(
+      '[data-testid="feed-reply-card"] [data-testid="activity-feed-editor-new"]'
+    );
+    const editInput = editor.locator('.ql-editor');
+
+    await expect(editInput).toBeVisible();
+    await editInput.fill('Updated comment text');
+
+    const saveBtn = editor.getByTestId('send-button');
+    await saveBtn.click();
+    await waitForPageLoaded(page);
+
+    await expect(drawer.getByText('Updated comment text')).toBeVisible();
+  });
+
+  /**
+   * Shared by the two real delete tests below: opens the task's activity-feed
+   * drawer as `user` and posts one comment from there, returning the task's id
+   * (needed to match the DELETE response) and the comment's text (needed to
+   * find the right `feed-reply-card`).
+   */
+  const postCommentAsUser = async (page: Page, message: string) => {
+    await table.visitEntityPage(page);
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+    await expect(drawer).toBeVisible();
+
+    // The input is a trigger that opens the editor - it cannot be filled.
+    const commentInput = drawer.getByTestId('comments-input-field');
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+
+    const editor = drawer.locator('[data-testid="editor-wrapper"] .ql-editor');
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.click();
+    await editor.type(message);
+
+    const sendBtn = drawer.getByTestId('send-button');
+    const commentResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await sendBtn.click();
+    const commentResponse = await commentResponsePromise;
+    // POST /tasks/{id}/comments returns the updated Task, not the new comment, so
+    // the comment's own id has to come from the task's comments array. The server
+    // appends, so the new comment is the last entry.
+    const task = await commentResponse.json();
+    const comments = task.comments ?? [];
+    const taskCommentId = comments[comments.length - 1]?.id as string;
+
+    await expect(drawer.getByText(message)).toBeVisible();
+
+    return { drawer, taskCommentId };
+  };
+
+  /**
+   * Deletes the comment identified by `message` from an already-open drawer,
+   * waiting for the real DELETE response and asserting the comment is gone
+   * from the DOM afterwards. The hover is required, not just realistic: the
+   * shared feed actions only mount while the card is hovered.
+   */
+  const deleteCommentViaUi = async (
+    page: Page,
+    drawer: Locator,
+    message: string,
+    taskCommentId: string
+  ) => {
+    const commentCard = drawer
+      .getByTestId('feed-reply-card')
+      .filter({ hasText: message });
+    await expect(commentCard).toBeVisible();
+
+    await commentCard.hover();
+    await commentCard.getByTestId('delete-message').click();
+
+    // Asserted on the confirm button rather than the modal container: antd's
+    // Modal does not forward `data-testid` to the rendered DOM.
+    const confirmButton = page.getByTestId('save-button');
+    await expect(confirmButton).toBeVisible();
+
+    const deleteResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/comments/${taskCommentId}`) &&
+        response.request().method() === 'DELETE'
+    );
+    await confirmButton.click();
+    const deleteResponse = await deleteResponsePromise;
+
+    expect(deleteResponse.ok()).toBe(true);
+    await expect(commentCard).not.toBeVisible();
+    await expect(drawer.getByText(message)).not.toBeVisible();
+  };
+
+  test('should be able to delete own comment', async ({ page }) => {
+    // assigneeUser is a regular (non-admin) user, so a successful delete here
+    // exercises the author-match branch of canDelete, not the admin override.
+    await assigneeUser.login(page);
+
+    const message = `Author-deletable comment ${Date.now()}`;
+    const { drawer, taskCommentId } = await postCommentAsUser(page, message);
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
+
+  test('admin should be able to delete a comment they did not author', async ({
+    page,
+    browser,
+  }) => {
+    // Post as the non-admin assignee first, in a separate browser context so
+    // this test doesn't depend on execution order relative to the one above.
+    const authorContext = await browser.newContext();
+    const authorPage = await authorContext.newPage();
+    await assigneeUser.login(authorPage);
+
+    const message = `Admin-deletable comment ${Date.now()}`;
+    const { taskCommentId } = await postCommentAsUser(authorPage, message);
+    await authorContext.close();
+
+    await adminUser.login(page);
+    const { drawer } = await postCommentAsUser(page, `unused-${Date.now()}`);
+    // postCommentAsUser leaves an extra comment behind as a side effect of
+    // reusing it purely for its navigation-to-the-open-drawer behavior; that
+    // extra comment isn't asserted on and is left for afterAll to clean up
+    // along with the rest of the table.
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
+
+  test('non-author, non-admin should not see the delete option', async ({
+    page,
+    browser,
+  }) => {
+    const otherUser = new UserClass();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await otherUser.create(apiContext);
+    } finally {
+      await afterAction();
+    }
+
+    try {
+      const authorContext = await browser.newContext();
+      const authorPage = await authorContext.newPage();
+      await assigneeUser.login(authorPage);
+
+      const message = `Not-my-comment ${Date.now()}`;
+      await postCommentAsUser(authorPage, message);
+      await authorContext.close();
+
+      await otherUser.login(page);
+      const { drawer } = await postCommentAsUser(
+        page,
+        `viewer-comment-${Date.now()}`
+      );
+
+      const commentCard = drawer
+        .getByTestId('feed-reply-card')
+        .filter({ hasText: message });
+      await expect(commentCard).toBeVisible();
+      await commentCard.hover();
+
+      await expect(commentCard.getByTestId('delete-message')).not.toBeVisible();
+    } finally {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await otherUser.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+
+  test('should be able to delete a comment from inside the activity-feed drawer', async ({
+    page,
+  }) => {
+    // Regression coverage for the confirmation-modal/antd-Drawer z-index
+    // conflict: TaskTabNew (and so CommentCard's confirmation modal) is rendered
+    // inside an antd Drawer here, unlike the standalone task page used by the
+    // other delete tests above. If the confirmation dialog's overlay ever
+    // sits below the Drawer's own mask again, this click lands on the mask
+    // (which closes the drawer) instead of the dialog's confirm button, and
+    // this test will hang/time out waiting for the DELETE response instead
+    // of silently passing.
+    await assigneeUser.login(page);
+
+    const message = `Drawer-delete comment ${Date.now()}`;
+    const { drawer, taskCommentId } = await postCommentAsUser(page, message);
+
+    await expect(page.locator('#task-panel')).toBeVisible();
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
 });
 
-test('empty comment cannot be submitted', async ({
-  page,
-  activityData: data,
-}) => {
-  const task = await createActivityTask(data, data.member.responseData.name);
-  const panel = await openInboxTask(page, data, task, data.member);
-  const composer = panel.getByTestId('inbox-comment-composer');
-  await expect(composer.getByTestId('send-button')).toBeDisabled();
-  await composer.locator('.ql-editor[contenteditable="true"]').fill('   ');
-  await expect(composer.getByTestId('send-button')).toBeDisabled();
-  expect(await getPersistedComments(data, task)).toHaveLength(0);
+test.describe('Task Comments - Long Comment Overflow', () => {
+  let createdTask: CreatedTask;
+  const assigneeUser = new UserClass();
+  const table = new TableClass();
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await assigneeUser.create(apiContext);
+
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
+        data: {
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          assignees: [assigneeUser.responseData.name],
+        },
+      });
+      createdTask = (await taskResponse.json()) as CreatedTask;
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('a long comment shows a working View More / View Less toggle instead of being silently clamped', async ({
+    page,
+  }) => {
+    // Regression coverage for the task tab's comment preview: comments longer
+    // than DESCRIPTION_MAX_PREVIEW_CHARACTERS are trimmed, so one that
+    // overflows needs the toggle rendered to stay readable. Covered end to end
+    // rather than in Jest because the value being guarded is that a real user
+    // can recover the full text, not that the previewer trims a string.
+    await assigneeUser.login(page);
+    await table.visitEntityPage(page);
+
+    await openEntityTasksTab(page);
+
+    await openTaskDetails(page, createdTask);
+
+    const drawer = page.locator('#task-panel');
+    await expect(drawer).toBeVisible();
+
+    const runId = Date.now();
+    const headMarker = `overflow-head-${runId}`;
+    const tailMarker = `overflow-tail-${runId}`;
+    const longMessage = `${headMarker} ${'This comment is written to overflow the preview limit on the task comment body. '.repeat(
+      8
+    )}${tailMarker}`;
+
+    // The input is a trigger that opens the editor - it cannot be filled.
+    const commentInput = drawer.getByTestId('comments-input-field');
+    await expect(commentInput).toBeVisible();
+    await commentInput.click();
+
+    const editor = drawer.locator('[data-testid="editor-wrapper"] .ql-editor');
+    await expect(editor).toBeVisible({ timeout: 15_000 });
+    await editor.click();
+    await editor.type(longMessage);
+
+    const sendBtn = drawer.getByTestId('send-button');
+    const commentResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await sendBtn.click();
+    await commentResponsePromise;
+
+    // Matched on the head marker, which survives the trim - the tail marker
+    // is cut out of the DOM entirely while the preview is collapsed.
+    const commentCard = drawer
+      .getByTestId('feed-reply-card')
+      .filter({ hasText: headMarker });
+    await expect(commentCard).toBeVisible();
+
+    // The trim drops the end of the message rather than hiding it, so without
+    // a working toggle that text would be unreachable, not merely clipped.
+    await expect(commentCard.getByText(tailMarker)).toBeHidden();
+
+    const readMoreButton = commentCard.getByTestId('read-more-button');
+    await expect(readMoreButton).toBeVisible();
+    await readMoreButton.click();
+
+    await expect(commentCard.getByTestId('read-less-button')).toBeVisible();
+    await expect(commentCard.getByText(tailMarker)).toBeVisible();
+  });
+});
+
+test.describe('Task Comments - API Validation', () => {
+  const adminUser = new UserClass();
+  const table = new TableClass();
+  let taskId: string;
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+
+      await table.create(apiContext);
+
+      const taskResponse = await apiContext.post('/api/v1/tasks', {
+        data: {
+          name: `API Validation Test Task - ${Date.now()}`,
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          type: 'DescriptionUpdate',
+          category: 'MetadataUpdate',
+          priority: 'Medium',
+          assignees: [adminUser.responseData.name],
+          payload: {
+            suggestedValue: 'Test description for API validation',
+            currentValue: '',
+            field: 'description',
+          },
+        },
+      });
+      const task = await taskResponse.json();
+      taskId = task.id;
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('POST /tasks/{id}/comments should add comment', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      const response = await apiContext.post(
+        `/api/v1/tasks/${taskId}/comments`,
+        {
+          data: {
+            message: 'API test comment',
+          },
+        }
+      );
+
+      expect(response.ok()).toBe(true);
+
+      // Verify comment was added
+      const getResponse = await apiContext.get(
+        `/api/v1/tasks/${taskId}?fields=comments`
+      );
+      const task = await getResponse.json();
+
+      expect(task.comments).toBeDefined();
+      expect(task.comments.length).toBeGreaterThan(0);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('GET /tasks/{id}?fields=comments should return comments', async ({
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      const response = await apiContext.get(
+        `/api/v1/tasks/${taskId}?fields=comments`
+      );
+
+      expect(response.ok()).toBe(true);
+      const task = await response.json();
+
+      expect(task).toHaveProperty('comments');
+      expect(Array.isArray(task.comments)).toBe(true);
+    } finally {
+      await afterAction();
+    }
+  });
 });

@@ -4,18 +4,8 @@
       "count": 1
     }
   },
-  "playwright/e2e/Auth/OktaSessionRenewalPublic.spec.ts": {
-    "om-playwright/justified-rule-disable": {
-      "count": 1
-    }
-  },
-  "playwright/e2e/Auth/SSOAuthentication.spec.ts": {
-    "playwright/no-skipped-test": {
-      "count": 2
-    }
-  },
-  "playwright/e2e/Auth/SSORenewal.spec.ts": {
-    "om-playwright/justified-rule-disable": {
+  "playwright/e2e/Auth/SSOSelfSignup.spec.ts": {
+    "om-playwright/no-blanket-test-slow": {
       "count": 1
     }
   },
@@ -253,11 +243,8 @@
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
-      "count": 11
+      "count": 1
     }
   },
   "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
@@ -442,10 +429,15 @@
   },
   "playwright/e2e/Features/Table.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 8
     }
   },
   "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts": {
+    "om-playwright/no-positional-locator": {
+      "count": 2
+    }
+  },
+  "playwright/e2e/Features/Tasks/TaskComments.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 2
     }
@@ -920,7 +912,7 @@
   },
   "playwright/utils/domain.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 3
     }
   },
   "playwright/utils/entity.ts": {
@@ -930,7 +922,7 @@
   },
   "playwright/utils/entityPanel.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 2
     }
   },
   "playwright/utils/entityPermissionUtils.ts": {
