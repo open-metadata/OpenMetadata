@@ -9,7 +9,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -30,6 +31,7 @@
           "filter": [
             "word_delimiter_filter",
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -38,7 +40,8 @@
           "type": "custom",
           "tokenizer": "om_ngram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
