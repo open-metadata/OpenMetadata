@@ -173,12 +173,14 @@ export const useConnectionsData = ({
 }: UseConnectionsDataArgs) => {
   /* eslint-enable sonarjs/cyclomatic-complexity, sonarjs/cognitive-complexity */
   const queryClient = useQueryClient();
+  // Options go to usePaging too: a size left in the shared URL param or preference by a page on
+  // another scale must not become the size here, where the picker has no option for it.
   const {
     currentPage: page,
     pageSize,
     handlePageChange,
     handlePageSizeChange,
-  } = usePaging(pageSizeOptions[0]);
+  } = usePaging(pageSizeOptions[0], pageSizeOptions);
   const [sortOrder, setSortOrder] = useState<ConnectionsSortOrder>('asc');
 
   // Any change to what is being queried invalidates the current page number. usePaging restores
