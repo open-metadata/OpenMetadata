@@ -1513,6 +1513,42 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
+  public RestUtil.DeleteResponse<TestSuite> deleteTestCasesFromLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                deleteTestCasesFromLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
+  }
+
+  private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
+    // Only the test cases the suite actually contains are removed, so that the relationship change
+    // published afterwards describes what really changed
+    Set<UUID> requestedIds = new HashSet<>(testCaseIds);
+    List<EntityReference> removedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE).stream()
+            .filter(ref -> requestedIds.contains(ref.getId()))
+            .toList();
+    if (removedTestCaseReferences.isEmpty()) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    // Removed one by one, as the single test case removal does, so that the RDF store and the
+    // caches on both sides of every relationship are kept in step
+    removedTestCaseReferences.forEach(
+        ref ->
+            deleteRelationship(
+                testSuiteId, TEST_SUITE, ref.getId(), TEST_CASE, Relationship.CONTAINS));
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, removedTestCaseReferences);
+  }
+
   private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
     List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
     testCases.forEach(
