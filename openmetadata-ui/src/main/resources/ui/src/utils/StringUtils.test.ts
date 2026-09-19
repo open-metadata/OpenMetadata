@@ -637,6 +637,22 @@ describe('StringUtils', () => {
         String.raw`o\'brien \"test\"`
       );
     });
+
+    it('should escape a quote preceded by an even (already-literal) run of backslashes', () => {
+      // Two raw backslashes resolve to one literal backslash, so this quote
+      // is NOT already escaped and must still be escaped here.
+      expect(getQueryWithSlash(String.raw`\\"customer`)).toBe(
+        String.raw`\\\"customer`
+      );
+    });
+
+    it('should leave a quote preceded by an odd run of backslashes alone', () => {
+      // Three raw backslashes resolve to one literal backslash plus one
+      // escaping backslash, so this quote is already escaped.
+      expect(getQueryWithSlash(String.raw`\\\"customer`)).toBe(
+        String.raw`\\\"customer`
+      );
+    });
   });
 
   describe('getBase64EncodedString', () => {

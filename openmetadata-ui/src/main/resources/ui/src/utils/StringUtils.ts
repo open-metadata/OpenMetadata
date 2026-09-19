@@ -112,10 +112,15 @@ export const getQueryWithSlash = (query: string): string => {
   // for callers that use it (e.g. Suggestions.tsx), while other callers
   // (e.g. TagsUtils#fetchGlossaryList) pass raw text straight here and
   // still need an unescaped quote escaped so it doesn't break
-  // Elasticsearch's query_string parser.
+  // Elasticsearch's query_string parser. A quote is only actually escaped
+  // when it's preceded by an odd number of backslashes -- an even run
+  // (including zero) resolves to literal backslashes, leaving the quote
+  // itself unescaped, so checking just one preceding character isn't enough.
   return query
     .replaceAll(/'/g, String.raw`\'`)
-    .replaceAll(/(?<!\\)"/g, String.raw`\"`);
+    .replaceAll(/(\\*)"/g, (match, backslashes: string) =>
+      backslashes.length % 2 === 1 ? match : `${backslashes}\\"`
+    );
 };
 
 /**
