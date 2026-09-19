@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineType,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -41,7 +44,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from openmetadata_managed_apis.workflows.ingestion import common, metadata, test_suite
+from openmetadata_managed_apis.workflows.ingestion import auto_classification, common, metadata, test_suite
 
 TABLE_FQN_PATTERN = r"^mysql_svc\.shop\.sales\.orders$"
 
@@ -109,6 +112,34 @@ def metadata_task(monkeypatch):
     return metadata.build_metadata_dag(pipeline).get_task("ingestion_task")
 
 
+@pytest.fixture
+def auto_classification_task(monkeypatch):
+    # As Airflow stores a database service's auto classification config once deployed: it has no
+    # database-only field, so it parsed as the messaging variant and was written back with its fields.
+    source_config = SourceConfig.model_validate(
+        {
+            "config": {
+                "type": "AutoClassification",
+                "classificationFilterPattern": None,
+                "topicFilterPattern": None,
+                "useFqnForFiltering": False,
+                "storeSampleData": True,
+                "enableAutoClassification": True,
+                "confidence": 80.0,
+                "sampleDataCount": 50,
+                "classificationLanguage": "en",
+            }
+        }
+    )
+    monkeypatch.setattr(
+        auto_classification,
+        "build_source",
+        lambda _: Source(type="sqlite", serviceName="sqlite_svc", sourceConfig=source_config),
+    )
+    pipeline = _pipeline("sqlite_classification", PipelineType.autoClassification, source_config, "databaseService")
+    return auto_classification.build_auto_classification_dag(pipeline).get_task("auto_classification_task")
+
+
 def _run(task, override):
     return task.execute({"params": {"sourceConfigOverride": override}})
 
@@ -152,3 +183,16 @@ def test_every_dag_declares_the_override_param_so_the_trigger_conf_can_set_it(su
     would silently run the whole pipeline."""
     assert suite_task.params["sourceConfigOverride"] is None
     assert metadata_task.params["sourceConfigOverride"] is None
+
+
+def test_override_settles_which_config_a_sparse_deployed_one_is(auto_classification_task):
+    """A deployed config that fits several variants must not pin the scoped one to the variant it
+    first parsed as: the table filters the scope adds only fit the database variant."""
+    config = _run(
+        auto_classification_task,
+        {"useFqnForFiltering": True, "tableFilterPattern": {"includes": [TABLE_FQN_PATTERN]}, "includeViews": True},
+    ).source.sourceConfig.config
+
+    assert isinstance(config, DatabaseServiceAutoClassificationPipeline)
+    assert config.tableFilterPattern.includes == [TABLE_FQN_PATTERN]
+    assert config.storeSampleData is True

@@ -385,13 +385,19 @@ def apply_source_config_override(
     DAG's config at deploy time, so what applies to one run only - the test case a scoped test suite
     run executes, the filters narrowing a profiler or metadata run to one table - can reach it only
     through the trigger conf. Top-level keys of the override replace the deployed ones.
+
+    The result is validated through the source config union, not the deployed config's class: a
+    sparse deployed config can fit several variants - an auto classification config with no database
+    fields parses as the messaging one - and only the fields the override adds settle which it is.
+    Empty fields are left out of the deployed side, so one variant's empty fields cannot rule out
+    another.
     """
     if not source_config_override:
         return
     source_config = workflow_config.source.sourceConfig
-    deployed_config = source_config.config
-    overridden = {**deployed_config.model_dump(mode="json"), **source_config_override}
-    source_config.config = type(deployed_config).model_validate(overridden)
+    deployed = source_config.config.model_dump(mode="json", exclude_none=True)
+    overridden = {**deployed, **source_config_override}
+    workflow_config.source.sourceConfig = type(source_config).model_validate({"config": overridden})
 
 
 class CustomPythonOperator(PythonOperator):
