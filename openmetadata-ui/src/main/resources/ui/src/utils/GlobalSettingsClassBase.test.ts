@@ -45,16 +45,6 @@ const EXTERNAL_IDP_PROVIDERS = Object.values(AuthProvider).filter(
   (provider) => !LOGIN_CONFIG_PROVIDERS.includes(provider)
 );
 
-let mockAuthProvider: AuthProvider | undefined = AuthProvider.Basic;
-
-jest.mock('../hooks/useApplicationStore', () => ({
-  useApplicationStore: {
-    getState: jest.fn(() => ({
-      authConfig: { provider: mockAuthProvider },
-    })),
-  },
-}));
-
 describe('GlobalSettingsClassBase', () => {
   const mockPermissions: UIPermission = {
     [ResourceEntity.DATABASE_SERVICE]: ENTITY_PERMISSIONS,
@@ -76,12 +66,18 @@ describe('GlobalSettingsClassBase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuthProvider = AuthProvider.Basic;
   });
 
-  const getLoginConfigurationItem = (isAdminUser: boolean) =>
+  const getLoginConfigurationItem = (
+    isAdminUser: boolean,
+    authProvider?: AuthProvider
+  ) =>
     globalSettingsClassBase
-      .getGlobalSettingsMenuWithPermission(mockNoPermissions, isAdminUser)
+      .getGlobalSettingsMenuWithPermission(
+        mockNoPermissions,
+        isAdminUser,
+        authProvider
+      )
       .find((item) => item.key === 'preferences')
       ?.items?.find((item) => item.key === 'preferences.loginConfiguration');
 
@@ -568,26 +564,34 @@ describe('GlobalSettingsClassBase', () => {
     it.each(LOGIN_CONFIG_PROVIDERS)(
       'should expose login configuration to an admin under %s, whose login the server drives',
       (provider) => {
-        mockAuthProvider = provider;
-
-        expect(getLoginConfigurationItem(true)?.isProtected).toBe(true);
+        expect(getLoginConfigurationItem(true, provider)?.isProtected).toBe(
+          true
+        );
       }
     );
 
     // Derived from the enum rather than hand-listed so a provider added to the schema is covered
     // here by default — the safe direction, since a new provider is far likelier to be an external
     // IdP than one whose login the server drives itself.
-    it.each([...EXTERNAL_IDP_PROVIDERS, undefined])(
+    it.each(EXTERNAL_IDP_PROVIDERS)(
       'should hide login configuration under %s, where the settings never take effect',
       (provider) => {
-        mockAuthProvider = provider;
-
-        expect(getLoginConfigurationItem(true)?.isProtected).toBe(false);
+        expect(getLoginConfigurationItem(true, provider)?.isProtected).toBe(
+          false
+        );
       }
     );
 
+    // Callers that only want another category omit the provider; they must keep working, and the
+    // entry stays visible rather than being hidden on a caller's behalf.
+    it('should leave login configuration visible when no provider is passed', () => {
+      expect(getLoginConfigurationItem(true)?.isProtected).toBe(true);
+    });
+
     it('should keep login configuration hidden from a non-admin even under basic auth', () => {
-      expect(getLoginConfigurationItem(false)?.isProtected).toBe(false);
+      expect(
+        getLoginConfigurationItem(false, AuthProvider.Basic)?.isProtected
+      ).toBe(false);
     });
 
     it('should mark data asset rules as beta', () => {
