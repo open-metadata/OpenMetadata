@@ -27,11 +27,24 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  hasVersionDiffArrayProperty,
+  hasVersionDiffStringProperty,
   isEndsWithField,
+  parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { getTagsDiff } from './EntityVersionUtilsPure';
+
+const isPipelineTaskDiff = (value: unknown) => {
+  if (!hasVersionDiffStringProperty(value, 'name')) {
+    return false;
+  }
+
+  return hasVersionDiffArrayProperty(value, 'tags', (tag) =>
+    hasVersionDiffStringProperty(tag, 'tagFQN')
+  );
+};
 
 const handleTaskDescriptionChangeDiff = (
   tasksDiff: EntityDiffProps,
@@ -59,11 +72,13 @@ const handleTaskTagChangeDiff = (
   taskList: Pipeline['tasks'] = [],
   changedTaskName?: string
 ) => {
-  const oldTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityOldValue(tasksDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(tasksDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
-  const newTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityNewValue(tasksDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(tasksDiff),
+    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
   );
 
   taskList?.forEach((i) => {
@@ -71,7 +86,7 @@ const handleTaskTagChangeDiff = (
       const flag: { [x: string]: boolean } = {};
       const uniqueTags: Array<TagLabelWithStatus> = [];
       const tagsDiff = getTagsDiff(oldTags, newTags);
-      [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+      [...tagsDiff, ...((i.tags ?? []) as Array<TagLabelWithStatus>)].forEach(
         (elem: TagLabelWithStatus) => {
           if (!flag[elem.tagFQN]) {
             flag[elem.tagFQN] = true;
@@ -105,8 +120,9 @@ const handleTaskDiffAdded = (
   tasksDiff: EntityDiffProps,
   taskList: Pipeline['tasks'] = []
 ) => {
-  const newTask: Pipeline['tasks'] = JSON.parse(
-    tasksDiff.added?.newValue ?? '[]'
+  const newTask = parseVersionDiffArray<NonNullable<Pipeline['tasks']>[number]>(
+    tasksDiff.added?.newValue,
+    isPipelineTaskDiff
   );
   newTask?.forEach((task) => {
     formatAddedTaskData(taskList, task);
@@ -116,8 +132,9 @@ const handleTaskDiffAdded = (
 };
 
 const getDeletedTasks = (tasksDiff: EntityDiffProps) => {
-  const newTask: Pipeline['tasks'] = JSON.parse(
-    tasksDiff.deleted?.oldValue ?? '[]'
+  const newTask = parseVersionDiffArray<NonNullable<Pipeline['tasks']>[number]>(
+    tasksDiff.deleted?.oldValue,
+    isPipelineTaskDiff
   );
 
   return newTask?.map((task) => ({

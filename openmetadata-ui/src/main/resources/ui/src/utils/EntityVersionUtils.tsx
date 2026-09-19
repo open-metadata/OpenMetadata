@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/VersionButton';
+import type { EntityVersionButtonProps } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeline.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
@@ -31,6 +32,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  parseVersionDiffObject,
 } from './EntityDiffPureUtils';
 import {
   getAddedDiffElement,
@@ -179,14 +181,23 @@ export const renderVersionButton = (
   versionHandler: (version: string) => void,
   className?: string
 ) => {
-  const currV = JSON.parse(version);
+  const currV =
+    parseVersionDiffObject<EntityVersionButtonProps['version']>(version);
+
+  if (
+    isEmpty(currV) ||
+    (typeof currV.version !== 'string' && typeof currV.version !== 'number') ||
+    !Number.isFinite(Number.parseFloat(toString(currV.version)))
+  ) {
+    return null;
+  }
 
   const majorVersionChecks = () => {
     return Pure.isMajorVersion(
-      Number.parseFloat(currV?.changeDescription?.previousVersion)
+      Number.parseFloat(toString(currV?.changeDescription?.previousVersion))
         .toFixed(1)
         .toString(),
-      Number.parseFloat(currV?.version).toFixed(1).toString()
+      Number.parseFloat(toString(currV?.version)).toFixed(1).toString()
     );
   };
 
