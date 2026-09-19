@@ -56,6 +56,36 @@ export const WithInitials: Story = {
   ),
 };
 
+export const Colors: Story = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <Avatar alt="Olivia Rhye" initials="OR" size="lg" />
+        <Avatar alt="Phoenix Baker" initials="PB" size="lg" />
+        <Avatar alt="Lana Steiner" initials="LS" size="lg" />
+        <Avatar alt="Demi Wilkinson" initials="DW" size="lg" />
+        <Avatar alt="Candice Wu" initials="CW" size="lg" />
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <Avatar alt="Olivia Rhye" colorVariant="solid" initials="OR" size="lg" />
+        <Avatar
+          alt="Phoenix Baker"
+          colorVariant="solid"
+          initials="PB"
+          size="lg"
+        />
+        <Avatar
+          alt="Lana Steiner"
+          colorVariant="solid"
+          initials="LS"
+          size="lg"
+        />
+        <Avatar colorVariant="neutral" initials="+5" size="lg" />
+      </div>
+    </div>
+  ),
+};
+
 export const Sizes: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
