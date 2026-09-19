@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,10 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -49,6 +53,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  *
  * <p>This resolver reads {@code entity_relationship} directly and visits each team exactly once, so
  * the query count follows the depth of the hierarchy rather than the number of teams in it.
+ *
+ * <p>Resolved nodes are then memoized. The team graph is small and changes only through
+ * administrative writes, while it is read on the authorization path of every request -- twice per
+ * entity read, in fact, since inherited roles and inherited domains walk the same ancestry. Every
+ * write that can change a node already drops this cache through {@link SubjectCache#invalidateAll}
+ * (team parents, children, members, default roles and policies; role policies), and the {@code
+ * Invalidatable} registered by {@code SubjectCache} carries team writes to the other pods, so the
+ * two-minute expiry is a backstop rather than the correctness mechanism.
  */
 @Slf4j
 public final class TeamHierarchyResolver {
@@ -59,7 +71,34 @@ public final class TeamHierarchyResolver {
       String name,
       List<EntityReference> parents,
       List<EntityReference> defaultRoles,
-      List<EntityReference> policies) {}
+      List<EntityReference> policies) {
+
+    /**
+     * A node handed to a caller must not share references with the cached one. Callers hang these
+     * on the entity they are building, and the serialization path then stamps an {@code href} onto
+     * each reference -- mutating the cached copy, and every later reader with it.
+     */
+    TeamNode detached() {
+      return new TeamNode(
+          id,
+          name,
+          JsonUtils.deepCopyList(parents, EntityReference.class),
+          JsonUtils.deepCopyList(defaultRoles, EntityReference.class),
+          JsonUtils.deepCopyList(policies, EntityReference.class));
+    }
+  }
+
+  /** Matches the freshness contract of {@code SubjectCache}'s policy cache. */
+  private static final long CACHE_TTL_MINUTES = 2;
+
+  private static final int MAX_CACHED_TEAMS = 10_000;
+
+  private static final Cache<UUID, TeamNode> NODES =
+      CacheBuilder.newBuilder()
+          .maximumSize(MAX_CACHED_TEAMS)
+          .expireAfterWrite(CACHE_TTL_MINUTES, TimeUnit.MINUTES)
+          .recordStats()
+          .build();
 
   /**
    * A team with no {@code PARENT_OF} row is a child of the organization, matching {@code
@@ -142,13 +181,38 @@ public final class TeamHierarchyResolver {
     return List.copyOf(resolveRefs(Entity.DOMAIN, flatten(domainIds)).values());
   }
 
-  /** Drops the memoized organization reference; the entity registry is reset between test runs. */
-  public static void invalidate() {
+  /** Drops every memoized node. Called by {@link SubjectCache#invalidateAll} on team writes. */
+  public static void invalidateAll() {
+    NODES.invalidateAll();
     organization = null;
   }
 
-  /** Reads the parents, default roles and policies of every team in {@code ids}. */
+  public static String getCacheStats() {
+    return String.format("TeamHierarchyCache: %s, size=%d", NODES.stats(), NODES.size());
+  }
+
+  /** Serves the nodes already memoized and reads the rest in one batch. */
   private static Map<UUID, TeamNode> loadNodes(final Set<UUID> ids) {
+    final Map<UUID, TeamNode> nodes = new LinkedHashMap<>();
+    final Set<UUID> misses = new LinkedHashSet<>();
+    for (final UUID id : ids) {
+      final TeamNode cached = NODES.getIfPresent(id);
+      if (cached == null) {
+        misses.add(id);
+      } else {
+        nodes.put(id, cached.detached());
+      }
+    }
+    if (!misses.isEmpty()) {
+      final Map<UUID, TeamNode> read = readNodes(misses);
+      read.forEach((id, node) -> NODES.put(id, node.detached()));
+      nodes.putAll(read);
+    }
+    return nodes;
+  }
+
+  /** Reads the parents, default roles and policies of every team in {@code ids}. */
+  private static Map<UUID, TeamNode> readNodes(final Set<UUID> ids) {
     final List<String> idStrings = asStrings(ids);
     final CollectionDAO.EntityRelationshipDAO dao = relationshipDAO();
     final Map<UUID, List<UUID>> parentIds =

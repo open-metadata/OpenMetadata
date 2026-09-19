@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -47,8 +48,9 @@ import org.openmetadata.service.Entity;
  *
  * <p>{@link #readingAUserCostsTheSameWhateverTheTeamCount()} is the regression guard: the statement
  * count must be driven by the depth of the hierarchy, not by how many teams sit at the bottom of
- * it. The other test pins the semantics that walk has to keep -- roles and domains still reach the
- * user from every level above.
+ * it, and it must stay a small constant now that resolved nodes are memoized. The remaining tests
+ * pin the semantics that walk has to keep -- roles and domains still reach the user from every
+ * level above, and an administrative change to the hierarchy is visible on the very next read.
  */
 @Isolated("Decorates the application's SQL logger to count statements for one request")
 @ExtendWith(TestNamespaceExtension.class)
@@ -56,6 +58,13 @@ class MultiTeamUserFanOutIT {
 
   private static final String USER_FIELDS = "teams,roles,domains,personas,defaultPersona";
   private static final String RELATIONSHIP_TABLE = "entity_relationship";
+
+  /**
+   * A warm read issues 8 relationship statements: the user's own teams, roles, personas, default
+   * persona, domains, inherited personas and the read bundle. The bound leaves room for an honest
+   * new lookup while still failing loudly if the per-team walk ever comes back.
+   */
+  private static final int MAX_RELATIONSHIP_QUERIES = 15;
 
   @Test
   void readingAUserCostsTheSameWhateverTheTeamCount(TestNamespace ns) {
@@ -71,6 +80,70 @@ class MultiTeamUserFanOutIT {
         wide,
         "Fifteen times the teams must not cost more queries: the hierarchy walk is batched per "
             + "level, so only its depth may show up in the statement count");
+    assertTrue(
+        wide <= MAX_RELATIONSHIP_QUERIES,
+        "A warm read must stay a small constant, was " + wide + " statements");
+  }
+
+  /**
+   * Resolved nodes are memoized, so the writes that change them have to drop that cache. A default
+   * role added to a team the user belongs to must reach the user on the very next read, not two
+   * minutes later.
+   */
+  @Test
+  void aTeamRoleChangeIsVisibleOnTheNextRead(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Role role = admin.roles().getByName("DataSteward");
+    Team group =
+        team(new CreateTeam().withName(ns.prefix("rolechange")).withTeamType(TeamType.GROUP));
+    String userName = user(ns, "rolechange", List.of(group.getId()));
+
+    assertFalse(
+        names(admin.users().getByName(userName, USER_FIELDS).getInheritedRoles())
+            .contains(role.getName()),
+        "Nothing is inherited before the role is granted");
+
+    Team stored = admin.teams().get(group.getId().toString(), "defaultRoles,parents");
+    stored.setDefaultRoles(List.of(role.getEntityReference()));
+    admin.teams().update(stored.getId().toString(), stored);
+
+    assertTrue(
+        names(admin.users().getByName(userName, USER_FIELDS).getInheritedRoles())
+            .contains(role.getName()),
+        "The granted role must be inherited immediately, not after the cache expires");
+  }
+
+  /**
+   * The cached node holds the team's parents, so re-parenting has to be visible straight away too:
+   * the user's inherited domains follow the new ancestry.
+   */
+  @Test
+  void aTeamReparentIsVisibleOnTheNextRead(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain domain = domain(ns, "reparent");
+    Team withoutDomain = departmentUnderDivision(ns, "reparentfrom", null);
+    Team withDomain = departmentUnderDivision(ns, "reparentto", domain);
+    Team group =
+        team(
+            new CreateTeam()
+                .withName(ns.prefix("reparentgroup"))
+                .withTeamType(TeamType.GROUP)
+                .withParents(List.of(withoutDomain.getId())));
+    String userName = user(ns, "reparent", List.of(group.getId()));
+
+    assertFalse(
+        fqns(admin.users().getByName(userName, USER_FIELDS).getDomains())
+            .contains(domain.getFullyQualifiedName()),
+        "Nothing is inherited from a department the user does not sit under");
+
+    Team stored = admin.teams().get(group.getId().toString(), "parents");
+    stored.setParents(List.of(withDomain.getEntityReference()));
+    admin.teams().update(stored.getId().toString(), stored);
+
+    assertTrue(
+        fqns(admin.users().getByName(userName, USER_FIELDS).getDomains())
+            .contains(domain.getFullyQualifiedName()),
+        "The new parent's domain must be inherited immediately");
   }
 
   @Test

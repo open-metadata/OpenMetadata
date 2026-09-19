@@ -124,6 +124,9 @@ public class SubjectCache {
       (type, id, fqn) -> {
         if (Entity.PERSONA.equals(type) || Entity.TEAM.equals(type)) {
           invalidateAllUserContexts();
+          if (Entity.TEAM.equals(type)) {
+            TeamHierarchyResolver.invalidateAll();
+          }
         } else if (Entity.USER.equals(type) && fqn != null) {
           invalidateUserContextByFqn(fqn);
         }
@@ -266,6 +269,8 @@ public class SubjectCache {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
+    // The policy caches are derived from the team graph, so they have to be dropped together.
+    TeamHierarchyResolver.invalidateAll();
   }
 
   public static User getUserContext(String userName) {
@@ -279,8 +284,10 @@ public class SubjectCache {
 
   public static String getCacheStats() {
     return String.format(
-        "PolicyCache: %s, UserContextCache: %s",
-        USER_POLICIES_CACHE.stats(), USER_CONTEXT_CACHE.stats());
+        "PolicyCache: %s, UserContextCache: %s, %s",
+        USER_POLICIES_CACHE.stats(),
+        USER_CONTEXT_CACHE.stats(),
+        TeamHierarchyResolver.getCacheStats());
   }
 
   static class UserPoliciesLoader extends CacheLoader<String, UserPoliciesContext> {

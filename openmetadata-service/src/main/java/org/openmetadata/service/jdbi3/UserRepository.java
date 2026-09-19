@@ -294,7 +294,10 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return Collections.emptyList(); // No inherited roles for bots
     }
-    return SubjectContext.getRolesForTeams(getTeams(user));
+    // setFields resolves teams before inherited roles, so re-reading them here is a wasted query.
+    // Teams are stripped from the stored JSON, so a non-null value can only have come from there.
+    List<EntityReference> teams = user.getTeams() != null ? user.getTeams() : getTeams(user);
+    return SubjectContext.getRolesForTeams(teams);
   }
 
   @Override

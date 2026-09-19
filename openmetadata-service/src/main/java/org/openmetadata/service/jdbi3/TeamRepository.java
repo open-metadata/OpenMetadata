@@ -786,8 +786,21 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  protected void postUpdate(Team original, Team updated) {
+    super.postUpdate(original, updated);
+    // The resolved graph stores each team's name, which is what inAnyTeam() and matchTeam() match
+    // on. The updater invalidates for membership, roles, policies and ancestry; a rename does not
+    // pass through it.
+    if (!Objects.equals(original.getName(), updated.getName())) {
+      SubjectCache.invalidateAll();
+    }
+  }
+
+  @Override
   protected void postDelete(Team entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
+    // Descendants cache this team as their parent, and members inherit its roles and policies.
+    SubjectCache.invalidateAll();
     PolicyConditionUpdater.updateAllPolicyConditions(
         condition ->
             PolicyConditionUpdater.removeFromCondition(

@@ -59,7 +59,7 @@ public final class TeamGraphFixture {
     ROWS.clear();
     REFS.clear();
     QUERIES.set(0);
-    TeamHierarchyResolver.invalidate();
+    TeamHierarchyResolver.invalidateAll();
     Entity.setCollectionDAO(collectionDAO());
   }
 
@@ -97,6 +97,9 @@ public final class TeamGraphFixture {
       addRef(Entity.POLICY, policy);
       link(Relationship.HAS, Entity.TEAM, team.getId(), Entity.POLICY, policy.getId());
     }
+    // A real team write drops the resolved graph through SubjectCache.invalidateAll(); a test that
+    // edits the graph has to do the same or the resolver keeps serving the shape it read before.
+    TeamHierarchyResolver.invalidateAll();
   }
 
   /** Answers {@code Entity.getEntityReferencesByIds} from the graph registered here. */
