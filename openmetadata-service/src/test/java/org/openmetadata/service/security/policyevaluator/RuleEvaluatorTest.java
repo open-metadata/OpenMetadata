@@ -472,6 +472,79 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_matchAnyDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Finance")
+            .withFullyQualifiedName("Domain.Finance");
+    EntityReference procurement =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("Procurement")
+            .withFullyQualifiedName("Domain.Procurement");
+
+    CreateResourceContext<?> contextWithDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextWithDomains.getDomains()).thenReturn(listOf(finance, procurement));
+    StandardEvaluationContext ctx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextWithDomains));
+
+    // Resource belongs to Finance; both the first and the second input match
+    assertTrue(
+        parseExpression("matchAnyDomain('Domain.Finance', 'Domain.Engineering')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("matchAnyDomain('Domain.Engineering', 'Domain.Procurement')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(parseExpression("matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("!matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+
+    // Domain.Finance is not present in the resource's domains
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Engineering')").getValue(ctx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyDomain('Domain.Engineering')").getValue(ctx, Boolean.class));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Engineering', 'Domain.Marketing')")
+            .getValue(ctx, Boolean.class));
+
+    // Resource with no domains never matches
+    CreateResourceContext<?> contextNoDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNoDomains.getDomains()).thenReturn(new ArrayList<>());
+    StandardEvaluationContext emptyCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextNoDomains));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(emptyCtx, Boolean.class));
+    assertTrue(
+        parseExpression("!matchAnyDomain('Domain.Finance')").getValue(emptyCtx, Boolean.class));
+
+    // getDomains() returning null must not blow up
+    CreateResourceContext<?> contextNullDomains = mock(CreateResourceContext.class);
+    Mockito.when(contextNullDomains.getDomains()).thenReturn(null);
+    StandardEvaluationContext nullCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, contextNullDomains));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(nullCtx, Boolean.class));
+
+    // A null resource context never matches
+    StandardEvaluationContext noResourceCtx =
+        new StandardEvaluationContext(new RuleEvaluator(null, subjectContext, null));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance')").getValue(noResourceCtx, Boolean.class));
+  }
+
+  @Test
+  void test_matchAnyDomain_duringExpressionValidation() {
+    // The validating RuleEvaluator has no resource context; the function must only resolve the
+    // referenced domains and return false instead of throwing or NPE-ing.
+    StandardEvaluationContext ctx = new StandardEvaluationContext(new RuleEvaluator(false));
+    assertFalse(
+        parseExpression("matchAnyDomain('Domain.Finance', 'Domain.Procurement')")
+            .getValue(ctx, Boolean.class));
+    assertTrue(parseExpression("!matchAnyDomain('Domain.Finance')").getValue(ctx, Boolean.class));
+  }
+
+  @Test
   void test_matchAnyCertification() {
     // Certification is not Present
     assertTrue(evaluateExpression("!matchAnyCertification('Certification.Gold')"));
@@ -768,8 +841,8 @@ class RuleEvaluatorTest {
    * A ResourceContext built with neither an id nor a name never resolves an entity, so every
    * attribute a policy condition reads comes back empty - and nothing reports that it did. A tag
    * condition then answers the same way whether or not the tag is present, which makes a Deny fire
-   * on every entity in one polarity and on none in the other. This is the root cause of #31941;
-   * the fix is that callers holding a specific entity must pass its identity in.
+   * on every entity in one polarity and on none in the other. This is the root cause of #31941; the
+   * fix is that callers holding a specific entity must pass its identity in.
    */
   @Test
   void test_bareResourceContextCannotSeeTags() {
@@ -1009,13 +1082,15 @@ class RuleEvaluatorTest {
     table.setDomains(List.of(corpSubDomain.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
-        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"' resources");
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"'"
+            + " resources");
 
     user.setDomains(List.of(corpDomain.getEntityReference()));
     table.setDomains(List.of(corpDifferent.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
-        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"' resources");
+        "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"'"
+            + " resources");
 
     // Edge Case 2: Similar but different root domains
     Domain engineering = createDomain("Engineering", "Engineering");
