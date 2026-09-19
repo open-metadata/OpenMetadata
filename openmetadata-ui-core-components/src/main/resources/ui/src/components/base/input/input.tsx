@@ -169,7 +169,7 @@ export const InputBase = ({
         {...(inputProps as AriaInputProps)}
         className={cx(
           cx(
-            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-tertiary tw:autofill:rounded-lg tw:autofill:text-primary',
+            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
             fontSizeClass[fontSize]
           ),
           isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
