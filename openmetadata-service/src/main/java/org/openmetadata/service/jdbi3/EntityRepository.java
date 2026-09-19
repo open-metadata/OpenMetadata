@@ -5020,16 +5020,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the relationships to other entities
     daoCollection.relationshipDAO().deleteAll(id, entityType);
 
+    // Delete all the extensions of entity
+    daoCollection.entityExtensionDAO().deleteAll(id);
+
+    // The FQN-prefix deletes run together, after entity_extension, to match the table order in
+    // bulkCleanupReferences(). Both paths delete the same rows for overlapping subtrees — a direct
+    // delete of a child races a cascade delete of its ancestor — so acquiring entity_extension and
+    // field_relationship in opposite orders is an AB-BA deadlock the database cannot avoid for us.
+    // Neither table depends on the other here; only the feed-artifact ordering above is required.
     if (shouldCleanupFqnDependents()) {
       daoCollection
           .fieldRelationshipDAO()
           .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-    }
-
-    // Delete all the extensions of entity
-    daoCollection.entityExtensionDAO().deleteAll(id);
-
-    if (shouldCleanupFqnDependents()) {
       daoCollection
           .tagUsageDAO()
           .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
@@ -7187,6 +7189,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityIds.add(entity.getId());
       entityIdStrings.add(entity.getId().toString());
     }
+    // The table order here is shared with cleanup() — entity_relationship, entity_extension, then
+    // the FQN-prefix deletes — because the two paths delete the same rows whenever a direct delete
+    // races a cascade over an overlapping subtree. Reorder one and you reintroduce an AB-BA
+    // deadlock between them; change both together.
+    //
     // Must run before batchDeleteRelationships: the Task 2.0 artifacts are found via the
     // entity --MENTIONED_IN--> artifact edge, which the relationship delete below removes.
     try (var ignored = phase("bulkHardDeleteFeedArtifacts")) {
