@@ -149,11 +149,9 @@ export const Avatar = ({
 
     if (initials) {
       return (
-        <span
-          className={cx(
-            initialsColor?.text ?? 'tw:text-quaternary',
-            styles[size].initials
-          )}>
+        // Color is inherited from the root (see className above) so a caller can
+        // override it; the span only carries sizing.
+        <span className={cx('tw:text-current', styles[size].initials)}>
           {initials}
         </span>
       );
@@ -203,15 +201,17 @@ export const Avatar = ({
       className={cx(
         'tw:relative tw:inline-flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:outline-transparent',
         // Colored initials bring their own tinted surface (+ border for the
-        // outlined variant); only fall back to the neutral gray surface + the
-        // contrast outline when we are not rendering a colored initial.
+        // outlined variant); otherwise fall back to the neutral gray surface.
         initialsColor ? initialsColor.container : 'tw:bg-tertiary',
+        // Initials text color lives on the root (the span inherits it) so a
+        // caller's `className` — applied last — can still override it.
+        showingInitials && (initialsColor?.text ?? 'tw:text-quaternary'),
         // Focus styles
         focusable &&
           'tw:group-outline-focus-ring tw:group-focus-visible:outline-2 tw:group-focus-visible:outline-offset-2',
-        contrastBorder &&
-          !initialsColor &&
-          'tw:outline tw:outline-avatar-contrast-border',
+        // Honor the contrast outline regardless of the initials color treatment
+        // — AvatarGroup relies on it to separate negatively-overlapped avatars.
+        contrastBorder && 'tw:outline tw:outline-avatar-contrast-border',
         styles[size].root,
         className
       )}

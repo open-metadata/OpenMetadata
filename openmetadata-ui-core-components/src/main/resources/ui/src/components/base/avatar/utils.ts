@@ -95,7 +95,12 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-green-500', text: TW_TEXT_FG_WHITE },
+    // green-500 is light enough that white initials fail WCAG contrast; use a
+    // dark green glyph on the solid fill instead.
+    solid: {
+      container: 'tw:bg-utility-green-500',
+      text: 'tw:text-utility-green-900',
+    },
     outlined: {
       container: 'tw:bg-utility-green-50 tw:border tw:border-utility-green-200',
       text: 'tw:text-utility-green-700',
@@ -110,7 +115,12 @@ const AVATAR_COLOR_CLASSES: Record<AvatarColorVariant, AvatarColorClasses>[] = [
     },
   },
   {
-    solid: { container: 'tw:bg-utility-yellow-500', text: TW_TEXT_FG_WHITE },
+    // yellow-500 is light enough that white initials fail WCAG contrast; use a
+    // dark yellow glyph on the solid fill instead.
+    solid: {
+      container: 'tw:bg-utility-yellow-500',
+      text: 'tw:text-utility-yellow-900',
+    },
     outlined: {
       container:
         'tw:bg-utility-yellow-50 tw:border tw:border-utility-yellow-200',
