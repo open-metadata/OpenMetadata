@@ -83,28 +83,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     doc.put(
         TestCaseRepository.INCIDENTS_FIELD,
         ongoingIncidentId != null ? ongoingIncidentId.toString() : null);
+    indexDataQualityDimension(doc);
     if (testCase.getTestDefinition() != null) {
       try {
         TestDefinition testDefinition =
             Entity.getEntity(
                 Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
         doc.put("testPlatforms", testDefinition.getTestPlatforms());
-        // The dimension is indexed by name so that the existing keyword filters and aggregations
-        // keep working: system dimension names are exactly the values the enum used to hold.
-        // No fallback to the test definition: every test case carries its own dimension
-        // relationship, inherited ones included (backfilled in 2.1.0 and repointed by
-        // TestDefinitionRepository when a definition is reclassified).
-        String dimensionName =
-            testCase.getDataQualityDimension() != null
-                ? testCase.getDataQualityDimension().getName()
-                : null;
-        // The "No Dimension" filter is a must_not-exists on this field, so an effective
-        // NoDimension has to stay unset in the document instead of being indexed by name.
-        doc.put(
-            "dataQualityDimension",
-            DataQualityDimensionRepository.NO_DIMENSION.equals(dimensionName)
-                ? null
-                : dimensionName);
         doc.put("testCaseType", testDefinition.getEntityType());
       } catch (EntityNotFoundException ex) {
         LOG.warn(
@@ -115,6 +100,29 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     }
     setParentRelationships(doc, testCase);
     return doc;
+  }
+
+  /**
+   * Denormalizes the dimension to its name and drops the EntityReference from the document. The
+   * name is what the keyword filters and aggregations read — system dimension names are exactly the
+   * values the enum used to hold — while the reference is left out so a search hit deserialized
+   * back into a {@link TestCase} never sees a string where the POJO declares an EntityReference.
+   *
+   * <p>No fallback to the test definition: every test case carries its own dimension relationship,
+   * inherited ones included (backfilled in 2.1.0 and repointed by TestDefinitionRepository when a
+   * definition is reclassified).
+   */
+  private void indexDataQualityDimension(Map<String, Object> doc) {
+    doc.remove(TestCaseRepository.DATA_QUALITY_DIMENSION_FIELD);
+    String dimensionName =
+        testCase.getDataQualityDimension() != null
+            ? testCase.getDataQualityDimension().getName()
+            : null;
+    // The "No Dimension" filter is a must_not-exists on this field, so an effective NoDimension has
+    // to stay unset in the document instead of being indexed by name.
+    doc.put(
+        TestCaseRepository.DATA_QUALITY_DIMENSION_NAME_FIELD,
+        DataQualityDimensionRepository.NO_DIMENSION.equals(dimensionName) ? null : dimensionName);
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {

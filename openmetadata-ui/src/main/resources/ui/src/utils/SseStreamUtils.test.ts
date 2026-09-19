@@ -22,12 +22,15 @@ import {
   RetriableStreamError,
 } from './SseStreamUtils';
 
-const mockRefreshToken = jest.fn().mockResolvedValue(undefined);
+const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);
 
-jest.mock('./Auth/TokenService/TokenServiceUtil', () => ({
-  __esModule: true,
-  default: {
-    getInstance: () => ({ refreshToken: mockRefreshToken }),
+// `ensureFreshToken` is wrapped in an arrow function rather than referenced
+// directly so the read of `mockEnsureFreshToken` is deferred until the real
+// call site invokes it — jest hoists this factory above the `const`
+// declaration above, so an eager read would throw a TDZ ReferenceError.
+jest.mock('./Auth/AuthCoordinator', () => ({
+  authCoordinator: {
+    ensureFreshToken: (...args: unknown[]) => mockEnsureFreshToken(...args),
   },
 }));
 
@@ -105,7 +108,7 @@ describe('createStreamOpenHandler', () => {
       createStreamOpenHandler(state, jest.fn())(response(401))
     ).rejects.toBeInstanceOf(RetriableStreamError);
 
-    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
     expect(state.consecutiveUnauthorized).toBe(1);
   });
 
@@ -120,7 +123,7 @@ describe('createStreamOpenHandler', () => {
       new FatalStreamError('down')
     );
 
-    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
   });
 
   it('asks for a retry on any other failure', async () => {
@@ -129,5 +132,22 @@ describe('createStreamOpenHandler', () => {
     await expect(
       createStreamOpenHandler(state, jest.fn())(response(500))
     ).rejects.toBeInstanceOf(RetriableStreamError);
+  });
+
+  // Regression guard for Copilot #2. A failing token refresh (no renewer
+  // registered, IdP transient blip) previously propagated the raw error
+  // and bypassed both `RetriableStreamError` / `FatalStreamError`
+  // branches the reconnect loop is keyed on. Swallow the refresh error
+  // and let the next 401 escalate via `consecutiveUnauthorized`.
+  it('still throws RetriableStreamError when the token refresh itself rejects', async () => {
+    const state = createStreamRetryState();
+    mockEnsureFreshToken.mockRejectedValueOnce(new Error('idp down'));
+
+    await expect(
+      createStreamOpenHandler(state, jest.fn())(response(401))
+    ).rejects.toBeInstanceOf(RetriableStreamError);
+
+    expect(mockEnsureFreshToken).toHaveBeenCalledTimes(1);
+    expect(state.consecutiveUnauthorized).toBe(1);
   });
 });

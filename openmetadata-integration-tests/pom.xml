@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -415,6 +415,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -460,6 +461,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -530,6 +532,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -575,6 +578,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -645,6 +649,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -691,6 +696,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -761,6 +767,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -806,6 +813,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -875,6 +883,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -920,6 +929,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -988,6 +998,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1034,6 +1045,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1119,6 +1131,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1166,6 +1179,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1210,7 +1224,11 @@
         </plugins>
       </build>
     </profile>
-    <!-- RDF integration tests profile -->
+    <!-- RDF integration tests profile.
+         No rdfContainerImage is set on purpose: TestSuiteBootstrap then builds the
+         supported image from docker/rdf-store (Fuseki 6.2.0 + unionDefaultGraph +
+         write extension). The previous secoresearch/fuseki:5.5.0 pin ran a bare
+         server with no update service, so every SPARQL update failed with 405. -->
     <profile>
       <id>postgres-rdf-tests</id>
       <build>
@@ -1237,6 +1255,7 @@
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
+                    <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
@@ -1249,7 +1268,6 @@
                   </includes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1284,6 +1302,7 @@
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
+                    <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
@@ -1299,7 +1318,6 @@
                   </excludes>
                   <systemPropertyVariables>
                     <enableRdf>true</enableRdf>
-                    <rdfContainerImage>secoresearch/fuseki:5.5.0</rdfContainerImage>
                     <databaseType>postgres</databaseType>
                     <databaseImage>postgres:15</databaseImage>
                     <searchType>elasticsearch</searchType>
@@ -1411,6 +1429,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -1512,6 +1535,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

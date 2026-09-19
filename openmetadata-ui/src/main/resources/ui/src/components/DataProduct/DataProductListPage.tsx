@@ -49,7 +49,6 @@ import { useOnboardingRows } from '../../hooks/governance/onboarding/useOnboardi
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   firstOpenBlocking,
@@ -222,7 +221,6 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -387,12 +385,9 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return renderDomainOwnersCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainOwnersCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
@@ -400,12 +395,9 @@ const DataProductListPage = ({
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return renderDomainExpertsCell(
-            entity,
-            toOwnersWithHref,
-            renderOwnerContent,
-            { showDashPlaceholder: true }
-          );
+          return renderDomainExpertsCell(entity, {
+            showDashPlaceholder: true,
+          });
         case 'stage':
         case 'nextStep':
         case 'age':
@@ -414,12 +406,7 @@ const DataProductListPage = ({
           return null;
       }
     },
-    [
-      dataProductListing.actionHandlers.onEntityClick,
-      toOwnersWithHref,
-      renderOwnerContent,
-      renderOnboardingCell,
-    ]
+    [dataProductListing.actionHandlers.onEntityClick, renderOnboardingCell]
   );
 
   const selectedDataProductEntities = useMemo(

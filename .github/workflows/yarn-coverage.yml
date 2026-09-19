@@ -50,6 +50,10 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
               - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
               - 'openmetadata-ui/src/main/resources/ui/sonar-project.properties'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/src/**'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/package.json'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts'
 
   ui-coverage-tests:
     needs: check-changes

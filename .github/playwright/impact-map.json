@@ -458,8 +458,36 @@
       "projects": ["chromium", "Basic"],
       "specs": [
         "playwright/e2e/Flow/Navbar.spec.ts",
-        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts"
+      ]
+    },
+    {
+      "_comment": "FilterSelect replaced SearchDropdown as the quick-filter renderer, so the generated map (which only walks openmetadata-ui spec imports) no longer routes filter dropdown changes to the former SearchDropdown consumer specs. Mirror that consumer set for the core component and its Dropdown base so a FilterSelect change selects the Explore/lineage/Test Definition/bulk-operation coverage on the PR instead of the merge queue.",
+      "sources": [
+        "openmetadata-ui-core-components/src/main/resources/ui/src/components/application/filter-select/**",
+        "openmetadata-ui-core-components/src/main/resources/ui/src/components/base/dropdown/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/ExploreQuickFilters.tsx"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
+        "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
+        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
+        "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
+        "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
+        "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
+        "playwright/e2e/Features/ExploreUrlState.spec.ts",
+        "playwright/e2e/Features/ImpactAnalysis.spec.ts",
+        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
+        "playwright/e2e/Pages/AuditLogs.spec.ts",
+        "playwright/e2e/Pages/DataProductCertificationFilter.spec.ts",
+        "playwright/e2e/Pages/ExploreBrowse.spec.ts",
+        "playwright/e2e/Pages/ExploreTree.spec.ts",
+        "playwright/e2e/Pages/LearningResources.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
       ]
     },
     {
@@ -566,7 +594,6 @@
       "specs": [
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
-        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"

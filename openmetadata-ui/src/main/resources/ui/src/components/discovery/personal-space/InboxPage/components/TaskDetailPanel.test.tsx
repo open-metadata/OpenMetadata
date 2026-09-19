@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ComponentProps, ReactNode } from 'react';
 
 const mockGetTaskById = jest.fn();
@@ -233,6 +234,25 @@ jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Real <button> so the suite exercises the same accessible affordance the app
+  // ships: present regardless of hover, named from its tooltip, keyboard-operable.
+  ButtonUtility: ({
+    'data-testid': testId,
+    tooltip,
+    onClick,
+  }: {
+    'data-testid'?: string;
+    tooltip?: string;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={tooltip}
+      data-testid={testId}
+      type="button"
+      onClick={onClick}>
+      {tooltip}
+    </button>
+  ),
   Badge: ({
     children,
     color,
@@ -986,11 +1006,10 @@ describe('TaskDetailPanel', () => {
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('edit-task-comment'));
-    });
-    const editBox = screen.getByTestId('edit-task-comment-editor');
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(screen.getByTestId('edit-task-comment'));
+
+    const editBox = await screen.findByTestId('edit-task-comment-editor');
     await act(async () => {
       fireEvent.click(within(editBox).getByTestId('comment-editor'));
     });
@@ -1005,16 +1024,14 @@ describe('TaskDetailPanel', () => {
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('edit-task-comment'));
-    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(screen.getByTestId('edit-task-comment'));
 
-    expect(screen.getByTestId('edit-task-comment-editor')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('edit-task-comment-editor')
+    ).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('cancel-edit-task-comment'));
-    });
+    await user.click(screen.getByTestId('cancel-edit-task-comment'));
 
     expect(
       screen.queryByTestId('edit-task-comment-editor')
@@ -1028,13 +1045,9 @@ describe('TaskDetailPanel', () => {
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('delete-task-comment'));
-    });
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('confirm-delete-task-comment'));
-    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(screen.getByTestId('delete-task-comment'));
+    await user.click(await screen.findByTestId('confirm-delete-task-comment'));
 
     expect(mockDeleteComment).toHaveBeenCalledWith('task-1', 'c1');
     expect(mockGetTaskById).toHaveBeenCalledTimes(2);
@@ -1046,8 +1059,8 @@ describe('TaskDetailPanel', () => {
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-
+    // No hover: the affordance a user is entitled to must be in the DOM (and so
+    // reachable by keyboard) regardless of pointer position.
     expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
     expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
   });
@@ -1057,8 +1070,6 @@ describe('TaskDetailPanel', () => {
     mockGetTaskById.mockResolvedValue({ data: TASK_WITH_COMMENT });
 
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-    fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
 
     expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-task-comment')).not.toBeInTheDocument();
