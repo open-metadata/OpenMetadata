@@ -231,9 +231,8 @@ public class SubjectCacheTest {
    * hierarchy as it was before that write.
    */
   @Test
-  void testRemoteTeamWriteDropsPoliciesAndTheTeamGraph() {
+  void testRemoteTeamWriteDropsPolicies() {
     SubjectCache.getPolicies("testUser");
-    TeamGraphFixture.resetQueryCount();
     clearInvocations(userRepository);
 
     SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
@@ -241,15 +240,12 @@ public class SubjectCacheTest {
 
     verify(userRepository, times(1))
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
-    assertTrue(
-        TeamGraphFixture.queryCount() > 0, "The resolved team graph must be read again as well");
   }
 
-  /** Role names are copied into the resolved graph, so a rename on a peer has to reach it. */
+  /** Role names reach the summary the same way, so a rename on a peer has to drop it too. */
   @Test
-  void testRemoteRoleWriteDropsPoliciesAndTheTeamGraph() {
+  void testRemoteRoleWriteDropsPolicies() {
     SubjectCache.getPolicies("testUser");
-    TeamGraphFixture.resetQueryCount();
     clearInvocations(userRepository);
 
     SubjectCache.invalidator().invalidate(Entity.ROLE, UUID.randomUUID(), "DataSteward");
@@ -257,8 +253,6 @@ public class SubjectCacheTest {
 
     verify(userRepository, times(1))
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
-    assertTrue(
-        TeamGraphFixture.queryCount() > 0, "The resolved team graph must be read again as well");
   }
 
   /** A membership or role change reaches peers as a user write; the policy entry holds both. */

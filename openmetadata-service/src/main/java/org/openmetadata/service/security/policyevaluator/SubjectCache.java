@@ -135,8 +135,7 @@ public class SubjectCache {
 
   /**
    * Rebuild auth caches with configured max entries. TTLs are kept at their original values
-   * (2 min for policies and the resolved team graph, 15 min for user context) because they serve
-   * different freshness needs.
+   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
    */
   public static void initCaches(int maxEntries) {
     USER_POLICIES_CACHE =
@@ -151,7 +150,6 @@ public class SubjectCache {
             .expireAfterWrite(15, TimeUnit.MINUTES)
             .recordStats()
             .build(new UserContextLoader());
-    TeamHierarchyResolver.initCache(maxEntries);
     LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
   }
 
@@ -237,14 +235,13 @@ public class SubjectCache {
    * A context {@code refresh} is published under {@code TYPE_PERSONA_CONTEXT} and so does not land
    * here.
    *
-   * <p>A team, role or policy write drops the policy cache and the resolved team graph as well,
-   * not just the user contexts. Those caches carry the answers {@code hasAnyRole()} and
-   * {@code inAnyTeam()} give, and both used to be read from the database on every evaluation; if
-   * only the writing pod dropped them, a peer would keep granting access through a role that was
-   * removed from a team, or through a parent that was reparented away, until the entry expired.
-   * The same message also reaches the role names copied into the resolved graph. These are rare
-   * administrative writes, so dropping every entry is the cheaper trade against deriving the
-   * affected users from the message.
+   * <p>A team, role or policy write drops the policy cache too, not just the user contexts. That
+   * cache carries the team names and inherited role names {@code hasAnyRole()} and
+   * {@code inAnyTeam()} answer from, and both used to be read from the database on every
+   * evaluation; if only the writing pod dropped it, a peer would keep granting access through a
+   * role that was removed from a team, or through a parent that was reparented away, until the
+   * entry expired. These are rare administrative writes, so dropping every entry is the cheaper
+   * trade against deriving the affected users from the message.
    */
   public static Invalidatable invalidator() {
     return INVALIDATOR;
@@ -294,10 +291,8 @@ public class SubjectCache {
 
   public static String getCacheStats() {
     return String.format(
-        "PolicyCache: %s, UserContextCache: %s, %s",
-        USER_POLICIES_CACHE.stats(),
-        USER_CONTEXT_CACHE.stats(),
-        TeamHierarchyResolver.getCacheStats());
+        "PolicyCache: %s, UserContextCache: %s",
+        USER_POLICIES_CACHE.stats(), USER_CONTEXT_CACHE.stats());
   }
 
   static class UserPoliciesLoader extends CacheLoader<String, UserPoliciesContext> {

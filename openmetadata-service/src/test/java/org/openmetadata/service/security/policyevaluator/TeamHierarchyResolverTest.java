@@ -103,55 +103,16 @@ class TeamHierarchyResolverTest {
     final List<EntityReference> twoGroups = groupsUnder(department, "small", 2);
     final List<EntityReference> fortyGroups = groupsUnder(department, "large", 40);
 
-    final int narrow = coldClosureReads(twoGroups);
-    final int wide = coldClosureReads(fortyGroups);
+    final int narrow = closureReads(twoGroups);
+    final int wide = closureReads(fortyGroups);
 
     assertEquals(
         narrow, wide, "Twenty times the teams must not mean twenty times the relationship reads");
   }
 
-  /**
-   * The team graph is read on the authorization path of every request, and twice per entity read --
-   * inherited roles and inherited domains walk the same ancestry. Resolving it again each time is
-   * the other half of #19778.
-   */
+  /** A node is a value shared between the callers of one walk; nothing may edit it in place. */
   @Test
-  void resolvedNodesAreReusedUntilInvalidated() {
-    final Team root = team("cachedRoot");
-    final Team leaf = team("cachedLeaf", root);
-    TeamHierarchyResolver.closure(refs(leaf));
-
-    TeamGraphFixture.resetQueryCount();
-    TeamHierarchyResolver.closure(refs(leaf));
-    TeamHierarchyResolver.rolesForTeams(refs(leaf));
-    assertEquals(0, TeamGraphFixture.queryCount(), "A resolved node must not be read again");
-
-    TeamHierarchyResolver.invalidateAll();
-    TeamHierarchyResolver.closure(refs(leaf));
-    assertTrue(TeamGraphFixture.queryCount() > 0, "Invalidation must send the walk back to the DB");
-  }
-
-  /**
-   * An invalidation that lands while a read is in flight must not be undone by that read putting
-   * its pre-write view back — the stale hierarchy would then serve authorization for the full TTL.
-   */
-  @Test
-  void aReadRacingAnInvalidationDoesNotRepopulateTheCache() {
-    final Team leaf = team("racedLeaf", team("racedRoot"));
-    TeamGraphFixture.duringNextRead(TeamHierarchyResolver::invalidateAll);
-
-    TeamHierarchyResolver.closure(refs(leaf));
-
-    TeamGraphFixture.resetQueryCount();
-    TeamHierarchyResolver.closure(refs(leaf));
-    assertTrue(
-        TeamGraphFixture.queryCount() > 0,
-        "A read overtaken by an invalidation must not leave its view memoized");
-  }
-
-  /** Nothing may edit a node in place: every reader of the cache shares the same instance. */
-  @Test
-  void cachedNodeCollectionsAreImmutable() {
+  void nodeCollectionsAreImmutable() {
     final Team leaf = team("frozenRoot", List.of(), List.of(role("frozenRole")));
     final TeamNode node = TeamHierarchyResolver.closure(refs(leaf)).get(leaf.getId());
 
@@ -160,25 +121,7 @@ class TeamHierarchyResolverTest {
     assertThrows(UnsupportedOperationException.class, () -> node.parents().clear());
   }
 
-  /**
-   * Callers hang these references on the entity they are building and the serialization path then
-   * stamps an href onto each one, so a cached node must never hand out the instance it keeps.
-   */
-  @Test
-  void cachedNodesAreNotSharedWithCallers() {
-    final Team leaf = team("detachRoot", List.of(), List.of(role("detachRole")));
-    TeamHierarchyResolver.rolesForTeams(refs(leaf)).forEach(ref -> ref.withName("mutated"));
-
-    final List<String> roles =
-        TeamHierarchyResolver.rolesForTeams(refs(leaf)).stream()
-            .map(EntityReference::getName)
-            .toList();
-
-    assertEquals(List.of("detachRole"), roles);
-  }
-
-  private static int coldClosureReads(final List<EntityReference> teams) {
-    TeamHierarchyResolver.invalidateAll();
+  private static int closureReads(final List<EntityReference> teams) {
     TeamGraphFixture.resetQueryCount();
     TeamHierarchyResolver.closure(teams);
     return TeamGraphFixture.queryCount();

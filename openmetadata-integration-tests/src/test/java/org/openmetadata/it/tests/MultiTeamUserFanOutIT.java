@@ -37,8 +37,8 @@ import org.openmetadata.service.Entity;
  * page loads going from seconds to minutes.
  *
  * <p>The statement count must be driven by the depth of the hierarchy, not by how many teams sit at
- * the bottom of it, and it must stay a small constant now that resolved nodes are memoized. The
- * semantics that walk has to keep are pinned separately, in {@link TeamHierarchyInheritanceIT}.
+ * the bottom of it. The semantics that walk has to keep are pinned separately, in {@link
+ * TeamHierarchyInheritanceIT}.
  *
  * <p>{@code SqlQueryCounter.forRequests} decorates the application-wide SQL logger and matches any
  * in-flight request, so this class has to run alone — which is why the semantic tests live next
@@ -52,11 +52,12 @@ class MultiTeamUserFanOutIT {
   private static final String RELATIONSHIP_TABLE = "entity_relationship";
 
   /**
-   * A warm read issues 8 relationship statements: the user's own teams, roles, personas, default
-   * persona, domains, inherited personas and the read bundle. The bound leaves room for an honest
-   * new lookup while still failing loudly if the per-team walk ever comes back.
+   * A read issues 38 relationship statements against a four-level hierarchy, whatever the team
+   * count: the user's own fields plus a fixed number per level for the two ancestry walks. The
+   * bound leaves room for an honest new lookup or another level while still failing loudly if the
+   * per-team walk ever comes back -- that was 448 statements for a 40-group user.
    */
-  private static final int MAX_RELATIONSHIP_QUERIES = 15;
+  private static final int MAX_RELATIONSHIP_QUERIES = 60;
 
   @Test
   void readingAUserCostsTheSameWhateverTheTeamCount(TestNamespace ns) {
@@ -74,7 +75,7 @@ class MultiTeamUserFanOutIT {
             + "level, so only its depth may show up in the statement count");
     assertTrue(
         wide <= MAX_RELATIONSHIP_QUERIES,
-        "A warm read must stay a small constant, was " + wide + " statements");
+        "A read must stay bounded by the hierarchy depth, was " + wide + " statements");
   }
 
   private int relationshipQueriesToRead(String userName) {

@@ -40,9 +40,9 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
- * The semantics the batched, memoized hierarchy walk of issue #19778 has to keep: roles and domains
- * still reach a user from every level above, and an administrative change to the hierarchy is
- * visible on the very next read rather than when the cache expires.
+ * The semantics the batched hierarchy walk of issue #19778 has to keep: roles and domains still
+ * reach a user from every level above, and an administrative change to the hierarchy shows up on
+ * the very next read.
  *
  * <p>The query-count guard for the same change is {@link MultiTeamUserFanOutIT}, which has to run
  * alone because it decorates the application's SQL logger. Nothing here does, so these run
@@ -74,11 +74,7 @@ class TeamHierarchyInheritanceIT {
             + fqns(read.getDomains()));
   }
 
-  /**
-   * Resolved nodes are memoized, so the writes that change them have to drop that cache. A default
-   * role added to a team the user belongs to must reach the user on the very next read, not two
-   * minutes later.
-   */
+  /** A default role added to a team the user belongs to reaches the user on the next read. */
   @Test
   void aTeamRoleChangeIsVisibleOnTheNextRead(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -102,10 +98,7 @@ class TeamHierarchyInheritanceIT {
         "The granted role must be inherited immediately, not after the cache expires");
   }
 
-  /**
-   * The cached node holds the team's parents, so re-parenting has to be visible straight away too:
-   * the user's inherited domains follow the new ancestry.
-   */
+  /** Re-parenting a team moves its members' inherited domains onto the new ancestry. */
   @Test
   void aTeamReparentIsVisibleOnTheNextRead(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
