@@ -70,6 +70,23 @@ export interface SsoProviderFixture {
    * can't assert scenarios 3 and 5 by waiting on `/auth/refresh`.
    */
   usesBackendRefresh: boolean;
+  /**
+   * true when the provider's Renewer can recover on cold load (page
+   * reload with a mangled `app_state.primary` in storage) without
+   * re-prompting the IdP. Backend-refresh providers always can (the
+   * refresh_token lives in an OM-issued session cookie). SDK-driven
+   * providers that persist their own refresh_token durably
+   * (oidc-client → SW/IndexedDB, Okta → localStorage) also can.
+   *
+   * false for providers whose SDK-side cache is ephemeral across
+   * reloads and depends on an IdP-side session cookie to silently
+   * re-authorize (e.g. @auth0/auth0-react with `cacheLocation:
+   * "memory"` — the default OM ships in prod). Scenario 6 (`cold-load
+   * with an expired stored token`) is architecturally out of scope for
+   * these fixtures because the SDK's memory-backed refresh_token is
+   * cleared by the reload before the Renewer runs.
+   */
+  supportsColdLoadRefresh: boolean;
 
   // ── Env gating ──────────────────────────────────────────────────────────
 
