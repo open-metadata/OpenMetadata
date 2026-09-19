@@ -57,7 +57,10 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -65,7 +68,6 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
-import { stringToHTML } from '../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -274,7 +276,7 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={stringToHTML(
+              displayName={renderHighlightedText(
                 highlightSearchText(record.displayName, searchValue)
               )}
               hasEditPermission={allowEditDisplayNamePermission}
@@ -284,7 +286,9 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={stringToHTML(highlightSearchText(record.name, searchValue))}
+              name={renderHighlightedText(
+                highlightSearchText(record.name, searchValue)
+              )}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );
