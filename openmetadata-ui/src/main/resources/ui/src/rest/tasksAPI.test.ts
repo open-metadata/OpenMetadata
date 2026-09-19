@@ -13,7 +13,12 @@
 
 import { AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 import { Task } from '../generated/entity/tasks/task';
-import { addTaskComment, deleteTaskComment, editTaskComment } from './tasksAPI';
+import {
+  addTaskComment,
+  deleteTaskComment,
+  editTaskComment,
+  listDataAccessRequests,
+} from './tasksAPI';
 
 let mockCapturedRequest: InternalAxiosRequestConfig | undefined;
 
@@ -92,6 +97,23 @@ describe('tasksAPI comments', () => {
       );
 
       expect(contentType).toBe('application/json');
+    });
+  });
+});
+
+describe('tasksAPI data access requests', () => {
+  beforeEach(() => {
+    mockCapturedRequest = undefined;
+  });
+
+  it('passes the server-resolved current-assignee filter', async () => {
+    await listDataAccessRequests({ assignedToMe: true, status: ['Approved'] });
+
+    expect(mockCapturedRequest?.method).toBe('get');
+    expect(mockCapturedRequest?.url).toBe('/tasks/dataAccessRequests');
+    expect(mockCapturedRequest?.params).toEqual({
+      assignedToMe: true,
+      status: ['Approved'],
     });
   });
 });
