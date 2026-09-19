@@ -30,7 +30,7 @@ const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);
 // directly so the read of `mockEnsureFreshToken` is deferred until the real
 // call site invokes it — jest hoists this factory above the `const`
 // declaration above, so an eager read would throw a TDZ ReferenceError.
-jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+jest.mock('../../../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
   authCoordinator: {
     ensureFreshToken: (...args: unknown[]) => mockEnsureFreshToken(...args),
   },
