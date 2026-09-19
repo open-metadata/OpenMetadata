@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Prefect Server Authentication",
   "description": "Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String empty if the server has no auth enabled.",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",

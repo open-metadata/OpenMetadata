@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DBT GCS Config",
   "type": "object",
   "description": "DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.",
@@ -15,7 +15,7 @@
     },
     "dbtSecurityConfig": {
       "title": "DBT GCS Security Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "GCP credentials configs.",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -114,7 +114,7 @@
           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
               "title": "GCP Credentials Values",
@@ -247,7 +247,7 @@
               }
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
               "title": "GCP External Account",

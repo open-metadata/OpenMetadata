@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PolicyAgentPipeline",
   "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system.",
   "type": "object",
@@ -27,7 +27,7 @@
           "description": "Per-service-type policy configuration.",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "DatabasePolicyConfig",
               "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
               "type": "object",
@@ -122,7 +122,7 @@
                 "accessType",
                 "requestedAccess"
               ],
-              "dependencies": {
+              "dependentRequired": {
                 "tableName": [
                   "schemaName"
                 ],

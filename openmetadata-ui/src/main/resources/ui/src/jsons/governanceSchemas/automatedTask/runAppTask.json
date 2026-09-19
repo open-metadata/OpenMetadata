@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RunAppTaskDefinition",
   "description": "Runs an App based on its name.",
   "javaInterfaces": [
@@ -71,7 +71,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -97,7 +96,6 @@
         "success",
         "failure"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

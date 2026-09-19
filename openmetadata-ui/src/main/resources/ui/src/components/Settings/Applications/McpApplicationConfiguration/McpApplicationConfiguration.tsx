@@ -13,7 +13,6 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { AxiosError } from 'axios';
 import { isEmpty, pick } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -23,6 +22,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
+import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import Loader from '../../../common/Loader/Loader';

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import validator from '@rjsf/validator-ajv8';
 import { Button, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -53,6 +52,7 @@ import {
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';

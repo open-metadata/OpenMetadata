@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PolicyAgentTaskDefinition",
   "description": "Runs the Policy Agent to enforce data access on supported connectors, or falls back to a manual grant step.",
   "javaInterfaces": [
@@ -83,7 +83,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -111,7 +110,6 @@
         "manual",
         "denied"
       ],
-      "additionalItems": false,
       "minItems": 1
     }
   }

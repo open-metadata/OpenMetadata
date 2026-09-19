@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SetEntityCertificationTaskDefinition",
   "description": "Sets the Entity Certification to the configured value.",
   "javaInterfaces": [
@@ -79,7 +79,6 @@
         "relatedEntity",
         "updatedBy"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     },

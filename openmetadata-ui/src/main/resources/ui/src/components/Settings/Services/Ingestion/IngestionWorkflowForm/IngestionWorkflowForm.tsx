@@ -12,7 +12,6 @@
  */
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
-import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
@@ -46,6 +45,7 @@ import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchema
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { getJSONSchemaFormValidator } from '../../../../../utils/JSONSchemaFormValidator';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
@@ -197,7 +197,7 @@ const IngestionWorkflowForm = forwardRef<
   );
 
   const validator = useMemo(
-    () => customizeValidator<IngestionWorkflowData>(),
+    () => getJSONSchemaFormValidator<IngestionWorkflowData>(),
     []
   );
 

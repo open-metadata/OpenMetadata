@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/ai/promptTemplate.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PromptTemplate",
   "$comment": "@om-entity-type",
   "description": "Prompt Template entity representing a reusable prompt template for AI agents. Templates can include variables, system prompts, and examples for consistent AI behavior.",

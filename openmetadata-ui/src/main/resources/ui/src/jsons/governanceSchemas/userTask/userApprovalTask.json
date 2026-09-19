@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UserApprovalTaskDefinition",
   "description": "Defines a Task for a given User to approve.",
   "javaInterfaces": [
@@ -58,7 +58,7 @@
               "description": "List of specific candidates (users or teams) assigned to this task.",
               "type": "array",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "title": "Entity Reference",
                 "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                 "type": "object",
@@ -348,7 +348,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -373,7 +372,6 @@
       "default": [
         "updatedBy"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -386,7 +384,6 @@
         "true",
         "false"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

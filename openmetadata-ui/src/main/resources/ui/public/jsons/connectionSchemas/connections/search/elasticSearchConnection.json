@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ElasticSearch Connection",
   "description": "ElasticSearch Connection.",
   "type": "object",
@@ -35,7 +35,7 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Basic Authentication",
           "description": "Basic Auth Configuration for ElasticSearch",
           "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth",
@@ -56,7 +56,7 @@
           "additionalProperties": false
         },
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "API Key Authentication",
           "description": "API Key Authentication for ElasticSearch",
           "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth",
@@ -80,7 +80,7 @@
     },
     "sslConfig": {
       "title": "SSL Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "SSL Config",
       "javaType": "org.openmetadata.schema.services.common.SSLConfig",
       "type": "object",
@@ -91,7 +91,7 @@
           "description": "SSL Certificates",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "SSL Certificates By Path",
               "description": "SSL Certificates By Path",
               "javaType": "org.openmetadata.schema.services.common.SSLCertPaths",
@@ -116,7 +116,7 @@
               "additionalProperties": false
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "SSL Certificates By Values",
               "description": "SSL Certificates By Values",
               "javaType": "org.openmetadata.schema.services.common.SSLCertValues",

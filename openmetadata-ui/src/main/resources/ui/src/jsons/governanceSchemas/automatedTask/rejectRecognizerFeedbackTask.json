@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RejectRecognizerFeedbackTaskDefinition",
   "description": "Rejects RecognizerFeedback, updating its status to REJECTED without modifying the tag or entity.",
   "javaInterfaces": [
@@ -51,7 +51,6 @@
         "triggeringObjectId",
         "recognizerFeedback"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 4
     },
@@ -89,7 +88,6 @@
         "type": "string"
       },
       "default": [],
-      "additionalItems": false,
       "minItems": 0,
       "maxItems": 0
     }

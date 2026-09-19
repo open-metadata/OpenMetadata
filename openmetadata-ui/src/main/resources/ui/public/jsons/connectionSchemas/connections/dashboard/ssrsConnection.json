@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SsrsConnection",
   "description": "SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to create, deploy, and manage paginated reports",
   "type": "object",
@@ -130,7 +130,7 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "http://json-schema.org/draft-07/schema#",
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
