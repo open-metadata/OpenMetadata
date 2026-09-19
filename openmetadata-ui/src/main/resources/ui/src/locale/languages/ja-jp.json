@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "以上",
     "group": "グループ",
     "group-by": "グループ化の基準",
-    "group-plural": "グループ",
+    "group-count": "{{count}} 件のグループ",
     "grow-selection": "選択範囲の拡大",
     "half-size": "ハーフサイズ",
     "has-a": "を持つ",

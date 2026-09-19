@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "大於或等於",
     "group": "群組",
     "group-by": "分組方式",
-    "group-plural": "群組",
+    "group-count": "{{count}} 個群組",
     "grow-selection": "擴展選擇",
     "half-size": "一半大小",
     "has-a": "擁有",

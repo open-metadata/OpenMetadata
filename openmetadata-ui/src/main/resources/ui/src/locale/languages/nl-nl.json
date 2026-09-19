@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "Groter dan of gelijk aan",
     "group": "Groep",
     "group-by": "Groeperen op",
-    "group-plural": "Groepen",
+    "group-count": "{{count}} groep(en)",
     "grow-selection": "Selectie Uitbreiden",
     "half-size": "Halve grootte",
     "has-a": "Heeft een",

@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "大于或等于",
     "group": "组",
     "group-by": "分组方式",
-    "group-plural": "组",
+    "group-count": "{{count}} 个组",
     "grow-selection": "扩展选择",
     "half-size": "半尺寸",
     "has-a": "拥有",

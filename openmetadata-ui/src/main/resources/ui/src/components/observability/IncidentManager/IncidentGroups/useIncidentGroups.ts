@@ -22,7 +22,7 @@ import {
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { Paging } from '../../../../generated/type/paging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { listIncidentGroups } from '../../../../rest/incidentGroupsAPI';
+import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   INCIDENT_GROUPS_PAGE_SIZE,

@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "च्या बरोबर किंवा त्यापेक्षा जास्त",
     "group": "गट",
     "group-by": "यानुसार गट करा",
-    "group-plural": "गट",
+    "group-count": "{{count}} गट",
     "grow-selection": "निवड विस्तारित करा",
     "half-size": "अर्धा आकार",
     "has-a": "आहे",

@@ -18,9 +18,9 @@ import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { LayersTwo01 } from '@untitledui/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
 import { INCIDENT_GROUP_BY_OPTIONS } from './IncidentGroups.constants';
 import { IncidentGroupByDropdownProps } from './IncidentGroups.types';
+import { parseIncidentGroupBy } from './IncidentGroups.utils';
 
 /**
  * Dimension picker for the grouped incident listing. The selected dimension is
@@ -57,7 +57,7 @@ const IncidentGroupByDropdown = ({
           selectedKeys={[value]}
           selectionMode="single"
           onAction={(key) => {
-            onChange(key as IncidentGroupBy);
+            onChange(parseIncidentGroupBy(key));
             setIsMenuOpen(false);
           }}>
           <Dropdown.Section>

@@ -27,13 +27,8 @@ export const INCIDENT_GROUP_BY_PARAM = 'groupBy';
 /** Dimension the page opens with when the URL does not carry a valid one. */
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
-/** Number of groups requested per page. */
 export const INCIDENT_GROUPS_PAGE_SIZE = 10;
 
-/**
- * The grouping dimensions offered by the `Group by` dropdown, in the order
- * they are listed there.
- */
 export const INCIDENT_GROUP_BY_OPTIONS: IncidentGroupByOption[] = [
   {
     key: IncidentGroupBy.TestDefinition,

@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "Größer oder gleich",
     "group": "Gruppe",
     "group-by": "Gruppieren nach",
-    "group-plural": "Gruppen",
+    "group-count": "{{count}} Gruppe(n)",
     "grow-selection": "Auswahl erweitern",
     "half-size": "Halbe Größe",
     "has-a": "Hat ein(e)",

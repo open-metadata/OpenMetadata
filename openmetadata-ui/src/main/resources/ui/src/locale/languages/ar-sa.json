@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "أكبر من أو يساوي",
     "group": "مجموعة",
     "group-by": "تجميع حسب",
-    "group-plural": "مجموعات",
+    "group-count": "{{count}} مجموعة (مجموعات)",
     "grow-selection": "توسيع التحديد",
     "half-size": "نصف الحجم",
     "has-a": "يحتوي على",

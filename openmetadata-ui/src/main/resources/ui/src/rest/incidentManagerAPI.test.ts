@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import Qs from 'qs';
+import axios from 'axios';
 import { IncidentGroupBy } from '../generated/tests/testCaseIncidentGroup';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import {
   bulkCreateResolutionStatus,
+  getListTestCaseIncidentStatus,
   listIncidentGroups,
-  listIncidents,
-} from './incidentGroupsAPI';
+} from './incidentManagerAPI';
 import APIClient from './index';
 
 jest.mock('./index', () => ({
@@ -40,7 +40,7 @@ const incidentsResponse = { data: { data: [], paging: { total: 0 } } };
 const getCallConfig = (call: number) =>
   (APIClient.get as jest.Mock).mock.calls[call][1];
 
-describe('incidentGroupsAPI', () => {
+describe('incidentManagerAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (APIClient.get as jest.Mock).mockResolvedValue(groupsResponse);
@@ -87,8 +87,8 @@ describe('incidentGroupsAPI', () => {
       });
       // `indexes: null` is axios' repeat format — `status=New&status=Ack`.
       expect(paramsSerializer).toEqual({ indexes: null });
-      expect(Qs.stringify(params, { arrayFormat: 'repeat' })).toBe(
-        'groupBy=owner&status=New&status=Ack&dateField=updatedAt' +
+      expect(axios.getUri({ url: '', params, paramsSerializer })).toBe(
+        '?groupBy=owner&status=New&status=Ack&dateField=updatedAt' +
           '&startTs=1700000000000&endTs=1700086400000&limit=25'
       );
     });
@@ -110,13 +110,13 @@ describe('incidentGroupsAPI', () => {
     });
   });
 
-  describe('listIncidents', () => {
+  describe('getListTestCaseIncidentStatus', () => {
     beforeEach(() => {
       (APIClient.get as jest.Mock).mockResolvedValue(incidentsResponse);
     });
 
     it('should call the incident listing with the drill-down filters', async () => {
-      const data = await listIncidents({
+      const data = await getListTestCaseIncidentStatus({
         testDefinition: 'columnValuesToBeUnique',
         owner: 'aaron_johnson0',
         assignee: 'tomas_montiel',
@@ -141,7 +141,7 @@ describe('incidentGroupsAPI', () => {
     });
 
     it('should apply the default limit without any filter', async () => {
-      await listIncidents();
+      await getListTestCaseIncidentStatus({});
 
       expect(APIClient.get).toHaveBeenCalledWith(INCIDENT_URL, {
         params: { limit: 10 },

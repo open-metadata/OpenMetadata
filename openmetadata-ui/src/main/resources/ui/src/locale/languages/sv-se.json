@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "Större än eller lika med",
     "group": "Grupp",
     "group-by": "Gruppera efter",
-    "group-plural": "Grupper",
+    "group-count": "{{count}} grupp(er)",
     "grow-selection": "Utöka markering",
     "half-size": "Halv storlek",
     "has-a": "Har en",

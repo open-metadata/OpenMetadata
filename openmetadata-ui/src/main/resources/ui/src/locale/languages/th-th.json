@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "มากกว่าหรือเท่ากับ",
     "group": "กลุ่ม",
     "group-by": "จัดกลุ่มตาม",
-    "group-plural": "กลุ่ม",
+    "group-count": "{{count}} กลุ่ม",
     "grow-selection": "ขยายการเลือก",
     "half-size": "ขนาดครึ่งหนึ่ง",
     "has-a": "มี",

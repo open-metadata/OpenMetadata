@@ -19,12 +19,6 @@ import { DEFAULT_INCIDENT_GROUP_BY } from './IncidentGroups.constants';
  * would reject — a missing, repeated or unknown value — falls back to the
  * default dimension instead of firing a request that 400s.
  */
-export const parseIncidentGroupBy = (value: unknown): IncidentGroupBy => {
-  const isKnownDimension = Object.values(IncidentGroupBy).some(
-    (dimension) => dimension === value
-  );
-
-  return isKnownDimension
-    ? (value as IncidentGroupBy)
-    : DEFAULT_INCIDENT_GROUP_BY;
-};
+export const parseIncidentGroupBy = (value: unknown): IncidentGroupBy =>
+  Object.values(IncidentGroupBy).find((dimension) => dimension === value) ??
+  DEFAULT_INCIDENT_GROUP_BY;

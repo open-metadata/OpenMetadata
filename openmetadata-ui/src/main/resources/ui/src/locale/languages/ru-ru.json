@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "Больше или равно",
     "group": "Группа",
     "group-by": "Группировать по",
-    "group-plural": "Группы",
+    "group-count": "{{count}} групп(ы)",
     "grow-selection": "Расширить выделение",
     "half-size": "Половинный размер",
     "has-a": "Имеет",

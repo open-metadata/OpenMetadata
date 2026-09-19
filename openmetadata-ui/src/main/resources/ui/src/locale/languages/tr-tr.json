@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "Büyük veya eşittir",
     "group": "Grup",
     "group-by": "Şuna göre grupla",
-    "group-plural": "Gruplar",
+    "group-count": "{{count}} grup",
     "grow-selection": "Seçimi Genişlet",
     "half-size": "Yarım Boyut",
     "has-a": "Bir tane var",

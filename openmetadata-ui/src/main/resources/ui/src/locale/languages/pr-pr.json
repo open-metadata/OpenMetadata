@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "بیشتر از یا مساوی با",
     "group": "گروه",
     "group-by": "گروه‌بندی بر اساس",
-    "group-plural": "گروه‌ها",
+    "group-count": "{{count}} گروه",
     "grow-selection": "گسترش انتخاب",
     "half-size": "نیمه اندازه",
     "has-a": "دارای",

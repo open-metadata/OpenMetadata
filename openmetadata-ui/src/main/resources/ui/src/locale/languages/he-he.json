@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "גדול או שווה ל",
     "group": "קבוצה",
     "group-by": "קבץ לפי",
-    "group-plural": "קבוצות",
+    "group-count": "{{count}} קבוצות",
     "grow-selection": "הרחב בחירה",
     "half-size": "חצי גודל",
     "has-a": "יש",

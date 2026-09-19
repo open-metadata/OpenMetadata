@@ -1306,7 +1306,7 @@
     "greater-than-or-equal-to": "크거나 같음",
     "group": "그룹",
     "group-by": "그룹화 기준",
-    "group-plural": "그룹",
+    "group-count": "{{count}}개의 그룹",
     "grow-selection": "선택 범위 확장",
     "half-size": "절반 크기",
     "has-a": "보유",

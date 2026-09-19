@@ -90,9 +90,9 @@ const IncidentGroupsView = ({ children }: IncidentGroupsViewProps) => {
           weight="semibold">
           {isLoading || isError
             ? ''
-            : `${paging?.total ?? incidentGroups.length} ${t(
-                'label.group-plural'
-              )}`}
+            : t('label.group-count', {
+                count: paging?.total ?? incidentGroups.length,
+              })}
         </Typography>
         <IncidentGroupByDropdown
           value={groupBy}

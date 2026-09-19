@@ -14,7 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { IncidentGroupBy } from '../../../../generated/tests/testCaseIncidentGroup';
-import { listIncidentGroups } from '../../../../rest/incidentGroupsAPI';
+import { listIncidentGroups } from '../../../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { IncidentGroupByDropdownProps } from './IncidentGroups.types';
 import IncidentGroupsView from './IncidentGroupsView';
@@ -22,7 +22,7 @@ import IncidentGroupsView from './IncidentGroupsView';
 const mockListIncidentGroups = listIncidentGroups as jest.Mock;
 const mockShowErrorToast = showErrorToast as jest.Mock;
 
-jest.mock('../../../../rest/incidentGroupsAPI', () => ({
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
   listIncidentGroups: jest.fn(),
 }));
 
@@ -115,7 +115,7 @@ describe('IncidentGroupsView', () => {
     });
 
     expect(screen.getByTestId('incident-groups-count')).toHaveTextContent(
-      '5 label.group-plural'
+      'label.group-count'
     );
     expect(screen.getByTestId('incident-groups-table')).toBeInTheDocument();
   });
