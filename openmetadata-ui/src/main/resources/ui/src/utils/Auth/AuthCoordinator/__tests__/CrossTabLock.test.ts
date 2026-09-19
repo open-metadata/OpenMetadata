@@ -25,7 +25,10 @@ describe('CrossTabLock (Web Locks path)', () => {
   // release loop can skip aborted requests. Mirrors the real navigator.locks
   // ordering: FIFO among pending waiters, unblocks in the microtask the
   // holder's callback returns in.
-  let waiterQueues: Map<string, Array<{ run: () => void; signal?: AbortSignal }>>;
+  let waiterQueues: Map<
+    string,
+    Array<{ run: () => void; signal?: AbortSignal }>
+  >;
 
   beforeEach(() => {
     // The global BroadcastChannel stub in setupTests.js hands back independent
@@ -129,9 +132,7 @@ describe('CrossTabLock (Web Locks path)', () => {
                       }
                       // Match browser: aborted lock.request rejects with an
                       // AbortError-shaped DOMException.
-                      reject(
-                        new DOMException('Aborted', 'AbortError')
-                      );
+                      reject(new DOMException('Aborted', 'AbortError'));
                     };
                     if (opts.signal.aborted) {
                       onAbort();
