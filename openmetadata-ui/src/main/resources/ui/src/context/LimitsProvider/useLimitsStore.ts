@@ -13,53 +13,12 @@
 import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
+import { LimitConfig, ResourceLimit } from '../../rest/limitsAPI.interface';
+
+export type { LimitConfig, ResourceLimit };
 
 const ERROR_SUB_HEADER =
   'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
 
 export type BannerDetails = {
   header: string;
@@ -67,6 +26,7 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+  resource?: string;
 };
 
 const buildDisabledResourceLimit = (
@@ -86,11 +46,20 @@ const buildDisabledResourceLimit = (
   },
 });
 
+const computeLimitStatus = (
+  limits: { softLimit: number; hardLimit: number },
+  currentCount: number
+) => ({
+  softLimitExceed: limits.softLimit !== -1 && currentCount >= limits.softLimit,
+  hardLimitExceed: limits.hardLimit !== -1 && currentCount >= limits.hardLimit,
+});
+
 const maybeShowLimitBanner = (
   rLimit: ResourceLimit['featureLimitStatuses'][number],
   resource: string,
   plan: string,
   showBanner: boolean,
+  bannerDetails: BannerDetails | null,
   setBannerDetails: (details: BannerDetails | null) => void
 ): void => {
   const {
@@ -99,27 +68,30 @@ const maybeShowLimitBanner = (
     limitReached,
   } = rLimit;
 
-  const softLimitExceed =
-    limits.softLimit !== -1 && currentCount >= limits.softLimit;
-  const hardLimitExceed =
-    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const { softLimitExceed, hardLimitExceed } = computeLimitStatus(
+    limits,
+    currentCount
+  );
   const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
 
-  if (!isAnyLimitExceeded || !showBanner) {
-    return;
+  if (isAnyLimitExceeded && showBanner) {
+    setBannerDetails({
+      header: `You have reached ${
+        hardLimitExceed ? '100%' : '75%'
+      } of your ${plan} Plan usage limit.`,
+      type: hardLimitExceed ? 'danger' : 'warning',
+      subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
+        .replace('{{resource}}', startCase(resource))
+        .replace('{{limit}}', limits.hardLimit + ''),
+      softLimitExceed,
+      hardLimitExceed,
+      resource,
+    });
+  } else if (showBanner && bannerDetails?.resource === resource) {
+    // Clear only the banner this resource owns, so a sub-limit refresh of
+    // one resource does not clobber a banner set by a different resource.
+    setBannerDetails(null);
   }
-
-  setBannerDetails({
-    header: `You have reached ${
-      hardLimitExceed ? '100%' : '75%'
-    } of your ${plan} Plan usage limit.`,
-    type: hardLimitExceed ? 'danger' : 'warning',
-    subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
-      .replace('{{resource}}', startCase(resource))
-      .replace('{{limit}}', limits.hardLimit + ''),
-    softLimitExceed,
-    hardLimitExceed,
-  });
 };
 
 /**
@@ -129,6 +101,10 @@ export const useLimitStore = create<{
   config: null | LimitConfig;
   resourceLimit: Record<string, ResourceLimit['featureLimitStatuses'][number]>;
   bannerDetails: BannerDetails | null;
+  // Monotonic per-resource counter of in-flight fetches. The most recent
+  // fetch holds the highest id, so a stale response (lower id) that resolves
+  // out of order can be detected and dropped before it mutates the store.
+  resourceRequestSeq: Record<string, number>;
   getResourceLimit: (
     resource: string,
     showBanner?: boolean,
@@ -144,6 +120,7 @@ export const useLimitStore = create<{
   config: null,
   resourceLimit: {},
   bannerDetails: null,
+  resourceRequestSeq: {},
 
   setConfig: (config: LimitConfig) => {
     set({ config });
@@ -172,7 +149,25 @@ export const useLimitStore = create<{
 
     let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
+      // Reserve a sequence id for this fetch; any later fetch for the same
+      // resource bumps it, so the most recent request holds the highest id.
+      set((state) => ({
+        resourceRequestSeq: {
+          ...state.resourceRequestSeq,
+          [resource]: (state.resourceRequestSeq[resource] ?? 0) + 1,
+        },
+      }));
+      const seq = get().resourceRequestSeq[resource];
+
       const limit = await getLimitByResource(resource);
+
+      // A newer fetch for this resource started while this one was in
+      // flight. Apply only the newer result, so a stale sub-limit reply
+      // cannot overwrite the resourceLimit or clear a banner the newer
+      // over-limit reply installed.
+      if (get().resourceRequestSeq[resource] !== seq) {
+        return limit.featureLimitStatuses[0];
+      }
 
       setResourceLimit(resource, limit.featureLimitStatuses[0]);
       rLimit = limit.featureLimitStatuses[0];
@@ -180,11 +175,15 @@ export const useLimitStore = create<{
 
     if (rLimit) {
       const plan = config?.limits?.config.plan ?? 'FREE';
+      // Re-read the banner after the awaited fetch: a concurrent refresh may
+      // have changed it while this call was waiting, so the value captured
+      // before the await is stale for the ownership check in maybeShowLimitBanner.
       maybeShowLimitBanner(
         rLimit,
         resource,
         plan,
         showBanner,
+        get().bannerDetails,
         setBannerDetails
       );
     }
