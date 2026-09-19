@@ -157,6 +157,8 @@ public final class OntologyAiService {
     requireAvailable();
     final Glossary glossary = editableGlossary(request.getGlossary());
     if (request.getDiscoveryContext() != null) {
+      OntologyDiscoveryFingerprint.requireMatch(
+          glossary.getFullyQualifiedName(), request.getDiscoveryContext());
       request
           .getDiscoveryContext()
           .getEvidence()

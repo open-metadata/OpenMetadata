@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -52,6 +53,9 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
+import org.openmetadata.schema.type.RelationshipPaletteKey;
+import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 
@@ -141,6 +145,64 @@ public class OntologyChangeSetIT {
             .anyMatch(value -> value.getId().equals(attribute.getId())));
   }
 
+  @Test
+  void createsRelationshipTypesThroughTheGovernedRepository(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    RelationshipType relationshipType = relationshipType(ns, "persistedRelation");
+    OntologyChangeSet changeSet =
+        createChangeSet(client, glossary, relationshipTypeOperation(relationshipType), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("relationshipEditor"));
+
+    try {
+      OntologyChangeSet applied =
+          client
+              .ontologyChangeSets()
+              .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+      RelationshipType persisted =
+          client.relationshipTypes().get(relationshipType.getId().toString());
+
+      assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+      assertEquals(relationshipType.getRdfPredicate(), persisted.getRdfPredicate());
+      assertEquals(RelationshipTypeCategory.CUSTOM, persisted.getCategory());
+    } finally {
+      deleteRelationshipTypeIfPresent(client, relationshipType.getId());
+    }
+  }
+
+  @Test
+  void rollsBackRelationshipTypePersistenceWithTheChangeSetTransaction(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm parent = createTerm(client, glossary, ns.prefix("relationshipAtomicParent"));
+    createChildTerm(client, glossary, parent, ns.prefix("relationshipAtomicChild"));
+    RelationshipType relationshipType = relationshipType(ns, "rolledBackRelation");
+    OntologyChangeSet changeSet =
+        createChangeSetWithOperations(
+            client,
+            glossary,
+            List.of(relationshipTypeOperation(relationshipType), deleteOperation(parent)),
+            ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("rollbackEditor"));
+
+    OntologyChangeSet failed =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(
+        List.of(
+            OntologyChangeOperationResultStatus.ROLLED_BACK,
+            OntologyChangeOperationResultStatus.FAILED),
+        failed.getApplicationResult().getResults().stream()
+            .map(OntologyChangeOperationResult::getStatus)
+            .toList());
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.relationshipTypes().get(relationshipType.getId().toString()));
+  }
+
   private static GlossaryTerm createTerm(
       OpenMetadataClient client, Glossary glossary, String name) {
     return client
@@ -192,6 +254,43 @@ public class OntologyChangeSetIT {
         .withTargetId(term.getId())
         .withBaseVersion(term.getVersion())
         .withState(OntologyChangeOperationState.ACTIVE);
+  }
+
+  private static RelationshipType relationshipType(TestNamespace ns, String suffix) {
+    final String name = ns.prefix(suffix);
+    final URI predicate = URI.create("https://example.org/change-set/" + UUID.randomUUID());
+    return new RelationshipType()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withDisplayName(name)
+        .withDescription("Relationship created by an ontology change set")
+        .withFullyQualifiedName(name)
+        .withIri(predicate)
+        .withRdfPredicate(predicate)
+        .withCategory(RelationshipTypeCategory.CUSTOM)
+        .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE))
+        .withCrossGlossaryAllowed(true)
+        .withPaletteKey(RelationshipPaletteKey.VIOLET);
+  }
+
+  private static OntologyChangeOperation relationshipTypeOperation(
+      RelationshipType relationshipType) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.CREATE_RELATIONSHIP_TYPE)
+        .withRelationshipType(relationshipType)
+        .withState(OntologyChangeOperationState.ACTIVE);
+  }
+
+  private static void deleteRelationshipTypeIfPresent(
+      OpenMetadataClient client, UUID relationshipTypeId) {
+    try {
+      client.relationshipTypes().delete(relationshipTypeId.toString(), true);
+    } catch (OpenMetadataException notFound) {
+      if (notFound.getStatusCode() != 404) {
+        throw notFound;
+      }
+    }
   }
 
   private static OntologyChangeSet createChangeSet(

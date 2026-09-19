@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
@@ -209,6 +211,7 @@ public class OntologyChangeSetResource
     final OntologyChangeSet changeSet = scopedChangeSet(id);
     authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     authorizeRelationshipTypeCreations(securityContext, changeSet);
+    authorizeAssetBindings(securityContext, changeSet);
     requireLease(id, request.getLease(), securityContext);
     final PutResponse<OntologyChangeSet> response =
         applicationService.apply(uriInfo, id, user(securityContext));
@@ -218,8 +221,7 @@ public class OntologyChangeSetResource
 
   private void authorizeRelationshipTypeCreations(
       final SecurityContext securityContext, final OntologyChangeSet changeSet) {
-    changeSet.getOperations().stream()
-        .limit(changeSet.getUndoCursor())
+    activeOperations(changeSet).stream()
         .filter(
             operation ->
                 operation.getOperationType()
@@ -232,6 +234,37 @@ public class OntologyChangeSetResource
                     new OperationContext(Entity.RELATIONSHIP_TYPE, MetadataOperation.CREATE),
                     new CreateResourceContext<RelationshipType>(
                         Entity.RELATIONSHIP_TYPE, relationshipType)));
+  }
+
+  private void authorizeAssetBindings(
+      final SecurityContext securityContext, final OntologyChangeSet changeSet) {
+    final List<EntityReference> assets = permissionAssetsForBindings(changeSet);
+    if (!assets.isEmpty()) {
+      authorizeBulkAssetsPermission(securityContext, assets, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    }
+  }
+
+  static List<EntityReference> permissionAssetsForBindings(final OntologyChangeSet changeSet) {
+    return activeOperations(changeSet).stream()
+        .filter(
+            operation ->
+                operation.getOperationType() == OntologyChangeOperationType.BIND_ASSET
+                    || operation.getOperationType() == OntologyChangeOperationType.UNBIND_ASSET)
+        .map(operation -> operation.getAssetBinding().getAsset())
+        .map(OntologyChangeSetResource::permissionAsset)
+        .toList();
+  }
+
+  private static EntityReference permissionAsset(final EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? new EntityReference()
+            .withType(Entity.TABLE)
+            .withFullyQualifiedName(asset.getFullyQualifiedName())
+        : asset;
+  }
+
+  private static List<OntologyChangeOperation> activeOperations(final OntologyChangeSet changeSet) {
+    return changeSet.getOperations().subList(0, changeSet.getUndoCursor());
   }
 
   @POST

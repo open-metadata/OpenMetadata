@@ -9,7 +9,7 @@
     "verificationProvider": {
       "javaType": "org.openmetadata.schema.type.OntologyVerificationProvider",
       "type": "string",
-      "enum": ["model", "jev"],
+      "enum": ["model", "laya", "jev"],
       "default": "model"
     }
   },
@@ -37,7 +37,12 @@
       "maxLength": 128
     },
     "modelId": {
-      "description": "Model identifier returned by the configured provider.",
+      "description": "Generative model identifier returned by the ontology draft provider.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "verificationModelId": {
+      "description": "Immutable source-local verifier checkpoint identifier when a separate verifier such as Laya is used.",
       "type": "string",
       "maxLength": 256
     },
