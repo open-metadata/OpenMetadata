@@ -185,6 +185,7 @@ def get_pbit_files(config):
 @get_pbit_files.register
 def _(config: S3Config):
     try:
+        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -219,6 +220,7 @@ def _(config: S3Config):
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
+        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
@@ -254,6 +256,7 @@ def _(config: AzureConfig):
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
+        os.makedirs(config.pbitFilesExtractDir, exist_ok=True)
         bucket_name, prefix = get_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
@@ -321,4 +324,4 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir)
+        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir, ignore_errors=True)
