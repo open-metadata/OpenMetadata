@@ -233,7 +233,10 @@ const DotStepIcon = ({ status, size }: StepIndicatorProps) => {
       className={cx(
         'tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full',
         sizes[size].dotHalo,
-        status === 'current' && 'tw:bg-brand-secondary'
+        // Light: pale brand-secondary (#d1e9ff) halo around the solid dot. In
+        // dark brand-secondary is a saturated blue ~equal to the brand-solid
+        // center, so the halo vanishes — use the translucent brand tint instead.
+        status === 'current' && 'tw:bg-brand-secondary tw:dark:bg-brand-primary'
       )}>
       <span
         className={cx(
