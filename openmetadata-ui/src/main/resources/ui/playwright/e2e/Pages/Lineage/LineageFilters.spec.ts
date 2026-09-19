@@ -482,6 +482,13 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    // The last of this file's four service-filter tests to get a longer slot,
+    // and the only reason it stands out is that it was missed: its three
+    // siblings already call slow() and all three landed at 62.5s/71.0s/76.6s
+    // in the same run where this one timed out at 64.5s. Same shape of work,
+    // same band -- the 60s default simply does not fit any of the four.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
