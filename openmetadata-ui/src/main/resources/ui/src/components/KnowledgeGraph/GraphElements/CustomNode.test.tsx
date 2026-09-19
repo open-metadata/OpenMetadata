@@ -127,3 +127,39 @@ it('reads glossary terms as business concepts', () => {
 
   expect(screen.getByTestId('type-tag')).toHaveTextContent('label.concept');
 });
+
+it('names a bundle after its shared type and falls back to the family when mixed', () => {
+  const bundle = (members: { id: string; label: string; type: string }[]) => ({
+    ...node,
+    data: {
+      ...node.data,
+      type: members[0].type,
+      presentation: {
+        level: 2,
+        position: { x: 0, y: 0 },
+        size: [222, 152],
+        predicate: 'Owns',
+        members,
+      },
+    },
+  });
+  const owners = [
+    { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+    { id: 'karan', label: 'Karan Hotchandani', type: 'user' },
+  ];
+  const { rerender } = renderNode(bundle(owners));
+
+  expect(screen.getByTestId('label')).toHaveTextContent('label.user-plural');
+
+  const mixed = bundle([
+    { id: 'finance', label: 'Finance', type: 'team' },
+    ...owners.slice(0, 1),
+  ]);
+  rerender(
+    <CustomNode nodeData={mixed} nodeRenderKey={getNodeRenderKey(mixed)} />
+  );
+
+  expect(screen.getByTestId('label')).toHaveTextContent('label.people');
+  expect(screen.getByText('Finance')).toBeVisible();
+  expect(screen.getByText('Pere Miquel Brull')).toBeVisible();
+});

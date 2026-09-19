@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Button,
+  ClassificationTag,
   Dot,
   FieldProp,
   FieldTypes,
@@ -85,8 +86,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ClassificationTag } from '../../common/atoms/Tag';
-import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
@@ -1158,7 +1158,7 @@ const AddDomainForm = ({
         name="glossaryTerms"
         rules={glossaryTermsRequiredRule}>
         {({ field }) => (
-          <GlossaryTermTreeSelect
+          <GlossaryTermPicker
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
             placeholder={t('label.select-field', {

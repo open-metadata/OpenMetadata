@@ -315,12 +315,12 @@ plugins: dict[str, set[str]] = {
     "deltalake": {
         "delta-spark>=3.0.0,<4.0.0",
         "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.6",
+        "pyspark==3.5.9",
     },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
     "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
+    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},

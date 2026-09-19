@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselLayout';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';

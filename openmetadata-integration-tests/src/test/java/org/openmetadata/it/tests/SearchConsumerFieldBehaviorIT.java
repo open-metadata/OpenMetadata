@@ -267,7 +267,8 @@ class SearchConsumerFieldBehaviorIT {
     assertFeatureWorksInAllLanguages(
         "Data Quality dimension filter (test list + DQ report by dimension)",
         language ->
-            hits(testCaseIndex(language), termQuery("dataQualityDimension", DQ_DIMENSION)) == 1);
+            hits(testCaseIndex(language), termQuery("dataQualityDimensionName", DQ_DIMENSION))
+                == 1);
   }
 
   @Test
@@ -583,7 +584,7 @@ class SearchConsumerFieldBehaviorIT {
             Map.entry("entityFQN", ENTITY_FQN),
             Map.entry("originEntityFQN", ENTITY_FQN),
             Map.entry("entityLink", ENTITY_LINK),
-            Map.entry("dataQualityDimension", DQ_DIMENSION),
+            Map.entry("dataQualityDimensionName", DQ_DIMENSION),
             Map.entry("testPlatforms", List.of(TEST_PLATFORM)),
             Map.entry(
                 "testSuites",
