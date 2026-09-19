@@ -68,11 +68,13 @@ test.describe(
     const linkedTable = new TableClass();
 
     /** All memory IDs created in beforeAll — cleaned up in afterAll. */
-    const globalMemoryIds: string[] = [];
+    let globalMemoryIds: string[] = [];
     // 11 memories forces 2 pages (page size = 10)
     const PAGINATION_COUNT = 11;
 
     test.beforeAll(async ({ browser }) => {
+      globalMemoryIds = [];
+
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);

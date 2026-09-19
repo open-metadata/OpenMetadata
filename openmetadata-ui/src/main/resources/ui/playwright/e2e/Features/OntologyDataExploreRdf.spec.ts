@@ -339,6 +339,8 @@ async function getOntologyDataGraph(
 
 test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
   test.beforeAll(async ({ browser }) => {
+    paginationTerms = [];
+
     test.setTimeout(180_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
