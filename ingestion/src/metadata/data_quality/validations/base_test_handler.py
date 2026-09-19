@@ -19,7 +19,6 @@ import reprlib
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from enum import Enum
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -30,10 +29,16 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
-from metadata.data_quality.validations import utils
+from metadata.data_quality.validations import thresholds, utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     MAX_TOP_DIMENSIONS,
+)
+from metadata.data_quality.validations.thresholds import (
+    THRESHOLD_PARAM,
+    THRESHOLD_UNIT_PARAM,
+    FailureThreshold,
+    ThresholdUnit,
 )
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
@@ -66,27 +71,6 @@ DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 DIMENSION_SUM_VALUE_KEY = "sum_value"  # For statistical validators weighted calculations
-
-# Failure threshold parameters, declared on the test definitions that support them
-THRESHOLD_PARAM = "threshold"
-THRESHOLD_UNIT_PARAM = "thresholdUnit"
-
-
-class ThresholdUnit(str, Enum):
-    """How the `threshold` parameter reads the violation count"""
-
-    ABSOLUTE = "ABSOLUTE"
-    PERCENTAGE = "PERCENTAGE"
-
-
-class RowThreshold(BaseModel):
-    """How many violating rows a test case tolerates, and in which unit
-
-    The defaults are the pre-threshold verdict: no violation at all is tolerated.
-    """
-
-    value: float = 0.0
-    unit: ThresholdUnit = ThresholdUnit.ABSOLUTE
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -125,7 +109,7 @@ class BaseTestValidator(ABC):
 
     # Memoized reading of the failure threshold parameters. Declared on the class so that
     # validators overriding __init__ without calling super() still get the default.
-    _row_threshold: RowThreshold | None = None
+    _failure_threshold: FailureThreshold | None = None
 
     def __init__(
         self,
@@ -365,42 +349,54 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError(f"{self.__class__.__name__} must implement _evaluate_test_condition()")
 
-    def get_row_threshold(self) -> RowThreshold:
+    def get_failure_threshold(self) -> FailureThreshold:
         """Read the failure threshold and the unit it is expressed in
 
         Both parameters are optional. A test case that does not set them tolerates no
-        violation at all (`0` ABSOLUTE), which is the verdict tests had before thresholds
-        were introduced.
+        deviation at all (`0` ABSOLUTE), which is the verdict tests had before thresholds
+        were introduced. Both threshold semantics read this same configuration: the row
+        tolerance counts violating rows, the deviation tolerance widens the bounds of a
+        statistic or the delta around an expected value.
 
         The parameters cannot change while the test case runs, so the reading is memoized:
         it is asked for once per dimension row, and a misconfigured test case would
         otherwise log the same warning once per call.
 
         Returns:
-            RowThreshold: the tolerated number of violations and its unit
+            FailureThreshold: the tolerated deviation and its unit
         """
-        threshold = self._row_threshold
+        threshold = self._failure_threshold
         if threshold is None:
-            threshold = self._row_threshold = self._read_row_threshold()
+            threshold = self._failure_threshold = self._read_failure_threshold()
         return threshold
 
-    def _read_row_threshold(self) -> RowThreshold:
-        """Parse the threshold parameters, falling back to tolerating no violation"""
+    def _read_failure_threshold(self) -> FailureThreshold:
+        """Parse the threshold parameters, falling back to tolerating no deviation"""
         param_values = self.test_case.parameterValues or []
 
         try:
             raw_threshold = self.get_test_case_param_value(param_values, THRESHOLD_PARAM, float, default=0.0)
         except (TypeError, ValueError):
             logger.warning(
-                "Unreadable %s for %s. Tolerating no violation.",
+                "Unreadable %s for %s. Tolerating no deviation.",
                 THRESHOLD_PARAM,
                 self.test_case.fullyQualifiedName,
             )
-            return RowThreshold()
+            return FailureThreshold()
 
         # The parameter is read through `float`, so anything else is a test case without the
-        # parameter set and tolerates no violation.
+        # parameter set and tolerates no deviation.
         threshold = raw_threshold if isinstance(raw_threshold, float) else 0.0
+
+        if not thresholds.is_usable(threshold):
+            logger.warning(
+                "Out of range %s '%s' for %s. A threshold is a tolerance, so it has to be a finite, "
+                "non-negative number. Tolerating no deviation.",
+                THRESHOLD_PARAM,
+                threshold,
+                self.test_case.fullyQualifiedName,
+            )
+            return FailureThreshold()
 
         raw_unit = self.get_test_case_param_value(
             param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
@@ -418,7 +414,7 @@ class BaseTestValidator(ABC):
             )
             unit = ThresholdUnit.ABSOLUTE
 
-        return RowThreshold(value=threshold, unit=unit)
+        return FailureThreshold(value=threshold, unit=unit)
 
     def _needs_row_count(self) -> bool:
         """Whether the total row count has to be computed
@@ -428,7 +424,7 @@ class BaseTestValidator(ABC):
         """
         if self.test_case.computePassedFailedRowCount:
             return True
-        return self.get_row_threshold().unit is ThresholdUnit.PERCENTAGE
+        return self.get_failure_threshold().unit is ThresholdUnit.PERCENTAGE
 
     def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
         """Check a violation count against the test case failure threshold
@@ -447,7 +443,7 @@ class BaseTestValidator(ABC):
             bool: True if the test passes
         """
         violations = violations or 0
-        threshold = self.get_row_threshold()
+        threshold = self.get_failure_threshold()
 
         if threshold.unit is ThresholdUnit.PERCENTAGE:
             if not denominator:
@@ -817,6 +813,52 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
+        """Resolve the test case bounds and widen them by the failure threshold.
+
+        The tolerance is applied here rather than in `get_min_bound`/`get_max_bound` so that it also
+        holds for validators that resolve their bounds dynamically by overriding those getters.
+
+        Args:
+            min_param_name: name of the parameter holding the lower bound
+            max_param_name: name of the parameter holding the upper bound
+
+        Returns:
+            tuple[float | None, float | None]: the effective bounds to evaluate the observed value against
+        """
+        return self.apply_bound_tolerance(self.get_min_bound(min_param_name), self.get_max_bound(max_param_name))
+
+    def apply_bound_tolerance(
+        self, min_bound: float | None, max_bound: float | None
+    ) -> tuple[float | None, float | None]:
+        """Widen already resolved bounds by the failure threshold.
+
+        Args:
+            min_bound: resolved lower bound
+            max_bound: resolved upper bound
+
+        Returns:
+            tuple[float | None, float | None]: the effective bounds
+        """
+        threshold = self.get_failure_threshold()
+        return thresholds.apply_bound_tolerance(min_bound, max_bound, threshold.value, threshold.unit)
+
+    def matches_expected(
+        self, observed: float | None, expected: float | None, label: str = "the expected value"
+    ) -> bool:
+        """Whether `observed` matches `expected` within the failure threshold.
+
+        Args:
+            observed: value computed against the data
+            expected: value the test case expects
+            label: what `expected` is, used for logging only
+
+        Returns:
+            bool: True when the deviation is tolerated
+        """
+        threshold = self.get_failure_threshold()
+        return thresholds.within_deviation(observed, expected, threshold.value, threshold.unit, label)
 
     def get_predicted_value(self) -> str | None:
         """Get predicted value"""
