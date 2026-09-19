@@ -29,9 +29,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -166,7 +166,7 @@ export const EntityTitleSection = ({
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-semibold tw:truncate tw:no-underline tw:text-blue-700 tw:block"
               data-testid={testId}
               to={linkHref}>
-              {stringToHTML(entityName)}
+              {renderHighlightedText(entityName)}
             </Link>
           </TooltipTrigger>
         </Tooltip>

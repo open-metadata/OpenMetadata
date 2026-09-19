@@ -276,7 +276,7 @@ export const TextField = ({ className, ...props }: TextFieldProps) => {
 
 TextField.displayName = 'TextField';
 
-interface InputProps extends InputBaseProps, BaseProps {
+export interface InputProps extends InputBaseProps, BaseProps {
   /** Whether to hide required indicator from label */
   hideRequiredIndicator?: boolean;
 }
