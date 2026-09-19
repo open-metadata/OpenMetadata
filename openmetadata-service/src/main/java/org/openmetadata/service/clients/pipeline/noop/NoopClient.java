@@ -32,11 +32,19 @@ public class NoopClient extends PipelineServiceClient {
 
   public NoopClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);
+    this.setPlatform(DISABLED_STATUS);
   }
 
+  /**
+   * No pipeline service sits behind this client, so it reports the same healthy-but-disabled status
+   * the base class returns when the client is switched off: the UI keys off a {@code disabled}
+   * platform to point at the deployment docs instead of offering the deploy and run operations this
+   * client refuses. Answering {@code null} here made every UI poll of
+   * {@code /services/ingestionPipelines/status} fail with a NullPointerException.
+   */
   @Override
   public PipelineServiceClientResponse getServiceStatusInternal() {
-    return null;
+    return buildHealthyStatus(DISABLED_STATUS);
   }
 
   @Override
