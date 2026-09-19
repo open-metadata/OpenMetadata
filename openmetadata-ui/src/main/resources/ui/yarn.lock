@@ -11411,12 +11411,17 @@ react-draggable@^4.4.6, react-draggable@^4.5.0:
     clsx "^2.1.1"
     prop-types "^15.8.1"
 
-react-error-boundary@^3.1.0, react-error-boundary@^3.1.4:
+react-error-boundary@^3.1.0:
   version "3.1.4"
   resolved "https://registry.yarnpkg.com/react-error-boundary/-/react-error-boundary-3.1.4.tgz#255db92b23197108757a888b01e5b729919abde0"
   integrity sha512-uM9uPzZJTF6wRQORmSrvOIgt4lJ9MC1sNgEOj2XGsDTRE4kmpWxg7ENK9EWNKJRMAOY9z0MuF4yIfl6gp4sotA==
   dependencies:
     "@babel/runtime" "^7.12.5"
+
+react-error-boundary@^6.1.5:
+  version "6.1.5"
+  resolved "https://registry.yarnpkg.com/react-error-boundary/-/react-error-boundary-6.1.5.tgz#239cefdd181285377f2444461e254f07d2324927"
+  integrity sha512-l2nk+KhgM6e79tAiHEs3tXTdiTW4ARniKYMQN+cLY5vQFpDOkxuXKIC4uIwYuIKoMpFQ6jEbQz9wBArUmq7GWA==
 
 react-fast-compare@^3.2.0:
   version "3.2.2"
