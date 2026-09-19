@@ -376,6 +376,7 @@ describe('ParameterFields', () => {
       'Selected test definition doc'
     );
   });
+
   it('labels the custom SQL operator options as sentences, not symbols', () => {
     const definition = {
       name: 'tableCustomSQLQuery',
@@ -439,5 +440,67 @@ describe('ParameterFields', () => {
       screen.getByTestId('parameter-thresholdUnit')
     );
     expect(screen.getAllByTestId('parameter-thresholdUnit')).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'columnValuesToMatchRegex',
+      'label.threshold-noun-rows',
+      'label.threshold-unit-percentage',
+    ],
+    [
+      'columnValueMeanToBeBetween',
+      'label.threshold-noun-units',
+      'label.threshold-unit-percentage',
+    ],
+  ])(
+    'labels the threshold unit contextually for %s',
+    (name, absoluteLabel, percentageLabel) => {
+      const definition = {
+        name,
+        parameterDefinition: [
+          {
+            name: 'thresholdUnit',
+            displayName: 'Threshold Unit',
+            dataType: TestDataType.String,
+            optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+          },
+        ],
+      } as TestDefinition;
+
+      renderWithForm(definition);
+
+      const options = screen
+        .getAllByRole('option', { hidden: true })
+        .map((option) => option.textContent);
+
+      // The mocked `t` echoes keys back: ABSOLUTE resolves to the contextual
+      // noun, PERCENTAGE to the share sentence built around it.
+      expect(options).toContain(absoluteLabel);
+      expect(options).toContain(percentageLabel);
+      expect(options).not.toContain('ABSOLUTE');
+    }
+  );
+
+  it('shows a threshold unit id it has no sentence for as stored', () => {
+    const definition = {
+      name: 'columnValuesToBeUnique',
+      parameterDefinition: [
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: TestDataType.String,
+          optionValues: ['ABSOLUTE', 'FURLONGS'],
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    const options = screen
+      .getAllByRole('option', { hidden: true })
+      .map((option) => option.textContent);
+
+    expect(options).toContain('FURLONGS');
   });
 });
