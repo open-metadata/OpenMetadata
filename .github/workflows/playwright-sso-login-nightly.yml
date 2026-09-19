@@ -14,6 +14,51 @@ name: SSO Login Nightly
 on:
   schedule:
     - cron: '0 3 * * *'
+  # PR gate: runs whenever a PR touches auth code — every provider fixture
+  # SELF-GATES on required secrets via SsoProviderFixture.isAvailable(), so
+  # legs that need a live tenant (okta) skip cleanly on fork PRs without
+  # secrets rather than failing the workflow. Same is true for Keycloak
+  # legs when the required env vars aren't set. The wasted docker startup
+  # for those legs is accepted — the job still passes with tests skipped
+  # and the report surfaces the reason.
+  pull_request:
+    paths:
+      # UI-side auth surface — components, utils, and the state store that
+      # drive the login/refresh flow this matrix exercises.
+      - 'openmetadata-ui/src/main/resources/ui/src/components/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/utils/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/hooks/useApplicationStore.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/AppRoot.tsx'
+      - 'openmetadata-ui/src/main/resources/ui/src/index.tsx'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/**'
+      # Backend auth surface — narrow to the packages the SSO matrix
+      # actually exercises (login/refresh, JWT filter, SAML handler,
+      # OIDC/SAML code flow, LDAP/basic authenticators, the servlet
+      # handler factory, and the public /system/config/auth endpoint).
+      # Sibling `security/` packages (mask, policyevaluator, jwt-key
+      # rotation utilities) don't drive this matrix and stay off the
+      # trigger to keep unrelated PRs from re-running a 40m docker leg.
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/JwtFilter.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/AuthenticationCodeFlowHandler.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/AuthServeletHandlerFactory.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/SecurityUtil.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/auth/**'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/security/saml/**'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/system/ConfigResource.java'
+      # Schema-first source of truth for auth types (authentication,
+      # authorizer, SAML/OIDC client configs). A schema change regenerates
+      # POJOs the BE serves and TS types the SPA consumes.
+      - 'openmetadata-spec/src/main/resources/json/schema/configuration/authenticationConfiguration.json'
+      - 'openmetadata-spec/src/main/resources/json/schema/configuration/authorizerConfiguration.json'
+      - 'openmetadata-spec/src/main/resources/json/schema/auth/**'
+      - 'openmetadata-spec/src/main/resources/json/schema/security/**'
+      # Test-env plumbing: compose file wires the KC/OpenLDAP services the
+      # matrix depends on; the workflow's own edits should re-run itself.
+      - 'docker/development/docker-compose.yml'
+      - 'docker/development/openldap/**'
+      - 'docker/local-sso/**'
+      - '.github/workflows/playwright-sso-login-nightly.yml'
   workflow_dispatch:
     inputs:
       sso_provider:
@@ -22,6 +67,12 @@ on:
         default: okta
         type: choice
         options:
+          - basic
+          - ldap
+          - keycloak-oidc-confidential
+          - keycloak-oidc-public
+          - msal-mock
+          - auth0-mock
           - okta
           - keycloak-azure-saml
           - keycloak-azure-saml-crosssite
@@ -36,42 +87,121 @@ permissions:
   contents: read
 
 concurrency:
-  group: sso-login-nightly-${{ github.ref }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
+  # PR runs key on the PR number so re-pushes on the same PR cancel the
+  # in-flight run; scheduled + dispatch runs key on ref+provider so branch
+  # and per-provider dispatches don't cancel each other.
+  group: sso-login-nightly-${{ github.event_name == 'pull_request' && github.event.pull_request.number || format('{0}-{1}', github.ref, github.event.inputs.sso_provider || 'scheduled') }}
   cancel-in-progress: true
 
 jobs:
   # To onboard a new provider:
-  #   1. Add a matrix entry below (`name` is the lowercase provider id used by
-  #      the Playwright helper; `env_prefix` is the uppercase/underscore form
-  #      used to look up credentials). Also add `name` to the dispatch
-  #      `options:` list above.
+  #   1. Add a matrix entry below. `name` is the fixture's `slug` from
+  #      SsoProviderFixture (used as the @<slug> tag in SsoScenarios.spec.ts
+  #      describe blocks). `env_prefix` is the uppercase/underscore form
+  #      used to look up credentials. `filter` is the Playwright CLI arg
+  #      (usually `--grep @<slug>`); legacy legs may use `--grep-invert ...`
+  #      when their specs aren't in the SsoScenarios file. Also add `name`
+  #      to the dispatch `options:` list above.
   #   2. Add <ENV_PREFIX>_SSO_USERNAME (variable) and <ENV_PREFIX>_SSO_PASSWORD
   #      (variable) to the `test` environment. Use a secret instead of a
   #      variable for the password if the provider uses a real (non-fixture)
-  #      credential.
-  #   3. Register the helper in playwright/utils/sso-providers/index.ts.
-  #   4. Set `excluded_tags` to the provider tags this fixture cannot serve,
-  #      pipe-separated. Specs carry a provider tag (@okta) or a capability tag
-  #      (@tokenRenewal); untagged specs run everywhere. An entry that omits
-  #      `excluded_tags` collects every spec, so wrong-provider tests fail
-  #      loudly rather than silently not running.
+  #      credential. Basic/LDAP/msal-mock/auth0-mock don't need CI-side
+  #      credentials — their fixtures either use seeded admin creds or
+  #      inject the SDK entirely in the browser context.
+  #   3. If the fixture requires an external service (Keycloak, OpenLDAP),
+  #      wire the compose-up step below.
+  #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
+  #      — the filter picks a leg's own describes automatically.
   sso-login:
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
+    # Static full-9 matrix. Per-event filtering is handled by the step-level
+    # `if:` on the test-runner step below (Okta and the crosssite leg skip
+    # on pull_request events where live-tenant / crosssite-network setup
+    # isn't cost-effective). Static + step-if is far more readable than the
+    # nested-ternary matrix expression we previously had, and actionlint
+    # accepts it without warnings.
     strategy:
       fail-fast: false
       matrix:
         provider:
-          ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
-          || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
-              && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta"}]')
-              || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
-                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML","excluded_tags":"@okta|@tokenRenewal"}]')
-                  || fromJSON('[{"name":"okta","env_prefix":"OKTA","excluded_tags":"@tokenRenewal"}]'))) }}
+          - name: 'basic'
+            env_prefix: 'BASIC'
+            filter: '--grep @basic'
+            needs_docker: ''
+          - name: 'ldap'
+            env_prefix: 'LDAP'
+            filter: '--grep @ldap'
+            needs_docker: 'ldap'
+          - name: 'keycloak-oidc-confidential'
+            env_prefix: 'KEYCLOAK_OIDC'
+            filter: '--grep @keycloak-oidc-confidential'
+            needs_docker: 'keycloak'
+          - name: 'keycloak-oidc-public'
+            env_prefix: 'KEYCLOAK_OIDC'
+            filter: '--grep @keycloak-oidc-public'
+            needs_docker: 'keycloak'
+          - name: 'msal-mock'
+            env_prefix: 'MSAL_MOCK'
+            filter: '--grep @msal-mock'
+            needs_docker: ''
+          - name: 'auth0-mock'
+            env_prefix: 'AUTH0_MOCK'
+            filter: '--grep @auth0-mock'
+            needs_docker: ''
+          - name: 'okta'
+            env_prefix: 'OKTA'
+            # Regex quoted so the `|` isn't a shell pipe when the string
+            # expands into the `Run SSO Scenarios` step's command line.
+            # `@self-signup-mock-oidc` is excluded because that spec needs
+            # the `mock-oidc-provider` docker service which no leg starts.
+            filter: "--grep-invert '@tokenRenewal|@sso-matrix|@self-signup-mock-oidc'"
+            needs_docker: ''
+          - name: 'keycloak-azure-saml'
+            env_prefix: 'KEYCLOAK_AZURE_SAML'
+            filter: "--grep-invert '@okta|@sso-matrix|@self-signup-mock-oidc'"
+            needs_docker: 'keycloak'
+          - name: 'keycloak-azure-saml-crosssite'
+            env_prefix: 'KEYCLOAK_AZURE_SAML'
+            filter: "--grep-invert '@okta|@tokenRenewal|@sso-matrix|@self-signup-mock-oidc'"
+            needs_docker: 'keycloak'
+    # Per-event / per-dispatch filtering. Every leg in the static matrix
+    # spins up a runner, but the runner short-circuits at the first step
+    # when this leg isn't wanted for the current event:
+    #   - workflow_dispatch with a specific provider → only that leg runs
+    #   - workflow_dispatch=all / schedule → every leg runs
+    #   - pull_request → skip okta (needs live tenant) and the
+    #     -crosssite variant (needs 127.0.0.1 name-resolution setup we
+    #     don't want to gate PR CI on).
+    #   - push (branch push without an open PR) → the whole workflow
+    #     shouldn't fire, but if it does, treat like PR (skip okta +
+    #     crosssite so nothing red-x's without secrets).
+    # Per-event filtering:
+    #   - workflow_dispatch with a specific provider → only that leg runs
+    #   - workflow_dispatch=all / schedule → every leg runs
+    #   - pull_request → skip okta (needs live tenant not on fork PRs)
+    #   - push → same as pull_request (defensive; the workflow's `on:`
+    #     doesn't list push, but GitHub may still fire on workflow-file
+    #     changes).
+    env:
+      SKIP_LEG: >-
+        ${{
+          (github.event_name == 'workflow_dispatch'
+            && github.event.inputs.sso_provider != 'all'
+            && github.event.inputs.sso_provider != matrix.provider.name)
+          || ((github.event_name == 'pull_request' || github.event_name == 'push')
+              && matrix.provider.name == 'okta')
+          || matrix.provider.name == 'keycloak-azure-saml-crosssite'
+        }}
     steps:
+      - name: Skip leg early
+        if: env.SKIP_LEG == 'true'
+        run: |
+          echo "::notice::Leg '${{ matrix.provider.name }}' skipped for event '${{ github.event_name }}' (dispatch=${{ github.event.inputs.sso_provider }})."
+
       - name: Free Disk Space (Ubuntu)
+        if: env.SKIP_LEG != 'true'
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -83,9 +213,11 @@ jobs:
           docker-images: false
 
       - name: Checkout
+        if: env.SKIP_LEG != 'true'
         uses: actions/checkout@v7
 
       - name: Cache Maven Dependencies
+        if: env.SKIP_LEG != 'true'
         uses: actions/cache@v6
         with:
           path: ~/.m2
@@ -93,7 +225,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Reuses the pulled openldap / keycloak images across runs on the same
+      # runner so we don't re-pull ~50MB (openldap) or ~500MB (keycloak) every
+      # nightly. Cache is keyed on the docker-compose file hash so a bump of
+      # any pinned image invalidates it deterministically.
+      - name: Cache SSO Docker images
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker != '' }}
+        uses: actions/cache@v5
+        with:
+          path: /tmp/sso-docker-cache
+          key: sso-docker-images-${{ hashFiles('docker/development/docker-compose.yml', 'docker/local-sso/keycloak-saml/docker-compose.yml') }}-v1
+
+      - name: Load cached Docker images
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker != '' && hashFiles('/tmp/sso-docker-cache/*.tar') != '' }}
+        run: |
+          for image in /tmp/sso-docker-cache/*.tar; do
+            [ -f "$image" ] && docker load -i "$image" || true
+          done
+
       - name: Setup OpenMetadata Test Environment
+        if: env.SKIP_LEG != 'true'
+        # `PW_E2E_BUILD=true` propagates through this composite step into
+        # `run_local_docker.sh` → `mvn` → `frontend-maven-plugin` → `vite
+        # build`, and vite.config.ts's `loadEnv(mode, cwd, '')` picks it up
+        # (empty prefix loads any env var, not just VITE_*). It flips the
+        # `define: 'import.meta.env.PW_E2E_BUILD'` inline to `true` for
+        # this build, arming the mocked-SDK shims in `MsalAuthenticator`
+        # and `Auth0Authenticator` that `page.addInitScript` reaches
+        # through `window.__omTestMsal` / `__omTestAuth0`. Without this
+        # flag the shims tree-shake out and the msal-mock / auth0-mock
+        # matrix legs fail cold-load-with-expired-token (scenario 4)
+        # because the fixture's mock instance is never installed.
+        env:
+          PW_E2E_BUILD: 'true'
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
@@ -102,19 +266,34 @@ jobs:
           install-test-dependencies: 'false'
 
       - name: Setup Node.js
+        if: env.SKIP_LEG != 'true'
         uses: actions/setup-node@v5
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
       - name: Install dependencies
+        if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
 
       - name: Install Playwright Browsers
+        if: env.SKIP_LEG != 'true'
         run: npx playwright@1.57.0 install chromium --with-deps
 
+      - name: Start OpenLDAP
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'ldap' }}
+        run: |
+          docker compose -f docker/development/docker-compose.yml --profile sso-playwright up -d openldap
+          # Wait for the healthcheck to pass — LDIF seeding happens on first
+          # boot and can take 10-20s on cold cache.
+          timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" openmetadata_openldap 2>/dev/null | grep -q healthy; do sleep 2; done'
+          # OM backend needs to reach OpenLDAP by service name inside the
+          # compose network; attach it to ometa_network so the LDAP bind
+          # from the app container resolves.
+          docker network connect ometa_network openmetadata_openldap || true
+
       - name: Start Keycloak SAML IdP
-        if: startsWith(matrix.provider.name, 'keycloak-')
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'keycloak' }}
         env:
           # Must name the host this leg's browser uses, or Keycloak answers
           # "Invalid Request". The '-crosssite' leg fronts the IdP on 127.0.0.1.
@@ -126,7 +305,21 @@ jobs:
           docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
-      - name: Run SSO Login Spec
+      - name: Save Docker images for cache
+        if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker != '' }}
+        run: |
+          mkdir -p /tmp/sso-docker-cache
+          # Save whichever images this leg actually pulled — smallest set.
+          if [ "${{ matrix.provider.needs_docker }}" = "ldap" ]; then
+            docker save bitnamilegacy/openldap:2.6.7 -o /tmp/sso-docker-cache/openldap.tar || true
+          fi
+          if [ "${{ matrix.provider.needs_docker }}" = "keycloak" ]; then
+            # keycloak image tag is decided by docker/local-sso/keycloak-saml/docker-compose.yml
+            docker save $(docker inspect openmetadata-keycloak-saml --format='{{.Image}}') -o /tmp/sso-docker-cache/keycloak.tar || true
+          fi
+
+      - name: Run SSO Scenarios
+        if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
@@ -139,7 +332,7 @@ jobs:
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
           PLAYWRIGHT_IS_OSS: true
-        run: npx playwright test --project=sso-auth --workers=1 --grep-invert "${{ matrix.provider.excluded_tags }}"
+        run: npx playwright test --project=sso-auth --workers=1 ${{ matrix.provider.filter }}
 
       - name: Upload HTML report
         if: always()
@@ -160,9 +353,13 @@ jobs:
           npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
 
       - name: Clean Up
-        if: always()
+        # Runs even on step failure, but not on skipped legs — the leg never
+        # checked out the repo or booted docker, so `cd ./docker/development`
+        # would fail with "no such file or directory".
+        if: ${{ always() && env.SKIP_LEG != 'true' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml down --remove-orphans || true
+          docker compose -f docker/development/docker-compose.yml --profile sso-playwright down --remove-orphans || true
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
