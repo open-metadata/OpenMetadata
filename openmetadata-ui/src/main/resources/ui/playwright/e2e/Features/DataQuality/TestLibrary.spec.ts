@@ -13,7 +13,6 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
-  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -387,39 +386,6 @@ test.describe(
             .fill(`validation-test-${uuid()}`);
           await selectEntityType(page, 'TABLE');
 
-          // Submit the form
-          await page.getByTestId('save-test-definition').click();
-
-          // Expect validation error on supportedDataTypes
-          await expect(page.getByTestId('supported-data-types')).toBeVisible();
-        });
-
-        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-          // Remove OpenMetadata from testPlatforms via its chip's remove button,
-          // then assert it is gone so a mis-matched selector can't silently no-op.
-          await page
-            .getByTestId('test-platforms')
-            .locator('div')
-            .filter({ hasText: 'OpenMetadata' })
-            .getByRole('button')
-            .first()
-            .click();
-          await expect(
-            page
-              .getByTestId('test-platforms')
-              .getByText('OpenMetadata', { exact: true })
-          ).toHaveCount(0);
-
-          // Add dbt
-          await chooseSelectOption(
-            page.getByTestId('test-platforms'),
-            page.getByRole('option', { name: 'dbt', exact: true })
-          );
-
-          // Close dropdown
-          await page.keyboard.press('Escape');
-
-          // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&

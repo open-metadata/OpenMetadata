@@ -51,6 +51,7 @@ import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.inter
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
+
 // Moved to RouterPaths so callers needing only a profile URL (the app
 // entry registers one) do not pull this module's graph into their chunk.
 export {
@@ -235,7 +236,6 @@ export const getAppInstallPath = (fqn: string) => {
     getEncodedFqn(fqn)
   );
 };
-
 
 export const getSettingPathRelative = (
   category?: string,
@@ -812,14 +812,12 @@ export const getGlossaryTermDetailsPath = (
   return path;
 };
 
-
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
 
   return path;
 };
-
 
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
