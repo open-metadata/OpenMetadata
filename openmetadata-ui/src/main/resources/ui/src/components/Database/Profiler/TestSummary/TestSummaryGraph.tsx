@@ -392,7 +392,7 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white custom-test-summary-graph"
+      className="tw:bg-primary custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>

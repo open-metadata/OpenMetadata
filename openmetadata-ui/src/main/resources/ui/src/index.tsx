@@ -19,7 +19,7 @@ import {
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
-import './styles/index';
+import './styles/globalStyles';
 import { getBasePath } from './utils/HistoryUtils';
 import i18next from './utils/i18next/LocalUtil';
 import { renderOwnerPopover } from './utils/ownerRenderUtils';

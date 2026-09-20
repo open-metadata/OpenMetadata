@@ -69,8 +69,45 @@ jobs:
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
+            # What this suite can actually see. `openmetadata-ui/**` also covers
+            # `playwright/e2e/**`, so changing any feature spec booked a ~25
+            # minute screenshot run that could not observe the change — and made
+            # test-only PRs the only ones exposed to unrelated snapshot drift,
+            # because nothing else triggers this workflow often enough to catch
+            # it first.
+            #
+            # An allowlist rather than `openmetadata-ui/**` plus negations:
+            # dorny/paths-filter matches a file if *any* pattern matches, so a
+            # trailing `!...` line cannot subtract from a broad one above it.
+            #
+            # The Playwright entries are the suite's own inputs, not an
+            # exception to the rule: `visual-regression` declares
+            # `dependencies: ['setup', 'entity-data-setup']`, and its specs
+            # import from support/, utils/, constant/, fixtures/ and test-data/.
             ui:
-              - 'openmetadata-ui/**'
+              - 'openmetadata-ui/pom.xml'
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+              - 'openmetadata-ui/src/main/resources/ui/public/**'
+              - 'openmetadata-ui/src/main/resources/ui/index.html'
+              - 'openmetadata-ui/src/main/resources/ui/package.json'
+              - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui/src/main/resources/ui/vite.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/postcss.config.js'
+              - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
+              - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'
+              - 'openmetadata-ui/src/main/resources/ui/.npmrc'
+              - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/support/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/utils/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
+              - '.github/workflows/playwright-visual.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
   playwright-visual-regression:
     name: playwright-visual-regression
