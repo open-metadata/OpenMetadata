@@ -44,7 +44,6 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
-import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -697,8 +696,16 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // The cell editor opens the picker with it, so there is nothing to click open.
-  await searchGlossaryPicker(page, glossary.name);
+  // The cell editor opens the picker with it and focuses its search box, so
+  // type into the focused editor rather than locating an input inside a grid
+  // cell that react-data-grid re-renders underneath us.
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('glossary')
+  );
+  await page.keyboard.type(glossary.name);
+  await searchResponse;
   await waitForAllLoadersToDisappear(page);
   await page
     .getByTestId(`tree-node-"${glossary.parent}"."${glossary.name}"`)
