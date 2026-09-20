@@ -26,6 +26,7 @@ jest.mock('../../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
 
     return (
       <button
+        aria-label="glossary term picker"
         data-testid={props['data-testid'] as string}
         onClick={() =>
           (props.onChange as (terms: GlossaryPickerValue[]) => void)([

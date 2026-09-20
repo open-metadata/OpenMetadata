@@ -64,8 +64,8 @@ const TermsRow: React.FC<TermsRowProps> = ({
 }) => {
   const { t } = useTranslation();
   const [relationType, setRelationType] = useState(initialRelationType);
-  const [selectedTerms, setSelectedTerms] = useState<GlossaryPickerValue[]>(() =>
-    initialTerms.map(termItemToPickerValue)
+  const [selectedTerms, setSelectedTerms] = useState<GlossaryPickerValue[]>(
+    () => initialTerms.map(termItemToPickerValue)
   );
 
   const handleRelationTypeChange = useCallback(

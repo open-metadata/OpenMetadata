@@ -52,7 +52,6 @@ import {
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
-import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
@@ -70,6 +69,7 @@ import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {

@@ -51,10 +51,7 @@ export interface IntakeFieldsSectionProps {
 
 // The live form values: the related-terms picker holds labels, which become
 // ids (edit) or FQNs (create) in the payload below.
-export type GlossaryTermFormState = Omit<
-  CreateGlossaryTerm,
-  'relatedTerms'
-> & {
+export type GlossaryTermFormState = Omit<CreateGlossaryTerm, 'relatedTerms'> & {
   relatedTerms?: GlossaryPickerValue[];
 };
 

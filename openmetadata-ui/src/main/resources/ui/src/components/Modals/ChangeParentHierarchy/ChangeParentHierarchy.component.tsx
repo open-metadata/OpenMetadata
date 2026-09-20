@@ -16,8 +16,6 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
-import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -32,6 +30,8 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
   ChangeParentHierarchyProps,

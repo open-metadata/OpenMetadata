@@ -54,13 +54,13 @@ import { ReactComponent as PendingChangesIcon } from '../../../assets/svg/ic_pen
 import { ReactComponent as UniqueColumnsIcon } from '../../../assets/svg/ic_unique-column.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
-import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
-import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
+import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
 import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';

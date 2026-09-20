@@ -38,9 +38,6 @@ import {
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
-import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
@@ -50,10 +47,13 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   AVAILABLE_ICONS,
   DEFAULT_GLOSSARY_TERM_ICON,

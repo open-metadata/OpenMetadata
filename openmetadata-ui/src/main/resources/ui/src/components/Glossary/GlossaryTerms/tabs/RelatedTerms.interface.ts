@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import {
-  Style,
-} from '../../../../generated/entity/data/glossaryTerm';
+import { Style } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 

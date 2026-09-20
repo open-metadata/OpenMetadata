@@ -18,7 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { GlossaryTermFormState } from './AddGlossaryTermForm.interface';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
@@ -31,7 +30,10 @@ import {
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
-import { GlossaryTermForm } from './AddGlossaryTermForm.interface';
+import {
+  GlossaryTermForm,
+  GlossaryTermFormState,
+} from './AddGlossaryTermForm.interface';
 
 // AddGlossaryTermForm is a legacy antd form whose required `formRef` prop must be
 // a real antd FormInstance from the same module instance the component uses.

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByRole, fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';

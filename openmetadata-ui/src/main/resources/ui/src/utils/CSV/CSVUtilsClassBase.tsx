@@ -52,8 +52,8 @@ import DomainSelectableList from '../../components/common/DomainSelectableList/D
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
-import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
+import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';

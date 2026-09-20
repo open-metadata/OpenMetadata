@@ -21,10 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
-import {
-  GlossaryPickerValue,
-  pruneNodes,
-} from './GlossaryTagSuggestionUtils';
+import { GlossaryPickerValue, pruneNodes } from './GlossaryTagSuggestionUtils';
 import { useGlossaryTreeData } from './useGlossaryTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.

@@ -177,15 +177,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock(
-  '../../common/GlossaryTermPicker/GlossaryTermPicker',
-  () => ({
-    __esModule: true,
-    default: ({ 'data-testid': testId, disabled }: Record<string, unknown>) => (
-      <div data-disabled={disabled} data-testid={testId as string} />
-    ),
-  })
-);
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
+  __esModule: true,
+  default: ({ 'data-testid': testId, disabled }: Record<string, unknown>) => (
+    <div data-disabled={disabled} data-testid={testId as string} />
+  ),
+}));
 
 jest.mock('utils/SSOUtils', () => ({
   isValidUrl: jest.fn().mockReturnValue(true),

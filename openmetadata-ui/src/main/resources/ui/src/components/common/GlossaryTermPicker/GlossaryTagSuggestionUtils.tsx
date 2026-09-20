@@ -12,8 +12,8 @@
  */
 import { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { GlossaryTerm as GlossaryTermIcon } from '@openmetadata/ui-core-components/icons';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import { TagSource } from '../../../generated/entity/data/container';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';

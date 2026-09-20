@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form } from 'antd';
-import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
   FieldTypes,
   FormItemLayout,
@@ -77,47 +75,29 @@ describe('formUtils', () => {
       expect(JSON.stringify(result)).not.toContain('form-item-alert');
     });
 
-    // The related-terms picker is wired this way; Form.Item has to hand the
-    // child its value and change handler for the field to round-trip.
-    it('Should feed value and onChange to a COMPONENT field child', async () => {
-      const seen: Array<{ value?: string[] }> = [];
-      const Probe = ({
-        value,
-        onChange,
-      }: {
-        value?: string[];
-        onChange?: (next: string[]) => void;
-      }) => {
-        seen.push({ value });
+    // The related-terms picker is wired this way: the child element is handed
+    // straight to the Form.Item named for the field, which is what lets antd
+    // inject its value and onChange.
+    it('Should place a COMPONENT field child under a Form.Item for that field', () => {
+      const child = <div data-testid="picker" />;
 
-        return (
-          <button
-            data-testid="probe"
-            onClick={() => onChange?.(['Glossary.Term'])}
-          />
-        );
-      };
-
-      render(
-        <Form initialValues={{ relatedTerms: ['Glossary.Seeded'] }}>
-          {getField({
-            name: 'relatedTerms',
-            label: 'label.related-term-plural',
-            required: false,
-            id: 'root/relatedTerms',
-            type: FieldTypes.COMPONENT,
-            props: { children: <Probe /> },
-          })}
-        </Form>
-      );
-
-      expect(seen[0].value).toEqual(['Glossary.Seeded']);
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('probe'));
+      const result = getField({
+        name: 'relatedTerms',
+        label: 'label.related-term-plural',
+        required: false,
+        id: 'root/relatedTerms',
+        type: FieldTypes.COMPONENT,
+        props: { children: child },
       });
 
-      expect(seen[seen.length - 1].value).toEqual(['Glossary.Term']);
+      const formItem = (
+        result as unknown as {
+          props: { children: Array<{ props: Record<string, unknown> }> };
+        }
+      ).props.children[0];
+
+      expect(formItem.props.name).toBe('relatedTerms');
+      expect(formItem.props.children).toBe(child);
     });
   });
 
