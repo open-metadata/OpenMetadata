@@ -35,6 +35,13 @@ on:
   merge_group:
   pull_request:
   workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: >-
+          Re-record the baselines instead of comparing against them, and upload
+          the result. Review the artifact and commit it; nothing is pushed here.
+        type: boolean
+        default: false
 
 concurrency:
   group: playwright-visual-${{ github.event.pull_request.number || github.run_id }}
@@ -128,11 +135,25 @@ jobs:
       # shared memory. node_modules were installed on the host above and are bind-mounted in, so
       # only `npx` (bundled with the container's Node) is needed - no dependency on yarn/corepack
       # being set up inside the image.
+      # Baselines are PNGs rendered by the pinned Linux Playwright image, so they
+      # cannot be regenerated on a contributor's machine — a macOS screenshot
+      # differs from this one everywhere text is antialiased. Without a way to
+      # re-record here, a baseline that legitimately goes stale (the page really
+      # did change) can only be fixed by hand-editing a binary, so in practice it
+      # stays red and the suite stops meaning anything.
       - name: Run visual regression suite
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:8585
+          UPDATE_SNAPSHOTS: ${{ inputs.update_snapshots }}
         run: |
+          # Deliberately not `if: inputs.update_snapshots` on a second step:
+          # one step, one flag, so the recorded run is the same run in every
+          # other respect.
+          args='--project=visual-regression'
+          if [ "$UPDATE_SNAPSHOTS" = 'true' ]; then
+            args="$args --update-snapshots"
+          fi
           docker run --rm \
             --network host \
             --ipc host \
@@ -141,7 +162,15 @@ jobs:
             -v "$PWD:/work" \
             -w /work \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
-            npx playwright test --project=visual-regression
+            npx playwright test $args
+
+      - name: Upload re-recorded baselines
+        if: ${{ inputs.update_snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baselines
+          path: openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/__snapshots__/**
+          retention-days: 14
 
       - name: Upload visual diff artifacts
         if: failure()
