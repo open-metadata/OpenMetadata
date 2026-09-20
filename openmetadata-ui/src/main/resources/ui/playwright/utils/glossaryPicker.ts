@@ -37,8 +37,18 @@ const searchBox = (page: Page) =>
 const tree = (page: Page) =>
   page.locator(POPOVER).locator('[role="treegrid"]');
 
+// Terms are keyed by FQN. A glossary root is keyed by its bare `name`, which is
+// the FQN without the quoting a dot or space in the name forces — a parent
+// picker can land on either, so accept both spellings.
 const termRow = (page: Page, term: GlossaryTermRef) =>
-  page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
+  page
+    .getByTestId(`tree-node-${term.fullyQualifiedName}`)
+    .or(
+      page.getByTestId(
+        `tree-node-${term.fullyQualifiedName.replace(/^"|"$/g, '')}`
+      )
+    )
+    .or(page.getByTestId(`tree-node-${term.name}`));
 
 // Rows are keyed by FQN; callers that only know a display name match on text.
 export const glossaryPickerRow = (page: Page, name: string) =>

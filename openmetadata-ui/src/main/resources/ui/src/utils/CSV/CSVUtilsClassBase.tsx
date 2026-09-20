@@ -2244,7 +2244,6 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     // Opens with the cell, the way the grid's other editors do.
     const [isOpen, setIsOpen] = useState(true);
     const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
-    const hasEdited = useRef(false);
 
     // The popover is portaled, so the trap has to span it or the grid treats
     // focus moving into it as leaving the cell and closes the editor.
@@ -2276,7 +2275,6 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     );
 
     const handleChange = (selected: TagLabel[]) => {
-      hasEdited.current = true;
       onRowChange({
         ...row,
         [column.key]: selected.map((term) => term.tagFQN).join(';'),
@@ -2284,21 +2282,21 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     };
 
     return (
-      <div ref={containerRef}>
-        <GlossaryTermPicker
-          data-testid={CSV_GLOSSARY_PICKER_TESTID}
-          isOpen={isOpen}
-          value={terms}
-          onChange={handleChange}
-          // Closing the popover ends the cell edit; commit only if it changed.
-          onOpenChange={(open) => {
-            setIsOpen(open);
-            if (!open) {
-              onClose(hasEdited.current);
-            }
-          }}
-        />
-      </div>
+      <KeyDownStopPropagationWrapper>
+        <div ref={containerRef}>
+          <InlineEdit
+            onCancel={() => onClose(false)}
+            onSave={() => onClose(true)}>
+            <GlossaryTermPicker
+              data-testid={CSV_GLOSSARY_PICKER_TESTID}
+              isOpen={isOpen}
+              value={terms}
+              onChange={handleChange}
+              onOpenChange={setIsOpen}
+            />
+          </InlineEdit>
+        </div>
+      </KeyDownStopPropagationWrapper>
     );
   };
 };

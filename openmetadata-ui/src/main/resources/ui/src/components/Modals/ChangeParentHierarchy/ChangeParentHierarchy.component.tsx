@@ -23,7 +23,6 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
@@ -40,6 +39,36 @@ import {
 } from './ChangeParentHierarchy.interface';
 
 const MAX_BUFFERED_EVENTS = 100;
+
+// `Form.Item` injects its own string `value`/`onChange` into its child, and the
+// picker takes `TagLabel[]` — so adapt here rather than let antd feed it a FQN.
+const ParentPicker = ({
+  excludeFqn,
+  placeholder,
+  selected,
+  onParentSelected,
+  onChange,
+}: {
+  excludeFqn: string;
+  placeholder: string;
+  selected: GlossaryPickerValue | null;
+  onParentSelected: (nodes: GlossaryPickerValue[]) => void;
+  onChange?: (value?: string) => void;
+}) => (
+  <GlossaryTermPicker
+    selectGlossaries
+    data-testid="change-parent-select"
+    // A term cannot be moved under itself.
+    excludeFqns={[excludeFqn]}
+    multiple={false}
+    placeholder={placeholder}
+    value={selected ? [selected] : []}
+    onChange={(terms, nodes) => {
+      onParentSelected(nodes);
+      onChange?.(terms[0]?.tagFQN);
+    }}
+  />
+);
 
 const ChangeParentHierarchy = ({
   selectedData,
@@ -66,10 +95,7 @@ const ChangeParentHierarchy = ({
     selectedData.reviewers && selectedData.reviewers.length > 0
   );
 
-  const handleParentSelection = (
-    _terms: TagLabel[],
-    options: GlossaryPickerValue[]
-  ) => {
+  const handleParentSelection = (options: GlossaryPickerValue[]) => {
     if (options.length > 0) {
       const selectedOption = options[0];
       setSelectedParent(selectedOption);
@@ -223,17 +249,13 @@ const ChangeParentHierarchy = ({
               }),
             },
           ]}>
-          <GlossaryTermPicker
-            selectGlossaries
-            data-testid="change-parent-select"
-            // A term cannot be moved under itself.
-            excludeFqns={[selectedData.fullyQualifiedName ?? '']}
-            multiple={false}
+          <ParentPicker
+            excludeFqn={selectedData.fullyQualifiedName ?? ''}
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
-            value={selectedParent ? [selectedParent] : []}
-            onChange={handleParentSelection}
+            selected={selectedParent}
+            onParentSelected={handleParentSelection}
           />
         </Form.Item>
 

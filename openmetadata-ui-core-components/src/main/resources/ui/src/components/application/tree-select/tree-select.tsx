@@ -551,8 +551,22 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
+  // Closing returns focus to the trigger input, and that input opens on focus.
+  // Without this the dropdown reopens the instant it is dismissed.
+  const skipNextFocusOpen = useRef(false);
+
+  const openOnFocus = () => {
+    if (skipNextFocusOpen.current) {
+      skipNextFocusOpen.current = false;
+
+      return;
+    }
+    openTrigger();
+  };
+
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
+    skipNextFocusOpen.current = true;
     if (isStaged) {
       setSelection(toArray(value));
     }
@@ -957,7 +971,7 @@ export const TreeSelect = <T = unknown,>({
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
-              onFocus={openTrigger}
+              onFocus={openOnFocus}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   dismiss();

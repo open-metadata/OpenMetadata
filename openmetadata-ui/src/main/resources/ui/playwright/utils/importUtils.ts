@@ -704,8 +704,8 @@ export const fillGlossaryTermDetails = async (
     .getByTestId(`tree-node-"${glossary.parent}"."${glossary.name}"`)
     .click();
 
-  // Closing the picker ends the cell edit and commits the row.
-  await page.keyboard.press('Escape');
+  // Same commit affordance as the tag cell beside it.
+  await clickInlineSave(page);
 };
 
 export const fillDomainDetails = async (
