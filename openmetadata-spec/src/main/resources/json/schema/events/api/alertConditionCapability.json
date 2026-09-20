@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/alertConditionCapability.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertConditionCapability",
+  "description": "A filter or a trigger the selection supports, with the selected sources it applies to.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.AlertConditionCapability",
+  "properties": {
+    "condition": {
+      "$ref": "../eventFilterRule.json"
+    },
+    "sources": {
+      "description": "A filter applies to every selected source. A trigger applies only to those that support it.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["condition", "sources"],
+  "additionalProperties": false
+}

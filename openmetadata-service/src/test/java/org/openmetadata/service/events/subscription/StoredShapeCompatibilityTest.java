@@ -21,7 +21,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FilteringRules;
@@ -61,6 +63,30 @@ class StoredShapeCompatibilityTest {
 
     assertEquals(List.of(AbstractEventConsumer.ALERT_INFO_KEY), List.copyOf(jobData.keySet()));
     assertValid("events/eventSubscription.json", (String) jobData.get("alertInfoKey"));
+  }
+
+  // An alert with several sources stays stored after a rollback, and that release must parse it:
+  // a list of sources and one more rule are all it sees.
+  @Test
+  void multiSourceRowParsesInThePreviousRelease() {
+    EventsSubscriptionRegistry.initialize(AlertCatalog.load());
+    AlertFilteringInput schemaChanged =
+        new AlertFilteringInput()
+            .withActions(
+                List.of(
+                    new ArgumentsInput().withName("GetTableSchemaChanges"),
+                    new ArgumentsInput().withName("GetTopicSchemaChanges")));
+    EventSubscription severalSources =
+        storedAlert()
+            .withAlertType(CreateEventSubscription.AlertType.OBSERVABILITY)
+            .withInput(schemaChanged)
+            .withFilteringRules(
+                AlertUtil.validateAndBuildFilteringConditions(
+                    List.of("table", "topic"),
+                    CreateEventSubscription.AlertType.OBSERVABILITY,
+                    schemaChanged));
+
+    assertValid("events/eventSubscription.json", JsonUtils.pojoToJson(severalSources));
   }
 
   @Test

@@ -195,6 +195,72 @@ class AlertMatcherParityTest {
     return all.stream().filter(rule -> !rule.getName().equals(one.getName())).toList();
   }
 
+  // The grouped text is what a server of the previous release evaluates, with today's code.
+  @Test
+  void groupedTextMatchesThePlanForTheWorkedExample() {
+    AlertFilteringInput triggers =
+        new AlertFilteringInput()
+            .withActions(
+                List.of(
+                    MatchingCorpus.selection(
+                        definitionOfTrigger("table", "GetTableSchemaChanges"),
+                        ArgumentsInput.Effect.INCLUDE),
+                    MatchingCorpus.selection(
+                        definitionOfTrigger("topic", "GetTopicSchemaChanges"),
+                        ArgumentsInput.Effect.EXCLUDE),
+                    MatchingCorpus.selection(
+                        definitionOfTrigger("pipeline", "GetPipelineStatusUpdates"),
+                        ArgumentsInput.Effect.INCLUDE)));
+    EventSubscription workedExample =
+        severalSources(AlertType.OBSERVABILITY, List.of("table", "topic", "pipeline"), triggers);
+    Map<String, ChangeEvent> events = MatchingCorpus.events();
+
+    assertEquals(
+        answersOfItsStoredText(workedExample, events), answersOfThePlan(workedExample, events));
+    assertEquals("yes", answerOfThePlan(workedExample, events.get("table columns changed")));
+    assertEquals("no", answerOfThePlan(workedExample, events.get("topic schema changed")));
+    assertEquals("yes", answerOfThePlan(workedExample, events.get("pipeline run failed")));
+    assertEquals("no", answerOfThePlan(workedExample, events.get("conversation about the table")));
+  }
+
+  @Test
+  void severalSourcesWithoutTriggersAgreeOnEveryEvent() {
+    Map<String, ChangeEvent> events = MatchingCorpus.events();
+    for (List<String> sources :
+        List.of(
+            List.of("table", "topic"),
+            List.of("conversation", "task"),
+            List.of("glossary", "tag"))) {
+      EventSubscription alert =
+          severalSources(AlertType.NOTIFICATION, sources, new AlertFilteringInput());
+
+      assertEquals(
+          answersOfItsStoredText(alert, events),
+          answersOfThePlan(alert, events),
+          sources.toString());
+    }
+  }
+
+  private static EventSubscription severalSources(
+      AlertType alertType, List<String> sources, AlertFilteringInput input) {
+    return new EventSubscription()
+        .withName(String.join("+", sources))
+        .withAlertType(alertType)
+        .withInput(input)
+        .withFilteringRules(
+            AlertUtil.validateAndBuildFilteringConditions(sources, alertType, input));
+  }
+
+  private static String answersOfItsStoredText(
+      EventSubscription alert, Map<String, ChangeEvent> events) {
+    List<String> answers = new ArrayList<>();
+    for (ChangeEvent event : events.values()) {
+      answers.add(
+          answerOf(() -> AlertUtil.checkIfChangeEventIsAllowed(event, alert.getFilteringRules())));
+    }
+    return String.join(" ", answers);
+  }
+
   private static void assertBothEnginesAgree(
       MatchingCorpus.Case alert, Map<String, ChangeEvent> events) {
     assertEquals(

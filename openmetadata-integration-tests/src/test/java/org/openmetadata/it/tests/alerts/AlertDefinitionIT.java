@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.events.AlertCapabilities;
+import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
@@ -97,7 +99,7 @@ class AlertDefinitionIT {
         "[{\"op\":\"add\",\"path\":\"/input\",\"value\":{\"filters\":"
             + "[{\"name\":\"filterNoSourceHas\",\"effect\":\"include\",\"arguments\":[]}]}}]";
 
-    assertRejected(() -> put(request.withResources(List.of("table", "topic"))));
+    assertRejected(() -> put(request.withResources(List.of("table", "conversation"))));
     assertRejected(() -> patch(alert, filterNoSourceHas));
   }
 
@@ -138,6 +140,106 @@ class AlertDefinitionIT {
     EventSubscription afterwards = AlertFixtures.stored(alert.getId());
     assertEquals(storedText, JsonUtils.pojoToJson(afterwards.getFilteringRules()));
     assertEquals("only the description", afterwards.getDescription());
+  }
+
+  @Test
+  void twoCompatibleSourcesAreCreated(TestNamespace ns) {
+    EventSubscription alert =
+        create(tableAlert(ns, "tables_and_topics").withResources(List.of("table", "topic")));
+
+    assertEquals(List.of("table", "topic"), alert.getFilteringRules().getResources());
+    put(
+        tableAlert(ns, "tables_and_topics")
+            .withResources(List.of("table", "topic", "pipeline"))
+            .withDescription("and pipelines"));
+    assertEquals(
+        List.of("table", "topic", "pipeline"),
+        AlertFixtures.stored(alert.getId()).getFilteringRules().getResources());
+  }
+
+  @Test
+  void entityPlusActivityIs400(TestNamespace ns) {
+    String refused =
+        messageOfTheRefusal(
+            () ->
+                create(
+                    tableAlert(ns, "two_kinds").withResources(List.of("table", "conversation"))));
+
+    assertTrue(refused.contains("table is an entity source"), refused);
+    assertTrue(refused.contains("conversation is an activity source"), refused);
+  }
+
+  @Test
+  void filterUnsupportedBySourceIs400WithSourceNames(TestNamespace ns) {
+    CreateEventSubscription request =
+        tableAlert(ns, "filter_one_source_lacks")
+            .withResources(List.of("conversation", "task", "announcement"))
+            .withInput(
+                new AlertFilteringInput()
+                    .withFilters(List.of(selection("filterByMentionedName", "alice"))));
+
+    String refused = messageOfTheRefusal(() -> create(request));
+
+    assertTrue(
+        refused.contains("'filterByMentionedName' is not supported by: announcement"), refused);
+  }
+
+  @Test
+  void triggerNoSourceSupportsIs400(TestNamespace ns) {
+    CreateEventSubscription request =
+        tableAlert(ns, "trigger_nobody_supports")
+            .withAlertType(AlertType.OBSERVABILITY)
+            .withResources(List.of("table", "topic"))
+            .withInput(
+                new AlertFilteringInput()
+                    .withActions(
+                        List.of(new ArgumentsInput().withName("GetContainerSchemaChanges"))));
+
+    String refused = messageOfTheRefusal(() -> create(request));
+
+    assertTrue(
+        refused.contains("'GetContainerSchemaChanges' is not supported by any source"), refused);
+  }
+
+  // Topic can never match with only the table trigger chosen. That is a warning, not an error.
+  @Test
+  void uncoveredSourceSavesAndCapabilitiesWarn(TestNamespace ns) {
+    AlertFilteringInput onlyTheTableTrigger =
+        new AlertFilteringInput()
+            .withActions(List.of(new ArgumentsInput().withName("GetTableSchemaChanges")));
+    EventSubscription alert =
+        create(
+            tableAlert(ns, "uncovered_source")
+                .withAlertType(AlertType.OBSERVABILITY)
+                .withResources(List.of("table", "topic"))
+                .withInput(onlyTheTableTrigger));
+
+    AlertCapabilities capabilities =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                ALERTS_PATH + "/capabilities",
+                new AlertCapabilitiesRequest()
+                    .withAlertType(AlertType.OBSERVABILITY)
+                    .withSources(List.of("table", "topic"))
+                    .withInput(onlyTheTableTrigger),
+                AlertCapabilities.class);
+
+    assertEquals(1, alert.getFilteringRules().getActions().size());
+    String warning =
+        capabilities.getSources().stream()
+            .filter(source -> "topic".equals(source.getName()))
+            .findFirst()
+            .orElseThrow()
+            .getWarning();
+    assertEquals("No chosen trigger applies to this source, so none of its events match.", warning);
+  }
+
+  private static String messageOfTheRefusal(Runnable save) {
+    OpenMetadataException rejected = assertThrows(OpenMetadataException.class, save::run);
+    assertEquals(400, rejected.getStatusCode());
+    return String.valueOf(rejected.getMessage());
   }
 
   private static void assertRejected(Runnable save) {

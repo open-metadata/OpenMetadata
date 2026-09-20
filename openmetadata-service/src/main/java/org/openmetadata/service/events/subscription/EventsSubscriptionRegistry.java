@@ -3,8 +3,12 @@ package org.openmetadata.service.events.subscription;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
@@ -17,6 +21,8 @@ public class EventsSubscriptionRegistry {
   private static final List<FilterResourceDescriptor> BUILDABLE_NOTIFICATION = new ArrayList<>();
   private static final List<FilterResourceDescriptor> BUILDABLE_OBSERVABILITY = new ArrayList<>();
 
+  private static final Map<String, AlertSourceKind> KINDS = new HashMap<>();
+
   private EventsSubscriptionRegistry() {}
 
   public static void initialize(AlertCatalog catalog) {
@@ -24,6 +30,21 @@ public class EventsSubscriptionRegistry {
     replace(OBSERVABILITY_DESCRIPTORS, catalog.served(AlertType.OBSERVABILITY));
     replace(BUILDABLE_NOTIFICATION, catalog.buildable(AlertType.NOTIFICATION));
     replace(BUILDABLE_OBSERVABILITY, catalog.buildable(AlertType.OBSERVABILITY));
+    KINDS.clear();
+    for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
+      catalog
+          .sourcesOf(alertType)
+          .forEach(source -> KINDS.put(kindKey(alertType, source.getName()), source.getKind()));
+    }
+  }
+
+  /** Source names look alike and mean different things; null for a name the catalog lacks. */
+  public static AlertSourceKind kindOf(AlertType alertType, String source) {
+    return KINDS.get(kindKey(alertType, source));
+  }
+
+  private static String kindKey(AlertType alertType, String source) {
+    return alertType.value() + "/" + source.toLowerCase(Locale.ROOT);
   }
 
   private static void replace(

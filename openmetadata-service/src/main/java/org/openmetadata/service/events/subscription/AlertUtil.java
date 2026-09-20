@@ -484,13 +484,30 @@ public final class AlertUtil {
       CreateEventSubscription.AlertType alertType,
       AlertFilteringInput input,
       boolean withWhatEarlierReleasesOffered) {
-    if (resource.size() != 1) {
-      throw new BadRequestException(
-          "One resource can be specified. Zero or Multiple resources are not supported.");
-    }
     boolean compiled =
         alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)
             || alertType.equals(CreateEventSubscription.AlertType.OBSERVABILITY);
+    if (compiled) {
+      SeveralSources.requireCombinable(alertType, resource);
+    } else if (resource.size() != 1) {
+      throw new BadRequestException(
+          "One resource can be specified. Zero or Multiple resources are not supported.");
+    }
+    return compiled && SeveralSources.distinct(resource).size() > 1
+        ? SeveralSources.compile(
+            resource,
+            sourcesOf(resource, alertType, withWhatEarlierReleasesOffered),
+            input == null ? new AlertFilteringInput() : input)
+        : buildForOneSource(resource, alertType, input, compiled, withWhatEarlierReleasesOffered);
+  }
+
+  // The text an alert with one source has always had, byte for byte.
+  private static FilteringRules buildForOneSource(
+      List<String> resource,
+      CreateEventSubscription.AlertType alertType,
+      AlertFilteringInput input,
+      boolean compiled,
+      boolean withWhatEarlierReleasesOffered) {
     FilteringRules built =
         new FilteringRules()
             .withResources(resource)
@@ -508,6 +525,15 @@ public final class AlertUtil {
       sourceOf(resource.get(0), alertType, withWhatEarlierReleasesOffered);
     }
     return built;
+  }
+
+  private static List<FilterResourceDescriptor> sourcesOf(
+      List<String> names,
+      CreateEventSubscription.AlertType alertType,
+      boolean withWhatEarlierReleasesOffered) {
+    return SeveralSources.distinct(names).stream()
+        .map(name -> sourceOf(name, alertType, withWhatEarlierReleasesOffered))
+        .toList();
   }
 
   // Only Observability alerts have triggers; a Notification alert stores an empty list.

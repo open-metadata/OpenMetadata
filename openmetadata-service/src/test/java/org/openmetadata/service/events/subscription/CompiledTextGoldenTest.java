@@ -60,6 +60,45 @@ class CompiledTextGoldenTest {
     assertEquals(Files.readString(GOLDEN), text);
   }
 
+  // The worked example: tables and topics whose schema changed, and pipelines whose run failed.
+  // A server of the previous release evaluates this text as it stands.
+  @Test
+  void multiSourceTextGroupsTriggersBySource() {
+    AlertFilteringInput input =
+        new AlertFilteringInput()
+            .withActions(
+                List.of(
+                    chosen("GetTableSchemaChanges", ArgumentsInput.Effect.INCLUDE, null, null),
+                    chosen("GetTopicSchemaChanges", ArgumentsInput.Effect.INCLUDE, null, null),
+                    chosen(
+                        "GetPipelineStatusUpdates",
+                        ArgumentsInput.Effect.INCLUDE,
+                        "pipelineStateList",
+                        "failed")));
+
+    FilteringRules stored =
+        AlertUtil.validateAndBuildFilteringConditions(
+            List.of("table", "topic", "pipeline"), AlertType.OBSERVABILITY, input);
+
+    assertEquals(List.of("table", "topic", "pipeline"), stored.getResources());
+    assertEquals(1, stored.getActions().size(), "one rule holds every group");
+    assertEquals(ArgumentsInput.Effect.INCLUDE, stored.getActions().getFirst().getEffect());
+    assertEquals(
+        "(matchAnySource({'table'}) && (matchAnyFieldChange({'columns','dataModel','joins'})))"
+            + " || (matchAnySource({'topic'}) && (matchAnyFieldChange({'messageSchema'})))"
+            + " || (matchAnySource({'pipeline'}) && (matchPipelineState({'failed'})))",
+        stored.getActions().getFirst().getCondition());
+  }
+
+  private static ArgumentsInput chosen(
+      String name, ArgumentsInput.Effect effect, String argument, String value) {
+    List<Argument> arguments =
+        argument == null
+            ? List.of()
+            : List.of(new Argument().withName(argument).withInput(List.of(value)));
+    return new ArgumentsInput().withName(name).withEffect(effect).withArguments(arguments);
+  }
+
   private static void compileEverySelection(
       AlertType type, FilterResourceDescriptor source, Map<String, String> compiled) {
     for (EventFilterRule filter : listOrEmpty(source.getSupportedFilters())) {

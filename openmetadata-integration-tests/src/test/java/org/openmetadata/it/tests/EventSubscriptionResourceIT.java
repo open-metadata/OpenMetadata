@@ -1030,7 +1030,7 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
-  void test_multipleResourceTypesRejected(TestNamespace ns) {
+  void test_multipleResourceTypesOfOneKindAccepted(TestNamespace ns) {
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("multi_resource_sub"))
@@ -1040,10 +1040,37 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
+    EventSubscription subscription = createEntity(request);
+
+    assertEquals(
+        List.of("table", "topic", "dashboard"), subscription.getFilteringRules().getResources());
+  }
+
+  @Test
+  void test_resourceTypesThatDoNotCombineRejected(TestNamespace ns) {
+    CreateEventSubscription entityPlusActivity =
+        new CreateEventSubscription()
+            .withName(ns.prefix("two_kinds_sub"))
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("table", "conversation"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+    CreateEventSubscription wildcardPlusOne =
+        new CreateEventSubscription()
+            .withName(ns.prefix("wildcard_plus_sub"))
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all", "table"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
     assertThrows(
         Exception.class,
-        () -> createEntity(request),
-        "Multiple resources are not supported - only one resource can be specified");
+        () -> createEntity(entityPlusActivity),
+        "Entity and activity sources share no filters and cannot be combined");
+    assertThrows(
+        Exception.class,
+        () -> createEntity(wildcardPlusOne),
+        "The wildcard already watches everything and stands alone");
   }
 
   @Test

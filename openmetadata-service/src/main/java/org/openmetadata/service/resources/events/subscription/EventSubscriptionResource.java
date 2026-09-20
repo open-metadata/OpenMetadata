@@ -57,6 +57,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.api.events.AlertCapabilities;
+import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertMatcherGate;
 import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
@@ -88,6 +90,7 @@ import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.events.subscription.SourceCapabilities;
 import org.openmetadata.service.events.subscription.matching.MatcherGate;
 import org.openmetadata.service.events.subscription.matching.MatcherModes;
 import org.openmetadata.service.events.subscription.matching.ShadowReports;
@@ -973,6 +976,33 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
     return EventSubscriptionScheduler.getInstance().getSchedulingInfo(subscriptionId);
+  }
+
+  @POST
+  @Path("/capabilities")
+  @Operation(
+      operationId = "getAlertCapabilities",
+      summary = "Get what a selection of sources supports",
+      description =
+          "Every source of the alert type with its kind and, when it cannot join the selection, the reason; the filters every selected source supports; the triggers at least one of them supports, with which; and, for what has been chosen so far, a warning on a selected source that can never produce a match.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The capabilities of the selection",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AlertCapabilities.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "The selection breaks a rule, which is named")
+      })
+  public AlertCapabilities getAlertCapabilities(
+      @Context SecurityContext securityContext, @Valid AlertCapabilitiesRequest request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    return SourceCapabilities.of(request);
   }
 
   @GET
