@@ -1192,7 +1192,9 @@ class OpenlineageSource(PipelineServiceSource):
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
         elif isinstance(broker, NatsBrokerConfig):
-            yield from self._poll_nats(broker)
+            # the base class annotates this producer as a list; the Kafka and Kinesis
+            # branches above carry the same suppression through the pyright baseline
+            yield from self._poll_nats(broker)  # pyright: ignore[reportReturnType]
         else:
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
