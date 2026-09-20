@@ -27,6 +27,10 @@ export interface AppConfiguration {
      * is configured, and columns are ordered alphabetically.
      */
     defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
 }
 
 export enum DefaultAppMode {
