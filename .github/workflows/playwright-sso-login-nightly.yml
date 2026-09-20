@@ -376,15 +376,31 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
-      - name: Send Slack Notification
-        if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
-        working-directory: openmetadata-ui/src/main/resources/ui
-        env:
-          RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+      # Per-leg outcome file consumed by the notify-slack aggregator job. We
+      # write a tiny status.txt (skipped / setup-failed / completed) alongside
+      # the results.json (when the test step actually ran) so the aggregator
+      # can distinguish "leg didn't run for this event" from "leg failed
+      # before tests started" from "tests ran, look at counts".
+      - name: Record leg outcome
+        if: always()
         run: |
-          npx playwright-slack-report -c playwright/slack-cli.config.json -j playwright/output/results.json > slack_report.json
+          mkdir -p /tmp/sso-leg
+          if [ "${SKIP_LEG:-false}" = "true" ]; then
+            echo "skipped" > /tmp/sso-leg/status.txt
+          elif [ -f openmetadata-ui/src/main/resources/ui/playwright/output/results.json ]; then
+            cp openmetadata-ui/src/main/resources/ui/playwright/output/results.json /tmp/sso-leg/results.json
+            echo "completed" > /tmp/sso-leg/status.txt
+          else
+            echo "setup-failed" > /tmp/sso-leg/status.txt
+          fi
+
+      - name: Upload leg outcome
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sso-login-outcome-${{ matrix.provider.name }}
+          path: /tmp/sso-leg/
+          retention-days: 5
 
       - name: Clean Up
         # Runs even on step failure, but not on skipped legs — the leg never
@@ -398,3 +414,152 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  # Consolidates every matrix leg's outcome into ONE Slack message with a
+  # fixed-width table (a code block in Slack renders as monospace, keeping
+  # columns aligned). Fires on schedule + opt-in dispatch; PR runs get a
+  # sticky PR comment via `notify-pr` below instead. The overall verdict emoji
+  # in the header line comes from the shared summary script — no emoji
+  # inside the table itself, since raw source width would misalign columns.
+  notify-slack:
+    if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
+    needs: sso-login
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for shared summary script)
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/build_sso_login_summary.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Download leg outcomes
+        uses: actions/download-artifact@v7
+        with:
+          pattern: sso-login-outcome-*
+          path: outcomes
+
+      - name: Build consolidated summary
+        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+
+      - name: Post to Slack
+        env:
+          SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
+          SLACK_CHANNEL: C04HGB0NY04
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          verdict=$(cat /tmp/sso-summary/status.txt)
+          totals=$(cat /tmp/sso-summary/totals.txt)
+          case "$verdict" in
+            failed)  title_emoji=':x:'; title_word='FAILED';;
+            passed)  title_emoji=':white_check_mark:'; title_word='PASSED';;
+            *)       title_emoji=':fast_forward:'; title_word='SKIPPED';;
+          esac
+
+          payload=$(jq -n \
+            --arg channel "$SLACK_CHANNEL" \
+            --arg text "${title_emoji} SSO Login Nightly ${title_word} on \`${REF_NAME}\` — ${totals}" \
+            --arg header "${title_emoji} SSO Login Nightly — ${title_word}" \
+            --arg context "Branch: \`${REF_NAME}\` · Event: ${EVENT_NAME} · <${RUN_URL}|View run>" \
+            --arg totals "$totals" \
+            --rawfile table /tmp/sso-summary/table.txt \
+            '{
+              channel: $channel,
+              text: $text,
+              blocks: [
+                { type: "header",  text: { type: "plain_text", text: $header, emoji: true } },
+                { type: "context", elements: [ { type: "mrkdwn", text: $context } ] },
+                { type: "section", text: { type: "mrkdwn", text: ("```\n" + $table + "\n```") } },
+                { type: "section", text: { type: "mrkdwn", text: ("*" + $totals + "*") } }
+              ]
+            }')
+
+          echo "$payload" > /tmp/sso-payload.json
+          response=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_USER_OAUTH_TOKEN}" \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @/tmp/sso-payload.json)
+          echo "Slack API response: $response"
+          if [ "$(echo "$response" | jq -r '.ok')" != "true" ]; then
+            echo "::error::Slack post failed: $response"
+            exit 1
+          fi
+
+  # PR runs get a sticky comment instead of a Slack message — the same
+  # fixed-width table, updated in place on subsequent pushes so the PR
+  # thread never accumulates duplicate summaries. Uses the default
+  # GITHUB_TOKEN; on fork PRs the token is read-only, so the post step
+  # tolerates the 403 rather than red-x'ing the whole workflow.
+  notify-pr:
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    needs: sso-login
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout (for shared summary script)
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/scripts/build_sso_login_summary.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Download leg outcomes
+        uses: actions/download-artifact@v7
+        with:
+          pattern: sso-login-outcome-*
+          path: outcomes
+
+      - name: Build consolidated summary
+        run: bash .github/scripts/build_sso_login_summary.sh /tmp/sso-summary
+
+      - name: Post sticky PR comment
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          verdict=$(cat /tmp/sso-summary/status.txt)
+          totals=$(cat /tmp/sso-summary/totals.txt)
+          case "$verdict" in
+            failed)  header=':x: SSO Login Nightly — **FAILED**';;
+            passed)  header=':white_check_mark: SSO Login Nightly — **PASSED**';;
+            *)       header=':fast_forward: SSO Login Nightly — **SKIPPED**';;
+          esac
+
+          # Hidden marker keeps the comment sticky — the search below looks
+          # for it to decide between update and create.
+          marker='<!-- sso-login-nightly-summary -->'
+          {
+            echo "$marker"
+            echo "$header"
+            echo
+            echo "[View workflow run]($RUN_URL) · Commit \`${GITHUB_SHA::7}\`"
+            echo
+            echo '```'
+            cat /tmp/sso-summary/table.txt
+            echo '```'
+            echo
+            echo "**$totals**"
+          } > /tmp/pr-comment.md
+
+          # Find any existing sticky comment on this PR by marker; edit in
+          # place if present, otherwise create a new one.
+          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq \
+            ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n1 || true)
+
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
+              -F body=@/tmp/pr-comment.md
+          else
+            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -F body=@/tmp/pr-comment.md
+          fi
