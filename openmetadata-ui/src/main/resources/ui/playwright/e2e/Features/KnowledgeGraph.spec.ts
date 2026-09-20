@@ -884,7 +884,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.screenshot({
       path: test.info().outputPath('controls-200-percent-dark.png'),
     });
-    await page.getByTestId('knowledge-graph-canvas').scrollIntoViewIfNeeded();
+    // Scroll the node, not the canvas. At 200% in a narrow viewport the canvas is
+    // taller than the viewport, so bringing the canvas into view says nothing
+    // about where inside it any given node sits. The claim under test is that
+    // the node is still reachable, and scrolling to it is how a user reaches it.
+    await page.getByTestId('node-Orders').scrollIntoViewIfNeeded();
     await expect(page.getByTestId('node-Orders')).toBeInViewport();
     await page.screenshot({
       path: test.info().outputPath('graph-200-percent-dark.png'),
