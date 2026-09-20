@@ -15,8 +15,6 @@ public final class AlertTelemetry {
   public static final String ALERT_DELETED_DURING_TICK = "alert deleted during the tick";
   public static final String COUNTERS_GIVEN_UP = "counters given up after a retry";
   public static final String DIAGNOSTIC_WRITE_FAILED = "diagnostic write failed";
-  public static final String JOB_DATA_REWRITE_FAILED = "job data rewrite failed";
-  public static final String TICK_ENDED_WITHOUT_SENDING = "tick ended without sending";
   public static final String GAP_STEPPED_OVER = "gap stepped over";
   public static final String EVENT_SET_ASIDE_AS_INTERRUPTED = "event set aside as interrupted";
   public static final String SHADOW_REPORT_WRITE_FAILED = "shadow report write failed";

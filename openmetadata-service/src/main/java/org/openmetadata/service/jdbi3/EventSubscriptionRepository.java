@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
-import jakarta.ws.rs.ServiceUnavailableException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -209,16 +208,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   /**
-   * Skips the backlog. The job data is cleaned first: a server of the previous release trusts an
-   * offset it cached there over the position row, so a skip that left one behind would be undone
-   * by that server's next tick. When it cannot be cleaned, nothing changes and the caller is told.
+   * Skips the backlog: the position and the watermark move to now. A tick that is running at this
+   * moment loses its compare-and-set on the position and keeps the skip.
    */
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
     EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    if (!EventSubscriptionScheduler.getInstance().dropStaleJobData(eventSubscription)) {
-      throw new ServiceUnavailableException(
-          "The backlog was not skipped because the alert's job could not be updated. Try again.");
-    }
     return AlertRecord.skipBacklog(eventSubscription.getId());
   }
 

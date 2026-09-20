@@ -112,14 +112,14 @@ class AlertStateIT {
     }
   }
 
+  // The alert's row is read when a tick opens, and what runs leave behind lives in rows.
   @Test
-  void jobDataHoldsOnlyTheCopyForOlderServers(TestNamespace ns) throws Exception {
-    EventSubscription alert = create(ns, "only_the_copy", true);
+  void jobCarriesNoData(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "no_job_data", true);
 
     JobDetail job = scheduler().getJobDetail(jobKey(alert));
 
-    assertEquals(
-        List.of(AbstractEventConsumer.ALERT_INFO_KEY), List.of(job.getJobDataMap().getKeys()));
+    assertTrue(job.getJobDataMap().isEmpty());
   }
 
   @Test

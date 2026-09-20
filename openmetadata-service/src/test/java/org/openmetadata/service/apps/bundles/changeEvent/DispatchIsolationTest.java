@@ -197,7 +197,6 @@ class DispatchIsolationTest {
     return dao;
   }
 
-  // The job store knows no such job, so there is no copy for older servers to keep in step.
   private static JobExecutionContext contextOfAnUnscheduledJob() {
     JobExecutionContext context = mock(JobExecutionContext.class);
     when(context.getJobDetail()).thenReturn(mock(JobDetail.class));

@@ -26,14 +26,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
-import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
@@ -45,8 +41,6 @@ class AlertPublisherTest {
   @Mock private DIContainer dependencies;
   @Mock private EventSubscription eventSubscription;
   @Mock private Destination<ChangeEvent> destination;
-  @Mock private JobDetail jobDetail;
-  @Mock private JobDataMap jobDataMap;
 
   private AlertPublisher alertPublisher;
   private UUID receiverId;
@@ -70,14 +64,9 @@ class AlertPublisherTest {
     receiverId = UUID.randomUUID();
     changeEvent = createMockChangeEvent();
 
-    alertPublisher.setJobDetail(jobDetail);
     alertPublisher.eventSubscription = eventSubscription;
     alertPublisher.destinationMap = new HashMap<>();
 
-    lenient().when(jobDetail.getJobDataMap()).thenReturn(jobDataMap);
-    lenient()
-        .when(jobDataMap.get(AbstractEventConsumer.ALERT_INFO_KEY))
-        .thenReturn(eventSubscription);
     lenient().when(eventSubscription.getName()).thenReturn("test-subscription");
     lenient().when(eventSubscription.getEnabled()).thenReturn(true);
   }
@@ -129,7 +118,6 @@ class AlertPublisherTest {
   void testSendAlertWithEventPublisherException() throws EventPublisherException {
     // Use TestAlertPublisher to avoid Entity.getCollectionDAO() static call
     TestAlertPublisher testPublisher = new TestAlertPublisher(dependencies);
-    testPublisher.setJobDetail(jobDetail);
     testPublisher.eventSubscription = eventSubscription;
     testPublisher.destinationMap = new HashMap<>();
 
@@ -229,33 +217,6 @@ class AlertPublisherTest {
     subDest.setType(SubscriptionDestination.SubscriptionType.EMAIL);
     subDest.setCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL);
     return subDest;
-  }
-
-  // Quartz writes job data back only when the map was changed, so a tick must never change it.
-  @Test
-  void tickLeavesJobDataUnchanged() throws Exception {
-    EventSubscription alert =
-        new EventSubscription().withId(UUID.randomUUID()).withName("a").withBatchSize(10);
-    JobDataMap jobData = CopyForOlderServers.dataFor(alert, Map.of());
-    jobData.clearDirtyFlag();
-    JobDetail job = mock(JobDetail.class);
-    lenient().when(job.getJobDataMap()).thenReturn(jobData);
-    JobExecutionContext context = mock(JobExecutionContext.class);
-    when(context.getJobDetail()).thenReturn(job);
-    when(context.getScheduler()).thenReturn(mock(Scheduler.class));
-    ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
-    CollectionDAO dao = mock(CollectionDAO.class);
-    when(dao.changeEventDAO()).thenReturn(changeEvents);
-
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
-        MockedStatic<AlertRows> rows = mockStatic(AlertRows.class)) {
-      entity.when(Entity::getCollectionDAO).thenReturn(dao);
-      rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
-      new DispatchIsolationTest.RecordingConsumer().tick(alert, TestLedgers.fresh(), context);
-    }
-
-    assertFalse(jobData.isDirty());
-    assertEquals(Set.of(AbstractEventConsumer.ALERT_INFO_KEY), jobData.keySet());
   }
 
   // Quartz threads are shared and never pass the request filter that clears per-request caches.

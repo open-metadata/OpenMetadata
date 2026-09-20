@@ -1,6 +1,5 @@
 package org.openmetadata.service.events.subscription;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,8 +32,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.CopyForOlderServers;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
@@ -43,7 +40,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 
 /**
- * Everything this release writes where a server of the previous release reads must parse there.
+ * After a rollback a server of the previous release reads, for good, what this release wrote,
+ * so every row this release writes where that server reads must parse there.
  * Every stored alerting shape of that release declares additionalProperties false and its mapper
  * rejects unknown fields, so its own schemas, copied under compat/, are the judge. The previous
  * release's classes cannot be on this classpath: they have the same names as the current ones.
@@ -56,14 +54,6 @@ class StoredShapeCompatibilityTest {
 
   private final EventSubscriptionDAO subscriptionDao = mock(EventSubscriptionDAO.class);
   private final EventSubscription alert = storedAlert();
-
-  @Test
-  void jobDataCopyParsesInThePreviousRelease() {
-    Map<String, Object> jobData = CopyForOlderServers.dataFor(alert, Map.of()).getWrappedMap();
-
-    assertEquals(List.of(AbstractEventConsumer.ALERT_INFO_KEY), List.copyOf(jobData.keySet()));
-    assertValid("events/eventSubscription.json", (String) jobData.get("alertInfoKey"));
-  }
 
   // An alert with several sources stays stored after a rollback, and that release must parse it:
   // a list of sources and one more rule are all it sees.

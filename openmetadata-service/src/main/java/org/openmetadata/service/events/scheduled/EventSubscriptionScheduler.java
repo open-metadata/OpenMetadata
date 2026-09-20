@@ -14,7 +14,6 @@
 package org.openmetadata.service.events.scheduled;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 
 import io.dropwizard.db.DataSourceFactory;
 import java.lang.reflect.InvocationTargetException;
@@ -50,7 +49,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.CopyForOlderServers;
 import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -93,7 +91,7 @@ public class EventSubscriptionScheduler {
   // Quartz cannot acquire a trigger that is later than this, and a tick may hold a thread for a
   // time budget plus one slow event. Ticks are polls, so misfire handling protects nothing here.
   static final long MISFIRE_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
-  // Quartz asks for the worker threads plus three; a tick reads and rewrites its job data too.
+  // Quartz asks for the worker threads plus three.
   private static final int JOB_STORE_CONNECTIONS_BESIDE_WORKERS = 3;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
@@ -246,13 +244,6 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  /** False when the job data holds a key an older server would trust and it could not be dropped. */
-  public boolean dropStaleJobData(EventSubscription alert) {
-    Map<String, DestinationHealth> health =
-        AlertRecord.open(alert).map(AlertLedger::health).orElse(Map.of());
-    return CopyForOlderServers.ensure(alertsScheduler, alert, health);
-  }
-
   /** How one alert is scheduled right now, so "why is it not firing" is one request. */
   public AlertSchedulingInfo getSchedulingInfo(UUID alertId) throws SchedulerException {
     EventSubscription alert = storedAlert(alertId);
@@ -295,11 +286,10 @@ public class EventSubscriptionScheduler {
 
   private JobDetail jobBuilder(
       Class<? extends AbstractEventConsumer> consumerClass, EventSubscription eventSubscription) {
-    Map<String, DestinationHealth> health =
-        AlertRecord.open(eventSubscription).map(AlertLedger::health).orElse(Map.of());
+    // The job carries no data. The alert's row is read when a tick opens, and everything a run
+    // leaves behind lives in the alert's rows, so there is nothing here that could go stale.
     return JobBuilder.newJob(consumerClass)
         .withIdentity(eventSubscription.getId().toString(), ALERT_JOB_GROUP)
-        .usingJobData(CopyForOlderServers.dataFor(eventSubscription, health))
         .build();
   }
 
@@ -618,30 +608,6 @@ public class EventSubscriptionScheduler {
         .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
-  }
-
-  public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
-    try {
-      JobDetail jobDetail =
-          alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
-
-      if (jobDetail != null) {
-        Object alertInfoValue = jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
-        if (alertInfoValue instanceof String subscriptionJson) {
-          EventSubscription eventSubscription =
-              JsonUtils.readValue(subscriptionJson, EventSubscription.class);
-          return Optional.ofNullable(eventSubscription);
-        } else if (alertInfoValue instanceof EventSubscription eventSubscription) {
-          return Optional.of(eventSubscription);
-        }
-      }
-    } catch (SchedulerException ex) {
-      LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id, ex);
-    } catch (Exception ex) {
-      LOG.error("Failed to deserialize Event Subscription, Subscription Id : {}", id, ex);
-    }
-
-    return Optional.empty();
   }
 
   // Reading never creates the row: an alert that has never run reports the latest offset as both

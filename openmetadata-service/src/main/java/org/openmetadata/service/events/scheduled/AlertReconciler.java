@@ -19,9 +19,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
-import org.openmetadata.service.apps.bundles.changeEvent.CopyForOlderServers;
 import org.openmetadata.service.events.subscription.AlertRows;
-import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDetail;
@@ -35,10 +33,10 @@ import org.quartz.impl.matchers.GroupMatcher;
 
 /**
  * Repairs what can go wrong between restarts: a save whose scheduler call failed, a trigger stuck
- * in ERROR or frozen in the past, a job or rows left behind by a deleted alert, job data that is
- * no longer the copy for older servers. It runs inside each server, not as a scheduled job, so it
- * has no job class another release could fail to load. Every repair is idempotent and counted: a
- * reconciler that repairs the same thing every round is hiding a fault somewhere else.
+ * in ERROR or frozen in the past, a job or rows left behind by a deleted alert. It runs inside
+ * each server, not as a scheduled job, so it has no job class another release could fail to load.
+ * Every repair is idempotent and counted: a reconciler that repairs the same thing every round is
+ * hiding a fault somewhere else.
  */
 @Slf4j
 final class AlertReconciler {
@@ -167,14 +165,6 @@ final class AlertReconciler {
     if (unhealthy.isPresent()) {
       EventSubscriptionScheduler.ensureScheduled(alert);
       count(unhealthy.get());
-    } else {
-      Optional<AlertLedger> ledger = AlertRecord.open(alert);
-      boolean rewritten =
-          ledger.isPresent()
-              && CopyForOlderServers.rewriteIfStale(scheduler, alert, ledger.get().health());
-      if (rewritten) {
-        count("stale job data");
-      }
     }
   }
 

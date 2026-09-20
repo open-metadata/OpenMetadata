@@ -35,11 +35,7 @@ final class AlertTick {
       AbstractEventConsumer loadedByQuartz, EventSubscription alert, JobExecutionContext context) {
     Optional<AlertLedger> ledger = AlertRecord.open(alert);
     if (ledger.isPresent()) {
-      if (CopyForOlderServers.ensure(context.getScheduler(), alert, ledger.get().health())) {
-        runMeasured(ConsumerLoader.named(alert, loadedByQuartz), alert, ledger.get(), context);
-      } else {
-        AlertTelemetry.absorbed(AlertTelemetry.TICK_ENDED_WITHOUT_SENDING);
-      }
+      runMeasured(ConsumerLoader.named(alert, loadedByQuartz), alert, ledger.get(), context);
     }
   }
 

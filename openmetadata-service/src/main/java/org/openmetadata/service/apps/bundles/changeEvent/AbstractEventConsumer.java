@@ -24,8 +24,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -55,7 +53,6 @@ import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
-import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
 
@@ -64,9 +61,6 @@ import org.quartz.SchedulerException;
 public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
-  public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
-  public static final String ALERT_PENDING_GAP_SINCE_KEY = "alertPendingGapSinceKey";
-  public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = LedgerKeys.POSITION;
   public static final String METRICS_EXTENSION = LedgerKeys.COUNTERS;
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
@@ -82,7 +76,6 @@ public abstract class AbstractEventConsumer
   private AlertMatching matching;
   private boolean stoppedEarly;
 
-  @Getter @Setter private JobDetail jobDetail;
   protected EventSubscription eventSubscription;
   protected Map<UUID, Destination<ChangeEvent>> destinationMap;
 
@@ -386,7 +379,6 @@ public abstract class AbstractEventConsumer
 
   /** One tick of this consumer for an alert whose row was just read and whose ledger is open. */
   final void tick(EventSubscription alert, AlertLedger openLedger, JobExecutionContext context) {
-    this.jobDetail = context.getJobDetail();
     this.eventSubscription = alert;
     this.ledger = openLedger;
     this.destinationMap = loadDestinationsMap();
@@ -514,7 +506,7 @@ public abstract class AbstractEventConsumer
       reportDestinationStatus();
       commit(context);
       ledger.clearOpeningNote();
-      refreshCopyForOlderServers(context);
+      writeShadowReport();
       runAgainAtOnceIfStoppedForTime(context);
     } finally {
       closeDestinations();
@@ -539,17 +531,12 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  // From the row as it is now, never from the alert this tick started with: an edit made while
-  // the tick ran has already written a fresher copy, and it must not be replaced by an older one.
-  // What the comparison of the two matching engines showed is kept with it, and like everything
-  // else of an alert, not for one that was deleted meanwhile.
-  private void refreshCopyForOlderServers(JobExecutionContext context) {
-    EventSubscription current = AlertRows.readOrNull(eventSubscription.getId());
-    if (current != null && matching != null) {
-      ShadowReports.add(current.getId(), matching.tally());
-    }
-    if (current != null && !Boolean.FALSE.equals(current.getEnabled())) {
-      CopyForOlderServers.ensure(context.getScheduler(), current, ledger.health());
+  // What comparing the two matching engines showed is kept with the alert, and like everything
+  // else of an alert, not for one that was deleted while the tick ran.
+  private void writeShadowReport() {
+    boolean stillThere = AlertRows.readOrNull(eventSubscription.getId()) != null;
+    if (matching != null && stillThere) {
+      ShadowReports.add(eventSubscription.getId(), matching.tally());
     }
   }
 

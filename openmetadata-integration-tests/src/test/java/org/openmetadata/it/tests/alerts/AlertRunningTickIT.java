@@ -19,7 +19,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.ServerStopping;
 import org.quartz.Trigger;
 
@@ -40,9 +39,6 @@ class AlertRunningTickIT {
       held.finish();
 
       assertEquals("edited while running", held.stored().getDescription());
-      assertTrue(
-          held.copyForOlderServers().contains("edited while running"),
-          "an older server must not be handed the alert as it was before the edit");
     }
   }
 
@@ -158,14 +154,6 @@ class AlertRunningTickIT {
       gate.open();
       tick.join(Duration.ofSeconds(60).toMillis());
       assertFalse(tick.isAlive(), "the held tick did not finish");
-    }
-
-    String copyForOlderServers() throws Exception {
-      return (String)
-          AlertFixtures.scheduler()
-              .getJobDetail(AlertFixtures.jobKey(alert.getId()))
-              .getJobDataMap()
-              .get(AbstractEventConsumer.ALERT_INFO_KEY);
     }
 
     @Override

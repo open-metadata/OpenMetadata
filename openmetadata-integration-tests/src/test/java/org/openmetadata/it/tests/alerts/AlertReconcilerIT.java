@@ -1,7 +1,6 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.quartz.Trigger;
 
@@ -98,33 +96,6 @@ class AlertReconcilerIT {
 
     assertNotNull(AlertFixtures.dao().getSubscriberExtension(someConsumer, ownKey));
     AlertFixtures.dao().deleteSubscriberExtension(someConsumer, ownKey);
-  }
-
-  @Test
-  void reconcilerRewritesJobDataAnOlderServerLeftBehind(TestNamespace ns) throws Exception {
-    EventSubscription alert = alert(ns, "stale_job_data", null);
-    QuietAlert.settle(alert);
-    Entity.getJdbi()
-        .useHandle(
-            handle ->
-                handle.execute(
-                    "UPDATE QRTZ_JOB_DETAILS SET JOB_DATA = NULL WHERE JOB_NAME = ?",
-                    alert.getId().toString()));
-    assertNotEquals(
-        1,
-        AlertFixtures.scheduler()
-            .getJobDetail(AlertFixtures.jobKey(alert.getId()))
-            .getJobDataMap()
-            .size());
-
-    EventSubscriptionScheduler.getInstance().reconcileNow();
-
-    assertEquals(
-        1,
-        AlertFixtures.scheduler()
-            .getJobDetail(AlertFixtures.jobKey(alert.getId()))
-            .getJobDataMap()
-            .size());
   }
 
   private static EventSubscription alert(TestNamespace ns, String name, String className) {
