@@ -162,7 +162,6 @@ export const getSystemConfig = async () => {
   const response = await axiosClient.get<{
     basePath: string;
     rdfEnabled: boolean;
-    timeFormat?: '12h' | '24h';
   }>(`system/config/rdf`);
 
   return response.data;
