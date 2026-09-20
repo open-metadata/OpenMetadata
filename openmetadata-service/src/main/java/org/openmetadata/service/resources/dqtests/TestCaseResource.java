@@ -1259,6 +1259,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     BundleSuiteBulkAddRequestBulkAll bulkAll =
         JsonUtils.convertValue(
             bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
+    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    if (hasSearchCriteria(filter)) {
+      return addFilteredTestCasesToBundleSuite(testSuite, filter).toResponse();
+    }
     return repository
         .addAllTestCasesToLogicalTestSuite(testSuite, getExcludedIdsFromSelection(bulkAll))
         .toResponse();
@@ -1642,6 +1646,65 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
+  }
+
+  private static final String TEST_CASE_TYPE_ALL = "all";
+
+  private boolean hasSearchCriteria(org.openmetadata.schema.api.tests.Filter filter) {
+    if (filter == null) {
+      return false;
+    }
+    String type = filter.getTestCaseType();
+    return !nullOrEmpty(filter.getQ())
+        || filter.getTestCaseStatus() != null
+        || (!nullOrEmpty(type) && !TEST_CASE_TYPE_ALL.equals(type))
+        || !nullOrEmpty(filter.getEntityLink())
+        || !nullOrEmpty(filter.getColumnName());
+  }
+
+  private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
+      TestSuite testSuite, org.openmetadata.schema.api.tests.Filter filter) {
+    SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
+    String searchFilter = searchListFilter.getFilterQuery(Entity.TEST_CASE);
+    List<UUID> excludeIds =
+        nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
+    return repository.addMatchingTestCasesToLogicalTestSuite(
+        testSuite, searchFilter, filter.getQ(), excludeIds);
+  }
+
+  private SearchListFilter buildBulkSearchListFilter(
+      org.openmetadata.schema.api.tests.Filter filter) {
+    String status = filter.getTestCaseStatus() == null ? null : filter.getTestCaseStatus().value();
+    String type =
+        nullOrEmpty(filter.getTestCaseType()) ? TEST_CASE_TYPE_ALL : filter.getTestCaseType();
+    boolean includeAllTests = Boolean.TRUE.equals(filter.getIncludeAllTests());
+    SearchListFilter searchListFilter =
+        buildSearchListFilter(
+            Include.NON_DELETED,
+            null,
+            includeAllTests,
+            status,
+            type,
+            null,
+            null,
+            filter.getQ(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            filter.getColumnName(),
+            null);
+    if (!nullOrEmpty(filter.getEntityLink())) {
+      searchListFilter.addQueryParam(
+          "entityFQN", EntityLink.parse(filter.getEntityLink()).getFullyQualifiedFieldValue());
+    }
+    return searchListFilter;
   }
 
   @Override

@@ -68,6 +68,7 @@ import {
   TEST_SUITE_TEST_CASE_FIELDS,
 } from '../../../rest/queries/testSuiteQuery';
 import {
+  AddTestCaseListSubmitPayload,
   addTestCasesToLogicalTestSuiteBulk,
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
@@ -487,11 +488,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const handleAddTestCaseSubmit = useCallback(
-    async (payload: {
-      selectAll: boolean;
-      includeIds: string[];
-      excludeIds: string[];
-    }) => {
+    async (payload: AddTestCaseListSubmitPayload) => {
       if (!testSuiteId) {
         return;
       }

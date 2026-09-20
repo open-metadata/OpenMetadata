@@ -50,7 +50,11 @@ import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  AddTestCaseListFilter,
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -353,11 +357,34 @@ export const AddTestCaseList = ({
     ]
   );
 
+  // Snapshot of the active search/filter, shaped for the bulk `selectAll` payload so
+  // the backend resolves "all N" to the filtered subset (not every test case). Mirrors
+  // the mapping in buildTestCaseSearchParams.
+  const activeFilter = useMemo<AddTestCaseListFilter>(() => {
+    const filterTable = filterTables[0];
+    const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+    const columnName =
+      filterColumns.length > 0
+        ? getColumnNameFromColumnFilterKey(filterColumns[0]) || undefined
+        : undefined;
+
+    return {
+      ...(searchTerm && { q: searchTerm }),
+      ...(filterStatus && { testCaseStatus: filterStatus }),
+      ...(filterTestType !== TestCaseType.all && {
+        testCaseType: filterTestType,
+      }),
+      ...(entityLink && { entityLink, includeAllTests: true }),
+      ...(columnName && { columnName }),
+    };
+  }, [searchTerm, filterStatus, filterTestType, filterTables, filterColumns]);
+
   const buildSubmitPayload = useCallback((): {
     selectAll: boolean;
     includeIds: string[];
     excludeIds: string[];
     testCases: TestCase[];
+    filter?: AddTestCaseListFilter;
   } => {
     if (selectAll) {
       return {
@@ -365,6 +392,7 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excludedIds],
         testCases: [],
+        filter: activeFilter,
       };
     }
     const cases = [...(selectedItems?.values() ?? [])];
@@ -375,7 +403,7 @@ export const AddTestCaseList = ({
       excludeIds: [],
       testCases: cases,
     };
-  }, [selectAll, excludedIds, selectedItems]);
+  }, [selectAll, excludedIds, selectedItems, activeFilter]);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -383,8 +411,9 @@ export const AddTestCaseList = ({
       selectAll: sa,
       includeIds,
       excludeIds: excl,
+      filter,
     } = buildSubmitPayload();
-    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl });
+    await onSubmit?.({ selectAll: sa, includeIds, excludeIds: excl, filter });
     setIsLoading(false);
   };
 
@@ -421,9 +450,10 @@ export const AddTestCaseList = ({
         includeIds: [],
         excludeIds: [...excluded],
         testCases: [],
+        filter: activeFilter,
       });
     },
-    [onChange]
+    [onChange, activeFilter]
   );
 
   const loadedItemIds = useMemo(
@@ -520,12 +550,7 @@ export const AddTestCaseList = ({
           nextExcluded.add(id);
         }
         setExcludedIds(nextExcluded);
-        onChange?.({
-          selectAll: true,
-          includeIds: [],
-          excludeIds: [...nextExcluded],
-          testCases: [],
-        });
+        emitFullSelection(nextExcluded);
       } else if (selectedItems.has(id)) {
         const selectedItemMap = new Map<string, TestCase>();
         selectedItems.forEach(
@@ -556,7 +581,7 @@ export const AddTestCaseList = ({
         });
       }
     },
-    [selectAll, selectedItems, items, excludedIds, onChange]
+    [selectAll, selectedItems, items, excludedIds, onChange, emitFullSelection]
   );
 
   useEffect(() => {
