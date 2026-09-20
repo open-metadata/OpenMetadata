@@ -1740,7 +1740,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
       TestSuite testSuite, Filter filter) {
     SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
-    String searchFilter = searchListFilter.getFilterQuery(Entity.TEST_CASE);
+    // Deep-pagination search expects a full query body ({"query": {...}}); getFilterQuery()
+    // returns only the inner bool clause, which listWithDeepPagination silently drops (adds all).
+    String searchFilter = searchListFilter.getCondition(Entity.TEST_CASE);
     List<UUID> excludeIds =
         nullOrEmpty(filter.getExcludeIds()) ? List.of() : filter.getExcludeIds();
     return repository.addMatchingTestCasesToLogicalTestSuite(
