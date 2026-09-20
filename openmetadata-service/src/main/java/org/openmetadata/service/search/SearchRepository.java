@@ -673,6 +673,10 @@ public class SearchRepository {
     } else {
       LOG.info("All {} indexes already exist", entityIndexMap.size());
     }
+    // Boot-time safety net for a server started against an already-upgraded cluster. migrate()
+    // remains the path that every product reaches; this one is skipped by any application that
+    // overrides bootstrap without calling super, which is why it cannot be the only call site.
+    detachOrphanedIndexesFromAliases();
     return created;
   }
 
@@ -683,6 +687,23 @@ public class SearchRepository {
    * tearing the aliases off an index that is legitimately serving them.
    */
   private static final String STAGED_INDEX_MARKER = "_rebuild_";
+
+  /**
+   * Every entity index registered in {@code indexMapping.json} is named {@code *_search_index}.
+   * Requiring the suffix turns the sweep into an allow-rule rather than a deny-rule: an index it
+   * has never heard of is left alone instead of being assumed disposable.
+   *
+   * <p>That is what keeps it off the indexes a release manages outside {@code entityIndexMap} — the
+   * vector chunk index {@code data_asset_embeddings_chunks} and its generations, which carry the
+   * {@code dataAssetEmbeddings} alias so the vector read path sees chunk docs, and the Data
+   * Insights datastreams. Detaching either would silently empty semantic search on every migrate.
+   *
+   * <p>The rule can only ever under-detach. The five {@code *_report_data_index} mappings lack the
+   * suffix, so an orphan of one would be missed — they have been registered in every release
+   * shipped so far, and a missed orphan is the status quo this repairs, whereas detaching a live
+   * index is a new outage.
+   */
+  private static final String ENTITY_INDEX_SUFFIX = "_search_index";
 
   /**
    * Detach every index that no longer backs a registered entity type from the aliases this release
@@ -727,22 +748,31 @@ public class SearchRepository {
     }
     try {
       searchClient.removeAliases(indexName, Set.of(alias));
-      LOG.info(
-          "Detached orphaned index '{}' from alias '{}': no registered entity type maps to it",
-          indexName,
-          alias);
-      return 1;
     } catch (Exception ex) {
       LOG.warn("Failed to detach orphaned index '{}' from alias '{}'", indexName, alias, ex);
       return 0;
     }
+    // Both index managers log and swallow an unavailable client, a rejected request and an
+    // unacknowledged response, so returning normally does not mean the alias is gone. Re-read it:
+    // a count that cannot be trusted is worse than no count.
+    if (searchClient.getIndicesByAlias(alias).contains(indexName)) {
+      LOG.warn(
+          "Detach of orphaned index '{}' from alias '{}' did not take effect", indexName, alias);
+      return 0;
+    }
+    LOG.info(
+        "Detached orphaned index '{}' from alias '{}': no registered entity type maps to it",
+        indexName,
+        alias);
+    return 1;
   }
 
   private boolean isOrphanedIndex(String indexName) {
+    boolean entityIndexName = indexName.endsWith(ENTITY_INDEX_SUFFIX);
     boolean registered = isKnownCanonicalIndex(indexName);
     boolean rebuildOfRegistered = isStagedRebuildOfKnownIndex(indexName);
     boolean reindexInFlight = activeStagedIndices.containsValue(indexName);
-    return !registered && !rebuildOfRegistered && !reindexInFlight;
+    return entityIndexName && !registered && !rebuildOfRegistered && !reindexInFlight;
   }
 
   private boolean isStagedRebuildOfKnownIndex(String indexName) {
