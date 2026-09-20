@@ -1328,7 +1328,7 @@ class OpenlineageSource(PipelineServiceSource):
                         if result:
                             yield result
                     except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from NATS message: {e}")
+                        logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
                         logger.debug(traceback.format_exc())
                     # Acknowledge either way: an event this connector cannot parse would
                     # otherwise be redelivered on every run

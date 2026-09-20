@@ -185,7 +185,7 @@ class NatsJetStreamClient:
             if not self._loop.is_closed():
                 self._loop.run_until_complete(_close())
         except Exception as exc:
-            logger.warning(f"Error draining NATS connection: {exc}")
+            logger.warning("Error draining NATS connection: %s", exc)
         finally:
             if not self._loop.is_closed():
                 self._loop.close()
@@ -228,7 +228,7 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
             except Exception as exc:
                 # A durable consumer that already exists keeps its own settings and its
                 # position in the stream, which is the point of reusing the name
-                logger.debug(f"Reusing the existing JetStream consumer: {exc}")
+                logger.debug("Reusing the existing JetStream consumer: %s", exc)
             subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
             return nc, subscription
 
