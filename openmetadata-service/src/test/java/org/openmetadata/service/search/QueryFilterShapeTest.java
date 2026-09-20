@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -85,5 +86,23 @@ class QueryFilterShapeTest {
   @DisplayName("a JSON scalar is not a query")
   void rejectsScalarFilter() {
     assertThrows(SearchException.class, () -> QueryFilterShape.requireQueryDsl("\"table\""));
+  }
+
+  /**
+   * {@code must}/{@code should}/{@code filter}/{@code must_not} are boolean clauses only inside a
+   * {@code bool}. As ordinary field names they take a scalar, and the engine accepts that — so
+   * enforcing the clause shape everywhere would reject a valid filter.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"query\":{\"term\":{\"filter\":\"dashboard\"}}}",
+        "{\"query\":{\"match\":{\"must\":\"y\"}}}",
+        "{\"query\":{\"term\":{\"must_not\":123}}}",
+        "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"should\":\"x\"}}]}}}"
+      })
+  @DisplayName("a field literally named like a boolean clause is still a valid filter")
+  void acceptsFieldNamedLikeBoolClause(String filter) {
+    assertDoesNotThrow(() -> QueryFilterShape.requireQueryDsl(filter));
   }
 }

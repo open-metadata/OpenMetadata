@@ -30,7 +30,7 @@ public final class LuceneQuerySyntax {
   private static final List<String> INFIX_OPERATORS = List.of("AND", "OR", "NOT");
   private static final List<String> PREFIX_ONLY_OPERATORS = List.of("AND", "OR");
   private static final List<String> LONE_MODIFIERS = List.of("+", "-", "!", "~", "^", ":");
-  private static final char MASKED_PHRASE = 'x';
+  private static final char MASKED_TERM = 'x';
 
   private LuceneQuerySyntax() {}
 
@@ -42,86 +42,88 @@ public final class LuceneQuerySyntax {
     if (query == null || query.isBlank()) {
       return true;
     }
-    String trimmed = query.trim();
-    return hasBalancedDelimiters(trimmed)
-        && hasOperandsForEveryOperator(
-            withQuotedPhrasesMasked(withEscapedCharactersMasked(trimmed)));
+    String masked = withLiteralSpansMasked(query.trim());
+    return hasBalancedDelimiters(masked) && hasOperandsForEveryOperator(masked);
   }
 
   /**
-   * Replaces each {@code \x} pair with a plain character. An escaped character is literal, so it
-   * must not be read as syntax or as a term boundary — {@code orders\ AND} is the single term
-   * {@code orders AND}, not a dangling operator.
+   * Replaces every span whose contents Lucene reads literally with a plain term: an escaped
+   * character, a quoted phrase, a regex between slashes, and a range between brackets.
+   *
+   * <p>The term rules below describe bare terms only, so they must not look inside these spans —
+   * {@code "10:30:00"} is a phrase rather than three field separators, {@code /^orders/} a regex
+   * rather than a boost missing its number, and {@code [2024-01-01T00:00:00 TO ...]} a range rather
+   * than a repeated field separator. Masking to a term rather than deleting keeps {@code
+   * name:"foo bar"} looking like the field lookup it is.
+   *
+   * <p>An unterminated span is left in place, so the balance check still sees the delimiter that
+   * opened it.
    */
-  private static String withEscapedCharactersMasked(String query) {
+  private static String withLiteralSpansMasked(String query) {
     StringBuilder masked = new StringBuilder(query.length());
-    for (int index = 0; index < query.length(); index++) {
-      char current = query.charAt(index);
-      if (current == '\\' && index + 1 < query.length()) {
-        masked.append(MASKED_PHRASE);
-        index++;
+    int index = 0;
+    while (index < query.length()) {
+      int spanEnd = endOfLiteralSpan(query, index);
+      if (spanEnd > index) {
+        masked.append(MASKED_TERM);
+        index = spanEnd;
       } else {
-        masked.append(current);
+        masked.append(query.charAt(index));
+        index++;
       }
     }
     return masked.toString();
   }
 
   /**
-   * Replaces each quoted phrase with a plain term. Everything inside quotes is literal to Lucene —
-   * {@code "10:30:00"} is a phrase, not three field separators — so the term rules below must not
-   * see it. Masking to a term rather than deleting keeps {@code name:"foo bar"} looking like the
-   * field lookup it is.
+   * Index just past the literal span opening at {@code start}, or {@code start} when none opens
+   * there or the span never closes. A range accepts either closer, since Lucene reads {@code [a TO
+   * b}} as a half-open range rather than a mismatch.
    */
-  private static String withQuotedPhrasesMasked(String query) {
-    StringBuilder masked = new StringBuilder(query.length());
-    boolean insideQuotes = false;
-    boolean escaped = false;
-    for (int index = 0; index < query.length(); index++) {
-      char current = query.charAt(index);
-      boolean wasEscaped = escaped;
-      escaped = !wasEscaped && current == '\\';
-      if (!wasEscaped && current == '"') {
-        insideQuotes = !insideQuotes;
-        if (insideQuotes) {
-          masked.append(MASKED_PHRASE);
-        }
-      } else if (!insideQuotes) {
-        masked.append(current);
+  private static int endOfLiteralSpan(String query, int start) {
+    char opener = query.charAt(start);
+    if (opener == '\\') {
+      return start + 2 <= query.length() ? start + 2 : start;
+    }
+    String closers =
+        switch (opener) {
+          case '"' -> "\"";
+          case '/' -> "/";
+          case '[', '{' -> "]}";
+          default -> "";
+        };
+    if (closers.isEmpty()) {
+      return start;
+    }
+    for (int index = start + 1; index < query.length(); index++) {
+      if (query.charAt(index) == '\\') {
+        index++;
+      } else if (closers.indexOf(query.charAt(index)) >= 0) {
+        return index + 1;
       }
     }
-    return masked.toString();
+    return start;
   }
 
   /**
-   * Parentheses nest, and quotes and regex slashes pair. Characters inside a quoted phrase are
-   * literal, so only delimiters outside one are counted — an unpaired {@code /} opens a regex Lucene
-   * never sees the end of, which is why {@code foo/bar} fails while {@code a/b/c} parses.
+   * Parentheses nest, and quotes and regex slashes pair. Every balanced pair has already been masked
+   * away, so a {@code "} or {@code /} still present is one that never closed — which is why {@code
+   * foo/bar} fails while {@code a/b/c} parses.
    */
-  private static boolean hasBalancedDelimiters(String query) {
+  private static boolean hasBalancedDelimiters(String maskedQuery) {
     int openParens = 0;
-    int regexDelimiters = 0;
-    boolean insideQuotes = false;
-    boolean escaped = false;
-    for (int index = 0; index < query.length(); index++) {
-      char current = query.charAt(index);
-      if (escaped) {
-        escaped = false;
-      } else if (current == '\\') {
-        escaped = true;
-      } else if (current == '"') {
-        insideQuotes = !insideQuotes;
-      } else if (insideQuotes) {
-        continue;
-      } else if (current == '/') {
-        regexDelimiters++;
-      } else if (current == '(') {
+    for (int index = 0; index < maskedQuery.length(); index++) {
+      char current = maskedQuery.charAt(index);
+      if (current == '"' || current == '/') {
+        return false;
+      }
+      if (current == '(') {
         openParens++;
       } else if (current == ')' && --openParens < 0) {
         return false;
       }
     }
-    return openParens == 0 && !insideQuotes && regexDelimiters % 2 == 0;
+    return openParens == 0;
   }
 
   private static boolean hasOperandsForEveryOperator(String query) {

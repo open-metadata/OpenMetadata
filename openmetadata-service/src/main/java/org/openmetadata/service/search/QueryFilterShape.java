@@ -25,6 +25,7 @@ public final class QueryFilterShape {
   private static final List<String> BOOL_CLAUSE_KEYS =
       List.of("must", "should", "filter", "must_not");
   private static final String QUERY_WRAPPER_KEY = "query";
+  private static final String BOOL_QUERY_KEY = "bool";
   private static final String NOT_QUERY_DSL =
       "queryFilter is not a valid query: expected query DSL, got %s";
 
@@ -64,12 +65,30 @@ public final class QueryFilterShape {
     return filter != null && filter.isObject() && hasWellFormedClauses(filter);
   }
 
+  /**
+   * {@code must}, {@code should}, {@code filter} and {@code must_not} only mean boolean clauses
+   * directly inside a {@code bool}. Elsewhere they are ordinary field names, and {@code
+   * {"term":{"filter":"dashboard"}}} is a perfectly good query the engine accepts — checking the
+   * clause shape everywhere would reject it.
+   */
   private static boolean hasWellFormedClauses(JsonNode node) {
     for (Map.Entry<String, JsonNode> field : node.properties()) {
-      if (BOOL_CLAUSE_KEYS.contains(field.getKey()) && !isClauseValue(field.getValue())) {
+      if (BOOL_QUERY_KEY.equals(field.getKey()) && !hasWellFormedBoolClauses(field.getValue())) {
         return false;
       }
       if (!hasWellFormedChildren(field.getValue())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean hasWellFormedBoolClauses(JsonNode bool) {
+    if (!bool.isObject()) {
+      return false;
+    }
+    for (Map.Entry<String, JsonNode> clause : bool.properties()) {
+      if (BOOL_CLAUSE_KEYS.contains(clause.getKey()) && !isClauseValue(clause.getValue())) {
         return false;
       }
     }
