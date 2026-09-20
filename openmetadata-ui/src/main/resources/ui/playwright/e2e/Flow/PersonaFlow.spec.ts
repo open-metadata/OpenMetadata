@@ -26,6 +26,7 @@ import {
   redirectToHomePage,
   uuid,
   waitForAntdModalToSettle,
+  waitForAriaModalToSettle,
 } from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
@@ -277,7 +278,11 @@ test.describe.serial('Persona operations', () => {
 
     await page.click('[data-testid="delete-button-title"]');
 
-    await waitForAntdModalToSettle(page);
+    // DeleteEntityModal is built from ui-core-components, not Antd, so it has
+    // no `.ant-modal` classes for waitForAntdModalToSettle to see -- that wait
+    // would return immediately and leave the same mid-animation press it is
+    // meant to prevent. React Aria marks its 300ms zoom with `data-entering`.
+    await waitForAriaModalToSettle(page);
 
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`

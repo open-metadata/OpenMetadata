@@ -743,20 +743,27 @@ export const openLineageNodeDrawer = async (
     .getByTestId('entity-header-display-name')
     .getByRole('button');
 
-  // Same shape as verifyNodePresent, and for the same reason: a fit is capped
-  // at the band's minZoom floor (0.9 in the Field band), so on a tall scene it
-  // cannot bring a distant node into view, and re-fitting on every attempt
-  // throws away the zoom-out that can. Fit once, then widen progressively.
-  let fitted = false;
+  // Recover when the click fails, not when the node is missing from the DOM.
+  // Attachment is not proof the trigger can be pressed: the canvas can keep an
+  // attached node clipped outside the viewport, and React Flow transforms
+  // rather than scrolls, so Playwright's scroll-into-view cannot reach it.
+  // Gating recovery on `count() === 0` skipped that case and re-clicked the
+  // same unreachable trigger until the 90s budget ran out.
+  //
+  // The escalation is the one verifyNodePresent uses, for the same reason: a
+  // fit is capped at the band's minZoom floor (0.9 in the Field band), so on a
+  // tall scene it cannot widen the view far enough, and re-fitting on every
+  // attempt throws away the zoom-out that can. Press first -- the node is
+  // usually right there -- then fit, then widen progressively.
+  let attempt = 0;
   await expect(async () => {
-    if ((await page.getByTestId(`lineage-node-${fqn}`).count()) === 0) {
-      if (fitted) {
-        await performZoomOut(page, 3);
-      } else {
-        await fitToScreen(page);
-        fitted = true;
-      }
+    if (attempt === 1) {
+      await fitToScreen(page);
+    } else if (attempt > 1) {
+      await performZoomOut(page, 3);
     }
+    attempt += 1;
+
     await trigger.click({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
 };

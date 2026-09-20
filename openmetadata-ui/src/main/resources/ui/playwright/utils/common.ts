@@ -665,6 +665,22 @@ export const waitForAntdModalToSettle = async (page: Page) => {
   ).toHaveCount(0);
 };
 
+/**
+ * The same wait for a dialog built from `ui-core-components` rather than Antd.
+ *
+ * Those are React Aria: `ModalOverlay` and `Modal` carry `data-entering` for the
+ * length of a 300 ms `zoom-in-95`, and they render none of the `.ant-modal`
+ * classes, so `waitForAntdModalToSettle` resolves against them immediately and
+ * the press it was meant to protect still lands mid-animation. Match on the
+ * attribute React Aria actually sets, scoped to overlays that wrap a dialog so
+ * an unrelated entering element cannot hold this open.
+ */
+export const waitForAriaModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('[data-entering]:has([role="dialog"])')
+  ).toHaveCount(0);
+};
+
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,

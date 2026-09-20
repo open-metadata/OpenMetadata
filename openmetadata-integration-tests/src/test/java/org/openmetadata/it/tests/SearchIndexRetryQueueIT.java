@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.dropwizard.lifecycle.JettyManaged;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.HashSet;
@@ -43,7 +42,6 @@ import org.openmetadata.service.search.SearchRepository;
 @Execution(ExecutionMode.SAME_THREAD)
 class SearchIndexRetryQueueIT {
 
-  private static JettyManaged applicationWorker;
   private static CollectionDAO collectionDAO;
   private static SearchIndexRetryQueueDAO retryQueueDAO;
   private static SearchRepository searchRepository;
@@ -52,8 +50,6 @@ class SearchIndexRetryQueueIT {
   @BeforeAll
   static void setupAll() throws Exception {
     SdkClients.adminClient();
-    applicationWorker = TestSuiteBootstrap.getSearchIndexRetryWorker();
-    applicationWorker.stop();
     collectionDAO = Entity.getCollectionDAO();
     retryQueueDAO = collectionDAO.searchIndexRetryQueueDAO();
     searchRepository = Entity.getSearchRepository();
@@ -94,13 +90,6 @@ class SearchIndexRetryQueueIT {
                             + "worker for rows in the shared retry queue."));
     worker.stop();
     return worker;
-  }
-
-  @AfterAll
-  static void restoreApplicationWorker() throws Exception {
-    if (applicationWorker != null) {
-      applicationWorker.start();
-    }
   }
 
   @BeforeEach
