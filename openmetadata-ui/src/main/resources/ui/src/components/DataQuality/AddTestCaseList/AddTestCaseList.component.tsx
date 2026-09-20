@@ -442,10 +442,7 @@ export const AddTestCaseList = ({
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (
-        isNearScrollBottom(e.currentTarget) &&
-        items.length < totalCount
-      ) {
+      if (isNearScrollBottom(e.currentTarget) && items.length < totalCount) {
         !isLoading &&
           fetchTestCases({
             searchText: searchTerm,

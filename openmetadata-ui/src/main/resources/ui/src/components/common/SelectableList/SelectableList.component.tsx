@@ -20,7 +20,13 @@ import {
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
@@ -89,6 +95,9 @@ export const SelectableList = ({
   const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();
   const [pagingInfo, setPagingInfo] = useState<Paging>(pagingObject);
+  // Guards against duplicate page fetches: several scroll events can land in the
+  // bottom threshold before the in-flight request settles.
+  const isFetchingNextPage = useRef(false);
 
   const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
@@ -179,10 +188,16 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
-        isNearScrollBottom(e.currentTarget) &&
-        pagingInfo.after &&
-        uniqueOptions.length < pagingInfo.total
+        !isNearScrollBottom(e.currentTarget) ||
+        !pagingInfo.after ||
+        uniqueOptions.length >= pagingInfo.total ||
+        isFetchingNextPage.current
       ) {
+        return;
+      }
+
+      isFetchingNextPage.current = true;
+      try {
         const { data, paging } = await fetchOptions(
           searchText,
           pagingInfo.after
@@ -190,9 +205,11 @@ export const SelectableList = ({
 
         setUniqueOptions((prevData) => [...prevData, ...data]);
         setPagingInfo(paging);
+      } finally {
+        isFetchingNextPage.current = false;
       }
     },
-    [pagingInfo, uniqueOptions, searchText]
+    [pagingInfo, uniqueOptions, searchText, fetchOptions]
   );
 
   const handleUpdate = useCallback(
