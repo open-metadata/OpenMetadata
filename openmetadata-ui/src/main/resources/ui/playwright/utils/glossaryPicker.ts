@@ -55,21 +55,14 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
-// Opens the picker and waits for the treegrid to render. Two shard-load
-// failure modes are handled explicitly:
+// Opens the picker and waits for the treegrid to render.
 //
-//   (1) The trigger is rendered but the react-aria popover-trigger hook has
-//       not attached yet — a click before that lands on a stale render and
-//       drops silently. `aria-expanded` is only set by the hook, so waiting
-//       for it to exist (as "false") proves the handler is live before we
-//       click.
-//   (2) Even a handler-attached click can race with hydration on a very
-//       loaded shard. After clicking, we wait for `aria-expanded` to flip to
-//       "true" — that's the trigger's own state edge, not a downstream
-//       render — and retry the click once if it didn't. Both attempts have a
-//       tight bound so a genuine failure surfaces as "aria-expanded never
-//       toggled" or "treegrid never rendered" instead of "browser closed"
-//       from the enclosing 180s test timeout.
+// The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),
+// so the trigger never carries `aria-expanded` — the popover's open state is only
+// observable via the treegrid appearing. Both attempts have a bounded timeout so a
+// genuine failure surfaces as "treegrid never rendered" instead of "browser closed"
+// from the enclosing 180s test timeout (which is what the old retry — an unbounded
+// waitFor after `force: true` — produced under merge-group shard load).
 //
 // Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
 export const openGlossaryPicker = async (
@@ -79,27 +72,23 @@ export const openGlossaryPicker = async (
 ) => {
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
-  await expect(trigger).toHaveAttribute('aria-expanded', /^(true|false)$/, {
-    timeout: 5_000,
-  });
 
   const treeLocator = tree(page);
 
-  const clickAndAwaitExpanded = async (clickOptions?: { force?: boolean }) => {
+  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
     await trigger.click(clickOptions);
-    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
-      timeout: 5_000,
-    });
+    await treeLocator.waitFor({ state: 'visible', timeout: 5_000 });
   };
 
   try {
-    await clickAndAwaitExpanded({ force: options?.force });
+    await clickAndAwaitOpen({ force: options?.force });
   } catch {
-    // eslint-disable-next-line playwright/no-force-option -- retry: caller's non-forced click never toggled aria-expanded, so the trigger is unresponsive; force is the last resort before we give up
-    await clickAndAwaitExpanded({ force: true });
+    // Retry: first click didn't open the popover (react-aria trigger race on
+    // slow shards); force is the last resort before we give up. The
+    // `no-force-option` rule pattern-matches literal `click({ force: true })`
+    // call sites — this one hides behind `clickAndAwaitOpen`, so no suppress.
+    await clickAndAwaitOpen({ force: true });
   }
-
-  await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
 };
 
 // Search results arrive nested and pre-expanded, so no manual expanding.
