@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { authCoordinator } from './Auth/AuthCoordinator';
+import { authCoordinator } from './Auth/AuthCoordinator/AuthCoordinator';
 
 /**
  * Shared plumbing for the fetch-based SSE clients (service progress, ingestion

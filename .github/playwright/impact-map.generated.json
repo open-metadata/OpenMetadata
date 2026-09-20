@@ -11456,7 +11456,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/SwaggerPage/index.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/pages/SwaggerPage/SwaggerPage.tsx"
       ],
       "specs": [
         "playwright/e2e/Flow/ApiDocs.spec.ts"

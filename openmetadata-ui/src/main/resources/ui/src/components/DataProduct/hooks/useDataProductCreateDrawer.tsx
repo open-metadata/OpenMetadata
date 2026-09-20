@@ -25,7 +25,7 @@ import {
   setCreateEntityFieldError,
   submitAndClose,
 } from '../../../utils/FormDrawerUtils';
-import { useFormDrawerWithHook } from '../../common/atoms/drawer';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,

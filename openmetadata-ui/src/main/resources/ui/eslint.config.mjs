@@ -372,7 +372,7 @@ export default [
       // t() keys and label./message./server. strings and is enforced at error.
       'sonarjs/no-duplicate-string': 'off',
       'openmetadata-i18n/no-duplicate-string': 'error',
-      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/cognitive-complexity': ['error', 15], // cleared tree-wide; blocks regressions
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
@@ -420,10 +420,10 @@ export default [
       'openmetadata-imports/no-api-calls-in-iteration': 'warn',
       'openmetadata-imports/no-circular-imports': 'warn',
       'openmetadata-imports/no-cross-page-imports': 'warn',
-      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'error',
       'openmetadata-imports/no-impure-pure-utils': 'warn',
-      'openmetadata-imports/no-internal-barrel-imports': 'warn',
-      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'error',
+      'openmetadata-imports/no-lodash-default-import': 'error',
       'openmetadata-imports/no-lower-layer-page-imports': 'warn',
       'openmetadata-imports/no-rest-ui-imports': 'warn',
       'openmetadata-imports/review-sequential-api-calls': 'warn',

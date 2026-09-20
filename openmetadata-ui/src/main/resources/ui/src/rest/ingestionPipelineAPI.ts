@@ -30,7 +30,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../interface/IngestionPipelineLogs.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
   const response = await APIClient.post<

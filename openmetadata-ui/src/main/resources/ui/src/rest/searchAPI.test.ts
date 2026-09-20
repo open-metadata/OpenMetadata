@@ -133,7 +133,7 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should not return nulls', async () => {
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -153,7 +153,7 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should have type field', async () => {
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -174,7 +174,7 @@ describe('searchAPI tests', () => {
         Promise.resolve({ data: mockTableSearchResponse })
       );
 
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: mockGet,
     }));
 
@@ -203,7 +203,7 @@ describe('searchAPI tests', () => {
         Promise.resolve({ data: mockTableSearchResponse })
       );
 
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: mockGet,
     }));
 
