@@ -91,6 +91,15 @@ import {
   ModifiedEventSubscription,
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 import { AddAlertPageLoadingState } from './AddNotificationPage.interface';
+import { AlertType as CapabilitiesAlertType } from '../../generated/events/api/alertCapabilitiesRequest';
+import { useAlertCapabilities } from '../../hooks/useAlertCapabilities';
+import {
+  getSelectionSupport,
+  toCapabilitiesInput,
+} from '../../utils/Alerts/AlertSelectionUtil';
+
+// One array for "nothing selected", so what depends on the selection does not change every render.
+const NO_SOURCES: string[] = [];
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
@@ -224,36 +233,30 @@ const AddNotificationPage = () => {
 
   const resources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+    NO_SOURCES;
   const destinations = Form.useWatch('destinations', form);
   const timeout = Form.useWatch('timeout', form);
   const readTimeout = Form.useWatch('readTimeout', form);
-  const [selectedTrigger] = resources;
-
-  const supportedFilters = useMemo(
-    () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.supportedFilters,
-    [entityFunctions, selectedTrigger]
+  const chosenSoFar = Form.useWatch('input', form);
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(chosenSoFar),
+    [chosenSoFar]
   );
+  const capabilities = useAlertCapabilities({
+    alertType: CapabilitiesAlertType.Notification,
+    sources: resources,
+    input: capabilitiesInput,
+  });
 
-  const containerEntities = useMemo(
+  const { supportedFilters, containerEntities, supportedEventTypes } = useMemo(
     () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.containerEntities,
-    [entityFunctions, selectedTrigger]
-  );
-
-  const supportedEventTypes = useMemo(
-    () =>
-      entityFunctions.find((resource) => resource.name === selectedTrigger)
-        ?.supportedEventTypes,
-    [entityFunctions, selectedTrigger]
+      getSelectionSupport(entityFunctions, resources, capabilities.selection),
+    [entityFunctions, resources, capabilities.selection]
   );
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () => (isEmpty(resources) ? true : !isEmpty(supportedFilters)),
+    [resources, supportedFilters]
   );
 
   const extraFormWidgets = useMemo(
@@ -388,6 +391,7 @@ const AddNotificationPage = () => {
                         <Row justify="center">
                           <Col span={24}>
                             <AlertFormSourceItem
+                              capabilities={capabilities}
                               filterResources={entityFunctions}
                             />
                           </Col>

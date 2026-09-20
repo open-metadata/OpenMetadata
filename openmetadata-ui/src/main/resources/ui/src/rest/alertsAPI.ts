@@ -29,6 +29,8 @@ import {
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
 import { getEncodedFqn } from '../utils/StringUtils';
+import { AlertCapabilities } from '../generated/events/api/alertCapabilities';
+import { AlertCapabilitiesRequest } from '../generated/events/api/alertCapabilitiesRequest';
 
 const BASE_URL = '/events/subscriptions';
 
@@ -120,6 +122,21 @@ export const deleteAlert = async (id: string) => {
 
 export const getFilterFunctions = async () => {
   const response = await axiosClient.get<Function[]>(`${BASE_URL}/functions`);
+
+  return response.data;
+};
+
+/**
+ * What a selection of sources supports. A server of the previous release has no such path and
+ * answers 404, which the form reads as "one source only".
+ */
+export const getAlertCapabilities = async (
+  request: AlertCapabilitiesRequest
+) => {
+  const response = await axiosClient.post<AlertCapabilities>(
+    `${BASE_URL}/capabilities`,
+    request
+  );
 
   return response.data;
 };

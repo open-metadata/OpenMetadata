@@ -17,7 +17,13 @@ import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import { AlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
+import { useAlertCapabilities } from '../../../hooks/useAlertCapabilities';
 import { getResourceFunctions } from '../../../rest/observabilityAPI';
+import {
+  getSelectionSupport,
+  toCapabilitiesInput,
+} from '../../../utils/Alerts/AlertSelectionUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   ModifiedCreateEventSubscription,
@@ -25,6 +31,9 @@ import {
   UseObservabilityAlertResourcesReturn,
 } from '../AddObservabilityPage.interface';
 import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+
+// One array for "nothing selected", so what depends on the selection does not change every render.
+const NO_SOURCES: string[] = [];
 
 export function useObservabilityAlertResources(
   form: FormInstance<ModifiedCreateEventSubscription>
@@ -35,9 +44,19 @@ export function useObservabilityAlertResources(
     ObservabilityFilterResourceDescriptor[]
   >([]);
 
-  const [selectedTrigger] =
+  const resources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
+    NO_SOURCES;
+  const chosenSoFar = Form.useWatch('input', form);
+  const capabilitiesInput = useMemo(
+    () => toCapabilitiesInput(chosenSoFar),
+    [chosenSoFar]
+  );
+  const capabilities = useAlertCapabilities({
+    alertType: AlertType.Observability,
+    sources: resources,
+    input: capabilitiesInput,
+  });
 
   const fetchFunctions = async () => {
     try {
@@ -60,36 +79,24 @@ export function useObservabilityAlertResources(
     fetchFunctions();
   }, []);
 
-  const selectedResource = useMemo(
-    () => filterResources.find((resource) => resource.name === selectedTrigger),
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedFilters = useMemo(
-    () => selectedResource?.supportedFilters,
-    [selectedResource]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertResourcesReturn['containerEntities']
-  >(() => selectedResource?.containerEntities, [selectedResource]);
-
-  const supportedTriggers = useMemo(
-    () => selectedResource?.supportedActions,
-    [selectedResource]
+  const { supportedFilters, supportedTriggers, containerEntities } = useMemo(
+    () =>
+      getSelectionSupport(filterResources, resources, capabilities.selection),
+    [filterResources, resources, capabilities.selection]
   );
 
   const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
+    () => (isEmpty(resources) ? true : !isEmpty(supportedFilters)),
+    [resources, supportedFilters]
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
+    () => (isEmpty(resources) ? true : !isEmpty(supportedTriggers)),
+    [resources, supportedTriggers]
   );
 
   return {
+    capabilities,
     containerEntities,
     filterResources,
     loading,

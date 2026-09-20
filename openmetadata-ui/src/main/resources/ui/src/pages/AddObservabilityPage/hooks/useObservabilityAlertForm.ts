@@ -193,6 +193,7 @@ export function useObservabilityAlertForm({
   return {
     alert,
     breadcrumb,
+    capabilities: alertResources.capabilities,
     containerEntities: alertResources.containerEntities,
     extraFormButtons,
     extraFormWidgets,

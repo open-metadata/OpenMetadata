@@ -28,7 +28,7 @@ import {
 } from 'antd';
 import Form from 'antd/lib/form';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqBy } from 'lodash';
+import { isEmpty, uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -162,22 +162,30 @@ export const searchEntity = async ({
 
 // Indexes to search for an Entity FQN filter: the source plus its ancestor (container) entity
 // types from the resource descriptor, so a parent FQN can be selected to scope to its descendants.
+// An alert can watch several sources, and a name filter then searches every one of them.
 export const getFqnSearchIndexes = (
-  selectedTrigger: string,
+  selectedTrigger: string | string[],
   containerEntities: string[] = []
 ): SearchIndex[] => {
   const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
-  const sourceIndex = mapping[selectedTrigger];
+  const sources = [selectedTrigger].flat();
 
   // The "all" index already spans every entity, so ancestor indexes are redundant there.
-  if (sourceIndex === SearchIndex.ALL) {
-    return [sourceIndex];
+  if (sources.some((source) => mapping[source] === SearchIndex.ALL)) {
+    return [SearchIndex.ALL];
   }
 
-  return [selectedTrigger, ...containerEntities]
-    .map((type) => mapping[type])
-    .filter((index): index is SearchIndex => Boolean(index));
+  return uniq(
+    [...sources, ...containerEntities]
+      .map((type) => mapping[type])
+      .filter((index): index is SearchIndex => Boolean(index))
+  );
 };
+
+// What a field that can only follow one source follows: the first, which is the only one for an
+// alert with a single source.
+const firstOf = (selectedTrigger: string | string[]) =>
+  [selectedTrigger].flat()[0];
 
 const getTableSuggestions = async (searchText: string) => {
   return searchEntity({
@@ -265,12 +273,12 @@ export const getFieldByArgumentType = (
   fieldName: number,
   argument: string,
   index: number,
-  selectedTrigger: string,
+  selectedTrigger: string | string[],
   containerEntities: string[] = [],
   supportedEventTypes: EventType[] = []
 ) => {
   const getEntityByFQN = async (searchText: string) => {
-    if (selectedTrigger === EntityType.DATA_CONTRACT) {
+    if (firstOf(selectedTrigger) === EntityType.DATA_CONTRACT) {
       return getDataContractSuggestions(searchText);
     }
 
@@ -294,7 +302,7 @@ export const getFieldByArgumentType = (
         pageNumber: 1,
         pageSize: PAGE_SIZE_LARGE,
         queryFilter: isUuidInput ? getTermQuery({ id: trimmed }) : undefined,
-        searchIndex: searchIndexMapping[selectedTrigger],
+        searchIndex: searchIndexMapping[firstOf(selectedTrigger)],
       });
 
       return uniqBy(
@@ -546,7 +554,7 @@ export const getFieldByArgumentType = (
 export const getConditionalField = (
   condition: string,
   name: number,
-  selectedTrigger: string,
+  selectedTrigger: string | string[],
   supportedActions?: EventFilterRule[],
   containerEntities?: string[],
   supportedEventTypes?: EventType[]

@@ -43,9 +43,10 @@ function ObservabilityFormFiltersItem({
     ['input', 'filters'],
     form
   );
-  const [selectedTrigger] =
+  const selectedSources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+  const [selectedTrigger] = selectedSources;
 
   // Run time values needed for conditional rendering
   const filterOptions = useMemo(() => {
@@ -110,7 +111,9 @@ function ObservabilityFormFiltersItem({
                             getConditionalField(
                               selectedFilters[name].name ?? '',
                               name,
-                              selectedTrigger,
+                              selectedSources.length > 1
+                                ? selectedSources
+                                : selectedTrigger,
                               supportedFilters,
                               containerEntities,
                               supportedEventTypes

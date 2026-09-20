@@ -30,6 +30,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import type { AddAlertFormWidgetProps } from '../../utils/AlertsClassBase';
 import { AddAlertPageLoadingState } from '../AddNotificationPage/AddNotificationPage.interface';
+import { UseAlertCapabilitiesReturn } from '../../hooks/useAlertCapabilities';
 
 export interface ObservabilityFilterResourceDescriptor {
   containerEntities?: string[];
@@ -46,6 +47,7 @@ export interface UseObservabilityAlertFormOptions {
 }
 
 export interface UseObservabilityAlertResourcesReturn {
+  capabilities: UseAlertCapabilitiesReturn;
   containerEntities?: string[];
   filterResources: ObservabilityFilterResourceDescriptor[];
   loading: boolean;
@@ -98,6 +100,7 @@ export interface ModifiedCreateEventSubscription
 }
 
 export interface UseObservabilityAlertFormReturn {
+  capabilities: UseAlertCapabilitiesReturn;
   alert?: ModifiedEventSubscription;
   breadcrumb: {
     name: string;
@@ -128,6 +131,7 @@ export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
 export type ObservabilityAlertFormFieldsProps = Pick<
   ObservabilityAlertFormProps,
   | 'alert'
+  | 'capabilities'
   | 'containerEntities'
   | 'extraFormWidgets'
   | 'filterResources'

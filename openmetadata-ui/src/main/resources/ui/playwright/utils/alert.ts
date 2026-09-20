@@ -1043,6 +1043,44 @@ export const inputBasicAlertInformation = async ({
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
+// The source picker holds several sources, so choosing another one adds it. Replacing the
+// source means removing what is selected first: some sources, such as All, cannot be combined.
+export const replaceAlertSource = async ({
+  page,
+  sourceName,
+  sourceDisplayName,
+}: {
+  page: Page;
+  sourceName: string;
+  sourceDisplayName: string;
+}) => {
+  const sourceSelect = page.getByTestId('source-select');
+  const selected = sourceSelect.locator('.ant-select-selection-item-remove');
+
+  await expect(async () => {
+    if ((await selected.count()) > 0) {
+      await sourceSelect.locator('input').press('Backspace');
+    }
+
+    await expect(selected).toHaveCount(0, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+
+  await sourceSelect.click();
+  await sourceSelect.locator('input').fill(sourceDisplayName);
+  await page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(`${sourceName}-option`)
+    .click();
+  await sourceSelect.locator('input').fill('');
+  await page.keyboard.press('Escape');
+
+  // While the control has focus it also announces its selection to screen readers, so the
+  // control's own text would hold the name twice. The chosen tags are what the user sees.
+  await expect(
+    sourceSelect.locator('.ant-select-selection-item-content')
+  ).toHaveText([sourceDisplayName]);
+};
+
 export const saveAlertAndVerifyResponse = async (page: Page) => {
   const data = {
     alertDetails: {

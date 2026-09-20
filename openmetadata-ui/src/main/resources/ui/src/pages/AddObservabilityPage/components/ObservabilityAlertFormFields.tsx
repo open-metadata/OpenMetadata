@@ -32,6 +32,7 @@ import {
 
 function ObservabilityAlertFormFields({
   alert,
+  capabilities,
   containerEntities,
   extraFormWidgets,
   filterResources,
@@ -76,7 +77,10 @@ function ObservabilityAlertFormFields({
       <Col span={24}>
         <Row justify="center">
           <Col span={24}>
-            <AlertFormSourceItem filterResources={filterResources} />
+            <AlertFormSourceItem
+              capabilities={capabilities}
+              filterResources={filterResources}
+            />
           </Col>
           {shouldShowFiltersSection && (
             <>

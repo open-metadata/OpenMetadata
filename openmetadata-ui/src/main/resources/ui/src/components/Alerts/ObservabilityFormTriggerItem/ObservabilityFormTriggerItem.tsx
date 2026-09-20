@@ -40,9 +40,10 @@ function ObservabilityFormTriggerItem({
     ['input', 'actions'],
     form
   );
-  const [selectedTrigger] =
+  const selectedSources =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+  const [selectedTrigger] = selectedSources;
 
   // Run time values needed for conditional rendering
   const triggerOptions = useMemo(() => {
@@ -108,7 +109,9 @@ function ObservabilityFormTriggerItem({
                             getConditionalField(
                               selectedTriggers[name].name ?? '',
                               name,
-                              selectedTrigger,
+                              selectedSources.length > 1
+                                ? selectedSources
+                                : selectedTrigger,
                               supportedTriggers
                             )}
                         </Row>

@@ -27,6 +27,7 @@ import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
+  capabilities,
   containerEntities,
   extraFormButtons,
   extraFormWidgets,
@@ -75,6 +76,7 @@ function ObservabilityAlertForm({
           <Row gutter={[20, 20]}>
             <ObservabilityAlertFormFields
               alert={alert}
+              capabilities={capabilities}
               containerEntities={containerEntities}
               extraFormWidgets={extraFormWidgets}
               filterResources={filterResources}

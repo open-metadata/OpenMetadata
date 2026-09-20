@@ -26,6 +26,7 @@ import {
   addMultipleFilters,
   checkRecentEventDetails,
   inputBasicAlertInformation,
+  replaceAlertSource,
   saveAlertAndVerifyResponse,
   visitAlertDetailsPage,
   visitEditAlertPage,
@@ -247,11 +248,7 @@ export const editSingleFilterAlert = async ({
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
   // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  await replaceAlertSource({ page, sourceName, sourceDisplayName });
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();

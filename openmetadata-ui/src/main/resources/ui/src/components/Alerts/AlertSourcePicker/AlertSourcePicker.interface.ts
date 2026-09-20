@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 
-import { UseAlertCapabilitiesReturn } from '../../../hooks/useAlertCapabilities';
-
-export interface AlertFormSourceItemProps {
-  filterResources?: {
-    name?: string;
-  }[];
-  /** What the server said about the sources and about the current selection. */
-  capabilities?: UseAlertCapabilitiesReturn;
+export interface AlertSourcePickerProps {
+  /** Names of the sources the catalog offers. */
+  sources: string[];
+  value?: string[];
+  /** The form item has already stored the new selection by the time this runs, so it also gets the one before. */
+  onChange?: (sources: string[], previousSources: string[]) => void;
+  /** True while the server is being asked about the current selection. */
+  loading?: boolean;
+  /** What the server said about the current selection. */
+  selection?: AlertCapabilities;
 }
