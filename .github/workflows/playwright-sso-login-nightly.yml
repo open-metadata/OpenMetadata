@@ -51,9 +51,17 @@ on:
       # legacy `signin-button` class) and Input (react-aria wrapper puts
       # the testid on a `<div data-input-wrapper>` instead of the actual
       # `<input>`); catching that cross-package breakage on the ORIGINATING
-      # PR is the whole point of adding these two paths.
+      # PR is the whole point of adding these paths. The `form/**` and
+      # `form-field/**` layers are here because the Basic and LDAP fixtures
+      # locate inputs via `getByLabel(/email/i)` / `getByLabel(/password/i)`,
+      # and `render-field-element.tsx` is what wires the label → input
+      # association plus forwards signup test IDs — the same class of
+      # cross-package regression as Button/Input would otherwise slip past
+      # the PR gate (greptile r4056182832).
       - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/buttons/**'
       - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/input/**'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/form/**'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/application/form-field/**'
       # Backend auth surface — narrow to the packages the SSO matrix
       # actually exercises (login/refresh, JWT filter, SAML handler,
       # OIDC/SAML code flow, LDAP/basic authenticators, the servlet
