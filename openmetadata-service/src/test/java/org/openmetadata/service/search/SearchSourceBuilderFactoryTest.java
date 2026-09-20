@@ -1095,4 +1095,26 @@ public class SearchSourceBuilderFactoryTest {
         Set.copyOf(List.of(expectedFields)),
         Set.copyOf(builder.highlighter().fields().stream().map(NamedValue::name).toList()));
   }
+
+  /**
+   * A partially typed query carries Lucene syntax but cannot be parsed, so routing it to {@code
+   * query_string} fails the whole search instead of returning results. Issue #27990.
+   */
+  @Test
+  public void testUnparseableSyntaxDoesNotReachQueryString() {
+    String osQuery = rankedTableOpenSearchQuery("revenue (draft");
+    String esQuery = rankedTableElasticSearchQuery("revenue (draft");
+
+    assertFalse(osQuery.contains("query_string"), osQuery);
+    assertFalse(esQuery.contains("query_string"), esQuery);
+  }
+
+  @Test
+  public void testWellFormedSyntaxStillReachesQueryString() {
+    String osQuery = rankedTableOpenSearchQuery("revenue (draft)");
+    String esQuery = rankedTableElasticSearchQuery("revenue (draft)");
+
+    assertTrue(osQuery.contains("query_string"), osQuery);
+    assertTrue(esQuery.contains("query_string"), esQuery);
+  }
 }
