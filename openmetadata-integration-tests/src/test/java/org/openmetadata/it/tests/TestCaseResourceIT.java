@@ -3940,6 +3940,44 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNotNull(testCase.getId());
   }
 
+  @Test
+  void post_and_put_testWithNegativeCustomSqlComparisonBound_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // `tableCustomSQLQuery` declares `thresholdUnit`, but its `threshold` is the bound the SQL
+    // result is compared against through `operator` rather than a failure tolerance, so a signed
+    // delta compared with `>=` legitimately carries a negative one.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "custom_sql_negative_bound",
+                tableLink,
+                "tableCustomSQLQuery",
+                new TestCaseParameterValue()
+                    .withName("sqlExpression")
+                    .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+                new TestCaseParameterValue().withName("operator").withValue(">="),
+                new TestCaseParameterValue().withName("threshold").withValue("-25")));
+    assertNotNull(testCase.getId());
+
+    // `validateTestParameters` runs on update too, so the bound must also survive a PUT.
+    CreateTestCase update =
+        thresholdRequest(
+            ns,
+            "custom_sql_negative_bound",
+            tableLink,
+            "tableCustomSQLQuery",
+            new TestCaseParameterValue()
+                .withName("sqlExpression")
+                .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+            new TestCaseParameterValue().withName("operator").withValue(">="),
+            new TestCaseParameterValue().withName("threshold").withValue("-50"));
+    update.setDescription("Tolerating a wider negative delta");
+    assertNotNull(updateEntity(testCase.getId().toString(), update).getId());
+  }
+
   private CreateTestCase thresholdRequest(
       TestNamespace ns,
       String name,
