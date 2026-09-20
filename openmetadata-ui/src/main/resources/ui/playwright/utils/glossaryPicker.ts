@@ -21,9 +21,7 @@ export type GlossaryTermRef = {
   fullyQualifiedName: string;
 };
 
-// Every picker instance carries its own `data-testid`, so its popover's testid
-// varies; this class is set by the component itself and does not. Only one
-// popover is open at a time, so it resolves to a single element.
+// The popover's testid varies per instance; this class is set by the component.
 const POPOVER = '.glossary-term-picker-popover';
 
 // Only the button and custom-trigger variants put a search box in the popover.
@@ -32,9 +30,7 @@ const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
 const tree = (page: Page) =>
   page.locator(POPOVER).locator('[role="treegrid"]');
 
-// Terms are keyed by FQN. A glossary root is keyed by its bare `name`, which is
-// the FQN without the quoting a dot or space in the name forces — a parent
-// picker can land on either, so accept both spellings.
+// Terms are keyed by FQN, glossary roots by bare `name` — accept both spellings.
 const termRow = (page: Page, term: GlossaryTermRef) =>
   page
     .getByTestId(`tree-node-${term.fullyQualifiedName}`)
@@ -59,16 +55,10 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .count()
     .then((n) => n > 0);
 
-// Types the term and leaves the waiting to the caller's row assertion. Waiting
-// on the search response instead looks synchronised but is not: the tree
-// debounces, aborts the in-flight request on each keystroke, and skips the call
-// entirely when the term is already listed — so the response may never come
-// even though the row does.
+// The tree debounces and may skip the call, so the caller's row assertion is the wait.
 export const searchGlossaryPicker = async (page: Page, term: string) => {
   const inPopover = popoverSearchBox(page);
-  // The input variant has no search box in the popover — its trigger is the
-  // search box, and it holds focus while open. `fill` replaces the previous
-  // term, which `type` would append to.
+  // The input variant's own trigger is the search box, and it holds focus while open.
   const box = (await inPopover.count())
     ? inPopover
     : page.locator('input:focus');
@@ -183,8 +173,7 @@ export const pickGlossaryTermInField = async (
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
 
-  // Click away rather than press Escape: these pickers sit inside editors and
-  // drawers that close on Escape too, which would discard the row being built.
+  // Not Escape: these pickers sit in editors and drawers that close on it too.
   await clickOutside(page);
   await expect(page.locator(POPOVER)).not.toBeVisible();
 };

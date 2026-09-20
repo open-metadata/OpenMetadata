@@ -29,8 +29,7 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
-// The row a branch shows once it has loaded nothing. Without it the chevron
-// expands into blank space and reads as broken.
+// The row a branch shows once it has loaded nothing.
 export const TreeSelectEmptyItemContent = ({
   message,
   parentId,

@@ -40,115 +40,114 @@ interface HierarchicalGlossary extends Glossary {
   children?: ModifiedGlossaryTerm[];
 }
 
+type GlossaryTreeFetcher = TreeSelectDataFetcher<GlossaryPickerValue>;
+
 // Glossaries at the root, terms lazy-loaded on expand; ids are FQNs to match tagFQN.
-export const useGlossaryTreeData =
-  (): TreeSelectDataFetcher<GlossaryPickerValue> => {
-    const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
+export const useGlossaryTreeData = (): GlossaryTreeFetcher => {
+  const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
 
-    return useCallback(
-      async ({ searchTerm, parentId, signal }) => {
-        try {
-          if (searchTerm) {
-            const response = await searchGlossaryTerms(
-              escapeESReservedCharacters(searchTerm),
-              1,
-              signal
-            );
-
-            // getHierarchy=true returns glossaries with their matching terms nested
-            const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = [];
-
-            if (Array.isArray(response)) {
-              response.forEach((glossary: HierarchicalGlossary) => {
-                if (glossary.children && glossary.children.length > 0) {
-                  const childrenOptions =
-                    convertGlossaryTermsToTreeOptionsWithNames(
-                      glossary.children,
-                      1,
-                      glossary.mutuallyExclusive === true
-                    );
-
-                  treeNodes.push({
-                    // Same id as the root branch; selection is keyed by it.
-                    id: glossary.name,
-                    label: getEntityName(glossary),
-                    value:
-                      glossary.fullyQualifiedName ||
-                      glossary.name ||
-                      glossary.id,
-                    children: convertToTreeNodes(childrenOptions),
-                    isLeaf: false,
-                    // See the root branch: checkable, but never a tag itself.
-                    allowSelection: true,
-                    hasExclusiveChildren: glossary.mutuallyExclusive === true,
-                    lazyLoad: false,
-                    icon: <GlossaryIcon size={16} />,
-                    data: glossaryRootValue(glossary),
-                  });
-                }
-              });
-            }
-
-            return { nodes: treeNodes };
-          }
-
-          // Only glossaries lazy-load; a term's children arrive with its glossary.
-          if (parentId) {
-            const results = await queryGlossaryTerms(parentId, signal);
-
-            if (results.length > 0) {
-              const glossaryRoot = results[0];
-              const treeOptions = convertGlossaryTermsToTreeOptionsWithNames(
-                glossaryRoot.children ?? [],
-                1,
-                getExclusivity(parentId) ??
-                  glossaryRoot.mutuallyExclusive === true
-              );
-
-              return { nodes: convertToTreeNodes(treeOptions) };
-            }
-
-            return { nodes: [] };
-          }
-
-          const { data: glossaries } = await getGlossariesList(
-            {
-              fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
-              limit: PAGE_SIZE_LARGE,
-            },
+  return useCallback(
+    async ({ searchTerm, parentId, signal }) => {
+      try {
+        if (searchTerm) {
+          const response = await searchGlossaryTerms(
+            escapeESReservedCharacters(searchTerm),
+            1,
             signal
           );
 
-          const treeNodes: TreeSelectNode<GlossaryPickerValue>[] =
-            glossaries.map((glossary: Glossary) => {
-              const isExclusive = glossary.mutuallyExclusive === true;
-              setExclusivity(glossary.name, isExclusive);
+          // getHierarchy=true returns glossaries with their matching terms nested
+          const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = [];
 
-              return {
-                id: glossary.name, // queryGlossaryTerms expects the encoded name
-                label: getEntityName(glossary),
-                value: glossary.fullyQualifiedName || glossary.name,
-                isLeaf: false,
-                // Checkable to tick its terms; the payload marks it a root so the
-                // picker only yields it where a glossary is a valid value.
-                allowSelection: true,
-                data: glossaryRootValue(glossary),
-                hasExclusiveChildren: isExclusive,
-                lazyLoad: true,
-                icon: <GlossaryIcon size={16} />,
-              };
+          if (Array.isArray(response)) {
+            response.forEach((glossary: HierarchicalGlossary) => {
+              if (glossary.children && glossary.children.length > 0) {
+                const childrenOptions =
+                  convertGlossaryTermsToTreeOptionsWithNames(
+                    glossary.children,
+                    1,
+                    glossary.mutuallyExclusive === true
+                  );
+
+                treeNodes.push({
+                  // Same id as the root branch; selection is keyed by it.
+                  id: glossary.name,
+                  label: getEntityName(glossary),
+                  value:
+                    glossary.fullyQualifiedName || glossary.name || glossary.id,
+                  children: convertToTreeNodes(childrenOptions),
+                  isLeaf: false,
+                  // See the root branch: checkable, but never a tag itself.
+                  allowSelection: true,
+                  hasExclusiveChildren: glossary.mutuallyExclusive === true,
+                  lazyLoad: false,
+                  icon: <GlossaryIcon size={16} />,
+                  data: glossaryRootValue(glossary),
+                });
+              }
             });
+          }
 
           return { nodes: treeNodes };
-        } catch (error) {
-          if (axios.isCancel(error)) {
-            throw error;
+        }
+
+        // Only glossaries lazy-load; a term's children arrive with its glossary.
+        if (parentId) {
+          const results = await queryGlossaryTerms(parentId, signal);
+
+          if (results.length > 0) {
+            const glossaryRoot = results[0];
+            const treeOptions = convertGlossaryTermsToTreeOptionsWithNames(
+              glossaryRoot.children ?? [],
+              1,
+              getExclusivity(parentId) ??
+                glossaryRoot.mutuallyExclusive === true
+            );
+
+            return { nodes: convertToTreeNodes(treeOptions) };
           }
-          showErrorToast(error as AxiosError);
 
           return { nodes: [] };
         }
-      },
-      [getExclusivity, setExclusivity]
-    );
-  };
+
+        const { data: glossaries } = await getGlossariesList(
+          {
+            fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
+            limit: PAGE_SIZE_LARGE,
+          },
+          signal
+        );
+
+        const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = glossaries.map(
+          (glossary: Glossary) => {
+            const isExclusive = glossary.mutuallyExclusive === true;
+            setExclusivity(glossary.name, isExclusive);
+
+            return {
+              id: glossary.name, // queryGlossaryTerms expects the encoded name
+              label: getEntityName(glossary),
+              value: glossary.fullyQualifiedName || glossary.name,
+              isLeaf: false,
+              // Checkable to tick its terms; the payload marks it a root.
+              allowSelection: true,
+              data: glossaryRootValue(glossary),
+              hasExclusiveChildren: isExclusive,
+              lazyLoad: true,
+              icon: <GlossaryIcon size={16} />,
+            };
+          }
+        );
+
+        return { nodes: treeNodes };
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error;
+        }
+        showErrorToast(error as AxiosError);
+
+        return { nodes: [] };
+      }
+    },
+    [getExclusivity, setExclusivity]
+  );
+};

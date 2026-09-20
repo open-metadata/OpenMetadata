@@ -75,9 +75,7 @@ describe('formUtils', () => {
       expect(JSON.stringify(result)).not.toContain('form-item-alert');
     });
 
-    // The related-terms picker is wired this way: the child element is handed
-    // straight to the Form.Item named for the field, which is what lets antd
-    // inject its value and onChange.
+    // The child is handed straight to the Form.Item named for the field.
     it('Should place a COMPONENT field child under a Form.Item for that field', () => {
       const child = <div data-testid="picker" />;
 

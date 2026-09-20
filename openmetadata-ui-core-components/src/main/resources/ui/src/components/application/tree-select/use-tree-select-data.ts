@@ -47,8 +47,7 @@ const insertChildrenIntoTree = <T>(
 ): TreeSelectNode<T>[] =>
   nodes.map((node) => {
     if (node.id === parentId) {
-      // An empty result must not turn the node into a leaf: that drops its
-      // chevron, and a node expanded a moment ago can then never be collapsed.
+      // An empty result must not make it a leaf, or it loses its chevron.
       return {
         ...node,
         children,

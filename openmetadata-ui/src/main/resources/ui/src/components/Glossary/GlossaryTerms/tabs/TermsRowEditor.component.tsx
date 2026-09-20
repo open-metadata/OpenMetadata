@@ -30,8 +30,7 @@ import {
   TermsRowProps,
 } from './RelatedTerms.interface';
 
-// A seeded row already knows its reference; a freshly picked term carries the
-// entity the picker fetched.
+// A seeded row knows its reference; a picked term carries the fetched entity.
 const termItemToPickerValue = (term: TermItem): GlossaryPickerValue =>
   ({
     tagFQN: term.value,

@@ -696,9 +696,7 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // The cell editor opens the picker with it and focuses its search box, so
-  // type into the focused editor rather than locating an input inside a grid
-  // cell that react-data-grid re-renders underneath us.
+  // The cell editor opens the picker with it, so there is nothing to click open.
   const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&

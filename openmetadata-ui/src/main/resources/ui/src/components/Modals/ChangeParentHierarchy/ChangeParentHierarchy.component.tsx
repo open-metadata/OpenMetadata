@@ -40,8 +40,7 @@ import {
 
 const MAX_BUFFERED_EVENTS = 100;
 
-// `Form.Item` injects its own string `value`/`onChange` into its child, and the
-// picker takes `TagLabel[]` — so adapt here rather than let antd feed it a FQN.
+// `Form.Item` injects a string value; the picker takes `TagLabel[]`.
 const ParentPicker = ({
   excludeFqn,
   placeholder,

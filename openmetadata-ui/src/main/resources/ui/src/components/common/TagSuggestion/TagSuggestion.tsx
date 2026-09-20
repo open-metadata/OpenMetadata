@@ -239,8 +239,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [options, t]
   );
 
-  // Glossary terms are hierarchical and mutually exclusive per glossary, which
-  // a flat autocomplete cannot express.
+  // A flat autocomplete cannot express the hierarchy or mutual exclusivity.
   if (isGlossary) {
     return (
       <GlossaryTermPicker

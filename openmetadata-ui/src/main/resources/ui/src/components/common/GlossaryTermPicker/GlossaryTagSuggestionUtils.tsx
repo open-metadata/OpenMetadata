@@ -19,16 +19,14 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 
-// A `TagLabel` everywhere it is used as one, plus the entity it came from for
-// the callers that need an id or the glossary/term distinction.
+// A `TagLabel` plus the entity it came from, for callers that need its id.
 export interface GlossaryPickerValue extends TagLabel {
   entity?: Glossary | GlossaryTerm;
   // A glossary root is checkable to cascade its terms but is not itself a tag.
   isGlossaryRoot?: boolean;
 }
 
-// `TagLabel` is `additionalProperties: false` server-side, so the UI-only
-// fields have to be dropped before a selection reaches a PATCH body.
+// `TagLabel` is `additionalProperties: false`, so drop the UI-only fields.
 export const toTagLabel = ({
   entity: _entity,
   isGlossaryRoot: _isGlossaryRoot,

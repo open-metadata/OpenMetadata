@@ -2245,8 +2245,7 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     const [isOpen, setIsOpen] = useState(true);
     const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
 
-    // The popover is portaled, so the trap has to span it or the grid treats
-    // focus moving into it as leaving the cell and closes the editor.
+    // The popover is portaled, so the focus trap has to span it.
     useEffect(() => {
       setPopoverEl(
         isOpen

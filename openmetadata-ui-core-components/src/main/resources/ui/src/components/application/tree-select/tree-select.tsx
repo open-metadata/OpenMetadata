@@ -59,10 +59,7 @@ const VIEWPORT_PADDING = 12;
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
-// Also reports the trigger's width: react-aria only publishes
-// `--trigger-width` for its own ComboBox/Select/MenuTrigger overlays, never for
-// a bare Popover given a `triggerRef`, so a dropdown that wants to match its
-// trigger has to measure it.
+// Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
 const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
@@ -551,8 +548,7 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
-  // Closing returns focus to the trigger input, and that input opens on focus.
-  // Without this the dropdown reopens the instant it is dismissed.
+  // The trigger opens on focus, so a dismiss would otherwise reopen it.
   const skipNextFocusOpen = useRef(false);
 
   const openOnFocus = () => {
@@ -606,9 +602,7 @@ export const TreeSelect = <T = unknown,>({
         dismiss();
       }
     };
-    // Capture: an overlay that stops propagation on its way down — a drawer
-    // closing, say — would otherwise hide the interaction from us and leave the
-    // dropdown on screen until the whole subtree unmounts.
+    // Capture: an overlay stopping propagation would otherwise hide the click.
     document.addEventListener('pointerdown', handlePointerDown, true);
     document.addEventListener('keydown', handleEscape, true);
 
@@ -922,7 +916,6 @@ export const TreeSelect = <T = unknown,>({
             disabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle'
           )}
           data-testid={dataTestId}
-          // This variant has no search box in the dropdown — the trigger is it.
           // Marks which trigger the open dropdown belongs to, for tests.
           data-treeselect-open={isOpen ? 'true' : undefined}
           ref={triggerRef}

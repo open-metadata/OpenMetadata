@@ -46,8 +46,7 @@ type InheritedTreeSelectProps = Pick<
 export interface GlossaryTermPickerProps extends InheritedTreeSelectProps {
   // Non-glossary sources are ignored; the caller owns merging them back.
   value?: TagLabel[];
-  // `terms` is PATCH-safe; `nodes` carries the source entities for the callers
-  // that need an id or the glossary/term distinction.
+  // `terms` is PATCH-safe; `nodes` carries the source entities.
   onChange?: (terms: TagLabel[], nodes: GlossaryPickerValue[]) => void;
   // FQNs to hide, e.g. the term a relation is being added to.
   excludeFqns?: string[];
@@ -160,8 +159,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })
       }
-      // Stable hook for tests: every instance sets its own `data-testid`, so the
-      // popover's testid varies while this class does not.
+      // Stable test hook: the popover's testid varies per instance, this does not.
       popoverClassName="glossary-term-picker-popover"
       renderTrigger={renderTrigger}
       required={required}

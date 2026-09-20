@@ -120,8 +120,7 @@ describe('GlossaryTermPicker', () => {
     expect(onChange).toHaveBeenCalledWith([newTerm], expect.anything());
   });
 
-  // `TagLabel` is `additionalProperties: false`, so a stray UI-only field makes
-  // the server reject the whole PATCH and the term silently fails to save.
+  // A stray UI-only field makes the server reject the whole PATCH.
   it('keeps the picker-only fields out of the reported tag', () => {
     const onChange = jest.fn();
     render(<GlossaryTermPicker value={[]} onChange={onChange} />);

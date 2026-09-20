@@ -61,8 +61,7 @@ describe('TreeSelect empty branch', () => {
 
     expect(chevron).not.toBeNull();
 
-    // Expanding a branch that loads nothing still has to show a row, or the
-    // chevron looks inert.
+    // A branch that loads nothing still needs a row, or the chevron looks inert.
     fireEvent.click(chevron as HTMLButtonElement);
 
     await waitFor(() =>

@@ -84,9 +84,7 @@ interface BuildGlossaryTermSavePayloadParams {
   extension: Record<string, unknown>;
 }
 
-// antd injects `value`/`onChange` here, and its `onChange` keeps only the first
-// argument — so forward the richer nodes, which carry the ids `resolveRelatedTerms`
-// needs for a term added during an edit.
+// antd's injected `onChange` keeps only the first argument; forward the nodes.
 const RelatedTermsPicker = ({
   excludeFqn,
   value,
@@ -112,8 +110,7 @@ const RelatedTermsPicker = ({
   );
 };
 
-// An already-related term is seeded from its reference; the id comes back from
-// `glossaryTerm.relatedTerms` on submit, so the entity is not needed here.
+// Seeded from the reference; the id is resolved from `relatedTerms` on submit.
 const relatedTermToPickerValue = (
   related: EntityReference
 ): GlossaryPickerValue =>
@@ -123,8 +120,7 @@ const relatedTermToPickerValue = (
     source: TagSource.Glossary,
   } as GlossaryPickerValue);
 
-// Create takes FQNs; edit takes ids, which the picked term carries as its
-// source entity and an untouched, pre-seeded one does not.
+// Create takes FQNs; edit takes ids, which a picked term carries as its entity.
 const resolveRelatedTerms = (
   editMode: boolean,
   relatedTerms: GlossaryPickerValue[],

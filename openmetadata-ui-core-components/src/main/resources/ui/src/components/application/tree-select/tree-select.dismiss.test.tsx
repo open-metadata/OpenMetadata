@@ -73,8 +73,7 @@ describe('TreeSelect dismissal', () => {
     );
   });
 
-  // The input variant opens on focus, and dismissing restores focus to it — so
-  // a dismiss must not immediately reopen the dropdown.
+  // The trigger opens on focus, and a dismiss restores focus to it.
   it('should stay closed when dismissal returns focus to the trigger input', async () => {
     const fetchData = vi.fn().mockResolvedValue({ nodes: [glossary] });
 
