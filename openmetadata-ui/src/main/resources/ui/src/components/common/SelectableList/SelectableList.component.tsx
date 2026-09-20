@@ -31,6 +31,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import { UserTag } from '../UserTag/UserTag.component';
@@ -178,7 +179,7 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === height &&
+        isNearScrollBottom(e.currentTarget) &&
         pagingInfo.after &&
         uniqueOptions.length < pagingInfo.total
       ) {
