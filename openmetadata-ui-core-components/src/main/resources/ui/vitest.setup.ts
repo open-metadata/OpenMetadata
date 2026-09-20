@@ -44,3 +44,21 @@ if (typeof globalThis.DataTransfer === 'undefined') {
   globalThis.DataTransfer =
     DataTransferPolyfill as unknown as typeof DataTransfer;
 }
+
+// jsdom ships no ResizeObserver; components that observe layout need a stub.
+if (!('ResizeObserver' in globalThis)) {
+  class ResizeObserverStub {
+    observe() {
+      return undefined;
+    }
+    unobserve() {
+      return undefined;
+    }
+    disconnect() {
+      return undefined;
+    }
+  }
+
+  globalThis.ResizeObserver =
+    ResizeObserverStub as unknown as typeof ResizeObserver;
+}

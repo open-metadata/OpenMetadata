@@ -199,6 +199,16 @@ describe('GlossaryTermPicker', () => {
     expect(onChange).toHaveBeenCalledWith([], expect.anything());
   });
 
+  // A programmatically opened picker is never clicked, so nothing else focuses it.
+  it('forwards autoFocus so an already-open picker can be typed into', () => {
+    render(
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- the prop under test
+      <GlossaryTermPicker autoFocus value={[]} />
+    );
+
+    expect(lastProps().autoFocus).toBe(true);
+  });
+
   it('forwards the popover controls to the tree', () => {
     const onOpenChange = jest.fn();
     render(

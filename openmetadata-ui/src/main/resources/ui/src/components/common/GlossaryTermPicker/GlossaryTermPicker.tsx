@@ -40,6 +40,7 @@ type InheritedTreeSelectProps = Pick<
   | 'placeholder'
   | 'required'
   | 'disabled'
+  | 'autoFocus'
   | 'data-testid'
 >;
 
@@ -67,6 +68,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   placeholder,
   required = false,
   disabled = false,
+  autoFocus = false,
   'data-testid': dataTestId,
   excludeFqns,
   selectGlossaries = false,
@@ -143,6 +145,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       cascadeSelection
       lazyLoad
       searchable
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- opt-in, for a picker opened without a click
+      autoFocus={autoFocus}
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}

@@ -88,7 +88,17 @@ const useDropdownPlacement = (
     measure();
     window.addEventListener('resize', measure);
 
-    return () => window.removeEventListener('resize', measure);
+    // The trigger can reflow while open, e.g. a grid cell editor mounting its
+    // buttons beside it, and a width measured once would then be stale.
+    const observer = new ResizeObserver(measure);
+    if (triggerRef.current) {
+      observer.observe(triggerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
   }, [isOpen, width, triggerRef]);
 
   return { placement, triggerWidth };

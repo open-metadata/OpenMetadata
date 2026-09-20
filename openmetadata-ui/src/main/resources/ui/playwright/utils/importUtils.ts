@@ -44,6 +44,7 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -696,18 +697,18 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // The cell editor opens the picker with it, so there is nothing to click open.
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('glossary')
+  // The cell editor mounts the picker already open and focused.
+  await expect(
+    page.getByTestId('csv-glossary-terms-picker-popover')
+  ).toBeVisible();
+
+  await searchGlossaryPicker(page, glossary.name);
+
+  const row = page.getByTestId(
+    `tree-node-"${glossary.parent}"."${glossary.name}"`
   );
-  await page.keyboard.type(glossary.name);
-  await searchResponse;
-  await waitForAllLoadersToDisappear(page);
-  await page
-    .getByTestId(`tree-node-"${glossary.parent}"."${glossary.name}"`)
-    .click();
+  await expect(row).toBeVisible();
+  await row.click();
 
   // Same commit affordance as the tag cell beside it.
   await clickInlineSave(page);

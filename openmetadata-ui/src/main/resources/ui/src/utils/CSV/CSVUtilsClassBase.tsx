@@ -2245,15 +2245,28 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     const [isOpen, setIsOpen] = useState(true);
     const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
 
-    // The popover is portaled, so the focus trap has to span it.
+    // The popover is portaled and mounts a frame late, so poll until it is there.
     useEffect(() => {
-      setPopoverEl(
-        isOpen
-          ? document.querySelector<HTMLElement>(
-              `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
-            )
-          : null
-      );
+      if (!isOpen) {
+        setPopoverEl(null);
+
+        return;
+      }
+
+      let frame = 0;
+      const findPopover = () => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
+        );
+        if (el) {
+          setPopoverEl(el);
+        } else {
+          frame = requestAnimationFrame(findPopover);
+        }
+      };
+      findPopover();
+
+      return () => cancelAnimationFrame(frame);
     }, [isOpen]);
 
     useMultiContainerFocusTrap({
@@ -2287,6 +2300,8 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
             onCancel={() => onClose(false)}
             onSave={() => onClose(true)}>
             <GlossaryTermPicker
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
+              autoFocus
               data-testid={CSV_GLOSSARY_PICKER_TESTID}
               isOpen={isOpen}
               value={terms}
