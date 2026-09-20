@@ -91,15 +91,34 @@ const nodePosition = async (page: Page, label: string) => {
   };
 };
 /**
- * The graph's framing: its zoom and its pan, together the whole viewport
- * transform. Read rather than derived from any node, so it survives a relayout.
+ * The graph's framing: its zoom, and where the world origin sits relative to the
+ * centre of the canvas.
+ *
+ * Read from `data-graph-origin` rather than derived from a node, so a relayout
+ * does not disturb it — the world origin is a fixed point in graph space, so its
+ * screen position is a function of pan and zoom alone.
+ *
+ * Measured from the canvas centre rather than its top-left because G6 keeps the
+ * camera across `resize`: widening the canvas by N moves the world origin N/2
+ * without anything having panned. Against the centre that cancels, so this
+ * moves only when the graph is genuinely translated.
  */
-const graphFraming = async (page: Page) => ({
-  zoom: await zoomLabel(page),
-  origin: await page
-    .getByTestId('knowledge-graph-canvas')
-    .getAttribute('data-graph-origin'),
-});
+const graphFraming = async (page: Page) => {
+  const canvas = page.getByTestId('knowledge-graph-canvas');
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('The graph canvas must be visible');
+  const [originX, originY] = (
+    (await canvas.getAttribute('data-graph-origin')) ?? ''
+  )
+    .split(',')
+    .map(Number);
+
+  return {
+    zoom: await zoomLabel(page),
+    originFromCentreX: Math.round(originX - box.width / 2),
+    originFromCentreY: Math.round(originY - box.height / 2),
+  };
+};
 const zoomLabel = async (page: Page) =>
   (await page.getByTestId('graph-view-controls').innerText()).match(
     /\d+%/
