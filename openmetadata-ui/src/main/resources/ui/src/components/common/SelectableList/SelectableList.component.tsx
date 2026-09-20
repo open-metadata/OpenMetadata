@@ -174,11 +174,12 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
-      // A new search replaces the list: invalidate any in-flight page (so its late
-      // response is dropped) and release the guard so the new query can paginate.
-      requestGeneration.current += 1;
-      isFetchingNextPage.current = false;
       const { data, paging } = await fetchOptions(search);
+
+      // Bump at the moment the list is replaced — after the await — so any page that
+      // started before now (including one begun while this search was in flight)
+      // captured a lower generation and is dropped instead of appending stale rows.
+      requestGeneration.current += 1;
 
       setUniqueOptions(
         isEmpty(search)
@@ -219,9 +220,7 @@ export const SelectableList = ({
         setUniqueOptions((prevData) => [...prevData, ...data]);
         setPagingInfo(paging);
       } finally {
-        if (generation === requestGeneration.current) {
-          isFetchingNextPage.current = false;
-        }
+        isFetchingNextPage.current = false;
       }
     },
     [pagingInfo, uniqueOptions, searchText, fetchOptions]
