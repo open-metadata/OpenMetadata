@@ -108,6 +108,7 @@ import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConn
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
@@ -340,6 +341,8 @@ public final class ClassConverterFactory {
                 Map.entry(ClickzettaConnection.class, new ClickzettaConnectionClassConverter()),
                 Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
                 Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
+                Map.entry(NatsBrokerConfig.class, new NatsBrokerConfigClassConverter()),
+                Map.entry(NatsConnection.class, new NatsConnectionClassConverter()),
                 Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
                 Map.entry(PrefectConnection.class, new PrefectConnectionClassConverter()),
                 Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),

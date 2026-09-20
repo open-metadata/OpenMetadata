@@ -6,23 +6,6 @@
   "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
   "type": "object",
   "additionalProperties": false,
-  "definitions": {
-    "credentialsAuth": {
-      "title": "Credentials File",
-      "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
-      "type": "object",
-      "properties": {
-        "credentials": {
-          "title": "Credentials File Contents",
-          "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "required": ["credentials"],
-      "additionalProperties": false
-    }
-  },
   "properties": {
     "natsServers": {
       "title": "NATS Servers",
@@ -96,18 +79,19 @@
     "authType": {
       "title": "Authentication Type",
       "description": "NATS authentication method. Leave empty for anonymous authentication.",
+      "mask": true,
       "oneOf": [
         {
-          "$ref": "../../messaging/natsConnection.json#/definitions/basicAuth"
+          "$ref": "../../messaging/nats/basicAuth.json"
         },
         {
-          "$ref": "../../messaging/natsConnection.json#/definitions/tokenAuth"
+          "$ref": "../../messaging/nats/tokenAuth.json"
         },
         {
-          "$ref": "../../messaging/natsConnection.json#/definitions/nkeyAuth"
+          "$ref": "../../messaging/nats/nkeyAuth.json"
         },
         {
-          "$ref": "#/definitions/credentialsAuth"
+          "$ref": "./nats/credentialsAuth.json"
         }
       ]
     },
