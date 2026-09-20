@@ -81,7 +81,7 @@ export const TriggerButton = ({
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
           hasSelection &&
-            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary',
+            'tw:text-fg-brand-primary tw:hover:text-fg-brand-primary tw:*:data-icon:text-fg-brand-primary',
           hasSelection && bordered && 'tw:after:outline-brand',
           className
         )}
@@ -117,7 +117,12 @@ export const TriggerButton = ({
           <Typography>{hasSelection ? text : placeholder ?? text}</Typography>
         </span>
         {countBadge}
-        <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+        <ChevronDown
+          className={cx(
+            'tw:size-5 tw:shrink-0',
+            hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+          )}
+        />
       </AriaButton>
     );
   }
@@ -135,7 +140,12 @@ export const TriggerButton = ({
         <Typography>{text}</Typography>
       </span>
       {countBadge}
-      <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+      <ChevronDown
+        className={cx(
+          'tw:size-5 tw:shrink-0',
+          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+        )}
+      />
     </AriaButton>
   );
 };
