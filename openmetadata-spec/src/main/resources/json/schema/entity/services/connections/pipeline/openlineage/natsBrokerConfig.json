@@ -50,30 +50,35 @@
       "title": "Fetch Batch Size",
       "description": "Number of events fetched per request.",
       "type": "integer",
+      "minimum": 1,
       "default": 100
     },
     "poolTimeout": {
       "title": "Single Fetch Call Timeout",
-      "description": "Max allowed wait time for a single fetch, in seconds.",
+      "description": "Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once it has waited out sessionTimeout, and a zero wait would never advance that.",
       "type": "number",
+      "exclusiveMinimum": 0,
       "default": 1.0
     },
     "sessionTimeout": {
       "title": "Broker Inactive Session Timeout",
       "description": "Max allowed inactivity time before the run ends, in seconds.",
       "type": "integer",
+      "minimum": 0,
       "default": 30
     },
     "ackWait": {
       "title": "Acknowledgement Wait",
       "description": "How long JetStream waits for an acknowledgement before redelivering an event, in seconds.",
       "type": "integer",
+      "minimum": 1,
       "default": 60
     },
     "maxDeliver": {
       "title": "Max Delivery Attempts",
       "description": "How many times JetStream redelivers an event that is never acknowledged, before it gives up. Keeps an event that ingestion cannot process from being retried on every run.",
       "type": "integer",
+      "minimum": 1,
       "default": 5
     },
     "authType": {
