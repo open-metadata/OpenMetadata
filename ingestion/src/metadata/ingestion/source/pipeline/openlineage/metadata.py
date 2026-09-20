@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.openlineage.
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
@@ -1183,6 +1186,8 @@ class OpenlineageSource(PipelineServiceSource):
             yield from self._poll_kafka(broker)
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
+        elif isinstance(broker, NatsBrokerConfig):
+            yield from self._poll_nats(broker)
         else:
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
@@ -1298,6 +1303,40 @@ class OpenlineageSource(PipelineServiceSource):
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
+
+    def _poll_nats(self, broker: NatsBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from a NATS JetStream stream."""
+        try:
+            client = self.client
+            idle_time = 0.0
+            pool_timeout = broker.poolTimeout
+            while idle_time <= broker.sessionTimeout:
+                messages = client.fetch(broker.batchSize, timeout=pool_timeout)
+                if not messages:
+                    logger.debug("no new messages")
+                    idle_time += pool_timeout
+                    continue
+
+                idle_time = 0.0
+                for message in messages:
+                    try:
+                        _result = message_to_open_lineage_event(json.loads(message.data))
+                        result = self._filter_event_by_types(
+                            _result,
+                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                        )
+                        if result:
+                            yield result
+                    except Exception as e:
+                        logger.warning(f"Failed to parse OpenLineage event from NATS message: {e}")
+                        logger.debug(traceback.format_exc())
+                    # Acknowledge either way: an event this connector cannot parse would
+                    # otherwise be redelivered on every run
+                    client.ack(message)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

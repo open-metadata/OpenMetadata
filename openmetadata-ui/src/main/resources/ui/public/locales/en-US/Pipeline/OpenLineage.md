@@ -170,3 +170,37 @@ $$section
 ### Assume Role Source Identity $(id="assumeRoleSourceIdentity")
 The source identity to set when assuming the role. Used to monitor and control access of the assumed-role session. Only used when **Assume Role ARN** is set.
 $$
+$$section
+### NATS Servers $(id="natsServers")
+NATS server URLs as comma-separated values, for example `nats://host1:4222,nats://host2:4222`.
+$$
+
+$$section
+### Stream Name $(id="streamName")
+JetStream stream that holds the OpenLineage events. The stream is created and configured by whoever runs the NATS server; this connector only reads from it. Its retention (`max-age`, `max-bytes`) decides how long unconsumed events are kept.
+$$
+
+$$section
+### Subject Filter $(id="subject")
+Subject to consume from the stream, for example `openlineage.events`. Leave empty to consume every subject the stream captures.
+$$
+
+$$section
+### Durable Consumer Name $(id="durableConsumerName")
+Name of the durable JetStream consumer. Reusing the same name resumes where the previous ingestion run stopped, so each event is processed once.
+$$
+
+$$section
+### Fetch Batch Size $(id="batchSize")
+How many events are fetched per request to the server.
+$$
+
+$$section
+### Acknowledgement Wait $(id="ackWait")
+How long JetStream waits for an acknowledgement before it redelivers an event, in seconds. Raise it if ingesting a batch of events regularly takes longer than this.
+$$
+
+$$section
+### Additional NATS Config $(id="additionalConfig")
+Extra options passed to the NATS client, as documented for [nats-py](https://nats-io.github.io/nats.py/). Options that this connection already owns (servers, credentials and TLS) cannot be overridden here.
+$$

@@ -13,11 +13,17 @@
 Source connection handler
 """
 
+import asyncio
+from dataclasses import dataclass, field
+from typing import Any
+
+import nats
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
 
 from metadata.clients.aws_client import AWSClient
+from metadata.clients.nats_client import build_connect_options, cleanup_temp_secrets
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -33,6 +39,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.openlineage.
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    ConsumerOffsets as NatsConsumerOffsets,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection as OpenLineageConnectionConfig,
 )
@@ -46,7 +58,10 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
+
+logger = ingestion_logger()
 
 
 def _get_kafka_connection(
@@ -125,8 +140,104 @@ def _get_kinesis_connection(broker: KinesisBrokerConfig):
         raise SourceConnectionException(msg)  # noqa: B904
 
 
-class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaConsumer | BaseClient]):
-    def _get_client(self) -> KafkaConsumer | BaseClient:
+@dataclass
+class NatsJetStreamClient:
+    """
+    Synchronous view of a JetStream pull consumer.
+
+    nats-py is asyncio-only while the connector is a synchronous batch job, so the client
+    owns an event loop and runs each call on it.
+    """
+
+    nc: Any
+    subscription: Any
+    _loop: asyncio.AbstractEventLoop = field(repr=False)
+    _temp_files: list[str] = field(default_factory=list)
+
+    def fetch(self, batch: int, timeout: float) -> list[Any]:
+        """Return up to `batch` messages, or an empty list when the stream is idle."""
+
+        async def _fetch() -> list[Any]:
+            try:
+                return await self.subscription.fetch(batch, timeout=timeout)
+            except (asyncio.TimeoutError, nats.errors.TimeoutError):
+                return []
+
+        return self._loop.run_until_complete(_fetch())
+
+    def ack(self, message: Any) -> None:
+        self._loop.run_until_complete(message.ack())
+
+    def stream_info(self, stream_name: str) -> Any:
+        async def _info() -> Any:
+            return await self.nc.jetstream().stream_info(stream_name)
+
+        return self._loop.run_until_complete(_info())
+
+    def close(self) -> None:
+        async def _drain() -> None:
+            await self.nc.drain()
+
+        try:
+            if not self._loop.is_closed():
+                self._loop.run_until_complete(_drain())
+        except Exception as exc:
+            logger.warning(f"Error draining NATS connection: {exc}")
+        finally:
+            if not self._loop.is_closed():
+                self._loop.close()
+            cleanup_temp_secrets(self._temp_files)
+
+
+def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
+    from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
+
+    loop = asyncio.new_event_loop()
+    temp_files: list[str] = []
+    try:
+        options = build_connect_options(
+            servers=broker.natsServers,
+            auth=broker.authType,
+            tls_config=broker.tlsConfig,
+            additional_config=broker.additionalConfig,
+            temp_files=temp_files,
+        )
+        deliver_policy = DeliverPolicy.NEW if broker.consumerOffsets == NatsConsumerOffsets.NEW else DeliverPolicy.ALL
+        # Every subject of the stream, unless the user narrowed it down
+        filter_subject = broker.subject or ">"
+
+        async def _connect() -> tuple[Any, Any]:
+            nc = await nats.connect(**options)
+            js = nc.jetstream()
+            consumer = ConsumerConfig(
+                durable_name=broker.durableConsumerName,
+                filter_subject=filter_subject,
+                deliver_policy=deliver_policy,
+                ack_policy=AckPolicy.EXPLICIT,
+                ack_wait=broker.ackWait,
+            )
+            try:
+                await js.add_consumer(broker.streamName, config=consumer)
+            except Exception as exc:
+                # A durable consumer that already exists keeps its own settings and its
+                # position in the stream, which is the point of reusing the name
+                logger.debug(f"Reusing the existing JetStream consumer: {exc}")
+            subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
+            return nc, subscription
+
+        nc, subscription = loop.run_until_complete(_connect())
+    except Exception as exc:
+        cleanup_temp_secrets(temp_files)
+        loop.close()
+        msg = f"Unknown error connecting with NATS: {exc}."
+        raise SourceConnectionException(msg)  # noqa: B904
+    return NatsJetStreamClient(nc=nc, subscription=subscription, _loop=loop, _temp_files=temp_files)
+
+
+class OpenLineageConnection(
+    BaseConnection[OpenLineageConnectionConfig, KafkaConsumer | BaseClient | NatsJetStreamClient]
+):
+    def _get_client(self) -> KafkaConsumer | BaseClient | NatsJetStreamClient:
         """
         Create connection based on broker config type.
         """
@@ -143,6 +254,11 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
             client = _get_kinesis_connection(broker)
             self._on_close(client.close)
             return client
+
+        if isinstance(broker, NatsBrokerConfig):
+            nats_client = _get_nats_connection(broker)
+            self._on_close(nats_client.close)
+            return nats_client
 
         raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
@@ -171,6 +287,13 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
 
             def custom_executor():
                 client.describe_stream_summary(StreamName=broker.streamName)  # pyright: ignore[reportAttributeAccessIssue]
+
+            test_fn = {"CheckBrokerConnectivity": custom_executor}
+
+        elif isinstance(broker, NatsBrokerConfig):
+
+            def custom_executor():
+                client.stream_info(broker.streamName)  # pyright: ignore[reportAttributeAccessIssue]
 
             test_fn = {"CheckBrokerConnectivity": custom_executor}
 

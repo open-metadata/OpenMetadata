@@ -394,7 +394,7 @@ class TestNatsBuildConnectOpts:
         temp_files: list = []
         mock_ctx = MagicMock(spec=ssl.SSLContext)
         with patch(
-            "metadata.ingestion.source.messaging.nats.connection.ssl.create_default_context",
+            "metadata.clients.nats_client.ssl.create_default_context",
             return_value=mock_ctx,
         ):
             opts = _build_connect_opts(conn, temp_files)
@@ -431,11 +431,11 @@ class TestNatsBuildConnectOpts:
 
         with (
             patch(
-                "metadata.ingestion.source.messaging.nats.connection.ssl.create_default_context",
+                "metadata.clients.nats_client.ssl.create_default_context",
                 return_value=context,
             ),
             patch(
-                "metadata.ingestion.source.messaging.nats.connection._write_temp_cert",
+                "metadata.clients.nats_client.write_temp_secret",
                 side_effect=["/tmp/cert.pem", "/tmp/key.pem"],
             ) as write_temp_cert,
         ):
@@ -471,7 +471,7 @@ class TestNatsBuildConnectOpts:
 
         with (
             patch(
-                "metadata.ingestion.source.messaging.nats.connection.write_secret_temp_file",
+                "metadata.clients.nats_client.write_secret_temp_file",
                 side_effect=OSError("disk full"),
             ),
             pytest.raises(OSError, match="disk full"),
