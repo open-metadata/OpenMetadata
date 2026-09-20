@@ -90,22 +90,6 @@ const nodePosition = async (page: Page, label: string) => {
     width: box.width,
   };
 };
-const expectPosition = async (
-  page: Page,
-  label: string,
-  position: { x: number; y: number; width: number }
-) => {
-  await expect
-    .poll(async () => {
-      const current = await nodePosition(page, label);
-      return Math.max(
-        Math.abs(current.x - position.x),
-        Math.abs(current.y - position.y),
-        Math.abs(current.width - position.width)
-      );
-    })
-    .toBeLessThan(2);
-};
 const zoomLabel = async (page: Page) =>
   (await page.getByTestId('graph-view-controls').innerText()).match(
     /\d+%/
@@ -512,9 +496,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       page.getByTestId('graph-level-rings').locator('rect')
     ).toHaveCount(2);
-    const outer = await nodePosition(page, 'Extended table');
     await page.getByTestId('graph-filters-toggle').click();
-    // Opening the filter row resizes the canvas; take the position after that change.
+    // Baseline after the filter row opens: it resizes the canvas, and reading
+    // across that reflow compares two different canvas sizes.
+    const outer = await nodePosition(page, 'Extended table');
+    const zoomBeforeFilter = await zoomLabel(page);
     await page
       .getByRole('button', { name: 'Entity Type', exact: true })
       .click();
@@ -525,9 +511,18 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'data-level',
       '3'
     );
+    // The viewport is the claim here, and the viewport is the zoom and framing —
+    // `fitKey` covers mode, level, presentation, ontology concept, excluded
+    // families and expansion, and deliberately not `filters`, so applying one
+    // must not re-frame. Node *positions* are a different thing: filtering
+    // refetches (the route mock answers a second /rdf/graph/explore with only
+    // the matching types), so the graph lays out a smaller set and nodes move by
+    // design. Asserting a node's x here asserted layout invariance under a data
+    // change, which nothing promises — it held while the old and new layouts
+    // happened to agree.
     const filteredOuter = await nodePosition(page, 'Extended table');
     expect(filteredOuter.width).toBeCloseTo(outer.width, 1);
-    expect(filteredOuter.x).toBeCloseTo(outer.x, 1);
+    expect(await zoomLabel(page)).toBe(zoomBeforeFilter);
     await page
       .getByRole('button', { name: 'Clear Filters', exact: true })
       .click();
@@ -588,11 +583,17 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       page.locator('.knowledge-graph-custom-node.dimmed')
     ).toHaveCount(0);
-    const position = await nodePosition(page, 'Orders');
     const before = await paintedPixels(page);
     await chooseView(page, 'No labels');
     await expect(page.locator('[data-edge-id]')).toHaveCount(12);
-    await expectPosition(page, 'Orders', position);
+    // Every relationship survives the switch — that is what this test is named
+    // for, and the edge count is what carries it. Node geometry is not: dropping
+    // labels resizes the nodes, the canvas lays the smaller set out again, and
+    // `fitKey` excludes `labelMode` precisely so that relayout does not re-frame
+    // the viewport. Holding a node to its pre-switch x/y/width asserted that the
+    // layout is idempotent across a resize, which is a stronger claim than the
+    // graph makes and than this test is about.
+    await expect(page.getByTestId('node-Orders')).toBeVisible();
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect.poll(() => paintedPixels(page)).toBeLessThan(before);
     await chooseView(page, 'All labels');
@@ -608,7 +609,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       page.getByTestId('legend-item-other').getByRole('button')
     ).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('[data-edge-id]')).toHaveCount(12);
-    await expectPosition(page, 'Orders', position);
+    await expect(page.getByTestId('node-Orders')).toBeVisible();
     await expect(
       page.locator('.knowledge-graph-custom-node.dimmed')
     ).not.toHaveCount(0);
