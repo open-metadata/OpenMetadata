@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class OpenLineageConnectionClassConverterTest {
@@ -44,6 +46,25 @@ class OpenLineageConnectionClassConverterTest {
 
     assertNotNull(result);
     assertInstanceOf(KinesisBrokerConfig.class, result.getBrokerConfig());
+  }
+
+  @Test
+  void testConvertsNatsBrokerConfig() {
+    NatsBrokerConfig natsBrokerConfig =
+        new NatsBrokerConfig()
+            .withNatsServers("nats://localhost:4222")
+            .withStreamName("OPENLINEAGE")
+            // jsonschema2pojo generates the oneOf as Object, as it does for the NATS
+            // messaging connection
+            .withAuthType(Map.of("token", "s3cret"));
+
+    OpenLineageConnection input = new OpenLineageConnection().withBrokerConfig(natsBrokerConfig);
+    Object rawInput = JsonUtils.readValue(JsonUtils.pojoToJson(input), Object.class);
+
+    OpenLineageConnection result = (OpenLineageConnection) converter.convert(rawInput);
+
+    assertNotNull(result);
+    assertInstanceOf(NatsBrokerConfig.class, result.getBrokerConfig());
   }
 
   @Test
