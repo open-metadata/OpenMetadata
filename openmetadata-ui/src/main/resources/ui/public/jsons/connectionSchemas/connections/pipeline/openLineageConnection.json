@@ -325,25 +325,6 @@
           "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
           "type": "object",
           "additionalProperties": false,
-          "definitions": {
-            "credentialsAuth": {
-              "title": "Credentials File",
-              "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
-              "type": "object",
-              "properties": {
-                "credentials": {
-                  "title": "Credentials File Contents",
-                  "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
-                  "type": "string",
-                  "format": "password"
-                }
-              },
-              "required": [
-                "credentials"
-              ],
-              "additionalProperties": false
-            }
-          },
           "properties": {
             "natsServers": {
               "title": "NATS Servers",
@@ -417,10 +398,13 @@
             "authType": {
               "title": "Authentication Type",
               "description": "NATS authentication method. Leave empty for anonymous authentication.",
+              "mask": true,
               "oneOf": [
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Username and Password",
                   "description": "Username and password authentication for NATS.",
+                  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
                   "type": "object",
                   "properties": {
                     "username": {
@@ -442,8 +426,10 @@
                   "additionalProperties": false
                 },
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Token",
                   "description": "Token-based authentication for NATS.",
+                  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
                   "type": "object",
                   "properties": {
                     "token": {
@@ -459,8 +445,10 @@
                   "additionalProperties": false
                 },
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "NKey Seed",
                   "description": "NKey seed authentication for NATS.",
+                  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
                   "type": "object",
                   "properties": {
                     "nkeySeed": {
@@ -476,8 +464,10 @@
                   "additionalProperties": false
                 },
                 {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
                   "title": "Credentials File",
                   "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+                  "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
                   "type": "object",
                   "properties": {
                     "credentials": {

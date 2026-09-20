@@ -18,10 +18,14 @@ consumes OpenLineage events from a JetStream stream.
 import ssl
 from typing import Any
 
-from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
-    BasicAuth,
-    NkeyAuth,
-    TokenAuth,
+from metadata.generated.schema.entity.services.connections.messaging.nats.basicAuth import (
+    UsernameAndPassword as BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.nkeyAuth import (
+    NkeySeed as NkeyAuth,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.tokenAuth import (
+    Token as TokenAuth,
 )
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSslClientConfig,

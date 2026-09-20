@@ -31,7 +31,11 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
+import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 
@@ -87,6 +91,46 @@ public class DBSecretsManagerTest {
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
     assertNotSame(connection, actualConfig);
+  }
+
+  @Test
+  void testEncryptNatsMessagingConnectionToken() {
+    // authType is a `oneOf` and so is generated as Object; left as a LinkedHashMap the
+    // reflection walk never reaches the token and it is stored in the clear
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://localhost:4222")
+            .withAuthType(new TokenAuth().withToken(DECRYPTED_VALUE));
+
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "Nats", "test", ServiceType.MESSAGING);
+
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(((NatsConnection) actualConfig).getAuthType(), TokenAuth.class)
+            .getToken());
+  }
+
+  @Test
+  void testEncryptOpenLineageNatsBrokerToken() {
+    OpenLineageConnection connection =
+        new OpenLineageConnection()
+            .withBrokerConfig(
+                new NatsBrokerConfig()
+                    .withNatsServers("nats://localhost:4222")
+                    .withStreamName("OPENLINEAGE")
+                    .withAuthType(new TokenAuth().withToken(DECRYPTED_VALUE)));
+
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "OpenLineage", "test", ServiceType.PIPELINE);
+
+    NatsBrokerConfig brokerConfig =
+        (NatsBrokerConfig) ((OpenLineageConnection) actualConfig).getBrokerConfig();
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(brokerConfig.getAuthType(), TokenAuth.class).getToken());
   }
 
   @Test

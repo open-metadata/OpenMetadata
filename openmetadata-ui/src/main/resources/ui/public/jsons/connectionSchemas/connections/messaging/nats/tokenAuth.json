@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Token",
+  "description": "Token-based authentication for NATS.",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
+  "type": "object",
+  "properties": {
+    "token": {
+      "title": "Token",
+      "description": "Token for NATS authentication.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": [
+    "token"
+  ],
+  "additionalProperties": false
+}

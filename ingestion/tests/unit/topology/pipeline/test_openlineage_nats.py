@@ -19,13 +19,17 @@ from unittest.mock import MagicMock
 import pytest
 
 from metadata.clients.nats_client import build_connect_options, cleanup_temp_secrets
-from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
-    BasicAuth,
-    NkeyAuth,
-    TokenAuth,
+from metadata.generated.schema.entity.services.connections.messaging.nats.basicAuth import (
+    UsernameAndPassword as BasicAuth,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
-    CredentialsAuth,
+from metadata.generated.schema.entity.services.connections.messaging.nats.nkeyAuth import (
+    NkeySeed as NkeyAuth,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.tokenAuth import (
+    Token as TokenAuth,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.nats.credentialsAuth import (
+    CredentialsFile as CredentialsAuth,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
     Nats as NatsBrokerConfig,

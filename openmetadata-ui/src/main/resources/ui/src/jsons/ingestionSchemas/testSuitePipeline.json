@@ -10675,63 +10675,6 @@
                             "Nats"
                           ],
                           "default": "Nats"
-                        },
-                        "basicAuth": {
-                          "title": "Username and Password",
-                          "description": "Username and password authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "Username for NATS authentication.",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "Password for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "tokenAuth": {
-                          "title": "Token",
-                          "description": "Token-based authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "token": {
-                              "title": "Token",
-                              "description": "Token for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "token"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "nkeyAuth": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "nkeySeed": {
-                              "title": "NKey Seed",
-                              "description": "NKey seed for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "nkeySeed"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -10749,15 +10692,70 @@
                         "authType": {
                           "title": "Authentication Type",
                           "description": "NATS authentication method. Leave empty for anonymous authentication.",
+                          "mask": true,
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/basicAuth"
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "title": "Username and Password",
+                              "description": "Username and password authentication for NATS.",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
+                              "type": "object",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Username for NATS authentication.",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "Password for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/tokenAuth"
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "title": "Token",
+                              "description": "Token-based authentication for NATS.",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
+                              "type": "object",
+                              "properties": {
+                                "token": {
+                                  "title": "Token",
+                                  "description": "Token for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "token"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/nkeyAuth"
+                              "$schema": "http://json-schema.org/draft-07/schema#",
+                              "title": "NKey Seed",
+                              "description": "NKey seed authentication for NATS.",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
+                              "type": "object",
+                              "properties": {
+                                "nkeySeed": {
+                                  "title": "NKey Seed",
+                                  "description": "NKey seed for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "nkeySeed"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -13484,25 +13482,6 @@
                               "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
                               "type": "object",
                               "additionalProperties": false,
-                              "definitions": {
-                                "credentialsAuth": {
-                                  "title": "Credentials File",
-                                  "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
-                                  "type": "object",
-                                  "properties": {
-                                    "credentials": {
-                                      "title": "Credentials File Contents",
-                                      "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
-                                      "type": "string",
-                                      "format": "password"
-                                    }
-                                  },
-                                  "required": [
-                                    "credentials"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              },
                               "properties": {
                                 "natsServers": {
                                   "title": "NATS Servers",
@@ -13576,18 +13555,35 @@
                                 "authType": {
                                   "title": "Authentication Type",
                                   "description": "NATS authentication method. Leave empty for anonymous authentication.",
+                                  "mask": true,
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/basicAuth"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/0"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/tokenAuth"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/1"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/nkeyAuth"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/2"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/5/properties/config/oneOf/15/properties/brokerConfig/oneOf/2/definitions/credentialsAuth"
+                                      "$schema": "http://json-schema.org/draft-07/schema#",
+                                      "title": "Credentials File",
+                                      "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+                                      "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
+                                      "type": "object",
+                                      "properties": {
+                                        "credentials": {
+                                          "title": "Credentials File Contents",
+                                          "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
+                                          "type": "string",
+                                          "format": "password"
+                                        }
+                                      },
+                                      "required": [
+                                        "credentials"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   ]
                                 },
