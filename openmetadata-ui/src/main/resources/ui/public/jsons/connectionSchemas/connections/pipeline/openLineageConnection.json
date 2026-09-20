@@ -25,7 +25,7 @@
     },
     "brokerConfig": {
       "title": "Broker Configuration",
-      "description": "Event broker configuration. Choose between Kafka and Kinesis.",
+      "description": "Event broker configuration. Choose between Kafka, Kinesis and NATS.",
       "oneOf": [
         {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -316,6 +316,265 @@
           "required": [
             "streamName",
             "awsConfig"
+          ]
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Nats",
+          "description": "NATS JetStream configuration for OpenLineage events.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
+          "type": "object",
+          "additionalProperties": false,
+          "definitions": {
+            "credentialsAuth": {
+              "title": "Credentials File",
+              "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+              "type": "object",
+              "properties": {
+                "credentials": {
+                  "title": "Credentials File Contents",
+                  "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
+                  "type": "string",
+                  "format": "password"
+                }
+              },
+              "required": [
+                "credentials"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "properties": {
+            "natsServers": {
+              "title": "NATS Servers",
+              "description": "NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222",
+              "type": "string"
+            },
+            "streamName": {
+              "title": "Stream Name",
+              "description": "JetStream stream holding the OpenLineage events.",
+              "type": "string"
+            },
+            "subject": {
+              "title": "Subject Filter",
+              "description": "Subject to consume from the stream. Defaults to all subjects of the stream.",
+              "type": "string"
+            },
+            "durableConsumerName": {
+              "title": "Durable Consumer Name",
+              "description": "Durable JetStream consumer name. Reusing it resumes where the previous run stopped.",
+              "type": "string",
+              "default": "openmetadata"
+            },
+            "consumerOffsets": {
+              "title": "Initial Consumer Offsets",
+              "description": "Where a new durable consumer starts reading.",
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "new"
+              ],
+              "javaEnums": [
+                {
+                  "name": "ALL"
+                },
+                {
+                  "name": "NEW"
+                }
+              ]
+            },
+            "batchSize": {
+              "title": "Fetch Batch Size",
+              "description": "Number of events fetched per request.",
+              "type": "integer",
+              "default": 100
+            },
+            "poolTimeout": {
+              "title": "Single Fetch Call Timeout",
+              "description": "Max allowed wait time for a single fetch, in seconds.",
+              "type": "number",
+              "default": 1
+            },
+            "sessionTimeout": {
+              "title": "Broker Inactive Session Timeout",
+              "description": "Max allowed inactivity time before the run ends, in seconds.",
+              "type": "integer",
+              "default": 30
+            },
+            "ackWait": {
+              "title": "Acknowledgement Wait",
+              "description": "How long JetStream waits for an acknowledgement before redelivering an event, in seconds.",
+              "type": "integer",
+              "default": 60
+            },
+            "maxDeliver": {
+              "title": "Max Delivery Attempts",
+              "description": "How many times JetStream redelivers an event that is never acknowledged, before it gives up. Keeps an event that ingestion cannot process from being retried on every run.",
+              "type": "integer",
+              "default": 5
+            },
+            "authType": {
+              "title": "Authentication Type",
+              "description": "NATS authentication method. Leave empty for anonymous authentication.",
+              "oneOf": [
+                {
+                  "title": "Username and Password",
+                  "description": "Username and password authentication for NATS.",
+                  "type": "object",
+                  "properties": {
+                    "username": {
+                      "title": "Username",
+                      "description": "Username for NATS authentication.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password for NATS authentication.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "required": [
+                    "username",
+                    "password"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "title": "Token",
+                  "description": "Token-based authentication for NATS.",
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "title": "Token",
+                      "description": "Token for NATS authentication.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "required": [
+                    "token"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "title": "NKey Seed",
+                  "description": "NKey seed authentication for NATS.",
+                  "type": "object",
+                  "properties": {
+                    "nkeySeed": {
+                      "title": "NKey Seed",
+                      "description": "NKey seed for NATS authentication.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "required": [
+                    "nkeySeed"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "title": "Credentials File",
+                  "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+                  "type": "object",
+                  "properties": {
+                    "credentials": {
+                      "title": "Credentials File Contents",
+                      "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
+                      "type": "string",
+                      "format": "password"
+                    }
+                  },
+                  "required": [
+                    "credentials"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "tlsConfig": {
+              "title": "TLS Configuration",
+              "description": "TLS/SSL configuration for secure NATS connections.",
+              "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+              "mask": true,
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Validate SSL Client Config",
+                  "description": "OpenMetadata Client configured to validate SSL certificates.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                  "additionalProperties": false,
+                  "properties": {
+                    "caCertificate": {
+                      "title": "CA Certificate",
+                      "description": "The CA certificate used for SSL validation.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslCertificate": {
+                      "title": "SSL Certificate",
+                      "description": "The SSL certificate used for client authentication.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslKey": {
+                      "title": "SSL Key",
+                      "description": "The private key associated with the SSL certificate.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    }
+                  }
+                }
+              ]
+            },
+            "additionalConfig": {
+              "title": "Additional NATS Config",
+              "description": "Additional NATS client configuration options. See https://nats-io.github.io/nats.py/",
+              "type": "object",
+              "default": {},
+              "propertyNames": {
+                "not": {
+                  "enum": [
+                    "servers",
+                    "user",
+                    "password",
+                    "token",
+                    "nkeys_seed",
+                    "nkeys_seed_str",
+                    "tls",
+                    "user_credentials",
+                    "signature_cb",
+                    "user_jwt_cb"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "natsServers",
+            "streamName"
           ]
         }
       ]
