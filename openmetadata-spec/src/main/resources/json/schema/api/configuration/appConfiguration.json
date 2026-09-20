@@ -11,6 +11,12 @@
       "type": ["string", "null"],
       "enum": ["ai", "classic", null],
       "default": null
+    },
+    "defaultTimeFormat": {
+      "description": "Tenant-wide default time format for UI display. User-level preference overrides this. Null means no tenant default is configured.",
+      "type": ["string", "null"],
+      "enum": ["12h", "24h", null],
+      "default": null
     }
   },
   "additionalProperties": false

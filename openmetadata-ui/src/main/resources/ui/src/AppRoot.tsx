@@ -23,8 +23,8 @@ import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
 import {
-  getCustomUiThemePreference,
-  getSystemConfig,
+    getAppConfiguration, getCustomUiThemePreference,
+    getSystemConfig
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
@@ -50,25 +50,26 @@ const AppRoot: FC = () => {
 
   const fetchApplicationConfig = async () => {
     try {
-      // Handle promises independently so a theme fetch failure doesn't
-      // drop the successfully fetched tenant timeFormat default.
       const themeDataPromise = getCustomUiThemePreference().catch((err) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to fetch theme data:', err);
 
         return null;
       });
-
       const systemConfigPromise = getSystemConfig().catch((err) => {
-        // eslint-disable-next-line no-console
         console.error('Failed to fetch system config:', err);
 
         return null;
       });
+      const appConfigPromise = getAppConfiguration().catch((err) => {
+        console.error('Failed to fetch app configuration:', err);
 
-      const [themeData, systemConfig] = await Promise.all([
+        return null;
+      });
+
+      const [themeData, systemConfig, appConfig] = await Promise.all([
         themeDataPromise,
         systemConfigPromise,
+        appConfigPromise,
       ]);
 
       if (themeData) {
@@ -77,13 +78,14 @@ const AppRoot: FC = () => {
           customTheme: getThemeConfig(themeData.customTheme),
         });
       }
-
       if (systemConfig) {
         setRdfEnabled(systemConfig.rdfEnabled || false);
-        setTimeFormat(systemConfig.timeFormat || '12h');
+      }
+
+      if (appConfig) {
+        setTimeFormat((appConfig.defaultTimeFormat as '12h' | '24h') || '12h');
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };
