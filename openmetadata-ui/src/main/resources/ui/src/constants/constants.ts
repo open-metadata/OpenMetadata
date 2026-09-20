@@ -342,7 +342,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
-  SETTINGS_DEFAULT_TIME_FORMAT = '/settings/default-time-format',
+  SETTINGS_DEFAULT_TIME_FORMAT: '/settings/default-time-format',
 };
 
 export const SOCKET_EVENTS = {
