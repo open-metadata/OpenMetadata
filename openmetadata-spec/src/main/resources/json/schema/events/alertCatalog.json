@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertCatalog.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertCatalogFile",
+  "description": "Everything an alert can watch and the conditions it can use. Every filter and trigger is written once; sources name the ones they support. The catalog only grows: what an earlier release offered is kept as removed, never deleted, so every saved alert still builds.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertCatalogFile",
+  "properties": {
+    "filters": {
+      "description": "Filters, each written once.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventFilterRule.json"
+      }
+    },
+    "triggers": {
+      "description": "Triggers, each written once.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventFilterRule.json"
+      }
+    },
+    "removedTriggers": {
+      "description": "Triggers of an earlier release. Never offered; kept so alerts saved then still build.",
+      "type": "array",
+      "items": {
+        "$ref": "./eventFilterRule.json"
+      }
+    },
+    "notificationSources": {
+      "description": "Sources of Notification alerts.",
+      "type": "array",
+      "items": {
+        "$ref": "./alertCatalogSource.json"
+      }
+    },
+    "observabilitySources": {
+      "description": "Sources of Observability alerts.",
+      "type": "array",
+      "items": {
+        "$ref": "./alertCatalogSource.json"
+      }
+    }
+  },
+  "required": ["filters", "triggers", "notificationSources", "observabilitySources"],
+  "additionalProperties": false
+}

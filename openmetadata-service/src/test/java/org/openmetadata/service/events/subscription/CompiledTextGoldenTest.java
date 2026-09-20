@@ -21,7 +21,6 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
  * The text stored for an alert is what servers of the previous release evaluate, so for an alert
@@ -36,10 +35,8 @@ class CompiledTextGoldenTest {
   private static final List<String> FIXTURE_VALUES = List.of("first value", "second 'quoted'");
 
   @BeforeAll
-  static void loadCatalog() throws IOException {
-    EventsSubscriptionRegistry.initialize(
-        listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
-        listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
+  static void loadCatalog() {
+    EventsSubscriptionRegistry.initialize(AlertCatalog.load());
   }
 
   @Test

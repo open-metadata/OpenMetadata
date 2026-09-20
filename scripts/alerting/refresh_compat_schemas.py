@@ -44,6 +44,21 @@ def closure(ref: str) -> dict[str, str]:
     return found
 
 
+EVALUATOR = (
+    "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/"
+    "AlertsRuleEvaluator.java"
+)
+
+
+def condition_functions(ref: str) -> str:
+    """The functions a stored condition may call on a server of that release, one per line."""
+    source = subprocess.run(
+        ["git", "show", f"{ref}:{EVALUATOR}"], capture_output=True, text=True, check=True
+    ).stdout
+    names = re.findall(r'@Function\(\s*name\s*=\s*"([^"]+)"', source)
+    return "".join(f"{name}\n" for name in sorted(set(names)))
+
+
 def main() -> None:
     ref = sys.argv[1]
     for path, text in closure(ref).items():
@@ -53,6 +68,7 @@ def main() -> None:
         destination = TARGET / path
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(json.dumps(schema, indent=2) + "\n")
+    (TARGET.parent.parent / "condition-functions.txt").write_text(condition_functions(ref))
     (TARGET.parent.parent / "SOURCE").write_text(f"{ref}\n")
 
 

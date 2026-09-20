@@ -1,0 +1,17 @@
+filterByEntityNameDataContractBelongsTo
+filterByTableNameTestCaseBelongsTo
+getTestCaseStatusIfInTestSuite
+isBot
+matchAnyDomain
+matchAnyEntityFqn
+matchAnyEntityId
+matchAnyEventType
+matchAnyFieldChange
+matchAnyOwnerName
+matchAnySource
+matchConversationUser
+matchDataContractStatus
+matchIngestionPipelineState
+matchPipelineState
+matchTestResult
+matchUpdatedBy

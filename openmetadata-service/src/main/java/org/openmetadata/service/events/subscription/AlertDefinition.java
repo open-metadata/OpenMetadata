@@ -56,7 +56,9 @@ public final class AlertDefinition {
   public static FilteringRules compileOrKeep(EventSubscription alert, FilteringRules stored) {
     FilteringRules compiled = stored;
     try {
-      compiled = compileStrictly(alert);
+      compiled =
+          AlertUtil.rebuildStoredFilteringConditions(
+              sourcesOf(alert), alert.getAlertType(), alert.getInput());
     } catch (RuntimeException e) {
       LOG.info("Alert {} keeps its stored conditions: {}", alert.getName(), e.getMessage());
     }
