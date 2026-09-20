@@ -14,6 +14,7 @@ Source connection handler
 """
 
 import asyncio
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -63,6 +64,9 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
+
+# Bound for the JetStream control calls: acknowledgements, flush and stream lookups
+ACK_TIMEOUT_SECONDS = 5.0
 
 
 def _get_kafka_connection(
@@ -146,14 +150,21 @@ class NatsJetStreamClient:
     """
     Synchronous view of a JetStream pull consumer.
 
-    nats-py is asyncio-only while the connector is a synchronous batch job, so the client
-    owns an event loop and runs each call on it.
+    nats-py is asyncio-only while the connector is a synchronous batch job. The loop runs
+    on its own daemon thread rather than only inside each call: the connector spends most
+    of a run suspended in the middle of its generator, and a loop that only runs during
+    fetch() cannot answer the server's PINGs, so the server drops the connection as stale
+    and every acknowledgement published while disconnected is silently discarded.
     """
 
     nc: Any
     subscription: Any
     _loop: asyncio.AbstractEventLoop = field(repr=False)
+    _thread: threading.Thread = field(repr=False)
     _temp_files: list[str] = field(default_factory=list)
+
+    def _run(self, coro: Any, timeout: float | None = None) -> Any:
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout=timeout)
 
     def fetch(self, batch: int, timeout: float) -> list[Any]:
         """Return up to `batch` messages, or an empty list when the stream is idle."""
@@ -164,39 +175,57 @@ class NatsJetStreamClient:
             except (asyncio.TimeoutError, nats.errors.TimeoutError):
                 return []
 
-        return self._loop.run_until_complete(_fetch())
+        return self._run(_fetch(), timeout=timeout + ACK_TIMEOUT_SECONDS)
 
     def ack(self, message: Any) -> None:
-        self._loop.run_until_complete(message.ack())
+        """Acknowledge an event, waiting for the server to confirm it."""
+        # ack() only publishes; ack_sync() waits for the server, so a failure surfaces
+        # here instead of leaving the event to be redelivered on the next run
+        self._run(message.ack_sync(timeout=ACK_TIMEOUT_SECONDS), timeout=ACK_TIMEOUT_SECONDS * 2)
+
+    def in_progress(self, message: Any) -> None:
+        """Tell the server the event is still being processed, resetting its ack timer."""
+        self._run(message.in_progress(), timeout=ACK_TIMEOUT_SECONDS)
 
     def stream_info(self, stream_name: str) -> Any:
         async def _info() -> Any:
             return await self.nc.jetstream().stream_info(stream_name)
 
-        return self._loop.run_until_complete(_info())
+        return self._run(_info(), timeout=ACK_TIMEOUT_SECONDS)
 
     def close(self) -> None:
         async def _close() -> None:
             # Flush the acknowledgements, then close: draining a pull consumer waits for
             # deliveries that are not coming and times out
-            await self.nc.flush(timeout=5)
+            await self.nc.flush(timeout=ACK_TIMEOUT_SECONDS)
             await self.nc.close()
 
         try:
             if not self._loop.is_closed():
-                self._loop.run_until_complete(_close())
+                self._run(_close(), timeout=ACK_TIMEOUT_SECONDS * 2)
         except Exception as exc:
-            logger.warning("Error draining NATS connection: %s", exc)
+            logger.warning("Error closing the NATS connection: %s", exc)
         finally:
             if not self._loop.is_closed():
-                self._loop.close()
+                self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join(timeout=ACK_TIMEOUT_SECONDS)
             cleanup_temp_secrets(self._temp_files)
+
+
+def _run_event_loop(loop: asyncio.AbstractEventLoop) -> None:
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_forever()
+    finally:
+        loop.close()
 
 
 def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
     from nats.js.api import AckPolicy, ConsumerConfig, DeliverPolicy
 
     loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=_run_event_loop, args=(loop,), name="openmetadata-nats", daemon=True)
+    thread.start()
     temp_files: list[str] = []
     try:
         options = build_connect_options(
@@ -239,13 +268,14 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
                 raise
             return nc, subscription
 
-        nc, subscription = loop.run_until_complete(_connect())
+        nc, subscription = asyncio.run_coroutine_threadsafe(_connect(), loop).result()
     except Exception as exc:
         cleanup_temp_secrets(temp_files)
-        loop.close()
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(timeout=ACK_TIMEOUT_SECONDS)
         msg = f"Unknown error connecting with NATS: {exc}."
         raise SourceConnectionException(msg)  # noqa: B904
-    return NatsJetStreamClient(nc=nc, subscription=subscription, _loop=loop, _temp_files=temp_files)
+    return NatsJetStreamClient(nc=nc, subscription=subscription, _loop=loop, _thread=thread, _temp_files=temp_files)
 
 
 class OpenLineageConnection(

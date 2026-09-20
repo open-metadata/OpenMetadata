@@ -1329,27 +1329,49 @@ class OpenlineageSource(PipelineServiceSource):
                     continue
 
                 idle_time = 0.0
-                for message in messages:
+                for position, message in enumerate(messages):
+                    parsed = None
                     try:
-                        _result = message_to_open_lineage_event(json.loads(message.data))
-                        result = self._filter_event_by_types(
-                            _result,
+                        event = message_to_open_lineage_event(json.loads(message.data))
+                        parsed = self._filter_event_by_types(
+                            event,
                             [EventType.COMPLETE, EventType.RUNNING, EventType.START],
                         )
-                        if result:
-                            yield result
                     except Exception as e:
                         logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
                         logger.debug(traceback.format_exc())
+
+                    # The whole batch's acknowledgement timers start together, so tell the
+                    # server the rest are still being worked on before handing this one to
+                    # the pipeline; otherwise a slow run has them redelivered underneath it
+                    self._keep_batch_alive(client, messages[position + 1 :])
+                    if parsed:
+                        yield parsed
+
                     # Acknowledged once the connector has handed the event on. The
                     # ingestion pipeline reports its own failures in the run status and
                     # does not report them back here, so redelivery covers a run that
                     # died mid-batch, not an event the pipeline rejected.
-                    client.ack(message)
+                    try:
+                        client.ack(message)
+                    except Exception as e:
+                        # The event stays unacknowledged and comes back next run; that is
+                        # better than losing the rest of this batch
+                        logger.warning("Failed to acknowledge a NATS message: %s", e)
+                        logger.debug(traceback.format_exc())
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    @staticmethod
+    def _keep_batch_alive(client: Any, pending: list[Any]) -> None:
+        """Reset the acknowledgement timer of the events still waiting in the batch."""
+        for message in pending:
+            try:
+                client.in_progress(message)
+            except Exception as e:
+                logger.debug("Could not extend the NATS acknowledgement timer: %s", e)
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)
