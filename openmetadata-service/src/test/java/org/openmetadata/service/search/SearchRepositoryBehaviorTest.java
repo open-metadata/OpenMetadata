@@ -1133,6 +1133,85 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void retryPropagationDropsTagDeltaThatNoLongerMatchesTheParent() throws IOException {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel removedAfterQueuedAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel readdedAfterQueuedDelete =
+        new TagLabel()
+            .withTagFQN("Glossary.Readded")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(readdedAfterQueuedDelete));
+    ChangeDescription staleDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(removedAfterQueuedAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(readdedAfterQueuedDelete))));
+
+    repository.propagateEntityAfterRetry(table, staleDelta);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void retryPropagationKeepsOnlyTagDeltaConsistentWithTheParent() throws IOException {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel currentTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Current")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel removedTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel staleAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.StaleAdd")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(currentTag));
+    ChangeDescription queuedDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(currentTag, staleAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(removedTag, currentTag))));
+
+    repository.propagateEntityAfterRetry(table, queuedDelta);
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(
+        List.of("Glossary.Current"),
+        ((List<TagLabel>) params.get("tagAdded")).stream().map(TagLabel::getTagFQN).toList());
+    assertEquals(
+        List.of("Glossary.Removed"),
+        ((List<TagLabel>) params.get("tagDeleted")).stream().map(TagLabel::getTagFQN).toList());
+  }
+
+  @Test
   void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
     EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())

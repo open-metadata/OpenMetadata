@@ -2465,12 +2465,105 @@ public class SearchRepository {
       return;
     }
     String entityType = entity.getEntityReference().getType();
+    ChangeDescription currentPropagation =
+        reconcileQueuedTagChanges(entity, propagationChangeDescription);
     if (!checkIfIndexingIsSupported(entityType)
-        || !requiresPropagation(propagationChangeDescription, entityType, entity)) {
+        || !requiresPropagation(currentPropagation, entityType, entity)) {
       return;
     }
     propagateEntitySearchChanges(
-        entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
+        entity, entityType, currentPropagation, entityIndexMap.get(entityType));
+  }
+
+  /**
+   * A retry is processed from a fresh database snapshot, but its propagation context records the
+   * delta that originally failed. The entity can change again while that retry is pending. Replaying
+   * an old add after the tag was removed (or an old delete after it was re-added) would make child
+   * documents stale immediately after the retry reindexed the current entity state.
+   *
+   * <p>Keep an add only while the parent still carries that tag, and keep a delete only while it no
+   * longer does. Other propagated fields retain their original retry context. The returned copy is
+   * safe to rewrite without mutating the context decoded from the queue.
+   */
+  private ChangeDescription reconcileQueuedTagChanges(
+      EntityInterface entity, ChangeDescription queuedChange) {
+    if (queuedChange == null) {
+      return null;
+    }
+
+    ChangeDescription reconciled = JsonUtils.deepCopy(queuedChange, ChangeDescription.class);
+    List<TagLabel> currentTags = listOrEmpty(entity.getTags());
+    reconciled.setFieldsAdded(
+        reconcileQueuedTagFields(reconciled.getFieldsAdded(), currentTags, true, true));
+    reconciled.setFieldsDeleted(
+        reconcileQueuedTagFields(reconciled.getFieldsDeleted(), currentTags, false, false));
+    reconciled.setFieldsUpdated(
+        reconcileQueuedTagUpdates(reconciled.getFieldsUpdated(), currentTags));
+    return reconciled;
+  }
+
+  private List<FieldChange> reconcileQueuedTagFields(
+      List<FieldChange> fieldChanges,
+      List<TagLabel> currentTags,
+      boolean useNewValue,
+      boolean tagMustExist) {
+    List<FieldChange> reconciled = new ArrayList<>();
+    for (FieldChange fieldChange : listOrEmpty(fieldChanges)) {
+      if (!Entity.FIELD_TAGS.equals(fieldChange.getName())) {
+        reconciled.add(fieldChange);
+        continue;
+      }
+
+      Object value = useNewValue ? fieldChange.getNewValue() : fieldChange.getOldValue();
+      List<TagLabel> validTags = currentTagDelta(value, currentTags, tagMustExist);
+      if (!validTags.isEmpty()) {
+        if (useNewValue) {
+          fieldChange.setNewValue(validTags);
+        } else {
+          fieldChange.setOldValue(validTags);
+        }
+        reconciled.add(fieldChange);
+      }
+    }
+    return reconciled;
+  }
+
+  private List<FieldChange> reconcileQueuedTagUpdates(
+      List<FieldChange> fieldChanges, List<TagLabel> currentTags) {
+    List<FieldChange> reconciled = new ArrayList<>();
+    for (FieldChange fieldChange : listOrEmpty(fieldChanges)) {
+      if (!Entity.FIELD_TAGS.equals(fieldChange.getName())) {
+        reconciled.add(fieldChange);
+        continue;
+      }
+
+      List<TagLabel> validAdds = currentTagDelta(fieldChange.getNewValue(), currentTags, true);
+      List<TagLabel> validDeletes = currentTagDelta(fieldChange.getOldValue(), currentTags, false);
+      if (!validAdds.isEmpty() || !validDeletes.isEmpty()) {
+        fieldChange.setNewValue(validAdds);
+        fieldChange.setOldValue(validDeletes);
+        reconciled.add(fieldChange);
+      }
+    }
+    return reconciled;
+  }
+
+  private List<TagLabel> currentTagDelta(
+      Object queuedValue, List<TagLabel> currentTags, boolean tagMustExist) {
+    if (queuedValue == null) {
+      return List.of();
+    }
+    return JsonUtils.readOrConvertValues(queuedValue, TagLabel.class).stream()
+        .filter(queuedTag -> currentTagsContain(currentTags, queuedTag) == tagMustExist)
+        .toList();
+  }
+
+  private boolean currentTagsContain(List<TagLabel> currentTags, TagLabel queuedTag) {
+    return currentTags.stream()
+        .anyMatch(
+            currentTag ->
+                Objects.equals(currentTag.getTagFQN(), queuedTag.getTagFQN())
+                    && Objects.equals(currentTag.getSource(), queuedTag.getSource()));
   }
 
   private void propagateEntitySearchChanges(
