@@ -25,6 +25,7 @@ import {
   fillDescriptionBox,
   redirectToHomePage,
   uuid,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
@@ -252,6 +253,13 @@ test.describe.serial('Persona operations', () => {
       `Are you sure you want to remove ${user.responseData.name}?`
     );
 
+    // The text assertion above is satisfied by the dialog's first scaled frame,
+    // so a press started here can put mousedown on Confirm and mouseup where
+    // Confirm has since moved to. No click is synthesised, the button merely
+    // takes focus, and onOk never runs -- which is exactly how this failed:
+    // the modal still open, Confirm still focused, and not one request sent.
+    await waitForAntdModalToSettle(page);
+
     const updateResponse = page.waitForResponse(`/api/v1/personas/*`);
 
     await page
@@ -268,6 +276,8 @@ test.describe.serial('Persona operations', () => {
     await page.click('[data-testid="manage-button"]');
 
     await page.click('[data-testid="delete-button-title"]');
+
+    await waitForAntdModalToSettle(page);
 
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`
