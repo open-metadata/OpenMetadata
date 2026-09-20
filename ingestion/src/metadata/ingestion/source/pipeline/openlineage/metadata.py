@@ -183,6 +183,11 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
     return payloads
 
 
+DEFAULT_NATS_POOL_TIMEOUT = 1.0
+DEFAULT_NATS_SESSION_TIMEOUT = 30
+DEFAULT_NATS_BATCH_SIZE = 100
+
+
 class OpenlineageSource(PipelineServiceSource):
     """
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
@@ -1309,9 +1314,13 @@ class OpenlineageSource(PipelineServiceSource):
         try:
             client = self.client
             idle_time = 0.0
-            pool_timeout = broker.poolTimeout
-            while idle_time <= broker.sessionTimeout:
-                messages = client.fetch(broker.batchSize, timeout=pool_timeout)
+            # the schema defaults these, but a config built in code can leave them unset;
+            # `or` would also swallow a deliberate 0
+            pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
+            session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
+            batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize
+            while idle_time <= session_timeout:
+                messages = client.fetch(batch_size, timeout=pool_timeout)
                 if not messages:
                     logger.debug("no new messages")
                     idle_time += pool_timeout
