@@ -43,11 +43,32 @@ suite modal at 12-21s under a `test.slow()` timeout, Table Difference at
 10-19s, the glossary drag at 6-7s. Their recorded rates are 3/11 and 2/11 so
 this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
-will not settle them** — but neither will waiting for CI: nothing under
-`.github/` sets `PLAYWRIGHT_RUN_QUARANTINED`, so a quarantined test runs in no
-lane at all and has produced no evidence since it was tagged. The soak lane this
-file describes does not exist. Getting these three moving needs that lane (or a
-one-off dispatch) first.
+will not settle them** — but neither will waiting for CI, for most of the life
+of this file: nothing under `.github/` set `PLAYWRIGHT_RUN_QUARANTINED`, so a
+quarantined test ran in no lane at all and produced no evidence from the moment
+it was tagged.
+
+## The soak lane
+
+That gap is now closed by a `Soak quarantined tests` step in two workflows —
+`playwright-e2e-reusable.yml` (on the first shard of each lane) and
+`playwright-knowledge-graph-postgresql-e2e.yml`. Both are
+`continue-on-error`, because a quarantined test is *expected* to fail; the
+signal worth having is the opposite one, a test that has quietly started
+passing and can be released.
+
+Two properties of that step are load-bearing, so keep them if you touch it:
+
+- it runs **after** the blob report is uploaded and uses `--reporter=list`, so
+  the second Playwright invocation cannot overwrite the results the
+  `playwright-summary` check reads;
+- it passes the shard's own `--project` list, so it only attempts tests whose
+  environment that shard actually has. A quarantined test whose project is not
+  on the first shard of its lane is therefore *not* covered — `--pass-with-no-tests`
+  makes that a clean no-op rather than a false red. If an entry below needs
+  coverage it is not getting, say so in its row rather than widening the filter:
+  an unfiltered run would pull in lanes whose infrastructure (Airflow, for the
+  ingestion lane) is not present, and fail for the wrong reason.
 
 The test suite modal and Table Difference entries from this triage have since
 been root-caused and released — see *Released from quarantine* below. The lead

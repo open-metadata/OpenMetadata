@@ -408,6 +408,30 @@ jobs:
           PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # The companion of the soak step in playwright-e2e-reusable.yml. Both
+      # are needed: quarantined tests are split across the two workflows by
+      # project, and the Knowledge Graph entries can only run here, where the
+      # RDF projection their `ontology-rdf-setup` dependency waits on exists.
+      #
+      # Never gates -- a quarantined test is expected to fail. `--reporter=list`
+      # keeps it from writing a report over the real run's.
+      - name: Soak quarantined tests
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: >-
+          npx playwright test
+          --retries=0
+          --pass-with-no-tests
+          --reporter=list
+          --output=playwright/output/quarantine-results
+          --project="Knowledge Graph"
+          --project="Ontology RDF"
+        env:
+          PLAYWRIGHT_IS_OSS: true
+          PLAYWRIGHT_RUN_QUARANTINED: "true"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Playwright diagnostics
         uses: actions/upload-artifact@v7
         if: failure() || cancelled()

@@ -1865,6 +1865,55 @@ jobs:
           retention-days: 5
           if-no-files-found: ignore
 
+      # Quarantine drops a test from every lane via grepInvert in
+      # playwright.config.ts, so once tagged it stops producing evidence
+      # entirely -- the entry rots and the only signal left is a count in the
+      # inventory step. Re-run the quarantined set here, where a working
+      # environment already exists, instead of standing one up for a handful
+      # of tests.
+      #
+      # This never gates. A quarantined test is expected to fail; that is why
+      # it is quarantined. The point is to notice when one stops failing, so
+      # it can be released.
+      #
+      # Safe to run after the real suite: the blob report the summary job
+      # consumes is already uploaded by this point, and `--reporter=list`
+      # writes no blob of its own, so this cannot overwrite those results.
+      # `--output` keeps its artifacts out of the uploaded test-results dir
+      # for the same reason.
+      - name: Soak quarantined tests
+        if: ${{ !cancelled() && github.event_name != 'merge_group' && matrix.shardId == format('{0}-01', matrix.lane) }}
+        continue-on-error: true
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        env:
+          PLAYWRIGHT_RUN_QUARANTINED: "true"
+        run: |
+          plan_file="${{ steps.fast-inputs.outputs.plan }}"
+          mapfile -t projects < <(jq -r '.projects[]' "$plan_file")
+          project_args=()
+          for project in "${projects[@]}"; do
+            project_args+=("--project=$project")
+          done
+          # `continue-on-error` does not protect the job clock: blowing
+          # `timeout-minutes: 75` cancels the shard outright, and a cancelled
+          # shard is a failed one no matter what this step is allowed to do.
+          # The suite ahead of it may already have used its own 60m wrapper, so
+          # check the remaining budget rather than assuming there is any.
+          elapsed=$(( $(date +%s) - PW_JOB_STARTED_AT ))
+          if (( elapsed > 3300 )); then
+            echo "Skipping soak: ${elapsed}s already spent of the 75m job budget."
+            exit 0
+          fi
+          echo "Soaking quarantined tests for lane ${{ matrix.lane }} (${elapsed}s spent so far)"
+          # 10m, not the suite's 60m: the quarantined set is a handful of tests
+          # by construction, so anything longer means wedged, not busy.
+          # --pass-with-no-tests: most lanes hold nothing quarantined, and an
+          # empty selection is the healthy state, not a failure.
+          timeout --signal=TERM --kill-after=30s 10m \
+            npx playwright test --retries=0 --pass-with-no-tests \
+            --reporter=list --output=playwright/output/quarantine-results \
+            "${project_args[@]}"
+
       - name: Clean Up
         if: always()
         continue-on-error: true
