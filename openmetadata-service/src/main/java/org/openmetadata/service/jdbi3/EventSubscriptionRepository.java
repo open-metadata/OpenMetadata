@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
 import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
@@ -33,6 +32,7 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertDefinition;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -146,10 +147,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                   listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
 
-    if (update && !nullOrEmpty(entity.getFilteringRules())) {
-      entity.setFilteringRules(
-          validateAndBuildFilteringConditions(
-              entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
+    // An update is validated by the updater, which knows what the alert looked like before.
+    if (!update) {
+      compileNewDefinition(entity);
     }
 
     // Validate custom template if assigned
@@ -164,11 +164,27 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
       }
     }
+  }
 
+  private void compileNewDefinition(EventSubscription entity) {
+    if (AlertDefinition.isCompiledFromSelections(entity, entity.getFilteringRules())) {
+      entity.setFilteringRules(AlertDefinition.compileStrictly(entity));
+    }
+    fillAbsentRuleLists(entity);
     validateFilterRules(entity);
   }
 
-  private void validateFilterRules(EventSubscription entity) {
+  private static void fillAbsentRuleLists(EventSubscription entity) {
+    FilteringRules filteringRules = entity.getFilteringRules();
+    if (filteringRules != null && filteringRules.getRules() == null) {
+      filteringRules.setRules(new ArrayList<>());
+    }
+    if (filteringRules != null && filteringRules.getActions() == null) {
+      filteringRules.setActions(new ArrayList<>());
+    }
+  }
+
+  private static void validateFilterRules(EventSubscription entity) {
     // Resolve JSON blobs into Rule object and perform schema based validation
     if (entity.getFilteringRules() != null) {
       List<EventFilterRule> rules = entity.getFilteringRules().getRules();
@@ -246,6 +262,39 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  /**
+   * Done once, against the alert as it is stored, before any comparison: when edits made within
+   * the session window are merged, later comparisons run against an older version, and only the
+   * final definition may be judged. A definition that did not change is never validated, so an
+   * alert stored under older rules can still be renamed or switched back on.
+   */
+  private static void settleDefinition(
+      EventSubscription stored, EventSubscription updated, Operation operation) {
+    FilteringRules storedRules = stored.getFilteringRules();
+    if (!AlertDefinition.isCompiledFromSelections(updated, storedRules)) {
+      keepRulesWrittenByHand(storedRules, updated, operation);
+    } else if (AlertDefinition.isSameDefinition(stored, updated)) {
+      updated.setFilteringRules(AlertDefinition.compileOrKeep(updated, storedRules));
+    } else {
+      updated.setFilteringRules(AlertDefinition.compileStrictly(updated));
+      validateFilterRules(updated);
+    }
+    fillAbsentRuleLists(updated);
+  }
+
+  // The body of a PUT has no place for rules, so it says nothing about them and they stay. A
+  // PATCH can write them, and what it wrote is checked like any new rule.
+  private static void keepRulesWrittenByHand(
+      FilteringRules storedRules, EventSubscription updated, Operation operation) {
+    FilteringRules sent = updated.getFilteringRules();
+    if (operation.isPut() && sent != null && storedRules != null) {
+      sent.setRules(storedRules.getRules());
+      sent.setActions(storedRules.getActions());
+    } else if (sent != null && !sent.equals(storedRules)) {
+      validateFilterRules(updated);
+    }
+  }
+
   @Override
   public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
       EventSubscription original,
@@ -259,6 +308,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public EventSubscriptionUpdater(
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
+      settleDefinition(original, updated, operation);
     }
 
     @Override

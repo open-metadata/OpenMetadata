@@ -11,12 +11,13 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.quartz.JobKey;
@@ -57,8 +58,17 @@ final class AlertFixtures {
     return stored(SdkClients.adminClient().eventSubscriptions().create(request).getId());
   }
 
+  // Never from a cache: a test thread keeps what it read before, as any thread does.
   static EventSubscription stored(UUID alertId) {
-    return Entity.getEntity(Entity.EVENT_SUBSCRIPTION, alertId, "*", Include.NON_DELETED);
+    return AlertRows.readOrNull(alertId);
+  }
+
+  /** Writes the row as an upgrade or another product would, behind the server's back. */
+  static EventSubscription writeBehindTheServer(EventSubscription alert) {
+    dao().update(alert);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.EVENT_SUBSCRIPTION, alert.getId(), alert.getFullyQualifiedName());
+    return stored(alert.getId());
   }
 
   static boolean jobExists(UUID alertId) throws SchedulerException {
