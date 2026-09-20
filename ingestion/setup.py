@@ -103,6 +103,7 @@ VERSIONS = {
 }
 
 COMMONS = {
+    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
@@ -390,7 +391,7 @@ plugins: dict[str, set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
-    "nats": {"nats-py[nkeys]>=2.7.0,<3.0.0"},
+    "nats": {*COMMONS["nats"]},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -423,7 +424,7 @@ plugins: dict[str, set[str]] = {
         DATA_DIFF["mysql"],
     },
     "nifi": {},  # uses requests
-    "openlineage": {*COMMONS["kafka"]},
+    "openlineage": {*COMMONS["kafka"], *COMMONS["nats"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
     "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=5.0"},

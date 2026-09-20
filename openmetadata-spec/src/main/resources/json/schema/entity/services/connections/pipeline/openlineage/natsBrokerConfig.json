@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/openlineage/natsBrokerConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NATS",
+  "title": "Nats",
   "description": "NATS JetStream configuration for OpenLineage events.",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
   "type": "object",
