@@ -191,10 +191,6 @@ export const AddTestCaseList = ({
     return normalized;
   }, [selectedTest]);
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-  };
-
   const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
     setIsTableOptionsLoading(true);
     try {
@@ -455,6 +451,24 @@ export const AddTestCaseList = ({
     },
     [onChange, activeFilter]
   );
+
+  // A global "select all" means "all of the current filter". When the search or
+  // filters change it must not silently carry over — reset it so the emitted
+  // selection stays consistent with what the list shows (matters for the
+  // create-suite flow, which persists the emitted payload).
+  const resetGlobalSelection = useCallback(() => {
+    if (!selectAll) {
+      return;
+    }
+    setSelectAll(false);
+    setExcludedIds(new Set());
+    emitPartialSelection(selectedItems);
+  }, [selectAll, selectedItems, emitPartialSelection]);
+
+  const handleSearch = (value: string) => {
+    resetGlobalSelection();
+    setSearchTerm(value);
+  };
 
   const loadedItemIds = useMemo(
     () => items.map((i) => i.id).filter(Boolean) as string[],
@@ -745,6 +759,7 @@ export const AddTestCaseList = ({
 
   const handleFilterChange = useCallback(
     (values: SearchDropdownOption[], searchKey: AddTestCaseListFilterKey) => {
+      resetGlobalSelection();
       switch (searchKey) {
         case AddTestCaseListFilterKey.Status: {
           setFilterStatus(values[0]?.key as TestCaseStatus | undefined);
@@ -770,7 +785,7 @@ export const AddTestCaseList = ({
         }
       }
     },
-    []
+    [resetGlobalSelection]
   );
 
   const filterOptions = useMemo(

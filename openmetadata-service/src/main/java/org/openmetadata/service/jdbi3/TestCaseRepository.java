@@ -1328,11 +1328,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private static final int BULK_MATCH_SEARCH_BATCH_SIZE = 1000;
+  // Cap each relationship write + post-update so a large filtered selection cannot exceed DB
+  // statement/bind limits or transaction memory (the unfiltered "all" path batches similarly).
+  private static final int BULK_MATCH_WRITE_BATCH_SIZE = 500;
 
   /**
    * Add every test case matching the given search/filter (as shown in the UI) to the bundle suite,
    * minus excludeIds. Enumerates all matches via search_after so the count is not capped by the
-   * search engine's max_result_window.
+   * search engine's max_result_window, and writes them in bounded batches.
    */
   public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
       TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
@@ -1340,7 +1343,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (matchingIds.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
     }
-    return addTestCasesToLogicalTestSuite(testSuite, matchingIds);
+    RestUtil.PutResponse<TestSuite> response = null;
+    for (List<UUID> batch : Lists.partition(matchingIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      response = addTestCasesToLogicalTestSuite(testSuite, batch);
+    }
+    return response;
   }
 
   private List<UUID> resolveMatchingTestCaseIds(
