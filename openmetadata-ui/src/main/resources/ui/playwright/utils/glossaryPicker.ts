@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, Response } from '@playwright/test';
+import { clickOutside } from './common';
 
 // Drives the picker popover: portaled, and nothing is saved until Apply.
 
@@ -20,13 +21,21 @@ export type GlossaryTermRef = {
   fullyQualifiedName: string;
 };
 
-const POPOVER = 'glossary-term-picker-popover';
+// Every picker instance carries its own `data-testid`, so its popover's testid
+// varies; this class is set by the component itself and does not. Only one
+// popover is open at a time, so it resolves to a single element.
+const POPOVER = '.glossary-term-picker-popover';
 
-// Scoped to the popover rather than a placeholder, which is translated.
-const searchBox = (page: Page) => page.getByTestId(POPOVER).locator('input');
+// Button and custom triggers put the search box inside the popover; the input
+// variant's trigger *is* the search box, and marks itself while open.
+const searchBox = (page: Page) =>
+  page
+    .locator(POPOVER)
+    .locator('input')
+    .or(page.locator('[data-treeselect-open="true"] input'));
 
 const tree = (page: Page) =>
-  page.getByTestId(POPOVER).locator('[role="treegrid"]');
+  page.locator(POPOVER).locator('[role="treegrid"]');
 
 const termRow = (page: Page, term: GlossaryTermRef) =>
   page.getByTestId(`tree-node-${term.fullyQualifiedName}`);
@@ -34,7 +43,7 @@ const termRow = (page: Page, term: GlossaryTermRef) =>
 // Rows are keyed by FQN; callers that only know a display name match on text.
 export const glossaryPickerRow = (page: Page, name: string) =>
   page
-    .getByTestId(POPOVER)
+    .locator(POPOVER)
     .locator('[data-testid^="tree-node-"]')
     .filter({ hasText: name });
 
@@ -153,7 +162,7 @@ export const removeGlossaryTermChip = async (
   await trigger.getByRole('button', { name: `Remove ${label}` }).click();
 };
 
-// A form picker commits on click, so it closes with Escape rather than Apply.
+// A form picker commits on click, so there is no Apply step to wait on.
 export const pickGlossaryTermInField = async (
   page: Page,
   trigger: Locator,
@@ -161,8 +170,11 @@ export const pickGlossaryTermInField = async (
 ) => {
   await openGlossaryPicker(page, trigger);
   await toggleGlossaryTermInPicker(page, term);
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId(POPOVER)).not.toBeVisible();
+
+  // Click away rather than press Escape: these pickers sit inside editors and
+  // drawers that close on Escape too, which would discard the row being built.
+  await clickOutside(page);
+  await expect(page.locator(POPOVER)).not.toBeVisible();
 };
 
 // Open, pick one term, apply — the whole flow for a single-term assignment.

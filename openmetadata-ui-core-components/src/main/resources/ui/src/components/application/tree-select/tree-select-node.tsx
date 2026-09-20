@@ -29,6 +29,27 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
+// The row a branch shows once it has loaded nothing. Without it the chevron
+// expands into blank space and reads as broken.
+export const TreeSelectEmptyItemContent = ({
+  message,
+  parentId,
+}: {
+  message: string;
+  parentId: string;
+}) => (
+  <Tree.ItemContent indentPerLevel={28} maxIndentLevel={2}>
+    {() => (
+      <div
+        className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:py-0.5 tw:text-xs tw:text-tertiary"
+        data-testid={`tree-node-empty-${parentId}`}
+        role="presentation">
+        {message}
+      </div>
+    )}
+  </Tree.ItemContent>
+);
+
 export const TreeSelectTreeItemContent = <T,>({
   node,
   isSelected,

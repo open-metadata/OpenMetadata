@@ -23,6 +23,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
@@ -65,7 +66,10 @@ const ChangeParentHierarchy = ({
     selectedData.reviewers && selectedData.reviewers.length > 0
   );
 
-  const handleParentSelection = (options: GlossaryPickerValue[]) => {
+  const handleParentSelection = (
+    _terms: TagLabel[],
+    options: GlossaryPickerValue[]
+  ) => {
     if (options.length > 0) {
       const selectedOption = options[0];
       setSelectedParent(selectedOption);

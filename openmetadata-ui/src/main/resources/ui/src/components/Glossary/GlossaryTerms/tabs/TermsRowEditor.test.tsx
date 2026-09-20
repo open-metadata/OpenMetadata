@@ -28,15 +28,22 @@ jest.mock('../../../common/GlossaryTermPicker/GlossaryTermPicker', () => ({
       <button
         aria-label="glossary term picker"
         data-testid={props['data-testid'] as string}
-        onClick={() =>
-          (props.onChange as (terms: GlossaryPickerValue[]) => void)([
+        onClick={() => {
+          const picked = [
             {
               tagFQN: 'Glossary.OtherTerm',
               name: 'OtherTerm',
               source: TagSource.Glossary,
             } as GlossaryPickerValue,
-          ])
-        }
+          ];
+          // The row reads the second argument, which keeps the source entity.
+          (
+            props.onChange as (
+              terms: GlossaryPickerValue[],
+              nodes: GlossaryPickerValue[]
+            ) => void
+          )(picked, picked);
+        }}
       />
     );
   },

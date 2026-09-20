@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { GlossaryPickerValue } from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
@@ -77,7 +78,7 @@ const TermsRow: React.FC<TermsRowProps> = ({
   );
 
   const handleTermsChange = useCallback(
-    (terms: GlossaryPickerValue[]) => {
+    (_selected: TagLabel[], terms: GlossaryPickerValue[]) => {
       setSelectedTerms(terms);
       onTermsChange(
         rowId,

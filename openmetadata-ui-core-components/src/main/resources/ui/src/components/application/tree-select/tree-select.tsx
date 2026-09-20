@@ -36,7 +36,10 @@ import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
-import { TreeSelectTreeItemContent } from './tree-select-node';
+import {
+  TreeSelectEmptyItemContent,
+  TreeSelectTreeItemContent,
+} from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
 import {
@@ -56,12 +59,17 @@ const VIEWPORT_PADDING = 12;
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
+// Also reports the trigger's width: react-aria only publishes
+// `--trigger-width` for its own ComboBox/Select/MenuTrigger overlays, never for
+// a bare Popover given a `triggerRef`, so a dropdown that wants to match its
+// trigger has to measure it.
 const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
-): DropdownPlacement => {
+): { placement: DropdownPlacement; triggerWidth?: number } => {
   const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+  const [triggerWidth, setTriggerWidth] = useState<number>();
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +81,7 @@ const useDropdownPlacement = (
       if (!rect) {
         return;
       }
+      setTriggerWidth(rect.width);
       const needed = (width ?? rect.width) + VIEWPORT_PADDING;
       const fitsRight = window.innerWidth - rect.left >= needed;
       const fitsLeft = rect.right >= needed;
@@ -85,7 +94,7 @@ const useDropdownPlacement = (
     return () => window.removeEventListener('resize', measure);
   }, [isOpen, width, triggerRef]);
 
-  return placement;
+  return { placement, triggerWidth };
 };
 
 const shouldLazyLoad = <T,>(
@@ -205,6 +214,7 @@ export const TreeSelect = <T = unknown,>({
   debounceMs = 300,
   pageSize = 50,
   noDataMessage,
+  emptyBranchMessage,
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
@@ -242,7 +252,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const placement = useDropdownPlacement(
+  const { placement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -455,6 +465,9 @@ export const TreeSelect = <T = unknown,>({
     ]
   );
 
+  const resolvedEmptyBranchMessage =
+    emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -484,12 +497,27 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children && renderNodes(node.children, node)}
+            {node.children?.length
+              ? renderNodes(node.children, node)
+              : node.children &&
+                node.isLeaf === false &&
+                !loadingNodes.has(node.id) && (
+                  <Tree.Item
+                    id={`${node.id}__empty`}
+                    key={`${node.id}__empty`}
+                    textValue={resolvedEmptyBranchMessage}>
+                    <TreeSelectEmptyItemContent
+                      message={resolvedEmptyBranchMessage}
+                      parentId={node.id}
+                    />
+                  </Tree.Item>
+                )}
           </Tree.Item>
         );
       });
     },
     [
+      resolvedEmptyBranchMessage,
       isNodeVisible,
       isNodeSelected,
       loadingNodes,
@@ -564,12 +592,15 @@ export const TreeSelect = <T = unknown,>({
         dismiss();
       }
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // Capture: an overlay that stops propagation on its way down — a drawer
+    // closing, say — would otherwise hide the interaction from us and leave the
+    // dropdown on screen until the whole subtree unmounts.
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleEscape, true);
     };
   }, [isOpen, dismiss]);
 
@@ -786,7 +817,7 @@ export const TreeSelect = <T = unknown,>({
       isNonModal
       className={cx(
         // `w-full` would size against the portal root.
-        usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
+        usesDropdownChrome && 'tw:w-80',
         popoverClassName
       )}
       // Stops a dismissable ancestor reading clicks here as outside ones.
@@ -795,6 +826,12 @@ export const TreeSelect = <T = unknown,>({
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
+      // The input variant matches its trigger; measured, not `--trigger-width`.
+      style={
+        usesDropdownChrome || triggerWidth === undefined
+          ? undefined
+          : { width: triggerWidth }
+      }
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}
@@ -871,6 +908,9 @@ export const TreeSelect = <T = unknown,>({
             disabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle'
           )}
           data-testid={dataTestId}
+          // This variant has no search box in the dropdown — the trigger is it.
+          // Marks which trigger the open dropdown belongs to, for tests.
+          data-treeselect-open={isOpen ? 'true' : undefined}
           ref={triggerRef}
           onClick={() => {
             openTrigger();

@@ -27,6 +27,14 @@ export interface GlossaryPickerValue extends TagLabel {
   isGlossaryRoot?: boolean;
 }
 
+// `TagLabel` is `additionalProperties: false` server-side, so the UI-only
+// fields have to be dropped before a selection reaches a PATCH body.
+export const toTagLabel = ({
+  entity: _entity,
+  isGlossaryRoot: _isGlossaryRoot,
+  ...tag
+}: GlossaryPickerValue): TagLabel => tag;
+
 // The payload a glossary root carries so a parent picker can resolve its entity.
 export const glossaryRootValue = (glossary: Glossary): GlossaryPickerValue =>
   ({

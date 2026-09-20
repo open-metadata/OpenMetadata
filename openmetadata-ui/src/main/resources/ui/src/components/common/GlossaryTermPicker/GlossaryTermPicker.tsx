@@ -21,7 +21,11 @@ import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
-import { GlossaryPickerValue, pruneNodes } from './GlossaryTagSuggestionUtils';
+import {
+  GlossaryPickerValue,
+  pruneNodes,
+  toTagLabel,
+} from './GlossaryTagSuggestionUtils';
 import { useGlossaryTreeData } from './useGlossaryTreeData';
 
 // Straight from the core component so they never drift; the rest is fixed here.
@@ -42,7 +46,9 @@ type InheritedTreeSelectProps = Pick<
 export interface GlossaryTermPickerProps extends InheritedTreeSelectProps {
   // Non-glossary sources are ignored; the caller owns merging them back.
   value?: TagLabel[];
-  onChange?: (terms: GlossaryPickerValue[]) => void;
+  // `terms` is PATCH-safe; `nodes` carries the source entities for the callers
+  // that need an id or the glossary/term distinction.
+  onChange?: (terms: TagLabel[], nodes: GlossaryPickerValue[]) => void;
   // FQNs to hide, e.g. the term a relation is being added to.
   excludeFqns?: string[];
   // Lets a glossary itself be the value, for pickers that choose a parent.
@@ -118,14 +124,14 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         value.map((tag) => [tag.tagFQN, tag])
       );
 
-      onChange?.(
-        nodes
-          .map((node) => applied.get(node.value) ?? node.data)
-          .filter(
-            (tag): tag is GlossaryPickerValue =>
-              Boolean(tag) && (selectGlossaries || !tag?.isGlossaryRoot)
-          )
-      );
+      const selected = nodes
+        .map((node) => applied.get(node.value) ?? node.data)
+        .filter(
+          (tag): tag is GlossaryPickerValue =>
+            Boolean(tag) && (selectGlossaries || !tag?.isGlossaryRoot)
+        );
+
+      onChange?.(selected.map(toTagLabel), selected);
     },
     [onChange, value, selectGlossaries]
   );
@@ -141,6 +147,10 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       commitMode={commitMode}
       data-testid={dataTestId}
       disabled={disabled}
+      // A glossary with no terms, rather than the generic "no data".
+      emptyBranchMessage={t('label.no-entity-added', {
+        entity: t('label.term-plural'),
+      })}
       fetchData={fetchData}
       filterNode={keepAllNodes}
       isOpen={isOpen}
@@ -150,6 +160,9 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         placeholder ??
         t('label.select-field', { field: t('label.glossary-term-plural') })
       }
+      // Stable hook for tests: every instance sets its own `data-testid`, so the
+      // popover's testid varies while this class does not.
+      popoverClassName="glossary-term-picker-popover"
       renderTrigger={renderTrigger}
       required={required}
       searchPlaceholder={t('label.search-entity', {
