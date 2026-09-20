@@ -646,12 +646,14 @@ public class SearchRepository {
         }
       }
     }
+    detachOrphanedIndexesFromAliases();
   }
 
   public void updateIndexes() {
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
       updateIndex(entry.getValue());
     }
+    detachOrphanedIndexesFromAliases();
   }
 
   public int createMissingIndexes() {
@@ -700,6 +702,13 @@ public class SearchRepository {
    * <p>Detaching rather than deleting: the alias is the only thing that makes an orphan reachable,
    * so removing it is the entire fix, and the documents stay put for an operator to inspect or
    * reindex before dropping the index.
+   *
+   * <p>Called from {@link #createIndexes()} and {@link #updateIndexes()} rather than from
+   * application bootstrap, because those are the two places that reconcile the whole registry and
+   * every product reaches them: {@code openmetadata-ops.sh migrate} runs {@code updateIndexes()} on
+   * every upgrade. Bootstrap is not a shared hook — Collate's {@code CollateApplication} overrides
+   * {@code initializeCoreSearchInfrastructure} without calling {@code super}, so a call placed
+   * there would silently never run for Collate.
    */
   public int detachOrphanedIndexesFromAliases() {
     int detached = 0;

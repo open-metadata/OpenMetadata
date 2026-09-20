@@ -716,10 +716,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     int createdIndexCount = searchRepository.createMissingIndexes();
-    // An upgrade can leave behind an index whose entity type this release no longer registers,
-    // still attached to the aliases its own release gave it. Nothing else walks the cluster, so
-    // this is the only chance to take `all` off it before a search expands onto its mappings.
-    searchRepository.detachOrphanedIndexesFromAliases();
     searchRepository.createOrUpdateIndexTemplates(createdIndexCount);
 
     LOG.info("Core search infrastructure initialization completed");

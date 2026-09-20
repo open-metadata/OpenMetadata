@@ -3636,6 +3636,22 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void updateIndexesDetachesOrphans() {
+    // The contract that makes this reach every product: `openmetadata-ops.sh migrate` calls
+    // updateIndexes() on every upgrade, and Collate inherits it through
+    // CollateOperations.migrate() -> super.migrate(). Application bootstrap is NOT a shared hook.
+    SearchRepository repo = aiApplicationOnlyRepository();
+    when(searchClient.getIndicesByAlias("all"))
+        .thenReturn(Set.of("ai_application_search_index", "ai_agent_search_index"));
+    when(searchClient.getIndicesByAlias("aiApplication"))
+        .thenReturn(Set.of("ai_application_search_index"));
+
+    repo.updateIndexes();
+
+    verify(searchClient).removeAliases("ai_agent_search_index", Set.of("all"));
+  }
+
+  @Test
   void leavesAFullyRegisteredClusterUntouched() {
     SearchRepository repo = aiApplicationOnlyRepository();
     when(searchClient.getIndicesByAlias(any())).thenReturn(Set.of("ai_application_search_index"));
