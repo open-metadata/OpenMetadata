@@ -175,12 +175,15 @@ class NatsJetStreamClient:
         return self._loop.run_until_complete(_info())
 
     def close(self) -> None:
-        async def _drain() -> None:
-            await self.nc.drain()
+        async def _close() -> None:
+            # Flush the acknowledgements, then close: draining a pull consumer waits for
+            # deliveries that are not coming and times out
+            await self.nc.flush(timeout=5)
+            await self.nc.close()
 
         try:
             if not self._loop.is_closed():
-                self._loop.run_until_complete(_drain())
+                self._loop.run_until_complete(_close())
         except Exception as exc:
             logger.warning(f"Error draining NATS connection: {exc}")
         finally:
@@ -202,7 +205,8 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
             additional_config=broker.additionalConfig,
             temp_files=temp_files,
         )
-        deliver_policy = DeliverPolicy.NEW if broker.consumerOffsets == NatsConsumerOffsets.NEW else DeliverPolicy.ALL
+        # the generated enum members carry the JSON values: all / new
+        deliver_policy = DeliverPolicy.NEW if broker.consumerOffsets == NatsConsumerOffsets.new else DeliverPolicy.ALL
         # Every subject of the stream, unless the user narrowed it down
         filter_subject = broker.subject or ">"
 
