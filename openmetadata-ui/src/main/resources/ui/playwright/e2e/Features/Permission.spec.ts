@@ -164,19 +164,53 @@ const updatePermissionsAndVisit = async (
       value: rule,
     })),
   ]);
-  const permissionResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      new URL(response.url()).pathname ===
-        `/api/v1/permissions/table/name/${encodeURIComponent(
-          fixture.table.entityResponseData.fullyQualifiedName
-        )}`,
-    200
-  );
-  // Direct navigation reloads permissions for the already authenticated user.
-  await fixture.table.visitEntityPage(page);
-  await permissionResponse;
+  const permissionPath = `/api/v1/permissions/table/name/${encodeURIComponent(
+    fixture.table.entityResponseData.fullyQualifiedName
+  )}`;
+
+  // Waiting for *a* 200 from this endpoint is not enough, and that is what
+  // makes this test fail as "permission-error-placeholder is visible" long
+  // after the policy was patched: the response can be served from a policy
+  // evaluation the PATCH has not invalidated yet, so the page renders the
+  // pre-patch permissions and no further request arrives to correct it.
+  // Require the payload to actually grant what was just asked for, and
+  // re-navigate until it does -- a fresh navigation is what issues a fresh
+  // permissions GET.
+  await expect(async () => {
+    const permissionResponse = waitForResponseWithStatus(
+      page,
+      async (response) => {
+        if (
+          response.request().method() !== 'GET' ||
+          new URL(response.url()).pathname !== permissionPath ||
+          !response.ok()
+        ) {
+          return false;
+        }
+
+        const body = await response.json().catch(() => null);
+
+        // Degrade to the old "any 200 will do" behaviour rather than hanging
+        // if the payload is ever not the shape we expect here.
+        if (!body || !Array.isArray(body.permissions)) {
+          return true;
+        }
+
+        const allowed = new Set(
+          body.permissions
+            .filter((entry: { access?: string }) => entry.access === 'allow')
+            .map((entry: { operation?: string }) => entry.operation)
+        );
+
+        return operations.every((operation) => allowed.has(operation));
+      },
+      200,
+      { timeout: 20_000 }
+    );
+    // Direct navigation reloads permissions for the already authenticated user.
+    await fixture.table.visitEntityPage(page);
+    await permissionResponse;
+  }).toPass({ timeout: 90_000, intervals: [1_000, 2_000, 5_000] });
 };
 
 for (const scenario of viewPermissionsData) {
