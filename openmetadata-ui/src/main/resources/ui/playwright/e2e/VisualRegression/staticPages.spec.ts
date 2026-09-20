@@ -74,10 +74,20 @@ const PAGES: {
     name: 'data-quality',
     route: '/data-quality',
     // The Data Health cards count whatever assets the environment happens to
-    // hold — 322 tables in CI, a different number anywhere else — so the donuts
-    // and their totals cannot be baselined. Mask them and keep the page chrome,
-    // tabs, filter row and the Data Dimensions section under test.
-    mask: ['[data-testid$="-pie-chart-widget"]'],
+    // hold — 322 tables in CI, 486 on a dev box — so the donut and its legend
+    // counts cannot be baselined. Mask those two and nothing else: the cards,
+    // their icons and headings, and the legend's dots and labels stay under
+    // test, as do the page chrome, tabs, filter row and Data Dimensions.
+    //
+    // A mask is sized to the element it covers, and these counts are inline, so
+    // the baseline does still encode their digit *width* — 322 and 486 both
+    // being three digits is why this holds across environments. If the seeded
+    // totals ever cross a digit boundary the text after them shifts and this
+    // goes red; mask the legend container then, at the cost of its labels.
+    mask: [
+      '[data-testid$="-pie-chart-widget"] [id$="-pie-chart"]',
+      '[data-testid$="-pie-chart-widget"] [data-testid^="legend-count-"]',
+    ],
   },
   {
     name: 'incident-manager',
