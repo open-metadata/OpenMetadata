@@ -9,6 +9,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -16,7 +17,17 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public final class BotTokenCache {
+  public static final String EMPTY_STRING = "";
+
   private BotTokenCache() {}
+
+  public static String getToken(String botName) {
+    try {
+      return loadTokens(botName).stream().findFirst().orElse(EMPTY_STRING);
+    } catch (RuntimeException ignored) {
+      return null;
+    }
+  }
 
   public static boolean isTokenValid(String botName, String presentedToken) {
     return CredentialTokenState.fromCacheBundle()
@@ -29,11 +40,29 @@ public final class BotTokenCache {
         .mutate(CredentialTokenState.Kind.BOT, botName, mutation, () -> loadTokens(botName));
   }
 
-  public static void denyToken(String botName) {
-    CredentialTokenState.fromCacheBundle().denyUntilReload(CredentialTokenState.Kind.BOT, botName);
+  public static void invalidateToken(String botName) {
+    CredentialTokenState.fromCacheBundle().invalidate(CredentialTokenState.Kind.BOT, botName);
+  }
+
+  public static Runnable denyToken(String botName) {
+    return CredentialTokenState.fromCacheBundle()
+        .denyUntilReload(CredentialTokenState.Kind.BOT, botName, () -> loadTokens(botName));
+  }
+
+  public static void reloadToken(String botName) {
+    CredentialTokenState.fromCacheBundle()
+        .reload(CredentialTokenState.Kind.BOT, botName, () -> loadTokens(botName));
   }
 
   private static Set<String> loadTokens(String botName) {
+    try {
+      return loadExistingTokens(botName);
+    } catch (EntityNotFoundException ignored) {
+      return Set.of();
+    }
+  }
+
+  private static Set<String> loadExistingTokens(String botName) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User user =
         userRepository.getByName(

@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.security.auth;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -21,6 +24,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Supplier;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.service.cache.CacheBundle;
@@ -32,16 +37,25 @@ import org.openmetadata.service.cache.CacheProvider;
  * Coordinates credential validation with mutations across OpenMetadata instances. With Redis
  * configured, every validation reads a shared hash snapshot; a mutation installs a fail-closed
  * barrier before changing storage and publishes the replacement snapshot before returning. Without
- * Redis, or while Redis is unavailable, validation bypasses credential caches and reads
- * authoritative storage on every request. A mutation is rejected while configured Redis is
- * unavailable so peers cannot keep accepting an old shared snapshot.
+ * Redis, the same protocol uses a bounded in-process cache and per-credential lock. While configured
+ * Redis is unavailable, validation bypasses cached state and reads authoritative storage; mutations
+ * are rejected so peers cannot keep accepting an old shared snapshot. Multi-server deployments must
+ * configure Redis because the in-process fallback cannot coordinate credential state between nodes.
  */
 final class CredentialTokenState {
   private static final Duration SNAPSHOT_TTL = Duration.ofMinutes(2);
   private static final Duration MUTATION_TTL = Duration.ofMinutes(10);
+  private static final int LOCAL_STATE_MAX_SIZE = 1000;
+  private static final int LOCAL_LOCK_STRIPES = 256;
   private static final String READY_PREFIX = "ready:";
   private static final String MUTATING_PREFIX = "mutating:";
   private static final String TOKEN_SEPARATOR = ",";
+  private static final Cache<String, String> LOCAL_STATE =
+      CacheBuilder.newBuilder()
+          .maximumSize(LOCAL_STATE_MAX_SIZE)
+          .expireAfterWrite(SNAPSHOT_TTL)
+          .build();
+  private static final Striped<Lock> LOCAL_LOCKS = Striped.lock(LOCAL_LOCK_STRIPES);
 
   enum Kind {
     BOT("bot"),
@@ -81,7 +95,11 @@ final class CredentialTokenState {
       return false;
     }
     try {
-      if (!sharedStateEnabled || !cacheProvider.available()) {
+      if (!sharedStateEnabled) {
+        String state = getOrLoadLocalState(kind, userName, tokenLoader);
+        return readyStateContains(state, presentedToken);
+      }
+      if (!cacheProvider.available()) {
         return tokenHashes(tokenLoader.get()).contains(hashToken(presentedToken));
       }
       String state = getOrLoadSharedState(kind, userName, tokenLoader);
@@ -94,7 +112,7 @@ final class CredentialTokenState {
   <T> T mutate(
       Kind kind, String userName, Supplier<T> mutation, Supplier<Set<String>> tokenLoader) {
     if (!sharedStateEnabled) {
-      return mutation.get();
+      return mutateLocal(kind, userName, mutation, tokenLoader);
     }
 
     MutationLease lease = beginMutation(kind, userName);
@@ -105,7 +123,7 @@ final class CredentialTokenState {
     } catch (RuntimeException | Error failure) {
       try {
         writeAndVerify(lease.stateKey(), readyState(tokenLoader.get()), SNAPSHOT_TTL);
-      } catch (RuntimeException restoreFailure) {
+      } catch (RuntimeException | Error restoreFailure) {
         failure.addSuppressed(restoreFailure);
       }
       throw failure;
@@ -114,18 +132,30 @@ final class CredentialTokenState {
     }
   }
 
-  void denyUntilReload(Kind kind, String userName) {
+  Runnable denyUntilReload(Kind kind, String userName, Supplier<Set<String>> tokenLoader) {
+    if (!sharedStateEnabled) {
+      return beginLocalDeletion(kind, userName, tokenLoader);
+    }
+    MutationLease lease = beginMutation(kind, userName);
+    return runOnce(() -> finishDeletion(lease, tokenLoader));
+  }
+
+  void reload(Kind kind, String userName, Supplier<Set<String>> tokenLoader) {
+    mutate(kind, userName, () -> null, tokenLoader);
+  }
+
+  void invalidate(Kind kind, String userName) {
+    String stateKey = stateKey(kind, userName);
     if (sharedStateEnabled) {
-      // Keep the lease until its TTL after a delete starts. The recursive bulk-delete path has no
-      // postDelete callback, so releasing it here could let a concurrent rotation republish the
-      // old database token before the delete transaction commits.
-      beginMutation(kind, userName);
+      cacheProvider.del(stateKey);
+    } else {
+      LOCAL_STATE.invalidate(stateKey);
     }
   }
 
   private String getOrLoadSharedState(
       Kind kind, String userName, Supplier<Set<String>> tokenLoader) {
-    String stateKey = cacheKeys.credentialState(kind.keyPart, userName);
+    String stateKey = stateKey(kind, userName);
     Optional<String> existing = cacheProvider.get(stateKey);
     if (existing.isPresent()) {
       return existing.get();
@@ -136,6 +166,66 @@ final class CredentialTokenState {
     return cacheProvider.get(stateKey).orElse(null);
   }
 
+  private String getOrLoadLocalState(
+      Kind kind, String userName, Supplier<Set<String>> tokenLoader) {
+    String stateKey = stateKey(kind, userName);
+    Lock lock = LOCAL_LOCKS.get(stateKey);
+    lock.lock();
+    try {
+      String state = LOCAL_STATE.getIfPresent(stateKey);
+      if (state == null) {
+        state = readyState(tokenLoader.get());
+        LOCAL_STATE.put(stateKey, state);
+      }
+      return state;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private <T> T mutateLocal(
+      Kind kind, String userName, Supplier<T> mutation, Supplier<Set<String>> tokenLoader) {
+    String stateKey = stateKey(kind, userName);
+    Lock lock = LOCAL_LOCKS.get(stateKey);
+    lock.lock();
+    try {
+      LOCAL_STATE.put(stateKey, MUTATING_PREFIX + UUID.randomUUID());
+      T result = mutation.get();
+      LOCAL_STATE.put(stateKey, readyState(tokenLoader.get()));
+      return result;
+    } catch (RuntimeException | Error failure) {
+      try {
+        LOCAL_STATE.put(stateKey, readyState(tokenLoader.get()));
+      } catch (RuntimeException | Error restoreFailure) {
+        failure.addSuppressed(restoreFailure);
+      }
+      throw failure;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  private Runnable beginLocalDeletion(
+      Kind kind, String userName, Supplier<Set<String>> tokenLoader) {
+    String stateKey = stateKey(kind, userName);
+    Lock lock = LOCAL_LOCKS.get(stateKey);
+    lock.lock();
+    try {
+      LOCAL_STATE.put(stateKey, MUTATING_PREFIX + UUID.randomUUID());
+    } catch (RuntimeException | Error failure) {
+      lock.unlock();
+      throw failure;
+    }
+    return runOnce(
+        () -> {
+          try {
+            LOCAL_STATE.put(stateKey, readyState(tokenLoader.get()));
+          } finally {
+            lock.unlock();
+          }
+        });
+  }
+
   private MutationLease beginMutation(Kind kind, String userName) {
     if (!cacheProvider.available()) {
       throw new IllegalStateException(
@@ -144,19 +234,33 @@ final class CredentialTokenState {
 
     String owner = UUID.randomUUID().toString();
     String lockKey = cacheKeys.credentialMutationLock(kind.keyPart, userName);
-    if (!cacheProvider.setIfAbsent(lockKey, owner, MUTATION_TTL)
-        || !cacheProvider.get(lockKey).filter(owner::equals).isPresent()) {
+    if (!cacheProvider.setIfAbsent(lockKey, owner, MUTATION_TTL)) {
+      cacheProvider.deleteIfValue(lockKey, owner);
       throw new IllegalStateException("Another credential mutation is already in progress");
     }
 
-    String stateKey = cacheKeys.credentialState(kind.keyPart, userName);
+    String stateKey = stateKey(kind, userName);
+    String mutatingState = MUTATING_PREFIX + owner;
     try {
-      writeAndVerify(stateKey, MUTATING_PREFIX + owner, MUTATION_TTL);
+      writeAndVerify(stateKey, mutatingState, MUTATION_TTL);
       return new MutationLease(stateKey, lockKey, owner);
     } catch (RuntimeException failure) {
+      cacheProvider.deleteIfValue(stateKey, mutatingState);
       cacheProvider.deleteIfValue(lockKey, owner);
       throw failure;
     }
+  }
+
+  private void finishDeletion(MutationLease lease, Supplier<Set<String>> tokenLoader) {
+    try {
+      writeAndVerify(lease.stateKey(), readyState(tokenLoader.get()), SNAPSHOT_TTL);
+    } finally {
+      cacheProvider.deleteIfValue(lease.lockKey(), lease.owner());
+    }
+  }
+
+  private String stateKey(Kind kind, String userName) {
+    return cacheKeys.credentialState(kind.keyPart, userName);
   }
 
   private void writeAndVerify(String key, String value, Duration ttl) {
@@ -196,6 +300,15 @@ final class CredentialTokenState {
 
   private static String hashToken(String token) {
     return DigestUtils.sha256Hex(token);
+  }
+
+  private static Runnable runOnce(Runnable action) {
+    AtomicBoolean pending = new AtomicBoolean(true);
+    return () -> {
+      if (pending.compareAndSet(true, false)) {
+        action.run();
+      }
+    };
   }
 
   private record MutationLease(String stateKey, String lockKey, String owner) {}

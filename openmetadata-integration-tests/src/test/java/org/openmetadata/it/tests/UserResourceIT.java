@@ -2529,6 +2529,22 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertUnauthorized(patClient);
   }
 
+  @Test
+  void test_restoreUser_acceptsPersonalAccessTokenAgain(TestNamespace ns) {
+    User owner = createRegularUser(ns, "patrestored");
+    OpenMetadataClient patClient =
+        clientWithToken(
+            createPersonalAccessToken(clientFor(owner), ns.prefix("pat")).getJwtToken());
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+
+    deleteEntity(owner.getId().toString());
+    assertUnauthorized(patClient);
+
+    restoreEntity(owner.getId().toString());
+
+    assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
   /**
    * JwtFilter resolves a bot's username from the token's email local-part, so the bot's stored name
    * must equal the local-part.

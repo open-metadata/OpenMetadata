@@ -1534,15 +1534,25 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected void preDelete(User entity, String deletedBy) {
-    super.preDelete(entity, deletedBy);
-    // Recursive Bot deletion reaches UserRepository through bulkSoftDeleteSubtree, which invokes
-    // preDelete but deliberately skips postDelete. Deny the credential before either delete path
-    // changes the database so no request can repopulate an old credential snapshot in that gap.
-    if (Boolean.TRUE.equals(entity.getIsBot())) {
-      BotTokenCache.denyToken(entity.getName());
-    } else {
-      UserTokenCache.denyToken(entity.getName());
+  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
+    try {
+      Runnable finishCredentialDelete =
+          Boolean.TRUE.equals(entity.getIsBot())
+              ? BotTokenCache.denyToken(entity.getName())
+              : UserTokenCache.denyToken(entity.getName());
+      return () -> {
+        try (parentLifecycle) {
+          finishCredentialDelete.run();
+        }
+      };
+    } catch (RuntimeException | Error failure) {
+      try {
+        parentLifecycle.close();
+      } catch (RuntimeException | Error closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+      throw failure;
     }
   }
 
@@ -1568,6 +1578,16 @@ public class UserRepository extends EntityRepository<User> {
                 LOG.error("Error updating test case incident assignee: ", ex);
               }
             });
+  }
+
+  @Override
+  protected void postRestore(User entity) {
+    super.postRestore(entity);
+    if (Boolean.TRUE.equals(entity.getIsBot())) {
+      BotTokenCache.reloadToken(entity.getName());
+    } else {
+      UserTokenCache.reloadToken(entity.getName());
+    }
   }
 
   /**

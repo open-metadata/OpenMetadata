@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,14 +30,32 @@ class CredentialTokenStateTest {
 
   @ParameterizedTest
   @EnumSource(CredentialTokenState.Kind.class)
-  void noSharedCoordinatorReadsAuthoritativeStorageOnEveryRequest(CredentialTokenState.Kind kind) {
+  void noSharedCoordinatorUsesBoundedLocalState(CredentialTokenState.Kind kind) {
     AtomicReference<Set<String>> storedTokens = new AtomicReference<>(Set.of("old-token"));
+    AtomicInteger loads = new AtomicInteger();
     CredentialTokenState state =
         new CredentialTokenState(new NoopCacheProvider(), new CacheKeys("test:no-shared"), false);
 
+    assertTrue(
+        state.isTokenValid(
+            kind,
+            USER_NAME,
+            "old-token",
+            () -> {
+              loads.incrementAndGet();
+              return storedTokens.get();
+            }));
     assertTrue(state.isTokenValid(kind, USER_NAME, "old-token", storedTokens::get));
+    assertEquals(1, loads.get());
 
-    storedTokens.set(Set.of("new-token"));
+    state.mutate(
+        kind,
+        USER_NAME,
+        () -> {
+          storedTokens.set(Set.of("new-token"));
+          return null;
+        },
+        storedTokens::get);
 
     assertFalse(state.isTokenValid(kind, USER_NAME, "old-token", storedTokens::get));
     assertTrue(state.isTokenValid(kind, USER_NAME, "new-token", storedTokens::get));
@@ -162,9 +181,53 @@ class CredentialTokenStateTest {
 
     assertTrue(state.isTokenValid(kind, USER_NAME, "old-token", () -> Set.of("old-token")));
 
-    state.denyUntilReload(kind, USER_NAME);
+    Runnable finishDeletion = state.denyUntilReload(kind, USER_NAME, () -> Set.of("old-token"));
 
     assertFalse(state.isTokenValid(kind, USER_NAME, "old-token", () -> Set.of("old-token")));
+
+    finishDeletion.run();
+
+    assertTrue(state.isTokenValid(kind, USER_NAME, "old-token", () -> Set.of("old-token")));
+  }
+
+  @ParameterizedTest
+  @EnumSource(CredentialTokenState.Kind.class)
+  void completedDeletionReleasesLeaseAndRestoreReloadsTokens(CredentialTokenState.Kind kind) {
+    ConcurrentMap<String, String> sharedRedis = new ConcurrentHashMap<>();
+    CredentialTokenState state = sharedState(sharedRedis, "test:delete-restore");
+    AtomicReference<Set<String>> storedTokens = new AtomicReference<>(Set.of("old-token"));
+
+    Runnable finishDeletion = state.denyUntilReload(kind, USER_NAME, storedTokens::get);
+    storedTokens.set(Set.of());
+    finishDeletion.run();
+
+    assertFalse(state.isTokenValid(kind, USER_NAME, "old-token", storedTokens::get));
+
+    storedTokens.set(Set.of("old-token"));
+    state.reload(kind, USER_NAME, storedTokens::get);
+
+    assertTrue(state.isTokenValid(kind, USER_NAME, "old-token", storedTokens::get));
+  }
+
+  @ParameterizedTest
+  @EnumSource(CredentialTokenState.Kind.class)
+  void ambiguousLockAcquisitionCleansUpAcceptedWrite(CredentialTokenState.Kind kind) {
+    ConcurrentMap<String, String> sharedRedis = new ConcurrentHashMap<>();
+    CredentialTokenState ambiguousNode =
+        new CredentialTokenState(
+            new AmbiguousAcquireCacheProvider(sharedRedis),
+            new CacheKeys("test:ambiguous-acquire"),
+            true);
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> ambiguousNode.mutate(kind, USER_NAME, () -> null, () -> Set.of("current-token")));
+
+    CredentialTokenState healthyNode = sharedState(sharedRedis, "test:ambiguous-acquire");
+    healthyNode.mutate(kind, USER_NAME, () -> null, () -> Set.of("current-token"));
+
+    assertTrue(
+        healthyNode.isTokenValid(kind, USER_NAME, "current-token", () -> Set.of("current-token")));
   }
 
   @Test
@@ -288,6 +351,18 @@ class CredentialTokenStateTest {
         await(finishReadyWrite);
       }
       super.set(key, value, ttl);
+    }
+  }
+
+  private static final class AmbiguousAcquireCacheProvider extends SharedCacheProvider {
+    private AmbiguousAcquireCacheProvider(ConcurrentMap<String, String> values) {
+      super(values, true);
+    }
+
+    @Override
+    public boolean setIfAbsent(String key, String value, Duration ttl) {
+      super.setIfAbsent(key, value, ttl);
+      return false;
     }
   }
 }
