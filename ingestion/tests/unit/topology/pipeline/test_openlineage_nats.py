@@ -33,6 +33,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.openlineage.
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
 )
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.pipeline.openlineage.connection import _get_nats_connection
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
 
 EVENT_FILE = Path(__file__).parents[2] / "resources" / "datasets" / "openlineage_event.json"
@@ -125,6 +127,29 @@ class TestNatsConnectOptions:
                 additional_config={"servers": ["nats://evil:4222"]},
                 temp_files=[],
             )
+
+
+class TestNatsConnection:
+    def test_a_failed_subscription_closes_the_connection(self, broker, monkeypatch):
+        """A stream that does not exist must not leave a live connection behind."""
+        connection = MagicMock()
+        connection.jetstream.side_effect = RuntimeError("stream not found")
+        closed: list[bool] = []
+
+        async def fake_close() -> None:
+            closed.append(True)
+
+        connection.close = fake_close
+
+        async def fake_connect(**_: object) -> MagicMock:
+            return connection
+
+        monkeypatch.setattr("metadata.ingestion.source.pipeline.openlineage.connection.nats.connect", fake_connect)
+
+        with pytest.raises(SourceConnectionException):
+            _get_nats_connection(broker)
+
+        assert closed == [True]
 
 
 class TestPollNats:
