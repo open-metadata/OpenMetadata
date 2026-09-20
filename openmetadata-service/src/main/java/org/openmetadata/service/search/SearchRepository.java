@@ -674,6 +674,93 @@ public class SearchRepository {
     return created;
   }
 
+  /**
+   * Staged indexes are named {@code <canonical>_rebuild_<millis>} by {@code DefaultRecreateHandler},
+   * and a server killed mid-reindex leaves one behind still holding the aliases it was about to be
+   * promoted into. Recognising the suffix keeps {@link #detachOrphanedIndexesFromAliases()} from
+   * tearing the aliases off an index that is legitimately serving them.
+   */
+  private static final String STAGED_INDEX_MARKER = "_rebuild_";
+
+  /**
+   * Detach every index that no longer backs a registered entity type from the aliases this release
+   * manages, and report how many alias links were removed.
+   *
+   * <p>An index whose entity type was renamed or dropped between releases is never revisited:
+   * {@link #createIndexes()}, {@link #updateIndexes()} and {@link #deleteIndex(IndexMapping)} all
+   * walk {@code entityIndexMap}, so none of them can even see an index that has left it. The orphan
+   * keeps the parent alias its own release attached, so {@code index=all} still expands onto it and
+   * queries it with clauses written against this release's mappings. 1.12's {@code aiAgent} index —
+   * renamed to {@code aiApplication} since — maps {@code owners} as a plain object, so the nested
+   * {@code owners} filter {@code RBACConditionEvaluator} adds for every non-admin user throws
+   * {@code query_shard_exception} on that shard. The engine still answers 200 from the surviving
+   * shards, and {@link SearchShardFailures} then refuses the zero-hit ones, turning an ordinary
+   * "no results" search into a 500.
+   *
+   * <p>Detaching rather than deleting: the alias is the only thing that makes an orphan reachable,
+   * so removing it is the entire fix, and the documents stay put for an operator to inspect or
+   * reindex before dropping the index.
+   */
+  public int detachOrphanedIndexesFromAliases() {
+    int detached = 0;
+    for (String alias : getManagedAliases()) {
+      for (String indexName : searchClient.getIndicesByAlias(alias)) {
+        detached += detachIfOrphaned(indexName, alias);
+      }
+    }
+    LOG.info("Detached {} orphaned index-to-alias links", detached);
+    return detached;
+  }
+
+  private int detachIfOrphaned(String indexName, String alias) {
+    if (!isOrphanedIndex(indexName)) {
+      return 0;
+    }
+    try {
+      searchClient.removeAliases(indexName, Set.of(alias));
+      LOG.info(
+          "Detached orphaned index '{}' from alias '{}': no registered entity type maps to it",
+          indexName,
+          alias);
+      return 1;
+    } catch (Exception ex) {
+      LOG.warn("Failed to detach orphaned index '{}' from alias '{}'", indexName, alias, ex);
+      return 0;
+    }
+  }
+
+  private boolean isOrphanedIndex(String indexName) {
+    boolean registered = isKnownCanonicalIndex(indexName);
+    boolean rebuildOfRegistered = isStagedRebuildOfKnownIndex(indexName);
+    boolean reindexInFlight = activeStagedIndices.containsValue(indexName);
+    return !registered && !rebuildOfRegistered && !reindexInFlight;
+  }
+
+  private boolean isStagedRebuildOfKnownIndex(String indexName) {
+    int marker = indexName.lastIndexOf(STAGED_INDEX_MARKER);
+    return marker > 0 && isKnownCanonicalIndex(indexName.substring(0, marker));
+  }
+
+  /**
+   * The aliases this release attaches to its own indexes, and so the only ones it may detach an
+   * index from. Data Insights aliases are deliberately left out: they front datastream indexes that
+   * never appear in {@code entityIndexMap}, so every one of them would read as an orphan here.
+   */
+  private Set<String> getManagedAliases() {
+    Set<String> aliases = new HashSet<>();
+    for (IndexMapping mapping : entityIndexMap.values()) {
+      // The cluster-prefixing getters dereference the raw lists, which a mapping is free to leave
+      // unset. This runs during boot, so an NPE here would cost the server its startup.
+      if (mapping.getAlias() != null) {
+        aliases.add(mapping.getAlias(clusterAlias));
+      }
+      if (mapping.getParentAliases() != null) {
+        aliases.addAll(mapping.getParentAliases(clusterAlias));
+      }
+    }
+    return aliases;
+  }
+
   private int createMissingIndexesInParallel(int parallelism) {
     List<Callable<Boolean>> tasks =
         entityIndexMap.entrySet().stream()

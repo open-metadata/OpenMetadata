@@ -3602,6 +3602,62 @@ class SearchRepositoryBehaviorTest {
     verify(spyRepository).initializeVectorSearchService();
   }
 
+  /**
+   * The registry as {@code main} ships it: 1.12's {@code aiAgent} was renamed to
+   * {@code aiApplication}, so nothing maps to {@code ai_agent_search_index} any more.
+   */
+  private static final IndexMapping AI_APPLICATION_MAPPING =
+      IndexMapping.builder()
+          .indexName("ai_application_search_index")
+          .alias("aiApplication")
+          .parentAliases(List.of("all"))
+          .indexMappingFile("/elasticsearch/%s/ai_application_index_mapping.json")
+          .build();
+
+  private SearchRepository aiApplicationOnlyRepository() {
+    return newRepository(Map.of("aiApplication", AI_APPLICATION_MAPPING), null);
+  }
+
+  @Test
+  void detachesAnOrphanedIndexFromAManagedAlias() {
+    // An upgrade from 1.12 leaves ai_agent_search_index behind, still on `all`. Its mapping has
+    // `owners` as a plain object, so a nested owners clause fails that shard and every zero-hit
+    // search through `all` becomes a 500.
+    SearchRepository repo = aiApplicationOnlyRepository();
+    when(searchClient.getIndicesByAlias("all"))
+        .thenReturn(Set.of("ai_application_search_index", "ai_agent_search_index"));
+    when(searchClient.getIndicesByAlias("aiApplication"))
+        .thenReturn(Set.of("ai_application_search_index"));
+
+    assertEquals(1, repo.detachOrphanedIndexesFromAliases());
+
+    verify(searchClient).removeAliases("ai_agent_search_index", Set.of("all"));
+    verify(searchClient, never()).removeAliases(eq("ai_application_search_index"), any());
+  }
+
+  @Test
+  void leavesAFullyRegisteredClusterUntouched() {
+    SearchRepository repo = aiApplicationOnlyRepository();
+    when(searchClient.getIndicesByAlias(any())).thenReturn(Set.of("ai_application_search_index"));
+
+    assertEquals(0, repo.detachOrphanedIndexesFromAliases());
+
+    verify(searchClient, never()).removeAliases(any(), any());
+  }
+
+  @Test
+  void keepsAStagedRebuildAttachedWhileAReindexIsInFlight() {
+    // A server killed mid-reindex leaves <canonical>_rebuild_<millis> holding the aliases it was
+    // about to be promoted into. Tearing those off would break search rather than repair it.
+    SearchRepository repo = aiApplicationOnlyRepository();
+    String staged = "ai_application_search_index_rebuild_1789766065567";
+    when(searchClient.getIndicesByAlias(any())).thenReturn(Set.of(staged));
+
+    assertEquals(0, repo.detachOrphanedIndexesFromAliases());
+
+    verify(searchClient, never()).removeAliases(any(), any());
+  }
+
   private SearchRepository newRepository(
       Map<String, IndexMapping> entityIndexMap, String clusterAlias) {
     return newRepository(
