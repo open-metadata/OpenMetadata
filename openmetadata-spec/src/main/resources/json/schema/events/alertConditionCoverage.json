@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/events/alertConditionCoverage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlertConditionCoverage",
+  "description": "How often one filter or trigger answered yes and how often no while the two engines were compared. A condition that has only ever answered one way has not been exercised.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.AlertConditionCoverage",
+  "properties": {
+    "yes": {
+      "type": "integer",
+      "existingJavaType": "Long",
+      "default": 0
+    },
+    "no": {
+      "type": "integer",
+      "existingJavaType": "Long",
+      "default": 0
+    }
+  },
+  "additionalProperties": false
+}

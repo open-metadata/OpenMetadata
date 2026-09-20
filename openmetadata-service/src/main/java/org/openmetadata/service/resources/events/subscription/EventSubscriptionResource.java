@@ -30,6 +30,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -53,13 +54,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.api.events.AlertMatcherGate;
 import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
+import org.openmetadata.schema.api.events.SetAlertMatcherMode;
+import org.openmetadata.schema.entity.events.AlertMatcherSetting;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -83,6 +88,9 @@ import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.events.subscription.matching.MatcherGate;
+import org.openmetadata.service.events.subscription.matching.MatcherModes;
+import org.openmetadata.service.events.subscription.matching.ShadowReports;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -161,6 +169,7 @@ public class EventSubscriptionResource
       initializeEventSubscriptions();
       // Schedule the audit log consumer to read from change_event and write to audit_log
       EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();
+      logMatcherGates();
     } catch (Exception ex) {
       // Starting application should not fail
       LOG.warn("Exception during initialization", ex);
@@ -964,6 +973,110 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
     return EventSubscriptionScheduler.getInstance().getSchedulingInfo(subscriptionId);
+  }
+
+  @GET
+  @Path("/matcher")
+  @Operation(
+      operationId = "getAlertMatcherSetting",
+      summary = "Get which engine decides if an event belongs to an alert",
+      description =
+          "One value for the whole cluster, per alert type: the stored condition text decides, the stored text decides with the plan evaluated beside it, or the plan decides.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The matcher setting",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AlertMatcherSetting.class)))
+      })
+  public AlertMatcherSetting getAlertMatcherSetting(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return MatcherModes.read();
+  }
+
+  @PUT
+  @Path("/matcher")
+  @Operation(
+      operationId = "setAlertMatcherMode",
+      summary = "Change which engine decides matching for one alert type",
+      description =
+          "Takes effect on every server within thirty seconds, for ticks that open after that, with no restart. Setting shadow again undoes a switch to the plan.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The matcher setting after the change",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AlertMatcherSetting.class))),
+        @ApiResponse(responseCode = "400", description = "Alerts of that type have no plan")
+      })
+  public AlertMatcherSetting setAlertMatcherMode(
+      @Context SecurityContext securityContext, @Valid SetAlertMatcherMode request) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      return MatcherModes.write(
+          request.getAlertType(), request.getMode(), securityContext.getUserPrincipal().getName());
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException(e.getMessage());
+    }
+  }
+
+  @GET
+  @Path("/matcher/gate")
+  @Operation(
+      operationId = "getAlertMatcherGate",
+      summary = "Get whether the plan may decide matching, per alert type",
+      description =
+          "What comparing the stored condition text with the plan has shown across every alert of each type: the counts, every source and condition that still lacks coverage, and whether the type passes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "One gate per alert type that has a plan",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AlertMatcherGate.class)))
+      })
+  public List<AlertMatcherGate> getAlertMatcherGate(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return readMatcherGates();
+  }
+
+  private static List<AlertMatcherGate> readMatcherGates() {
+    List<EventSubscription> everyAlert =
+        Entity.getCollectionDAO().eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+            .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+            .toList();
+    return Stream.of(
+            CreateEventSubscription.AlertType.NOTIFICATION,
+            CreateEventSubscription.AlertType.OBSERVABILITY)
+        .map(
+            alertType ->
+                MatcherGate.read(alertType, everyAlert, alert -> ShadowReports.of(alert.getId())))
+        .toList();
+  }
+
+  // A deployment nobody watches still leaves evidence that can be attached to an issue.
+  private static void logMatcherGates() {
+    for (AlertMatcherGate gate : readMatcherGates()) {
+      LOG.info(
+          "Alert matching for {} alerts: mode {}, the plan may decide: {}; {} alerts, {} events compared, {} matched by an engine, {} disagreements, {} not comparable, {} skipped; sources lacking coverage {}, conditions lacking coverage {}, alerts never compared {}",
+          gate.getAlertType().value(),
+          gate.getMode().value(),
+          gate.getPasses(),
+          gate.getAlerts(),
+          gate.getCompared(),
+          gate.getMatchedByAnEngine(),
+          gate.getDisagreements(),
+          gate.getNotComparable(),
+          gate.getSkipped(),
+          gate.getSourcesLackingCoverage(),
+          gate.getConditionsLackingCoverage(),
+          gate.getAlertsNeverCompared());
+    }
   }
 
   @GET

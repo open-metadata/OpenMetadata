@@ -2,6 +2,7 @@ package org.openmetadata.service.events.subscription;
 
 import io.micrometer.core.instrument.Metrics;
 import java.util.concurrent.TimeUnit;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 
 /**
  * What the alert pipeline counts about itself. The reconciler, the compare-and-set and the
@@ -18,6 +19,7 @@ public final class AlertTelemetry {
   public static final String TICK_ENDED_WITHOUT_SENDING = "tick ended without sending";
   public static final String GAP_STEPPED_OVER = "gap stepped over";
   public static final String EVENT_SET_ASIDE_AS_INTERRUPTED = "event set aside as interrupted";
+  public static final String SHADOW_REPORT_WRITE_FAILED = "shadow report write failed";
 
   private static final String TICK_DURATION = "alert_tick_duration";
   private static final String TRIGGER_LATENESS = "alert_trigger_lateness";
@@ -27,6 +29,7 @@ public final class AlertTelemetry {
   private static final String STOPPED_BY_BUDGET = "alert_ticks_stopped_by_budget";
   private static final String IMMEDIATE_RERUNS = "alert_immediate_reruns";
   private static final String ATTEMPTS_ON_UNREACHABLE = "alert_attempts_on_unreachable_target";
+  private static final String SHADOW_DISAGREEMENTS = "alert_shadow_disagreements";
 
   private AlertTelemetry() {}
 
@@ -57,6 +60,11 @@ public final class AlertTelemetry {
    */
   public static void attemptOnUnreachableTarget(boolean skipped) {
     Metrics.counter(ATTEMPTS_ON_UNREACHABLE, "skipped", String.valueOf(skipped)).increment();
+  }
+
+  /** The stored condition text and the plan gave different answers about one event. */
+  public static void shadowDisagreement(CreateEventSubscription.AlertType alertType) {
+    Metrics.counter(SHADOW_DISAGREEMENTS, "alertType", alertType.value()).increment();
   }
 
   public static void absorbed(String what) {

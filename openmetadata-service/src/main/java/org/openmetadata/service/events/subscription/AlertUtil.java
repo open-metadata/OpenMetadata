@@ -16,7 +16,6 @@ package org.openmetadata.service.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.CONVERSATION;
-import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
@@ -59,6 +58,8 @@ import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.matching.AlertMatching;
+import org.openmetadata.service.events.subscription.matching.ConditionEvaluator;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
@@ -106,23 +107,13 @@ public final class AlertUtil {
 
   public static boolean evaluateAlertConditions(
       ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
-    if (!alertFilterRules.isEmpty()) {
-      boolean result;
-      String completeCondition = buildCompleteCondition(alertFilterRules);
-      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
-      Expression expression =
-          COMPILED_CONDITIONS.get(completeCondition, condition -> parseExpression(condition));
-      SimpleEvaluationContext context =
-          SimpleEvaluationContext.forReadOnlyDataBinding()
-              .withInstanceMethods()
-              .withRootObject(ruleEvaluator)
-              .build();
-      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
-      LOG.debug("Alert evaluated as Result : {}", result);
-      return result;
-    } else {
-      return true;
-    }
+    return evaluateAlertConditions(new ConditionEvaluator(changeEvent), alertFilterRules);
+  }
+
+  /** With an evaluator another engine also asks, so both judge the same event in the same state. */
+  public static boolean evaluateAlertConditions(
+      ConditionEvaluator evaluator, List<EventFilterRule> alertFilterRules) {
+    return alertFilterRules.isEmpty() || evaluator.isTrue(buildCompleteCondition(alertFilterRules));
   }
 
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
@@ -179,25 +170,21 @@ public final class AlertUtil {
       // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
       // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
       // reach notification alerts (no actions) — see #28122.
-      if (!nullOrEmpty(config.getActions())) {
-        return false;
-      }
-      return event.getEntityType().equals(CONVERSATION)
-          ? shouldTriggerAlertForConversation(event, config.getResources().get(0))
-          : shouldTriggerAlertForThread(event, config.getResources().get(0));
+      return nullOrEmpty(config.getActions()) && anySourceAdmitsTheDiscussion(event, config);
     }
 
-    // Test Suite
-    if (config.getResources().get(0).equals(TEST_SUITE)) {
-      return event.getEntityType().equals(TEST_SUITE);
-    }
+    // Every source of the alert counts, never only the first.
+    return config.getResources().contains(event.getEntityType());
+  }
 
-    // Data Contract
-    if (config.getResources().get(0).equals(Entity.DATA_CONTRACT)) {
-      return event.getEntityType().equals(Entity.DATA_CONTRACT);
-    }
-
-    return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
+  private static boolean anySourceAdmitsTheDiscussion(ChangeEvent event, FilteringRules config) {
+    boolean conversation = event.getEntityType().equals(CONVERSATION);
+    return config.getResources().stream()
+        .anyMatch(
+            resource ->
+                conversation
+                    ? shouldTriggerAlertForConversation(event, resource)
+                    : shouldTriggerAlertForThread(event, resource));
   }
 
   private static boolean shouldTriggerAlertForConversation(ChangeEvent event, String resource) {
@@ -212,7 +199,6 @@ public final class AlertUtil {
         && resource.equalsIgnoreCase(conversation.getEntityRef().getType());
   }
 
-  // Announcement is its own entity since #25894; task stays until #30559 retires the legacy path.
   private static final Set<String> THREAD_TYPE_RESOURCES = Set.of("task", "conversation");
 
   private static boolean shouldTriggerAlertForThread(ChangeEvent event, String resource) {
@@ -288,17 +274,38 @@ public final class AlertUtil {
       Long startingTimestamp,
       BiConsumer<ChangeEvent, Exception> onEvaluationError) {
     Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
-    FilteringRules filteringRules = eventSubscription.getFilteringRules();
+    return getFilteredEvents(
+        AlertMatching.forDiagnostics(eventSubscription, watermark), events, onEvaluationError);
+  }
+
+  /** With the matching a tick built when it opened, so its plan is built once for the tick. */
+  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
+      AlertMatching matching,
+      Map<ChangeEvent, Set<UUID>> events,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
     return events.entrySet().stream()
-        .filter(
-            entry ->
-                isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError))
+        .filter(entry -> belongs(matching, entry.getKey(), onEvaluationError))
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
                 Map.Entry::getValue,
                 (first, second) -> first,
                 LinkedHashMap::new));
+  }
+
+  // Each event is judged alone: a condition that throws costs that one event, never its batch.
+  public static boolean belongs(
+      AlertMatching matching,
+      ChangeEvent event,
+      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    boolean belongs;
+    try {
+      belongs = matching.matches(event);
+    } catch (Exception e) {
+      reportEvaluationError(onEvaluationError, event, e);
+      belongs = false;
+    }
+    return belongs;
   }
 
   /**
@@ -358,22 +365,16 @@ public final class AlertUtil {
 
   public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules, Long startingTimestamp) {
-    if (isStalePipelineExecution(event, startingTimestamp)) {
-      return false;
-    }
-    boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
+    return !isStalePipelineExecution(event, startingTimestamp)
+        && storedTextMatches(event, filteringRules, new ConditionEvaluator(event));
+  }
 
-    if (triggerChangeEvent) {
-      // Evaluate Rules
-      triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
-
-      if (triggerChangeEvent) {
-        // Evaluate Actions
-        triggerChangeEvent = AlertUtil.evaluateAlertConditions(event, filteringRules.getActions());
-      }
-    }
-
-    return triggerChangeEvent;
+  /** What the stored condition text answers, which is also what the previous release answers. */
+  public static boolean storedTextMatches(
+      ChangeEvent event, FilteringRules filteringRules, ConditionEvaluator evaluator) {
+    return shouldTriggerAlert(event, filteringRules)
+        && evaluateAlertConditions(evaluator, filteringRules.getRules())
+        && evaluateAlertConditions(evaluator, filteringRules.getActions());
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
@@ -550,6 +551,14 @@ public final class AlertUtil {
                 rules.add(
                     getFilterRule(lookUp, argumentsInput, buildInputArgumentsMap(argumentsInput))));
     return rules;
+  }
+
+  /** One chosen filter or trigger as the rule that is stored for it, arguments filled in. */
+  public static EventFilterRule ruleOf(EventFilterRule definition, ArgumentsInput chosen) {
+    return getFilterRule(
+        Map.of(definition.getName(), JsonUtils.deepCopy(definition, EventFilterRule.class)),
+        chosen,
+        buildInputArgumentsMap(chosen));
   }
 
   private static Map<String, List<String>> buildInputArgumentsMap(ArgumentsInput filter) {

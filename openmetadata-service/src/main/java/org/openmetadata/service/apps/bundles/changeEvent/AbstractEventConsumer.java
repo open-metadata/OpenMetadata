@@ -42,9 +42,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.subscription.matching.AlertMatching;
+import org.openmetadata.service.events.subscription.matching.ShadowReports;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -76,6 +79,7 @@ public abstract class AbstractEventConsumer
   // Offsets of the events the last poll returned, in the same order.
   private List<Long> polledOffsets = List.of();
   private TickStopSignal stopSignal;
+  private AlertMatching matching;
   private boolean stoppedEarly;
 
   @Getter @Setter private JobDetail jobDetail;
@@ -149,7 +153,7 @@ public abstract class AbstractEventConsumer
       return;
     }
     Map<ChangeEvent, Set<UUID>> filteredEvents =
-        getFilteredEvents(eventSubscription, events, ledger.watermark(), this::deadLetterEvent);
+        getFilteredEvents(matchingOfThisTick(), events, this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -388,6 +392,7 @@ public abstract class AbstractEventConsumer
     this.destinationMap = loadDestinationsMap();
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
+    this.matching = null;
     TickMemory.begin();
     try {
       doInit(context);
@@ -452,6 +457,7 @@ public abstract class AbstractEventConsumer
     ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
     int processed = 0;
     while (processed < events.size() && !mustStopBefore(processed)) {
+      matchingOfThisTick().nextEventIsAt(polledOffsets.get(processed + skipped));
       publishIsolated(events.get(processed));
       ledger.readUpTo(polledOffsets.get(processed + skipped), 0L);
       processed++;
@@ -535,11 +541,27 @@ public abstract class AbstractEventConsumer
 
   // From the row as it is now, never from the alert this tick started with: an edit made while
   // the tick ran has already written a fresher copy, and it must not be replaced by an older one.
+  // What the comparison of the two matching engines showed is kept with it, and like everything
+  // else of an alert, not for one that was deleted meanwhile.
   private void refreshCopyForOlderServers(JobExecutionContext context) {
     EventSubscription current = AlertRows.readOrNull(eventSubscription.getId());
+    if (current != null && matching != null) {
+      ShadowReports.add(current.getId(), matching.tally());
+    }
     if (current != null && !Boolean.FALSE.equals(current.getEnabled())) {
       CopyForOlderServers.ensure(context.getScheduler(), current, ledger.health());
     }
+  }
+
+  // Built when the tick first needs it: the plan, and the mode that is in force for this tick.
+  private AlertMatching matchingOfThisTick() {
+    if (matching == null) {
+      matching =
+          AlertMatching.forTick(
+              eventSubscription,
+              AlertUtil.alertingWatermark(eventSubscription, ledger.watermark()));
+    }
+    return matching;
   }
 
   // Publishers leave their outcome on the destination they sent through. The alert was read from
