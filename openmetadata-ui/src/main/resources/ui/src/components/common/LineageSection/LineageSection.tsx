@@ -43,12 +43,12 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       size="sm"
       onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">
-        <Typography as="p" className="tw:text-blue-700 tw:font-normal">
+        <Typography as="p" className="tw:text-utility-blue-700 tw:font-normal">
           {t('label.-with-colon', { text: t(`label.${type}`) })}
         </Typography>
         <Typography
           as="p"
-          className="tw:text-blue-700 tw:font-normal"
+          className="tw:text-utility-blue-700 tw:font-normal"
           data-testid={`${type}-count`}>
           {count}
         </Typography>
