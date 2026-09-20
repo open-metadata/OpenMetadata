@@ -101,6 +101,9 @@ export const SelectableList = ({
   // Bumped on every new search so a pagination response that resolves after the
   // search replaced the list is dropped instead of appending stale/duplicate rows.
   const requestGeneration = useRef(0);
+  // Identifies the latest search so an older search whose response resolves last
+  // cannot overwrite the newer query's results, cursor, and text.
+  const latestSearch = useRef(0);
 
   const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
@@ -174,7 +177,14 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
+      const searchId = ++latestSearch.current;
       const { data, paging } = await fetchOptions(search);
+
+      // Drop this response if a newer search has since been issued, so a slow
+      // older request cannot overwrite the newer query's results.
+      if (searchId !== latestSearch.current) {
+        return;
+      }
 
       // Bump at the moment the list is replaced — after the await — so any page that
       // started before now (including one begun while this search was in flight)
