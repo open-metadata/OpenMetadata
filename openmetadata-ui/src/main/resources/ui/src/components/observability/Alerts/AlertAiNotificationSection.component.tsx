@@ -119,7 +119,7 @@ const CustomTemplateBodyField = ({
       </Typography>
       {areTemplateFieldsReadOnly ? (
         <RichTextEditorPreviewerV1
-          className="bg-white p-md border rounded-4"
+          className="tw:bg-primary p-md border rounded-4"
           extensionOptions={{ enableHandlebars: true }}
           markdown={templateFieldData?.templateBody ?? ''}
         />
@@ -160,7 +160,7 @@ const CustomTemplateBodyField = ({
       )}
       {!areTemplateFieldsReadOnly && (
         <>
-          <Typography as="p" className="tw:text-sm tw:text-gray-500">
+          <Typography as="p" className="tw:text-sm tw:text-tertiary">
             {t('message.handlebar-helper-text')}
           </Typography>
           {customTemplateErrors.templateBody && (

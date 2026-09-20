@@ -29,6 +29,7 @@ import {
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { CustomNodeProps } from '../../../interface/knowledgeGraph.interface';
 import {
   getEntityNameLabel,
   getPluralizeEntityName,
@@ -42,14 +43,7 @@ import { GraphNodePresentation } from '../KnowledgeGraph.interface';
 import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';
 
-export interface CustomNodeProps {
-  nodeData: NodeData;
-  nodeRenderKey: string;
-  onSelect?: (keyboard: boolean) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  onExpand?: () => void;
-}
+export type { CustomNodeProps };
 
 export const NODE_ICONS = {
   table: Table,

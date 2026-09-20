@@ -12,7 +12,7 @@
  */
 import { SuggestionAction } from '../components/Suggestions/SuggestionsProvider/SuggestionsProvider.interface';
 import { SuggestionType } from '../types/taskSuggestion';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import {
   approveRejectAllSuggestions,
   getSuggestionsByUserId,
@@ -20,7 +20,7 @@ import {
 } from './suggestionsAPI';
 import { resolveTask, TaskEntityStatus, TaskResolutionType } from './tasksAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   __esModule: true,
   default: { get: jest.fn() },
 }));

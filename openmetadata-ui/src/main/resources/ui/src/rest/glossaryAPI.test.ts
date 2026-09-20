@@ -12,6 +12,7 @@
  */
 
 import { Provenance, Status } from '../generated/api/data/updateTermRelation';
+import APIClient from './axiosClient';
 import {
   getGlossaryTermAssets,
   getOntologyDataGraph,
@@ -19,9 +20,8 @@ import {
   removeTermRelationById,
   updateTermRelationById,
 } from './glossaryAPI';
-import APIClient from './index';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosClient', () => ({
   delete: jest.fn(),
   get: jest.fn(),
   patch: jest.fn(),
