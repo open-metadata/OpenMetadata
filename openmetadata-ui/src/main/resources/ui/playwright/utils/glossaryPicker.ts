@@ -26,13 +26,8 @@ export type GlossaryTermRef = {
 // popover is open at a time, so it resolves to a single element.
 const POPOVER = '.glossary-term-picker-popover';
 
-// Button and custom triggers put the search box inside the popover; the input
-// variant's trigger *is* the search box, and marks itself while open.
-const searchBox = (page: Page) =>
-  page
-    .locator(POPOVER)
-    .locator('input')
-    .or(page.locator('[data-treeselect-open="true"] input'));
+// Only the button and custom-trigger variants put a search box in the popover.
+const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
 
 const tree = (page: Page) =>
   page.locator(POPOVER).locator('[role="treegrid"]');
@@ -64,14 +59,21 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .count()
     .then((n) => n > 0);
 
+// Types the term and leaves the waiting to the caller's row assertion. Waiting
+// on the search response instead looks synchronised but is not: the tree
+// debounces, aborts the in-flight request on each keystroke, and skips the call
+// entirely when the term is already listed — so the response may never come
+// even though the row does.
 export const searchGlossaryPicker = async (page: Page, term: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('glossary')
-  );
-  await searchBox(page).fill(term);
-  await searchResponse;
+  const inPopover = popoverSearchBox(page);
+  // The input variant has no search box in the popover — its trigger is the
+  // search box, and it holds focus while open. `fill` replaces the previous
+  // term, which `type` would append to.
+  const box = (await inPopover.count())
+    ? inPopover
+    : page.locator('input:focus');
+
+  await box.fill(term);
 };
 
 // Opens the picker and waits for the treegrid to render.
