@@ -18,14 +18,14 @@ import {
   Owner,
 } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { isEmpty, isString } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
   CustomProperty,
@@ -38,6 +38,9 @@ import {
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
@@ -50,7 +53,6 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
-import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   AVAILABLE_ICONS,
@@ -82,33 +84,35 @@ interface BuildGlossaryTermSavePayloadParams {
   extension: Record<string, unknown>;
 }
 
-const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
-  relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
+// An already-related term is seeded from its reference; the id comes back from
+// `glossaryTerm.relatedTerms` on submit, so the entity is not needed here.
+const relatedTermToPickerValue = (
+  related: EntityReference
+): GlossaryPickerValue =>
+  ({
+    tagFQN: related.fullyQualifiedName ?? '',
+    name: getEntityName(related),
+    source: TagSource.Glossary,
+  } as GlossaryPickerValue);
 
-// In edit mode the related-terms multiselect can carry a plain FQN string (a
-// value the user hasn't touched), a freshly picked option (`term.data.id`), or
-// an antd-normalised `{ value }` option — resolve each back to the term id.
+// Create takes FQNs; edit takes ids, which the picked term carries as its
+// source entity and an untouched, pre-seeded one does not.
 const resolveRelatedTerms = (
   editMode: boolean,
-  relatedTerms: DefaultOptionType[],
+  relatedTerms: GlossaryPickerValue[],
   glossaryTerm: GlossaryTerm | undefined
 ) =>
   editMode
-    ? relatedTerms.map((term: DefaultOptionType) => {
-        if (isString(term)) {
-          return glossaryTerm?.relatedTerms?.find(
-            (r) => r.fullyQualifiedName === term
-          )?.id;
-        }
-        if (term.data) {
-          return term.data.id;
-        }
-
-        return glossaryTerm?.relatedTerms?.find(
-          (r) => r.fullyQualifiedName === term.value
-        )?.id;
-      })
-    : getRelatedTermFqnList(relatedTerms);
+    ? relatedTerms
+        .map(
+          (term) =>
+            term.entity?.id ??
+            glossaryTerm?.relatedTerms?.find(
+              (r) => r.term.fullyQualifiedName === term.tagFQN
+            )?.term.id
+        )
+        .filter((id): id is string => Boolean(id))
+    : relatedTerms.map((term) => term.tagFQN);
 
 const buildGlossaryTermSavePayload = ({
   formObj,
@@ -405,7 +409,9 @@ const AddGlossaryTermForm = ({
         tags,
         references,
         mutuallyExclusive,
-        relatedTerms: relatedTerms?.map((r) => r.fullyQualifiedName ?? ''),
+        relatedTerms: relatedTerms?.map((r) =>
+          relatedTermToPickerValue(r.term)
+        ),
       });
 
       if (reviewers) {
@@ -505,23 +511,18 @@ const AddGlossaryTermForm = ({
       required: false,
       label: t('label.related-term-plural'),
       id: 'root/relatedTerms',
-      type: FieldTypes.TREE_ASYNC_SELECT_LIST,
+      type: FieldTypes.COMPONENT,
       props: {
-        className: 'glossary-select',
-        'data-testid': 'related-terms',
-        mode: 'multiple',
-        placeholder: t('label.add-entity', {
-          entity: t('label.related-term-plural'),
-        }),
-        open: false,
-        hasNoActionButtons: true,
-        fetchOptions: fetchGlossaryList,
-        initialOptions: glossaryTerm?.relatedTerms?.map((data) => ({
-          label: data.fullyQualifiedName,
-          value: data.fullyQualifiedName,
-          data,
-        })),
-        filterOptions: [getGlossaryTermFqn(glossaryTerm)],
+        children: (
+          <GlossaryTermPicker
+            data-testid="related-terms"
+            // A term cannot be related to itself.
+            excludeFqns={[getGlossaryTermFqn(glossaryTerm)]}
+            placeholder={t('label.add-entity', {
+              entity: t('label.related-term-plural'),
+            })}
+          />
+        ),
       },
     },
     // antd's Form.Item feeds the real `value`/`onChange` into these controlled

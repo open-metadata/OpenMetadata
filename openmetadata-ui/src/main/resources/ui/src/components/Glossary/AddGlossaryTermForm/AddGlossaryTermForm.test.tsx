@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
+import { GlossaryTermFormState } from './AddGlossaryTermForm.interface';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
@@ -226,7 +226,7 @@ const createIntakeFormWithFields = (
 
 interface FormHarnessProps {
   editMode?: boolean;
-  formValues?: Partial<CreateGlossaryTerm>;
+  formValues?: Partial<GlossaryTermFormState>;
   glossaryTerm?: GlossaryTerm;
   onSave: (value: GlossaryTermForm) => void | Promise<void>;
 }
@@ -237,7 +237,7 @@ const FormHarness = ({
   glossaryTerm,
   onSave,
 }: FormHarnessProps) => {
-  const [form] = Form.useForm<CreateGlossaryTerm>();
+  const [form] = Form.useForm<GlossaryTermFormState>();
 
   return (
     <>
@@ -553,7 +553,7 @@ describe('AddGlossaryTermForm style fields', () => {
             description: 'a term',
             color: '#0000FF',
             iconURL: 'Folder',
-          } as Partial<CreateGlossaryTerm>
+          } as Partial<GlossaryTermFormState>
         }
         onSave={onSave}
       />

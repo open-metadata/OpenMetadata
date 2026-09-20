@@ -125,6 +125,30 @@ export const applyGlossaryPicker = async (
   await expect(page.getByTestId('update-btn')).not.toBeVisible();
 };
 
+// The trigger of a form picker, which renders its selection inline.
+export const glossaryFieldTrigger = (scope: Page | Locator, testId: string) =>
+  scope.getByTestId(testId);
+
+// Chips live on the trigger; each carries an aria-label remove button.
+export const removeGlossaryTermChip = async (
+  trigger: Locator,
+  label: string
+) => {
+  await trigger.getByRole('button', { name: `Remove ${label}` }).click();
+};
+
+// A form picker commits on click, so it closes with Escape rather than Apply.
+export const pickGlossaryTermInField = async (
+  page: Page,
+  trigger: Locator,
+  term: GlossaryTermRef
+) => {
+  await openGlossaryPicker(page, trigger);
+  await toggleGlossaryTermInPicker(page, term);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId(POPOVER)).not.toBeVisible();
+};
+
 // Open, pick one term, apply — the whole flow for a single-term assignment.
 export const pickGlossaryTerm = async (
   page: Page,

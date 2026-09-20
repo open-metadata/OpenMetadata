@@ -19,7 +19,6 @@ import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   getGlossariesList,
   queryGlossaryTerms,
@@ -32,6 +31,8 @@ import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTer
 import {
   convertGlossaryTermsToTreeOptionsWithNames,
   convertToTreeNodes,
+  GlossaryPickerValue,
+  glossaryRootValue,
 } from './GlossaryTagSuggestionUtils';
 import { useGlossaryMutualExclusivity } from './useGlossaryMutualExclusivity';
 
@@ -40,7 +41,8 @@ interface HierarchicalGlossary extends Glossary {
 }
 
 // Glossaries at the root, terms lazy-loaded on expand; ids are FQNs to match tagFQN.
-export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
+export const useGlossaryTreeData =
+  (): TreeSelectDataFetcher<GlossaryPickerValue> => {
   const { getExclusivity, setExclusivity } = useGlossaryMutualExclusivity();
 
   return useCallback(
@@ -54,7 +56,7 @@ export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
           );
 
           // getHierarchy=true returns glossaries with their matching terms nested
-          const treeNodes: TreeSelectNode<TagLabel>[] = [];
+          const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = [];
 
           if (Array.isArray(response)) {
             response.forEach((glossary: HierarchicalGlossary) => {
@@ -79,6 +81,7 @@ export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
                   hasExclusiveChildren: glossary.mutuallyExclusive === true,
                   lazyLoad: false,
                   icon: <GlossaryIcon size={16} />,
+                  data: glossaryRootValue(glossary),
                 });
               }
             });
@@ -114,7 +117,7 @@ export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
           signal
         );
 
-        const treeNodes: TreeSelectNode<TagLabel>[] = glossaries.map(
+        const treeNodes: TreeSelectNode<GlossaryPickerValue>[] = glossaries.map(
           (glossary: Glossary) => {
             const isExclusive = glossary.mutuallyExclusive === true;
             setExclusivity(glossary.name, isExclusive);
@@ -124,8 +127,10 @@ export const useGlossaryTreeData = (): TreeSelectDataFetcher<TagLabel> => {
               label: getEntityName(glossary),
               value: glossary.fullyQualifiedName || glossary.name,
               isLeaf: false,
-              // Checkable to tick its terms; no `data`, so never a tag itself.
+              // Checkable to tick its terms; the payload marks it a root so the
+              // picker only yields it where a glossary is a valid value.
               allowSelection: true,
+              data: glossaryRootValue(glossary),
               hasExclusiveChildren: isExclusive,
               lazyLoad: true,
               icon: <GlossaryIcon size={16} />,

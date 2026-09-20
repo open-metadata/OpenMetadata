@@ -12,7 +12,6 @@
  */
 import { ReactNode } from 'react';
 import {
-  GlossaryTerm,
   Style,
 } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -52,7 +51,6 @@ export interface TermsRowProps {
   initialTerms: TermItem[];
   relationTypeOptions: RelationTypeOption[];
   excludeFQN: string;
-  preloadedTerms: GlossaryTerm[];
   onRelationTypeChange: (rowId: string, relationType: string) => void;
   onTermsChange: (rowId: string, terms: TermItem[]) => void;
   onRemove: (rowId: string) => void;
@@ -61,7 +59,6 @@ export interface TermsRowProps {
 export interface TermsRowEditorProps {
   rows: RelationEditRow[];
   excludeFQN: string;
-  preloadedTerms: GlossaryTerm[];
   relationTypeOptions: RelationTypeOption[];
   onAddRow: () => void;
   onRelationTypeChange: (rowId: string, relationType: string) => void;

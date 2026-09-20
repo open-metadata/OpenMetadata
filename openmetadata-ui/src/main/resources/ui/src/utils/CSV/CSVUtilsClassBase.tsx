@@ -28,7 +28,7 @@ import {
   Tag01,
   Type01,
 } from '@untitledui/icons';
-import Select, { DefaultOptionType } from 'antd/lib/select';
+import Select from 'antd/lib/select';
 import { isEmpty, startCase, toString } from 'lodash';
 import {
   CSSProperties,
@@ -47,13 +47,13 @@ import type { RenderEditCellProps } from 'react-data-grid';
 import { createPortal } from 'react-dom';
 import { withSuspenseFallback } from '../../components/AppRouter/withSuspenseFallback';
 import Certification from '../../components/Certification/Certification.component';
-import TreeAsyncSelectList from '../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import ExpressionCodeCell from '../../components/common/EntityImport/ExpressionCodeCell/ExpressionCodeCell.component';
 import { useMultiContainerFocusTrap } from '../../components/common/FocusTrap/FocusTrapWithContainer';
 import InlineEdit from '../../components/common/InlineEdit/InlineEdit.component';
+import GlossaryTermPicker from '../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import { KeyDownStopPropagationWrapper } from '../../components/common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -2206,6 +2206,20 @@ const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
   };
 };
 
+const CSV_GLOSSARY_PICKER_TESTID = 'csv-glossary-terms-picker';
+
+// CSV stores glossary terms as a `;`-joined list of FQNs.
+const csvValueToGlossaryTags = (value: string): TagLabel[] =>
+  value
+    ? value.split(';').map(
+        (tagFQN) =>
+          ({
+            tagFQN,
+            source: TagSource.Glossary,
+          } as TagLabel)
+      )
+    : [];
+
 const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
   column,
   entityType,
@@ -2227,11 +2241,28 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const dropdownContainerRef = useRef<HTMLDivElement | null>(null);
+    // Opens with the cell, the way the grid's other editors do.
+    const [isOpen, setIsOpen] = useState(true);
+    const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
+    const hasEdited = useRef(false);
+
+    // The popover is portaled, so the trap has to span it or the grid treats
+    // focus moving into it as leaving the cell and closes the editor.
+    useEffect(() => {
+      setPopoverEl(
+        isOpen
+          ? document.querySelector<HTMLElement>(
+              `[data-testid="${CSV_GLOSSARY_PICKER_TESTID}-popover"]`
+            )
+          : null
+      );
+    }, [isOpen]);
+
     useMultiContainerFocusTrap({
-      containers: [containerRef.current, dropdownContainerRef.current],
+      containers: [containerRef.current, popoverEl],
       active: true,
     });
+
     useEditCellHeightReporter(
       containerRef,
       rowIdx,
@@ -2239,34 +2270,33 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     );
 
     const value = row[column.key];
-    const tags = value ? value?.split(';') : [];
+    const terms = useMemo(
+      () => csvValueToGlossaryTags(toString(value ?? '')),
+      [value]
+    );
 
-    const handleChange = (option: DefaultOptionType | DefaultOptionType[]) => {
-      if (Array.isArray(option)) {
-        onRowChange({
-          ...row,
-          [column.key]: option.map((tag) => toString(tag.value)).join(';'),
-        });
-      } else {
-        onRowChange({
-          ...row,
-          [column.key]: toString(option.value),
-        });
-      }
+    const handleChange = (selected: TagLabel[]) => {
+      hasEdited.current = true;
+      onRowChange({
+        ...row,
+        [column.key]: selected.map((term) => term.tagFQN).join(';'),
+      });
     };
 
     return (
       <div ref={containerRef}>
-        <TreeAsyncSelectList
-          defaultValue={tags}
-          dropdownContainerRef={dropdownContainerRef}
-          dropdownMatchSelectWidth={false}
-          optionClassName="tag-select-box"
-          onCancel={() => {
-            onClose(false);
-          }}
+        <GlossaryTermPicker
+          data-testid={CSV_GLOSSARY_PICKER_TESTID}
+          isOpen={isOpen}
+          value={terms}
           onChange={handleChange}
-          onSubmit={() => onClose(true)}
+          // Closing the popover ends the cell edit; commit only if it changed.
+          onOpenChange={(open) => {
+            setIsOpen(open);
+            if (!open) {
+              onClose(hasEdited.current);
+            }
+          }}
         />
       </div>
     );

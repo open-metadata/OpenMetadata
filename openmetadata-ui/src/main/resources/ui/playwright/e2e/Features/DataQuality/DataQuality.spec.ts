@@ -42,6 +42,11 @@ import {
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
 import {
+  glossaryFieldTrigger,
+  pickGlossaryTermInField,
+  removeGlossaryTermChip,
+} from '../../../utils/glossaryPicker';
+import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
@@ -291,28 +296,21 @@ test.describe(
         await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one
-        await page
-          .locator(
-            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
-          .click();
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const newGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        const glossaryField = glossaryFieldTrigger(
+          page.getByTestId('glossary-terms-selector'),
+          'tag-suggestion'
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm2.data.name
+        await removeGlossaryTermChip(
+          glossaryField,
+          testGlossaryTerm1.responseData.displayName ??
+            testGlossaryTerm1.data.name
         );
-        await newGlossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
+        await pickGlossaryTermInField(page, glossaryField, {
+          name: testGlossaryTerm2.data.name,
+          displayName: testGlossaryTerm2.responseData.displayName,
+          fullyQualifiedName:
+            testGlossaryTerm2.responseData.fullyQualifiedName ?? '',
+        });
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
@@ -496,28 +494,21 @@ test.describe(
         await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one for column test case
-        await page
-          .locator(
-            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
-          )
-          .first()
-          .click();
-        await page.click('[data-testid="glossary-terms-selector"] input');
-        const columnNewGlossarySearchResponse = page.waitForResponse(
-          `/api/v1/search/query?q=*index=glossaryTerm*`
+        const columnGlossaryField = glossaryFieldTrigger(
+          page.getByTestId('glossary-terms-selector'),
+          'tag-suggestion'
         );
-        await page.fill(
-          '[data-testid="glossary-terms-selector"] input',
-          testGlossaryTerm2.data.name
+        await removeGlossaryTermChip(
+          columnGlossaryField,
+          testGlossaryTerm1.responseData.displayName ??
+            testGlossaryTerm1.data.name
         );
-        await columnNewGlossarySearchResponse;
-        await page
-          .getByTestId(
-            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
-          )
-          .click();
-
-        await dismissTagSuggestions(page);
+        await pickGlossaryTermInField(page, columnGlossaryField, {
+          name: testGlossaryTerm2.data.name,
+          displayName: testGlossaryTerm2.responseData.displayName,
+          fullyQualifiedName:
+            testGlossaryTerm2.responseData.fullyQualifiedName ?? '',
+        });
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'

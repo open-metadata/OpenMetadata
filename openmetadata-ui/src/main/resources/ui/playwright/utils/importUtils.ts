@@ -44,6 +44,7 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -696,24 +697,15 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await page
-    .locator('.async-tree-select-list-dropdown')
-    .waitFor({ state: 'visible' });
-
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
-
-  const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=**&index=glossaryTerm&**`
-  );
-  await page.keyboard.type(glossary.name);
-  await searchResponse;
-
+  // The cell editor opens the picker with it, so there is nothing to click open.
+  await searchGlossaryPicker(page, glossary.name);
   await waitForAllLoadersToDisappear(page);
-  await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
-  await clickAssociatedTagSave(page);
+  await page
+    .getByTestId(`tree-node-"${glossary.parent}"."${glossary.name}"`)
+    .click();
+
+  // Closing the picker ends the cell edit and commits the row.
+  await page.keyboard.press('Escape');
 };
 
 export const fillDomainDetails = async (

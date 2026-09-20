@@ -74,24 +74,13 @@ describe('Test ChangeParentHierarchy modal component', () => {
     jest.clearAllMocks();
   });
 
-  it('should render glossary selection dropdown', async () => {
+  it('should render the parent picker', async () => {
     await act(async () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const selectInput = await findByRole(
-      screen.getByTestId('change-parent-select'),
-      'combobox'
-    );
-
-    expect(selectInput).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(selectInput);
-    });
-
-    // TreeAsyncSelectList will load glossaries and handle term filtering internally
-    expect(selectInput).toBeInTheDocument();
+    // The picker loads glossaries and their terms itself.
+    expect(screen.getByTestId('change-parent-select')).toBeInTheDocument();
   });
 
   it('should trigger onCancel button', async () => {
