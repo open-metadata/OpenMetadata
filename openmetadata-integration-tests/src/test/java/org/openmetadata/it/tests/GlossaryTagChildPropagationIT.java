@@ -41,6 +41,8 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -48,6 +50,8 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TagLabel;
@@ -81,6 +85,9 @@ public class GlossaryTagChildPropagationIT {
   private static final Duration AWAIT_TIMEOUT = Duration.ofMinutes(3);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
   private static final String COLUMN_INDEX = "column_search_index";
+  private static final String TEST_CASE_RESULT_INDEX = "test_case_result_search_index";
+  private static final String TEST_CASE_RESOLUTION_STATUS_INDEX =
+      "test_case_resolution_status_search_index";
   private static final String TOP_LEVEL_COLUMN = "payload";
   private static final String NESTED_COLUMN = "inner";
   private static final String CLEAR_TAGS_PATCH =
@@ -204,7 +211,7 @@ public class GlossaryTagChildPropagationIT {
    * on the test case doc. {@code SearchRepository.propagateTagChangeToChildren} drives it explicitly.
    */
   @Test
-  void bulkRemoveFromGlossary_clearsPropagatedLabelFromTestCaseSearchDoc(TestNamespace ns)
+  void bulkRemoveFromGlossary_clearsPropagatedLabelFromTestCaseAndTimeSeriesDocs(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Database database = null;
@@ -215,12 +222,19 @@ public class GlossaryTagChildPropagationIT {
           createTableWithNestedColumn(client, fixture.schema(), ns.shortPrefix("bulk_tbl"));
       GlossaryTerm term = createTerm(client, ns, "bulk");
       TestCase testCase = createTestCase(client, ns, table);
+      createTimeSeriesDocs(client, testCase);
 
       applyTermToTable(client, table, term);
       awaitTestCaseDocHasTerm(client, testCase.getFullyQualifiedName(), term, true);
+      awaitEmbeddedTestCaseDocHasTerm(client, TEST_CASE_RESULT_INDEX, testCase, term, true);
+      awaitEmbeddedTestCaseDocHasTerm(
+          client, TEST_CASE_RESOLUTION_STATUS_INDEX, testCase, term, true);
 
       bulkRemoveAssetFromTerm(client, term, table);
       awaitTestCaseDocHasTerm(client, testCase.getFullyQualifiedName(), term, false);
+      awaitEmbeddedTestCaseDocHasTerm(client, TEST_CASE_RESULT_INDEX, testCase, term, false);
+      awaitEmbeddedTestCaseDocHasTerm(
+          client, TEST_CASE_RESOLUTION_STATUS_INDEX, testCase, term, false);
     } finally {
       cleanUp(client, database);
     }
@@ -435,6 +449,23 @@ public class GlossaryTagChildPropagationIT {
                     List.of(new TestCaseParameterValue().withName("value").withValue("100"))));
   }
 
+  private static void createTimeSeriesDocs(OpenMetadataClient client, TestCase testCase) {
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withResult("Seeded for glossary tag propagation"));
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
+                .withTestCaseReference(testCase.getFullyQualifiedName()));
+  }
+
   /** Removes the table through the glossary Assets tab route, not a table PATCH. */
   private static void bulkRemoveAssetFromTerm(
       OpenMetadataClient client, GlossaryTerm term, Table table) throws Exception {
@@ -482,6 +513,55 @@ public class GlossaryTagChildPropagationIT {
                 assertTrue(present, () -> "test case doc missing the term; tags=" + tags);
               } else {
                 assertFalse(present, () -> "test case doc still carries the term; tags=" + tags);
+              }
+            });
+  }
+
+  private static void awaitEmbeddedTestCaseDocHasTerm(
+      OpenMetadataClient client,
+      String index,
+      TestCase testCase,
+      GlossaryTerm term,
+      boolean expected) {
+    await(index + " term presence=" + expected + " for " + testCase.getFullyQualifiedName())
+        .atMost(AWAIT_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String testCaseFilter =
+                  "{\"query\":{\"term\":{\"testCase.id\":\"" + testCase.getId() + "\"}}}";
+              String rawJson =
+                  client
+                      .search()
+                      .query("*")
+                      .index(index)
+                      .queryFilter(testCaseFilter)
+                      .size(100)
+                      .execute();
+              JsonNode hits = MAPPER.readTree(rawJson).path("hits").path("hits");
+              assertTrue(
+                  hits.isArray() && !hits.isEmpty(),
+                  () ->
+                      index
+                          + " has no document for test case "
+                          + testCase.getFullyQualifiedName()
+                          + "; raw="
+                          + rawJson);
+              for (JsonNode hit : hits) {
+                JsonNode tags = hit.path("_source").path("testCase").path("tags");
+                boolean present = false;
+                for (JsonNode tag : tags) {
+                  if (term.getFullyQualifiedName().equals(tag.path("tagFQN").asText())) {
+                    present = true;
+                    break;
+                  }
+                }
+                if (expected) {
+                  assertTrue(present, () -> index + " doc missing the term; tags=" + tags);
+                } else {
+                  assertFalse(present, () -> index + " doc still carries the term; tags=" + tags);
+                }
               }
             });
   }

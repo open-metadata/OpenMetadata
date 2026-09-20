@@ -10,11 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -985,7 +987,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+  void propagateInheritedFieldsToChildrenSkipsNonTagChangesForTimeSeriesChildren()
+      throws IOException {
     IndexMapping timeSeriesOnlyMapping =
         IndexMapping.builder()
             .indexName("test_case_search_index")
@@ -1019,6 +1022,114 @@ class SearchRepositoryBehaviorTest {
         testCase);
 
     verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void propagateInheritedFieldsToChildrenRoutesTagsIntoEmbeddedTimeSeriesTestCase()
+      throws IOException {
+    IndexMapping tableWithTimeSeriesChildren =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(
+                List.of(
+                    Entity.TEST_CASE_RESOLUTION_STATUS,
+                    Entity.TEST_CASE_RESULT,
+                    Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel oldTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Old")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel newTag =
+        new TagLabel()
+            .withTagFQN("Glossary.New")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(newTag)))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(JsonUtils.pojoToJson(List.of(oldTag)))));
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE,
+        table.getId().toString(),
+        changeDescription,
+        tableWithTimeSeriesChildren,
+        table);
+
+    verify(searchClient)
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+    ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_testCaseResolutionStatus", "cluster_testCaseResult")),
+            parentMatchCaptor.capture(),
+            updatesCaptor.capture());
+
+    assertEquals("table.id", parentMatchCaptor.getValue().getKey());
+    assertEquals(table.getId().toString(), parentMatchCaptor.getValue().getValue());
+    String script = updatesCaptor.getValue().getKey();
+    assertTrue(script.contains("ctx._source.testCase.tags"));
+    assertTrue(script.contains("params.tagAdded"));
+    assertTrue(script.contains("params.tagDeleted"));
+    assertTrue(script.contains(TagLabel.LabelType.PROPAGATED.value()));
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains("ctx._source.classificationTags"),
+        "the root-tag re-separation script is invalid for time-series mappings");
+
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(Set.of("tagAdded", "tagDeleted"), params.keySet());
+    assertTrue(
+        ((List<TagLabel>) params.get("tagAdded"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
+    assertTrue(
+        ((List<TagLabel>) params.get("tagDeleted"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
+  }
+
+  @Test
+  void propagateTagChangeToChildrenQueuesTheSynthesizedDeltaForRetry() throws IOException {
+    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("Glossary.Term")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    IOException failure = new IOException("search unavailable");
+    doThrow(failure)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateTagChangeToChildren(table, List.of(tag), List.of());
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(table),
+                  argThat(
+                      (ChangeDescription change) ->
+                          change.getFieldsAdded().size() == 1
+                              && Entity.FIELD_TAGS.equals(
+                                  change.getFieldsAdded().getFirst().getName())),
+                  eq("propagateTagChangeToChildren"),
+                  eq(failure)));
+    }
   }
 
   @Test
@@ -1868,6 +1979,11 @@ class SearchRepositoryBehaviorTest {
 
     String script = updates.getLeft();
     assertTrue(script.contains("equalsIgnoreCase"), "Delete script should match by tagFQN");
+    assertTrue(
+        script.contains("existingTag.labelType"),
+        "Delete script should only remove system-applied labels");
+    assertTrue(script.contains(TagLabel.LabelType.PROPAGATED.value()));
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
     assertTrue(script.contains("ctx._source.tags.remove(i)"), "Script should remove matched tags");
     assertFalse(
         script.contains("Collections.sort"), "Delete-only script should not sort (no additions)");

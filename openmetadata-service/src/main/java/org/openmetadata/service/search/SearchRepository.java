@@ -2724,9 +2724,49 @@ public class SearchRepository {
           if (!nullOrEmpty(entityChildren)) {
             searchClient.updateChildren(entityChildren, parentMatch, updates);
           }
+          propagateTagChangesToTimeSeriesChildren(indexMapping, parentMatch, updates);
         }
       }
     }
+  }
+
+  /**
+   * Time-series test result/status documents embed the test case under {@code testCase}; unlike
+   * regular child documents they do not expose a top-level {@code tags} field. Keep the generic
+   * inherited-field script away from those strict mappings, but still cascade tag changes into the
+   * embedded test case so removed glossary terms cannot remain discoverable there.
+   */
+  private void propagateTagChangesToTimeSeriesChildren(
+      IndexMapping indexMapping,
+      Pair<String, String> parentMatch,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    Map<String, Object> updateParams = updates.getValue();
+    boolean hasAddedTags = updateParams.containsKey("tagAdded");
+    boolean hasDeletedTags = updateParams.containsKey("tagDeleted");
+    if (!hasAddedTags && !hasDeletedTags) {
+      return;
+    }
+
+    List<String> timeSeriesChildren =
+        filterChildAliasesByCapability(
+            indexMapping, capability -> capability != null && capability.isTimeSeries());
+    if (nullOrEmpty(timeSeriesChildren)) {
+      return;
+    }
+
+    Map<String, Object> tagParams = new HashMap<>();
+    if (hasAddedTags) {
+      tagParams.put("tagAdded", updateParams.get("tagAdded"));
+    }
+    if (hasDeletedTags) {
+      tagParams.put("tagDeleted", updateParams.get("tagDeleted"));
+    }
+    searchClient.updateChildren(
+        timeSeriesChildren,
+        parentMatch,
+        new ImmutablePair<>(
+            generateEmbeddedTestCaseTagLabelScript(hasAddedTags, hasDeletedTags), tagParams));
   }
 
   /**
@@ -2751,15 +2791,17 @@ public class SearchRepository {
     if (!checkIfIndexingIsSupported(entityType) || nullOrEmpty(entityIndexMap.get(entityType))) {
       return;
     }
+    ChangeDescription changeDescription = tagChangeDescription(addedTags, deletedTags);
     try {
       propagateInheritedFieldsToChildren(
           entityType,
           entity.getId().toString(),
-          tagChangeDescription(addedTags, deletedTags),
+          changeDescription,
           entityIndexMap.get(entityType),
           entity);
-    } catch (IOException e) {
-      SearchIndexRetryQueue.enqueue(entity, "propagateTagChangeToChildren", e);
+    } catch (Exception e) {
+      SearchIndexRetryQueue.enqueueWithPropagation(
+          entity, changeDescription, "propagateTagChangeToChildren", e);
     }
   }
 
@@ -3492,27 +3534,32 @@ public class SearchRepository {
   }
 
   private String generateAddTagLabelListScript() {
-    return """
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
+    return addTagLabelListBlock("ctx._source.tags") + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String addTagLabelListBlock(String tagPath) {
+    return String.format(
+        """
+        if (%1$s == null) {
+          %1$s = [];
         }
         if (params.tagAdded != null) {
           for (def newTag : params.tagAdded) {
             boolean exists = false;
-            for (def existing : ctx._source.tags) {
+            for (def existing : %1$s) {
               if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
                 exists = true;
                 break;
               }
             }
             if (!exists) {
-              ctx._source.tags.add(newTag);
+              %1$s.add(newTag);
             }
           }
         }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        Collections.sort(%1$s, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+        """,
+        tagPath);
   }
 
   /**
@@ -3527,19 +3574,19 @@ public class SearchRepository {
    * manual label. Getting this backwards trades a visible, reindex-clearable orphan for silent
    * removal of a label a user set — the very stripping this block exists to stop.
    */
-  private String deleteTagLabelListBlock() {
+  private String deleteTagLabelListBlock(String tagPath) {
     return String.format(
         """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            def existingTag = ctx._source.tags[i];
+        if (%1$s != null && params.tagDeleted != null) {
+          for (int i = %1$s.size() - 1; i >= 0; i--) {
+            def existingTag = %1$s[i];
             boolean systemApplied = existingTag.labelType != null
-                && (existingTag.labelType.equalsIgnoreCase('%s')
-                    || existingTag.labelType.equalsIgnoreCase('%s'));
+                && (existingTag.labelType.equalsIgnoreCase('%2$s')
+                    || existingTag.labelType.equalsIgnoreCase('%3$s'));
             if (systemApplied) {
               for (int j = 0; j < params.tagDeleted.size(); j++) {
                 if (existingTag.tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                  ctx._source.tags.remove(i);
+                  %1$s.remove(i);
                   break;
                 }
               }
@@ -3547,36 +3594,30 @@ public class SearchRepository {
           }
         }
         """,
-        TagLabel.LabelType.PROPAGATED.value(), TagLabel.LabelType.DERIVED.value());
+        tagPath, TagLabel.LabelType.PROPAGATED.value(), TagLabel.LabelType.DERIVED.value());
   }
 
   private String generateDeleteTagLabelListScript() {
-    return deleteTagLabelListBlock() + SearchClient.TAG_RESEPARATION_SCRIPT;
+    return deleteTagLabelListBlock("ctx._source.tags") + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
-    return deleteTagLabelListBlock()
-        + """
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
-        }
-        if (params.tagAdded != null) {
-          for (def newTag : params.tagAdded) {
-            boolean exists = false;
-            for (def existing : ctx._source.tags) {
-              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
-                exists = true;
-                break;
-              }
-            }
-            if (!exists) {
-              ctx._source.tags.add(newTag);
-            }
-          }
-        }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
+    return deleteTagLabelListBlock("ctx._source.tags")
+        + addTagLabelListBlock("ctx._source.tags")
         + SearchClient.TAG_RESEPARATION_SCRIPT;
+  }
+
+  private String generateEmbeddedTestCaseTagLabelScript(
+      boolean hasAddedTags, boolean hasDeletedTags) {
+    StringBuilder script = new StringBuilder("if (ctx._source.testCase != null) { ");
+    if (hasDeletedTags) {
+      script.append(deleteTagLabelListBlock("ctx._source.testCase.tags"));
+    }
+    if (hasAddedTags) {
+      script.append(addTagLabelListBlock("ctx._source.testCase.tags"));
+    }
+    script.append(" }");
+    return script.toString();
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
