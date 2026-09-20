@@ -98,6 +98,9 @@ export const SelectableList = ({
   // Guards against duplicate page fetches: several scroll events can land in the
   // bottom threshold before the in-flight request settles.
   const isFetchingNextPage = useRef(false);
+  // Bumped on every new search so a pagination response that resolves after the
+  // search replaced the list is dropped instead of appending stale/duplicate rows.
+  const requestGeneration = useRef(0);
 
   const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
@@ -171,8 +174,9 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
-      // A new search replaces the list, so clear the pagination guard — a still
-      // in-flight page from the previous query must not block loading this one.
+      // A new search replaces the list: invalidate any in-flight page (so its late
+      // response is dropped) and release the guard so the new query can paginate.
+      requestGeneration.current += 1;
       isFetchingNextPage.current = false;
       const { data, paging } = await fetchOptions(search);
 
@@ -200,16 +204,24 @@ export const SelectableList = ({
       }
 
       isFetchingNextPage.current = true;
+      const generation = requestGeneration.current;
       try {
         const { data, paging } = await fetchOptions(
           searchText,
           pagingInfo.after
         );
 
+        // Drop the page if a search superseded this request while it was in flight.
+        if (generation !== requestGeneration.current) {
+          return;
+        }
+
         setUniqueOptions((prevData) => [...prevData, ...data]);
         setPagingInfo(paging);
       } finally {
-        isFetchingNextPage.current = false;
+        if (generation === requestGeneration.current) {
+          isFetchingNextPage.current = false;
+        }
       }
     },
     [pagingInfo, uniqueOptions, searchText, fetchOptions]
