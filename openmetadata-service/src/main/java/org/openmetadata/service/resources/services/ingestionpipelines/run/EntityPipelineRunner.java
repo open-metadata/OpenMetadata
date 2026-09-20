@@ -83,6 +83,7 @@ public class EntityPipelineRunner {
     RunnablePipelineResolver resolver = resolverFor(entityLink, pipelineType);
     EntityInterface target =
         Entity.getEntity(entityLink, resolver.entityFields(), Include.NON_DELETED);
+    authorizeView(securityContext, entityLink.getEntityType(), target);
     IngestionPipeline pipeline =
         runnablePipelineAmong(resolver.pipelinesOwning(target, pipelineType))
             .orElseThrow(() -> noRunnablePipeline(target, pipelineType));
@@ -132,6 +133,16 @@ public class EntityPipelineRunner {
         String.format(
             "'%s' has no enabled, deployed %s ingestion pipeline to run.",
             target.getFullyQualifiedName(), pipelineType.value()));
+  }
+
+  // The run aims a pipeline at the entity the caller named, so a caller who may not see that entity
+  // may not aim a pipeline at it either. The Trigger check covers the pipeline, not its target.
+  private void authorizeView(
+      SecurityContext securityContext, String entityType, EntityInterface target) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType, target.getId(), null));
   }
 
   // Same checks as the pipeline's own /trigger, so running it for one entity is never a way around

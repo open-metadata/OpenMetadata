@@ -34,10 +34,14 @@ import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -45,6 +49,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceProfilerPipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
@@ -53,11 +58,13 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * POST /v1/services/ingestionPipelines/run runs the enabled, deployed pipeline of a type that owns
@@ -109,6 +116,19 @@ public class RunIngestionPipelineForEntityIT {
         assertThrows(
             OpenMetadataException.class,
             () -> runTestCase(SdkClients.dataConsumerClient(), testCase));
+
+    assertEquals(403, error.getStatusCode());
+  }
+
+  @Test
+  void runningRequiresViewPermissionOnTheTargetEntity(TestNamespace ns) {
+    TestCase testCase = createFixture(ns).testCase();
+    createTestSuitePipeline(ns, testCase.getTestSuite());
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> runTestCase(clientDeniedViewOnTestCases(ns), testCase));
 
     assertEquals(403, error.getStatusCode());
   }
@@ -311,6 +331,47 @@ public class RunIngestionPipelineForEntityIT {
                 .withName(email.substring(0, email.indexOf('@')))
                 .withEmail(email)
                 .withRoles(List.of(SharedEntities.get().DATA_STEWARD_ROLE.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * A steward, so the caller keeps Trigger on the pipeline, plus a role denying every view of a test
+   * case. A deny is used rather than a narrow allow because the roles a user already carries grant
+   * an unconditioned ViewAll.
+   */
+  private static OpenMetadataClient clientDeniedViewOnTestCases(TestNamespace ns) {
+    OpenMetadataClient admin = adminClient();
+    Rule denyViewingTestCases =
+        new Rule()
+            .withName("denyViewingTestCases")
+            .withDescription("Deny every view of a test case")
+            .withEffect(Rule.Effect.DENY)
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withResources(List.of(Entity.TEST_CASE));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("denyTestCaseViews_" + ns.uniqueShortId())
+                    .withDescription("Deny every view of a test case")
+                    .withRules(List.of(denyViewingTestCases)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName("testCaseBlind_" + ns.uniqueShortId())
+                    .withDescription("Carries the test case view deny")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String email = "blind_" + ns.uniqueShortId() + "@test.om.org";
+    admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(email.substring(0, email.indexOf('@')))
+                .withEmail(email)
+                .withRoles(List.of(SharedEntities.get().DATA_STEWARD_ROLE.getId(), role.getId())));
     return SdkClients.createClient(email, email, new String[] {});
   }
 
