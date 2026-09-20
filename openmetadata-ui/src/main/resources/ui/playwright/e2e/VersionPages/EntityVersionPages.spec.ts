@@ -437,7 +437,7 @@ test.describe('Entity Version pages', () => {
           'seed column must have a description for this regression check'
         ).not.toBe('');
 
-        await freshTable.patch({
+        const { entity: patchedTable } = await freshTable.patch({
           apiContext,
           patchData: [
             {
@@ -461,6 +461,14 @@ test.describe('Entity Version pages', () => {
               value: 3,
             },
           ],
+        });
+
+        expect(patchedTable.columns[0]).toMatchObject({
+          dataType: DataType.Decimal,
+          dataTypeDisplay: col0UpdatedDataType,
+          description: col0UpdatedDesc,
+          precision: 15,
+          scale: 3,
         });
 
         await afterAction();
