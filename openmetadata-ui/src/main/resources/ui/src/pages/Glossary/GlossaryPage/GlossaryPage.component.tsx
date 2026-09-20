@@ -256,15 +256,14 @@ const GlossaryPage = () => {
     };
   }, [isGlossaryActive, glossaryFqn]);
 
-  // When the list fetch has already found this glossary, use it directly and
-  // skip the redundant FQN lookup. The FQN fetch only fires for FQNs absent
-  // from the list — giving a real 404 for bad URLs.
+  // When the list has already fetched this glossary, use it directly and skip
+  // the redundant FQN lookup. Checked against the live Zustand list so the
+  // optimisation kicks in as soon as any list page returns the entry — without
+  // waiting for the full list to paginate — and the FQN query still fires
+  // immediately for non-existent FQNs, preserving fast 404 behaviour.
   const glossaryFoundInList = useMemo(
-    () =>
-      initialised
-        ? glossaries.find((g) => g.fullyQualifiedName === glossaryFqn)
-        : undefined,
-    [initialised, glossaries, glossaryFqn]
+    () => glossaries.find((g) => g.fullyQualifiedName === glossaryFqn),
+    [glossaries, glossaryFqn]
   );
 
   const {
@@ -288,7 +287,7 @@ const GlossaryPage = () => {
     queryKey: ['glossary', glossaryFqn] as const,
     queryFn: () =>
       getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
-    enabled: isGlossaryView && initialised && !glossaryFoundInList,
+    enabled: isGlossaryView && !glossaryFoundInList,
   });
 
   const glossaryDetails = glossaryFoundInList ?? glossaryFetchedDetails;
@@ -359,16 +358,12 @@ const GlossaryPage = () => {
       return glossaryTermFetching;
     }
     if (isGlossaryView) {
-      // Keep the panel loading until the list has settled. When the glossary is
-      // found in the list (glossaryFetching = false, no FQN fetch), initialised
-      // guards against a brief flash while the list is still paginating.
-      return !initialised || glossaryFetching;
+      return glossaryFetching;
     }
 
     return false;
   }, [
     glossaries.length,
-    initialised,
     isTermView,
     glossaryTermFetching,
     isGlossaryView,
