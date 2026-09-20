@@ -16,7 +16,9 @@ package org.openmetadata.service.lineage;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,9 +34,13 @@ import org.openmetadata.service.Entity;
 final class LineageSceneMapper {
   private LineageSceneMapper() {}
 
+  // dataModel is fetched as nested sub-paths (not the full object) so table-band nodes carry
+  // the dbt marker the UI needs for the dbt icon without dragging the model SQL and columns
+  // into every node payload.
   private static final String BASE_SOURCE_FIELDS =
       "id,name,displayName,fullyQualifiedName,entityType,service,serviceType,database,"
-          + "databaseSchema,domains,dataProducts,tags,tier,deleted,certification";
+          + "databaseSchema,domains,dataProducts,tags,tier,deleted,certification,"
+          + "dataModel.modelType,dataModel.resourceType";
 
   private static final String FIELD_BAND_SOURCE_FIELDS =
       BASE_SOURCE_FIELDS
@@ -43,8 +49,9 @@ final class LineageSceneMapper {
   private static final List<String> BASE_SOURCE_FIELD_LIST = List.of(BASE_SOURCE_FIELDS.split(","));
   private static final List<String> FIELD_BAND_SOURCE_FIELD_LIST =
       List.of(FIELD_BAND_SOURCE_FIELDS.split(","));
-  private static final List<String> BASE_TRIM_FIELDS = trimFields(BASE_SOURCE_FIELD_LIST);
-  private static final List<String> FIELD_BAND_TRIM_FIELDS =
+  private static final Map<String, Set<String>> BASE_TRIM_FIELDS =
+      trimFields(BASE_SOURCE_FIELD_LIST);
+  private static final Map<String, Set<String>> FIELD_BAND_TRIM_FIELDS =
       trimFields(FIELD_BAND_SOURCE_FIELD_LIST);
 
   static final Set<String> SERVICE_ENTITY_TYPES =
@@ -285,22 +292,69 @@ final class LineageSceneMapper {
         trimSourceEntity(ref, band));
   }
 
+  /**
+   * A nested-path grant ("dataModel.modelType") keeps only the named sub-fields. The trimmer
+   * cannot rely on ES source filtering having already narrowed the object: the unfocused
+   * platform-lineage path returns unfiltered documents, so this is the only guard against a full
+   * dataModel (SQL, columns) leaking into every node payload.
+   */
   static Map<String, Object> trimSourceEntity(Map<String, Object> entity, LineageBand band) {
-    List<String> allowedFields =
+    Map<String, Set<String>> allowedFields =
         band == LineageBand.FIELD ? FIELD_BAND_TRIM_FIELDS : BASE_TRIM_FIELDS;
     Map<String, Object> trimmed = new LinkedHashMap<>();
-    for (String field : allowedFields) {
-      if (entity.containsKey(field)) {
-        trimmed.put(field, entity.get(field));
+    for (Map.Entry<String, Set<String>> allowed : allowedFields.entrySet()) {
+      Object value = trimmedValue(entity.get(allowed.getKey()), allowed.getValue());
+      if (value != null) {
+        trimmed.put(allowed.getKey(), value);
       }
     }
     return trimmed;
   }
 
-  private static List<String> trimFields(List<String> sourceFields) {
-    List<String> fields = new ArrayList<>(sourceFields);
-    fields.addAll(List.of("type", "lineageSceneCount", "lineageSceneSyntheticCount"));
-    return List.copyOf(fields);
+  private static Object trimmedValue(Object value, Set<String> subFields) {
+    if (value == null || subFields == null) {
+      return value;
+    }
+    if (!(value instanceof Map<?, ?> nested)) {
+      return null;
+    }
+    Map<String, Object> nestedTrimmed = new LinkedHashMap<>();
+    for (String subField : subFields) {
+      if (nested.containsKey(subField)) {
+        nestedTrimmed.put(subField, nested.get(subField));
+      }
+    }
+    return nestedTrimmed.isEmpty() ? null : nestedTrimmed;
+  }
+
+  // Maps each allowed top-level key to the nested sub-fields to keep; a null value means the
+  // whole object is kept. A plain entry ("dataModel") always wins over nested ones of the same
+  // root, whichever order they appear in the source list.
+  private static Map<String, Set<String>> trimFields(List<String> sourceFields) {
+    Map<String, Set<String>> fields = new LinkedHashMap<>();
+    for (String field : sourceFields) {
+      addTrimField(fields, field);
+    }
+    for (String extra : List.of("type", "lineageSceneCount", "lineageSceneSyntheticCount")) {
+      fields.put(extra, null);
+    }
+    return Collections.unmodifiableMap(fields);
+  }
+
+  private static void addTrimField(Map<String, Set<String>> fields, String field) {
+    int dot = field.indexOf('.');
+    if (dot == -1) {
+      fields.put(field, null);
+      return;
+    }
+    String topLevelField = field.substring(0, dot);
+    boolean wholeObjectGranted =
+        fields.containsKey(topLevelField) && fields.get(topLevelField) == null;
+    if (!wholeObjectGranted) {
+      fields
+          .computeIfAbsent(topLevelField, key -> new LinkedHashSet<>())
+          .add(field.substring(dot + 1));
+    }
   }
 
   static List<Map<String, Object>> listValue(Map<String, Object> entity, String key) {

@@ -1902,6 +1902,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         // fires from here. Drive it explicitly or entity children (test cases, test suites) never
         // pick the term up.
         searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -1915,6 +1916,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
+      RdfUpdater.updateEntity(term);
     }
 
     // Add Failed And Suceess Request
@@ -1974,6 +1976,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -2184,6 +2187,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         searchRepository.updateEntity(ref);
         searchRepository.propagateTagChangeToChildren(
             asset, List.of(), List.of(removedLabel(term)));
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -2234,6 +2238,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 

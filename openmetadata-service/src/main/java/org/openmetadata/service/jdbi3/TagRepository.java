@@ -68,6 +68,7 @@ import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -561,6 +562,7 @@ public class TagRepository extends EntityRepository<Tag> {
         searchRepository.updateEntity(ref);
         // updateEntity clears the change description, so the child fan-out never fires from here.
         searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -624,6 +626,7 @@ public class TagRepository extends EntityRepository<Tag> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -704,6 +707,7 @@ public class TagRepository extends EntityRepository<Tag> {
         // Update ES
         searchRepository.updateEntity(ref);
         searchRepository.propagateTagChangeToChildren(asset, List.of(), List.of(removedLabel(tag)));
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -754,6 +758,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 

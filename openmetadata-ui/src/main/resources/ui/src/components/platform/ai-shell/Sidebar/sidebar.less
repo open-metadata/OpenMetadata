@@ -67,20 +67,37 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Use shared roles already defined by Gate 0. The palette-backed page,
-// selected, brand, and badge roles remain pending #6564.
+// Shared Gate 0 roles. Surface/text/border roles read the Tailwind `--tw-*`
+// bridge vars (the same layer `tw:bg-surface` etc. compile to): they carry real
+// values in light and are remapped under `.dark-mode`, so they flip per theme.
+// A raw `var(--color-bg-surface)` cannot be used here — that token is a
+// self-referential shim in globals.css with no fallback, so in a plain-CSS
+// `var()` it is guaranteed-invalid and renders transparent in light. Brand/
+// selected roles use the *utility* scale so they flip in dark while keeping
+// exact light values. The selected surface diverges by theme to match the
+// design recording: neutral gray-blue-100 in light (#eaecf5, frozen) and
+// translucent brand in dark. A solid gray-blue-900 was invisible against the
+// gray-blue-950 panel; the recording uses a blue-tinted pill (brand-500 @16%).
+// --ask-selected-surface (flipped under .dark-mode below) carries the dark
+// value; light falls back to gray-blue-100.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
-@ask-bg-card: var(--om-color-bg-surface);
-@ask-bg-active: var(--tw-color-gray-blue-100);
-@ask-bg-hover: var(--om-color-bg-secondary-hover);
-@ask-text-primary: var(--om-color-text-primary);
-@ask-text-secondary: var(--om-color-text-secondary);
-@ask-text-tertiary: var(--om-color-text-tertiary);
-@ask-text-quaternary: var(--om-color-text-quaternary);
+@ask-bg-card: var(--tw-background-color-surface);
+@ask-bg-active: var(
+  --ask-selected-surface,
+  var(--tw-color-utility-gray-blue-100)
+);
+@ask-bg-hover: var(--tw-background-color-secondary_hover);
+@ask-text-primary: var(--tw-text-color-primary);
+@ask-text-secondary: var(--tw-text-color-secondary);
+@ask-text-tertiary: var(--tw-text-color-tertiary);
+@ask-text-quaternary: var(--tw-text-color-quaternary);
+// Rest-state nav/list icons: quaternary (gray-400) in light, gray-600 in dark to
+// match the recording — quaternary reads a step too bright on the dark surface.
+@ask-icon-rest: var(--ask-rest-icon, var(--tw-text-color-quaternary));
 @ask-brand: var(--tw-color-brand-600);
-@ask-brand-active: var(--tw-color-brand-800);
-@ask-brand-50: var(--tw-color-brand-50);
-@ask-border-secondary: var(--om-color-border-secondary);
+@ask-brand-active: var(--ask-selected-fg, var(--tw-color-utility-brand-800));
+@ask-brand-50: var(--tw-color-utility-brand-50);
+@ask-border-secondary: var(--tw-border-color-secondary);
 
 // Utility palette — used by the count badges on nav items.
 @ask-util-gray-50: var(--tw-color-gray-50);
@@ -89,6 +106,36 @@
 
 @ask-transition-duration: 200ms;
 @ask-transition-ease: ease;
+
+// Dark-only overrides that match the design recording exactly. Light leaves both
+// unset, falling back to the frozen light values (gray-blue-100 pill, brand-800 fg).
+//  - selected surface -> interactive-selected (brand-500 @16%), a blue-tinted pill;
+//    a solid gray-blue-900 was invisible against the gray-blue-950 panel.
+//  - selected label/icon -> brand-300 (#84caff); the utility-brand-800 scale lands
+//    on brand-200 in dark, one step too pale versus the recording.
+//  - rest nav/list icons -> gray-600; quaternary (gray-400) is a step too bright.
+.dark-mode {
+  --ask-selected-surface: var(--color-bg-brand-primary);
+  --ask-selected-fg: var(--color-brand-300);
+  --ask-rest-icon: var(--color-gray-600);
+}
+
+// Dark: flatten the sidebar surfaces (outer card, main panel, rail) to canvas so
+// the sidebar reads as one continuous piece with the page — no raised-card
+// standout, separate-color, or border look. In light these keep their existing
+// surface / gray-blue-page values (frozen); only dark collapses to canvas.
+.dark-mode {
+  .ask-sidebar,
+  .ask-main-panel {
+    background: var(--color-bg-canvas);
+  }
+  // The rail is styled at `.ask-sidebar .ask-rail` (0,2,0); match that depth so
+  // this override wins (a bare `.dark-mode .ask-rail` would tie and lose to the
+  // later nested rule, leaving the collapsed/sub rail two-tone).
+  .ask-sidebar .ask-rail {
+    background: var(--color-bg-canvas);
+  }
+}
 
 // ---- Shell ----
 // Outer card width = inner panel width + left/right padding (4px each).
@@ -348,7 +395,7 @@
     justify-content: center;
     width: @ask-nav-item-icon-size;
     height: @ask-nav-item-icon-size;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
 
     svg {
@@ -674,7 +721,7 @@
   &__item-icon {
     width: 18px;
     height: 18px;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
   }
 
@@ -748,7 +795,7 @@
   &__item-icon {
     width: 18px;
     height: 18px;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
 
     svg {
@@ -1243,7 +1290,7 @@
     justify-content: center;
     width: @ask-nav-item-icon-size;
     height: @ask-nav-item-icon-size;
-    color: @ask-text-quaternary;
+    color: @ask-icon-rest;
     flex-shrink: 0;
   }
 

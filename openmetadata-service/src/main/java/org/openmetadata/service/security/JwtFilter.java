@@ -320,7 +320,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
       if (impersonateUser != null && !impersonateUser.isEmpty()) {
         if (!isBotUser) {
-          throw new AuthorizationException("Only bot users can impersonate other users");
+          throw new ImpersonationDeniedException("Only bot users can impersonate other users");
         }
         impersonatedBy = userName;
         User impersonatedUser = resolveImpersonationTarget(impersonatedBy, impersonateUser);
@@ -381,7 +381,8 @@ public class JwtFilter implements ContainerRequestFilter {
       target = Entity.getEntityByName(Entity.USER, targetName, "", Include.NON_DELETED);
     } catch (EntityNotFoundException e) {
       LOG.warn("Impersonation target user not found: {}", targetName);
-      throw new AuthenticationException("Cannot impersonate non-existent user: " + targetName);
+      throw new ImpersonationTargetNotFoundException(
+          "Cannot impersonate non-existent user: " + targetName);
     }
     ImpersonationAuthorizer.authorize(botName, target);
     return target;
