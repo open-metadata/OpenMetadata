@@ -212,24 +212,30 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
 
         async def _connect() -> tuple[Any, Any]:
             nc = await nats.connect(**options)
-            js = nc.jetstream()
-            consumer = ConsumerConfig(
-                durable_name=broker.durableConsumerName,
-                filter_subject=filter_subject,
-                deliver_policy=deliver_policy,
-                ack_policy=AckPolicy.EXPLICIT,
-                ack_wait=broker.ackWait,
-                # An event the ingestion pipeline cannot process is never acknowledged;
-                # without a limit JetStream would redeliver it on every run
-                max_deliver=broker.maxDeliver,
-            )
             try:
-                await js.add_consumer(broker.streamName, config=consumer)
-            except Exception as exc:
-                # A durable consumer that already exists keeps its own settings and its
-                # position in the stream, which is the point of reusing the name
-                logger.debug("Reusing the existing JetStream consumer: %s", exc)
-            subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
+                js = nc.jetstream()
+                consumer = ConsumerConfig(
+                    durable_name=broker.durableConsumerName,
+                    filter_subject=filter_subject,
+                    deliver_policy=deliver_policy,
+                    ack_policy=AckPolicy.EXPLICIT,
+                    ack_wait=broker.ackWait,
+                    # A run that dies mid-batch leaves its events unacknowledged; without
+                    # a limit JetStream would redeliver them on every run
+                    max_deliver=broker.maxDeliver,
+                )
+                try:
+                    await js.add_consumer(broker.streamName, config=consumer)
+                except Exception as exc:
+                    # A durable consumer that already exists keeps its own settings and
+                    # its position in the stream, which is the point of reusing the name
+                    logger.debug("Reusing the existing JetStream consumer: %s", exc)
+                subscription = await js.pull_subscribe_bind(broker.durableConsumerName, stream=broker.streamName)
+            except Exception:
+                # The connection is open by now, so a failure here would leak it: one
+                # live connection per attempt against a stream that does not exist
+                await nc.close()
+                raise
             return nc, subscription
 
         nc, subscription = loop.run_until_complete(_connect())

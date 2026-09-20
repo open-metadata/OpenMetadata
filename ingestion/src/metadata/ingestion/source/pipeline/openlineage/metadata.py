@@ -1330,8 +1330,10 @@ class OpenlineageSource(PipelineServiceSource):
                     except Exception as e:
                         logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
                         logger.debug(traceback.format_exc())
-                    # Acknowledge either way: an event this connector cannot parse would
-                    # otherwise be redelivered on every run
+                    # Acknowledged once the connector has handed the event on. The
+                    # ingestion pipeline reports its own failures in the run status and
+                    # does not report them back here, so redelivery covers a run that
+                    # died mid-batch, not an event the pipeline rejected.
                     client.ack(message)
 
         except Exception as e:

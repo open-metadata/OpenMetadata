@@ -209,5 +209,7 @@ $$section
 ### Max Delivery Attempts $(id="maxDeliver")
 How many times JetStream redelivers an event that ingestion never acknowledges, before it gives up.
 
-Events are acknowledged once they have been processed, so an ingestion run that fails part-way gets the remaining events again on the next run. Reprocessing an event is safe: pipelines and lineage are written by fully qualified name, so the result is the same. This limit stops a single event that ingestion cannot process from coming back on every run.
+An event is acknowledged once this connector has handed it to the ingestion pipeline, so a run that dies part-way through a batch gets the remaining events again on the next run. Reprocessing is safe: pipelines and lineage are written by fully qualified name, so the result is the same.
+
+Failures inside the ingestion pipeline are reported in the run status rather than back to the broker, so an event the pipeline rejected is not redelivered. This limit applies to events left unacknowledged by a run that stopped, and keeps them from coming back forever.
 $$
