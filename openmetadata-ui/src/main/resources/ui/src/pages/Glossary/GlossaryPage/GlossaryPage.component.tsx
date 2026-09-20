@@ -350,26 +350,6 @@ const GlossaryPage = () => {
     }
   }, [isGlossaryActive, glossaryFqn, glossaries, navigate, setActiveGlossary]);
 
-  const isRightPanelLoading = useMemo(() => {
-    if (!glossaries.length) {
-      return true;
-    }
-    if (isTermView) {
-      return glossaryTermFetching;
-    }
-    if (isGlossaryView) {
-      return glossaryFetching;
-    }
-
-    return false;
-  }, [
-    glossaries.length,
-    isTermView,
-    glossaryTermFetching,
-    isGlossaryView,
-    glossaryFetching,
-  ]);
-
   const isTermNotFound = useMemo(
     () =>
       isTermView &&
@@ -383,6 +363,33 @@ const GlossaryPage = () => {
       (glossaryError as AxiosError | undefined)?.response?.status === 404,
     [isGlossaryView, glossaryError]
   );
+
+  const isRightPanelLoading = useMemo(() => {
+    // A confirmed 404 must surface immediately — do not keep the right panel
+    // in a loading state while the sidebar list is still paginating.
+    if (isGlossaryNotFound || isTermNotFound) {
+      return false;
+    }
+    if (!glossaries.length) {
+      return true;
+    }
+    if (isTermView) {
+      return glossaryTermFetching;
+    }
+    if (isGlossaryView) {
+      return glossaryFetching;
+    }
+
+    return false;
+  }, [
+    isGlossaryNotFound,
+    isTermNotFound,
+    glossaries.length,
+    isTermView,
+    glossaryTermFetching,
+    isGlossaryView,
+    glossaryFetching,
+  ]);
 
   const updateGlossary = useCallback(
     async (updatedData: Glossary) => {
@@ -545,7 +552,10 @@ const GlossaryPage = () => {
     []
   );
 
-  if (isLoading) {
+  // Skip the full-page loader when the FQN query has already confirmed a 404 —
+  // the not-found state is known and should surface immediately without waiting
+  // for the sidebar list to finish paginating.
+  if (isLoading && !isGlossaryNotFound && !isTermNotFound) {
     return <Loader />;
   }
 
