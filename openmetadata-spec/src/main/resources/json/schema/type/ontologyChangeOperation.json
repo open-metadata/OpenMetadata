@@ -73,6 +73,12 @@
       "description": "Administrator-reviewed semantic relationship type proposed by discovery.",
       "$ref": "../entity/data/relationshipType.json"
     },
+    "discoveryEvidence": {
+      "description": "The subset of versioned change-set evidence supporting this operation or property.",
+      "type": "array",
+      "maxItems": 200,
+      "items": {"$ref": "ontologyDiscoveryEvidence.json"}
+    },
     "evidenceFingerprint": {
       "description": "Fingerprint of the change-set discovery context supporting this operation.",
       "type": "string",

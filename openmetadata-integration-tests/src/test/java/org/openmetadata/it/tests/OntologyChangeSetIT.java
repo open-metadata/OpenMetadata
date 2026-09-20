@@ -171,6 +171,45 @@ public class OntologyChangeSetIT {
   }
 
   @Test
+  void relationshipTypeNameCollisionCannotOverwritePublishedSemantics(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    RelationshipType original = relationshipType(ns, "collisionRelation");
+    OntologyChangeSet initial =
+        createChangeSet(client, glossary, relationshipTypeOperation(original), ns);
+    client
+        .ontologyChangeSets()
+        .apply(
+            initial.getId(),
+            new ApplyOntologyChangeSet()
+                .withLease(acquire(client, initial, ns.prefix("initialEditor"))));
+    try {
+      RelationshipType before = client.relationshipTypes().get(original.getId().toString());
+      RelationshipType collision = relationshipType(ns, "collisionRelation");
+      OntologyChangeSet proposal =
+          createChangeSet(client, glossary, relationshipTypeOperation(collision), ns);
+      OntologyEditLeaseToken lease = acquire(client, proposal, ns.prefix("collisionEditor"));
+      OpenMetadataException conflict =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  client
+                      .ontologyChangeSets()
+                      .apply(proposal.getId(), new ApplyOntologyChangeSet().withLease(lease)));
+      assertEquals(409, conflict.getStatusCode());
+      OntologyChangeSet failed =
+          client.ontologyChangeSets().get(proposal.getId().toString(), "state,applicationResult");
+      assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+      RelationshipType after = client.relationshipTypes().get(original.getId().toString());
+      assertEquals(before.getId(), after.getId());
+      assertEquals(before.getRdfPredicate(), after.getRdfPredicate());
+      assertEquals(before.getVersion(), after.getVersion());
+    } finally {
+      deleteRelationshipTypeIfPresent(client, original.getId());
+    }
+  }
+
+  @Test
   void rollsBackRelationshipTypePersistenceWithTheChangeSetTransaction(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
@@ -309,7 +348,7 @@ public class OntologyChangeSetIT {
       TestNamespace ns) {
     CreateOntologyChangeSet request =
         new CreateOntologyChangeSet()
-            .withName(ns.prefix("ontologyDraft"))
+            .withName(ns.prefix("ontologyDraft") + UUID.randomUUID())
             .withDisplayName("Ontology draft")
             .withDescription("Concurrent-safe ontology authoring draft")
             .withGlossaries(Set.of(glossary.getFullyQualifiedName()))

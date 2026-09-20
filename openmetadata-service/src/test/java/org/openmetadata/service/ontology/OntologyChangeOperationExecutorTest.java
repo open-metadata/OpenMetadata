@@ -331,6 +331,23 @@ class OntologyChangeOperationExecutorTest {
   }
 
   @Test
+  void createTermCannotUpsertAnExistingConceptByName() {
+    final GlossaryTerm proposed = term(UUID.randomUUID());
+    when(termRepository.create(eq(uriInfo), any(GlossaryTerm.class)))
+        .thenAnswer(invocation -> invocation.getArgument(1, GlossaryTerm.class));
+    final OperationOutcome result =
+        executor.execute(
+            uriInfo,
+            USER,
+            new OntologyChangeOperation()
+                .withId(UUID.randomUUID())
+                .withOperationType(OntologyChangeOperationType.CREATE_TERM)
+                .withTerm(proposed));
+    assertEquals(proposed.getId(), result.entity().getId());
+    verify(termRepository, never()).createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER));
+  }
+
+  @Test
   void createRelationshipTypeUsesTheGovernedRepository() {
     final RelationshipType relationshipType =
         new RelationshipType()
@@ -338,14 +355,8 @@ class OntologyChangeOperationExecutorTest {
             .withName("servedBy")
             .withFullyQualifiedName("servedBy")
             .withVersion(0.1);
-    when(relationshipTypeRepository.createOrUpdate(
-            eq(uriInfo), any(RelationshipType.class), eq(USER)))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<>(
-                    Response.Status.CREATED,
-                    invocation.getArgument(1, RelationshipType.class),
-                    EventType.ENTITY_CREATED));
+    when(relationshipTypeRepository.create(eq(uriInfo), any(RelationshipType.class)))
+        .thenAnswer(invocation -> invocation.getArgument(1, RelationshipType.class));
     final OntologyChangeOperation operation =
         new OntologyChangeOperation()
             .withId(UUID.randomUUID())
@@ -355,8 +366,7 @@ class OntologyChangeOperationExecutorTest {
     executor.execute(uriInfo, USER, operation);
 
     verify(relationshipTypeRepository).prepareInternal(any(RelationshipType.class), eq(false));
-    verify(relationshipTypeRepository)
-        .createOrUpdate(eq(uriInfo), any(RelationshipType.class), eq(USER));
+    verify(relationshipTypeRepository).create(eq(uriInfo), any(RelationshipType.class));
   }
 
   private void stubEditableTerm(final UUID termId, final GlossaryTerm term) {

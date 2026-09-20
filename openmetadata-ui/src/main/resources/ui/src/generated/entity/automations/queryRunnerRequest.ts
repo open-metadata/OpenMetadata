@@ -129,6 +129,11 @@ export interface OntologyInferenceRequest {
      */
     sampleRows: number;
     /**
+     * Internal generated read-only SQL, consumed only by transform-aware workers. The outer
+     * query must be SELECT 1 so older workers can never execute the source read.
+     */
+    sourceQuery: string;
+    /**
      * Canonical catalog FQN of the table being sampled.
      */
     tableFqn: string;

@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyDiscoveryContext;
 import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
 import org.openmetadata.schema.type.OntologyVerificationProvider;
+import org.openmetadata.schema.type.OntologyVerificationStatus;
 
 class OntologyDiscoveryFingerprintTest {
   private static final String TARGET_ONTOLOGY = "Customer Ontology";
@@ -42,6 +43,34 @@ class OntologyDiscoveryFingerprintTest {
 
     context.setEvidence(context.getEvidence().reversed());
     assertEquals(EXPECTED, OntologyDiscoveryFingerprint.derive(TARGET_ONTOLOGY, context));
+    context
+        .getEvidence()
+        .getLast()
+        .setSignals(Set.of("Source-Local-Laya", " Profiled  Column", "source-local-laya"));
+    assertEquals(EXPECTED, OntologyDiscoveryFingerprint.derive(TARGET_ONTOLOGY, context));
+  }
+
+  @Test
+  void unavailableVerificationRequiresNoInventedCheckpointOrObservations() {
+    final OntologyDiscoveryContext context =
+        context()
+            .withRuleVersion("ontology-discovery-v3")
+            .withVerificationStatus(OntologyVerificationStatus.UNAVAILABLE)
+            .withVerificationModelId(null);
+    context.setEvidenceFingerprint(OntologyDiscoveryFingerprint.derive(TARGET_ONTOLOGY, context));
+    OntologyDiscoveryFingerprint.requireMatch(TARGET_ONTOLOGY, context);
+    context.setVerificationModelId("invented-checkpoint");
+    assertThrows(
+        BadRequestException.class,
+        () -> OntologyDiscoveryFingerprint.requireMatch(TARGET_ONTOLOGY, context));
+    context.setVerificationStatus(OntologyVerificationStatus.SUCCEEDED);
+    context.setEvidenceFingerprint(OntologyDiscoveryFingerprint.derive(TARGET_ONTOLOGY, context));
+    assertThrows(
+        BadRequestException.class,
+        () -> OntologyDiscoveryFingerprint.requireMatch(TARGET_ONTOLOGY, context));
+    context.getEvidence().getFirst().setObservationFingerprint("a".repeat(64));
+    context.setEvidenceFingerprint(OntologyDiscoveryFingerprint.derive(TARGET_ONTOLOGY, context));
+    OntologyDiscoveryFingerprint.requireMatch(TARGET_ONTOLOGY, context);
   }
 
   @Test

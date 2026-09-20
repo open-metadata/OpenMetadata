@@ -86,7 +86,10 @@ public final class OntologyChangeOperationExecutor {
     final boolean isUpdate =
         operation.getOperationType() == OntologyChangeOperationType.UPDATE_TERM;
     termRepository.prepareInternal(term, isUpdate);
-    return outcome(termRepository.createOrUpdate(uriInfo, term, user).getEntity());
+    return outcome(
+        isUpdate
+            ? termRepository.createOrUpdate(uriInfo, term, user).getEntity()
+            : termRepository.create(uriInfo, term));
   }
 
   private OperationOutcome deleteTerm(final String user, final OntologyChangeOperation operation) {
@@ -227,8 +230,7 @@ public final class OntologyChangeOperationExecutor {
     relationshipType.setUpdatedBy(user);
     relationshipType.setUpdatedAt(clock.millis());
     relationshipTypeRepository.prepareInternal(relationshipType, false);
-    return outcome(
-        relationshipTypeRepository.createOrUpdate(uriInfo, relationshipType, user).getEntity());
+    return outcome(relationshipTypeRepository.create(uriInfo, relationshipType));
   }
 
   private GlossaryTerm editableTerm(final UUID termId) {

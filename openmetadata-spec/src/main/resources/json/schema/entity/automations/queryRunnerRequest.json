@@ -75,6 +75,12 @@
       "javaType": "org.openmetadata.schema.entity.automations.OntologyInferenceRequest",
       "type": "object",
       "properties": {
+        "sourceQuery": {
+          "description": "Internal generated read-only SQL, consumed only by transform-aware workers. The outer query must be SELECT 1 so older workers can never execute the source read.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
         "purpose": {
           "$ref": "#/definitions/ontologyInferencePurpose"
         },
@@ -111,7 +117,7 @@
           "default": 5
         }
       },
-      "required": ["purpose", "provider", "tableFqn", "columns", "candidates", "sampleRows"],
+      "required": ["purpose", "provider", "tableFqn", "columns", "candidates", "sampleRows", "sourceQuery"],
       "additionalProperties": false
     }
   },

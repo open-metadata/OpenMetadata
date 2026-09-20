@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyDiscoveryProposal.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDiscoveryProposal",
+  "description": "Structured discovery output compiled deterministically into review-only operations.",
+  "javaType": "org.openmetadata.schema.type.OntologyDiscoveryProposal",
+  "type": "object",
+  "definitions": {
+    "binding": {
+      "javaType": "org.openmetadata.schema.type.OntologyProposedBinding",
+      "type": "object",
+      "properties": {
+        "tableFqn": {"$ref": "basic.json#/definitions/fullyQualifiedEntityName"},
+        "role": {"$ref": "assetRealization.json#/definitions/realizationRole"}
+      },
+      "required": ["tableFqn", "role"],
+      "additionalProperties": false
+    },
+    "evidenceFqns": {
+      "type": "array", "minItems": 1, "maxItems": 200, "uniqueItems": true,
+      "items": {"$ref": "basic.json#/definitions/fullyQualifiedEntityName"}
+    },
+    "property": {
+      "javaType": "org.openmetadata.schema.type.OntologyProposedProperty",
+      "type": "object",
+      "properties": {
+        "name": {"$ref": "basic.json#/definitions/entityName"},
+        "description": {"type": "string", "maxLength": 4000},
+        "dataType": {"$ref": "ontologyAttribute.json#/definitions/dataType"},
+        "isIdentifier": {"type": "boolean", "default": false},
+        "unit": {"type": "string", "maxLength": 256},
+        "enumValues": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"type": "string", "maxLength": 256}},
+        "sourceColumns": {"type": "array", "maxItems": 100, "items": {"$ref": "ontologySourceColumn.json"}},
+        "evidenceFqns": {"$ref": "#/definitions/evidenceFqns"}
+      },
+      "required": ["name", "dataType", "isIdentifier", "evidenceFqns"],
+      "additionalProperties": false
+    },
+    "concept": {
+      "javaType": "org.openmetadata.schema.type.OntologyProposedClass",
+      "type": "object",
+      "properties": {
+        "key": {"type": "string", "minLength": 1, "maxLength": 128},
+        "name": {"$ref": "basic.json#/definitions/entityName"},
+        "displayName": {"type": "string", "maxLength": 256},
+        "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "existingTermId": {"$ref": "basic.json#/definitions/uuid"},
+        "baseVersion": {"type": "number", "minimum": 0.1},
+        "parentKey": {"type": "string", "maxLength": 128},
+        "properties": {"type": "array", "maxItems": 100, "items": {"$ref": "#/definitions/property"}},
+        "tableBindings": {"type": "array", "maxItems": 100, "items": {"$ref": "#/definitions/binding"}},
+        "evidenceFqns": {"$ref": "#/definitions/evidenceFqns"}
+      },
+      "required": ["key", "name", "description", "evidenceFqns"],
+      "additionalProperties": false
+    },
+    "relationship": {
+      "javaType": "org.openmetadata.schema.type.OntologyProposedRelationship",
+      "type": "object",
+      "properties": {
+        "fromKey": {"type": "string", "minLength": 1, "maxLength": 128},
+        "toKey": {"type": "string", "minLength": 1, "maxLength": 128},
+        "relationshipTypeId": {"$ref": "basic.json#/definitions/uuid"},
+        "evidenceFqns": {"$ref": "#/definitions/evidenceFqns"}
+      },
+      "required": ["fromKey", "toKey", "relationshipTypeId", "evidenceFqns"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "classes": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/definitions/concept"}},
+    "relationships": {"type": "array", "maxItems": 200, "items": {"$ref": "#/definitions/relationship"}}
+  },
+  "required": ["classes"],
+  "additionalProperties": false
+}

@@ -45,6 +45,10 @@ export interface OntologyChangeOperation {
      */
     baseVersion?: number;
     /**
+     * The subset of versioned change-set evidence supporting this operation or property.
+     */
+    discoveryEvidence?: OntologyDiscoveryEvidence[];
+    /**
      * Fingerprint of the change-set discovery context supporting this operation.
      */
     evidenceFingerprint?: string;
@@ -231,6 +235,10 @@ export interface OntologyAttribute {
      */
     name: string;
     /**
+     * Reviewed column-to-property mappings from ontology discovery.
+     */
+    sourceColumns?: OntologySourceColumn[];
+    /**
      * Optional unit IRI or display symbol.
      */
     unit?: string;
@@ -246,6 +254,14 @@ export enum DataType {
     Enum = "ENUM",
     Integer = "INTEGER",
     String = "STRING",
+}
+
+/**
+ * Catalog column realizing an ontology property. Contains identities, never sample values.
+ */
+export interface OntologySourceColumn {
+    columnFqn: string;
+    tableFqn:  string;
 }
 
 /**
@@ -461,6 +477,36 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * A versioned persisted-catalog observation used to support an ontology proposal. Raw
+ * source samples are never stored here.
+ */
+export interface OntologyDiscoveryEvidence {
+    /**
+     * Catalog entity type containing the evidence.
+     */
+    entityType:         string;
+    fullyQualifiedName: string;
+    /**
+     * SHA-256 of bounded verifier decisions, candidate vocabulary and inference rule; never a
+     * hash of raw source values.
+     */
+    observationFingerprint?: string;
+    /**
+     * Bounded labels for the catalog signals used; never raw sample values.
+     */
+    signals?: string[];
+    /**
+     * Originating completed ingestion or automation run when exposed by the catalog.
+     */
+    sourceRunId?: string;
+    /**
+     * Catalog entity version observed by discovery.
+     */
+    sourceVersion?: number;
+    updatedAt?:     number;
 }
 
 /**

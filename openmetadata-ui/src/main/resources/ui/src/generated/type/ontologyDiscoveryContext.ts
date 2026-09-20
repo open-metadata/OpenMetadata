@@ -23,7 +23,8 @@ export interface OntologyDiscoveryContext {
     evidenceFingerprint: string;
     generatedAt?:        number;
     /**
-     * Generative model identifier returned by the ontology draft provider.
+     * Draft provider identifier: the generative model for prose generation or the deterministic
+     * compiler version for structured discovery. The latter is not a generative model claim.
      */
     modelId?:    string;
     ruleVersion: string;
@@ -34,6 +35,11 @@ export interface OntologyDiscoveryContext {
      */
     verificationModelId?: string;
     verificationProvider: VerificationProvider;
+    /**
+     * Explicit outcome of the requested verifier, independent of whether catalog-only discovery
+     * was possible.
+     */
+    verificationStatus?: VerificationStatus;
 }
 
 /**
@@ -46,6 +52,11 @@ export interface OntologyDiscoveryEvidence {
      */
     entityType:         string;
     fullyQualifiedName: string;
+    /**
+     * SHA-256 of bounded verifier decisions, candidate vocabulary and inference rule; never a
+     * hash of raw source values.
+     */
+    observationFingerprint?: string;
     /**
      * Bounded labels for the catalog signals used; never raw sample values.
      */
@@ -65,4 +76,15 @@ export enum VerificationProvider {
     Jev = "jev",
     Laya = "laya",
     Model = "model",
+}
+
+/**
+ * Explicit outcome of the requested verifier, independent of whether catalog-only discovery
+ * was possible.
+ */
+export enum VerificationStatus {
+    NotRequested = "notRequested",
+    Partial = "partial",
+    Succeeded = "succeeded",
+    Unavailable = "unavailable",
 }

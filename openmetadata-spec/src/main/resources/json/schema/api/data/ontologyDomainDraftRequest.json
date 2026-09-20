@@ -31,6 +31,10 @@
       "maximum": 100,
       "default": 25
     },
+    "proposal": {
+      "description": "Already-extracted structured proposal. When present, the server compiles it without asking another model to reinterpret it. Requires discoveryContext.",
+      "$ref": "../../type/ontologyDiscoveryProposal.json"
+    },
     "discoveryContext": {
       "description": "Optional service-discovery provenance. The server adds the actual model identifier and generation time to the persisted draft.",
       "$ref": "../../type/ontologyDiscoveryContext.json"

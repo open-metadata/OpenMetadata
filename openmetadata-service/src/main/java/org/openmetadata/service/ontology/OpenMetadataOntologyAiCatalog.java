@@ -19,12 +19,15 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   private final GlossaryRepository glossaryRepository;
@@ -49,7 +52,17 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   @Override
   public GlossaryTerm term(final UUID id) {
     return termRepository.get(
-        null, id, termRepository.getFields("glossary"), Include.NON_DELETED, false);
+        null,
+        id,
+        termRepository.getFields("glossary,attributes,realizedIn"),
+        Include.NON_DELETED,
+        false);
+  }
+
+  @Override
+  public Table table(final String fullyQualifiedName) {
+    return Entity.getEntityByName(
+        Entity.TABLE, fullyQualifiedName, "service,columns", Include.NON_DELETED);
   }
 
   @Override
@@ -65,7 +78,7 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
         Entity.getEntityByName(
             evidence.getEntityType(),
             evidence.getFullyQualifiedName(),
-            "service",
+            Entity.TEST_CASE.equals(evidence.getEntityType()) ? "entityLink" : "service",
             Include.NON_DELETED);
     if (evidence.getSourceVersion() != null
         && !Objects.equals(evidence.getSourceVersion(), entity.getVersion())) {
@@ -75,23 +88,36 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
         && !Objects.equals(evidence.getUpdatedAt(), entity.getUpdatedAt())) {
       throw staleEvidence(evidence, "updatedAt", evidence.getUpdatedAt(), entity.getUpdatedAt());
     }
-    if (entity.getService() == null) {
+    final EntityInterface owner = serviceOwner(entity);
+    if (owner.getService() == null) {
       throw new IllegalArgumentException(
           "Ontology discovery evidence '"
               + evidence.getFullyQualifiedName()
               + "' is not scoped to a catalog service");
     }
     if (!Objects.equals(
-        expectedServiceFullyQualifiedName, entity.getService().getFullyQualifiedName())) {
+        expectedServiceFullyQualifiedName, owner.getService().getFullyQualifiedName())) {
       throw new IllegalArgumentException(
           "Ontology discovery evidence '"
               + evidence.getFullyQualifiedName()
               + "' belongs to service '"
-              + entity.getService().getFullyQualifiedName()
+              + owner.getService().getFullyQualifiedName()
               + "', not '"
               + expectedServiceFullyQualifiedName
               + "'");
     }
+  }
+
+  private static EntityInterface serviceOwner(final EntityInterface entity) {
+    if (!(entity instanceof TestCase testCase)) {
+      return entity;
+    }
+    final EntityLink link = EntityLink.parse(testCase.getEntityLink());
+    if (!Entity.TABLE.equals(link.getEntityType())) {
+      throw new IllegalArgumentException("Ontology quality evidence must belong to a table");
+    }
+    return Entity.getEntityByName(
+        Entity.TABLE, link.getEntityFQN(), "service", Include.NON_DELETED);
   }
 
   private static IllegalArgumentException staleEvidence(

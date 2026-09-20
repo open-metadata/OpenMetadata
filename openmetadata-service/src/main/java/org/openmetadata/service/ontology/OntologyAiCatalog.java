@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
 
 public interface OntologyAiCatalog {
@@ -25,6 +26,8 @@ public interface OntologyAiCatalog {
   GlossaryTerm term(UUID id);
 
   RelationshipType relationshipType(UUID id);
+
+  Table table(String fullyQualifiedName);
 
   void validateDiscoveryEvidence(
       OntologyDiscoveryEvidence evidence, String expectedServiceFullyQualifiedName);

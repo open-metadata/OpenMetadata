@@ -25,6 +25,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.OntologyDiscoveryContext;
 import org.openmetadata.schema.type.OntologyDiscoveryEvidence;
+import org.openmetadata.schema.type.OntologyVerificationProvider;
+import org.openmetadata.schema.type.OntologyVerificationStatus;
 
 /** Canonical server-side derivation of ontology discovery provenance fingerprints. */
 public final class OntologyDiscoveryFingerprint {
@@ -59,12 +61,20 @@ public final class OntologyDiscoveryFingerprint {
             normalize(context.getVerificationProvider().value()),
             normalize(context.getVerificationModelId()),
             evidence);
-    return sha256(canonical);
+    final String outcome =
+        "ontology-discovery-v3".equals(context.getRuleVersion())
+            ? "\n"
+                + (context.getVerificationStatus() == null
+                    ? ""
+                    : context.getVerificationStatus().value())
+            : "";
+    return sha256(canonical + outcome);
   }
 
   /** Reject provenance that is not a digest of the supplied immutable context. */
   public static void requireMatch(
       final String targetOntology, final OntologyDiscoveryContext context) {
+    validateVerificationOutcome(context);
     final String derived = derive(targetOntology, context);
     if (!Objects.equals(derived, context.getEvidenceFingerprint())) {
       throw new BadRequestException(
@@ -72,20 +82,48 @@ public final class OntologyDiscoveryFingerprint {
     }
   }
 
+  private static void validateVerificationOutcome(final OntologyDiscoveryContext context) {
+    if (context == null || !"ontology-discovery-v3".equals(context.getRuleVersion())) return;
+    final OntologyVerificationStatus status = context.getVerificationStatus();
+    final boolean verified =
+        status == OntologyVerificationStatus.SUCCEEDED
+            || status == OntologyVerificationStatus.PARTIAL;
+    final boolean checkpoint =
+        context.getVerificationModelId() != null && !context.getVerificationModelId().isBlank();
+    final boolean observed =
+        context.getEvidence() != null
+            && context.getEvidence().stream()
+                .anyMatch(item -> item.getObservationFingerprint() != null);
+    if (status == null
+        || verified != checkpoint
+        || verified != observed
+        || (context.getVerificationProvider() == OntologyVerificationProvider.MODEL
+            && status != OntologyVerificationStatus.NOT_REQUESTED)
+        || (context.getVerificationProvider() == OntologyVerificationProvider.LAYA
+            && status == OntologyVerificationStatus.NOT_REQUESTED)) {
+      throw new BadRequestException(
+          "Ontology verification outcome contradicts its checkpoint or observations");
+    }
+  }
+
   private static String canonicalEvidence(final OntologyDiscoveryEvidence evidence) {
     final String signals =
         Objects.requireNonNullElse(evidence.getSignals(), Set.<String>of()).stream()
             .map(OntologyDiscoveryFingerprint::normalize)
+            .distinct()
             .sorted()
             .collect(Collectors.joining(","));
     return String.join(
-        "|",
-        normalize(evidence.getEntityType()),
-        normalize(evidence.getFullyQualifiedName()),
-        value(evidence.getSourceVersion()),
-        value(evidence.getUpdatedAt()),
-        normalize(evidence.getSourceRunId()),
-        signals);
+            "|",
+            normalize(evidence.getEntityType()),
+            normalize(evidence.getFullyQualifiedName()),
+            value(evidence.getSourceVersion()),
+            value(evidence.getUpdatedAt()),
+            normalize(evidence.getSourceRunId()),
+            signals)
+        + (evidence.getObservationFingerprint() == null
+            ? ""
+            : "|" + evidence.getObservationFingerprint());
   }
 
   private static String value(final Object value) {

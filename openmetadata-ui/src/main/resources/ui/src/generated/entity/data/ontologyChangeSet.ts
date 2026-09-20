@@ -236,7 +236,8 @@ export interface OntologyDiscoveryContext {
     evidenceFingerprint: string;
     generatedAt?:        number;
     /**
-     * Generative model identifier returned by the ontology draft provider.
+     * Draft provider identifier: the generative model for prose generation or the deterministic
+     * compiler version for structured discovery. The latter is not a generative model claim.
      */
     modelId?:    string;
     ruleVersion: string;
@@ -247,6 +248,11 @@ export interface OntologyDiscoveryContext {
      */
     verificationModelId?: string;
     verificationProvider: VerificationProvider;
+    /**
+     * Explicit outcome of the requested verifier, independent of whether catalog-only discovery
+     * was possible.
+     */
+    verificationStatus?: VerificationStatus;
 }
 
 /**
@@ -259,6 +265,11 @@ export interface OntologyDiscoveryEvidence {
      */
     entityType:         string;
     fullyQualifiedName: string;
+    /**
+     * SHA-256 of bounded verifier decisions, candidate vocabulary and inference rule; never a
+     * hash of raw source values.
+     */
+    observationFingerprint?: string;
     /**
      * Bounded labels for the catalog signals used; never raw sample values.
      */
@@ -281,6 +292,17 @@ export enum VerificationProvider {
 }
 
 /**
+ * Explicit outcome of the requested verifier, independent of whether catalog-only discovery
+ * was possible.
+ */
+export enum VerificationStatus {
+    NotRequested = "notRequested",
+    Partial = "partial",
+    Succeeded = "succeeded",
+    Unavailable = "unavailable",
+}
+
+/**
  * A typed, reversible operation in an ontology authoring session.
  */
 export interface OntologyChangeOperation {
@@ -294,6 +316,10 @@ export interface OntologyChangeOperation {
      * Version used for optimistic concurrency. Omitted for create operations.
      */
     baseVersion?: number;
+    /**
+     * The subset of versioned change-set evidence supporting this operation or property.
+     */
+    discoveryEvidence?: OntologyDiscoveryEvidence[];
     /**
      * Fingerprint of the change-set discovery context supporting this operation.
      */
@@ -406,6 +432,10 @@ export interface OntologyAttribute {
      */
     name: string;
     /**
+     * Reviewed column-to-property mappings from ontology discovery.
+     */
+    sourceColumns?: OntologySourceColumn[];
+    /**
      * Optional unit IRI or display symbol.
      */
     unit?: string;
@@ -421,6 +451,14 @@ export enum DataType {
     Enum = "ENUM",
     Integer = "INTEGER",
     String = "STRING",
+}
+
+/**
+ * Catalog column realizing an ontology property. Contains identities, never sample values.
+ */
+export interface OntologySourceColumn {
+    columnFqn: string;
+    tableFqn:  string;
 }
 
 /**

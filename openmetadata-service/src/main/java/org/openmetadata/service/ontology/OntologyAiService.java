@@ -167,6 +167,20 @@ public final class OntologyAiService {
                   catalog.validateDiscoveryEvidence(
                       evidence, request.getDiscoveryContext().getServiceFqn()));
     }
+    if (request.getProposal() != null) {
+      final long generatedAt = clock.millis();
+      final CreateOntologyChangeSet draft =
+          new OntologyDiscoveryProposalCompiler(catalog, request, glossary, generatedAt).compile();
+      attachDiscoveryContext(
+          draft,
+          request.getDiscoveryContext(),
+          OntologyDiscoveryProposalCompiler.COMPILER_ID,
+          generatedAt);
+      return new OntologyDomainDraftResult()
+          .withModelId(OntologyDiscoveryProposalCompiler.COMPILER_ID)
+          .withGeneratedAt(generatedAt)
+          .withDraft(draft);
+    }
     final OntologyAiCompletionGateway.DomainPrompt prompt =
         new OntologyAiCompletionGateway.DomainPrompt(
             glossary.getFullyQualifiedName(),

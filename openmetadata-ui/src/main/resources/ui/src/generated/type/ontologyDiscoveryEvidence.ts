@@ -21,6 +21,11 @@ export interface OntologyDiscoveryEvidence {
     entityType:         string;
     fullyQualifiedName: string;
     /**
+     * SHA-256 of bounded verifier decisions, candidate vocabulary and inference rule; never a
+     * hash of raw source values.
+     */
+    observationFingerprint?: string;
+    /**
      * Bounded labels for the catalog signals used; never raw sample values.
      */
     signals?: string[];

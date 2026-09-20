@@ -6,6 +6,11 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.type.OntologyDiscoveryEvidence",
   "properties": {
+    "observationFingerprint": {
+      "description": "SHA-256 of bounded verifier decisions, candidate vocabulary and inference rule; never a hash of raw source values.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "entityType": {
       "description": "Catalog entity type containing the evidence.",
       "type": "string",

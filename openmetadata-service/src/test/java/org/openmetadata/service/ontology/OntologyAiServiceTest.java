@@ -41,6 +41,7 @@ import org.openmetadata.schema.api.data.OntologyRelationshipSuggestionRequest;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConfiguration;
@@ -476,6 +477,11 @@ class OntologyAiServiceTest {
     @Override
     public GlossaryTerm term(final UUID id) {
       return terms.stream().filter(term -> term.getId().equals(id)).findFirst().orElseThrow();
+    }
+
+    @Override
+    public Table table(final String fullyQualifiedName) {
+      throw new UnsupportedOperationException("No table fixture for this test");
     }
 
     @Override
