@@ -121,7 +121,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
     if (!hasLineage) {
       return (
-        <Typography as="span" className="tw:text-gray-500 tw:text-xs">
+        <Typography as="span" className="tw:text-quaternary tw:text-xs">
           {t('message.no-lineage-available')}
         </Typography>
       );
@@ -148,7 +148,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
   return (
     <div
-      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-gray-200"
+      className="tw:px-3.25 tw:pb-4 tw:border-b-[0.6px] tw:border-secondary"
       data-testid="lineage-section">
       <div className="tw:mb-3">
         <Typography as="p" className="tw:font-semibold">
