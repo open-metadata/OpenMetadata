@@ -176,20 +176,15 @@ jobs:
     # spins up a runner, but the runner short-circuits at the first step
     # when this leg isn't wanted for the current event:
     #   - workflow_dispatch with a specific provider → only that leg runs
-    #   - workflow_dispatch=all / schedule → every leg runs
-    #   - pull_request → skip okta (needs live tenant) and the
-    #     -crosssite variant (needs 127.0.0.1 name-resolution setup we
-    #     don't want to gate PR CI on).
-    #   - push (branch push without an open PR) → the whole workflow
-    #     shouldn't fire, but if it does, treat like PR (skip okta +
-    #     crosssite so nothing red-x's without secrets).
-    # Per-event filtering:
-    #   - workflow_dispatch with a specific provider → only that leg runs
-    #   - workflow_dispatch=all / schedule → every leg runs
-    #   - pull_request → skip okta (needs live tenant not on fork PRs)
-    #   - push → same as pull_request (defensive; the workflow's `on:`
-    #     doesn't list push, but GitHub may still fire on workflow-file
-    #     changes).
+    #   - workflow_dispatch=all / schedule → every leg runs (including
+    #     okta and the -crosssite variant)
+    #   - pull_request → skip okta (needs a live Okta tenant not wired
+    #     for fork PRs) and skip keycloak-azure-saml-crosssite (needs
+    #     127.0.0.1 name-resolution setup we don't want to gate PR CI on)
+    #   - push (branch push without an open PR) → the workflow's `on:`
+    #     doesn't list push, but if GitHub fires on workflow-file
+    #     changes, treat it like PR (skip okta + crosssite so nothing
+    #     red-x's without secrets or extra host setup)
     env:
       SKIP_LEG: >-
         ${{
@@ -197,8 +192,8 @@ jobs:
             && github.event.inputs.sso_provider != 'all'
             && github.event.inputs.sso_provider != matrix.provider.name)
           || ((github.event_name == 'pull_request' || github.event_name == 'push')
-              && matrix.provider.name == 'okta')
-          || matrix.provider.name == 'keycloak-azure-saml-crosssite'
+              && (matrix.provider.name == 'okta'
+                  || matrix.provider.name == 'keycloak-azure-saml-crosssite'))
         }}
     steps:
       - name: Skip leg early
