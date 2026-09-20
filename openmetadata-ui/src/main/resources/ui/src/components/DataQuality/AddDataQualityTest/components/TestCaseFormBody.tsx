@@ -87,9 +87,9 @@ import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFie
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
-import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,

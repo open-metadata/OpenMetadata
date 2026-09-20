@@ -79,7 +79,9 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const observer = new ResizeObserver(() => {
       setPopoverWidth(el.getBoundingClientRect().width + 'px');
     });
@@ -137,10 +139,7 @@ const TagSelector: FC<TagSelectorProps> = ({
     [debouncedSearch]
   );
 
-  const selectedValues = useMemo(
-    () => value.map((tag) => tag.tagFQN),
-    [value]
-  );
+  const selectedValues = useMemo(() => value.map((tag) => tag.tagFQN), [value]);
 
   const handleChange = useCallback(
     (fqns: string[]) => {
@@ -162,13 +161,13 @@ const TagSelector: FC<TagSelectorProps> = ({
   const resolvedLabel = label ?? t('label.tag-plural');
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-1.5" ref={containerRef}>
+    <div className="tw:flex tw:flex-col tw:gap-1.5 tw:w-full" ref={containerRef}>
       {label !== undefined && (
         <FormItemLabel label={resolvedLabel} required={required} />
       )}
       <FilterSelect
-        searchable
         hideCounts
+        searchable
         className={className}
         commitMode={commitMode}
         isLoading={isLoading}

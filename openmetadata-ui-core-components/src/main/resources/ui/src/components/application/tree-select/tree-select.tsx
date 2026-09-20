@@ -200,6 +200,7 @@ export const TreeSelect = <T = unknown,>({
   searchable = false,
   lazyLoad = false,
   showCheckbox = true,
+  showExpandIcon = true,
   showIcon = true,
   cascadeSelection = false,
   debounceMs = 300,
@@ -477,6 +478,7 @@ export const TreeSelect = <T = unknown,>({
               multiple={multiple}
               node={node}
               showCheckbox={showCheckbox && !isExclusiveGroup}
+              showExpandIcon={showExpandIcon}
               showIcon={showIcon}
               onNodeClick={() => {
                 if (!isExclusiveGroup) {
@@ -496,6 +498,7 @@ export const TreeSelect = <T = unknown,>({
       disabled,
       multiple,
       showCheckbox,
+      showExpandIcon,
       showIcon,
       handleNodeAction,
     ]

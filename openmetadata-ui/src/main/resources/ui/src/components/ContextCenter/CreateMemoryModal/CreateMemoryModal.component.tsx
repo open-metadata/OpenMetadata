@@ -91,8 +91,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import TagSelector from '../../Tag/TagSelector/TagSelector';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import {
   CreateMemoryModalProps,
   LinkedAssetsSectionProps,
@@ -580,58 +580,55 @@ const MemoryTagsRow: FC<{
   handleTagSave,
   t,
 }) => (
-  <div className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3">
-    <div className="tw:flex tw:items-center tw:gap-3">
-      <div className="tw:basis-[30%]">
-        <Typography
-          className="tw:text-quaternary tw:w-28 tw:shrink-0"
-          size="text-sm">
-          {t('label.tag-plural')}
-        </Typography>
-      </div>
-      <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
-        {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
-        {selectedTags.map((tag) => (
-          <ClassificationTag
-            color={tag.style?.color}
-            icon={tag.style?.iconURL}
-            key={String(tag.tagFQN ?? '')}
-            label={tag.tagFQN ?? ''}
-            maxWidth={160}
-            size="sm"
-            onDelete={
-              isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
-            }
-          />
-        ))}
-        {!isViewOnly && (
-          <Button
-            color="link-color"
-            iconLeading={Plus}
-            size="sm"
-            onClick={() => setShowTagForm((v) => !v)}>
-            {t('label.add-entity', { entity: t('label.tag') })}
-          </Button>
-        )}
-      </div>
+  <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
+    <div className="tw:basis-[30%]">
+      <Typography
+        className="tw:text-quaternary tw:w-28 tw:shrink-0"
+        size="text-sm">
+        {t('label.tag-plural')}
+      </Typography>
     </div>
-
-    {showTagForm && !isViewOnly && (
-      <TagSelector
-        commitMode="staged"
-        isOpen
-        value={selectedTags}
-        onChange={(tags) => {
-          handleTagSave(tags);
-          setShowTagForm(false);
-        }}
-        onOpenChange={(open) => {
-          if (!open) {
-            setShowTagForm(false);
+    <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
+      {isViewOnly && selectedTags.length === 0 && !showTagForm && <EmptyTags />}
+      {!showTagForm && selectedTags.map((tag) => (
+        <ClassificationTag
+          color={tag.style?.color}
+          icon={tag.style?.iconURL}
+          key={String(tag.tagFQN ?? '')}
+          label={tag.tagFQN ?? ''}
+          maxWidth={160}
+          size="sm"
+          onDelete={
+            isViewOnly ? undefined : () => handleRemoveTag(tag.tagFQN)
           }
-        }}
-      />
-    )}
+        />
+      ))}
+      {!isViewOnly && !showTagForm && (
+        <Button
+          color="link-color"
+          iconLeading={Plus}
+          size="sm"
+          onClick={() => setShowTagForm((v) => !v)}>
+          {t('label.add-entity', { entity: t('label.tag') })}
+        </Button>
+      )}
+      {showTagForm && !isViewOnly && (
+        <TagSelector
+          isOpen
+          className="tw:w-full"
+          commitMode="staged"
+          value={selectedTags}
+          onChange={(tags) => {
+            handleTagSave(tags);
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowTagForm(false);
+            }
+          }}
+        />
+      )}
+    </div>
   </div>
 );
 

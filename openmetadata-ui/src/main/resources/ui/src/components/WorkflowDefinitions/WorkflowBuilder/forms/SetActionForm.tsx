@@ -39,8 +39,8 @@ import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
-import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 
 import { FormActionButtons } from './FormActionButtons';
 import { MetadataFormSection } from './MetadataFormSection';

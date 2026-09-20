@@ -67,8 +67,8 @@ import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
-import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {

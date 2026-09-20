@@ -21,22 +21,9 @@ import {
   TagLabelMetadata,
   TagSource,
 } from '../../../generated/type/tagLabel';
+import { ClassificationTagPickerProps } from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import { GlossaryTermPickerProps } from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import TagsContainerV2 from './TagsContainerV2';
-
-let capturedOnSubmit:
-  | ((data: { value: string; data?: Partial<EntityTags> }[]) => Promise<void>)
-  | undefined;
-
-jest.mock('../TagsSelectForm/TagsSelectForm.component', () => {
-  return jest.fn().mockImplementation((props) => {
-    capturedOnSubmit = props.onSubmit;
-
-    return <div data-testid="mock-tag-select-form">TagSelectForm</div>;
-  });
-});
-
-let capturedGlossaryProps: GlossaryTermPickerProps | undefined;
 
 const TRIGGER_STATE = {
   isOpen: false,
@@ -45,6 +32,24 @@ const TRIGGER_STATE = {
   close: jest.fn(),
   selectedCount: 0,
 };
+
+let capturedClassificationProps: ClassificationTagPickerProps | undefined;
+
+jest.mock('../../common/ClassificationTagPicker/ClassificationTagPicker', () => {
+  return jest
+    .fn()
+    .mockImplementation((props: ClassificationTagPickerProps) => {
+      capturedClassificationProps = props;
+
+      return (
+        <div data-testid="mock-classification-picker">
+          {props.renderTrigger?.(TRIGGER_STATE)}
+        </div>
+      );
+    });
+});
+
+let capturedGlossaryProps: GlossaryTermPickerProps | undefined;
 
 jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () => {
   return jest.fn().mockImplementation((props: GlossaryTermPickerProps) => {
@@ -139,7 +144,7 @@ const renderTagsContainer = (props: {
   selectedTags: EntityTags[];
   onSelectionChange: jest.Mock;
 }) => {
-  capturedOnSubmit = undefined;
+  capturedClassificationProps = undefined;
 
   return render(
     <MemoryRouter>
@@ -163,7 +168,7 @@ const renderTagsContainerInsideClickableParent = (props: {
   isGlossaryType?: boolean;
   newLook?: boolean;
 }) => {
-  capturedOnSubmit = undefined;
+  capturedClassificationProps = undefined;
 
   return render(
     <MemoryRouter>
@@ -188,16 +193,20 @@ const renderTagsContainerInsideClickableParent = (props: {
   );
 };
 
-// Header and inline slot both render an edit icon; either opens the editor.
-const enterEditMode = async () => {
-  fireEvent.click(screen.getAllByTestId('edit-button')[0]);
-  await screen.findByTestId('mock-tag-select-form');
+const emitClassificationChange = (tags: TagLabel[]) => {
+  const onChange = capturedClassificationProps?.onChange;
+
+  if (!onChange) {
+    throw new Error('ClassificationTagPicker was never rendered');
+  }
+
+  return onChange(tags);
 };
 
-describe('TagsContainerV2 handleSave', () => {
+describe('TagsContainerV2 handleClassificationTagsChange', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    capturedOnSubmit = undefined;
+    capturedClassificationProps = undefined;
   });
 
   it('preserves appliedBy and appliedAt on existing tag when a new tag is added', async () => {
@@ -207,16 +216,17 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    await enterEditMode();
-
-    expect(capturedOnSubmit).toBeDefined();
+    expect(capturedClassificationProps).toBeDefined();
 
     await act(async () => {
-      await capturedOnSubmit?.([
-        { value: PERSONAL_DATA_FQN, data: personalDataTag },
+      await emitClassificationChange([
+        personalDataTag,
         {
-          value: TIER_GOLD_FQN,
-          data: { name: 'Tier1', tagFQN: TIER_GOLD_FQN },
+          tagFQN: TIER_GOLD_FQN,
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          name: 'Tier1',
         },
       ]);
     });
@@ -224,7 +234,6 @@ describe('TagsContainerV2 handleSave', () => {
     expect(onSelectionChange).toHaveBeenCalledTimes(1);
 
     const emitted = onSelectionChange.mock.calls[0][0] as EntityTags[];
-
     const survived = emitted.find((t) => t.tagFQN === PERSONAL_DATA_FQN);
 
     expect(survived).toEqual(
@@ -242,16 +251,12 @@ describe('TagsContainerV2 handleSave', () => {
 
   it('passes every TagLabel schema field through to onSelectionChange', async () => {
     const onSelectionChange = jest.fn().mockResolvedValue(undefined);
-    // Seed with a different tag so the new selection genuinely changes the FQN list
-    // and isn't short-circuited by the no-op guard inside handleSave.
     renderTagsContainer({
       selectedTags: [piiSensitiveTag],
       onSelectionChange,
     });
 
-    await enterEditMode();
-
-    expect(capturedOnSubmit).toBeDefined();
+    expect(capturedClassificationProps).toBeDefined();
 
     const fullTag: Required<TagLabel> = {
       tagFQN: PERSONAL_DATA_FQN,
@@ -276,7 +281,7 @@ describe('TagsContainerV2 handleSave', () => {
     };
 
     await act(async () => {
-      await capturedOnSubmit?.([{ value: fullTag.tagFQN, data: fullTag }]);
+      await emitClassificationChange([fullTag]);
     });
 
     expect(onSelectionChange).toHaveBeenCalledTimes(1);
@@ -306,14 +311,10 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    await enterEditMode();
-
-    expect(capturedOnSubmit).toBeDefined();
+    expect(capturedClassificationProps).toBeDefined();
 
     await act(async () => {
-      await capturedOnSubmit?.([
-        { value: PERSONAL_DATA_FQN, data: tagWithNullStyle },
-      ]);
+      await emitClassificationChange([tagWithNullStyle]);
     });
 
     expect(onSelectionChange).toHaveBeenCalledTimes(1);
@@ -331,16 +332,17 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    await enterEditMode();
-
-    expect(capturedOnSubmit).toBeDefined();
+    expect(capturedClassificationProps).toBeDefined();
 
     await act(async () => {
-      await capturedOnSubmit?.([
-        { value: PERSONAL_DATA_FQN, data: personalDataTag },
+      await emitClassificationChange([
+        personalDataTag,
         {
-          value: TIER_GOLD_FQN,
-          data: { name: 'Tier1', tagFQN: TIER_GOLD_FQN },
+          tagFQN: TIER_GOLD_FQN,
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          name: 'Tier1',
         },
       ]);
     });
@@ -377,7 +379,7 @@ describe('TagsContainerV2 handleSave', () => {
 describe('TagsContainerV2 click propagation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    capturedOnSubmit = undefined;
+    capturedClassificationProps = undefined;
   });
 
   // These two used to assert the opposite. Swallowing every click in the container also swallowed
@@ -426,7 +428,7 @@ describe('TagsContainerV2 click propagation', () => {
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
-  it('keeps inner controls working while blocking propagation to the ancestor', async () => {
+  it('keeps inner controls working while blocking propagation to the ancestor', () => {
     const onParentClick = jest.fn();
     renderTagsContainerInsideClickableParent({
       selectedTags: [personalDataTag],
@@ -434,9 +436,11 @@ describe('TagsContainerV2 click propagation', () => {
       onParentClick,
     });
 
-    await enterEditMode();
+    // The picker is already rendered with the trigger button inside; clicking
+    // the button opens the popover without propagating to the ancestor.
+    const picker = screen.getByTestId('mock-classification-picker');
+    fireEvent.click(within(picker).getByTestId('edit-button'));
 
-    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
@@ -482,7 +486,7 @@ describe('TagsContainerV2 click propagation', () => {
     expect(onParentClick).not.toHaveBeenCalled();
   });
 
-  it('keeps newLook inner controls working while blocking propagation to the ancestor', async () => {
+  it('keeps newLook inner controls working while blocking propagation to the ancestor', () => {
     const onParentClick = jest.fn();
     renderTagsContainerInsideClickableParent({
       newLook: true,
@@ -491,9 +495,9 @@ describe('TagsContainerV2 click propagation', () => {
       onParentClick,
     });
 
-    await enterEditMode();
+    const picker = screen.getByTestId('mock-classification-picker');
+    fireEvent.click(within(picker).getByTestId('edit-button'));
 
-    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
     expect(onParentClick).not.toHaveBeenCalled();
   });
 });
@@ -566,7 +570,7 @@ describe('TagsContainerV2 glossary picker', () => {
     // The icon is the picker's trigger, and the body still shows the terms.
     expect(within(picker).getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
-    expect(screen.queryByTestId('mock-tag-select-form')).toBeNull();
+    expect(screen.queryByTestId('mock-classification-picker')).toBeNull();
   });
 
   it('commits on Apply rather than per toggle', () => {

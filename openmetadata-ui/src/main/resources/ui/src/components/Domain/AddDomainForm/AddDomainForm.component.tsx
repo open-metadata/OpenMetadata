@@ -73,7 +73,6 @@ import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferen
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
@@ -82,6 +81,7 @@ import {
   DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import {

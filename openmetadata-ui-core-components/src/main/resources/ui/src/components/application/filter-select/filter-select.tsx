@@ -207,12 +207,9 @@ const ChipsField = ({
         className="tw:flex tw:min-w-10 tw:flex-1 tw:cursor-pointer tw:items-center tw:justify-between tw:gap-2 tw:self-stretch tw:rounded-sm tw:pl-1.5 tw:outline-brand"
         data-testid={testId}>
         {chips.length === 0 ? (
-          <Typography
-            className="tw:truncate tw:text-placeholder"
-            size="text-sm"
-            weight="regular">
+          <span className="tw:truncate tw:text-sm tw:font-normal tw:text-placeholder">
             {placeholder}
-          </Typography>
+          </span>
         ) : (
           <span />
         )}
