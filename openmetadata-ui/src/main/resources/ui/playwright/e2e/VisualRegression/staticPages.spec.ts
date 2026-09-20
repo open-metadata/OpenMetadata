@@ -70,7 +70,15 @@ const PAGES: {
     // and column headers stay under test.
     mask: ['[data-testid="services-container"] tbody'],
   },
-  { name: 'data-quality', route: '/data-quality' },
+  {
+    name: 'data-quality',
+    route: '/data-quality',
+    // The Data Health cards count whatever assets the environment happens to
+    // hold — 322 tables in CI, a different number anywhere else — so the donuts
+    // and their totals cannot be baselined. Mask them and keep the page chrome,
+    // tabs, filter row and the Data Dimensions section under test.
+    mask: ['[data-testid$="-pie-chart-widget"]'],
+  },
   {
     name: 'incident-manager',
     route: '/incident-manager',
