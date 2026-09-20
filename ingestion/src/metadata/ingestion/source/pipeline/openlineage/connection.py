@@ -219,6 +219,9 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
                 deliver_policy=deliver_policy,
                 ack_policy=AckPolicy.EXPLICIT,
                 ack_wait=broker.ackWait,
+                # An event the ingestion pipeline cannot process is never acknowledged;
+                # without a limit JetStream would redeliver it on every run
+                max_deliver=broker.maxDeliver,
             )
             try:
                 await js.add_consumer(broker.streamName, config=consumer)
