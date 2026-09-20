@@ -14,7 +14,9 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
@@ -56,5 +58,12 @@ public class Migration extends MigrationProcessImpl {
     // migration.
     // Idempotent.
     repairFieldNamesAggregations();
+    // Repair Dashboard/Chart/Pipeline/Topic/MlModel rows created under dotted-name services before
+    // 1.1.0 (the v1120 repair covered only their 7 sibling types). DB-agnostic, so also run on
+    // MySQL. Re-homed here so instances already past 1.12 heal on upgrade.
+    repairDottedServiceChildFqns(handle, collectionDAO);
+    // Data contracts stored their entity reference as sent, usually without a name or FQN.
+    // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
+    rebuildDataContractEntityReferences(collectionDAO);
   }
 }

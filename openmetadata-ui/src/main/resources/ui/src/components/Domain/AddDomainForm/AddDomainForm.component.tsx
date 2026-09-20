@@ -75,12 +75,12 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
-} from '../../common/IconPicker';
+} from '../../common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
@@ -1028,7 +1028,7 @@ const AddDomainForm = ({
         name="glossaryTerms"
         rules={glossaryTermsRequiredRule}>
         {({ field }) => (
-          <GlossaryTermTreeSelect
+          <GlossaryTermPicker
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
             placeholder={t('label.select-field', {

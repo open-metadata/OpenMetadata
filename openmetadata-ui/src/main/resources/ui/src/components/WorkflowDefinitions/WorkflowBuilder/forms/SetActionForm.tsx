@@ -42,7 +42,8 @@ import {
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SetActionFormProps {
   node: Node;

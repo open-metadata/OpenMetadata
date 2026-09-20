@@ -28,7 +28,15 @@ import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -54,6 +62,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import { useThresholdProfilerConfig } from '../../../../hooks/observability/data-quality/useThresholdProfilerConfig';
 import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
@@ -73,12 +82,14 @@ import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import { getThresholdPreviewTarget } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import ThresholdPreview from '../../../observability/data-quality/ThresholdPreview/ThresholdPreview';
 import ParameterFields from './ParameterFields';
 import {
   FormValues,
@@ -263,6 +274,7 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
   dataQualityDimensionField: FieldProp;
+  thresholdPreview: ReactNode;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -281,6 +293,7 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible,
   computeRowCountField,
   dataQualityDimensionField,
+  thresholdPreview,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -316,6 +329,7 @@ const TestTypeCard: FC<{
             selectedTestDefinition.description
           )}
         />
+        {thresholdPreview}
       </div>
     )}
 
@@ -1391,6 +1405,17 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  const tableProfilerConfig = useThresholdProfilerConfig(
+    selectedTestDefinition,
+    selectedTableData?.id
+  );
+  const thresholdPreviewTarget = getThresholdPreviewTarget({
+    isColumnLevel: selectedTestLevel === TestLevel.COLUMN,
+    columnName: selectedColumn,
+    tableName: selectedTableData?.name,
+    tableFqn: selectedTableFqn,
+  });
+
   const canShowSchedulerSection = getCanShowSchedulerSection(
     showOnlyParameter,
     isEditMode,
@@ -1450,6 +1475,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}
+        thresholdPreview={
+          selectedTestDefinition && (
+            <ThresholdPreview
+              definition={selectedTestDefinition}
+              form={form}
+              profilerConfig={tableProfilerConfig}
+              target={thresholdPreviewTarget}
+            />
+          )
+        }
       />
 
       {!showOnlyParameter && (
