@@ -32,14 +32,12 @@ import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  ConnectionConditionModal,
-  WorkflowCanvas,
-  WorkflowExecutionHistory,
-  WorkflowHeader,
-  WorkflowSidebar,
-} from '../../../components/WorkflowDefinitions/WorkflowBuilder';
+import { ConnectionConditionModal } from '../../../components/WorkflowDefinitions/WorkflowBuilder/ConnectionConditionModal';
 import { NodeFormSidebar } from '../../../components/WorkflowDefinitions/WorkflowBuilder/NodeFormSidebar';
+import { WorkflowCanvas } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowCanvas';
+import { WorkflowExecutionHistory } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowExecutionHistory';
+import { WorkflowHeader } from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowHeader';
+import WorkflowSidebar from '../../../components/WorkflowDefinitions/WorkflowBuilder/WorkflowSidebar';
 import type { WorkflowBuilderTab } from '../../../constants/WorkflowBuilder.constants';
 import {
   getWorkflowBuilderTabs,
