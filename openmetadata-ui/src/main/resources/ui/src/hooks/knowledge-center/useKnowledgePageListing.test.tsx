@@ -12,10 +12,10 @@
  */
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import APIClient from '../../rest';
+import APIClient from '../../rest/axiosClient';
 import { useKnowledgePageListing } from './useKnowledgePageListing';
 
-jest.mock('../../rest', () => ({ get: jest.fn() }));
+jest.mock('../../rest/axiosClient', () => ({ get: jest.fn() }));
 const get = APIClient.get as jest.Mock;
 const pageData = (prefix: string, count: number, start = 0) =>
   Array.from({ length: count }, (_, index) => ({

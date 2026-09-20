@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import APIClient from '../../rest/index';
+import APIClient from '../../rest/axiosClient';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { useIncidentFilterOptions } from './useIncidentFilterOptions';
 
@@ -19,7 +19,7 @@ jest.mock('../../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest.fn(),
 }));
 
-jest.mock('../../rest/index', () => ({
+jest.mock('../../rest/axiosClient', () => ({
   get: jest.fn(),
 }));
 
