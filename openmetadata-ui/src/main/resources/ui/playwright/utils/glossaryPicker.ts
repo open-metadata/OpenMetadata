@@ -55,24 +55,51 @@ export const searchGlossaryPicker = async (page: Page, term: string) => {
   await searchResponse;
 };
 
-// Retry once: on slow CI the first click can precede the trigger being ready.
+// Opens the picker and waits for the treegrid to render. Two shard-load
+// failure modes are handled explicitly:
+//
+//   (1) The trigger is rendered but the react-aria popover-trigger hook has
+//       not attached yet — a click before that lands on a stale render and
+//       drops silently. `aria-expanded` is only set by the hook, so waiting
+//       for it to exist (as "false") proves the handler is live before we
+//       click.
+//   (2) Even a handler-attached click can race with hydration on a very
+//       loaded shard. After clicking, we wait for `aria-expanded` to flip to
+//       "true" — that's the trigger's own state edge, not a downstream
+//       render — and retry the click once if it didn't. Both attempts have a
+//       tight bound so a genuine failure surfaces as "aria-expanded never
+//       toggled" or "treegrid never rendered" instead of "browser closed"
+//       from the enclosing 180s test timeout.
+//
+// Issue: https://github.com/open-metadata/OpenMetadata/issues/33640
 export const openGlossaryPicker = async (
   page: Page,
   trigger: Locator,
   options?: { force?: boolean }
 ) => {
   await expect(trigger).toBeVisible();
-  await trigger.click({ force: options?.force });
+  await expect(trigger).toBeEnabled();
+  await expect(trigger).toHaveAttribute('aria-expanded', /^(true|false)$/, {
+    timeout: 5_000,
+  });
 
   const treeLocator = tree(page);
 
+  const clickAndAwaitExpanded = async (clickOptions?: { force?: boolean }) => {
+    await trigger.click(clickOptions);
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true', {
+      timeout: 5_000,
+    });
+  };
+
   try {
-    await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
+    await clickAndAwaitExpanded({ force: options?.force });
   } catch {
-    // eslint-disable-next-line playwright/no-force-option -- retry: first click may not have registered on the react-aria trigger
-    await trigger.click({ force: true });
-    await treeLocator.waitFor({ state: 'visible' });
+    // eslint-disable-next-line playwright/no-force-option -- retry: caller's non-forced click never toggled aria-expanded, so the trigger is unresponsive; force is the last resort before we give up
+    await clickAndAwaitExpanded({ force: true });
   }
+
+  await treeLocator.waitFor({ state: 'visible', timeout: 10_000 });
 };
 
 // Search results arrive nested and pre-expanded, so no manual expanding.
