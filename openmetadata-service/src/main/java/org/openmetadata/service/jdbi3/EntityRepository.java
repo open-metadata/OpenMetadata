@@ -8898,7 +8898,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     @Getter protected ChangeDescription incrementalChangeDescription = null;
 
     private final ChangeSource changeSource;
-    @Setter private boolean useOptimisticLocking;
+    @Getter @Setter private boolean useOptimisticLocking;
     @Setter private Set<String> patchedFields;
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
