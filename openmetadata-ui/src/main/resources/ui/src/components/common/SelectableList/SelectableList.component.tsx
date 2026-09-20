@@ -171,6 +171,9 @@ export const SelectableList = ({
 
   const handleSearch = useCallback(
     async (search: string) => {
+      // A new search replaces the list, so clear the pagination guard — a still
+      // in-flight page from the previous query must not block loading this one.
+      isFetchingNextPage.current = false;
       const { data, paging } = await fetchOptions(search);
 
       setUniqueOptions(
