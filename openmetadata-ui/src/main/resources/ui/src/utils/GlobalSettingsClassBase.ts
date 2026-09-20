@@ -695,6 +695,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
             icon: AppModeIcon,
           },
+          {
+            label: t('label.default-time-format'),
+            description: t('message.default-time-format-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.TIME_FORMAT}`,
+            icon: AppModeIcon,
+          },
         ],
       },
       {

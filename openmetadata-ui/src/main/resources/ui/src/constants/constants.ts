@@ -18,8 +18,8 @@ import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
+    GlobalSettingOptions,
+    GlobalSettingsMenuCategory
 } from './GlobalSettings.constants';
 
 export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
@@ -342,6 +342,7 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
+  SETTINGS_DEFAULT_TIME_FORMAT = '/settings/default-time-format',
 };
 
 export const SOCKET_EVENTS = {
