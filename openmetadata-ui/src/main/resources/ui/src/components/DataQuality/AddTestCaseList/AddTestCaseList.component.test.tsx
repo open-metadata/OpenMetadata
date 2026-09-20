@@ -1563,6 +1563,52 @@ describe('AddTestCaseList', () => {
         includeIds: [],
         excludeIds: [],
         testCases: [],
+        filter: {},
+      });
+    });
+  });
+
+  it('carries the active filter in the selectAll payload so the backend adds only the filtered subset', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: mockTestCases.slice(0, 2),
+      paging: { total: 10 },
+    });
+
+    const onChange = jest.fn();
+
+    await act(async () => {
+      renderWithRouter({ ...mockProps, onChange });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('test_case_1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-status-success'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-test-cases'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('select-all-total-test-cases')).toBeVisible();
+    });
+
+    onChange.mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-all-total-test-cases'));
+    });
+
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { testCaseStatus: 'Success' },
       });
     });
   });
