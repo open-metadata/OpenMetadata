@@ -22,7 +22,7 @@ from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..containers import MinioContainerConfigs, get_minio_container  # noqa: TID252
+from ..containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 RESOURCES_DIR = Path(__file__).parent / "resources"
 
@@ -42,7 +42,7 @@ def bucket_name():
     return "test-bucket"
 
 
-def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name: str):
+def upload_directory_to_s3(client: Minio, local_directory: Path, bucket_name: str):
     """
     Validate it with
     list(client.list_objects(bucket_name=bucket_name, recursive=True))
@@ -52,7 +52,7 @@ def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name:
         for filename in files:
             # Create the file path
             local_file_path = os.path.join(root, filename)  # noqa: PTH118
-            # Generate the object name for MinIO by stripping the local directory path
+            # Generate the object name by stripping the local directory path
             object_name = os.path.relpath(local_file_path, local_directory)
 
             # Upload the file
@@ -60,28 +60,27 @@ def upload_directory_to_minio(client: Minio, local_directory: Path, bucket_name:
 
 
 @pytest.fixture(scope="package")
-def minio(bucket_name):
-    config = MinioContainerConfigs(container_name=str(uuid.uuid4()))
-    minio_container = get_minio_container(config)
-    minio_container.with_exposed_ports(9000, 9001)
+def s3(bucket_name):
+    config = S3ContainerConfigs(container_name=str(uuid.uuid4()))
+    s3_container = get_s3_container(config)
 
-    with minio_container:
-        minio_client = minio_container.get_client()
-        minio_client.make_bucket(bucket_name)
+    with s3_container:
+        s3_client = s3_container.get_client()
+        s3_client.make_bucket(bucket_name)
 
-        yield minio_container, minio_client
+        yield s3_container, s3_client
 
 
 @pytest.fixture(scope="module")
-def create_data(minio, bucket_name):
-    _, minio_client = minio
-    upload_directory_to_minio(minio_client, RESOURCES_DIR, bucket_name)
+def create_data(s3, bucket_name):
+    _, s3_client = s3
+    upload_directory_to_s3(s3_client, RESOURCES_DIR, bucket_name)
     yield
 
 
 @pytest.fixture(scope="module")
-def ingest_s3_storage(minio, metadata, service_name, create_data):
-    minio_container, _ = minio
+def ingest_s3_storage(s3, metadata, service_name, create_data):
+    s3_container, _ = s3
     config = f"""
         source:
           type: s3
@@ -90,10 +89,10 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
             config:
               type: S3
               awsConfig: 
-                awsAccessKeyId: {minio_container.access_key}
-                awsSecretAccessKey: {minio_container.secret_key} 
+                awsAccessKeyId: {s3_container.access_key}
+                awsSecretAccessKey: {s3_container.secret_key} 
                 awsRegion: us-east-1
-                endPointURL: http://localhost:{minio_container.get_exposed_port(9000)}
+                endPointURL: http://localhost:{s3_container.get_exposed_port(9000)}
           sourceConfig:
             config:
               type: StorageMetadata
