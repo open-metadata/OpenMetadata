@@ -1317,7 +1317,9 @@ class OpenlineageSource(PipelineServiceSource):
             client = self.client
             idle_time = 0.0
             # the schema defaults these, but a config built in code can leave them unset;
-            # `or` would also swallow a deliberate 0
+            # `or` would also swallow a deliberate sessionTimeout of 0, which means "one
+            # empty fetch ends the run". poolTimeout and batchSize cannot be 0: the schema
+            # rejects them, because a zero wait never advances idle_time
             pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
             session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
             batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize

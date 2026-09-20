@@ -91,6 +91,29 @@ class TestNatsBrokerConfig:
         with pytest.raises(ValueError):
             NatsBrokerConfig(streamName="OPENLINEAGE")
 
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            # `_poll_nats` ends a run by adding poolTimeout to an idle counter until it passes
+            # sessionTimeout, so a zero wait spins forever against a quiet stream
+            ("poolTimeout", 0),
+            ("poolTimeout", -1),
+            ("batchSize", 0),
+            ("ackWait", 0),
+            ("maxDeliver", 0),
+            ("sessionTimeout", -1),
+        ],
+    )
+    def test_non_positive_tuning_values_are_rejected(self, field, value):
+        with pytest.raises(ValueError):
+            NatsBrokerConfig(natsServers="nats://localhost:4222", streamName="OPENLINEAGE", **{field: value})
+
+    def test_a_zero_session_timeout_is_still_allowed(self):
+        """One empty fetch ends the run: it means "do not wait for more", not "never stop"."""
+        broker = NatsBrokerConfig(natsServers="nats://localhost:4222", streamName="OPENLINEAGE", sessionTimeout=0)
+
+        assert broker.sessionTimeout == 0
+
 
 class TestNatsConnectOptions:
     @pytest.mark.parametrize(

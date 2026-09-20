@@ -3344,7 +3344,8 @@ export interface BrokerConfiguration {
      *
      * Poll interval in seconds.
      *
-     * Max allowed wait time for a single fetch, in seconds.
+     * Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once
+     * it has waited out sessionTimeout, and a zero wait would never advance that.
      */
     poolTimeout?: number;
     /**
