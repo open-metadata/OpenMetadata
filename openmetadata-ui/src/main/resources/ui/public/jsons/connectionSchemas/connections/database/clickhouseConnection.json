@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ClickhouseConnection",
   "description": "Clickhouse Connection Config",
   "type": "object",
@@ -257,7 +256,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",

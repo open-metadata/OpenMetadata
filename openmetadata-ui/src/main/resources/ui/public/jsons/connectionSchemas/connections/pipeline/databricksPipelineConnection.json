@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabricksPipelineConnection",
   "description": "Databricks Connection Config",
   "type": "object",
@@ -35,7 +34,6 @@
       "oneOf": [
         {
           "title": "Personal Access Token",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Personal Access Token authentication for Databricks.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",
           "type": "object",
@@ -54,7 +52,6 @@
         },
         {
           "title": "Databricks OAuth",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",
           "type": "object",
@@ -79,7 +76,6 @@
         },
         {
           "title": "Azure AD Setup",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Azure Active Directory authentication for Azure Databricks workspaces using Service Principal.",
           "javaType": "org.openmetadata.schema.services.connections.database.databricks.AzureADSetup",
           "type": "object",

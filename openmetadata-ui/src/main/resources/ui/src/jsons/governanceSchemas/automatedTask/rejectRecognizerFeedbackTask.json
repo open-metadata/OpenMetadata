@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RejectRecognizerFeedbackTaskDefinition",
   "description": "Rejects RecognizerFeedback, updating its status to REJECTED without modifying the tag or entity.",
   "javaInterfaces": [

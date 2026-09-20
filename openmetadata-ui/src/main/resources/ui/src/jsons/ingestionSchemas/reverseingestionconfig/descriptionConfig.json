@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Reverse Ingestion Description Config",
   "type": "object",
   "description": "Configuration for updating descriptions",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AuthenticationConfiguration",
   "description": "This schema defines the Authentication Configuration.",
   "type": "object",
@@ -151,7 +150,6 @@
     "ldapConfiguration": {
       "title": "LDAP Configuration",
       "description": "LDAP Configuration in case the Provider is LDAP",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.schema.auth.LdapConfiguration",
       "properties": {
@@ -255,14 +253,12 @@
         },
         "trustStoreConfig": {
           "description": "Truststore Configuration",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "TruststoreConfig",
           "type": "object",
           "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.TruststoreConfig",
           "properties": {
             "customTrustManagerConfig": {
               "description": "CustomTrust Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "CustomTrustManagerConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.CustomTrustManagerConfig",
@@ -294,7 +290,6 @@
             },
             "hostNameConfig": {
               "description": "HostName Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "HostNameConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.HostNameConfig",
@@ -316,7 +311,6 @@
             },
             "jvmDefaultConfig": {
               "description": "JVMDefault Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "JVMDefaultConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.JVMDefaultConfig",
@@ -331,7 +325,6 @@
             },
             "trustAllConfig": {
               "description": "TrustAll Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "TrustAllConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.auth.ldapTrustStoreConfig.TrustAllConfig",
@@ -361,7 +354,6 @@
     "samlConfiguration": {
       "title": "Saml Configuration",
       "description": "Saml Configuration that is applicable only when the provider is Saml",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.catalog.security.client.SamlSSOClientConfig",
       "definitions": {
@@ -663,7 +655,6 @@
     "oidcConfiguration": {
       "title": "Oidc Configuration",
       "description": "Oidc Configuration for Confidential Client Type",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.client.OidcClientConfig",
       "properties": {

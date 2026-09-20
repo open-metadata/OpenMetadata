@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "QlikCloudConnection",
   "description": "Qlik Cloud Connection Config",
   "type": "object",

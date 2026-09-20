@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CustomMessagingConnection",
   "description": "Custom Messaging Service Connection to build a source that is not supported by OpenMetadata yet.",
   "type": "object",

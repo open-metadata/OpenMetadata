@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PowerBIReportServerConnection",
   "description": "PowerBIReportServer Connection Config",
   "type": "object",

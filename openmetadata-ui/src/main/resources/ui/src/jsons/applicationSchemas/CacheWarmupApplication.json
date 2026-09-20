@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Cache Warmup Application",
   "type": "object",
   "description": "Cache Warmup Application Configuration.",

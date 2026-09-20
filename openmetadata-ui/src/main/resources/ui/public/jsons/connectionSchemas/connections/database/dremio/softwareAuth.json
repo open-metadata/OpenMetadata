@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Dremio Software Authentication",
   "description": "Authentication configuration for self-hosted Dremio Software using username and password. Dremio Software is deployed on-premises or in your own cloud infrastructure.",
   "javaType": "org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth",

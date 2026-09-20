@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PowerBIConnection",
   "description": "PowerBI Connection Config",
   "type": "object",
@@ -148,7 +147,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "AzureConfig",
           "description": "Azure storage config for pbit files",
           "type": "object",
@@ -164,7 +162,6 @@
             },
             "securityConfig": {
               "title": "Azure Config Source",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Azure Cloud Credentials",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -205,7 +202,6 @@
             },
             "prefixConfig": {
               "title": "Prefix Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Details of the bucket where the .pbit files are stored",
               "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
               "type": "object",
@@ -236,7 +232,6 @@
           ]
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "GCSConfig",
           "description": "GCS storage config for pbit files",
           "type": "object",
@@ -252,7 +247,6 @@
             },
             "securityConfig": {
               "title": "GCS Security Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "GCP credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
@@ -351,7 +345,6 @@
                   "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
                   "oneOf": [
                     {
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
                       "title": "GCP Credentials Values",
@@ -484,7 +477,6 @@
                       }
                     },
                     {
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
                       "title": "GCP External Account",
@@ -591,7 +583,6 @@
             },
             "prefixConfig": {
               "title": "Prefix Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Details of the bucket where the .pbit files are stored",
               "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
               "type": "object",
@@ -622,7 +613,6 @@
           ]
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "S3Config",
           "description": "S3 storage config for pbit files",
           "type": "object",
@@ -638,7 +628,6 @@
             },
             "securityConfig": {
               "title": "S3 Security Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -705,7 +694,6 @@
             },
             "prefixConfig": {
               "title": "Prefix Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Details of the bucket where the .pbit files are stored",
               "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
               "type": "object",

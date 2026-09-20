@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DeltaLakeConnection",
   "description": "DeltaLake Database Connection Config",
   "type": "object",
@@ -29,7 +28,6 @@
       "description": "Available sources to fetch the metadata.",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "MetastoreConfig",
           "description": "Deltalake Metastore configuration.",
           "type": "object",
@@ -170,7 +168,6 @@
           ]
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "StorageConfig",
           "description": "DeltaLake Storage Connection Config",
           "type": "object",
@@ -189,7 +186,6 @@
               "description": "Available sources to fetch files.",
               "oneOf": [
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "S3Config",
                   "description": "DataLake S3 bucket will ingest metadata of files in bucket",
                   "type": "object",
@@ -197,7 +193,6 @@
                   "properties": {
                     "securityConfig": {
                       "title": "DataLake S3 Security Config",
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",

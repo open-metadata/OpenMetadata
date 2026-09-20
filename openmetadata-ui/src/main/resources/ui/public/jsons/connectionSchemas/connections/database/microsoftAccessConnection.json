@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MicrosoftAccessConnection",
   "description": "Microsoft Access Database Connection Config",
   "type": "object",
@@ -61,7 +60,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "S3 Connection",
           "description": "S3 Connection.",
           "type": "object",
@@ -88,7 +86,6 @@
             },
             "awsConfig": {
               "title": "AWS Credentials Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MicrosoftFabricPipelineConnection",
   "description": "Microsoft Fabric Data Factory Pipeline Connection Config",
   "type": "object",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Spark Engine Configuration",
   "description": "This schema defines the configuration for a Spark Engine runner.",
   "type": "object",

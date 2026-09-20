@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AzureConfig",
   "description": "Azure Datalake Storage will ingest files in container",
   "type": "object",
@@ -7,7 +6,6 @@
   "properties": {
     "securityConfig": {
       "title": "Azure Datalake Config Source",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Azure Cloud Credentials",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",

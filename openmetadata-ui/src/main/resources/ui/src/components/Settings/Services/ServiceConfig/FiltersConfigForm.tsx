@@ -18,6 +18,7 @@ import {
   RJSFSchema,
   UiSchema,
 } from '@rjsf/utils';
+import { customizeValidator } from '@rjsf/validator-ajv8';
 import { CheckCircle } from '@untitledui/icons';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -33,7 +34,6 @@ import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getJSONSchemaFormValidator } from '../../../../utils/JSONSchemaFormValidator';
 import {
   buildValidConfig,
   EMPTY_CONNECTION_SCHEMA,
@@ -57,7 +57,7 @@ import {
   getOrderedFilterEntries,
 } from './FiltersConfigForm.utils';
 
-const validator = getJSONSchemaFormValidator<FilterPatternConfig>();
+const validator = customizeValidator();
 
 const FiltersFormObjectTemplate = ({
   properties,

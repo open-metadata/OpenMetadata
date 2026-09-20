@@ -13,6 +13,7 @@
 
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ValidatorType } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
 import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,7 +32,6 @@ import {
   putDatabaseSchemaProfileConfig,
 } from '../../../../rest/databaseAPI';
 import { transformErrors } from '../../../../utils/formPureUtils';
-import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
 import DescriptionFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';

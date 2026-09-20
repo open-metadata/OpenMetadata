@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
@@ -95,7 +94,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",
@@ -145,7 +143,6 @@
     "securityConfig": {
       "mask": true,
       "description": "OpenMetadata Client security configuration.",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "openMetadataJWTClientConfig",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
@@ -164,7 +161,6 @@
     "secretsManagerProvider": {
       "description": "Secrets Manager Provider for OpenMetadata Server.",
       "default": "db",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "Secrets Manager Provider",
       "type": "string",
       "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
@@ -185,7 +181,6 @@
     "secretsManagerLoader": {
       "description": "Secrets Manager Loader for the Pipeline Service Client.",
       "default": "noop",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "title": "Secrets Manager Client Loader",
       "type": "string",
       "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",

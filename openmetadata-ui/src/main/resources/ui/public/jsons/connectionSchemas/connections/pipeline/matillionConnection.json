@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MatillionConnection",
   "description": "Matillion Connection",
   "type": "object",
@@ -29,7 +28,6 @@
       "description": "Matillion Auth Configuration",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Matillion ETL Auth Config",
           "description": "Matillion ETL Auth Config.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth",
@@ -66,7 +64,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -122,7 +119,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Matillion DPC Auth Config",
           "description": "Matillion Data Productivity Cloud Auth Config.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",

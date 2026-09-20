@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SinkTaskDefinition",
   "description": "Pushes entity data to an external sink destination such as Git repositories, webhooks, or HTTP endpoints.",
   "javaInterfaces": [

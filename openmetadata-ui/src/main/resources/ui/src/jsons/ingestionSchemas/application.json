@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenMetadataApplicationConfig",
   "description": "OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we require.",
   "javaType": "org.openmetadata.schema.metadataIngestion.OpenMetadataAppConfig",
@@ -35,7 +34,6 @@
           "maximum": 100
         },
         "openMetadataServerConfig": {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "OpenMetadataConnection",
           "description": "OpenMetadata Connection Config",
           "type": "object",
@@ -114,7 +112,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",
@@ -164,7 +161,6 @@
             "securityConfig": {
               "mask": true,
               "description": "OpenMetadata Client security configuration.",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "openMetadataJWTClientConfig",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
@@ -183,7 +179,6 @@
             "secretsManagerProvider": {
               "description": "Secrets Manager Provider for OpenMetadata Server.",
               "default": "db",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "Secrets Manager Provider",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerProvider",
@@ -204,7 +199,6 @@
             "secretsManagerLoader": {
               "description": "Secrets Manager Loader for the Pipeline Service Client.",
               "default": "noop",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "Secrets Manager Client Loader",
               "type": "string",
               "javaType": "org.openmetadata.schema.security.secrets.SecretsManagerClientLoader",
@@ -398,7 +392,6 @@
       "description": "External Application configuration",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "CollateAIAppConfig",
           "description": "Configuration for the CollateAI External Application.",
           "type": "object",
@@ -438,7 +431,6 @@
           ]
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "AutomatorAppConfig",
           "description": "Configuration for the Automator External Application.",
           "type": "object",
@@ -477,7 +469,6 @@
               "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
               "oneOf": [
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddTagsAction",
                   "description": "Apply Classification Tags to the selected assets.",
                   "type": "object",
@@ -502,7 +493,6 @@
                       "description": "Classification Tags to apply (source must be 'Classification')",
                       "type": "array",
                       "items": {
-                        "$schema": "https://json-schema.org/draft/2020-12/schema",
                         "title": "TagLabel",
                         "description": "This schema defines the type for labeling an entity with a Tag.",
                         "type": "object",
@@ -616,14 +606,12 @@
                           },
                           "metadata": {
                             "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
-                            "$schema": "https://json-schema.org/draft/2020-12/schema",
                             "title": "TagLabelMetadata",
                             "type": "object",
                             "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
                             "properties": {
                               "recognizer": {
                                 "description": "Metadata about the recognizer that automatically applied this tag",
-                                "$schema": "https://json-schema.org/draft/2020-12/schema",
                                 "title": "TagLabelRecognizerMetadata",
                                 "type": "object",
                                 "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",
@@ -737,7 +725,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveTagsAction",
                   "description": "Remove Classification Tags Action Type",
                   "type": "object",
@@ -804,7 +791,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddTermsAction",
                   "description": "Apply Glossary Terms to the selected assets.",
                   "type": "object",
@@ -855,7 +841,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveTermsAction",
                   "description": "Remove Glossary Terms Action Type",
                   "type": "object",
@@ -922,7 +907,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddDomainAction",
                   "description": "Add domains to the selected assets.",
                   "type": "object",
@@ -945,7 +929,6 @@
                     },
                     "domains": {
                       "description": "Domains to apply",
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "title": "Entity Reference List",
                       "type": "array",
                       "items": {
@@ -967,7 +950,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveDomainAction",
                   "description": "Remove domains from the selected assets.",
                   "type": "object",
@@ -995,7 +977,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddDescriptionAction",
                   "description": "Apply Tags to the selected assets.",
                   "type": "object",
@@ -1043,7 +1024,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddCustomPropertiesAction",
                   "description": "Add a Custom Property to the selected assets.",
                   "type": "object",
@@ -1082,7 +1062,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveDescriptionAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1125,7 +1104,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddTierAction",
                   "description": "Add an owner to the selected assets.",
                   "type": "object",
@@ -1164,7 +1142,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveTierAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1192,7 +1169,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddTestCaseAction",
                   "description": "Add Test Cases to the selected assets.",
                   "type": "object",
@@ -1289,7 +1265,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveTestCaseAction",
                   "description": "Remove Test Cases Action Type",
                   "type": "object",
@@ -1342,7 +1317,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddOwnerAction",
                   "description": "Add owners to the selected assets.",
                   "type": "object",
@@ -1382,7 +1356,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveOwnerAction",
                   "description": "Remove Owner Action Type",
                   "type": "object",
@@ -1410,7 +1383,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveCustomPropertiesAction",
                   "description": "Remove Custom Properties Action Type",
                   "type": "object",
@@ -1446,7 +1418,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "AddDataProductAction",
                   "description": "Add a Data Product to the selected assets.",
                   "type": "object",
@@ -1471,7 +1442,6 @@
                       "description": "Data Products to apply",
                       "type": "array",
                       "items": {
-                        "$schema": "https://json-schema.org/draft/2020-12/schema",
                         "title": "Entity Reference",
                         "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                         "type": "object",
@@ -1536,7 +1506,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "RemoveDataProductAction",
                   "description": "Remove a Data Product to the selected assets.",
                   "type": "object",
@@ -1573,7 +1542,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "LineagePropagationAction",
                   "description": "Propagate description, tags and glossary terms via lineage",
                   "type": "object",
@@ -1680,7 +1648,6 @@
                       "type": "array",
                       "default": null,
                       "items": {
-                        "$schema": "https://json-schema.org/draft/2020-12/schema",
                         "title": "PropagationStopConfig",
                         "description": "Configuration to stop lineage propagation based on conditions",
                         "type": "object",
@@ -1737,7 +1704,6 @@
                   "additionalProperties": false
                 },
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "MLTaggingAction",
                   "description": "ML Tagging action configuration for external automator.",
                   "type": "object",
@@ -1794,7 +1760,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "SlackAppConfiguration",
           "description": "This schema defines the Slack App Information",
           "type": "object",
@@ -1833,7 +1798,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DataInsightsAppConfig",
           "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
           "type": "object",
@@ -2003,7 +1967,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "DataInsightsReportAppConfig",
           "description": "This schema defines configuration for Data Insights Report Application.",
           "definitions": {
@@ -2037,7 +2000,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "SearchIndexingApp",
           "type": "object",
           "description": "Search Indexing App.",
@@ -2241,7 +2203,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "CacheWarmupApp",
           "type": "object",
           "description": "Cache Warmup Application Configuration.",
@@ -2310,7 +2271,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "RdfIndexingApp",
           "type": "object",
           "description": "RDF indexing application configuration.",
@@ -2485,7 +2445,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "RdfInferenceAppConfig",
           "description": "Scheduled RDF inference materialization configuration.",
           "type": "object",
@@ -2505,7 +2464,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Retention Configuration",
           "description": "Configure retention policies for each entity.",
           "properties": {
@@ -2574,7 +2532,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "AutoPilotAppConfig",
           "description": "Configuration for the AutoPilot Application.",
           "type": "object",
@@ -2624,7 +2581,6 @@
       "description": "External Application Private configuration",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "CollateAIAppPrivateConfig",
           "description": "Private Configuration for the CollateAI External Application.",
           "type": "object",
@@ -2652,7 +2608,6 @@
             "limits": {
               "title": "Limits",
               "description": "Limits for the CollateAI Application.",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "type": "object",
               "javaType": "io.collate.schema.entity.app.Limits",
               "definitions": {

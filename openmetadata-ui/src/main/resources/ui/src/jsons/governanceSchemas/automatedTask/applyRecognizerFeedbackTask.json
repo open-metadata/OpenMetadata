@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ApplyRecognizerFeedbackTaskDefinition",
   "description": "Applies RecognizerFeedback by removing the tag from the entity and adding it to the recognizer's exception list.",
   "javaInterfaces": [

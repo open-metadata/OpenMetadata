@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AirbyteConnection",
   "description": "Airbyte Metadata Database Connection Config",
   "type": "object",
@@ -36,7 +35,6 @@
       "oneOf": [
         {
           "title": "Basic Authentication",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Username and password authentication",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.BasicAuth",
@@ -57,7 +55,6 @@
         },
         {
           "title": "OAuth 2.0 Client Credentials Authentication",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "OAuth 2.0 client credentials authentication for Airbyte Cloud",
           "type": "object",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.OAuthClientAuth",

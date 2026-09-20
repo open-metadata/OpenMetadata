@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "QlikSenseConnection",
   "description": "Qlik Sense Connection Config",
   "type": "object",
@@ -52,7 +51,6 @@
           "mask": true,
           "oneOf": [
             {
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "title": "Validate SSL Client Config",
               "description": "OpenMetadata Client configured to validate SSL certificates.",
               "type": "object",
@@ -143,7 +141,6 @@
               "mask": true,
               "oneOf": [
                 {
-                  "$schema": "https://json-schema.org/draft/2020-12/schema",
                   "title": "Validate SSL Client Config",
                   "description": "OpenMetadata Client configured to validate SSL certificates.",
                   "type": "object",

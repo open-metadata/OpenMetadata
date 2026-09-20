@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Personal Access Token",
   "description": "Personal Access Token authentication for Databricks.",
   "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",

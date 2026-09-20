@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabasePolicyConfig",
   "description": "Policy config for database service connectors (snowflake, postgres, etc.).",
   "type": "object",
@@ -94,7 +93,7 @@
     "accessType",
     "requestedAccess"
   ],
-  "dependentRequired": {
+  "dependencies": {
     "tableName": [
       "schemaName"
     ],

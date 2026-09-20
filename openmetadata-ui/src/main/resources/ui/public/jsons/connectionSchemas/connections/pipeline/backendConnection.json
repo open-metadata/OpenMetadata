@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BackendConnection",
   "description": "Lineage Backend Connection Config",
   "type": "object",

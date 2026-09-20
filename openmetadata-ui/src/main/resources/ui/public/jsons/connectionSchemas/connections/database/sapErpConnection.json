@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SapErpConnection",
   "description": "Sap ERP Database Connection Config",
   "type": "object",
@@ -72,7 +71,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

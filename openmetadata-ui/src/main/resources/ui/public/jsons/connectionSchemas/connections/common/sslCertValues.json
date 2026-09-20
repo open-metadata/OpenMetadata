@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SSL Certificates By Values",
   "description": "SSL Certificates By Values",
   "javaType": "org.openmetadata.schema.services.common.SSLCertValues",

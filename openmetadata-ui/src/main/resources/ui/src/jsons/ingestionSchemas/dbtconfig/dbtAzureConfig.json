@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DBT Azure Config",
   "type": "object",
   "description": "DBT Catalog, Manifest and Run Results files in Azure bucket. We will search for catalog.json, manifest.json and run_results.json.",
@@ -15,7 +14,6 @@
     },
     "dbtSecurityConfig": {
       "title": "DBT Azure Security Config",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Azure Cloud Credentials",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DBT HTTP Config",
   "description": "DBT Catalog, Manifest and Run Results HTTP path configuration.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig",
@@ -60,7 +59,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

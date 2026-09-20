@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PrefectConnection",
   "description": "Prefect Metadata Database Connection Config",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.PrefectConnection",
@@ -34,7 +33,6 @@
       "oneOf": [
         {
           "title": "Prefect Cloud",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Authentication configuration for Prefect Cloud.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",
           "type": "object",
@@ -65,7 +63,6 @@
         },
         {
           "title": "Prefect Server",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String empty if the server has no auth enabled.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",
           "type": "object",
@@ -110,7 +107,6 @@
       "mask": true,
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Validate SSL Client Config",
           "description": "OpenMetadata Client configured to validate SSL certificates.",
           "type": "object",

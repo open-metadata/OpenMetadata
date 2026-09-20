@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Matillion DPC Auth Config",
   "description": "Matillion Data Productivity Cloud Auth Config.",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",

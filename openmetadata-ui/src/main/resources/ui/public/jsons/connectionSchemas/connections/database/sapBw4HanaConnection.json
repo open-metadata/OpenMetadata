@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SapBw4HanaConnection",
   "description": "SAP BW/4HANA Database Connection Config",
   "type": "object",

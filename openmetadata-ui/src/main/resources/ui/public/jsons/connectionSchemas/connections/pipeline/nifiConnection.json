@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NifiConnection",
   "description": "Nifi Metadata Pipeline Connection Config",
   "type": "object",
@@ -86,7 +85,6 @@
       "description": "We support username/password or client certificate authentication",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Nifi Basic Auth",
           "description": "Configuration for connecting to Nifi Basic Auth.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.BasicAuth",
@@ -113,7 +111,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Nifi Client Certificate Auth",
           "description": "Configuration for connecting to Nifi Client Certificate Auth.",
           "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.ClientCertificateAuth",

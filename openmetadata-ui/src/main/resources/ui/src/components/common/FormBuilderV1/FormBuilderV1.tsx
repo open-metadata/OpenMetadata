@@ -13,11 +13,11 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
+import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
-import { jsonSchemaFormValidator as validator } from '../../../utils/JSONSchemaFormValidator';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
 import CoreOneOfField from './fields/CoreOneOfField';

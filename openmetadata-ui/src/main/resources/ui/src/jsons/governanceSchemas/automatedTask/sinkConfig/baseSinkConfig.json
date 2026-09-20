@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BaseSinkConfig",
   "description": "Base configuration shared by all sink types.",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.BaseSinkConfig",

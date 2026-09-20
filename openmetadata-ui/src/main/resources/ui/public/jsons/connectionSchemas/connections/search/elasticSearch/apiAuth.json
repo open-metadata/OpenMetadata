@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "API Key Authentication",
   "description": "API Key Authentication for ElasticSearch",
   "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESAPIAuth",

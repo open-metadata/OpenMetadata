@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ThoughtSpotConnection",
   "description": "ThoughtSpot Connection Config",
   "type": "object",
@@ -36,7 +35,6 @@
       "description": "ThoughtSpot authentication configuration",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "BasicAuth",
           "description": "Basic Auth Credentials",
           "type": "object",
@@ -61,7 +59,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "ApiAccessTokenAuth",
           "description": "API Access Token Auth Credentials",
           "type": "object",

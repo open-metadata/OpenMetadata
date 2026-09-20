@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "GitSinkConfig",
   "description": "Configuration for Git-based sinks using REST/GraphQL APIs. Supports GitHub (GraphQL), GitLab (REST), and Bitbucket (REST).",
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.sinkConfig.GitSinkConfig",

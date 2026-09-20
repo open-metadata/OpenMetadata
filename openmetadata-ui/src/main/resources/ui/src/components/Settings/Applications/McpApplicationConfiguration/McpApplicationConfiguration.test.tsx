@@ -12,12 +12,12 @@
  */
 
 import { RJSFSchema } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
 import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
-import { jsonSchemaFormValidator as validator } from '../../../../utils/JSONSchemaFormValidator';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import McpApplicationConfiguration from './McpApplicationConfiguration';
 

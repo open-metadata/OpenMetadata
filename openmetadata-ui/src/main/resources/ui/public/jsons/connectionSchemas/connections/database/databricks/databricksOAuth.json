@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Databricks OAuth",
   "description": "OAuth2 Machine-to-Machine authentication using Service Principal credentials for Databricks.",
   "javaType": "org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth",

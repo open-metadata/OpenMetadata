@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Storage Metadata ADLS Config",
   "description": "Storage Metadata Manifest file ADLS path config.",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
@@ -7,7 +6,6 @@
   "properties": {
     "securityConfig": {
       "title": "ADLS Security Config",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Azure Cloud Credentials",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -48,7 +46,6 @@
     },
     "prefixConfig": {
       "title": "Storage Metadata Prefix Config",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "description": "Details of the bucket where the storage metadata manifest file is stored",
       "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
       "type": "object",

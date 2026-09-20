@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Storage Metadata Bucket Details",
   "description": "Details of the bucket where the storage metadata manifest file is stored",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",

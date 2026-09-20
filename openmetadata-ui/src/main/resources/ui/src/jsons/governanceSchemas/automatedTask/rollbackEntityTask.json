@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "RollbackEntityTaskDefinition",
   "description": "Rolls back an entity to its previous approved version. Always rolls back to the most recent 'Approved' status.",
   "javaInterfaces": [

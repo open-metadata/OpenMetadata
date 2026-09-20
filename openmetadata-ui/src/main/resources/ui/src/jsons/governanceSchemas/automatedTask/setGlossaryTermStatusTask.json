@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SetGlossaryTermStatusTaskDefinition",
   "description": "Sets the GlossaryTerm Status to the configured value.",
   "javaInterfaces": [
@@ -42,7 +41,6 @@
         "glossaryTermStatus": {
           "title": "Glossary Term Status",
           "description": "Choose which Status to apply to the Glossary Term",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "type": "string",
           "javaType": "org.openmetadata.schema.type.EntityStatus",
           "enum": [

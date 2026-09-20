@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CheckChangeDescriptionTaskDefinition",
   "description": "Validates if entity's change description matches specified field patterns.",
   "javaInterfaces": [

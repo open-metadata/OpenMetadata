@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ConnectionType",
   "description": "This schema defines basic common types that are used by other schemas.",
   "definitions": {
@@ -151,7 +150,6 @@
           "oneOf": [
             {
               "title": "AWS S3 Storage Config",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "AWS credentials configs.",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
@@ -270,7 +268,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",

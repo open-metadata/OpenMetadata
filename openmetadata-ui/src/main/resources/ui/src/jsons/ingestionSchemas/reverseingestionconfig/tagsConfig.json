@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Reverse Ingestion Tags Config",
   "type": "object",
   "description": "Configuration for updating tags",
@@ -16,7 +15,6 @@
       "description": "Added tags to be applied",
       "type": "array",
       "items": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "title": "TagLabel",
         "description": "This schema defines the type for labeling an entity with a Tag.",
         "type": "object",
@@ -130,14 +128,12 @@
           },
           "metadata": {
             "description": "Additional metadata associated with this tag label, such as recognizer information for automatically applied tags.",
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
             "title": "TagLabelMetadata",
             "type": "object",
             "javaType": "org.openmetadata.schema.type.TagLabelMetadata",
             "properties": {
               "recognizer": {
                 "description": "Metadata about the recognizer that automatically applied this tag",
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "title": "TagLabelRecognizerMetadata",
                 "type": "object",
                 "javaType": "org.openmetadata.schema.type.TagLabelRecognizerMetadata",

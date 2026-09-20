@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DatabaseServiceQueryLineagePipeline",
   "description": "DatabaseService Query Lineage Pipeline Configuration.",
   "type": "object",
@@ -45,7 +44,6 @@
     "queryParserConfig": {
       "title": "Query Parser Configuration",
       "description": "Configuration for SQL query parser selection for lineage extraction.",
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.parserconfig.QueryParserConfig",
       "definitions": {

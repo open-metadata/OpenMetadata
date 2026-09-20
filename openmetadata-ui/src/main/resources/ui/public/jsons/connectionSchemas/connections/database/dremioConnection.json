@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DremioConnection",
   "description": "Dremio Connection Config supporting both Dremio Cloud (SaaS) and Dremio Software (self-hosted)",
   "type": "object",
@@ -30,7 +29,6 @@
       "oneOf": [
         {
           "title": "Dremio Cloud",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Authentication configuration for Dremio Cloud using Personal Access Token (PAT). Dremio Cloud is a fully managed SaaS platform.",
           "javaType": "org.openmetadata.schema.services.connections.database.dremio.CloudAuth",
           "type": "object",
@@ -66,7 +64,6 @@
         },
         {
           "title": "Dremio Software",
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Authentication configuration for self-hosted Dremio Software using username and password. Dremio Software is deployed on-premises or in your own cloud infrastructure.",
           "javaType": "org.openmetadata.schema.services.connections.database.dremio.SoftwareAuth",
           "type": "object",

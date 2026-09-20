@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateAndRunAIAutomationTask",
   "description": "Creates (or updates) a service-scoped AI Automation from a seed template and runs it.",
   "javaInterfaces": [

@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TestConnectionResult",
   "description": "TestConnectionResult is the definition that will encapsulate result of running the test connection steps.",
   "type": "object",

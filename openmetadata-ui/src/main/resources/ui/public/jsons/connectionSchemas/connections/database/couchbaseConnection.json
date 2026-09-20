@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Couchbase Connection",
   "description": "Couchbase Connection Config",
   "type": "object",

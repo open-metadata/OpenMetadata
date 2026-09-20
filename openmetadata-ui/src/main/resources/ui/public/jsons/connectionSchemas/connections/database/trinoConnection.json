@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TrinoConnection",
   "description": "Trino Connection Config",
   "type": "object",
@@ -51,7 +50,6 @@
       "description": "Choose Auth Config Type.",
       "oneOf": [
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Basic Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.basicAuth",
@@ -67,7 +65,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "JWT Auth",
           "description": "Common Database Connection Config",
           "javaType": "org.openmetadata.schema.services.connections.database.common.jwtAuth",
@@ -83,7 +80,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "Azure Configuration Source",
           "description": "Azure Database Connection Config",
           "type": "object",
@@ -91,7 +87,6 @@
           "properties": {
             "azureConfig": {
               "title": "Azure Credentials Configuration",
-              "$schema": "https://json-schema.org/draft/2020-12/schema",
               "description": "Azure Cloud Credentials",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -134,7 +129,6 @@
           "additionalProperties": false
         },
         {
-          "$schema": "https://json-schema.org/draft/2020-12/schema",
           "title": "No Config Authentication Types",
           "javaType": "org.openmetadata.schema.services.connections.database.common.NoConfigAuthenticationTypes",
           "description": "Database Authentication types not requiring config.",
@@ -350,7 +344,6 @@
                   "oneOf": [
                     {
                       "title": "AWS S3 Storage Config",
-                      "$schema": "https://json-schema.org/draft/2020-12/schema",
                       "description": "AWS credentials configs.",
                       "type": "object",
                       "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
