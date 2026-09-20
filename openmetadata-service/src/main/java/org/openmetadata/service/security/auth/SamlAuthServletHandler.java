@@ -62,6 +62,7 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
+  private static final String MCP_RELAY_STATE_PREFIX = "mcp:";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -227,10 +228,13 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
    * flow and has been handled (the caller must stop processing); false for normal web SAML logins.
    */
   private boolean tryHandleMcpSamlCallback(
-      HttpServletRequest req, HttpServletResponse resp, String username, String email)
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      String username,
+      String email,
+      String relayState)
       throws Exception {
-    String relayState = req.getParameter("RelayState");
-    if (relayState == null || !relayState.startsWith("mcp:")) {
+    if (!isMcpSamlCallback(relayState)) {
       return false; // normal web SAML login — not an MCP OAuth flow
     }
     // This IS an MCP OAuth login. If the MCP bridge is not registered (MCP disabled, init failure,
@@ -255,6 +259,16 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   @Override
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
     try {
+      String relayState = req.getParameter("RelayState");
+      boolean mcpCallback = isMcpSamlCallback(relayState);
+      UserSession pendingSession = mcpCallback ? null : resolvePendingSession(req, resp);
+      if (!mcpCallback && pendingSession == null) {
+        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
+        return;
+      }
+      String callbackUrl =
+          mcpCallback ? null : requireSamlRedirectUri(pendingSession.getRedirectUri());
+
       // This handles the SAML response from IDP (ACS - Assertion Consumer Service)
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(req);
       javax.servlet.http.HttpServletResponse wrappedResponse = new HttpServletResponseWrapper(resp);
@@ -287,16 +301,9 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       // hand the authenticated identity to the MCP flow instead of the normal web JWT redirect.
       // This fires before getOrCreateUser so MCP keeps the deny-unknown-user semantics of the
       // OIDC MCP path (handleSSOCallbackWithDbState serves the "Access Denied" page).
-      if (tryHandleMcpSamlCallback(req, resp, username, email)) {
+      if (tryHandleMcpSamlCallback(req, resp, username, email, relayState)) {
         return;
       }
-
-      UserSession pendingSession = resolvePendingSession(req, resp);
-      if (pendingSession == null) {
-        sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
-        return;
-      }
-      String callbackUrl = requireSamlRedirectUri(pendingSession.getRedirectUri());
 
       // Extract display name from SAML attributes (name, given_name, family_name)
       String displayName =
@@ -386,6 +393,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       pendingSession = sessionService.getPendingSession(req, resp).orElse(null);
     }
     return pendingSession;
+  }
+
+  private boolean isMcpSamlCallback(String relayState) {
+    return relayState != null && relayState.startsWith(MCP_RELAY_STATE_PREFIX);
   }
 
   @Override

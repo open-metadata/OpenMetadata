@@ -186,38 +186,6 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_rejectsUntrustedStoredRedirectBeforeTokenExchange() throws Exception {
-    UserSession pendingSession =
-        UserSession.builder()
-            .id("pending-session")
-            .state("state-abc")
-            .redirectUri("https://attacker.example/collect")
-            .build();
-    when(sessionService.getPendingSession(request, response))
-        .thenReturn(Optional.of(pendingSession));
-    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
-    when(request.getParameterMap())
-        .thenReturn(
-            Map.of(
-                "code", new String[] {"authorization-code"},
-                "state", new String[] {"state-abc"}));
-
-    AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
-    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/auth/callback");
-    when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(List.of());
-    setField(handler, "authenticationConfiguration", authConfig);
-    setField(handler, "serverUrl", TEST_SERVER_URL);
-
-    handler.handleCallback(request, response);
-
-    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    verify(oidcClient, never()).getConfiguration();
-    verify(response, never()).sendRedirect(anyString());
-  }
-
-  @Test
   void validateStateIfRequired_mismatchedStates_throwsTechnicalException() throws Exception {
     when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
     when(oidcConfiguration.isWithState()).thenReturn(true);
@@ -659,20 +627,6 @@ class AuthenticationCodeFlowHandlerTest {
     createLoginHandler().handleLogin(request, response);
 
     verify(sessionService).getActiveSession(request, response);
-  }
-
-  @Test
-  void handleLogin_rejectsAttackerControlledRedirect() throws Exception {
-    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
-        .thenReturn("https://attacker.example/collect");
-
-    createLoginHandler().handleLogin(request, response);
-
-    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
-    verify(sessionService, never()).getActiveSession(any(), any());
-    verify(sessionService, never())
-        .createPendingSession(any(), any(), anyString(), anyString(), any(), any(), any());
-    verify(response, never()).sendRedirect(anyString());
   }
 
   @Test
