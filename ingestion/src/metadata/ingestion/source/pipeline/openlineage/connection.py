@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import nats
+import nats.errors
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
 from confluent_kafka import TopicPartition
