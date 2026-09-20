@@ -46,7 +46,7 @@ const DefaultTimeFormatPage: React.FC = () => {
   const { setTimeFormat } = useApplicationStore((state) => ({
     setTimeFormat: state.setTimeFormat,
   }));
-  
+
   const pageTitle = t('label.default-time-format');
   const [initialValue, setInitialValue] = useState<string>(NO_DEFAULT_VALUE);
   const [currentValue, setCurrentValue] = useState<string>(NO_DEFAULT_VALUE);
@@ -86,15 +86,14 @@ const DefaultTimeFormatPage: React.FC = () => {
         currentValue === NO_DEFAULT_VALUE
           ? null
           : (currentValue as '12h' | '24h');
-          
+
       await patchAppConfiguration({ defaultTimeFormat });
       setInitialValue(currentValue);
-      
-      // Update the global store immediately so the UI reflects the change reactively
-      if (defaultTimeFormat) {
-        setTimeFormat(defaultTimeFormat);
-      }
-      
+
+      // Update the global store immediately so the UI reflects the change reactively.
+      // If the admin cleared the default (null), fall back to the hardcoded '12h' default.
+      setTimeFormat(defaultTimeFormat ?? '12h');
+
       showSuccessToast(
         t('server.entity-updated-success', { entity: pageTitle })
       );
