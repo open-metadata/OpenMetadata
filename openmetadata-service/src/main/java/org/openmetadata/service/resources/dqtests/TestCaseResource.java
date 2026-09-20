@@ -52,6 +52,7 @@ import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkRemoveRequest;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.Filter;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -66,7 +67,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
@@ -1334,7 +1334,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     BundleSuiteBulkAddRequestBulkAll bulkAll =
         JsonUtils.convertValue(
             bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
-    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    Filter filter = bulkAll.getFilter();
     if (hasSearchCriteria(filter)) {
       return addFilteredTestCasesToBundleSuite(testSuite, filter).toResponse();
     }
@@ -1497,7 +1497,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   protected static ResourceContextInterface getResourceContext(
-      String entityLink, Filter<?> filter) {
+      String entityLink, org.openmetadata.service.jdbi3.Filter<?> filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
@@ -1719,13 +1719,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       return List.of();
     }
 
-    org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
+    Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
   }
 
   private static final String TEST_CASE_TYPE_ALL = "all";
 
-  private boolean hasSearchCriteria(org.openmetadata.schema.api.tests.Filter filter) {
+  private boolean hasSearchCriteria(Filter filter) {
     if (filter == null) {
       return false;
     }
@@ -1738,7 +1738,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   private PutResponse<TestSuite> addFilteredTestCasesToBundleSuite(
-      TestSuite testSuite, org.openmetadata.schema.api.tests.Filter filter) {
+      TestSuite testSuite, Filter filter) {
     SearchListFilter searchListFilter = buildBulkSearchListFilter(filter);
     String searchFilter = searchListFilter.getFilterQuery(Entity.TEST_CASE);
     List<UUID> excludeIds =
@@ -1747,8 +1747,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         testSuite, searchFilter, filter.getQ(), excludeIds);
   }
 
-  private SearchListFilter buildBulkSearchListFilter(
-      org.openmetadata.schema.api.tests.Filter filter) {
+  private SearchListFilter buildBulkSearchListFilter(Filter filter) {
     String status = filter.getTestCaseStatus() == null ? null : filter.getTestCaseStatus().value();
     String type =
         nullOrEmpty(filter.getTestCaseType()) ? TEST_CASE_TYPE_ALL : filter.getTestCaseType();
