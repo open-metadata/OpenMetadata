@@ -92,7 +92,7 @@ describe('searchAPI tests', () => {
     ['Literal %20 and %2F', '*Literal %20 and %2F*'],
     ['R&D + finance#1', String.raw`*R\&D \+ finance#1*`],
   ])('finds tag options without double encoding %s', async (search, query) => {
-    jest.doMock('./index', () => ({
+    jest.doMock('./axiosClient', () => ({
       get: jest.fn(async (url: string) => ({
         data: {
           hits: {
@@ -122,7 +122,7 @@ describe('searchAPI tests', () => {
     const mockGet = jest
       .fn()
       .mockResolvedValue({ data: mockTableSearchResponse });
-    jest.doMock('./index', () => ({ get: mockGet }));
+    jest.doMock('./axiosClient', () => ({ get: mockGet }));
     const { rawSearchQuery } = require('./searchAPI');
     await rawSearchQuery({ query, searchIndex: SearchIndex.DATA_PRODUCT });
     const [url] = mockGet.mock.calls[0];
