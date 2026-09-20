@@ -369,3 +369,7 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Keep future tables independent of the MySQL server default. Existing legacy Flowable tables are
+-- converted by FlowableCharsetMigration while their foreign-key checks are safely suspended.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
