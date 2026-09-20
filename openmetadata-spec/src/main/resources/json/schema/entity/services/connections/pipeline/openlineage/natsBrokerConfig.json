@@ -87,6 +87,12 @@
       "type": "integer",
       "default": 60
     },
+    "maxDeliver": {
+      "title": "Max Delivery Attempts",
+      "description": "How many times JetStream redelivers an event that is never acknowledged, before it gives up. Keeps an event that ingestion cannot process from being retried on every run.",
+      "type": "integer",
+      "default": 5
+    },
     "authType": {
       "title": "Authentication Type",
       "description": "NATS authentication method. Leave empty for anonymous authentication.",

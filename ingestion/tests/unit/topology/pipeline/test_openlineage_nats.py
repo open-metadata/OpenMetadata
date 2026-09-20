@@ -79,6 +79,7 @@ class TestNatsBrokerConfig:
         assert broker.consumerOffsets.value == "all"
         assert broker.batchSize == 100
         assert broker.ackWait == 60
+        assert broker.maxDeliver == 5
 
     def test_servers_and_stream_are_required(self):
         with pytest.raises(ValueError):
