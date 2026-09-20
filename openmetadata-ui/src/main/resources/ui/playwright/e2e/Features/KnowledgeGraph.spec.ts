@@ -90,6 +90,16 @@ const nodePosition = async (page: Page, label: string) => {
     width: box.width,
   };
 };
+/**
+ * The graph's framing: its zoom and its pan, together the whole viewport
+ * transform. Read rather than derived from any node, so it survives a relayout.
+ */
+const graphFraming = async (page: Page) => ({
+  zoom: await zoomLabel(page),
+  origin: await page
+    .getByTestId('knowledge-graph-canvas')
+    .getAttribute('data-graph-origin'),
+});
 const zoomLabel = async (page: Page) =>
   (await page.getByTestId('graph-view-controls').innerText()).match(
     /\d+%/
@@ -500,7 +510,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     // Baseline after the filter row opens: it resizes the canvas, and reading
     // across that reflow compares two different canvas sizes.
     const outer = await nodePosition(page, 'Extended table');
-    const zoomBeforeFilter = await zoomLabel(page);
+    const framingBeforeFilter = await graphFraming(page);
     await page
       .getByRole('button', { name: 'Entity Type', exact: true })
       .click();
@@ -511,18 +521,22 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'data-level',
       '3'
     );
-    // The viewport is the claim here, and the viewport is the zoom and framing —
+    // The viewport is the claim here, and a viewport is zoom *and* pan —
     // `fitKey` covers mode, level, presentation, ontology concept, excluded
     // families and expansion, and deliberately not `filters`, so applying one
-    // must not re-frame. Node *positions* are a different thing: filtering
-    // refetches (the route mock answers a second /rdf/graph/explore with only
-    // the matching types), so the graph lays out a smaller set and nodes move by
-    // design. Asserting a node's x here asserted layout invariance under a data
-    // change, which nothing promises — it held while the old and new layouts
-    // happened to agree.
+    // must not re-frame in either respect. Node *positions* are a different
+    // thing: filtering refetches (the route mock answers a second
+    // /rdf/graph/explore with only the matching types), so the graph lays out a
+    // smaller set and nodes move by design. Asserting a node's x here asserted
+    // layout invariance under a data change, which nothing promises.
+    //
+    // `data-graph-origin` is where the world origin lands on screen, so with the
+    // zoom it pins the whole transform. Node and ring geometry both move when
+    // the graph re-lays out, so neither can tell a pan from a relayout; a fixed
+    // point in graph space can.
     const filteredOuter = await nodePosition(page, 'Extended table');
     expect(filteredOuter.width).toBeCloseTo(outer.width, 1);
-    expect(await zoomLabel(page)).toBe(zoomBeforeFilter);
+    expect(await graphFraming(page)).toEqual(framingBeforeFilter);
     await page
       .getByRole('button', { name: 'Clear Filters', exact: true })
       .click();
