@@ -333,18 +333,7 @@ CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
 -- MD5-per-segment digest that stays far inside its own bound -- so the column has no
 -- reason to be length-capped. varchar -> text is binary-coercible here, so this is a
 -- catalogue change rather than a table rewrite.
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_name = 'audit_log_event'
-      AND column_name = 'entity_fqn'
-      AND data_type = 'character varying'
-  ) THEN
-    ALTER TABLE audit_log_event ALTER COLUMN entity_fqn TYPE TEXT;
-  END IF;
-END $$;
+ALTER TABLE audit_log_event ALTER COLUMN entity_fqn TYPE TEXT;
 
 -- Email-first identity: email/name lookups on the authentication hot path compare LOWER()
 -- values. Postgres columns are case-sensitive, so functional indexes are required to avoid a
