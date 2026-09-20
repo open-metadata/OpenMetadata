@@ -48,6 +48,7 @@ import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SamlIdentityResolver;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -174,12 +175,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       if (callbackUrl == null) {
         callbackUrl = req.getParameter("redirectUri");
       }
-      if (callbackUrl == null) {
-        callbackUrl = defaultSamlRedirectUri();
-      }
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              callbackUrl, trustedSamlRedirects());
+      callbackUrl = requireSamlRedirectUri(callbackUrl);
       UserSession pendingSession =
           sessionService.createPendingSession(
               req, resp, authConfig.getProvider().value(), callbackUrl, null, null, null);
@@ -300,6 +296,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, "No pending session");
         return;
       }
+      String callbackUrl = requireSamlRedirectUri(pendingSession.getRedirectUri());
 
       // Extract display name from SAML attributes (name, given_name, family_name)
       String displayName =
@@ -352,20 +349,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
             .writeAuthEvent(AuditLogRepository.AUTH_EVENT_LOGIN, user.getName(), user.getId());
       }
 
-      String redirectUri = pendingSession.getRedirectUri();
-      LOG.debug("SAML Callback - redirectUri from session: {}", redirectUri);
+      LOG.debug("SAML Callback - redirectUri from session: {}", callbackUrl);
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
 
-      String callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.validateRedirectUri(
-              redirectUri == null ? defaultSamlRedirectUri() : redirectUri, trustedSamlRedirects());
-      callbackUrl =
-          org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-              callbackUrl,
-              jwtAuthMechanism.getJWTToken(),
-              email,
-              displayName == null ? "" : displayName);
-      resp.sendRedirect(callbackUrl);
+      SecurityUtil.sendRedirectWithToken(
+          resp,
+          callbackUrl,
+          jwtAuthMechanism.getJWTToken(),
+          email,
+          displayName == null ? "" : displayName);
 
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid SAML redirect URI in callback", e);
@@ -692,10 +684,15 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private Set<String> trustedSamlRedirects() {
     Set<String> trusted =
-        org.openmetadata.service.security.SecurityUtil.trustedRedirects(
+        SecurityUtil.trustedRedirects(
             authConfig.getCallbackUrl(), samlSpCallback(), samlAuthCallback());
     trusted.addAll(listOrEmpty(authConfig.getAdditionalTrustedRedirectUris()));
     return trusted;
+  }
+
+  private String requireSamlRedirectUri(String redirectUri) {
+    String targetRedirectUri = nullOrEmpty(redirectUri) ? defaultSamlRedirectUri() : redirectUri;
+    return SecurityUtil.validateRedirectUri(targetRedirectUri, trustedSamlRedirects());
   }
 
   private ServiceProviderConfig samlSp() {

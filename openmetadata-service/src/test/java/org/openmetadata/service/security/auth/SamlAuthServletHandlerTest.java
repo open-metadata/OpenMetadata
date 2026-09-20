@@ -159,12 +159,48 @@ class SamlAuthServletHandlerTest {
   }
 
   @Test
-  void handleLogin_rejectsUntrustedRedirectUri() {
-    when(request.getParameter("callback")).thenReturn("https://evil.com/callback");
+  void handleLogin_rejectsUntrustedRedirectUri() throws Exception {
+    when(request.getParameter("callback")).thenReturn("https://attacker.example/collect");
 
     handler.handleLogin(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(sessionService, never())
+        .createPendingSession(any(), any(), anyString(), anyString(), any(), any(), any());
+    verify(response, never()).sendRedirect(anyString());
+  }
+
+  @Test
+  void handleCallback_rejectsUntrustedStoredRedirectBeforeProvisioning() throws Exception {
+    UserSession pendingSession =
+        UserSession.builder()
+            .id("pending-session-id")
+            .status(SessionStatus.PENDING)
+            .redirectUri("https://attacker.example/collect")
+            .build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+            mockStatic(SamlSettingsHolder.class);
+        MockedConstruction<Auth> authConstruction =
+            mockConstruction(
+                Auth.class,
+                (auth, context) -> {
+                  when(auth.isAuthenticated()).thenReturn(true);
+                  when(auth.getErrors()).thenReturn(List.of());
+                  when(auth.getNameId()).thenReturn("victim@example.com");
+                })) {
+      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(null);
+
+      handler.handleCallback(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(sessionService, never())
+        .activatePendingSession(any(), any(), any(), any(), anyString(), any());
+    verify(response, never()).sendRedirect(anyString());
   }
 
   @Test
