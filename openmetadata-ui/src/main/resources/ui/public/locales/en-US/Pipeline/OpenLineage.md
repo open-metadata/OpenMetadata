@@ -204,3 +204,10 @@ $$section
 ### Additional NATS Config $(id="additionalConfig")
 Extra options passed to the NATS client, as documented for [nats-py](https://nats-io.github.io/nats.py/). Options that this connection already owns (servers, credentials and TLS) cannot be overridden here.
 $$
+
+$$section
+### Max Delivery Attempts $(id="maxDeliver")
+How many times JetStream redelivers an event that ingestion never acknowledges, before it gives up.
+
+Events are acknowledged once they have been processed, so an ingestion run that fails part-way gets the remaining events again on the next run. Reprocessing an event is safe: pipelines and lineage are written by fully qualified name, so the result is the same. This limit stops a single event that ingestion cannot process from coming back on every run.
+$$
