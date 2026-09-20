@@ -20,27 +20,24 @@ export const OwnerAvatarStack = ({
   avatarSize = 24,
   maxVisibleOwners = 3,
   ownerDisplayName,
-  renderOwnerContent,
   placement = 'horizontal',
   className,
+  showOverflowHeadings,
 }: OwnerAvatarStackProps) => {
   // A single owner renders as avatar + name (+ link when a href is present),
   // regardless of placement, so the owner name stays visible in headers and
   // side panels. Multiple owners collapse into the overlapping avatar stack.
+  // OwnerChip applies the registered owner hover card itself, so no wrapping
+  // happens here.
   if (owners.length === 1) {
-    const owner = owners[0];
-    const chip = (
-      <OwnerChip
-        avatarSize={avatarSize}
-        isCompactView={false}
-        owner={owner}
-        ownerDisplayName={ownerDisplayName}
-      />
-    );
-
     return (
       <div className={cx('tw:flex tw:items-center', className)}>
-        {renderOwnerContent ? renderOwnerContent(owner, chip) : chip}
+        <OwnerChip
+          avatarSize={avatarSize}
+          isCompactView={false}
+          owner={owners[0]}
+          ownerDisplayName={ownerDisplayName}
+        />
       </div>
     );
   }
@@ -72,7 +69,7 @@ export const OwnerAvatarStack = ({
       maxCount={maxVisibleOwners}
       ownerDisplayName={ownerDisplayName}
       owners={owners}
-      renderOwnerContent={renderOwnerContent}
+      showOverflowHeadings={showOverflowHeadings}
     />
   );
 };

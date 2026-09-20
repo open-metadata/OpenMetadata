@@ -36,13 +36,16 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
- * Bot tokens and personal access tokens are validated against per-pod caches (2-minute TTL). A
- * revocation on one pod reaches the others only through the Redis cache-invalidation channel, so
- * these scenarios need two nodes sharing a Redis: node B is primed with the token, node A revokes
- * it, and node B must reject it on the very next request — not after the TTL.
+ * Exercises the Redis-backed credential snapshot across two HTTP servers. Node B first validates
+ * the credential, which materializes the snapshot in Redis; node A then mutates the credential and
+ * must replace that snapshot before returning. The next request through node B must observe the
+ * replacement.
  *
- * <p>Gated to the Redis profile: without pub/sub the JDBC deployment has no cross-pod channel and
- * the other pod is only guaranteed to catch up when its cache entry expires.
+ * <p>{@link SessionMultiNodeCluster} starts both servers in one JVM. That does not provide process
+ * isolation, but credential validation has no JVM-local token cache: every request reads Redis, and
+ * mutation completion is ordered by a synchronous Redis write. Consequently a local-only eviction
+ * cannot make this test pass; omitting the shared-state replacement leaves the primed snapshot in
+ * Redis and makes the cross-node assertion fail.
  */
 @ExtendWith(TestNamespaceExtension.class)
 @EnabledIf(value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
@@ -57,7 +60,7 @@ class TokenRevocationRedisMultiNodeIT {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User bot = createBot(ns);
     String botToken = generateBotToken(cluster.nodeABaseUrl(), bot, JWTTokenExpiry.Seven);
-    assertOk(get(cluster.nodeBBaseUrl() + LOGGED_IN_USER, botToken)); // primes node B's cache
+    assertOk(get(cluster.nodeBBaseUrl() + LOGGED_IN_USER, botToken)); // materializes the snapshot
 
     assertOk(
         put(

@@ -42,7 +42,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskComment;
-import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -56,6 +55,7 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -254,7 +254,7 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
-      if (isApproveTransition(selectedTransition)) {
+      if (TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
@@ -302,16 +302,6 @@ public class TaskWorkflowHandler {
       // production approver-capture failures effectively undiagnosable.
       LOG.warn("[TaskWorkflowHandler] Failed to capture approver for task '{}'", taskId, e);
     }
-  }
-
-  /**
-   * Identify an approval transition by its target status rather than its `id` string. Every
-   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
-   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
-   */
-  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
-    return selectedTransition != null
-        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**
@@ -380,18 +370,7 @@ public class TaskWorkflowHandler {
             .withComment(comment)
             .withPayload(resolvedPayload);
 
-    if (selectedTransition != null) {
-      task.setWorkflowStageId(selectedTransition.getTargetStageId());
-      task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
-      task.setAvailableTransitions(List.of());
-      if (isApproveTransition(selectedTransition)) {
-        task.setApprovedBy(resolvedByRef);
-        task.setApprovedById(resolvedByRef.getId().toString());
-        task.setApprovedAt(System.currentTimeMillis());
-      }
-    }
-
-    task = taskRepository.resolveTask(task, resolution, user);
+    task = taskRepository.resolveTask(task, resolution, selectedTransition, user);
 
     LOG.info(
         "[TaskWorkflowHandler] Task '{}' resolved: status={}, resolution={}",
@@ -687,6 +666,7 @@ public class TaskWorkflowHandler {
         if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
           repository.applyTags(tagsToAdd, targetFqn);
         }
+        RdfUpdater.updateEntity(entity);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
@@ -951,6 +931,7 @@ public class TaskWorkflowHandler {
 
       String targetFqn = entity.getFullyQualifiedName();
       repository.applyTags(List.of(newTier), targetFqn);
+      RdfUpdater.updateEntity(entity);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -1103,6 +1084,7 @@ public class TaskWorkflowHandler {
             applyEntityLevelTags(entity, repository, user, tags);
           } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
             repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
+            RdfUpdater.updateEntity(entity);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1211,29 +1193,6 @@ public class TaskWorkflowHandler {
         user,
         approved ? "approve" : "reject",
         task.getId());
-  }
-
-  /**
-   * Reopen a previously resolved task.
-   */
-  public Task reopenTask(Task task, String user) {
-    if (task.getStatus() == TaskEntityStatus.Open
-        || task.getStatus() == TaskEntityStatus.InProgress) {
-      LOG.warn("[TaskWorkflowHandler] Task '{}' is already open", task.getId());
-      return task;
-    }
-
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-
-    task.setStatus(TaskEntityStatus.Open);
-    task.setResolution(null);
-    task.setUpdatedBy(user);
-    task.setUpdatedAt(System.currentTimeMillis());
-
-    taskRepository.createOrUpdate(null, task, user);
-
-    LOG.info("[TaskWorkflowHandler] Task '{}' reopened by '{}'", task.getId(), user);
-    return task;
   }
 
   /**

@@ -191,6 +191,8 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
     ) -> list[T] | None:
         """
         Given a service name and filters, search for entities using Elasticsearch.
@@ -202,6 +204,7 @@ class ESMixin(Generic[T]):
             from_count (int): The starting index of the search results.
             size (int): The maximum number of records to return.
             fields (Optional[str]): Comma-separated list of fields to be returned.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -213,6 +216,7 @@ class ESMixin(Generic[T]):
             from_count=from_count,
             size=size,
             fields=fields,
+            raise_on_error=raise_on_error,
         )
 
     def es_search_from_alias(
@@ -275,6 +279,8 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
     ) -> list[T] | None:
         """
         Search for entities using Elasticsearch.
@@ -286,6 +292,7 @@ class ESMixin(Generic[T]):
             from_count (int, optional): The starting index of the search results. Defaults to 0.
             size (int, optional): The maximum number of search results to return. Defaults to 10.
             fields (Optional[str], optional): Comma-separated list of fields to be returned. Defaults to None.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -302,9 +309,13 @@ class ESMixin(Generic[T]):
             response = self._search_es_entity(entity_type=entity_type, query_string=query_string, fields=fields)
             return response  # noqa: RET504, TRY300
         except KeyError as err:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None

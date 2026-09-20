@@ -23,6 +23,8 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
+import io.dropwizard.lifecycle.JettyManaged;
+import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
@@ -35,6 +37,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
@@ -1180,6 +1183,27 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
+   * Returns the application's registered {@link Managed} of the given type, if there is one.
+   *
+   * <p>Dropwizard wraps every managed object in a {@link JettyManaged}, so the instance the
+   * application built is only reachable by unwrapping the lifecycle objects. Tests use this to
+   * reach always-on background workers — typically to pause one for the duration of a class whose
+   * assertions would otherwise race it on a shared table.
+   */
+  public static <T extends Managed> Optional<T> findManagedObject(Class<T> type) {
+    if (APP == null) {
+      throw new IllegalStateException(
+          "Application is not running. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return APP.getEnvironment().lifecycle().getManagedObjects().stream()
+        .filter(JettyManaged.class::isInstance)
+        .map(lifeCycle -> ((JettyManaged) lifeCycle).getManaged())
+        .filter(type::isInstance)
+        .map(type::cast)
+        .findFirst();
+  }
+
+  /**
    * Returns the admin port for accessing admin endpoints like /prometheus.
    */
   public static int getAdminPort() {
@@ -1234,6 +1258,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "JDBI is not initialized. Ensure TestSuiteBootstrap has initialized.");
     }
     return jdbi;
+  }
+
+  /** The dialect the suite is running against, for tests that exercise dual-dialect SQL. */
+  public static ConnectionType getConnectionType() {
+    if (DATABASE_CONTAINER == null) {
+      throw new IllegalStateException(
+          "Database is not initialized. Ensure TestSuiteBootstrap has initialized.");
+    }
+    return ConnectionType.from(DATABASE_CONTAINER.getDriverClassName());
   }
 
   public static OpenMetadataApplicationConfig createApplicationConfigCopy() {

@@ -841,7 +841,10 @@ export const applyEntityTypeFilterValue = async (
   entityTypeCheckboxTestId: string
 ) => {
   await page.getByRole('button', { name: 'Entity Type' }).click();
-  await page.getByTestId(entityTypeCheckboxTestId).check();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(entityTypeCheckboxTestId.replace(/-(checkbox|radio)$/, ''))
+    .click();
   const filterResponse = waitForTeamAssetsSearchResponse(page, teamId);
   await page.getByTestId('update-btn').click();
   const response = await filterResponse;

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -293,6 +295,98 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     assertNotNull(created.getId());
     assertEquals(nameWithDots.toLowerCase(), created.getName().toLowerCase());
+  }
+
+  // ===================================================================
+  // NON-GROUP TEAM INHERITED MEMBERS (issue #31770)
+  //
+  // A non-Group team (Department/Division/BusinessUnit) holds no direct members; its Users tab
+  // (GET /users?team=) and export must include the members inherited from its sub-group descendants
+  // (its subtree), matching what userCount already counts. Group/Organization teams keep
+  // direct-membership semantics.
+  // ===================================================================
+
+  @Test
+  void test_nonGroupTeam_listsInheritedUsers(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID orgId = client.teams().getByName("Organization").getId();
+
+    Team department =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("dept"))
+                    .withTeamType(CreateTeam.TeamType.DEPARTMENT)
+                    .withParents(List.of(orgId)));
+
+    String memberName = ns.prefix("member");
+    User member =
+        createEntity(new CreateUser().withName(memberName).withEmail(toValidEmail(memberName)));
+
+    Team group =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("grp"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withParents(List.of(department.getId()))
+                    .withUsers(List.of(member.getId())));
+
+    // Point 2: listed under its own Group (direct) AND under the parent Department (inherited)
+    assertTrue(
+        findUserInPaginatedResults(member.getId(), "team", group.getName()),
+        "member should be listed under its own Group team");
+    assertTrue(
+        findUserInPaginatedResults(member.getId(), "team", department.getName()),
+        "member should roll up to the parent non-Group (Department) team");
+
+    // A user outside this hierarchy must not roll up to the Department
+    String outsiderName = ns.prefix("outsider");
+    User outsider =
+        createEntity(new CreateUser().withName(outsiderName).withEmail(toValidEmail(outsiderName)));
+    assertFalse(
+        findUserInPaginatedResults(outsider.getId(), "team", department.getName()),
+        "unrelated user must not roll up to the Department");
+  }
+
+  @Test
+  void test_nonGroupTeam_exportIncludesInheritedUsers(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID orgId = client.teams().getByName("Organization").getId();
+
+    Team businessUnit =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("bu"))
+                    .withTeamType(CreateTeam.TeamType.BUSINESS_UNIT)
+                    .withParents(List.of(orgId)));
+
+    String memberName = ns.prefix("bumember");
+    User member =
+        createEntity(new CreateUser().withName(memberName).withEmail(toValidEmail(memberName)));
+
+    client
+        .teams()
+        .create(
+            new CreateTeam()
+                .withName(ns.prefix("bugrp"))
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withParents(List.of(businessUnit.getId()))
+                .withUsers(List.of(member.getId())));
+
+    // Point 3: exporting the non-Group team's users includes the inherited sub-group member
+    String csv =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/users/export?team=" + businessUnit.getName(), null);
+    assertTrue(
+        csv.contains(member.getName()),
+        "export of a non-Group team must include users inherited from sub-groups");
   }
 
   // ===================================================================
@@ -2370,6 +2464,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_deleteBotEntity_rejectsContainedUsersBotToken(TestNamespace ns) {
+    User botUser = createBotUser(ns, "cascadedeletedbot");
+    Bot bot =
+        SdkClients.adminClient()
+            .bots()
+            .create(
+                new CreateBot()
+                    .withName(ns.prefix("credential_cascade_bot"))
+                    .withBotUser(botUser.getName()));
+    OpenMetadataClient botClient = clientWithToken(generateBotToken(botUser, JWTTokenExpiry.Seven));
+    assertEquals(botUser.getId(), getLoggedInUser(botClient).getId());
+
+    SdkClients.adminClient().bots().delete(bot.getId().toString());
+
+    assertUnauthorized(botClient);
+  }
+
+  @Test
   void test_revokePersonalAccessToken_rejectsTokenOnNextRequest(TestNamespace ns) {
     OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
     PersonalAccessToken pat = createPersonalAccessToken(owner, ns.prefix("pat"));
@@ -2418,8 +2530,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   /**
-   * JwtFilter resolves a bot's username from the token's email local-part and BotTokenCache is
-   * keyed by that name, so the bot's stored name must equal the local-part.
+   * JwtFilter resolves a bot's username from the token's email local-part, so the bot's stored name
+   * must equal the local-part.
    */
   private User createBotUser(TestNamespace ns, String base) {
     String localPart = base + ns.shortPrefix();

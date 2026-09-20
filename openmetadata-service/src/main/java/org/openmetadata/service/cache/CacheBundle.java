@@ -89,16 +89,15 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       // the full audit and the planned migration of those layers to the registry.
       registerInvalidatable(cachedLineage);
       registerInvalidatable(notFoundCache);
+      // The email->username mapping decides which principal a request runs as, so it has to drop
+      // on a user write made by any replica, not just this one.
+      registerInvalidatable(org.openmetadata.service.security.JwtFilter.emailIdentityInvalidator());
       // Per-JVM caches behind Ask Collate's persona context. Both are keyed by data a peer's write
       // changes, so without this a persona edit, a context regenerate, or a persona assignment is
       // visible on the writing pod only, for up to that cache's TTL.
       registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
       registerInvalidatable(
           org.openmetadata.service.security.policyevaluator.SubjectCache.invalidator());
-      // Per-JVM credential caches JwtFilter consults on every bot-token / PAT request. Their
-      // invalidateToken() publishes on this channel, so a revoke on one pod evicts every pod.
-      registerInvalidatable(org.openmetadata.service.security.auth.BotTokenCache.invalidator());
-      registerInvalidatable(org.openmetadata.service.security.auth.UserTokenCache.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
@@ -118,10 +117,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
                 }
                 return;
               }
-              // Non-entity signals ride this channel too (a persona context rebuild or a token
-              // revocation mutates no entity). Evicting entity caches for them would bump a write
-              // epoch and force a needless reload of an entity that did not change.
-              if (CacheInvalidationPubSub.isEntityType(msg.type())) {
+              // Non-entity signals ride this channel too (a persona context rebuild mutates no
+              // entity). Evicting entity caches for them would bump a write epoch and force a
+              // needless reload of an entity that did not change.
+              if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
                 org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
                     msg.type(), msg.id(), msg.fqn());
                 if (msg.id() != null && cachedReadBundle != null) {
