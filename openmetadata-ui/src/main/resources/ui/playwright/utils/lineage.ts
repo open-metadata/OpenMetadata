@@ -743,13 +743,19 @@ export const openLineageNodeDrawer = async (
     .getByTestId('entity-header-display-name')
     .getByRole('button');
 
+  // Same shape as verifyNodePresent, and for the same reason: a fit is capped
+  // at the band's minZoom floor (0.9 in the Field band), so on a tall scene it
+  // cannot bring a distant node into view, and re-fitting on every attempt
+  // throws away the zoom-out that can. Fit once, then widen progressively.
+  let fitted = false;
   await expect(async () => {
-    await fitToScreen(page);
-    // Same limit verifyNodePresent hits: a re-fit alone does not always bring
-    // the node back into the viewport, and React Flow does not render what is
-    // outside it, so the click below would have nothing to land on.
     if ((await page.getByTestId(`lineage-node-${fqn}`).count()) === 0) {
-      await performZoomOut(page, 3);
+      if (fitted) {
+        await performZoomOut(page, 3);
+      } else {
+        await fitToScreen(page);
+        fitted = true;
+      }
     }
     await trigger.click({ timeout: 10_000 });
   }).toPass({ timeout: 90_000 });
@@ -770,21 +776,28 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   // ones can end up outside the viewport that the last fit established; re-fit
   // until this node renders instead of waiting out the test on one the canvas
   // has moved away from.
+  // Fitting cannot widen the view far enough on a tall scene, and re-fitting
+  // actively undoes any attempt to. `fitSceneBounds` passes the band's own
+  // minZoom to `fitBounds` and then, a frame later, forces the zoom back up
+  // with `if (instance.getZoom() < minZoom) instance.zoomTo(minZoom)`. In the
+  // Field band that floor is 0.9, so a fit always lands at 0.9 however tall
+  // the graph is, and a node outside that viewport is not merely off-screen --
+  // `onlyRenderVisibleElements` means it is not in the DOM at all.
+  //
+  // Measured from a failing Stored Procedure scene: fit put the canvas at
+  // scale(0.9), three zoom-out clicks took it to 0.52, and the next attempt's
+  // fit reset it to 0.9 again -- the same four values cycling while the node
+  // never rendered. So fit once for the common case where the canvas has just
+  // panned away, then stop fitting and let the zoom-out accumulate. The canvas
+  // minZoom is 0.1, and only a scene fit re-applies the band floor.
+  let attempted = false;
   await expect(async () => {
     if ((await lineageNode.count()) === 0) {
-      await fitToScreen(page);
-
-      // "Fit to screen" is not enough on a wide graph. Traced from a failing
-      // 16-node scene: the canvas sat at scale(0.9) through ten consecutive
-      // re-fits, moving by less than 3px each time, while the node under test
-      // stayed off-viewport and therefore out of the DOM. A real fit of that
-      // graph lands near scale(0.3), so the menu action is fitting to what is
-      // already on screen rather than to the whole graph. Zooming out drives
-      // the scale directly -- it dispatches at the zoom control instead of
-      // going through the Antd menu -- and React Flow clamps at minZoom, so
-      // repeated attempts settle rather than shrink without bound.
-      if ((await lineageNode.count()) === 0) {
+      if (attempted) {
         await performZoomOut(page, 3);
+      } else {
+        await fitToScreen(page);
+        attempted = true;
       }
     }
     await expect(lineageNode).toBeAttached({ timeout: 5_000 });

@@ -54,6 +54,13 @@ export const updateUnitOfMeasurement = async (
   unitOfMeasurement: string
 ) => {
   await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  // The unit list is an Antd popup, so it grows scaleY(0.8) -> scaleY(1) after
+  // it opens. A click computed against the still-scaling box lands beside the
+  // item: the popup stays open, nothing is selected, no PATCH is ever sent and
+  // the wait below burns the whole test budget. Observed with Measurement Unit
+  // left at "--" and the list still on screen at timeout. Same failure, and
+  // same fix, as the option click in addMetric below.
+  await waitForAntdPopupToSettle(page);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
@@ -71,6 +78,8 @@ export const updateUnitOfMeasurement = async (
 
 export const removeUnitOfMeasurement = async (page: Page) => {
   await page.click(`[data-testid="edit-measurement-unit-button"]`);
+  // Same popup, same animation -- see updateUnitOfMeasurement above.
+  await waitForAntdPopupToSettle(page);
   const patchPromise = page.waitForResponse(
     (response) => response.request().method() === 'PATCH'
   );
