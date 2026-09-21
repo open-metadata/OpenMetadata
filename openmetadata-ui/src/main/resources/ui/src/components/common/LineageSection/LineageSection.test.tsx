@@ -105,7 +105,7 @@ describe('LineageSection', () => {
   });
 
   it('shows loader while lineage paging info is being fetched', async () => {
-    let resolvePromise: (value: unknown) => void = () => {
+    let resolvePromise: (value: unknown) => void = (_value) => {
       throw new Error('resolvePromise was not initialized');
     };
     const pending = new Promise((resolve) => {

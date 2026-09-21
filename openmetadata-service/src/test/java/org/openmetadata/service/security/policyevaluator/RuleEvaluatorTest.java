@@ -13,7 +13,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
-import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -51,6 +50,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -61,6 +61,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 @Slf4j
 class RuleEvaluatorTest {
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+  private static final String TEAM_FIELDS = "defaultRoles,parents";
   private static final Table table =
       new Table().withId(UUID.randomUUID()).withName("table").withFullyQualifiedName("test.table");
   private static User user;
@@ -127,12 +128,24 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
+    RoleRepository roleRepository = stubIndexingPolicy(mock(RoleRepository.class));
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+
     tableRepository = stubIndexingPolicy(mock(TableRepository.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    // A lazily-resolved ResourceContext asks the repository which fields authorization needs;
+    // the mock would otherwise hand back null. Real repositories always return a Fields.
+    Mockito.when(tableRepository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
 
     DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
@@ -761,6 +774,33 @@ class RuleEvaluatorTest {
     return parseExpression(condition).getValue(ctx, Boolean.class);
   }
 
+  /**
+   * A ResourceContext built with neither an id nor a name never resolves an entity, so every
+   * attribute a policy condition reads comes back empty - and nothing reports that it did. A tag
+   * condition then answers the same way whether or not the tag is present, which makes a Deny fire
+   * on every entity in one polarity and on none in the other. This is the root cause of #31941;
+   * the fix is that callers holding a specific entity must pass its identity in.
+   */
+  @Test
+  void test_bareResourceContextCannotSeeTags() {
+    table.withTags(getTags("MCP.DEMO"));
+
+    RuleEvaluator bare =
+        new RuleEvaluator(null, subjectContext, new ResourceContext<>(Entity.TABLE));
+    EvaluationContext bareContext = new StandardEvaluationContext(bare);
+
+    assertFalse(
+        parseExpression("matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "an unresolved context reads a present tag as absent");
+    assertTrue(
+        parseExpression("!matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
+        "so the negated form is true for a tagged entity, and a Deny over-blocks");
+
+    // The entity-scoped context, which is what the fixed callers build, sees the truth.
+    assertTrue(evaluateExpression("matchAnyTag('MCP.DEMO')"));
+    assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
+  }
+
   private Boolean evaluateExpression(String condition) {
     return parseExpression(condition).getValue(evaluationContext, Boolean.class);
   }
@@ -784,6 +824,7 @@ class RuleEvaluatorTest {
     }
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 
@@ -800,6 +841,7 @@ class RuleEvaluatorTest {
     }
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 

@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPackInstallation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackInstallation",
+  "description": "Durable provenance and version state for an installed ontology library pack.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPackInstallation",
+  "properties": {
+    "packId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyPackModuleInstallation.json"
+      },
+      "minItems": 1
+    },
+    "installedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "installedBy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "licenseUrl": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "packId",
+    "version",
+    "modules",
+    "installedAt",
+    "installedBy",
+    "sourceUrl",
+    "license",
+    "licenseUrl"
+  ],
+  "additionalProperties": false
+}

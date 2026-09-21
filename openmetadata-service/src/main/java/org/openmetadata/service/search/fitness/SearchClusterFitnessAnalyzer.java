@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -324,6 +325,11 @@ public class SearchClusterFitnessAnalyzer {
               .health(text(node, "health"))
               .build());
     }
+    // Collapse physical indices that map to the same logical canonical OpenMetadata index (a live
+    // serving index and its in-flight _rebuild_<ts> sibling) before summing, so a concurrent
+    // reindex does not double-count primary bytes/docs. See collapseRebuildSiblings for the
+    // grouping/selection rules.
+    result = collapseRebuildSiblings(result, indicesWithOmAlias);
     result.sort(Comparator.comparing(IndexFootprint::getIndexName));
     return result;
   }
@@ -340,6 +346,103 @@ public class SearchClusterFitnessAnalyzer {
       }
     }
     return match;
+  }
+
+  /**
+   * Collapses physical indices that map to the same logical canonical OpenMetadata index into a
+   * single footprint, so an in-flight reindex does not double-count the primary bytes/docs of a
+   * logical index.
+   *
+   * <p>During a reindex the canonical entity exists as two physical indices simultaneously: the
+   * live serving index (still aliased) and a staged {@code <canon>_rebuild_<digits>} sibling (no
+   * alias until promotion — see {@code DefaultRecreateHandler#buildStagedIndexName}). The
+   * substring fallback in {@link #isOpenMetadataIndex} admits both, and without de-duplication
+   * {@code sumPrimaryBytes}/{@code sumDocs} add both rows, inflating {@code totalPrimarySizeBytes}
+   * (and the sizing guidance derived from it) for the duration of the reindex window.
+   *
+   * <p>The canonical key is derived by stripping a trailing {@code _rebuild_<digits>} suffix from
+   * each physical index name. This collapses both the first-install pair ({@code <canon>} +
+   * {@code <canon>_rebuild_<ts>}) and the post-first-reindex pair ({@code <canon>_rebuild_<olderTs>}
+   * + {@code <canon>_rebuild_<newerTs>}) — see {@code DefaultRecreateHandler#resolveCanonicalRemoval}
+   * for why the live physical index itself carries the {@code _rebuild_<ts>} suffix once any reindex
+   * has run.
+   *
+   * <p>Within a group, the entry that carries the canonical OpenMetadata alias is the live serving
+   * index and is preferred. When alias information is unavailable for both siblings (e.g.
+   * {@code /_cat/aliases} was inaccessible), the larger {@code primarySizeBytes} is kept as a
+   * conservative over-sizing bias — better to over- than under-recommend capacity when we cannot
+   * identify the live index.
+   */
+  private List<IndexFootprint> collapseRebuildSiblings(
+      List<IndexFootprint> raw, Set<String> indicesWithOmAlias) {
+    if (raw.size() <= 1) {
+      return new ArrayList<>(raw);
+    }
+    Map<String, IndexFootprint> byCanonical = new LinkedHashMap<>();
+    for (IndexFootprint f : raw) {
+      String key = stripRebuildSuffix(f.getIndexName());
+      IndexFootprint prev = byCanonical.get(key);
+      if (prev == null) {
+        byCanonical.put(key, f);
+      } else if (preferOver(prev, f, indicesWithOmAlias)) {
+        byCanonical.put(key, f);
+      }
+    }
+    return new ArrayList<>(byCanonical.values());
+  }
+
+  /**
+   * Decides whether {@code candidate} should replace {@code prev} as the kept footprint for a
+   * canonical group. An alias-carrying entry (the live serving index) always wins over a
+   * non-aliased one; if both or neither carry an alias, the larger {@code primarySizeBytes} is
+   * kept so the de-dup is deterministic and biases toward over-sizing when we cannot tell which
+   * sibling is live.
+   */
+  private boolean preferOver(
+      IndexFootprint prev, IndexFootprint candidate, Set<String> indicesWithOmAlias) {
+    boolean prevAliased =
+        prev.getIndexName() != null && indicesWithOmAlias.contains(prev.getIndexName());
+    boolean candidateAliased =
+        candidate.getIndexName() != null && indicesWithOmAlias.contains(candidate.getIndexName());
+    if (candidateAliased && !prevAliased) {
+      return true;
+    }
+    if (prevAliased && !candidateAliased) {
+      return false;
+    }
+    if (!prevAliased && !candidateAliased) {
+      long prevBytes = prev.getPrimarySizeBytes() == null ? 0L : prev.getPrimarySizeBytes();
+      long candidateBytes =
+          candidate.getPrimarySizeBytes() == null ? 0L : candidate.getPrimarySizeBytes();
+      return candidateBytes > prevBytes;
+    }
+    return false;
+  }
+
+  /**
+   * Derives the logical canonical index name from a physical index name by stripping a trailing
+   * {@code _rebuild_<digits>} suffix. Returns the name unchanged if no such suffix is present, or
+   * if the suffix is not all digits — so an index that merely contains {@code _rebuild_} in its
+   * name is not collapsed onto a different canonical index.
+   */
+  private String stripRebuildSuffix(String name) {
+    if (name == null) {
+      return null;
+    }
+    int rebuildIdx = name.lastIndexOf("_rebuild_");
+    if (rebuildIdx <= 0) {
+      return name;
+    }
+    String suffix = name.substring(rebuildIdx + "_rebuild_".length());
+    if (suffix.isEmpty()) {
+      return name;
+    }
+    for (int i = 0; i < suffix.length(); i++) {
+      if (!Character.isDigit(suffix.charAt(i))) {
+        return name;
+      }
+    }
+    return name.substring(0, rebuildIdx);
   }
 
   private Set<String> openMetadataCanonicalNames(String clusterAlias) {

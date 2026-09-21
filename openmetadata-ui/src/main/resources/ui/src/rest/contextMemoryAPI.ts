@@ -16,11 +16,13 @@ import { PagingResponse } from '../components/common/AsyncSelect/AsyncSelect';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { ListParams } from '../interface/API.interface';
-import APIClient from '../rest/index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/contextCenter/memories';
 
 export type ContextMemoryListParams = ListParams & {
+  sourceFileId?: string;
+  sourceEntityId?: string;
   q?: string;
   assets?: string;
   author?: string;

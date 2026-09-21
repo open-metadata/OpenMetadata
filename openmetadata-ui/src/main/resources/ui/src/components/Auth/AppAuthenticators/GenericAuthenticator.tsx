@@ -10,10 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 
@@ -45,11 +55,38 @@ export const GenericAuthenticator = forwardRef(
       return resp;
     };
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 8). Kept alongside handleSilentSignIn/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const response = await renewToken();
+        if (!response?.accessToken) {
+          throw new Error('Renew endpoint returned no accessToken');
+        }
+        const decoded = extractDetailsFromToken(response.accessToken);
+
+        return {
+          idToken: response.accessToken,
+          expiresAt: (decoded.exp ?? 0) * 1000,
+        };
+      },
+      []
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
       invokeLogin: handleLogin,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

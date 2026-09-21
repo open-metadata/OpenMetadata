@@ -12,6 +12,8 @@
  */
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
+import { SettingType } from '../../generated/settings/settings';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -19,6 +21,12 @@ const ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
 const ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
 const UPDATE_ENTITY_SUCCESS = 'server.update-entity-success';
 const ACTIVE_FIELD = 'activeField';
+const EMAIL_CONFIG = {
+  password: MASKED_PASSWORD_VALUE,
+  senderMail: 'before@example.com',
+  serverEndpoint: 'smtp.example.com',
+  serverPort: 587,
+};
 
 jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn(({ activeField }) => (
@@ -50,16 +58,22 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component',
   () =>
-    jest.fn().mockImplementation(({ onCancel, onFocus, onSubmit }) => (
-      <>
-        EmailConfigForm
-        <button onClick={onCancel}>Cancel EmailConfigForm</button>
-        <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
-          Focus EmailConfigForm
-        </button>
-        <button onClick={onSubmit}>Submit EmailConfigForm</button>
-      </>
-    ))
+    jest
+      .fn()
+      .mockImplementation(
+        ({ emailConfigValues, onCancel, onFocus, onSubmit }) => (
+          <>
+            EmailConfigForm
+            <button onClick={onCancel}>Cancel EmailConfigForm</button>
+            <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
+              Focus EmailConfigForm
+            </button>
+            <button onClick={() => onSubmit(emailConfigValues)}>
+              Submit EmailConfigForm
+            </button>
+          </>
+        )
+      )
 );
 
 const mockNavigate = jest.fn();
@@ -70,10 +84,7 @@ jest.mock('react-router-dom', () => ({
 
 const mockGetSettingsConfigFromConfigType = jest.fn().mockResolvedValue({
   data: {
-    config_value: {
-      customLogoUrlPath: 'https://custom-logo.png',
-      customMonogramUrlPath: 'https://custom-monogram.png',
-    },
+    config_value: EMAIL_CONFIG,
   },
 });
 
@@ -83,7 +94,7 @@ jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn(() =>
     mockGetSettingsConfigFromConfigType()
   ),
-  updateSettingsConfig: jest.fn(() => mockUpdateSettingsConfig()),
+  updateSettingsConfig: jest.fn((...args) => mockUpdateSettingsConfig(...args)),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -107,6 +118,10 @@ const mockProps = {
 };
 
 describe('EditEmailConfigPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should contain all necessary elements', async () => {
     await act(async () => {
       render(<EditEmailConfigPage {...mockProps} />);
@@ -186,6 +201,31 @@ describe('EditEmailConfigPage', () => {
         ERROR,
         ENTITY_UPDATING_ERROR
       );
+    });
+  });
+
+  it('does not submit the masked password sentinel', async () => {
+    render(<EditEmailConfigPage {...mockProps} />);
+
+    await screen.findByText('EmailConfigForm');
+    await act(async () => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: 'Submit EmailConfigForm',
+        })
+      );
+    });
+
+    await waitFor(() => expect(mockUpdateSettingsConfig).toHaveBeenCalled());
+    const submittedSettings = mockUpdateSettingsConfig.mock.calls[0][0];
+
+    expect(submittedSettings).toEqual({
+      config_type: SettingType.EmailConfiguration,
+      config_value: {
+        senderMail: EMAIL_CONFIG.senderMail,
+        serverEndpoint: EMAIL_CONFIG.serverEndpoint,
+        serverPort: EMAIL_CONFIG.serverPort,
+      },
     });
   });
 });

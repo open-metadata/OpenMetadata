@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import {
-  useLogStream,
-  UseLogStreamResult,
-} from '../components/common/LogViewerModal/useLogStream';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
@@ -29,6 +25,7 @@ import {
 } from '../rest/ingestionPipelineAPI';
 import { downloadIngestionLog } from '../utils/IngestionLogs/LogsUtils';
 import { useEntityLogs } from './useEntityLogs';
+import { useLogStream, UseLogStreamResult } from './useLogStream';
 
 const mockReset = jest.fn();
 const mockUpdateProgress = jest.fn();
@@ -70,8 +67,10 @@ jest.mock('../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../components/common/LogViewerModal/useLogStream', () => ({
+jest.mock('./useLogStream', () => ({
   useLogStream: jest.fn(),
+  getIngestionLogStreamUrl: (fqn: string, runId: string) =>
+    `/stream/${fqn}/${runId}`,
 }));
 
 const mockUseLogStream = useLogStream as jest.Mock;
@@ -215,7 +214,8 @@ describe('useEntityLogs', () => {
   });
 
   it('ignores a stale app-log response after runId changes', async () => {
-    let resolveFirstApp: (value: { name: string }) => void = () => undefined;
+    let resolveFirstApp: (value: { name: string }) => void = (_value) =>
+      undefined;
     (getApplicationByName as jest.Mock)
       .mockImplementationOnce(
         () =>
@@ -402,8 +402,7 @@ describe('useEntityLogs — SSE tail', () => {
     expect(result.current.hasMore).toBe(false);
     expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
     expect(mockUseLogStream).toHaveBeenCalledWith({
-      fqn: 'svc.pipeline',
-      runId: 'run-1',
+      streamUrl: '/stream/svc.pipeline/run-1',
       enabled: true,
     });
   });

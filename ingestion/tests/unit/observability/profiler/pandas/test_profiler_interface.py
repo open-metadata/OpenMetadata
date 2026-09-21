@@ -15,7 +15,7 @@ Test SQA Interface
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -55,6 +55,7 @@ from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.utils.datalake.object_stats import ObjectStats
 
 if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
@@ -402,3 +403,92 @@ class PandasInterfaceTest(TestCase):
             assert len(self.datalake_profiler_interface.status.failures) == 1
         finally:
             self.datalake_profiler_interface._get_metric_fn = original_get_metric_fn
+
+
+@pytest.fixture
+def datalake_profiler_interface():
+    """A PandasProfilerInterface over the same fixture data, with the object store client mocked"""
+    import pandas as pd
+
+    with (
+        patch(
+            "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+            return_value=FakeConnection(),
+        ),
+        patch("metadata.sampler.pandas.sampler.get_ssl_connection", return_value=FakeConnection()),
+        patch.object(
+            DatalakeSampler,
+            "get_dataframes",
+            return_value=DatalakeColumnWrapper(
+                dataframes=lambda: iter(
+                    [
+                        PandasInterfaceTest.df1,
+                        pd.concat([PandasInterfaceTest.df2, pd.DataFrame(index=PandasInterfaceTest.df1.index)]),
+                    ]
+                ),
+                columns=None,
+                raw_data=None,
+            ),
+        ),
+        patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+    ):
+        sampler = DatalakeSampler(
+            service_connection_config=DatalakeConnection(configSource={}),
+            ometa_client=None,
+            entity=PandasInterfaceTest.table_entity,
+        )
+        yield PandasProfilerInterface(
+            service_connection_config=DatalakeConnection(configSource={}),
+            ometa_client=None,
+            entity=PandasInterfaceTest.table_entity,
+            source_config=None,
+            sampler=sampler,
+        )
+
+
+class TestPandasObjectStats:
+    """Storage level stats are merged into the table metrics"""
+
+    table_metrics = [  # noqa: RUF012
+        metric
+        for metric in get_default_metrics(Metrics, User)
+        if not metric.is_col_metric() and not metric.is_system_metrics()
+    ]
+
+    def _compute(self, interface):
+        return interface._compute_table_metrics(self.table_metrics, interface.dataset)
+
+    def test_stats_merged_with_table_metrics(self, datalake_profiler_interface):
+        created = datetime(2026, 8, 20, 10, 30, tzinfo=timezone.utc)
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            return_value=ObjectStats(size_in_bytes=1024, create_date_time=created),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert row["sizeInBytes"] == 1024
+        assert row["createDateTime"] == created
+        # The stats must be merged next to the metrics, not on top of them
+        assert row[RowCount.name()] == 6
+        assert row["columnCount"] == 10
+
+    def test_stats_failure_does_not_fail_the_profile(self, datalake_profiler_interface):
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            side_effect=Exception("AccessDenied"),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert row[RowCount.name()] == 6
+        assert "sizeInBytes" not in row
+        assert "createDateTime" not in row
+
+    def test_empty_stats_are_omitted(self, datalake_profiler_interface):
+        with patch(
+            "metadata.profiler.interface.pandas.profiler_interface.get_object_stats",
+            return_value=ObjectStats(),
+        ):
+            row = self._compute(datalake_profiler_interface)
+
+        assert "sizeInBytes" not in row
+        assert "createDateTime" not in row

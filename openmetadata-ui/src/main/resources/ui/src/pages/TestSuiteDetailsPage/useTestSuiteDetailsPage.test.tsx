@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
@@ -19,6 +23,7 @@ import {
   getTestSuiteByName,
   updateTestSuiteById,
 } from '../../rest/testAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
@@ -45,21 +50,54 @@ const mockPermissions = {
   Delete: true,
 };
 
-const mockGetEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve(mockPermissions));
+// The hook now reads its own permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) drives its permission-derived behavior in these
+// tests — same approach as TableDetailsPageV1.test.tsx.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
 let mockTestSuiteFQN = 'bundle_suite_fqn';
+let queryClient: QueryClient;
+
+const Wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
+const renderTestSuiteDetailsHook = () =>
+  renderHook(() => useTestSuiteDetailsPage(), { wrapper: Wrapper });
 
 const runTimeoutsImmediately = () => {
-  const originalSetTimeout = window.setTimeout;
+  const originalSetTimeout = window.setTimeout.bind(window);
 
   return jest
-    .spyOn(window, 'setTimeout')
+    .spyOn(global, 'setTimeout')
     .mockImplementation((callback, delay, ...args) => {
       if (delay === 500 && typeof callback === 'function') {
         callback();
 
-        return 0;
+        return originalSetTimeout(() => undefined, 0);
       }
 
       return originalSetTimeout(callback, delay, ...args);
@@ -71,7 +109,6 @@ jest.mock('../../rest/ingestionPipelineAPI');
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
     permissions: {},
   }),
 }));
@@ -124,7 +161,18 @@ jest.mock('../../utils/ToastUtils', () => ({
 describe('useTestSuiteDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          refetchOnWindowFocus: false,
+          gcTime: Infinity,
+        },
+        mutations: { retry: false },
+      },
+    });
     mockTestSuiteFQN = 'bundle_suite_fqn';
+    setMockPermissions(mockPermissions);
     (getTestSuiteByName as jest.Mock).mockResolvedValue(mockTestSuite);
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [{ id: 'tc-1', name: 'tc_1' }],
@@ -139,19 +187,20 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should fetch permissions, the suite and its test cases on mount', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
     });
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       'testSuite',
       'bundle_suite_fqn'
     );
     expect(getTestSuiteByName).toHaveBeenCalledWith(
       'bundle_suite_fqn',
-      expect.objectContaining({ include: 'all' })
+      expect.objectContaining({ include: 'all' }),
+      expect.objectContaining({ signal: expect.anything() })
     );
 
     await waitFor(() => {
@@ -161,8 +210,149 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.ingestionPipelineCount).toBe(2);
   });
 
+  it('should search the current suite from the first page', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getIngestionPipelines as jest.Mock).mockClear();
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9');
+    });
+
+    expect(result.current.testCaseSearchQuery).toBe('tc_9');
+    expect(result.current.pagingData.currentPage).toBe(1);
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        offset: 0,
+        q: 'tc_9',
+        testSuiteId: 'suite-id',
+      }),
+      expect.objectContaining({ signal: expect.anything() })
+    );
+    expect(getIngestionPipelines).not.toHaveBeenCalled();
+  });
+
+  it('should preserve search input whitespace while normalizing the request', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9 ');
+    });
+
+    expect(result.current.testCaseSearchQuery).toBe('tc_9 ');
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'tc_9' }),
+      expect.any(Object)
+    );
+  });
+
+  it('should preserve the search query when changing pages', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9 ');
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.pagingData.pagingHandler({ currentPage: 2 });
+    });
+
+    await waitFor(() => {
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          offset: result.current.pagingData.pageSize,
+          q: 'tc_9',
+        }),
+        expect.any(Object)
+      );
+    });
+  });
+
+  it('should preserve the search query when sorting', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9');
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      await result.current.handleSortTestCase({
+        sortField: 'name',
+        sortType: SORT_ORDER.DESC,
+      });
+    });
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'tc_9', sortType: 'desc' }),
+      expect.any(Object)
+    );
+  });
+
+  it('should clear the search and reload the first page', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9');
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('');
+    });
+
+    expect(result.current.testCaseSearchQuery).toBe('');
+    expect(result.current.pagingData.currentPage).toBe(1);
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 0, q: undefined }),
+      expect.any(Object)
+    );
+  });
+
+  it('should clear the search when navigating to another suite', async () => {
+    const { result, rerender } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9');
+    });
+
+    mockTestSuiteFQN = 'another_suite_fqn';
+    rerender();
+
+    expect(result.current.testCaseSearchQuery).toBe('');
+  });
+
   it('should default to the test cases tab and switch tabs', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     expect(result.current.activeTab).toBe(EntityTabs.TEST_CASES);
 
@@ -174,7 +364,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should derive permission flags from the entity permissions', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.permissions.hasViewPermission).toBe(true);
@@ -186,23 +376,43 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.canAddMultipleTeamOwner).toBe(false);
   });
 
-  it('should not fetch the suite without view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({
-      ViewAll: false,
-      ViewBasic: false,
+  it('denies owner/description edit when explicitly false, even with EditAll true', async () => {
+    // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+    // a `true` EditAll, not be overridden by it (Task 6 Finding 1).
+    setMockPermissions({
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+      EditOwners: false,
+      EditDescription: false,
     });
 
-    renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+      expect(result.current.permissions.hasViewPermission).toBe(true);
+    });
+
+    expect(result.current.permissions.hasEditOwnerPermission).toBe(false);
+    expect(result.current.permissions.hasEditDescriptionPermission).toBe(false);
+    // The bare-EditAll flag is unaffected by the field-specific denies.
+    expect(result.current.permissions.hasEditPermission).toBe(true);
+  });
+
+  it('should not fetch the suite without view permission', async () => {
+    setMockPermissions({ ViewAll: false, ViewBasic: false });
+
+    renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(mockUseEntityPermissions).toHaveBeenCalled();
     });
 
     expect(getTestSuiteByName).not.toHaveBeenCalled();
   });
 
   it('should patch the suite on owner update', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -221,7 +431,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should normalize single domain updates into an array patch', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -243,7 +453,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should skip description update when unchanged', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -257,7 +467,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should retry stale rows until the authoritative count is indexed', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -297,6 +507,13 @@ describe('useTestSuiteDetailsPage', () => {
         resolveSecondFetchStarted();
 
         return indexedSearch;
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 'tc-1', name: 'tc_1' },
+          { id: 'tc-9', name: 'tc_9' },
+        ],
+        paging: { total: 2 },
       });
 
     const setTimeoutSpy = runTimeoutsImmediately();
@@ -344,7 +561,7 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should stop retrying stale rows after five attempts', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
@@ -375,21 +592,27 @@ describe('useTestSuiteDetailsPage', () => {
         });
       });
 
-      expect(setTimeoutSpy).toHaveBeenCalledTimes(4);
+      expect(
+        setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 500)
+      ).toHaveLength(4);
     } finally {
       setTimeoutSpy.mockRestore();
     }
 
-    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(5);
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(6);
     expect(result.current.pagingData.paging.total).toBe(2);
     expect(result.current.isTestCaseLoading).toBe(false);
   });
 
-  it('should use the suite relationship count when search paging is stale after bulk add', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+  it('should use the suite relationship count for whitespace-only search after bulk add', async () => {
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch(' ');
     });
 
     let resolveOlderSearch!: (value: {
@@ -417,6 +640,10 @@ describe('useTestSuiteDetailsPage', () => {
     (getListTestCaseBySearch as jest.Mock)
       .mockImplementationOnce(() => olderSearch)
       .mockImplementationOnce(() => refreshedSearch)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 2 },
+      })
       .mockResolvedValueOnce({
         data: [{ id: 'tc-9', name: 'tc_9' }],
         paging: { total: 2 },
@@ -488,11 +715,15 @@ describe('useTestSuiteDetailsPage', () => {
   });
 
   it('should preserve a filtered search total after bulk add', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
       expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('tc_9');
     });
 
     (getTestSuiteByName as jest.Mock).mockResolvedValue({
@@ -505,12 +736,11 @@ describe('useTestSuiteDetailsPage', () => {
     (getListTestCaseBySearch as jest.Mock).mockClear();
     (getListTestCaseBySearch as jest.Mock)
       .mockResolvedValueOnce({
-        data: [{ id: 'tc-9', name: 'tc_9' }],
-        paging: { total: 1 },
-      })
-      .mockResolvedValueOnce({
-        data: [{ id: 'tc-9', name: 'tc_9' }],
-        paging: { total: 1 },
+        data: [
+          { id: 'tc-1', name: 'tc_1' },
+          { id: 'tc-9', name: 'tc_9' },
+        ],
+        paging: { total: 2 },
       })
       .mockResolvedValueOnce({
         data: [{ id: 'tc-9', name: 'tc_9' }],
@@ -531,19 +761,98 @@ describe('useTestSuiteDetailsPage', () => {
       setTimeoutSpy.mockRestore();
     }
 
-    expect(result.current.pagingData.paging.total).toBe(2);
-
-    await act(async () => {
-      await result.current.fetchTestCases({ q: 'tc_9' });
-    });
-
     expect(result.current.pagingData.paging.total).toBe(1);
+    expect(result.current.testCaseResult).toEqual([
+      expect.objectContaining({ id: 'tc-9' }),
+    ]);
+    expect(getListTestCaseBySearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ q: 'tc_9' }),
+      expect.any(Object)
+    );
+  });
 
-    await act(async () => {
-      await result.current.fetchTestCases();
+  it('should refresh the latest query after bulk indexing completes', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
     });
 
-    expect(result.current.pagingData.paging.total).toBe(2);
+    await act(async () => {
+      await result.current.handleTestCaseSearch('old_query');
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+
+    let resolveBulkRefresh!: (value: {
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }) => void;
+    const bulkRefresh = new Promise<{
+      data: Array<{ id: string; name: string }>;
+      paging: { total: number };
+    }>((resolve) => {
+      resolveBulkRefresh = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockReturnValueOnce(bulkRefresh)
+      .mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-new', name: 'new_query' }],
+        paging: { total: 1 },
+      });
+
+    let addRequest!: Promise<void>;
+    act(() => {
+      addRequest = result.current.handleAddTestCaseSubmit({
+        selectAll: false,
+        includeIds: ['tc-9'],
+        excludeIds: [],
+      });
+    });
+
+    await waitFor(() => {
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('new_query');
+    });
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toEqual([]);
+    });
+
+    await act(async () => {
+      resolveBulkRefresh({
+        data: [
+          { id: 'tc-1', name: 'tc_1' },
+          { id: 'tc-9', name: 'tc_9' },
+        ],
+        paging: { total: 2 },
+      });
+      await addRequest;
+    });
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(3);
+    expect(result.current.testCaseSearchQuery).toBe('new_query');
+    expect(result.current.testCaseResult).toEqual([
+      expect.objectContaining({ id: 'tc-new' }),
+    ]);
+    expect(result.current.pagingData.paging.total).toBe(1);
+    expect(result.current.isTestCaseLoading).toBe(false);
   });
 
   it('should ignore a bulk add that finishes after navigating to another suite', async () => {
@@ -562,7 +871,7 @@ describe('useTestSuiteDetailsPage', () => {
       })
     );
 
-    const { result, rerender } = renderHook(() => useTestSuiteDetailsPage());
+    const { result, rerender } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testSuite?.fullyQualifiedName).toBe(
@@ -605,7 +914,7 @@ describe('useTestSuiteDetailsPage', () => {
   it('should surface suite fetch errors via toast', async () => {
     (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(new Error('boom'));
 
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalled();
@@ -614,8 +923,30 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.testSuite).toBeUndefined();
   });
 
+  it('should clear stale test cases when a new search fails', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValueOnce(
+      new Error('search failed')
+    );
+
+    await act(async () => {
+      await result.current.handleTestCaseSearch('missing_test_case');
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalled();
+    });
+
+    expect(result.current.testCaseResult).toEqual([]);
+  });
+
   it('should update a test case in place via handleTestSuiteUpdate', async () => {
-    const { result } = renderHook(() => useTestSuiteDetailsPage());
+    const { result } = renderTestSuiteDetailsHook();
 
     await waitFor(() => {
       expect(result.current.testCaseResult).toHaveLength(1);
@@ -628,6 +959,8 @@ describe('useTestSuiteDetailsPage', () => {
       } as never);
     });
 
-    expect(result.current.testCaseResult[0].name).toBe('tc_1_renamed');
+    await waitFor(() => {
+      expect(result.current.testCaseResult[0].name).toBe('tc_1_renamed');
+    });
   });
 });

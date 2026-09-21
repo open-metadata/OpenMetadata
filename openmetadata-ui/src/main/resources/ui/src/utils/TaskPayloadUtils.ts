@@ -48,6 +48,46 @@ const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
   }
 };
 
+const computeSuggestedTags = (
+  currentTags: TagLabel[],
+  tagsToAdd: TagLabel[],
+  tagsToRemove: TagLabel[],
+  suggestedTagsFromLegacyPayload: TagLabel[]
+): TagLabel[] => {
+  const hasTagChanges =
+    tagsToAdd.length > 0 || tagsToRemove.length > 0 || currentTags.length > 0;
+
+  if (!hasTagChanges) {
+    return suggestedTagsFromLegacyPayload;
+  }
+
+  return [
+    ...currentTags.filter(
+      (tag) => !tagsToRemove.some((item) => item.tagFQN === tag.tagFQN)
+    ),
+    ...tagsToAdd,
+  ];
+};
+
+const computeSuggestionState = (
+  isTagTask: boolean,
+  suggestedTags: TagLabel[],
+  newDescription?: string
+): { suggestedValue?: string; isSuggestionEmpty: boolean } => {
+  if (isTagTask) {
+    return {
+      suggestedValue:
+        suggestedTags.length > 0 ? JSON.stringify(suggestedTags) : undefined,
+      isSuggestionEmpty: suggestedTags.length === 0,
+    };
+  }
+
+  return {
+    suggestedValue: newDescription,
+    isSuggestionEmpty: isEmpty(newDescription),
+  };
+};
+
 export const getNormalizedTaskPayload = (
   task: TaskEntity
 ): NormalizedTaskPayload => {
@@ -67,25 +107,18 @@ export const getNormalizedTaskPayload = (
   );
   const suggestedTagsFromLegacyPayload = parseTaskTags(payload?.suggestedValue);
 
-  const suggestedTags =
-    tagsToAdd.length > 0 || tagsToRemove.length > 0 || currentTags.length > 0
-      ? [
-          ...currentTags.filter(
-            (tag) => !tagsToRemove.some((item) => item.tagFQN === tag.tagFQN)
-          ),
-          ...tagsToAdd,
-        ]
-      : suggestedTagsFromLegacyPayload;
+  const suggestedTags = computeSuggestedTags(
+    currentTags,
+    tagsToAdd,
+    tagsToRemove,
+    suggestedTagsFromLegacyPayload
+  );
 
-  const suggestedValue = isTagTask
-    ? suggestedTags.length > 0
-      ? JSON.stringify(suggestedTags)
-      : undefined
-    : newDescription;
-
-  const isSuggestionEmpty = isTagTask
-    ? suggestedTags.length === 0
-    : isEmpty(newDescription);
+  const { suggestedValue, isSuggestionEmpty } = computeSuggestionState(
+    isTagTask,
+    suggestedTags,
+    newDescription
+  );
 
   return {
     fieldPath,

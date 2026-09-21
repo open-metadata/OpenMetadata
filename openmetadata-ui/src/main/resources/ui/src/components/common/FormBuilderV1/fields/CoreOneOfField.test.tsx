@@ -40,7 +40,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         selectedKey?: string;
       }) => (
         <div>
-          {label && <label>{label}</label>}
+          {label && <span>{label}</span>}
           <div data-testid="selected-key">{selectedKey}</div>
           <button
             data-testid="clear-selection"

@@ -30,8 +30,6 @@ test.use({
 
 const topic = new TopicClass();
 
-test.slow(true);
-
 test.describe('Topic entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);

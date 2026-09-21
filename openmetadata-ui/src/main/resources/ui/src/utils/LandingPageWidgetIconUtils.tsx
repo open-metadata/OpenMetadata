@@ -64,7 +64,7 @@ export const getEntityIcon = (
 
   const entityIcon = searchClassBase.getEntityIcon(
     entityType,
-    classNames('tw:text-quaternary tw:shrink-0', iconClassName)
+    classNames('tw:shrink-0', iconClassName)
   );
 
   if (entityIcon) {

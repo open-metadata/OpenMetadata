@@ -15,7 +15,6 @@ Source connection handler for OpenSearch
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
@@ -179,8 +178,8 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection for OpenSearch. This can be executed either as part

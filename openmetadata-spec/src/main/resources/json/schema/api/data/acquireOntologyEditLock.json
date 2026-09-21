@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/acquireOntologyEditLock.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AcquireOntologyEditLockRequest",
+  "description": "Acquire or renew an ontology authoring lease.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.AcquireOntologyEditLock",
+  "properties": {
+    "resourceType": {
+      "type": "string"
+    },
+    "resourceId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "expectedVersion": {
+      "description": "Current lock version when renewing an existing lease.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "leaseSeconds": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 300,
+      "default": 60
+    }
+  },
+  "required": ["resourceType", "resourceId", "sessionId"],
+  "additionalProperties": false
+}

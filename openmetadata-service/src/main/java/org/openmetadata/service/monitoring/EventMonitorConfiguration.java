@@ -33,4 +33,6 @@ public class EventMonitorConfiguration {
   private double[] latency;
 
   private int servicesHealthCheckInterval = 300;
+
+  private boolean requestLatencyPercentileHistogram = false;
 }

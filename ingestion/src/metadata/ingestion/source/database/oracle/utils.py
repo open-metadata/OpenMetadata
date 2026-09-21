@@ -46,6 +46,13 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
+# ALL_TAB_COLS.CHAR_USED is 'C' when a column was declared with character length
+# semantics (VARCHAR2(10 CHAR)) and 'B' for byte semantics (VARCHAR2(10 BYTE), the
+# default). Oracle only renders the qualifier for VARCHAR2 and CHAR: NVARCHAR2 and
+# NCHAR are always character based and are never displayed with it.
+CHAR_SEMANTICS_FLAG = "C"
+CHAR_SEMANTICS_TYPES = ("VARCHAR2", "CHAR")
+
 
 def get_table_prefix_from_connection(service_connection) -> str:
     return "DBA" if getattr(service_connection, "useDBATable", True) else "ALL"
@@ -193,7 +200,9 @@ def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
     )
 
 
-def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
+def _get_col_type(  # pylint: disable=too-many-branches
+    self, coltype, precision, scale, length, colname, char_used=None
+):
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -210,9 +219,10 @@ def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: 
         # TODO: support "precision" here as "binary_precision"
         coltype = FLOAT()
     elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
+        char_semantics = char_used == CHAR_SEMANTICS_FLAG and coltype in CHAR_SEMANTICS_TYPES
         coltype = self.ischema_names.get(coltype)(length)
         if length:
-            raw_type += f"({length})"
+            raw_type += f"({length} CHAR)" if char_semantics else f"({length})"
     elif "WITH TIME ZONE" in coltype or "TIMESTAMP" in coltype:
         coltype = TIMESTAMP(timezone=True)
     elif "INTERVAL" in coltype:
@@ -307,10 +317,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
         default = row[6]
         comment = row[7]
         generated = row[8]
-        default_on_nul = row[9]
-        identity_options = row[10]
+        char_used = row[9]
+        default_on_nul = row[10]
+        identity_options = row[11]
 
-        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname, char_used)
 
         computed = None
         if generated == "YES":
@@ -412,6 +423,142 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
     return constraint_data  # noqa: RET504
+
+
+def _prepare_constraint_args(self, connection, table_name, schema, **kw):
+    dblink = kw.get("dblink", "")
+    if dblink and not dblink.startswith("@"):
+        dblink = f"@{dblink}"
+
+    if kw.get("oracle_resolve_synonyms", False):
+        rows = list(
+            self._get_synonyms(
+                connection,
+                schema,
+                [table_name],
+                dblink,
+                info_cache=kw.get("info_cache"),
+            )
+        )
+        if rows:
+            row = rows[0]
+            table_name = self.denormalize_name(row.table_name)
+            schema = self.denormalize_name(row.table_owner)
+            if row.db_link:
+                dblink = row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+    else:
+        table_name = self.denormalize_name(table_name)
+        schema = self.denormalize_name(schema or self.default_schema_name)
+
+    return table_name, schema, dblink
+
+
+@reflection.cache
+def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+    """Reflect a primary key from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    constrained_columns = []
+    constraint_name = None
+    for row in constraint_data:
+        if row[1] == "P":
+            constraint_name = constraint_name or self.normalize_name(row[0])
+            constrained_columns.append(self.normalize_name(row[2]))
+
+    return {"constrained_columns": constrained_columns, "name": constraint_name}
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    """Reflect unique constraints from the selected Oracle catalog."""
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    unique_constraints = {}
+    for row in constraint_data:
+        if row[1] != "U":
+            continue
+        constraint_name = self.normalize_name(row[0])
+        index_name = self.normalize_name(row[10])
+        constraint = unique_constraints.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "column_names": [],
+                "duplicates_index": constraint_name if index_name == constraint_name else None,
+            },
+        )
+        constraint["column_names"].append(self.normalize_name(row[2]))
+
+    return list(unique_constraints.values())
+
+
+@reflection.cache
+def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+    """Reflect foreign keys from the selected Oracle catalog."""
+    requested_schema = schema
+    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    constraint_data = _get_constraint_data(
+        self,
+        connection,
+        table_name,
+        schema,
+        dblink,
+        info_cache=kw.get("info_cache"),
+    )
+
+    foreign_keys = {}
+    for row in constraint_data:
+        if row[1] != "R":
+            continue
+
+        constraint_name = self.normalize_name(row[0])
+        local_column = self.normalize_name(row[2])
+        remote_table = self.normalize_name(row[3])
+        remote_column = self.normalize_name(row[4])
+        remote_owner = self.normalize_name(row[5])
+
+        if remote_table is None:
+            util.warn(
+                f"Got 'None' querying 'table_name' from {_get_table_prefix(self)}_CONS_COLUMNS{dblink}; "
+                "does the user have proper rights to the table?"
+            )
+            continue
+
+        foreign_key = foreign_keys.setdefault(
+            constraint_name,
+            {
+                "name": constraint_name,
+                "constrained_columns": [],
+                "referred_schema": None,
+                "referred_table": remote_table,
+                "referred_columns": [],
+                "options": {},
+            },
+        )
+        if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
+            foreign_key["referred_schema"] = remote_owner
+        if row[9] != "NO ACTION":
+            foreign_key["options"]["ondelete"] = row[9]
+        foreign_key["constrained_columns"].append(local_column)
+        foreign_key["referred_columns"].append(remote_column)
+
+    return list(foreign_keys.values())
 
 
 # ---------------------------------------------------------------------------

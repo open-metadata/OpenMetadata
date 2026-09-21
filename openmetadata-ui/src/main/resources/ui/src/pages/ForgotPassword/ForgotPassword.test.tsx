@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render } from '@testing-library/react';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
@@ -25,7 +25,7 @@ const mockHandleError = jest.fn().mockImplementation(() => {
   });
 });
 
-jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/BasicAuthContext', () => {
   return {
     useBasicAuth: jest.fn().mockImplementation(() => ({
       handleForgotPassword: mockHandleForgotPassword,
@@ -48,17 +48,20 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'message.enter-your-registered-email': 'Enter your registered email',
         'label.email': 'Email',
         'label.send-login-link': 'Send Login Link',
         'server.email-not-found': 'Email not found',
         'label.field-invalid': '{{field}} is invalid',
+        'message.field-text-is-required': '{{fieldText}} is required',
       };
 
       if (options && translations[key]) {
-        return translations[key].replace('{{field}}', options.field || '');
+        return translations[key]
+          .replace('{{field}}', options.field || '')
+          .replace('{{fieldText}}', options.fieldText || '');
       }
 
       return translations[key] || key;
@@ -67,11 +70,15 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('ForgotPassword', () => {
-  it('renders correctly', () => {
-    const { getByTestId, getByText } = render(<ForgotPassword />);
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-    expect(getByTestId('forgot-password-container')).toBeInTheDocument();
-    expect(getByText('Enter your registered email')).toBeInTheDocument();
+  it('renders correctly', () => {
+    render(<ForgotPassword />);
+
+    expect(screen.getByTestId('forgot-password-container')).toBeInTheDocument();
+    expect(screen.getByText('Enter your registered email')).toBeInTheDocument();
   });
 
   it('calls handleForgotPassword with the correct email', async () => {
@@ -79,9 +86,12 @@ describe('ForgotPassword', () => {
       handleForgotPassword: mockHandleForgotPassword,
     });
 
-    const { getByLabelText, getByText } = render(<ForgotPassword />);
-    const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    render(<ForgotPassword />);
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
+    const submitButton = screen.getByTestId('submit-button');
+
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -92,27 +102,30 @@ describe('ForgotPassword', () => {
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
   });
 
-  it('shows an error when email is not provided', async () => {
-    const { getByLabelText, getByText, findByText } = render(
-      <ForgotPassword />
-    );
-    const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+  it('shows an error when email is invalid', async () => {
+    render(<ForgotPassword />);
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
+    const submitButton = screen.getByTestId('submit-button');
 
     await act(async () => {
-      fireEvent.change(emailInput, { target: { value: '' } });
+      fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
       fireEvent.click(submitButton);
     });
 
-    const errorMessage = await findByText('Email is invalid');
+    const errorMessage = await screen.findByText('Email is invalid');
 
     expect(errorMessage).toBeInTheDocument();
   });
 
   it('shows success toast on submit', async () => {
-    const { getByLabelText, getByText } = render(<ForgotPassword />);
-    const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    render(<ForgotPassword />);
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
+    const submitButton = screen.getByTestId('submit-button');
+
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });
@@ -124,9 +137,9 @@ describe('ForgotPassword', () => {
     expect(showSuccessToast).toHaveBeenCalled();
   });
 
-  it('show call push back to login', async () => {
-    const { getByTestId } = render(<ForgotPassword />);
-    const goBackButton = getByTestId('go-back-button');
+  it('go-back button navigates to sign-in', async () => {
+    render(<ForgotPassword />);
+    const goBackButton = screen.getByTestId('go-back-button');
     await act(async () => {
       fireEvent.click(goBackButton);
     });
@@ -135,13 +148,16 @@ describe('ForgotPassword', () => {
   });
 
   it('should call show error toast', async () => {
-    (useBasicAuth as jest.Mock).mockReturnValueOnce({
+    (useBasicAuth as jest.Mock).mockReturnValue({
       handleForgotPassword: mockHandleError,
     });
 
-    const { getByLabelText, getByText } = render(<ForgotPassword />);
-    const emailInput = getByLabelText('Email');
-    const submitButton = getByText('Send Login Link');
+    render(<ForgotPassword />);
+    const emailInput = screen
+      .getByTestId('email')
+      .querySelector('input') as HTMLInputElement;
+    const submitButton = screen.getByTestId('submit-button');
+
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     });

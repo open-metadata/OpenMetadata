@@ -20,6 +20,7 @@ import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
+import { EntityType } from '../../enums/entity.enum';
 import i18n from '../i18next/LocalUtil';
 
 export const LINEAGE_IMPACT_OPTIONS = [
@@ -27,11 +28,13 @@ export const LINEAGE_IMPACT_OPTIONS = [
     label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
     icon: TableIcon,
+    entityType: EntityType.TABLE,
   },
   {
     label: i18n.t('label.column-level'),
     key: EImpactLevel.ColumnLevel,
     icon: ColumnIcon,
+    entityType: EntityType.TABLE_COLUMN,
   },
 ];
 

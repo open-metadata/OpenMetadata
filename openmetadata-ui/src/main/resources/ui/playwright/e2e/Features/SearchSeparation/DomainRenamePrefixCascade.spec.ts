@@ -61,13 +61,15 @@ test('domain prefix rename keeps linked asset domain reference consistent', asyn
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-            name: domain.responseData.name,
-            fullyQualifiedName: originalDomainFqn,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+              name: domain.responseData.name,
+              fullyQualifiedName: originalDomainFqn,
+            },
+          ],
         },
       ],
     });

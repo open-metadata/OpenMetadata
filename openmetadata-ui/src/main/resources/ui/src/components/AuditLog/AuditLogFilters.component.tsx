@@ -16,6 +16,7 @@ import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
+import FilterSelectDropdown from '../common/FilterSelectDropdown/FilterSelectDropdown';
 
 import { useTranslation } from 'react-i18next';
 import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../constants/auditLog.constant';
@@ -33,14 +34,13 @@ import {
   getAuditLogCategoryLabel,
 } from '../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
+import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getCanonicalEntityType } from '../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import searchClassBase from '../../utils/SearchClassBase';
 import { getTermQuery } from '../../utils/SearchPureUtils';
-import { EntityIconSize } from '../../utils/TableUtils';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
-import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import {
   AuditLogFiltersProps,
@@ -109,11 +109,9 @@ const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
     key: o.value,
     label: o.label,
     icon:
-      searchClassBase.getEntityIcon(
+      searchClassBase.getEntityIconWithBg(
         getCanonicalEntityType(o.value),
-        'tw:text-quaternary',
-        {},
-        EntityIconSize.Size16
+        EntityIconSize.Size14
       ) ?? undefined,
   }));
 
@@ -354,44 +352,38 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
         key={timeFilter?.value.key ?? 'no-time-filter'}
         options={auditTimeFilterRange}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingUsers}
         label={t('label.user')}
         options={userOptions}
         searchKey="user"
         selectedKeys={getSelectedKeys('user')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={isLoadingBots}
         label={t('label.bot')}
         options={botOptions}
         searchKey="bot"
         selectedKeys={getSelectedKeys('bot')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}
       />
-      <SearchDropdown
+      <FilterSelectDropdown
         hideCounts
-        showSelectedCounts
         singleSelect
         isSuggestionsLoading={false}
         label={t('label.entity-type')}
         options={filteredEntityTypeOptions}
         searchKey="entityType"
         selectedKeys={getSelectedKeys('entityType')}
-        triggerButtonSize="middle"
         onChange={handleDropdownChange}
         onGetInitialOptions={handleGetInitialOptions}
         onSearch={handleSearch}

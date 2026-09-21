@@ -89,8 +89,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         name={field.name}
         render={({ field: { value, onChange } }) => (
           <div data-testid={testId}>
-            <label>{field.label}</label>
+            <span>{field.label}</span>
             <input
+              aria-label="Field"
               data-testid={`${testId}-input`}
               type="text"
               value={(value as string) ?? ''}

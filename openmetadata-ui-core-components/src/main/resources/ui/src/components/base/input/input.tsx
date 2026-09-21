@@ -1,6 +1,6 @@
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { fontSizeClass } from '@/utils/tailwindClasses';
 import { HelpCircle, InfoCircle } from '@untitledui/icons';
@@ -169,7 +169,7 @@ export const InputBase = ({
         {...(inputProps as AriaInputProps)}
         className={cx(
           cx(
-            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-tertiary tw:autofill:rounded-lg tw:autofill:text-primary',
+            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
             fontSizeClass[fontSize]
           ),
           isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
@@ -188,16 +188,16 @@ export const InputBase = ({
 
       {/* Tooltip and help icon */}
       {tooltip && !isInvalid && (
-        <Tooltip placement="top" title={tooltip}>
-          <TooltipTrigger
-            className={cx(
-              'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
-              sizes[inputSize].iconTrailing,
-              context?.tooltipClassName,
-              tooltipClassName
-            )}>
-            <HelpCircle className="tw:size-4" />
-          </TooltipTrigger>
+        <Tooltip
+          placement="top"
+          title={tooltip}
+          triggerClassName={cx(
+            'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
+            sizes[inputSize].iconTrailing,
+            context?.tooltipClassName,
+            tooltipClassName
+          )}>
+          <HelpCircle className="tw:size-4" />
         </Tooltip>
       )}
 
@@ -276,7 +276,7 @@ export const TextField = ({ className, ...props }: TextFieldProps) => {
 
 TextField.displayName = 'TextField';
 
-interface InputProps extends InputBaseProps, BaseProps {
+export interface InputProps extends InputBaseProps, BaseProps {
   /** Whether to hide required indicator from label */
   hideRequiredIndicator?: boolean;
 }

@@ -42,3 +42,10 @@ WHERE configtype = 'workflowSettings'
   AND json->'executorConfiguration' IS NOT NULL
   AND ((json->'executorConfiguration'->>'asyncJobAcquisitionInterval')::int > 10000
     OR (json->'executorConfiguration'->>'timerJobAcquisitionInterval')::int > 5000);
+
+-- Drop data product ports pointing at a column ('tableColumn' has no repository, so it 500s
+-- portsView). relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
+DELETE FROM entity_relationship
+WHERE fromEntity = 'dataProduct'
+  AND toEntity = 'tableColumn'
+  AND relation IN (23, 24);

@@ -19,7 +19,7 @@ import {
 import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cx from 'classnames';
-import { isEmpty, toNumber } from 'lodash';
+import { isEmpty, isEqual, toNumber } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
@@ -46,6 +46,7 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
+import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -90,6 +91,39 @@ const getAreRequiredStepsPassing = (
     resultSteps.length > 0 &&
     !resultSteps.some((step) => step.mandatory && !step.passed)
   );
+};
+
+interface ConnectionTestFlags {
+  isConnectionTestInProgress: boolean;
+  isReadyToTestCard: boolean;
+  isTestConnectionDisabled: boolean;
+}
+
+const computeConnectionTestFlags = (
+  isTestingConnection: boolean,
+  isTestingDisabled: boolean | undefined,
+  isFormValidationPending: boolean,
+  allowTestConn: boolean,
+  isAirflowAvailable: boolean,
+  testStatus: TestStatus | undefined,
+  missingRequiredFieldsCount: number
+): ConnectionTestFlags => {
+  const isConnectionTestInProgress =
+    isTestingConnection || isTestingDisabled || isFormValidationPending;
+
+  const isTestConnectionDisabled =
+    isConnectionTestInProgress || !allowTestConn || !isAirflowAvailable;
+
+  const isReadyToTestCard =
+    !isTestConnectionDisabled &&
+    !testStatus &&
+    missingRequiredFieldsCount === 0;
+
+  return {
+    isConnectionTestInProgress,
+    isReadyToTestCard,
+    isTestConnectionDisabled,
+  };
 };
 
 const getHasOptionalStepsFailing = (
@@ -168,6 +202,9 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
+  // Form data as of the last test run, used to detect edits made after a test completed
+  const lastTestedDataRef = useRef<ConfigData | undefined>();
+
   // Timers live in a ref so a new run - or an unmount - can cancel the previous
   // run's callbacks before they write state over a newer result.
   const timersRef = useRef<{ intervalId?: number; timeoutId?: number }>({});
@@ -189,17 +226,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     return shouldTestConnection(connectionType);
   }, [connectionType]);
 
-  const isTestConnectionDisabled =
-    isTestingConnection ||
-    isTestingDisabled ||
-    isFormValidationPending ||
-    !allowTestConn ||
-    !isAirflowAvailable;
-
-  const isReadyToTestCard =
-    !isTestConnectionDisabled &&
-    !testStatus &&
-    missingRequiredFieldsCount === 0;
+  const { isReadyToTestCard, isTestConnectionDisabled } =
+    computeConnectionTestFlags(
+      isTestingConnection,
+      isTestingDisabled,
+      isFormValidationPending,
+      allowTestConn,
+      isAirflowAvailable,
+      testStatus,
+      missingRequiredFieldsCount
+    );
 
   const connectionDisplayName = (() => {
     const formData = getData();
@@ -423,7 +459,9 @@ const TestConnection: FC<TestConnectionProps> = ({
     clearTimers();
     const runId = ++runIdRef.current;
 
-    const updatedFormData = formatFormDataForSubmit(getData());
+    const rawFormData = getData();
+    lastTestedDataRef.current = rawFormData;
+    const updatedFormData = formatFormDataForSubmit(rawFormData);
 
     const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
       ingestionRunner?: string;
@@ -611,6 +649,7 @@ const TestConnection: FC<TestConnectionProps> = ({
           i18nKey="message.configure-airflow"
           renderElement={
             <a
+              aria-label={t('label.documentation')}
               data-testid="airflow-doc-link"
               href={AIRFLOW_DOCS}
               rel="noopener noreferrer"
@@ -704,6 +743,16 @@ const TestConnection: FC<TestConnectionProps> = ({
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
 
+  // discard a stale test result once the form data has changed since the last test run
+  useEffect(() => {
+    if (!testStatus || isTestingConnection) {
+      return;
+    }
+    if (!isEqual(getData(), lastTestedDataRef.current)) {
+      handleResetState();
+    }
+  });
+
   useEffect(() => {
     return () => {
       clearTimers();
@@ -720,64 +769,72 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   // rendering
 
+  function renderAlertCard() {
+    return (
+      <Alert
+        iconOutlined
+        className={cx('tw:mt-3.5')}
+        data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
+        icon={alertIcon}
+        iconBgColor="white"
+        iconRadius="lg"
+        iconShape="square"
+        iconSize="md"
+        rightContent={
+          <Tooltip title={buttonTooltipTitle}>
+            <Button
+              color={isReadyToTestCard ? 'primary' : 'secondary'}
+              data-testid="test-connection-btn"
+              isDisabled={isTestConnectionDisabled}
+              isLoading={isTestingConnection}
+              size="md"
+              onClick={handleTestConnection}>
+              {connectionButtonLabel}
+            </Button>
+          </Tooltip>
+        }
+        title={connectionCardTitle}
+        variant={alertVariant}>
+        <div
+          className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+          data-testid="message-container">
+          {connectionCardDescription}
+          {(testStatus || isTestingConnection) && (
+            <Button
+              className="p-0 [&>span]:tw:underline"
+              color="link-color"
+              data-testid="test-connection-details-btn"
+              size="sm"
+              onClick={() => setDialogOpen(true)}>
+              {t('label.view')}
+            </Button>
+          )}
+        </div>
+      </Alert>
+    );
+  }
+
+  function renderSimpleTestButton() {
+    return (
+      <Tooltip title={buttonTooltipTitle}>
+        <Button
+          color="primary"
+          data-testid="test-connection-button"
+          isDisabled={isTestConnectionDisabled}
+          isLoading={isTestingConnection}
+          size="sm"
+          onClick={handleTestConnection}>
+          {t('label.test-entity', {
+            entity: t('label.connection'),
+          })}
+        </Button>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
-      {showDetails ? (
-        <Alert
-          iconOutlined
-          className={cx('tw:mt-3.5')}
-          data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
-          icon={alertIcon}
-          iconBgColor="white"
-          iconRadius="lg"
-          iconShape="square"
-          iconSize="md"
-          rightContent={
-            <Tooltip title={buttonTooltipTitle}>
-              <Button
-                color={isReadyToTestCard ? 'primary' : 'secondary'}
-                data-testid="test-connection-btn"
-                isDisabled={isTestConnectionDisabled}
-                isLoading={isTestingConnection}
-                size="md"
-                onClick={handleTestConnection}>
-                {connectionButtonLabel}
-              </Button>
-            </Tooltip>
-          }
-          title={connectionCardTitle}
-          variant={alertVariant}>
-          <div
-            className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
-            data-testid="message-container">
-            {connectionCardDescription}
-            {(testStatus || isTestingConnection) && (
-              <Button
-                className="p-0 [&>span]:tw:underline"
-                color="link-color"
-                data-testid="test-connection-details-btn"
-                size="sm"
-                onClick={() => setDialogOpen(true)}>
-                {t('label.view')}
-              </Button>
-            )}
-          </div>
-        </Alert>
-      ) : (
-        <Tooltip title={buttonTooltipTitle}>
-          <Button
-            color="primary"
-            data-testid="test-connection-button"
-            isDisabled={isTestConnectionDisabled}
-            isLoading={isTestingConnection}
-            size="sm"
-            onClick={handleTestConnection}>
-            {t('label.test-entity', {
-              entity: t('label.connection'),
-            })}
-          </Button>
-        </Tooltip>
-      )}
+      {showDetails ? renderAlertCard() : renderSimpleTestButton()}
       <TestConnectionModal
         connectionDisplayName={connectionDisplayName}
         connectionType={connectionType}

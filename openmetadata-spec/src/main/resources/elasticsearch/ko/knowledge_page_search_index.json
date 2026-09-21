@@ -9,7 +9,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -29,6 +30,7 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
+            "asciifolding",
             "om_stemmer"
           ]
         },
@@ -36,7 +38,8 @@
           "type": "custom",
           "tokenizer": "om_ngram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -474,6 +477,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

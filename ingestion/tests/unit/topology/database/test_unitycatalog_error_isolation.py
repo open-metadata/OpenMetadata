@@ -101,14 +101,18 @@ def _raising_listing(items, exc):
 
 @pytest.fixture
 def uc_source():
-    # __init__ eagerly resolves connection.client, and a real WorkspaceClient does OAuth
-    # host discovery over the network -- minutes of retry backoff for a discarded client.
+    # The source eagerly resolves both API and SQL clients. Mock their owning
+    # connection so these unit tests cannot trigger OAuth discovery or SQL retry backoff.
+    connection = MagicMock()
+    connection.client = MagicMock()
+    connection.api.client = MagicMock()
+    connection.sql.client = MagicMock()
     with (
-        patch.object(UnitycatalogSource, "test_connection", return_value=False),
         patch(
-            "metadata.ingestion.source.database.unitycatalog.connection.WorkspaceClient",
-            return_value=MagicMock(),
+            "metadata.ingestion.source.database.unitycatalog.metadata.create_connection",
+            return_value=connection,
         ),
+        patch.object(UnitycatalogSource, "test_connection", return_value=False),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
         source = UnitycatalogSource.create(
@@ -119,10 +123,8 @@ def uc_source():
     source.context.get().__dict__["database_service"] = "local_unitycatalog"
     source.context.get().__dict__["database_schema"] = "default"
     source.client = MagicMock()
-    # sql_connection lazily calls engine.connect(); left real, the constraints query in
-    # _get_tables_with_constraints retries 25 times before the exception is swallowed.
-    source.engine = MagicMock()
-    return source
+    yield source
+    source.close()
 
 
 class TestListingErrorIsolation:
@@ -166,6 +168,7 @@ class TestListingErrorIsolation:
         assert uc_source.status.failures[0].name == "schemas in catalog [hive_metastore]"
 
     def test_table_listing_failure_keeps_prior_tables(self, uc_source):
+        uc_source.source_config.includeTags = True
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = None
         uc_source.client.tables.list.return_value = _raising_listing(
@@ -226,6 +229,7 @@ class TestTagQueryErrorIsolation:
         mock_connection.execute.side_effect = execute_side_effect
         uc_source.engine = MagicMock()
         uc_source.engine.connect.return_value = mock_connection
+        uc_source.source_config.includeTags = True
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = []
         return mock_connection
@@ -237,7 +241,7 @@ class TestTagQueryErrorIsolation:
             [Exception("catalog tags query failed"), [schema_tag_row]],
         )
 
-        results = list(uc_source.yield_database_tag("hive_metastore"))
+        results = list(uc_source._process_stage(uc_source.topology.database.stages[0], "hive_metastore"))
 
         assert mock_connection.execute.call_count == 2
         tag_requests = [either.right for either in results if either.right is not None]
@@ -256,7 +260,7 @@ class TestTagQueryErrorIsolation:
             [Exception("table tags query failed"), [column_tag_row]],
         )
 
-        results = list(uc_source.yield_tag("default"))
+        results = list(uc_source._process_stage(uc_source.topology.databaseSchema.stages[0], "default"))
 
         assert mock_connection.execute.call_count == 2
         tag_requests = [either.right for either in results if either.right is not None]

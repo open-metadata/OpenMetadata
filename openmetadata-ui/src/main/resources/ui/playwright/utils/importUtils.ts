@@ -34,7 +34,9 @@ import {
   descriptionBox,
   descriptionBoxReadOnly,
   fetchCompletedCsvAsyncJobResult,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   uuid,
 } from './common';
 import {
@@ -76,15 +78,63 @@ const scrollIntoViewCenter = async (locator: Locator) => {
     .catch(() => undefined);
 };
 
-// The CSV jobs tray is position:fixed at bottom-right and can appear at any
-// moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
-// complete. Injecting pointer-events:none once disables click interception for
-// the entire page session — no need to poll or dismiss at every step.
-const disableCsvJobsTrayInterception = async (page: Page) => {
-  await page.addStyleTag({
-    content:
-      '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
-  });
+const CSV_JOBS_TRAY_INERT_CSS =
+  '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }';
+
+// Pages that already carry the suppression. addInitScript stacks, so without
+// this guard a page routed through several import helpers would grow one style
+// tag per call.
+const csvJobsTraySuppressedPages = new WeakSet<Page>();
+
+/**
+ * Make the CSV background-jobs tray click-through for the rest of this page's
+ * life.
+ *
+ * The tray is a position:fixed panel anchored at bottom:88px that auto-expands
+ * whenever a job it is watching reaches a terminal status. Because the anchor
+ * pins its lower edge just above the viewport bottom, it lands on the profiler's
+ * Manage button (measured at 1280x720: button y 596-636, tray bottom y 632), and
+ * a single job is enough — extra rows only push the top edge higher.
+ *
+ * A spec's own export therefore triggers this. Jobs from other workers make it
+ * worse rather than causing it: `/api/v1/csvAsyncJobs` is scoped per *user* and
+ * every worker shares the admin identity, so unrelated jobs both grow the panel
+ * and keep re-expanding it mid-test.
+ *
+ * addStyleTag alone is not enough — it lives on the current document and dies on
+ * the next hard navigation. addInitScript re-applies the rule to every document
+ * the page loads afterwards, so one call at the start of a flow holds for the
+ * whole flow.
+ *
+ * pointer-events (not display) so the tray stays in the DOM: specs that assert
+ * on it still see it, they just must not route through this helper.
+ */
+export const suppressCsvJobsTray = async (page: Page) => {
+  if (csvJobsTraySuppressedPages.has(page)) {
+    return;
+  }
+
+  csvJobsTraySuppressedPages.add(page);
+
+  await page.addInitScript((css: string) => {
+    const applyStyle = () => {
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyStyle);
+    } else {
+      applyStyle();
+    }
+  }, CSV_JOBS_TRAY_INERT_CSS);
+
+  // addInitScript only reaches documents loaded from now on, so the document
+  // already on screen needs the rule injected directly.
+  await page
+    .addStyleTag({ content: CSV_JOBS_TRAY_INERT_CSS })
+    .catch(() => undefined);
 };
 
 const getTextEditorCandidates = (page: Page) => {
@@ -449,47 +499,101 @@ const clickAssociatedTagSave = async (page: Page) => {
   await saveButton.waitFor({ state: 'detached' });
 };
 
-export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+// The owner cell mounts a react-aria picker that is force-opened on mount
+// (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
+// mount + paint cycle to position the overlay, which races the react-data-grid
+// editor lifecycle, so entering edit mode once does not reliably show the
+// picker in CI. Two failure modes were seen: (1) a keyboard trigger no-ops
+// because focus sits on document.body (e.g. after a prior portal interaction),
+// so the grid never enters edit mode; (2) the popover opens slightly slower
+// than a short poll window and a premature Escape closes it.
+//
+// Make the open robust: each pass first CLICKS the active owner cell (which
+// focuses the grid and may itself open the force-open picker), then asks rdg
+// for edit mode via Enter and F2, waiting generously after each. Only Escape
+// and retry when nothing became visible in the whole pass.
+const OWNER_PICKER_OPEN_TIMEOUT = 4000;
+const OWNER_PICKER_OPEN_ATTEMPTS = 6;
 
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+const openOwnerPickerEditor = async (page: Page) => {
+  const ownerTabs = page.getByTestId('select-owner-tabs');
 
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Teams')
-  ).toBeVisible();
+  for (let attempt = 0; attempt < OWNER_PICKER_OPEN_ATTEMPTS; attempt++) {
+    try {
+      await clickActiveGridCell(page);
+      if (await waitForVisibleLocator(ownerTabs, EDITOR_OPEN_TIMEOUT)) {
+        return;
+      }
 
-  await waitForAllLoadersToDisappear(page);
+      await page.keyboard.press('Enter', { delay: 100 });
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
 
-  const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user&*'
-  );
-  await page.getByRole('tab', { name: 'Users' }).click();
-  await userListResponse;
+      await page.keyboard.press('F2');
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
+    } catch {
+      // fall through and retry after resetting edit mode
+    }
 
-  await waitForAllLoadersToDisappear(page);
+    // Reset edit mode before retrying, but never after the final attempt so the
+    // closing assertion can still catch a picker that opened just after the
+    // last poll window.
+    if (attempt < OWNER_PICKER_OPEN_ATTEMPTS - 1) {
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
 
+  await expect(ownerTabs).toBeVisible();
+};
+
+const selectOwnersOnTab = async (
+  page: Page,
+  tab: 'Users' | 'Teams',
+  searchBarTestId: string,
+  searchIndex: 'user' | 'team',
+  owners: string[]
+) => {
+  // Do NOT wait for a tab-switch list response here: the picker opens on the
+  // Teams tab by default and caches each tab's first (empty-query) fetch in a
+  // ref, so re-activating an already-visited tab returns the cache and fires no
+  // request (UserTeamSelectableList fetchTeamOptions/fetchUserOptions). Waiting
+  // for one would hang until the test times out. Each per-owner search below
+  // has a non-empty query, bypasses the cache, and awaits its own response, so
+  // that is the reliable synchronization point.
   await page
-    .getByTestId('owner-select-users-search-bar')
-    .waitFor({ state: 'visible' });
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: tab })
+    .click();
 
-  await page.click('[data-testid="owner-select-users-search-bar"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId(searchBarTestId).waitFor({ state: 'visible' });
+  await page.getByTestId(searchBarTestId).click();
 
   for (const owner of owners) {
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user*'
+      `api/v1/search/query?q=*&index=${searchIndex}*`
     );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
+    await page.getByTestId(searchBarTestId).clear();
+    await page.getByTestId(searchBarTestId).fill(owner);
     await searchOwner;
     await expect(
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
 
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
   }
+};
 
+const commitOwnerSelection = async (page: Page, panelTestId: string) => {
   await page
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .getByTestId(panelTestId)
     .getByTestId('selectable-list-update-btn')
     .click();
 
@@ -498,51 +602,64 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .waitFor({ state: 'detached' });
 };
 
-export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Users')
-  ).toBeVisible();
+export const fillOwnerDetails = async (page: Page, owners: string[]) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  await page
-    .locator("[data-testid='select-owner-tabs']")
-    .getByRole('tab', { name: 'Teams' })
-    .click();
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    owners
+  );
+
+  await commitOwnerSelection(page, 'owner-select-users-panel');
+};
+
+// Select user AND team owners in a SINGLE picker session, then commit once.
+//
+// The grid owner cell editor force-opens the picker on mount and cannot be
+// re-opened after its first commit: committing clicks the picker's Update
+// button, which lives in a react-aria portal, so focus leaves the grid to
+// document.body; react-data-grid then keeps the cell aria-selected but has no
+// keyboard focus, so a subsequent Enter/F2/double-click never re-enters edit
+// mode. Opening the picker a second time therefore deterministically fails.
+//
+// When the cell allows both multiple users and multiple teams (the rules that
+// gate this are disabled for the bulk-edit flows that need mixed owners), the
+// picker preserves cross-tab selection in one parent state, so selecting on
+// both tabs before a single Update commits users and teams together — no
+// re-open required.
+export const fillUserAndTeamOwnerDetails = async (
+  page: Page,
+  userOwners: string[],
+  teamOwners: string[]
+) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  await page
-    .getByTestId('owner-select-teams-search-bar')
-    .waitFor({ state: 'visible' });
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    userOwners
+  );
 
-  await page.click('[data-testid="owner-select-teams-search-bar"]');
+  await selectOwnersOnTab(
+    page,
+    'Teams',
+    'owner-select-teams-search-bar',
+    'team',
+    teamOwners
+  );
 
-  for (const owner of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=team*'
-    );
-    await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
-    await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
-    await page.getByRole('listitem', { name: owner }).click();
-  }
-
-  await page
-    .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
-    .getByTestId('selectable-list-update-btn')
-    .click();
-
-  await page
-    .getByTestId('selectable-list-update-btn')
-    .waitFor({ state: 'detached' });
+  await commitOwnerSelection(page, 'owner-select-teams-panel');
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
@@ -762,17 +879,24 @@ const editGlossaryCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor this block already reaches into for its
+    // save button, rather than to the page: the entity behind the custom
+    // property panel has description editors of its own.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
+
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
     await clickOutside(page);
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await markdownEditor.getByTestId('save').click();
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownDescription.waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
@@ -810,8 +934,13 @@ const editGlossaryCustomProperty = async (
         .getByRole('columnheader', { name: columns[0] })
     ).toBeVisible();
 
+    // values[0] is the first column: TableV2 renders the first column as a
+    // rowheader (not a cell), so match either role.
+    const cpTable = page.getByTestId(propertyName);
     await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
+      cpTable
+        .getByRole('rowheader', { name: values[0] })
+        .or(cpTable.getByRole('cell', { name: values[0] }))
     ).toBeVisible();
   }
 };
@@ -1001,7 +1130,7 @@ export const startCsvPreviewAndWaitForGrid = async (
   // Disable the CSV jobs tray's click interception for the entire page session.
   // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
   // one-shot CSS injection is more robust than polling at specific steps.
-  await disableCsvJobsTrayInterception(page);
+  await suppressCsvJobsTray(page);
 
   if (
     !(await waitForVisibleLocator(
@@ -1174,15 +1303,20 @@ const editEntityCustomProperty = async (
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
+    // Scoped to the markdown editor, as above.
+    const markdownEditor = page.getByTestId('markdown-editor');
+    const markdownDescription = getDescriptionBox(markdownEditor);
 
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
+    await markdownDescription.waitFor({ state: 'visible' });
 
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
+    await fillDescriptionBox(
+      markdownEditor,
+      FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN
+    );
 
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
+    await markdownEditor.getByTestId('save').click();
+
+    await markdownDescription.waitFor({ state: 'detached' });
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
@@ -1256,10 +1390,15 @@ export const fillRowDetails = async (
   await fillDescriptionDetails(page, row.description);
 
   await selectActiveRowCellByColumn(page, 'owner');
-  await fillOwnerDetails(page, row.owners);
 
   if (row.teamOwners && row.teamOwners.length > 0) {
-    await fillTeamOwnerDetails(page, row.teamOwners);
+    // Users and teams must be selected in a single picker session: the grid
+    // owner editor force-opens on mount and cannot be re-opened after its first
+    // commit (see fillUserAndTeamOwnerDetails), so committing users and teams
+    // separately would fail on the second open.
+    await fillUserAndTeamOwnerDetails(page, row.owners, row.teamOwners);
+  } else {
+    await fillOwnerDetails(page, row.owners);
   }
 
   await selectActiveRowCellByColumn(page, 'tags');

@@ -11,128 +11,397 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
-  MOCK_PROPS,
-  TEST_SEARCHED_TEAM_OPTIONS,
-  TEST_TEAM_OPTIONS,
-} from '../../../../constants/TeamAndUserSelectItem.constants';
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { ReactNode } from 'react';
+import { Controller, FormProvider, useForm } from 'react-hook-form';
 import TeamAndUserSelectItem from './TeamAndUserSelectItem';
+import { TeamAndUserSelectItemProps } from './TeamAndUserSelectItem.interface';
 
-jest.mock('../../../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Badge: ({
+    children,
+    'data-testid': tid,
+  }: {
+    children: ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={tid}>{children}</span>,
+  BadgeWithButton: ({
+    children,
+    onButtonClick,
+    'data-testid': tid,
+  }: {
+    children: ReactNode;
+    onButtonClick?: (e: React.MouseEvent) => void;
+    'data-testid'?: string;
+  }) => (
+    <span data-testid={tid}>
+      {children}
+      <button data-testid={`${tid}-remove`} onClick={onButtonClick}>
+        x
+      </button>
+    </span>
+  ),
+  Checkbox: ({
+    isSelected,
+    'data-testid': tid,
+  }: {
+    isSelected?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <input
+      readOnly
+      aria-label="Select"
+      checked={isSelected ?? false}
+      data-testid={tid}
+      type="checkbox"
+    />
+  ),
+  Input: ({
+    onChange,
+    value,
+    'data-testid': tid,
+    inputDataTestId,
+    placeholder,
+    autoFocus,
+  }: {
+    onChange?: (val: string) => void;
+    value?: string;
+    'data-testid'?: string;
+    inputDataTestId?: string;
+    placeholder?: string;
+    autoFocus?: boolean;
+  }) => (
+    <input
+      aria-label="Search"
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- mock forwards the autofocus prop under test
+      autoFocus={autoFocus}
+      data-testid={inputDataTestId ?? tid}
+      placeholder={placeholder}
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  ),
+}));
 
-describe('TeamAndUserSelectItem Component', () => {
+const MOCK_OPTIONS = [
+  { label: 'Team Alpha', value: 'team-alpha' },
+  { label: 'Team Beta', value: 'team-beta' },
+];
+
+const MOCK_SEARCHED_OPTIONS = [{ label: 'Team Gamma', value: 'team-gamma' }];
+
+const mockOnSearch = jest
+  .fn()
+  .mockImplementation((text: string) =>
+    Promise.resolve(text ? MOCK_SEARCHED_OPTIONS : MOCK_OPTIONS)
+  );
+
+const MOCK_PROPS: TeamAndUserSelectItemProps = {
+  entityType: 'team',
+  onSearch: mockOnSearch,
+  fieldName: [0, 'config', 'receivers'],
+  destinationNumber: 0,
+};
+
+function renderWithForm(
+  ui: React.ReactElement,
+  defaultValues: Record<string, unknown> = {}
+) {
+  function Wrapper({ children }: { children: ReactNode }) {
+    const methods = useForm({ defaultValues });
+
+    return <FormProvider {...methods}>{children}</FormProvider>;
+  }
+
+  return render(ui, { wrapper: Wrapper });
+}
+
+function renderValidationHarness() {
+  function Wrapper() {
+    const methods = useForm({
+      defaultValues: {
+        destinations: [{ config: { receivers: [] } }],
+      },
+    });
+
+    return (
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(jest.fn())}>
+          <Controller
+            control={methods.control}
+            name="destinations.0.config.receivers"
+            render={({ fieldState }) => (
+              <>
+                <TeamAndUserSelectItem {...MOCK_PROPS} />
+                {fieldState.error?.message}
+              </>
+            )}
+            rules={{ validate: (value) => value.length > 0 || 'required' }}
+          />
+          <button data-testid="submit" type="submit">
+            Submit
+          </button>
+        </form>
+      </FormProvider>
+    );
+  }
+
+  return render(<Wrapper />);
+}
+
+describe('TeamAndUserSelectItem', () => {
   beforeEach(() => {
     jest.useFakeTimers('modern');
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  it('dropdown should be visible after clicking trigger button', async () => {
-    await act(async () => {
-      render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
-    });
+  it('renders placeholder when no items are selected', () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    expect(screen.getByTestId('placeholder-text')).toBeInTheDocument();
+  });
+
+  it('opens dropdown on trigger click', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
 
     await act(async () => {
-      fireEvent.click(triggerButton);
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
       jest.advanceTimersByTime(500);
     });
 
     expect(
-      screen.getByTestId('team-user-select-dropdown-0')
+      screen.getByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
     ).toBeInTheDocument();
   });
 
-  it('should show initial options on click of trigger button', async () => {
-    await act(async () => {
-      render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
-    });
+  it('renders the dropdown outside an overflow-constrained container', async () => {
+    renderWithForm(
+      <div data-testid="overflow-container">
+        <TeamAndUserSelectItem {...MOCK_PROPS} />
+      </div>
+    );
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
-
     await act(async () => {
-      fireEvent.click(triggerButton);
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
       jest.advanceTimersByTime(500);
     });
 
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[0].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[1].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[2].value}-option-label`)
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('overflow-container')).not.toContainElement(
+      screen.getByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
+    );
   });
 
-  it('should show searched options after searching', async () => {
-    await act(async () => {
-      render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
-    });
+  it('does not open the dropdown when disabled', () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} isDisabled />);
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    const trigger = screen.getByTestId(
+      `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+    );
+    fireEvent.click(trigger);
 
-    await act(async () => {
-      fireEvent.click(triggerButton);
-      jest.advanceTimersByTime(500);
-    });
-
+    expect(trigger).toHaveAttribute('aria-disabled', 'true');
     expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[0].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[1].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[2].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_TEAM_OPTIONS[3].value}-option-label`)
-    ).toBeInTheDocument();
-
-    const searchInput = screen.getByTestId('search-input');
-
-    fireEvent.change(searchInput, { target: { value: 'test' } });
-
-    await act(async () => {
-      jest.advanceTimersByTime(500);
-    });
-
-    expect(
-      screen.getByTestId(`${TEST_SEARCHED_TEAM_OPTIONS[0].value}-option-label`)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId(`${TEST_SEARCHED_TEAM_OPTIONS[1].value}-option-label`)
-    ).toBeInTheDocument();
+      screen.queryByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
+    ).not.toBeInTheDocument();
   });
 
-  it('dropdown should close after clicking outside it', async () => {
+  it('loads and shows initial options when dropdown opens', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
+
     await act(async () => {
-      render(<TeamAndUserSelectItem {...MOCK_PROPS} />);
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
+      jest.advanceTimersByTime(500);
     });
 
-    const triggerButton = screen.getByTestId('dropdown-trigger-button');
+    await waitFor(() => {
+      expect(screen.getByTestId('Team Alpha-option-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Team Beta-option-label')).toBeInTheDocument();
+    });
+  });
+
+  it('shows filtered options after typing in search input', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
 
     await act(async () => {
-      fireEvent.click(triggerButton);
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('search-input-field')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.change(screen.getByTestId('search-input-field'), {
+        target: { value: 'gamma' },
+      });
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('Team Gamma-option-label')).toBeInTheDocument();
+    });
+  });
+
+  it('closes dropdown when clicking outside', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
       jest.advanceTimersByTime(500);
     });
 
     expect(
-      screen.getByTestId('team-user-select-dropdown-0')
+      screen.getByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(document.body);
+      fireEvent.pointerDown(document.body);
     });
 
-    expect(screen.queryByTestId('team-user-select-dropdown-0')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        `team-user-select-dropdown-${MOCK_PROPS.destinationNumber}`
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds selected option as badge and removes placeholder', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('team-alpha')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('team-alpha'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-tag-team-alpha')).toBeInTheDocument();
+      expect(screen.queryByTestId('placeholder-text')).not.toBeInTheDocument();
+    });
+  });
+
+  it('clears receiver validation when an option is selected', async () => {
+    renderValidationHarness();
+
+    fireEvent.click(screen.getByTestId('submit'));
+
+    expect(await screen.findByText('required')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('team-user-select-trigger-0'));
+      jest.advanceTimersByTime(500);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('team-alpha')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('team-alpha'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('required')).not.toBeInTheDocument()
+    );
+  });
+
+  it('removes badge on X click', async () => {
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />, {
+      destinations: [{ config: { receivers: ['team-alpha'] } }],
+    });
+
+    expect(screen.getByTestId('selected-tag-team-alpha')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('selected-tag-team-alpha-remove'));
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('selected-tag-team-alpha')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('placeholder-text')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "no data found" message when search returns empty', async () => {
+    mockOnSearch.mockResolvedValueOnce([]);
+
+    renderWithForm(<TeamAndUserSelectItem {...MOCK_PROPS} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(
+          `team-user-select-trigger-${MOCK_PROPS.destinationNumber}`
+        )
+      );
+      jest.advanceTimersByTime(500);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+    });
+  });
+
+  it('cancels the pending search when unmounted', () => {
+    const { unmount } = renderWithForm(
+      <TeamAndUserSelectItem {...MOCK_PROPS} />
+    );
+
+    unmount();
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(mockOnSearch).not.toHaveBeenCalled();
   });
 });

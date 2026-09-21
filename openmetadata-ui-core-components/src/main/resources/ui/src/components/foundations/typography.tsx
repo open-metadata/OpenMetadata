@@ -11,26 +11,22 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
-import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
+import type {
+  ElementType,
+  HTMLAttributeAnchorTarget,
+  HTMLAttributes,
+  ReactNode,
+  Ref,
+} from 'react';
 import type { PressEvent } from 'react-aria-components';
 
-// `TooltipTrigger` renders a react-aria `Button`, whose `usePress` hook stops
-// a completed press from propagating to ancestor DOM listeners by default
-// (react-aria's documented behavior: "the default for React Spectrum
-// components is not to propagate. This can be overridden by calling
-// continuePropagation() on the event" - see
-// node_modules/@react-types/shared/src/events.d.ts). For most `TooltipTrigger`
-// call sites that is desirable (e.g. a help-icon tooltip nested inside a
-// sortable table header should not also trigger the header's sort-on-click).
-// But Typography's ellipsis tooltip wraps *arbitrary, non-interactive* text
-// content: the wrapper is only there to host the hover/focus tooltip, so a
-// click on the truncated text should reach whatever ancestor `onClick` the
-// consumer attached (e.g. a selectable card, a persona-switcher row). Calling
-// `continuePropagation()` here restores that click, scoped to this call site
-// only - it does not change `TooltipTrigger`'s default for its other
-// consumers (form-item-label, input, table column header, avatar add button).
+// Tooltip's auto-generated focusable wrapper uses react-aria's AriaButton,
+// whose usePress hook stops press events from propagating to ancestor DOM
+// listeners by default. For the ellipsis tooltip we wrap non-interactive text,
+// so a click should still reach any ancestor onClick (e.g. a selectable card).
+// Calling continuePropagation() restores that, scoped to this call site only.
 const allowEllipsisTooltipPressToPropagate = (e: PressEvent) => {
   e.continuePropagation();
 };
@@ -91,7 +87,36 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   weight?: TypographyWeight;
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
+  tooltip?: ReactNode;
+  // Anchor pass-through, for the `as="a"` shape used by antd `Typography.Link`
+  // migrations. `HTMLAttributes` doesn't include these — they're spread onto
+  // `Component` at runtime regardless of `as`, so this only widens the type to
+  // match existing behaviour.
+  href?: string;
+  target?: HTMLAttributeAnchorTarget;
+  rel?: string;
 }
+
+// `styles/typography.css` applies its real typographic rules through a
+// *descendant* selector (`.prose :not(...)`), and every rule inside it is
+// gated on an element type — `p`, `h1`-`h6`, `ol`, `ul`, `li`, `blockquote`,
+// `a`, `code`, `pre`, `img`, `figure`, table elements. For those, the wrapper
+// is load-bearing: moving `prose` onto the element itself would stop the rule
+// matching (e.g. a `p` would silently lose its margins).
+//
+// `span` and `div` are targeted by no such rule, so the wrapper contributes
+// only the element-level `.prose` layer — `--tw-prose-*` vars plus `color`,
+// `font-size` and `line-height`, all of which are inherited properties. Setting
+// `prose` directly on the element therefore yields an identical computed style
+// on the text, while dropping a block-level `<div>` that otherwise breaks
+// inline flow and produces invalid `<div>`-inside-`<span>` nesting when
+// Typography is nested. Kept as a deliberately small allowlist: anything not
+// listed here keeps the wrapper.
+//
+// Typed as `unknown` so membership can be tested without a `typeof Component
+// === 'string'` guard: that guard narrows `Component` to `string` in the JSX
+// below, which TypeScript then resolves to an arbitrary intrinsic element.
+const UNWRAPPED_ELEMENTS = new Set<unknown>(['span', 'div']);
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {
   default: '',
@@ -140,6 +165,7 @@ export const Typography = (props: TypographyProps) => {
     weight,
     color,
     ellipsis,
+    tooltip,
     style,
     ...otherProps
   } = props;
@@ -177,34 +203,59 @@ export const Typography = (props: TypographyProps) => {
     ellipsisClassName
   );
 
+  // Drop the wrapper when it would contribute nothing but a block-level box
+  // (see UNWRAPPED_ELEMENTS). Ellipsis needs the wrapper to carry its
+  // truncation classes, and a non-default quote variant styles its content
+  // through `.prose.prose-*-quote :not(...)` — also a descendant selector — so
+  // both keep it. Deciding this from the element type means call sites do not
+  // have to know the rule, and cannot get it wrong by passing a flag next to
+  // an `ellipsis` or quote variant that silently needs the wrapper.
+  const canUnwrap =
+    !isEllipsis &&
+    quoteVariant === 'default' &&
+    UNWRAPPED_ELEMENTS.has(Component);
+
+  const element = (
+    <Component
+      {...otherProps}
+      className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
+      style={style}>
+      {children}
+    </Component>
+  );
+
+  const content = canUnwrap ? (
+    element
+  ) : (
+    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
+      {element}
+    </div>
+  );
+
   if (ellipsisTooltip) {
     return (
-      <Tooltip title={ellipsisTooltip}>
-        <TooltipTrigger
-          className="tw:block tw:w-full tw:min-w-0"
-          onPress={allowEllipsisTooltipPressToPropagate}>
-          <div
-            className={cx(
-              'prose',
-              quoteStyles[quoteVariant],
-              ellipsisClassName
-            )}>
-            <Component {...otherProps} className={innerClassName} style={style}>
-              {children}
-            </Component>
-          </div>
-        </TooltipTrigger>
+      <Tooltip
+        title={ellipsisTooltip}
+        // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
+        // for being a button, which would beat a clickable ancestor's pointer.
+        triggerClassName="tw:block tw:w-full tw:min-w-0 tw:cursor-[inherit]"
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
       </Tooltip>
     );
   }
 
-  return (
-    <div className={cx('prose', quoteStyles[quoteVariant], ellipsisClassName)}>
-      <Component {...otherProps} className={innerClassName} style={style}>
-        {children}
-      </Component>
-    </div>
-  );
+  if (tooltip) {
+    return (
+      <Tooltip
+        title={tooltip}
+        onTriggerPress={allowEllipsisTooltipPressToPropagate}>
+        {content}
+      </Tooltip>
+    );
+  }
+
+  return content;
 };
 
 export type {

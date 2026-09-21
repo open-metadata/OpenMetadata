@@ -97,9 +97,18 @@ describe('ExploreQueryFilterChips', () => {
       />
     );
 
-    expect(screen.getByTestId('query-bar-empty-text')).toHaveTextContent(
-      'Browsing your whole data estate'
+    const emptyText = screen.getByTestId('query-bar-empty-text');
+
+    expect(emptyText).toHaveTextContent('Browsing your whole data estate');
+    expect(emptyText).toHaveClass(
+      'tw:text-xs',
+      'tw:font-medium',
+      'tw:text-quaternary'
     );
+    // `prose` sits on the element itself, not on a wrapper: core Typography
+    // renders `span`/`div` directly, since `.prose`'s descendant selectors
+    // target neither and the wrapper only contributed inherited properties.
+    expect(emptyText).toHaveClass('prose');
     expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
   });
 

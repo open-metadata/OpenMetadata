@@ -18,6 +18,10 @@ import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 let letExpectedUserName = {
   name: 'sample123',
   email: 'sample123@sample.com',
@@ -73,33 +77,16 @@ describe('SignUp page', () => {
       Promise.resolve({ data: {} })
     );
     render(<SignUp />);
-    const logo = screen.getByTestId('om-logo');
-    const heading = screen.getByTestId('om-heading');
-    const form = screen.getByTestId('create-user-form');
-    const fullNameLabel = screen.getByTestId('full-name-label');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const usernameLabel = screen.getByTestId('username-label');
-    const usernameInput = screen.getByTestId('username-input');
-    const emailLabel = screen.getByTestId('email-label');
-    const emailInput = screen.getByTestId('email-input');
-    const selectTeamLabel = screen.getByTestId('select-team-label');
-    const createButton = screen.getByTestId('create-button');
-    const loadingContent = screen.queryByTestId('loading-content');
-    const submitButton = screen.getByTestId('create-button');
 
-    expect(logo).toBeInTheDocument();
-    expect(heading).toBeInTheDocument();
-    expect(form).toBeInTheDocument();
-    expect(fullNameLabel).toBeInTheDocument();
-    expect(fullNameInput).toBeInTheDocument();
-    expect(usernameLabel).toBeInTheDocument();
-    expect(usernameInput).toBeInTheDocument();
-    expect(emailLabel).toBeInTheDocument();
-    expect(emailInput).toBeInTheDocument();
-    expect(selectTeamLabel).toBeInTheDocument();
-    expect(createButton).toBeInTheDocument();
-    expect(loadingContent).toBeNull();
-    expect(submitButton).toBeInTheDocument();
+    expect(screen.getByTestId('om-logo')).toBeInTheDocument();
+    expect(screen.getByTestId('om-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('create-user-form')).toBeInTheDocument();
+    expect(screen.getByTestId('full-name-input')).toBeInTheDocument();
+    expect(screen.getByTestId('username-input')).toBeInTheDocument();
+    expect(screen.getByTestId('email-input')).toBeInTheDocument();
+    expect(screen.getByTestId('select-team-label')).toBeInTheDocument();
+    expect(screen.getByTestId('create-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-content')).toBeNull();
   });
 
   it('Handlers in forms for change and submit should work properly', async () => {
@@ -109,28 +96,20 @@ describe('SignUp page', () => {
 
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const userNameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
+    const fullNameInput = screen
+      .getByTestId('full-name-input')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('create-button');
 
     expect(form).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.change(fullNameInput, {
-        target: { name: 'displayName', value: mockChangedFormData.fullName },
-      });
-      fireEvent.change(userNameInput, {
-        target: { name: 'name', value: mockChangedFormData.userName },
-      });
-      fireEvent.change(emailInput, {
-        target: { name: 'email', value: mockChangedFormData.email },
+        target: { value: mockChangedFormData.fullName },
       });
     });
 
     expect(fullNameInput).toHaveValue(mockChangedFormData.fullName);
-    expect(userNameInput).toHaveValue(mockChangedFormData.userName);
-    expect(emailInput).toHaveValue(mockChangedFormData.email);
 
     await act(async () => {
       fireEvent.click(submitButton);
@@ -142,28 +121,18 @@ describe('SignUp page', () => {
   it('Error should be thrown if createUser API fails', async () => {
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const userNameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
+    const fullNameInput = screen
+      .getByTestId('full-name-input')
+      .querySelector('input') as HTMLInputElement;
     const submitButton = screen.getByTestId('create-button');
 
     expect(form).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.change(fullNameInput, {
-        target: { name: 'displayName', value: mockChangedFormData.fullName },
-      });
-      fireEvent.change(userNameInput, {
-        target: { name: 'name', value: mockChangedFormData.userName },
-      });
-      fireEvent.change(emailInput, {
-        target: { name: 'email', value: mockChangedFormData.email },
+        target: { value: mockChangedFormData.fullName },
       });
     });
-
-    expect(fullNameInput).toHaveValue(mockChangedFormData.fullName);
-    expect(userNameInput).toHaveValue(mockChangedFormData.userName);
-    expect(emailInput).toHaveValue(mockChangedFormData.email);
 
     fireEvent.click(submitButton);
     await act(async () => {
@@ -177,32 +146,28 @@ describe('SignUp page', () => {
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(1);
   });
 
-  it('Handlers in form should work if data is empty', async () => {
+  it('Handlers in form should not submit when required data is empty', async () => {
     (getImages as jest.Mock).mockImplementationOnce(() => Promise.reject(''));
     letExpectedUserName = { name: '', email: '' };
 
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId('full-name-input');
-    const usernameInput = screen.getByTestId('username-input');
-    const emailInput = screen.getByTestId('email-input');
 
     expect(form).toBeInTheDocument();
-    expect(fullNameInput).toHaveValue('');
-    expect(usernameInput).toHaveValue('');
-    expect(emailInput).toHaveValue('');
 
     const submitButton = screen.getByTestId('create-button');
-    fireEvent.click(submitButton);
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(0);
   });
 
-  it('should have username as hidden field', async () => {
+  it('should keep username as a hidden field', async () => {
     render(<SignUp />);
 
-    const usernameInput = screen.getByTestId('username-label');
+    const usernameInput = screen.getByTestId('username-input');
 
-    expect(usernameInput.parentElement).toHaveClass('ant-form-item-hidden');
+    expect(usernameInput).toHaveAttribute('type', 'hidden');
   });
 });

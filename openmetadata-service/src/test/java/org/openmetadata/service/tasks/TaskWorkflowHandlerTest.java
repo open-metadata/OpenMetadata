@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -135,7 +136,8 @@ class TaskWorkflowHandlerTest {
               .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
       verify(workflowHandler).isAwaitingAdditionalVotes(taskId);
     }
   }
@@ -163,16 +165,17 @@ class TaskWorkflowHandlerTest {
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
 
-      IllegalStateException exception =
+      TaskStateConflictException exception =
           assertThrows(
-              IllegalStateException.class,
+              TaskStateConflictException.class,
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains(taskId.toString()));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
     }
   }
 
@@ -199,16 +202,17 @@ class TaskWorkflowHandlerTest {
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
 
-      IllegalStateException exception =
+      TaskStateConflictException exception =
           assertThrows(
-              IllegalStateException.class,
+              TaskStateConflictException.class,
               () ->
                   TaskWorkflowHandler.getInstance()
                       .resolveTask(
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains("already in status"));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
     }
   }
 
@@ -238,7 +242,7 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice")))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
@@ -249,7 +253,8 @@ class TaskWorkflowHandlerTest {
                   task, "complete", TaskResolutionType.Completed, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository).resolveTask(eq(task), any(TaskResolution.class), eq("alice"));
+      verify(taskRepository)
+          .resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice"));
       verify(workflowHandler).hasActiveRuntimeTask(taskId);
     }
   }
@@ -279,7 +284,7 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), isNull(), eq("alice")))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(storedTask);
@@ -295,6 +300,7 @@ class TaskWorkflowHandlerTest {
                       resolution.getType() == TaskResolutionType.Approved
                           && resolution.getResolvedBy() == resolvedBy
                           && resolution.getResolvedAt() != null),
+              isNull(),
               eq("alice"));
     }
   }

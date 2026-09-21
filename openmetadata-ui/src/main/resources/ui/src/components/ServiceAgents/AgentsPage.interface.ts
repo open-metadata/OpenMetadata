@@ -60,6 +60,12 @@ export interface Agent {
   schedule?: string;
   after?: string;
   finishedAt?: string;
+  /**
+   * Epoch ms of the run every count above describes, so consumers comparing two agents can tell
+   * whose numbers are newer. `finishedAt` cannot serve: it is a pre-formatted relative string and is
+   * absent while a run is in flight.
+   */
+  lastRunAt?: number;
   enabled?: boolean;
 }
 

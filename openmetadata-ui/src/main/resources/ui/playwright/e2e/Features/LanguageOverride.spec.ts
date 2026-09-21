@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Page, test as base } from '@playwright/test';
+import { Browser, Page } from '@playwright/test';
+import { expect, test as base } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 
 const test = base.extend<{ germanLocalePage: Page }>({

@@ -12,50 +12,52 @@
 Glue source models.
 """
 
-from typing import List, Optional  # noqa: UP035
-
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GlueSchema(BaseModel):
-    CatalogId: Optional[str] = None  # noqa: UP045
+    CatalogId: str | None = None
     Name: str
-    Description: Optional[str] = None  # noqa: UP045
+    Description: str | None = None
 
 
 class DatabasePage(BaseModel):
-    DatabaseList: Optional[List[GlueSchema]] = []  # noqa: UP006, UP045
+    DatabaseList: list[GlueSchema] | None = []
 
 
 class TableParameters(BaseModel):
-    table_type: Optional[str] = None  # noqa: UP045
+    # Glue table parameters are operator-authored key/values. A closed model drops every key but
+    # the one we branch on, which would leave nothing to ingest as custom properties.
+    model_config = ConfigDict(extra="allow")
+
+    table_type: str | None = None
 
 
 class Column(BaseModel):
     Type: str
     Name: str
-    Comment: Optional[str] = None  # noqa: UP045
+    Comment: str | None = None
 
 
 class SerializationDetails(BaseModel):
-    SerializationLibrary: Optional[str] = None  # noqa: UP045
-    Parameters: Optional[dict] = {}  # noqa: UP045
+    SerializationLibrary: str | None = None
+    Parameters: dict | None = {}
 
 
 class StorageDetails(BaseModel):
-    Columns: Optional[List[Column]] = []  # noqa: UP006, UP045
-    Location: Optional[str] = None  # noqa: UP045
-    SerdeInfo: Optional[SerializationDetails] = SerializationDetails()  # noqa: UP045
+    Columns: list[Column] | None = []
+    Location: str | None = None
+    SerdeInfo: SerializationDetails | None = SerializationDetails()
 
 
 class GlueTable(BaseModel):
-    Parameters: Optional[TableParameters] = None  # noqa: UP045
+    Parameters: TableParameters | None = None
     Name: str
-    TableType: Optional[str] = None  # noqa: UP045
-    Description: Optional[str] = None  # noqa: UP045
-    StorageDescriptor: Optional[StorageDetails] = StorageDetails()  # noqa: UP045
-    PartitionKeys: Optional[List[Column]] = []  # noqa: UP006, UP045
+    TableType: str | None = None
+    Description: str | None = None
+    StorageDescriptor: StorageDetails | None = StorageDetails()
+    PartitionKeys: list[Column] | None = []
 
 
 class TablePage(BaseModel):
-    TableList: Optional[List[GlueTable]] = []  # noqa: UP006, UP045
+    TableList: list[GlueTable] | None = []

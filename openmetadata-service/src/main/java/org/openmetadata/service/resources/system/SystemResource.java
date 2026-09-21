@@ -8,6 +8,7 @@ import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATI
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -46,6 +47,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,16 +60,25 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
+import org.openmetadata.schema.security.client.OidcClientConfig;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -76,6 +87,7 @@ import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
@@ -94,8 +106,10 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
@@ -111,6 +125,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
+import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
@@ -150,7 +165,6 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
-  private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -167,10 +181,6 @@ public class SystemResource {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
-    this.isNlqEnabled =
-        config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
-            ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
-            : false;
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -242,7 +252,7 @@ public class SystemResource {
       for (Settings setting : allConfigs.getData()) {
         if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
             && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
-          filteredSettings.add(setting);
+          filteredSettings.add(forResponse(setting));
         }
       }
     }
@@ -281,7 +291,69 @@ public class SystemResource {
     if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return systemRepository.getConfigWithKey(name);
+    return forResponse(systemRepository.getConfigWithKey(name));
+  }
+
+  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
+  private SearchSettings storedSearchSettings() {
+    SearchSettings result = null;
+    Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
+    if (stored != null && stored.getConfigValue() != null) {
+      result = JsonUtils.convertValue(stored.getConfigValue(), SearchSettings.class);
+    }
+    return result;
+  }
+
+  /**
+   * Derives {@code allowedFields[].highlight} from the index mapping on the way out.
+   *
+   * <p>Annotating on read rather than at seed time is deliberate: the stored settings are written by
+   * several paths — {@code SettingsCache.initialize} loads the seed itself, and older clusters
+   * persisted their settings before this flag existed — so anything that relies on the stored value
+   * being annotated is one new write path away from serving {@code false} for every field, which
+   * would disable every highlight toggle in the UI. Derived here, the served flag is correct
+   * regardless of what is in the database.
+   *
+   * <p>Which makes this a response-boundary concern, not a read-path one, and it must be applied at
+   * <em>every</em> boundary that hands back searchSettings — the same way {@code EntityResource}
+   * stamps {@code href} on create/update/patch/delete and not just on GET. Annotating only the
+   * single-setting GET is what shipped first, and it left the save path serving {@code false} for
+   * every field: the UI writes the PUT response straight into app state, so one Save greyed out
+   * every highlight toggle on the page until the next reload.
+   *
+   * <p>Always annotates a copy. In-place would be a live hazard rather than a stylistic one:
+   * {@code mergeSearchSettings} hands the merged settings the default's own {@code allowedFields}
+   * list, so mutating it would write the derived flag onto {@code defaultSearchSettingsCache} and
+   * leak it into every later read.
+   */
+  private Settings forResponse(Settings settings) {
+    Settings result = settings;
+    if (settings != null
+        && settings.getConfigType() == SettingsType.SEARCH_SETTINGS
+        && settings.getConfigValue() != null) {
+      SearchSettings searchSettings =
+          JsonUtils.convertValue(settings.getConfigValue(), SearchSettings.class);
+      searchSettingsHandler.annotateHighlightableFields(searchSettings);
+      result =
+          new Settings().withConfigType(settings.getConfigType()).withConfigValue(searchSettings);
+    }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the write paths, which return an already-built response. */
+  private Response forResponse(Response response) {
+    Response result = response;
+    if (response.getEntity() instanceof Settings settings) {
+      result = Response.fromResponse(response).entity(forResponse(settings)).build();
+    }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the reset path, which returns a bare {@link SearchSettings}. */
+  private SearchSettings forResponse(SearchSettings searchSettings) {
+    SearchSettings result = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
+    searchSettingsHandler.annotateHighlightableFields(result);
+    return result;
   }
 
   @GET
@@ -398,7 +470,7 @@ public class SystemResource {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     int usageCount =
-        glossaryTermRepository.getRelationTypeUsageCounts().getOrDefault(existing.getName(), 0);
+        relationTypeUsage(existing.getName(), glossaryTermRepository.getRelationTypeUsageCounts());
     if (usageCount > 0) {
       throw new SystemSettingsException(
           String.format(
@@ -469,7 +541,19 @@ public class SystemResource {
       })
   public Response checkSearchSettings(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return Response.ok().entity(isNlqEnabled).build();
+    return Response.ok().entity(isNaturalLanguageSearchEnabled()).build();
+  }
+
+  /**
+   * Natural language search is served by a distribution-specific endpoint, not by OpenMetadata, so
+   * this reflects the operator's {@code elasticsearch.naturalLanguageSearch.enabled} setting only.
+   * OpenMetadata does not expose that setting, leaving it disabled.
+   */
+  private boolean isNaturalLanguageSearchEnabled() {
+    ElasticSearchConfiguration searchConfig = applicationConfig.getElasticSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlqConfig =
+        searchConfig != null ? searchConfig.getNaturalLanguageSearch() : null;
+    return nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled());
   }
 
   @GET
@@ -609,6 +693,7 @@ public class SystemResource {
       SearchSettings incomingSearchSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
       searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
+      searchSettingsHandler.validateHighlightFields(incomingSearchSettings, storedSearchSettings());
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
@@ -629,6 +714,7 @@ public class SystemResource {
       }
     }
 
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
     if (GLOSSARY_TERM_RELATION_SETTINGS
         .value()
         .equalsIgnoreCase(settingName.getConfigType().toString())) {
@@ -638,11 +724,67 @@ public class SystemResource {
       GlossaryTermRelationSettingsUtil.validateUniqueNames(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
+      relationshipTypeUpdate = relationshipTypeUpdate(relationSettings);
+    }
+    if (SPARQL_QUERY_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SparqlQuerySettings querySettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SparqlQuerySettings.class);
+      validateSparqlQuerySettings(querySettings);
+      settingName.setConfigValue(querySettings);
     }
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
 
-    return response;
+    return forResponse(response);
+  }
+
+  private LegacyRelationshipTypeUpdate relationshipTypeUpdate(
+      GlossaryTermRelationSettings updated) {
+    return new LegacyRelationshipTypeUpdate(previousRelationshipTypeSettings(), updated);
+  }
+
+  private GlossaryTermRelationSettings previousRelationshipTypeSettings() {
+    Settings previousSetting =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    return previousSetting == null
+        ? new GlossaryTermRelationSettings().withRelationTypes(List.of())
+        : JsonUtils.convertValue(
+            previousSetting.getConfigValue(), GlossaryTermRelationSettings.class);
+  }
+
+  private static LegacyRelationshipTypeUpdate patchedRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, Response response) {
+    LegacyRelationshipTypeUpdate update = null;
+    if (previous != null && response.getEntity() instanceof Settings settings) {
+      GlossaryTermRelationSettings updated =
+          JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
+      update = new LegacyRelationshipTypeUpdate(previous, updated);
+    }
+    return update;
+  }
+
+  private static boolean isRelationshipTypeSetting(String settingName) {
+    return GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName);
+  }
+
+  private static void synchronizeRelationshipTypes(
+      LegacyRelationshipTypeUpdate update,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Response.Status.Family responseFamily) {
+    if (update != null && responseFamily == Response.Status.Family.SUCCESSFUL) {
+      RelationshipTypeRepository repository =
+          (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+      LegacyRelationshipTypeSynchronizer synchronizer =
+          new LegacyRelationshipTypeSynchronizer(repository);
+      synchronizer.synchronize(
+          update.previous(),
+          update.updated(),
+          uriInfo,
+          securityContext.getUserPrincipal().getName());
+    }
   }
 
   @PUT
@@ -679,7 +821,7 @@ public class SystemResource {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
     SearchSettings settings = loadDefaultSearchSettings(true);
-    return Response.ok(settings).build();
+    return Response.ok(forResponse(settings)).build();
   }
 
   @PUT
@@ -752,7 +894,32 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.patchSetting(settingName, patch);
+    GlossaryTermRelationSettings previous =
+        isRelationshipTypeSetting(settingName) ? previousRelationshipTypeSettings() : null;
+    Response response = patchSetting(settingName, patch);
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate =
+        patchedRelationshipTypeUpdate(previous, response);
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
+    return forResponse(response);
+  }
+
+  private Response patchSetting(String settingName, JsonPatch patch) {
+    Response response =
+        isRelationshipTypeSetting(settingName)
+            ? systemRepository.patchGlossaryTermRelationSettings(
+                patch, this::preparePatchedRelationshipTypeSettings)
+            : systemRepository.patchSetting(settingName, patch);
+    return response;
+  }
+
+  private GlossaryTermRelationSettings preparePatchedRelationshipTypeSettings(
+      GlossaryTermRelationSettings updated) {
+    normalizeGlossaryTermRelationSettings(updated);
+    Settings settings =
+        new Settings().withConfigType(GLOSSARY_TERM_RELATION_SETTINGS).withConfigValue(updated);
+    validateGlossaryTermRelationSettingsUpdate(settings);
+    return updated;
   }
 
   @GET
@@ -917,14 +1084,18 @@ public class SystemResource {
   public Response updateSecurityConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      SecurityConfiguration originalConfig =
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+      preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+      validateConfigurationOfActiveProvider(securityConfig);
 
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
+      systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
 
       // Update both configurations in a transaction
       Settings authSettings =
@@ -946,11 +1117,105 @@ public class SystemResource {
       // Reload entire security system
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
-      return Response.ok(securityConfig).build();
+      return Response.ok(getSecurityConfig(securityContext)).build();
+    } catch (BadRequestException e) {
+      // Raised only by validateConfigurationOfActiveProvider, before anything is written. Rethrow
+      // so
+      // the mapper answers 400 rather than letting the catch below report it as a server failure —
+      // and keep the type narrow, so a failure from the writes below still surfaces as a 5xx
+      // instead
+      // of telling the admin their payload was bad after the configuration was already persisted.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
     }
+  }
+
+  /**
+   * Validates the configuration with the blocks of inactive providers left out.
+   *
+   * <p>Bean validation cascades into every nested block present in the payload, so an instance that
+   * once touched LDAP and still carries a partially-filled {@code ldapConfiguration} could not save
+   * its SAML configuration — the request was rejected over required LDAP fields that the active
+   * provider never reads. That also made {@code GET} responses un-resubmittable, because {@code GET}
+   * omits fields the cascade demanded. Only validation ignores those blocks; they are still stored.
+   */
+  private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
+    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    boolean hasActiveProvider = authConfig != null && authConfig.getProvider() != null;
+    ProviderConfigurations detached =
+        hasActiveProvider ? detachInactiveProviderConfigurations(authConfig) : null;
+
+    try {
+      String violations = ValidatorUtil.validate(securityConfig);
+      if (violations != null) {
+        throw new BadRequestException("Invalid security configuration: " + violations);
+      }
+    } finally {
+      if (detached != null) {
+        detached.restoreTo(authConfig);
+      }
+    }
+  }
+
+  /**
+   * Takes the inactive providers' blocks off {@code authConfig} and hands them back, so the caller
+   * can restore them once validation has run.
+   *
+   * <p>Detaching from the instance that is about to be persisted is deliberate, rather than
+   * validating a Jackson deep copy of it: a round trip re-applies the schema defaults that
+   * jsonschema2pojo emits as field initializers, so a {@code @NotNull} field that has a default (for
+   * example {@code provider}, which defaults to {@code basic}) would be repaired in the copy and
+   * left unenforced on the object actually saved.
+   */
+  private ProviderConfigurations detachInactiveProviderConfigurations(
+      AuthenticationConfiguration authConfig) {
+    ProviderConfigurations detached =
+        new ProviderConfigurations(
+            authConfig.getLdapConfiguration(),
+            authConfig.getSamlConfiguration(),
+            authConfig.getOidcConfiguration());
+    clearInactiveProviderConfigurations(authConfig);
+    return detached;
+  }
+
+  /** The provider blocks lifted off an {@link AuthenticationConfiguration} for validation. */
+  private record ProviderConfigurations(
+      LdapConfiguration ldap, SamlSSOClientConfig saml, OidcClientConfig oidc) {
+
+    void restoreTo(AuthenticationConfiguration authConfig) {
+      authConfig.setLdapConfiguration(ldap);
+      authConfig.setSamlConfiguration(saml);
+      authConfig.setOidcConfiguration(oidc);
+    }
+  }
+
+  private void clearInactiveProviderConfigurations(AuthenticationConfiguration authConfig) {
+    AuthProvider provider = authConfig.getProvider();
+    if (provider != AuthProvider.LDAP) {
+      authConfig.setLdapConfiguration(null);
+    }
+    if (provider != AuthProvider.SAML) {
+      authConfig.setSamlConfiguration(null);
+    }
+    // oidcConfiguration is also the confidential client's block: a public client never reads it,
+    // whatever the provider, so its required fields must not gate a public-client save either.
+    if (!usesOidcConfiguration(provider) || authConfig.getClientType() != ClientType.CONFIDENTIAL) {
+      authConfig.setOidcConfiguration(null);
+    }
+  }
+
+  /**
+   * Only these providers carry their settings somewhere other than {@code oidcConfiguration}, so
+   * naming them — rather than listing the OIDC providers — keeps a new OIDC provider working here
+   * without an edit.
+   */
+  private static boolean usesOidcConfiguration(AuthProvider provider) {
+    return switch (provider) {
+      case BASIC, LDAP, SAML, OPENMETADATA -> false;
+      default -> true;
+    };
   }
 
   @PATCH
@@ -992,6 +1257,7 @@ public class SystemResource {
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+      preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
@@ -1042,6 +1308,46 @@ public class SystemResource {
     }
   }
 
+  static void preserveMaskedSecuritySecrets(
+      SecurityConfiguration updated, SecurityConfiguration original) {
+    if (updated != null && original != null) {
+      AuthenticationConfiguration updatedAuthentication = updated.getAuthenticationConfiguration();
+      AuthenticationConfiguration originalAuthentication =
+          original.getAuthenticationConfiguration();
+      if (updatedAuthentication != null && originalAuthentication != null) {
+        preserveOidcSecret(updatedAuthentication, originalAuthentication);
+        preserveLdapPassword(updatedAuthentication, originalAuthentication);
+      }
+    }
+  }
+
+  private static void preserveOidcSecret(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    OidcClientConfig updatedOidc = updated.getOidcConfiguration();
+    OidcClientConfig originalOidc = original.getOidcConfiguration();
+    if (updatedOidc != null && originalOidc != null) {
+      updatedOidc.setSecret(restoredSecret(updatedOidc.getSecret(), originalOidc.getSecret()));
+    }
+  }
+
+  private static void preserveLdapPassword(
+      AuthenticationConfiguration updated, AuthenticationConfiguration original) {
+    LdapConfiguration updatedLdap = updated.getLdapConfiguration();
+    LdapConfiguration originalLdap = original.getLdapConfiguration();
+    if (updatedLdap != null && originalLdap != null) {
+      updatedLdap.setDnAdminPassword(
+          restoredSecret(updatedLdap.getDnAdminPassword(), originalLdap.getDnAdminPassword()));
+    }
+  }
+
+  private static String restoredSecret(String replacement, String original) {
+    String restored = replacement;
+    if (restored == null || PasswordEntityMasker.PASSWORD_MASK.equals(restored)) {
+      restored = original;
+    }
+    return restored;
+  }
+
   @POST
   @Path("/security/validate")
   @Operation(
@@ -1058,8 +1364,12 @@ public class SystemResource {
                     schema = @Schema(implementation = SecurityValidationResponse.class)))
       })
   public SecurityValidationResponse validateSecurityConfig(
-      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext, SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
+    // Scope bean validation to the active provider, as the PUT does. This is the first call the SSO
+    // form makes on save, so a cascade into an inactive provider's partially-filled block would
+    // reject the request here, before the PUT is ever reached.
+    validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
         securityConfig, applicationConfig, currentUsername);
@@ -1435,23 +1745,69 @@ public class SystemResource {
 
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+    List<RelationshipTypeUsage> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
 
     List<String> inUseRelationTypes =
         removedRelationTypes.stream()
-            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .filter(name -> relationTypeUsage(name, usageCounts) > 0)
             .toList();
 
     if (!inUseRelationTypes.isEmpty()) {
       StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
       for (String relationTypeName : inUseRelationTypes) {
-        int count = usageCounts.get(relationTypeName);
+        int count = relationTypeUsage(relationTypeName, usageCounts);
         message.append(
             String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
       }
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+  }
+
+  private static int relationTypeUsage(
+      String relationTypeName, List<RelationshipTypeUsage> usageCounts) {
+    return usageCounts.stream()
+        .filter(usage -> relationTypeName.equals(usage.getRelationshipType().getName()))
+        .mapToInt(RelationshipTypeUsage::getCount)
+        .findFirst()
+        .orElse(0);
+  }
+
+  private void validateSparqlQuerySettings(SparqlQuerySettings settings) {
+    if (settings == null || settings.getQueryTemplates() == null) {
+      throw new SystemSettingsException("SPARQL query templates are required");
+    }
+    if (settings.getQueryTemplates().size() > 50) {
+      throw new SystemSettingsException("At most 50 SPARQL query templates are allowed");
+    }
+
+    Set<UUID> queryIds = new HashSet<>();
+    for (SavedSparqlQuery query : settings.getQueryTemplates()) {
+      if (query == null || query.getId() == null || !queryIds.add(query.getId())) {
+        throw new SystemSettingsException("SPARQL query template IDs must be present and unique");
+      }
+      String name = query.getName() == null ? "" : query.getName().trim();
+      if (name.isEmpty() || name.length() > 256) {
+        throw new SystemSettingsException(
+            "SPARQL query template names must contain 1 to 256 characters");
+      }
+      String queryBody = query.getQuery() == null ? "" : query.getQuery().trim();
+      if (queryBody.isEmpty() || queryBody.length() > 100000) {
+        throw new SystemSettingsException(
+            "SPARQL query template bodies must contain 1 to 100000 characters");
+      }
+      if (query.getFormat() == null
+          || query.getInference() == null
+          || query.getSavedAt() == null
+          || query.getSavedAt() < 0) {
+        throw new SystemSettingsException("SPARQL query template metadata is incomplete");
+      }
+      query.setName(name);
+    }
+  }
+
+  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
+    GlossaryTermRelationSettingsUtil.normalize(settings);
   }
 
   private boolean isUserReadableSetting(String name) {
@@ -1477,7 +1833,9 @@ public class SystemResource {
         }
       }
     }
-
     throw new NotFoundException(String.format("Relation type '%s' was not found.", name));
   }
+
+  private record LegacyRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, GlossaryTermRelationSettings updated) {}
 }

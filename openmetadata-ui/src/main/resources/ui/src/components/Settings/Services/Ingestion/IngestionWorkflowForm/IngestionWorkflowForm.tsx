@@ -20,6 +20,7 @@ import {
   forwardRef,
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -45,6 +46,7 @@ import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchema
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
@@ -130,6 +132,23 @@ const classificationLanguageEnumNames = (
     }
   ).properties?.classificationLanguage?.enum ?? []
 ).map((v) => capitalize(v));
+
+/**
+ * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
+ * section, whose children are unmounted until it is expanded. Without their own boundary they
+ * suspend the form-wide one below, which swaps the entire form for a loader; the scroll container
+ * then collapses, the browser clamps scrollTop to 0, and the form repaints at the top. Wrapping
+ * localises the suspension so expanding a section keeps the scroll position.
+ *
+ * Wrapped at module scope, not inside the `useMemo` registries: `withSuspenseFallback` returns a
+ * new component per call, so wrapping per render would remount the field on every re-render.
+ * The remaining lazy fields/templates all render at initial mount, where a form-wide loader is
+ * the correct behaviour, so they are deliberately left alone.
+ */
+const SuspendedFilterPatternField = withSuspenseFallback(FilterPatternField);
+const SuspendedProfileSampleConfigField = withSuspenseFallback(
+  ProfileSampleConfigField
+);
 
 /**
  * Rendered as a sibling of the RJSF form inside the Suspense boundary, so its
@@ -278,7 +297,7 @@ const IngestionWorkflowForm = forwardRef<
       AnyOfField: CoreOneOfField,
       ArrayField: WorkflowArrayFieldTemplate,
       BooleanField: BooleanFieldTemplate,
-      FilterPatternField,
+      FilterPatternField: SuspendedFilterPatternField,
       OneOfField: CoreOneOfField,
     };
 
@@ -292,7 +311,7 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     if (pipeLineType === PipelineType.Profiler) {
-      fields['ProfileSampleConfigField'] = ProfileSampleConfigField;
+      fields['ProfileSampleConfigField'] = SuspendedProfileSampleConfigField;
     }
 
     return fields;
@@ -323,6 +342,19 @@ const IngestionWorkflowForm = forwardRef<
     ref,
     () => ({ submit: () => formRef.current?.submit() }),
     []
+  );
+
+  /**
+   * Workflow markdown only documents a subset of the pipeline fields, so the docs
+   * panel needs the focused field's own schema title/description to fall back on.
+   * Custom fields (arrays, toggles) emit focus through formContext.handleFocus
+   * rather than RJSF's form-level onFocus, so both paths get the enriched handler.
+   */
+  const handleFieldFocus = useCallback(
+    (id: string) => {
+      onFocus(id, getFieldSchemaForId(schema as Record<string, unknown>, id));
+    },
+    [onFocus, schema]
   );
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
@@ -368,7 +400,7 @@ const IngestionWorkflowForm = forwardRef<
         noHtml5Validate
         className={classNames('rjsf no-header', className)}
         fields={customFields}
-        formContext={{ handleFocus: onFocus }}
+        formContext={{ handleFocus: handleFieldFocus }}
         formData={internalData}
         idSeparator="/"
         ref={formRef}
@@ -386,7 +418,7 @@ const IngestionWorkflowForm = forwardRef<
         validator={validator}
         widgets={widgets}
         onChange={handleOnChange}
-        onFocus={onFocus}
+        onFocus={handleFieldFocus}
         onSubmit={handleSubmit}>
         {/* When hideFooter is true, the parent card renders the footer to span full width
          * and keep the card's bottom border-radius visible during scroll. */}

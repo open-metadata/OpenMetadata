@@ -10,13 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   clickUpdateButton,
@@ -696,40 +698,63 @@ test.describe(
 
         await table2Option.click();
 
-        await page.click(`#testCaseFormV1_params_keyColumns_0_value`);
-        await page
-          .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[0].name })
-          .first()
-          .click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_keyColumns_0_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[0].name })
+            .first()
+        );
 
-        await page.click('#testCaseFormV1_params_table2\\.keyColumns_0_value');
-        await page
-          .getByRole('option')
-          .filter({ hasText: table2.entity?.columns[0].name })
-          .first()
-          .click();
+        // Table 1's popover is still animating out over table 2's trigger;
+        // clicking through it makes Playwright retry with extra scrolls. Table
+        // 2's search popover can still be exiting too, and two matches would
+        // fail `not.toBeVisible` on strict mode instead of waiting.
+        await expect(page.locator('[role="listbox"]')).toHaveCount(0);
+        await selectOptionWithRetry(
+          table2KeyColumnsInput,
+          page
+            .getByRole('option')
+            .filter({ hasText: table2.entity?.columns[0].name })
+            .first()
+        );
 
         await expect(table2KeyColumnsInput).not.toBeDisabled();
 
         await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
         // Let the previous pick's popover fully close before opening the next.
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
-        await page.click('#testCaseFormV1_params_useColumns_0_value');
-
-        // The column already used as a key column is disabled in this list.
-        await expect(
-          page
-            .getByRole('option')
-            .filter({ hasText: table1.entity?.columns[0].name })
-            .first()
-        ).toHaveAttribute('aria-disabled', 'true');
-
-        await page
+        const useColumnsTrigger = page.locator(
+          '#testCaseFormV1_params_useColumns_0_value'
+        );
+        const keyColumnOption = page
+          .getByRole('option')
+          .filter({ hasText: table1.entity?.columns[0].name })
+          .first();
+        const useColumnOption = page
           .getByRole('option')
           .filter({ hasText: table1.entity?.columns[1].name })
-          .first()
-          .click();
+          .first();
+        // selectOptionWithRetry, inlined to assert on the open list before
+        // picking: if the popover closes first, reopen instead of letting the
+        // click wait out the test timeout.
+        await expect(async () => {
+          if (
+            (await useColumnsTrigger.getAttribute('aria-expanded')) !== 'true'
+          ) {
+            await scrollIntoViewAndSettle(useColumnsTrigger);
+            await useColumnsTrigger.click();
+          }
+          // The column already used as a key column is disabled in this list.
+          await expect(keyColumnOption).toHaveAttribute(
+            'aria-disabled',
+            'true',
+            {
+              timeout: 2000,
+            }
+          );
+          await useColumnOption.click({ timeout: 2000 });
+        }).toPass({ timeout: 15000 });
 
         await page.fill('#testCaseFormV1_params_where', 'test');
         await submitTestCaseForm(page);
@@ -802,21 +827,23 @@ test.describe(
 
         await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
-        await page.click('#testCaseFormV1_params_keyColumns_1_value');
-        await page
-          .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[3].name })
-          .first()
-          .click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_keyColumns_1_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[3].name })
+            .first()
+        );
         await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.getByTestId('add-useColumns').click();
-        await page.click('#testCaseFormV1_params_useColumns_1_value');
-        await page
-          .getByRole('option')
-          .filter({ hasText: table1.entity?.columns[2].name })
-          .first()
-          .click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_useColumns_1_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[2].name })
+            .first()
+        );
 
         await clickUpdateButton(page);
       });
@@ -872,12 +899,13 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
-        await page.click('#testCaseFormV1_params_strategy');
-        await page
-          .getByRole('option')
-          .filter({ hasText: 'ROWS' })
-          .first()
-          .click();
+        // The strategy options read as sentences, not as the stored ROWS/COUNT
+        // enum, and react-aria's listbox items expose no key attribute — so
+        // they are matched on the distinctive part of their wording.
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'count the rows' })
+        );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
 
@@ -924,8 +952,10 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
-        await page.getByRole('button', { name: 'ROWS Strategy' }).click();
-        await page.getByRole('option', { name: 'COUNT' }).click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'use the single number' })
+        );
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
         });

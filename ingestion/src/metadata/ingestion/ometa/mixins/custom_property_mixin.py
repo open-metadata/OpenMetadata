@@ -14,7 +14,7 @@ Mixin class containing Custom Property specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Dict, List, Optional, Type, TypeVar  # noqa: UP035
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -43,7 +43,7 @@ class OMetaCustomPropertyMixin:
 
     client: REST
 
-    def create_or_update_custom_property(self, ometa_custom_property: OMetaCustomProperties) -> Dict:  # noqa: UP006
+    def create_or_update_custom_property(self, ometa_custom_property: OMetaCustomProperties) -> dict:
         """Create or update custom property. If custom property name matches an existing
         one then it will be updated.
 
@@ -74,7 +74,7 @@ class OMetaCustomPropertyMixin:
         custom_property_type = self.get_custom_property_type(data_type=data_type)
         return PropertyType(EntityReference(id=custom_property_type.id, type="type"))
 
-    def get_entity_custom_properties(self, entity_type: Type[T]) -> Optional[List]:  # noqa: UP006, UP045
+    def get_entity_custom_properties(self, entity_type: type[T]) -> list | None:
         """
         Get all the custom properties of an entity
         """

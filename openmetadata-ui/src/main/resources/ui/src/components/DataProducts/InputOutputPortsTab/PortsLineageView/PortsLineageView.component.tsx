@@ -41,6 +41,10 @@ import PortNode from './PortNode.component';
 import './PortsLineageView.style.less';
 import { PortsLineageViewProps } from './PortsLineageView.types';
 
+const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
+
+const PORTS_EDGE_COLOR = 'var(--om-color-border-primary)';
+
 const getPortHandleId = (port: SourceType): string => {
   return port.fullyQualifiedName ?? port.id ?? '';
 };
@@ -99,7 +103,7 @@ const PortsLineageView = ({
     const centerY = totalHeight / 2;
 
     const dataProductNode: Node = {
-      id: 'data-product-center',
+      id: DATA_PRODUCT_CENTER_NODE_ID,
       type: 'dataProductNode',
       position: { x: HORIZONTAL_SPACING + NODE_WIDTH, y: centerY - 50 },
       data: { dataProduct },
@@ -133,15 +137,15 @@ const PortsLineageView = ({
       newEdges.push({
         id: `edge-${nodeId}-to-center`,
         source: nodeId,
-        target: 'data-product-center',
+        target: DATA_PRODUCT_CENTER_NODE_ID,
         sourceHandle: handleId,
         targetHandle: `${dataProduct.id}-left`,
         type: 'smoothstep',
         animated: false,
-        style: { stroke: '#b1b1b7', strokeWidth: 2 },
+        style: { stroke: PORTS_EDGE_COLOR, strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#b1b1b7',
+          color: PORTS_EDGE_COLOR,
         },
       });
     });
@@ -171,16 +175,16 @@ const PortsLineageView = ({
 
       newEdges.push({
         id: `edge-center-to-${nodeId}`,
-        source: 'data-product-center',
+        source: DATA_PRODUCT_CENTER_NODE_ID,
         target: nodeId,
         sourceHandle: `${dataProduct.id}-right`,
         targetHandle: handleId,
         type: 'smoothstep',
         animated: false,
-        style: { stroke: '#b1b1b7', strokeWidth: 2 },
+        style: { stroke: PORTS_EDGE_COLOR, strokeWidth: 2 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: '#b1b1b7',
+          color: PORTS_EDGE_COLOR,
         },
       });
     });
@@ -215,7 +219,7 @@ const PortsLineageView = ({
 
   if (!hasAnyPorts) {
     return (
-      <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-gray-50 tw:rounded-lg tw:border tw:border-gray-200">
+      <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
         <ErrorPlaceHolder
           className="m-t-0"
           icon={
@@ -259,9 +263,17 @@ const PortsLineageView = ({
                 data-testid="toggle-fullscreen-btn"
                 iconLeading={
                   isFullScreen ? (
-                    <Minimize01 fill="#414651" height={18} width={18} />
+                    <Minimize01
+                      fill="var(--om-color-text-secondary)"
+                      height={18}
+                      width={18}
+                    />
                   ) : (
-                    <Maximize01 fill="#414651" height={18} width={18} />
+                    <Maximize01
+                      fill="var(--om-color-text-secondary)"
+                      height={18}
+                      width={18}
+                    />
                   )
                 }
                 onClick={handleToggleFullScreen}
@@ -282,7 +294,7 @@ const PortsLineageView = ({
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}>
-        <Background color="#e5e7eb" gap={16} size={1} />
+        <Background color="var(--om-color-border-subtle)" gap={16} size={1} />
         <Controls
           showFitView
           showZoom

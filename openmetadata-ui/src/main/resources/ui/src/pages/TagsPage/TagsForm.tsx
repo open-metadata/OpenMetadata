@@ -39,7 +39,7 @@ import { EntityAttachmentProvider } from '../../components/common/EntityDescript
 import {
   AVAILABLE_ICONS,
   DEFAULT_TAG_ICON,
-} from '../../components/common/IconPicker';
+} from '../../components/common/IconPicker/IconPicker.constants';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -167,6 +167,7 @@ const TagsForm = ({
   isClassification,
   isEditing = false,
   isTier = false,
+  isParentAutoClassificationEnabled = false,
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
@@ -530,8 +531,11 @@ const TagsForm = ({
 
   const autoClassificationComponent = useMemo(
     () =>
-      tagClassBase.getAutoClassificationComponent(isClassification || false),
-    [isClassification]
+      tagClassBase.getAutoClassificationComponent(
+        isClassification || false,
+        isParentAutoClassificationEnabled
+      ),
+    [isClassification, isParentAutoClassificationEnabled]
   );
 
   return (

@@ -43,7 +43,7 @@ const SignUpPage = withPageSuspenseFallback(
 );
 
 const SamlCallback = withPageSuspenseFallback(
-  lazy(() => import('../../pages/SamlCallback'))
+  lazy(() => import('../../pages/SamlCallback/SamlCallback'))
 );
 
 export const AuthenticatedRoutes = () => {
@@ -86,8 +86,8 @@ export const AuthenticatedRoutes = () => {
           (route) => route.position === RoutePosition.APP
         );
 
-        return appRoutes.map((route, idx) => (
-          <Route key={`${plugin.name}-app-${idx}`} {...route} />
+        return appRoutes.map((route) => (
+          <Route key={`${plugin.name}-app-${route.path}`} {...route} />
         ));
       })}
 

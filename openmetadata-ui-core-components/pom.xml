@@ -134,7 +134,7 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v22.17.0</nodeVersion>
+              <nodeVersion>v22.22.2</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
               <skip>${skip.ui.build}</skip>
             </configuration>

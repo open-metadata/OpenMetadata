@@ -13,26 +13,8 @@
 
 import classNames from 'classnames';
 import { CSSProperties, ElementType } from 'react';
-import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
-import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
-import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
-import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -80,26 +62,27 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.TEST_CASE]: ENTITY_ICON_MAPPER[EntityType.TEST_CASE].icon,
   [EntityType.TEST_SUITE]: ENTITY_ICON_MAPPER[EntityType.TEST_SUITE].icon,
   [EntityType.DATA_CONTRACT]: ENTITY_ICON_MAPPER[EntityType.DATA_CONTRACT].icon,
-  [EntityType.BOT]: BotIcon,
-  [EntityType.TEAM]: TeamIcon,
-  [EntityType.APPLICATION]: ApplicationIcon,
-  [EntityType.PERSONA]: PersonaIcon,
-  [EntityType.ROLE]: RoleIcon,
-  [EntityType.POLICY]: PolicyIcon,
-  [EntityType.EVENT_SUBSCRIPTION]: EventSubscriptionIcon,
-  [EntityType.USER]: UserIcon,
+  [EntityType.BOT]: ENTITY_ICON_MAPPER[EntityType.BOT].icon,
+  [EntityType.TEAM]: ENTITY_ICON_MAPPER[EntityType.TEAM].icon,
+  [EntityType.APPLICATION]: ENTITY_ICON_MAPPER[EntityType.APPLICATION].icon,
+  [EntityType.PERSONA]: ENTITY_ICON_MAPPER[EntityType.PERSONA].icon,
+  [EntityType.ROLE]: ENTITY_ICON_MAPPER[EntityType.ROLE].icon,
+  [EntityType.POLICY]: ENTITY_ICON_MAPPER[EntityType.POLICY].icon,
+  [EntityType.EVENT_SUBSCRIPTION]:
+    ENTITY_ICON_MAPPER[EntityType.EVENT_SUBSCRIPTION].icon,
+  [EntityType.USER]: ENTITY_ICON_MAPPER[EntityType.USER].icon,
   [EntityType.INGESTION_PIPELINE]:
     ENTITY_ICON_MAPPER[EntityType.INGESTION_PIPELINE].icon,
-  [EntityType.ALERT]: AlertIcon,
-  [EntityType.KPI]: KPIIcon,
-  tagCategory: ClassificationIcon,
-  announcement: AnnouncementIcon,
-  conversation: ConversationIcon,
-  task: TaskIcon,
-  dataQuality: DataQualityIcon,
-  services: ServicesIcon,
-  automator: AutomatorBotIcon,
-  notification: NotificationIcon,
+  [EntityType.ALERT]: ENTITY_ICON_MAPPER[EntityType.ALERT].icon,
+  [EntityType.KPI]: ENTITY_ICON_MAPPER[EntityType.KPI].icon,
+  tagCategory: ENTITY_ICON_MAPPER['tagCategory'].icon,
+  announcement: ENTITY_ICON_MAPPER['announcement'].icon,
+  conversation: ENTITY_ICON_MAPPER['conversation'].icon,
+  task: ENTITY_ICON_MAPPER['task'].icon,
+  dataQuality: ENTITY_ICON_MAPPER['dataQuality'].icon,
+  services: ENTITY_ICON_MAPPER['services'].icon,
+  automator: ENTITY_ICON_MAPPER['automator'].icon,
+  notification: ENTITY_ICON_MAPPER['notification'].icon,
   [EntityType.LLM_SERVICE]: ENTITY_ICON_MAPPER[EntityType.LLM_SERVICE].icon,
   [EntityType.MCP_SERVICE]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVICE].icon,
   aiFrameworkControl: ENTITY_ICON_MAPPER['aiFrameworkControl'].icon,
@@ -162,6 +145,32 @@ export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
   [EntityIconSize.Size32]: 'tw:w-8 tw:h-8',
 };
 
+export type EntityIconBgSize =
+  | EntityIconSize.Size14
+  | EntityIconSize.Size16
+  | EntityIconSize.Size18;
+
+export const ENTITY_ICON_BG_SIZE_MAP: Record<
+  EntityIconBgSize,
+  {
+    containerProps: { className: string };
+    iconProps: { size: EntityIconSize };
+  }
+> = {
+  [EntityIconSize.Size14]: {
+    containerProps: { className: 'tw:h-5.5 tw:w-5.5 tw:rounded-sm' },
+    iconProps: { size: EntityIconSize.Size14 },
+  },
+  [EntityIconSize.Size16]: {
+    containerProps: { className: 'tw:h-7 tw:w-7 tw:rounded-sm' },
+    iconProps: { size: EntityIconSize.Size16 },
+  },
+  [EntityIconSize.Size18]: {
+    containerProps: { className: 'tw:h-8 tw:w-8 tw:rounded-md' },
+    iconProps: { size: EntityIconSize.Size18 },
+  },
+};
+
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',
@@ -169,6 +178,7 @@ export const getEntityIcon = (
   size?: EntityIconSize
 ) => {
   const className = classNames(
+    'tw:text-fg-tertiary tw:[stroke-width:1.5]',
     iconClass,
     size && ENTITY_ICON_SIZE_CLASS_MAP[size]
   );

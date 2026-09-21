@@ -22,9 +22,9 @@ import { ReactComponent as DropDownIcon } from '../../../assets/svg/drop-down.sv
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import DqDashboardSectionContent, {
@@ -105,15 +105,7 @@ const DataQualityDashboard = ({
                       onUpdate={filter.onChange}>
                       <div
                         className="tw:flex tw:items-center tw:gap-1  tw:rounded-md quick-filter-dropdown-trigger-btn"
-                        data-testid={`search-dropdown-${filter.key}`}
-                        title={
-                          filter.selectedOwnerKeys.length > 0
-                            ? getSelectedOptionLabelString(
-                                filter.selectedOwnerKeys,
-                                true
-                              )
-                            : undefined
-                        }>
+                        data-testid={`search-dropdown-${filter.key}`}>
                         <div className="tw:flex tw:items-center tw:gap-0">
                           <span>{filter.label}</span>
                           {filter.selectedOwnerKeys.length > 0 && (
@@ -140,12 +132,12 @@ const DataQualityDashboard = ({
             }
 
             return (
-              <SearchDropdown
+              <FilterSelectDropdown
                 hideCounts
+                showSelectAll
                 key={filter.key}
                 label={filter.label}
                 searchKey={filter.searchKey}
-                triggerButtonSize="middle"
                 {...filter.searchProps}
               />
             );

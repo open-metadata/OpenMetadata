@@ -325,7 +325,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockNestedColumn.children![0]
+        mockNestedColumn?.children?.[0]
       );
     });
 
@@ -341,7 +341,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockDeeplyNestedColumn.children![0].children![0].children![0]
+        mockDeeplyNestedColumn?.children?.[0]?.children?.[0]?.children?.[0]
       );
     });
 
@@ -517,7 +517,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockComplexNestedColumn.children![1].children![1].children![0]
+        mockComplexNestedColumn?.children?.[1]?.children?.[1]?.children?.[0]
       );
     });
 
@@ -569,7 +569,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockComplexNestedColumn.children![1]
+        mockComplexNestedColumn?.children?.[1]
       );
 
       jest.clearAllMocks();
@@ -579,7 +579,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockComplexNestedColumn.children![1].children![1]
+        mockComplexNestedColumn?.children?.[1]?.children?.[1]
       );
     });
 
@@ -596,7 +596,7 @@ describe('NestedColumnsSection', () => {
 
       expect(mockOnColumnClick).toHaveBeenCalledTimes(1);
       expect(mockOnColumnClick).toHaveBeenCalledWith(
-        mockArrayOfStructs.children![0].children![1].children![0]
+        mockArrayOfStructs?.children?.[0]?.children?.[1]?.children?.[0]
       );
     });
   });

@@ -104,6 +104,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ghCodeBlocks: true,
   encodeEmails: false,
   ellipsis: false,
+  simplifiedAutoLink: true,
   tables: true,
   strikethrough: true,
   simpleLineBreaks: true,
@@ -146,7 +147,9 @@ export const formatClientContent = (content: string) => {
     const type = tag.getAttribute('data-type');
     const prefix = type === 'mention' ? '@' : '#';
 
-    tag.textContent = `${prefix}${label}`;
+    if (label) {
+      tag.textContent = `${prefix}${label}`;
+    }
   });
 
   return getSanitizeContent(doc.body.innerHTML);
@@ -200,4 +203,14 @@ export const stripPendingUploadNodes = (html: string): string => {
     });
 
   return doc.body.innerHTML;
+};
+
+export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
+  const eleTop = ele.offsetTop;
+  const eleBottom = eleTop + ele.clientHeight;
+
+  const containerTop = container.scrollTop;
+  const containerBottom = containerTop + container.clientHeight;
+
+  return eleTop >= containerTop && eleBottom <= containerBottom;
 };

@@ -48,13 +48,13 @@ import {
 } from '../../../../constants/Color.constants';
 import {
   DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
   HOVER_CHART_OPACITY,
 } from '../../../../constants/constants';
 import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
+import { useChartColors } from '../../../../hooks/useChartColors';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTaskById } from '../../../../rest/tasksAPI';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
@@ -62,6 +62,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
   TooltipBoundary,
@@ -71,7 +72,6 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
   STATUS_DOT_RADIUS,
@@ -104,25 +104,48 @@ const TestSummaryTooltipContent = ({
   viewBox,
 }: Readonly<TestSummaryTooltipContentProps>) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const activeTooltipAnchorX = activeTooltip?.anchor.x;
+  const activeTooltipAnchorY = activeTooltip?.anchor.y;
+  const activeTooltipPayload = activeTooltip?.payload;
+  const viewBoxHeight = viewBox?.height;
+  const viewBoxWidth = viewBox?.width;
+  const viewBoxX = viewBox?.x;
+  const viewBoxY = viewBox?.y;
+  const tooltipBoundary = useMemo(() => {
+    const boundary: CartesianViewBox = {
+      height: viewBoxHeight,
+      width: viewBoxWidth,
+      x: viewBoxX,
+      y: viewBoxY,
+    };
+
+    return isTestSummaryTooltipBoundary(boundary) ? boundary : undefined;
+  }, [viewBoxHeight, viewBoxWidth, viewBoxX, viewBoxY]);
 
   useLayoutEffect(() => {
-    if (
-      !activeTooltip ||
-      !viewBox ||
-      !isTestSummaryTooltipBoundary(viewBox) ||
-      !contentRef.current
-    ) {
+    if (!activeTooltipPayload || !tooltipBoundary || !contentRef.current) {
       return;
     }
 
     const { height, width } = contentRef.current.getBoundingClientRect();
 
-    if (height > 0 && width > 0 && viewBox.height > 0 && viewBox.width > 0) {
+    if (
+      height > 0 &&
+      width > 0 &&
+      tooltipBoundary.height > 0 &&
+      tooltipBoundary.width > 0
+    ) {
       // Resolve collision before paint so the incident link never visibly
       // moves away from a pointer approaching the tooltip.
-      onMeasure({ height, width }, viewBox);
+      onMeasure({ height, width }, tooltipBoundary);
     }
-  }, [activeTooltip, onMeasure, viewBox]);
+  }, [
+    activeTooltipAnchorX,
+    activeTooltipAnchorY,
+    activeTooltipPayload,
+    onMeasure,
+    tooltipBoundary,
+  ]);
 
   return (
     <div ref={contentRef}>
@@ -147,7 +170,7 @@ function TestSummaryGraph({
   testDefinitionName,
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
-  const { entityThread = [] } = useActivityFeedProvider();
+  const { axis, grid } = useChartColors();
   const { setShowAILearningBanner } = useTestCaseStore();
   const tooltipCloseTimer = useRef<ReturnType<typeof setTimeout>>();
   const [activeTooltip, setActiveTooltip] = useState<ActiveTooltip>();
@@ -187,10 +210,7 @@ function TestSummaryGraph({
           tooltipSize,
         });
 
-        if (
-          currentTooltip.position.x === position.x &&
-          currentTooltip.position.y === position.y
-        ) {
+        if (isSameTooltipPosition(currentTooltip.position, position)) {
           return currentTooltip;
         }
 
@@ -251,7 +271,6 @@ function TestSummaryGraph({
     const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
-      entityThread,
       tasks,
     });
     const isFreshnessTest = data.information.some(
@@ -259,7 +278,7 @@ function TestSummaryGraph({
     );
 
     return { chartData: data, isFreshnessTest };
-  }, [testCaseResults, entityThread, tasks, testCaseParameterValue]);
+  }, [testCaseResults, tasks, testCaseParameterValue]);
 
   // A store write during render (inside the memo above) triggers React
   // update-depth loops; it must stay in an effect.
@@ -373,11 +392,11 @@ function TestSummaryGraph({
 
   return (
     <ResponsiveContainer
-      className="bg-white custom-test-summary-graph"
+      className="tw:bg-primary custom-test-summary-graph"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
       <ComposedChart data={chartData.data} margin={TEST_SUMMARY_CHART_MARGIN}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid stroke={grid} />
         <XAxis
           angle={-45}
           dataKey="name"
@@ -385,7 +404,7 @@ function TestSummaryGraph({
           padding={{ left: 8, right: 8 }}
           scale="time"
           textAnchor="end"
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={(date) =>
             formatDateTimeLong(date, DATE_TIME_12_HOUR_FORMAT)
           }
@@ -395,6 +414,7 @@ function TestSummaryGraph({
           allowDataOverflow
           domain={['min', 'max']}
           padding={{ top: 8, bottom: 8 }}
+          tick={{ fill: axis, fontSize: 12 }}
           tickFormatter={formatYAxis}
           width={80}
         />

@@ -84,8 +84,10 @@ describe('HeaderTheme Component', () => {
     it('should call setSelectedColor when a color option is clicked', () => {
       render(<HeaderTheme {...defaultProps} />);
 
-      const firstColorOption = document.querySelector('.option-color');
-      fireEvent.click(firstColorOption!);
+      const firstColorOption = document.querySelector(
+        '.option-color'
+      ) as HTMLElement;
+      fireEvent.click(firstColorOption);
 
       expect(mockSetSelectedColor).toHaveBeenCalledTimes(1);
       expect(mockSetSelectedColor).toHaveBeenCalledWith(

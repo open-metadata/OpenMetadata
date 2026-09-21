@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prefect Cloud Authentication",
+  "description": "Authentication configuration for Prefect Cloud.",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",
+  "type": "object",
+  "properties": {
+    "apiKey": {
+      "title": "Prefect API Key",
+      "description": "Prefect Cloud API key for authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "accountId": {
+      "title": "Account ID",
+      "description": "Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.",
+      "type": "string"
+    },
+    "workspaceId": {
+      "title": "Workspace ID",
+      "description": "Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "apiKey",
+    "accountId",
+    "workspaceId"
+  ]
+}

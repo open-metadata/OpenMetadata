@@ -84,8 +84,16 @@ const TestDefinitionTable = ({
   const loadingSkeletons = useMemo(
     () => (
       <div className="tw:p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton className="tw:mb-2" height={40} key={i} width="100%" />
+        {Array.from(
+          { length: 5 },
+          (_, i) => `test-definition-skeleton-${i}`
+        ).map((skeletonKey) => (
+          <Skeleton
+            className="tw:mb-2"
+            height={40}
+            key={skeletonKey}
+            width="100%"
+          />
         ))}
       </div>
     ),
@@ -134,12 +142,14 @@ const TestDefinitionTable = ({
     }
 
     let editTooltip;
-    if (isSystemProvider) {
-      editTooltip = t('message.system-test-definition-edit-warning');
-    } else if (hasEditPermission) {
-      editTooltip = t('label.edit');
-    } else {
+    if (!hasEditPermission) {
       editTooltip = t('message.no-permission-for-action');
+    } else if (isSystemProvider) {
+      // Everything else about a shipped test definition is fixed, so say what the form will
+      // actually let them change rather than presenting a plain "Edit".
+      editTooltip = t('message.system-test-definition-dimension-edit-only');
+    } else {
+      editTooltip = t('label.edit');
     }
 
     let deleteTooltip;
@@ -156,7 +166,7 @@ const TestDefinitionTable = ({
         <Tooltip title={editTooltip}>
           <Button
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasEditPermission}
+            disabled={!hasEditPermission}
             icon={<IconEdit height={16} width={16} />}
             type="text"
             onClick={() => onEdit(record)}

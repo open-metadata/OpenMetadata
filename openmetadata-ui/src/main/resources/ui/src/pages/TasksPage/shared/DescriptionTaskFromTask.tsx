@@ -101,6 +101,41 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
     );
   };
 
+  const renderRequestDescription = () => (
+    <div data-testid="request-description">
+      {isTaskActionEdit && hasEditAccess ? (
+        <RichTextEditor
+          initialValue={newDescription ?? ''}
+          placeHolder={t('label.add-entity', {
+            entity: t('label.description'),
+          })}
+          style={{ marginTop: '0px' }}
+          onTextChange={onChange}
+        />
+      ) : (
+        <div className="d-flex rounded-4 m-b-md">
+          {getSuggestedDescriptionDiff()}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderUpdateDescription = () => (
+    <div data-testid="update-description">
+      {isTaskActionEdit && hasEditAccess ? (
+        <DescriptionTabs
+          suggestion={newDescription ?? ''}
+          value={currentDescription ?? ''}
+          onChange={onChange}
+        />
+      ) : (
+        <div className={classNames('d-flex  rounded-4', customClassName)}>
+          {getSuggestedDescriptionDiff()}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="w-full" data-testid="task-description-tabs">
       <Fragment>
@@ -108,44 +143,9 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
           getDiffView()
         ) : (
           <div data-testid="description-task">
-            {isRequestDescription && (
-              <div data-testid="request-description">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <RichTextEditor
-                    initialValue={newDescription ?? ''}
-                    placeHolder={t('label.add-entity', {
-                      entity: t('label.description'),
-                    })}
-                    style={{ marginTop: '0px' }}
-                    onTextChange={onChange}
-                  />
-                ) : (
-                  <div className="d-flex rounded-4 m-b-md">
-                    {getSuggestedDescriptionDiff()}
-                  </div>
-                )}
-              </div>
-            )}
+            {isRequestDescription && renderRequestDescription()}
 
-            {isUpdateDescription && (
-              <div data-testid="update-description">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <DescriptionTabs
-                    suggestion={newDescription ?? ''}
-                    value={currentDescription ?? ''}
-                    onChange={onChange}
-                  />
-                ) : (
-                  <div
-                    className={classNames(
-                      'd-flex  rounded-4',
-                      customClassName
-                    )}>
-                    {getSuggestedDescriptionDiff()}
-                  </div>
-                )}
-              </div>
-            )}
+            {isUpdateDescription && renderUpdateDescription()}
           </div>
         )}
       </Fragment>

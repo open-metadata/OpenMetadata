@@ -83,6 +83,7 @@ export const Toast = ({ toast }: ToastProps) => {
         'tw:animate-in tw:fade-in tw:slide-in-from-bottom-2 tw:duration-150'
       )}
       data-testid="alert-bar"
+      data-variant={variant}
       toast={toast}>
       <span className="tw:mt-0.5 tw:flex tw:shrink-0" data-testid="alert-icon">
         <Icon

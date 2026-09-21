@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
+import Table from '../../components/common/Table/TableV2';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
@@ -36,10 +37,12 @@ import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPa
 import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../utils/EntitySortUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -172,7 +175,7 @@ const StoredProcedureTab = () => {
         sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             id={record.id ?? ''}
@@ -181,7 +184,9 @@ const StoredProcedureTab = () => {
               EntityType.STORED_PROCEDURE,
               record.fullyQualifiedName ?? ''
             )}
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
           />
         ),
       },
@@ -276,7 +281,26 @@ const StoredProcedureTab = () => {
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<Assets className="tw:text-utility-gray-600" />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.stored-procedure-plural'),
+                })}
+                variant="blank"
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

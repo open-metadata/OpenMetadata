@@ -37,6 +37,7 @@ public interface SearchClient
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String RELATIONSHIP_TYPE_SEARCH_INDEX = "relationship_type_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT =
@@ -52,7 +53,8 @@ public interface SearchClient
         }
       }
       """;
-  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT =
+      "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.
@@ -103,14 +105,19 @@ public interface SearchClient
    * tag-mutating painless almost never carry Tier in {@code tags[]}. Unconditionally assigning
    * {@code tier = null} when no Tier was seen would wipe the live-indexed dedicated field —
    * caught by {@code GlossaryRenameCascade.spec.ts}.
+   *
+   * <p>Every {@code def} here stays inside the guard block. A single tag change can produce both a
+   * removal and an addition script, and {@code SearchRepository.getInheritedFieldChanges} appends
+   * them into one painless program — so this snippet is concatenated with itself and a declaration
+   * at the top level would fail to compile with "Variable [newTags] is already defined".
    */
   String TAG_RESEPARATION_SCRIPT =
       """
-      def newTags = new ArrayList();
-      def tier = null;
-      def classTags = new ArrayList();
-      def glossTags = new ArrayList();
       if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        def newTags = new ArrayList();
+        def tier = null;
+        def classTags = new ArrayList();
+        def glossTags = new ArrayList();
         for (def t : ctx._source.tags) {
           if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
           if (t.tagFQN.startsWith('Tier.')) {
@@ -392,7 +399,11 @@ public interface SearchClient
         edgeData.put('sqlQueryKey', sqlKey);
         edgeData.remove('sqlQuery');
       } else {
-        edgeData = params.lineageData;
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
+      }
+      if (ctx._source.upstreamLineage == null) {
+        ctx._source.upstreamLineage = new ArrayList();
       }
       // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
       def oldSqlQueryKey = null;
@@ -694,6 +705,12 @@ public interface SearchClient
           }
           """;
 
+  String RECONCILE_COLUMN_LINEAGE_SCRIPT =
+      UPDATE_COLUMN_LINEAGE_SCRIPT
+          + "if (!params.deletedFQNs.isEmpty()) {\n"
+          + DELETE_COLUMN_LINEAGE_SCRIPT
+          + "}\n";
+
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";
@@ -728,6 +745,8 @@ public interface SearchClient
           "changeDescription");
 
   Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+
+  String FIELDS_TO_REMOVE = "fieldsToRemove";
 
   boolean isClientAvailable();
 
@@ -797,7 +816,8 @@ public interface SearchClient
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(
+      String parent, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -807,7 +827,7 @@ public interface SearchClient
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchyForActivePage(
-      String activeFqn, String pageType, int offset, int limit) {
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

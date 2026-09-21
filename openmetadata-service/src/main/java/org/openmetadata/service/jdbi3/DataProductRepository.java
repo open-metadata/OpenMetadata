@@ -29,6 +29,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
 import java.util.ArrayList;
@@ -66,10 +67,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -93,6 +91,15 @@ import org.openmetadata.service.util.LineageUtil;
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS =
       "experts,domains"; // Domain can now be updated with asset migration
+
+  private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
+      "Data Product Domain Validation";
+
+  // Max descendants whose domains/data-products are hydrated at once while reconciling a level.
+  // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
+  // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
+  // otherwise load the whole level into the heap in one shot).
+  private static final int DESCENDANT_RECONCILE_CHUNK_SIZE = 200;
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -458,6 +465,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
+        if (!isPortEligibleType(ref.getType())) {
+          String msg =
+              String.format(
+                  "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset",
+                  ref.getFullyQualifiedName(), ref.getType());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
         if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
@@ -611,6 +629,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
+  // A port must reference a data asset: a real, non-time-series entity whose schema declares a
+  // dataProducts field (same rule the assets API uses). Excludes pseudo-types like tableColumn.
+  private static boolean isPortEligibleType(String entityType) {
+    return entityType != null
+        && Entity.hasEntityRepository(entityType)
+        && !Entity.isTimeSeriesEntity(entityType)
+        && Entity.entityHasField(entityType, Entity.FIELD_DATA_PRODUCTS);
+  }
+
   private ResultList<EntityWithType> getPaginatedPorts(
       UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
@@ -635,7 +662,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       refsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(ref);
     }
 
-    // Bulk fetch entities by type and collect in order
+    // Bulk fetch entities by type, keyed by each entity's own id. NON_DELETED filtering and the
+    // absence of an ORDER BY mean getEntities may return fewer entities than requested and in a
+    // different order, so keying by request-list index would misattribute or drop rows.
     // Use empty string if fields is null to avoid NPE
     String fieldsToFetch = fields != null ? fields : "";
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
@@ -643,9 +672,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String entityType = entry.getKey();
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (int i = 0; i < entitiesOfType.size(); i++) {
-        entitiesById.put(
-            entry.getValue().get(i).getId(), new EntityWithType(entitiesOfType.get(i), entityType));
+      for (EntityInterface entity : entitiesOfType) {
+        entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
 
@@ -742,8 +770,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
         List<EntityInterface> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
-        for (int i = 0; i < entitiesOfType.size(); i++) {
-          assetEntitiesMap.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        // Key by each entity's own id; getEntities may reorder or drop rows relative to the
+        // request list, so request-index zipping would validate the wrong asset.
+        for (EntityInterface entity : entitiesOfType) {
+          assetEntitiesMap.put(entity.getId(), entity);
         }
       }
     }
@@ -776,7 +806,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         // (FIELDS_STORED_AS_RELATIONSHIPS) and re-derived from entity_relationship on read.
         // Drop every cached variant of the asset so the next read rebuilds it from the
         // freshly-written relationships.
-        invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+        EntityRepository.invalidateCacheForEntity(
+            ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -931,16 +962,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       capturedUpdatedDomains = null;
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     public List<EntityReference> getCapturedOriginalDomains() {
       return capturedOriginalDomains;
     }
@@ -1035,6 +1056,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
+
+      // Moving the data product's domain re-homes its assets, which can strand any OTHER data
+      // product still assigned to those assets (or to descendants that inherit their domain) whose
+      // domain no longer matches — leaving the asset permanently failing "Data Product Domain
+      // Validation" on every later edit. Detach those, mirroring the Domain page cleanup. Only when
+      // the rule is enabled; with it off the mismatch is a legal configuration and is left as-is.
+      if (!assetRecords.isEmpty()
+          && RuleEngine.getInstance().isRuleEnabled(DATA_PRODUCT_DOMAIN_VALIDATION_RULE)) {
+        detachConflictingDataProductsAfterDomainChange(
+            findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS, null));
+      }
     }
 
     private void updateDataProductDomainContainment(
@@ -1111,7 +1143,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
       // too; otherwise GET-by-name would keep serving stale domain references until TTL.
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -1154,17 +1186,229 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
-      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      Entity.getConversationRepository()
+          .updateEntityReference(updated.getEntityReference(), oldFqn);
     }
+  }
+
+  private void detachConflictingDataProductsAfterDomainChange(List<EntityReference> assets) {
+    if (assets.isEmpty()) {
+      return;
+    }
+    // Direct assets were just migrated to the data product's new domains. Reconcile each against
+    // its own (updated) explicit domains, and hand those domains down as the inherited set for its
+    // subtree. Detached assets are reindexed once at the end (a single batched search write) rather
+    // than one call per asset, which matters when a mass-detach touches many descendants.
+    List<EntityReference> reindexQueue = new ArrayList<>();
+    Map<UUID, Set<UUID>> directDomains = batchFetchDomainIds(refIds(assets));
+    reconcileConflicts(assets, directDomains, reindexQueue);
+    reconcileInheritingDescendants(assets, directDomains, reindexQueue);
+    if (searchRepository != null && !reindexQueue.isEmpty()) {
+      // This runs inside the domain-change @Transaction. Defer the batched reindex until commit so
+      // its re-reads see the committed (post-detach) rows rather than the in-flight transaction
+      // state — matching updateEntitiesByReference's transactional contract.
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(reindexQueue),
+          "detachConflictingDataProductsReindex",
+          null,
+          null,
+          DATA_PRODUCT);
+    }
+  }
+
+  /**
+   * Walk the containment subtree of {@code roots} one level at a time, reconciling every descendant
+   * that inherits its domain (no domain of its own) against the domains it inherits. A descendant
+   * that carries its own domain is unaffected and prunes its subtree, so the walk stops there. Reads
+   * are batched per level (children, their domains, their data products, and those data products'
+   * domains), so the cost is O(tree depth), not O(node count).
+   */
+  private void reconcileInheritingDescendants(
+      List<EntityReference> roots,
+      Map<UUID, Set<UUID>> inheritedByParent,
+      List<EntityReference> reindexQueue) {
+    List<EntityReference> frontier = roots;
+    Map<UUID, Set<UUID>> inherited = inheritedByParent;
+    // Roots are reconciled by the caller; guard against revisiting a node reached by another parent
+    // or via a containment cycle, so the walk always terminates.
+    Set<UUID> visited = new HashSet<>(inheritedByParent.keySet());
+    while (!frontier.isEmpty()) {
+      // Discover this level's children, reduced to lightweight (id, type) refs; the heavy
+      // relationship rows are released before the per-chunk work below.
+      Map<UUID, UUID> parentOf = new HashMap<>();
+      List<EntityReference> candidates = fetchUnvisitedChildren(frontier, visited, parentOf);
+      if (candidates.isEmpty()) {
+        return;
+      }
+      List<EntityReference> nextFrontier = new ArrayList<>();
+      Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
+      // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
+      // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
+      for (int start = 0; start < candidates.size(); start += DESCENDANT_RECONCILE_CHUNK_SIZE) {
+        List<EntityReference> chunk =
+            candidates.subList(
+                start, Math.min(start + DESCENDANT_RECONCILE_CHUNK_SIZE, candidates.size()));
+        Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
+        List<EntityReference> inheritingChunk = new ArrayList<>();
+        Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
+        for (EntityReference child : chunk) {
+          // A child with its own explicit domain (and its subtree) is unaffected by the move.
+          if (!chunkOwnDomains.getOrDefault(child.getId(), Set.of()).isEmpty()) {
+            continue;
+          }
+          Set<UUID> inheritedSet = inherited.getOrDefault(parentOf.get(child.getId()), Set.of());
+          inheritingChunk.add(child);
+          chunkEffective.put(child.getId(), inheritedSet);
+          nextInherited.put(child.getId(), inheritedSet);
+        }
+        reconcileConflicts(inheritingChunk, chunkEffective, reindexQueue);
+        nextFrontier.addAll(inheritingChunk);
+      }
+      frontier = nextFrontier;
+      inherited = nextInherited;
+    }
+  }
+
+  /**
+   * One query for the CONTAINS children of {@code frontier}, returned as lightweight (id, type)
+   * references with each child's parent recorded in {@code parentOf} for inheritance. Children
+   * already in {@code visited} (reached via another parent or a cycle) are skipped. The heavy
+   * relationship rows are consumed inline and not retained.
+   */
+  private List<EntityReference> fetchUnvisitedChildren(
+      List<EntityReference> frontier, Set<UUID> visited, Map<UUID, UUID> parentOf) {
+    List<EntityReference> candidates = new ArrayList<>();
+    for (CollectionDAO.EntityRelationshipObject row :
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(refIds(frontier), Relationship.CONTAINS.ordinal(), NON_DELETED)) {
+      UUID childId = UUID.fromString(row.getToId());
+      if (visited.add(childId)) {
+        candidates.add(new EntityReference().withId(childId).withType(row.getToEntity()));
+        parentOf.put(childId, UUID.fromString(row.getFromId()));
+      }
+    }
+    return candidates;
+  }
+
+  /**
+   * Detach, in as few queries as possible, every data-product assignment on {@code assets} whose
+   * domains no longer intersect the asset's effective domains. {@code effectiveDomainsByAsset}
+   * supplies each asset's domains — its own for direct assets, the inherited set for descendants.
+   */
+  private void reconcileConflicts(
+      List<EntityReference> assets,
+      Map<UUID, Set<UUID>> effectiveDomainsByAsset,
+      List<EntityReference> reindexQueue) {
+    if (assets.isEmpty()) {
+      return;
+    }
+    // One query: every data product assigned to any of these assets.
+    List<CollectionDAO.EntityRelationshipObject> dpRows =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(refIds(assets), Relationship.HAS.ordinal(), DATA_PRODUCT, NON_DELETED);
+    if (dpRows.isEmpty()) {
+      return;
+    }
+    // One query: the domains of every data product referenced above (deduped).
+    List<String> dataProductIds =
+        dpRows.stream().map(CollectionDAO.EntityRelationshipObject::getFromId).distinct().toList();
+    Map<UUID, Set<UUID>> dataProductDomains = batchFetchDataProductDomainIds(dataProductIds);
+
+    Map<UUID, EntityReference> assetsById =
+        assets.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
+    Map<UUID, List<EntityReference>> conflictsByAsset = new LinkedHashMap<>();
+    for (CollectionDAO.EntityRelationshipObject row : dpRows) {
+      UUID assetId = UUID.fromString(row.getToId());
+      UUID dataProductId = UUID.fromString(row.getFromId());
+      Set<UUID> effective = effectiveDomainsByAsset.getOrDefault(assetId, Set.of());
+      if (conflicts(dataProductDomains.getOrDefault(dataProductId, Set.of()), effective)) {
+        conflictsByAsset
+            .computeIfAbsent(assetId, k -> new ArrayList<>())
+            .add(new EntityReference().withId(dataProductId).withType(DATA_PRODUCT));
+      }
+    }
+    // Detached assets need full references (with FQN): invalidateCacheForEntity only evicts the
+    // by-name cache when the FQN is present, and descendant refs built from relationship rows carry
+    // none. populateEntityReferences fills them in place, batching one lookup per entity type and
+    // dropping any concurrently-deleted row.
+    List<EntityReference> detachedAssets =
+        conflictsByAsset.keySet().stream().map(assetsById::get).collect(Collectors.toList());
+    EntityUtil.populateEntityReferences(detachedAssets);
+    conflictsByAsset.forEach(
+        (assetId, dataProducts) ->
+            removeDataProductAssignments(assetsById.get(assetId), dataProducts, reindexQueue));
+  }
+
+  /**
+   * Mirror of the "Data Product Domain Validation" rule (LogicOps#validateDataProductDomainMatch):
+   * an asset with any data product but no domains always fails, so every assignment must go; a data
+   * product with no domains never conflicts; otherwise a data product conflicts when its domains are
+   * disjoint from the asset's effective domains.
+   */
+  private boolean conflicts(Set<UUID> dataProductDomainIds, Set<UUID> effectiveDomainIds) {
+    if (effectiveDomainIds.isEmpty()) {
+      return true;
+    }
+    return !dataProductDomainIds.isEmpty()
+        && Collections.disjoint(dataProductDomainIds, effectiveDomainIds);
+  }
+
+  private Map<UUID, Set<UUID>> batchFetchDomainIds(List<String> assetIds) {
+    return groupFromIdsByToId(
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(assetIds, Relationship.HAS.ordinal(), DOMAIN, NON_DELETED));
+  }
+
+  private Map<UUID, Set<UUID>> batchFetchDataProductDomainIds(List<String> dataProductIds) {
+    return groupFromIdsByToId(
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(dataProductIds, Relationship.CONTAINS.ordinal(), DOMAIN, NON_DELETED));
+  }
+
+  /** Group findFromBatch rows into toId (the entity) -> set of fromId (its related entities). */
+  private static Map<UUID, Set<UUID>> groupFromIdsByToId(
+      List<CollectionDAO.EntityRelationshipObject> rows) {
+    Map<UUID, Set<UUID>> grouped = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject row : rows) {
+      grouped
+          .computeIfAbsent(UUID.fromString(row.getToId()), k -> new HashSet<>())
+          .add(UUID.fromString(row.getFromId()));
+    }
+    return grouped;
+  }
+
+  private static List<String> refIds(List<EntityReference> refs) {
+    return refs.stream().map(ref -> ref.getId().toString()).toList();
+  }
+
+  private void removeDataProductAssignments(
+      EntityReference asset,
+      List<EntityReference> dataProducts,
+      List<EntityReference> reindexQueue) {
+    daoCollection
+        .relationshipDAO()
+        .bulkRemoveFromRelationship(
+            dataProducts.stream().map(EntityReference::getId).toList(),
+            asset.getId(),
+            DATA_PRODUCT,
+            asset.getType(),
+            Relationship.HAS.ordinal());
+    removeDataProductsLineage(asset.getId(), asset.getType(), dataProducts);
+    EntityRepository.invalidateCacheForEntity(
+        asset.getType(), asset.getId(), asset.getFullyQualifiedName());
+    // Reindexed in one batched search write by the caller once reconciliation completes.
+    reindexQueue.add(asset);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {
@@ -1199,12 +1443,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
   }
 
   @Override
@@ -1246,20 +1484,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
-    dataProduct =
-        Entity.getEntityByName(
-            Entity.DATA_PRODUCT,
-            dataProduct.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataProduct.getFullyQualifiedName(),
-        new ArrayList<>(dataProduct.getReviewers()),
-        dataProduct.getUpdatedBy());
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

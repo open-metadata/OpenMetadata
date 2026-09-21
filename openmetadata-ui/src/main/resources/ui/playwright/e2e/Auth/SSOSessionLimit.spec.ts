@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, test } from '@playwright/test';
+import { BrowserContext, Page } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import { withMaxActiveSessions } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import { swapSecurityConfig } from '../../utils/ssoAuth';
@@ -35,7 +36,6 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
-  test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
     !username || !password,
@@ -67,6 +67,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
       await page.close();
       await context.close();
     }
+
     await restoreSecurity?.();
   });
 
@@ -94,7 +95,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
     // not raise the "session has timed out" banner, so assert the logged-out state.
     await evicted.reload();
     await evicted.waitForURL('**/signin', { timeout: 30_000 });
-    await expect(evicted.locator('button.signin-button')).toBeVisible();
+    await expect(evicted.getByTestId('sso-login-button')).toBeVisible();
 
     // The newest session is within the cap and stays authenticated.
     await survivor.reload();

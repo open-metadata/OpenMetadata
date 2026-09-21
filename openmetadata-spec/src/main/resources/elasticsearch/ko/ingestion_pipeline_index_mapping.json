@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,21 +16,25 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -50,6 +55,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -364,6 +373,7 @@
         "normalizer": "lowercase_normalizer"
       },
       "pipelineStatuses": {
+        "dynamic": false,
         "properties": {
           "pipelineState": {
             "type": "keyword"

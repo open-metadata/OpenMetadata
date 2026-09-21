@@ -173,6 +173,9 @@ const EntitySearchSettings = () => {
       (field: AllowedFieldField) => ({
         name: field.name,
         description: field.description,
+        // Server-derived: whether the index mapping can highlight this field. Dropping it here
+        // would leave FieldConfiguration with undefined and disable every highlight toggle.
+        highlight: field.highlight,
       })
     );
 
@@ -371,13 +374,13 @@ const EntitySearchSettings = () => {
   ) => {
     updateRankingSettings((ranking) => ({
       ...ranking,
-      stages: (ranking.stages ?? []).map((stage, index) =>
-        index === stageIndex
-          ? weight === null
-            ? omit(stage, 'weight')
-            : { ...stage, weight }
-          : stage
-      ),
+      stages: (ranking.stages ?? []).map((stage, index) => {
+        if (index !== stageIndex) {
+          return stage;
+        }
+
+        return weight === null ? omit(stage, 'weight') : { ...stage, weight };
+      }),
     }));
   };
 
@@ -696,10 +699,11 @@ const EntitySearchSettings = () => {
     const stageTestId = stageName
       ? `ranking-stage-${stageName}`
       : `ranking-stage-unnamed-${stageIndex}`;
+    const minimumShouldMatchSuffix = stage.minimumShouldMatch
+      ? ` (${stage.minimumShouldMatch})`
+      : '';
     const matchType = stage.matchType
-      ? `${startCase(stage.matchType)}${
-          stage.minimumShouldMatch ? ` (${stage.minimumShouldMatch})` : ''
-        }`
+      ? `${startCase(stage.matchType)}${minimumShouldMatchSuffix}`
       : t('label.no-data');
 
     return (

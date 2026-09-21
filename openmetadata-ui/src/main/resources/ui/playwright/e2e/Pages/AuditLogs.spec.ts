@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import {
   navigateToAuditLogsPage,
   verifyAuditEntryHasValidUUIDs,
@@ -121,7 +121,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await entityTypeFilter.click();
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
 
@@ -168,7 +168,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.fill('Table');
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
     });
@@ -283,7 +283,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await userSearchResponse;
 
       const adminOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('admin', { exact: true });
       await expect(adminOption).toBeVisible();
 
@@ -315,7 +315,11 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.request().method() === 'GET'
       );
 
-      await page.locator('.ant-dropdown-menu-item:visible').first().click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByRole('menuitemradio')
+        .first()
+        .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
@@ -555,9 +559,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const avatar = firstItem.getByTestId('item-avatar');
       await expect(avatar).toBeVisible();
 
-      const profilePic = avatar.locator(
-        '.profile-image-container, .ant-avatar'
-      );
+      const profilePic = avatar.locator('[data-avatar]');
       await expect(profilePic).toBeVisible();
     });
 
@@ -586,7 +588,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const filtersDropdown = page.getByTestId('search-dropdown-Entity Type');
       await filtersDropdown.click();
 
-      const popover = page.locator('.ant-dropdown-menu');
+      const popover = page.getByTestId('drop-down-menu');
       await expect(popover).toBeVisible();
       const tableOption = popover.getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
@@ -766,6 +768,28 @@ test.describe(
 
         expect(responseData).toHaveProperty('jobId');
         expect(responseData).toHaveProperty('message');
+
+        // The job id has to name a background_jobs row. A UUID here would mean the
+        // export ran on a local executor, whose result only that server can serve.
+        expect(responseData.jobId).toMatch(/^\d+$/);
+      });
+
+      // The completion event only reaches sockets held by the server that ran the
+      // job, so the download must not depend on it arriving.
+      await test.step('Export completes and downloads the result', async () => {
+        const download = await page.waitForEvent('download', {
+          timeout: 120_000,
+        });
+
+        expect(download.suggestedFilename()).toContain('audit_logs_');
+
+        const stream = await download.createReadStream();
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk as Uint8Array);
+        }
+
+        expect(Buffer.concat(chunks).toString('utf-8').trim()).toMatch(/^\[/);
       });
     });
 
@@ -1497,7 +1521,7 @@ test.describe(
           );
           await filtersDropdown.click();
 
-          const popover = page.locator('.ant-dropdown-menu');
+          const popover = page.getByTestId('drop-down-menu');
           await expect(popover).toBeVisible();
 
           const glossaryTermsOption = popover.getByTestId('glossary');
@@ -1558,7 +1582,7 @@ test.describe(
           ).toContainText('Glossary');
 
           await expect(
-            glossaryEntry.first().locator('.description-content')
+            glossaryEntry.first().getByTestId('description-content')
           ).toContainText(glossaryName);
 
           await expect(

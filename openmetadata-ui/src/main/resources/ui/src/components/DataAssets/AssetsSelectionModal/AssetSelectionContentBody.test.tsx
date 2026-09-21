@@ -39,7 +39,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     onClick?: () => void;
     'data-testid'?: string;
   }) => (
-    <span data-testid={testId} onClick={onClick}>
+    <span data-testid={testId} role="presentation" onClick={onClick}>
       {children}
     </span>
   ),
@@ -73,6 +73,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
       onSearch: (value: string) => void;
     }) => (
       <input
+        aria-label="search-bar"
         data-testid="search-bar"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}

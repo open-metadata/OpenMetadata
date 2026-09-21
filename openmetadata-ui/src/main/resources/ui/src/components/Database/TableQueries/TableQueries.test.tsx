@@ -51,7 +51,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )),
     Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
-      <div role="menuitem" onClick={onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={onClick}
+        {...props}>
         {children}
       </div>
     )),
@@ -84,7 +89,7 @@ jest.mock('../../PaginationComponent/PaginationComponent', () => {
   ));
 });
 
-jest.mock('../../SearchDropdown/SearchDropdown', () => {
+jest.mock('../../common/FilterSelectDropdown/FilterSelectDropdown', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>SearchDropdown.component</div>);

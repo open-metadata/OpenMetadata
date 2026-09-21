@@ -13,7 +13,8 @@ Airbyte source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -65,14 +66,14 @@ class FlinkSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: FlinkConnection = config.serviceConnection.root.config
         if not isinstance(connection, FlinkConnection):
             raise InvalidSourceException(f"Expected FlinkConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_connections_jobs(self, pipeline_details: FlinkPipeline) -> Optional[List[Task]]:  # noqa: UP006, UP045
+    def get_connections_jobs(self, pipeline_details: FlinkPipeline) -> list[Task] | None:
         """Returns the list of tasks linked to connection"""
         pipeline_info = self.client.get_pipeline_info(pipeline_details.id)
         return [
@@ -161,7 +162,7 @@ class FlinkSource(PipelineServiceSource):
                 )
             )
 
-    def get_source_url(self, pipeline_details: FlinkPipeline) -> Optional[str]:  # noqa: UP045
+    def get_source_url(self, pipeline_details: FlinkPipeline) -> str | None:
         try:
             pipeline_status = pipeline_details.state.lower()
             url_status = None

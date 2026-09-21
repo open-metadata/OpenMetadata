@@ -8,7 +8,7 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": ["lowercase"]
+          "filter": ["lowercase", "asciifolding"]
         }
       },
       "tokenizer": {
@@ -22,12 +22,12 @@
       "analyzer": {
         "om_analyzer": {
           "tokenizer": "letter",
-          "filter": ["lowercase", "om_stemmer"]
+          "filter": ["lowercase", "asciifolding", "om_stemmer"]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "om_ngram_tokenizer",
-          "filter": ["lowercase"]
+          "filter": ["lowercase", "asciifolding"]
         }
       },
       "filter": {
@@ -464,6 +464,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"
