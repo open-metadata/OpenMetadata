@@ -104,6 +104,7 @@ import {
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
+  pickGlossaryTermInField,
   toggleGlossaryTermInPicker,
 } from '../../utils/glossaryPicker';
 import { sidebarClick } from '../../utils/sidebar';
@@ -2677,26 +2678,15 @@ test.describe('Glossary tests', () => {
       await page.getByTestId(`tag-${tagFqn}`).click();
       await clickOutside(page);
 
-      const relatedTermsSelect = termModal.getByTestId('related-terms');
-      await relatedTermsSelect.click();
-      await relatedTermsSelect
-        .locator('input[type="search"]')
-        .fill(relatedTerm.responseData.name);
-
-      const relatedTermsDropdown = page.locator(
-        '.async-tree-select-list-dropdown'
+      await pickGlossaryTermInField(
+        page,
+        termModal.getByTestId('related-terms'),
+        {
+          name: relatedTerm.responseData.name,
+          displayName: relatedTerm.responseData.displayName,
+          fullyQualifiedName: relatedTerm.responseData.fullyQualifiedName,
+        }
       );
-
-      await expect(relatedTermsDropdown).toBeVisible();
-
-      const relatedOption = relatedTermsDropdown.getByTestId(
-        `tag-${relatedTerm.responseData.fullyQualifiedName}`
-      );
-
-      await expect(relatedOption).toBeVisible();
-
-      await relatedOption.click();
-      await clickOutside(page);
 
       await addMultiOwnerInDialog({
         page,
