@@ -565,11 +565,9 @@ export const TreeSelect = <T = unknown,>({
   const skipFocusFrame = useRef<number>();
 
   const suppressRestoreFocusOpen = useCallback(() => {
-    // Focus already inside the trigger means no restore is coming to suppress.
-    if (triggerRef.current?.contains(document.activeElement)) {
-      return;
-    }
-
+    // Armed unconditionally: at capture-phase pointerdown focus is still inside
+    // the trigger, so testing for it here would skip the very restore this
+    // guards against and the dropdown would reopen on dismissal.
     skipNextFocusOpen.current = true;
     cancelAnimationFrame(skipFocusFrame.current ?? 0);
     skipFocusFrame.current = requestAnimationFrame(() => {
