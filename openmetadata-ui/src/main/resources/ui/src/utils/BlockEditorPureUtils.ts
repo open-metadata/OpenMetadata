@@ -79,6 +79,10 @@ const MARKDOWN_CODE_REGION = /```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`/g;
 // after a blank line or at the start of the document.
 const INDENTED_CODE_LINE = /^(?: {4}|\t)/;
 
+// Blockquote markers sit outside the indentation they quote, so they come off
+// before a line is measured — `>     <table>` is an indented code block too.
+const BLOCKQUOTE_MARKER = /^ {0,3}(?:> ?)+/;
+
 /**
  * Blanks out every markdown code region — fenced blocks, code spans, and
  * four-space-indented blocks — leaving the surrounding text in place.
@@ -94,8 +98,9 @@ const stripMarkdownCodeRegions = (content: string) => {
     .replace(MARKDOWN_CODE_REGION, '')
     .split('\n')
     .map((line) => {
-      const isBlank = line.trim() === '';
-      const isIndented = INDENTED_CODE_LINE.test(line);
+      const quotedLine = line.replace(BLOCKQUOTE_MARKER, '');
+      const isBlank = quotedLine.trim() === '';
+      const isIndented = INDENTED_CODE_LINE.test(quotedLine);
 
       isInIndentedBlock = isInIndentedBlock
         ? isIndented || isBlank
