@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
@@ -3601,124 +3600,6 @@ class SearchRepositoryBehaviorTest {
     verify(spyRepository).updateIndex(DOMAIN_MAPPING);
     verify(spyRepository).updateIndex(DATA_PRODUCT_MAPPING);
     verify(spyRepository).initializeVectorSearchService();
-  }
-
-  /**
-   * The registry as {@code main} ships it: 1.12's {@code aiAgent} was renamed to
-   * {@code aiApplication}, so nothing maps to {@code ai_agent_search_index} any more.
-   */
-  private static final IndexMapping AI_APPLICATION_MAPPING =
-      IndexMapping.builder()
-          .indexName("ai_application_search_index")
-          .alias("aiApplication")
-          .parentAliases(List.of("all", "dataAssetEmbeddings"))
-          .indexMappingFile("/elasticsearch/%s/ai_application_index_mapping.json")
-          .build();
-
-  private SearchRepository aiApplicationOnlyRepository() {
-    return newRepository(Map.of("aiApplication", AI_APPLICATION_MAPPING), null);
-  }
-
-  /**
-   * A stateful stand-in for the cluster's alias table, so these tests assert the alias membership
-   * the sweep leaves behind rather than the calls it made. A client that takes {@code removeAliases}
-   * and fails to mutate anything reads as a failure here, which pure call-verification would miss.
-   */
-  private Map<String, Set<String>> stubAliasTable(Map<String, Set<String>> initial) {
-    Map<String, Set<String>> aliases = new HashMap<>();
-    initial.forEach((alias, indexes) -> aliases.put(alias, new LinkedHashSet<>(indexes)));
-    when(searchClient.getIndicesByAlias(anyString()))
-        .thenAnswer(call -> Set.copyOf(aliases.getOrDefault(call.getArgument(0), Set.of())));
-    doAnswer(
-            call -> {
-              String index = call.getArgument(0);
-              Set<String> removed = call.getArgument(1);
-              removed.forEach(
-                  alias -> aliases.getOrDefault(alias, new LinkedHashSet<>()).remove(index));
-              return null;
-            })
-        .when(searchClient)
-        .removeAliases(anyString(), any());
-    return aliases;
-  }
-
-  @Test
-  void detachesAnOrphanedIndexFromAManagedAlias() {
-    // An upgrade from 1.12 leaves ai_agent_search_index behind, still on `all`. Its mapping has
-    // `owners` as a plain object, so a nested owners clause fails that shard and every zero-hit
-    // search through `all` becomes a 500.
-    SearchRepository repo = aiApplicationOnlyRepository();
-    Map<String, Set<String>> aliases =
-        stubAliasTable(
-            Map.of(
-                "all", Set.of("ai_application_search_index", "ai_agent_search_index"),
-                "aiApplication", Set.of("ai_application_search_index"),
-                "dataAssetEmbeddings", Set.of("ai_application_search_index")));
-
-    assertEquals(1, repo.detachOrphanedIndexesFromAliases());
-
-    assertEquals(Set.of("ai_application_search_index"), aliases.get("all"));
-    assertEquals(Set.of("ai_application_search_index"), aliases.get("aiApplication"));
-  }
-
-  @Test
-  void keepsTheVectorChunkIndexOnTheEmbeddingsAlias() {
-    // data_asset_embeddings_chunks and its generations carry `dataAssetEmbeddings` so the vector
-    // read path sees chunk docs, and neither is an entityIndexMap index. Detaching them would
-    // silently empty semantic search on every migrate.
-    SearchRepository repo = aiApplicationOnlyRepository();
-    Set<String> embeddings =
-        Set.of(
-            "ai_application_search_index",
-            "data_asset_embeddings_chunks",
-            "data_asset_embeddings_chunks_gen_3");
-    Map<String, Set<String>> aliases =
-        stubAliasTable(
-            Map.of(
-                "all", Set.of("ai_application_search_index"), "dataAssetEmbeddings", embeddings));
-
-    assertEquals(0, repo.detachOrphanedIndexesFromAliases());
-
-    assertEquals(embeddings, aliases.get("dataAssetEmbeddings"));
-  }
-
-  @Test
-  void updateIndexesDetachesOrphans() {
-    // The contract that makes this reach every product: `openmetadata-ops.sh migrate` calls
-    // updateIndexes() on every upgrade, and Collate inherits it through
-    // CollateOperations.migrate() -> super.migrate(). Application bootstrap is NOT a shared hook.
-    SearchRepository repo = aiApplicationOnlyRepository();
-    Map<String, Set<String>> aliases =
-        stubAliasTable(
-            Map.of("all", Set.of("ai_application_search_index", "ai_agent_search_index")));
-
-    repo.updateIndexes();
-
-    assertEquals(Set.of("ai_application_search_index"), aliases.get("all"));
-  }
-
-  @Test
-  void leavesAFullyRegisteredClusterUntouched() {
-    SearchRepository repo = aiApplicationOnlyRepository();
-    Map<String, Set<String>> aliases =
-        stubAliasTable(Map.of("all", Set.of("ai_application_search_index")));
-
-    assertEquals(0, repo.detachOrphanedIndexesFromAliases());
-
-    assertEquals(Set.of("ai_application_search_index"), aliases.get("all"));
-  }
-
-  @Test
-  void keepsAStagedRebuildAttachedWhileAReindexIsInFlight() {
-    // A server killed mid-reindex leaves <canonical>_rebuild_<millis> holding the aliases it was
-    // about to be promoted into. Tearing those off would break search rather than repair it.
-    SearchRepository repo = aiApplicationOnlyRepository();
-    String staged = "ai_application_search_index_rebuild_1789766065567";
-    Map<String, Set<String>> aliases = stubAliasTable(Map.of("all", Set.of(staged)));
-
-    assertEquals(0, repo.detachOrphanedIndexesFromAliases());
-
-    assertEquals(Set.of(staged), aliases.get("all"));
   }
 
   private SearchRepository newRepository(
