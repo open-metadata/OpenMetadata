@@ -36,7 +36,10 @@ import { sizes } from '@/components/base/select/select';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
-import { TreeSelectTreeItemContent } from './tree-select-node';
+import {
+  TreeSelectEmptyItemContent,
+  TreeSelectTreeItemContent,
+} from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
 import { useTreeSelectData } from './use-tree-select-data';
 import {
@@ -56,12 +59,14 @@ const VIEWPORT_PADDING = 12;
 type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
+// Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
 const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
-): DropdownPlacement => {
+): { placement: DropdownPlacement; triggerWidth?: number } => {
   const [placement, setPlacement] = useState<DropdownPlacement>('bottom left');
+  const [triggerWidth, setTriggerWidth] = useState<number>();
 
   useEffect(() => {
     if (!isOpen) {
@@ -73,6 +78,7 @@ const useDropdownPlacement = (
       if (!rect) {
         return;
       }
+      setTriggerWidth(rect.width);
       const needed = (width ?? rect.width) + VIEWPORT_PADDING;
       const fitsRight = window.innerWidth - rect.left >= needed;
       const fitsLeft = rect.right >= needed;
@@ -82,10 +88,20 @@ const useDropdownPlacement = (
     measure();
     window.addEventListener('resize', measure);
 
-    return () => window.removeEventListener('resize', measure);
+    // The trigger can reflow while open, e.g. a grid cell editor mounting its
+    // buttons beside it, and a width measured once would then be stale.
+    const observer = new ResizeObserver(measure);
+    if (triggerRef.current) {
+      observer.observe(triggerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
   }, [isOpen, width, triggerRef]);
 
-  return placement;
+  return { placement, triggerWidth };
 };
 
 const shouldLazyLoad = <T,>(
@@ -205,6 +221,7 @@ export const TreeSelect = <T = unknown,>({
   debounceMs = 300,
   pageSize = 50,
   noDataMessage,
+  emptyBranchMessage,
   loadingMessage,
   searchPlaceholder,
   triggerVariant = 'input',
@@ -242,7 +259,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const placement = useDropdownPlacement(
+  const { placement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -455,6 +472,9 @@ export const TreeSelect = <T = unknown,>({
     ]
   );
 
+  const resolvedEmptyBranchMessage =
+    emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -484,12 +504,27 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children && renderNodes(node.children, node)}
+            {node.children?.length
+              ? renderNodes(node.children, node)
+              : node.children &&
+                node.isLeaf === false &&
+                !loadingNodes.has(node.id) && (
+                  <Tree.Item
+                    id={`${node.id}__empty`}
+                    key={`${node.id}__empty`}
+                    textValue={resolvedEmptyBranchMessage}>
+                    <TreeSelectEmptyItemContent
+                      message={resolvedEmptyBranchMessage}
+                      parentId={node.id}
+                    />
+                  </Tree.Item>
+                )}
           </Tree.Item>
         );
       });
     },
     [
+      resolvedEmptyBranchMessage,
       isNodeVisible,
       isNodeSelected,
       loadingNodes,
@@ -523,8 +558,23 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
+  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
+  // The restore arrives a frame or more later, so the flag has to stay armed
+  // until a focus event consumes it — a timed reset loses the race and reopens.
+  const skipNextFocusOpen = useRef(false);
+
+  const openOnFocus = () => {
+    if (skipNextFocusOpen.current) {
+      skipNextFocusOpen.current = false;
+
+      return;
+    }
+    openTrigger();
+  };
+
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
+    skipNextFocusOpen.current = true;
     if (isStaged) {
       setSelection(toArray(value));
     }
@@ -564,12 +614,13 @@ export const TreeSelect = <T = unknown,>({
         dismiss();
       }
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    // Capture: an overlay stopping propagation would otherwise hide the click.
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleEscape, true);
 
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleEscape, true);
     };
   }, [isOpen, dismiss]);
 
@@ -786,7 +837,7 @@ export const TreeSelect = <T = unknown,>({
       isNonModal
       className={cx(
         // `w-full` would size against the portal root.
-        usesDropdownChrome ? 'tw:w-80' : 'tw:w-(--trigger-width)',
+        usesDropdownChrome && 'tw:w-80',
         popoverClassName
       )}
       // Stops a dismissable ancestor reading clicks here as outside ones.
@@ -795,6 +846,12 @@ export const TreeSelect = <T = unknown,>({
       placement={placement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
+      // The input variant matches its trigger; measured, not `--trigger-width`.
+      style={
+        usesDropdownChrome || triggerWidth === undefined
+          ? undefined
+          : { width: triggerWidth }
+      }
       triggerRef={triggerRef}
       onOpenChange={setOpen}>
       {treeDropdownContent}
@@ -917,7 +974,7 @@ export const TreeSelect = <T = unknown,>({
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
-              onFocus={openTrigger}
+              onFocus={openOnFocus}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') {
                   dismiss();
