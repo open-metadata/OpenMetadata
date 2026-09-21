@@ -115,6 +115,13 @@ public class SubjectCacheTest {
                         new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
                     Policy.class));
 
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+    TeamGraphFixture.stubReferences(policyRepository, Entity.POLICY);
+
     // Create team hierarchy: team1 -> team11 -> user
     team1Roles = getRoles("team1");
     team1Policies = getPolicies("team1");
@@ -139,6 +146,32 @@ public class SubjectCacheTest {
   public void resetCache() {
     SubjectCache.invalidateAll();
     clearInvocations(userRepository);
+  }
+
+  /**
+   * Issue #19778: {@code inAnyTeam()} and {@code hasAnyRole()} are rule conditions, so they run
+   * once per rule per entity in a listing. Resolving the subject's team hierarchy on each call is
+   * what turned a page load for a member of many teams into thousands of queries.
+   */
+  @Test
+  void testRepeatedRuleConditionsResolveTheTeamHierarchyOnce() {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext("testUser");
+    assertTrue(subjectContext.isUserUnderTeam("team1"));
+    TeamGraphFixture.resetQueryCount();
+
+    for (int i = 0; i < 20; i++) {
+      assertTrue(subjectContext.isUserUnderTeam("team11"));
+      assertTrue(subjectContext.isUserUnderTeam("team1"));
+      assertFalse(subjectContext.isUserUnderTeam("unrelatedTeam"));
+      assertTrue(subjectContext.hasAnyRole("team1_role_1"));
+      assertTrue(subjectContext.hasAnyRole("user_role_1"));
+      assertFalse(subjectContext.hasAnyRole("unrelatedRole"));
+    }
+
+    assertEquals(
+        0,
+        TeamGraphFixture.queryCount(),
+        "The subject's team hierarchy must be resolved once, not once per condition");
   }
 
   @Test
@@ -186,6 +219,50 @@ public class SubjectCacheTest {
     // request presented it, so the match has to be case-insensitive to hit anything at all.
     SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
     SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /**
+   * The policy entry carries the team names and inherited role names that {@code inAnyTeam()} and
+   * {@code hasAnyRole()} answer from, and both used to be read from the database on every
+   * evaluation. A peer's team write has to drop it, or this pod keeps authorizing against the
+   * hierarchy as it was before that write.
+   */
+  @Test
+  void testRemoteTeamWriteDropsPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /** Role names reach the summary the same way, so a rename on a peer has to drop it too. */
+  @Test
+  void testRemoteRoleWriteDropsPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.ROLE, UUID.randomUUID(), "DataSteward");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /** A membership or role change reaches peers as a user write; the policy entry holds both. */
+  @Test
+  void testRemoteUserWriteDropsThatUsersPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
+    SubjectCache.getPolicies("testUser");
 
     verify(userRepository, times(1))
         .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
@@ -453,6 +530,7 @@ public class SubjectCacheTest {
             .withParents(parentList);
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 }
