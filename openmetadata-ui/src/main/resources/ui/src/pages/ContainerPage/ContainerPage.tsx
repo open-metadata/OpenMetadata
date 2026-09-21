@@ -42,8 +42,10 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
+  FqnPart,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Column } from '../../generated/entity/data/table';
@@ -68,6 +70,7 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
   checkIfExpandViewSupported,
@@ -82,6 +85,7 @@ import {
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -566,8 +570,15 @@ const ContainerPage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.STORAGE_SERVICES,
+          getPartialNameFromTableFQN(decodedEntityFqn, [FqnPart.Service])
+        )
+      ),
+    [decodedEntityFqn]
   );
 
   const afterDomainUpdateAction = useCallback(

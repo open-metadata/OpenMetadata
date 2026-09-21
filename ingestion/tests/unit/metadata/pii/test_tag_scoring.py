@@ -380,6 +380,21 @@ class TestTagAnalyzer:
             explanation=None,
         )
 
+    def test_analyze_content_minority_pii_not_diluted(self, tag_analyzer, email_tag: Tag):
+        """A single PII value among many non-PII rows must not be diluted below threshold.
+
+        Regression test for #32070: the old average-based aggregation divided the recogniser
+        score by the total number of sampled values (e.g. 0.9 / 50 = 0.018), silently
+        discarding minority PII.  The max-based approach returns the highest individual
+        recogniser score regardless of batch size.
+        """
+        non_pii = ["random text"] * 49
+        values = non_pii + ["john@example.com"]  # 1 PII hit in 50 values
+        analysis = tag_analyzer.analyze(str_values=values)
+        # Old average: 0.9 / 50 = 0.018 — below minimumConfidence → column silently untagged.
+        # Max-based: 0.9 — correctly flags the column.
+        assert analysis.score >= 0.8
+
     def test_analyze_column_name(self, email_tag, nlp_engine):
         """Test column name analysis fires independently via the unified analyze() method."""
         column = Column(
