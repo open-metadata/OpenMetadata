@@ -2266,11 +2266,8 @@ export const expandTreeNodeByName = async (
   await expect(nodeText).toBeVisible({ timeout: 10000 });
   await nodeText.scrollIntoViewIfNeeded();
 
-  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  const alreadyExpanded =
-    (await treeItem.getAttribute('aria-expanded')) === 'true';
-
-  if (!alreadyExpanded) {
+  if (!search) {
+    const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
     const expandButton = treeItem.locator('button').first();
     await expect(expandButton).toBeVisible({ timeout: 5000 });
     await expandButton.click();
