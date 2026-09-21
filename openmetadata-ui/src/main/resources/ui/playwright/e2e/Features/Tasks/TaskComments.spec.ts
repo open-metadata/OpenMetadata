@@ -112,78 +112,6 @@ test.describe('Task Comments - Add Comment', () => {
     ).toBeVisible();
   });
 
-  // Replaces a Jest assertion that could only check Tailwind class names: jsdom has
-  // no layout engine, so it could not have caught an actual reflow. Here the delete
-  // affordance is positioned out of flow, so revealing it on hover must not shift
-  // the comment body by a single pixel.
-  test('revealing the delete affordance on hover must not reflow the comment body', async ({
-    page,
-  }) => {
-    await assigneeUser.login(page);
-    await table.visitEntityPage(page);
-
-    await openEntityTasksTab(page);
-
-    // This describe seeds exactly one task against a fresh table, so the card can
-    // be addressed directly rather than by position - a positional locator would
-    // silently pick up a different task if the fixture ever grows.
-    await openTaskDetails(page, createdTask);
-
-    const drawer = page.locator('#task-panel');
-    await expect(drawer).toBeVisible();
-
-    const message = `Layout probe ${Date.now()}`;
-    await addCommentToTask(page, message);
-
-    const card = drawer
-      .locator('[data-testid="feed-reply-card"]')
-      .filter({ hasText: message });
-    await expect(card).toBeVisible();
-
-    const body = card.getByTestId('viewer-container');
-
-    // The markdown preview measures itself and applies its own clamp one frame
-    // after mount, so sample until the box stops moving - otherwise this test
-    // measures that clamp rather than the hover it is meant to guard.
-    let previous = await body.boundingBox();
-    await expect
-      .poll(
-        async () => {
-          const current = await body.boundingBox();
-          const settled = JSON.stringify(current) === JSON.stringify(previous);
-          previous = current;
-
-          return settled;
-        },
-        { timeout: 10_000 }
-      )
-      .toBe(true);
-
-    const before = previous;
-
-    const actions = card.getByTestId('feed-actions');
-    const deleteAction = card.getByTestId('delete-message');
-
-    // Posting the comment leaves the pointer over the card, which would hold
-    // the bar revealed - park it away first to sample the resting state.
-    await page.mouse.move(0, 0);
-
-    // Mounted before any hover so it stays reachable by keyboard and screen
-    // readers - the reveal is opacity, which Playwright's visibility check
-    // deliberately ignores, so assert the computed value directly.
-    await expect(deleteAction).toBeAttached();
-    await expect(actions).toHaveCSS('opacity', '0');
-
-    await card.hover();
-
-    await expect(actions).toHaveCSS('opacity', '1');
-    await expect(deleteAction).toBeVisible();
-
-    const after = await body.boundingBox();
-
-    expect(after).toEqual(before);
-  });
-
   test('the comment actions are reachable and operable by keyboard alone', async ({
     page,
   }) => {
@@ -213,6 +141,11 @@ test.describe('Task Comments - Add Comment', () => {
     await page.mouse.move(0, 0);
 
     await expect(actions).toHaveCSS('opacity', '0');
+
+    // In normal flow at rest, so the bar occupies its space before anything
+    // reveals it. The hover half of the same invariant is asserted in
+    // 'comment author should see edit/delete options'.
+    await expect(actions).toHaveCSS('position', 'static');
 
     // Regression coverage for the affordance being an `<Icon onClick>` span:
     // it could not hold focus at all, so none of this was possible without a
@@ -476,7 +409,38 @@ test.describe('Task Comments - Edit/Delete', () => {
       .locator('[data-testid="feed-reply-card"]')
       .filter({ hasText: message });
     await expect(comment).toHaveCount(1);
+
+    // The bar sits in normal flow and is revealed by opacity alone, so hover
+    // must not touch any property that could reflow the comment body beneath
+    // it. Sampled as computed styles rather than boxes: a bounding-box
+    // comparison across `hover()` reads viewport coordinates, which shift when
+    // Playwright's actionability check scrolls the card into view - that is
+    // what made the previous geometry check report a 9px "reflow" that was
+    // really a 9px scroll. Longhands, not the `margin`/`padding` shorthands,
+    // so an empty computed value cannot make this pass by comparing '' to ''.
+    const actionsLayout = () =>
+      comment.getByTestId('feed-actions').evaluate((element) => {
+        const style = getComputedStyle(element);
+
+        return {
+          display: style.display,
+          height: style.height,
+          marginBottom: style.marginBottom,
+          marginTop: style.marginTop,
+          paddingBottom: style.paddingBottom,
+          paddingTop: style.paddingTop,
+          position: style.position,
+        };
+      });
+
+    // Park the pointer away from the card so the resting sample is unhovered.
+    await page.mouse.move(0, 0);
+
+    const layoutAtRest = await actionsLayout();
+
     await comment.hover();
+
+    expect(await actionsLayout()).toEqual(layoutAtRest);
 
     // The author may both edit and delete their own comment.
     await expect(comment.getByTestId('edit-message')).toBeVisible();
