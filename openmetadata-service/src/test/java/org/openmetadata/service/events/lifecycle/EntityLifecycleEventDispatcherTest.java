@@ -164,7 +164,7 @@ class EntityLifecycleEventDispatcherTest {
    * tail slot, so an in-flight stream whose fence is already bound to the pre-removal size reads
    * that slot back as a null handler and fails the write with an NPE on {@code
    * getSupportedEntityTypes()}. Reproduces the parallel-CI failure where one integration test
-   * re-registering {@code VectorEmbeddingHandler} broke unrelated entity writes.
+   * re-registering {@code VectorEmbeddingHandler} broke unrelated entity writes (issue #33711).
    */
   @Test
   void testUnregisterDuringDispatchNeverExposesANullHandler() throws InterruptedException {
