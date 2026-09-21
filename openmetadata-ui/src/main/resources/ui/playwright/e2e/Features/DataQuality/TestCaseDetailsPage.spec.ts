@@ -103,10 +103,11 @@ test.describe(
           'href',
           /\/profiler\/data-quality$/
         );
-        // Matched as a suffix, like the table suite above: the observability
-        // router is overridden downstream to namespace these routes (Collate
-        // in AI app mode serves them under `/observability`), so pinning the
-        // OSS literal asserts a prefix this spec has no business knowing.
+        // Matched as a suffix, like the table suite above. `openDetailsPage`
+        // enables AI mode, and `getTestSuitePath` namespaces the route under
+        // `/observability` there — in OSS since #33502, and in Collate through
+        // its override — so pinning either literal asserts a prefix this spec
+        // has no business knowing.
         await expect(bundleSuiteLink).toHaveAttribute(
           'href',
           new RegExp(
