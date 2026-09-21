@@ -36,12 +36,20 @@ const INVALID_SAML_XML = path.join(
   __dirname,
   '../../test-data/saml-metadata-invalid.xml'
 );
+const OKTA_SAML_XML = path.join(
+  __dirname,
+  '../../test-data/saml-metadata-okta.xml'
+);
 
 const EXPECTED_ENTITY_ID =
   'https://sts.example.com/00000000-0000-0000-0000-000000000000/';
 const EXPECTED_SSO_LOGIN_URL =
   'https://sso.example.com/00000000-0000-0000-0000-000000000000/saml2';
 const EXPECTED_CERT_PREFIX = '-----BEGIN CERTIFICATE-----';
+
+const OKTA_ENTITY_ID = 'http://www.okta.com/exk1a2b3c4d5';
+const IDP_CERT_FIELD_PATH =
+  'authenticationConfiguration.samlConfiguration.idp.idpX509Certificate';
 
 const { expect } = test;
 
@@ -121,6 +129,7 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
 
       for (const field of OIDC_COMMON_FIELDS) {
         const fieldElement = page.getByLabel(field);
@@ -147,6 +156,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -174,6 +185,8 @@ test.describe('SSO Configuration Tests', () => {
       await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      await page.getByText(/advanced config/i).click();
+
       const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
       for (const field of oidcFields) {
@@ -780,8 +793,11 @@ test.describe('SSO Configuration Tests', () => {
 
       // Typing filters the visible options
       await field.click();
+      const dataRoleSearchResponse = page.waitForResponse(
+        '/api/v1/roles/search?*'
+      );
       await field.locator('input').fill('Data');
-      await page.waitForResponse('/api/v1/roles/search?*');
+      await dataRoleSearchResponse;
       await expect(
         dropdown.locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'
@@ -905,6 +921,62 @@ test.describe('SAML Metadata XML Upload', () => {
           '[id="root/authenticationConfiguration/samlConfiguration/idp/idpX509Certificate"]'
         )
       ).toHaveValue('');
+    });
+  });
+
+  // Issue #28619: metadata.xml parsing happens in the browser, so provider-specific certificate
+  // rules are only reached once the form is submitted. Okta signs with CN=<org short name> against
+  // an Entity ID of http://www.okta.com/{appId}; requiring those to match rejected every valid
+  // Okta configuration at this exact step.
+  test('should accept an Okta metadata XML upload when the form is submitted', async ({
+    page,
+  }) => {
+    test.slow();
+
+    // Never persist: this test drives real backend validation but must not repoint the running
+    // instance at an unreachable IdP. Only the write is stubbed — the page's own GET must reach the
+    // server, since enableSSOEditMode branches on whether a configuration already exists.
+    await page.route('**/api/v1/system/security/config', (route) =>
+      route.request().method() === 'PUT'
+        ? route.fulfill({ status: 200, json: {} })
+        : route.fallback()
+    );
+
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
+    await selectSSOProvider(page, 'saml');
+
+    await test.step('Upload Okta SAML metadata XML', async () => {
+      await expect(page.getByTestId('file-upload-drop-zone')).toBeVisible();
+
+      await page.getByTestId('file-uploader').setInputFiles(OKTA_SAML_XML);
+
+      await expect(page.getByTestId('change-metadata-xml-btn')).toBeVisible();
+      await expect(
+        page.locator(
+          '[id="root/authenticationConfiguration/samlConfiguration/idp/entityId"]'
+        )
+      ).toHaveValue(OKTA_ENTITY_ID);
+    });
+
+    await test.step('Submit and assert the IdP certificate is accepted', async () => {
+      const validateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/system/security/validate') &&
+          response.request().method() === 'POST'
+      );
+
+      await page.getByTestId('save-sso-configuration').click();
+
+      const errors = (await (await validateResponse).json())?.errors ?? [];
+      const certificateError = errors.find(
+        (error: { field: string }) => error.field === IDP_CERT_FIELD_PATH
+      );
+
+      expect(
+        certificateError,
+        `Okta certificate was rejected: ${certificateError?.error}`
+      ).toBeUndefined();
     });
   });
 });

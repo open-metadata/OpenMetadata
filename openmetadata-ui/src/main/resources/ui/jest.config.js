@@ -56,9 +56,28 @@ module.exports = {
   setupFilesAfterEnv: ['./src/setupTests.js'],
   clearMocks: true,
   moduleNameMapper: {
+    // Mock `*.assets.ts` wrappers around `import.meta.glob(...)` — Vite-only
+    // syntax that ts-jest cannot parse. The stub returns `{}` for empty-map
+    // consumers; `applicationSchemaLoaders` gets real loaders backed by
+    // `require()` so ApplicationsClassBase tests see the on-disk JSON.
+    '\\.assets$': '<rootDir>/src/test/unit/mocks/glob.mock.js',
+    // Test shim for `loadConnectionSchema` — the real impl uses `fetch()`,
+    // unavailable in jsdom. This mock reads from `public/jsons/...` on disk
+    // synchronously via `require()` so tests get identical schema payloads
+    // without network calls.
+    '/loadConnectionSchema$':
+      '<rootDir>/src/test/unit/mocks/loadConnectionSchema.mock.js',
+    // ui-core-components keeps its own react-aria copy under a link: install,
+    // so a bare import resolves differently inside the package than it does in
+    // the app. Vite already dedupes these for the build; without the same
+    // mapping here, jest loads two copies and context lookups across the
+    // boundary miss — column resizing throws "Wrap your <Table> in a
+    // <ResizableTableContainer>" even though the container is right there.
+    '^(react-aria-components|react-aria|react-stately|@react-aria/utils|@react-stately/utils)$':
+      '<rootDir>/node_modules/$1',
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
-    '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|less|LESS|css|CSS)$':
+    '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|mp4|MP4|webm|WEBM|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
     // fix vendors.map error
     '^<rootDir>/src/.*\\.json$': '<rootDir>/src/test/unit/mocks/json.mock.js',
@@ -77,6 +96,12 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
     '^.*/AppRouter/withSuspenseFallback$':
       '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
+    // `src/utils/isPlaywrightBuild.ts` reads `import.meta.env.PW_E2E_BUILD`,
+    // which ts-jest cannot parse under the default CJS transform. Redirect
+    // every consumer through the stub so the syntax stays out of the tree
+    // Jest walks. See the stub for how to flip the flag per-test.
+    '^.*/utils/isPlaywrightBuild$':
+      '<rootDir>/src/test/unit/mocks/isPlaywrightBuild.mock.ts',
     // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
     // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
     // (for its own dev/test) — without these mappings the CJS bundle loaded from

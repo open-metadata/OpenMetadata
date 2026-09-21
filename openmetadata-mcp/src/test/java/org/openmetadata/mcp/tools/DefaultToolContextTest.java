@@ -142,6 +142,31 @@ class DefaultToolContextTest {
   }
 
   @Test
+  void unknownEntityFieldIsAClientErrorNotAServerFault() {
+    // JsonUtils.applyPatch rejects a renamed/misspelled field as IllegalArgumentException so a
+    // patch naming e.g. "status" instead of "entityStatus" is a 400 the model can retry, and never
+    // reaches ERROR-level logging where it would page an operator.
+    Exception unknownField =
+        new IllegalArgumentException(
+            "Invalid field 'status' for GlossaryTerm. Did you mean 'entityStatus'? "
+                + "Valid fields are: certification, deleted, entityStatus");
+    assertThat(DefaultToolContext.resolveStatusCode(unknownField)).isEqualTo(400);
+    assertThat(DefaultToolContext.classifyException(unknownField))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(DefaultToolContext.isServerFault(400)).isFalse();
+  }
+
+  @Test
+  void onlyServerFaultsLogAtErrorLevel() {
+    assertThat(DefaultToolContext.isServerFault(400)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(403)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(404)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(429)).isFalse();
+    assertThat(DefaultToolContext.isServerFault(500)).isTrue();
+    assertThat(DefaultToolContext.isServerFault(504)).isTrue();
+  }
+
+  @Test
   void resolveStatusCodeMapsAuthTo403() {
     assertThat(DefaultToolContext.resolveStatusCode(new AuthorizationException("forbidden")))
         .isEqualTo(403);

@@ -27,26 +27,23 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
-import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -71,10 +68,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
@@ -101,42 +95,45 @@ const StoredProcedurePage = () => {
   const { entityFqn: decodedStoredProcedureFQN } = useFqn({
     type: EntityType.STORED_PROCEDURE,
   });
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [storedProcedurePermissions, setStoredProcedurePermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  // Full fetch-owner conversion (TableDetailsPageV1.tsx precedent): the old raw expressions
+  // never gated editCustomAttributePermission/editLineagePermission on `deleted` (the
+  // separate `deleted` field is passed straight through to
+  // getStoredProcedureDetailsPageTabs instead), so this call is deliberately ungated — no
+  // `deleted` option — to avoid introducing gating that wasn't there before.
+  // editCustomAttributePermission/editLineagePermission are also an explicit-deny-wins fix,
+  // same precedent as canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a
+  // broader EditAll grant.
+  const {
+    permissions: storedProcedurePermissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewBasicPermission,
+    canViewAll: viewAllPermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.STORED_PROCEDURE,
+    decodedStoredProcedureFQN
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    }
+  }, [permissionsError]);
+
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.StoredProcedure
   );
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
-  );
-
-  const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewBasicPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        storedProcedurePermissions.EditAll ||
-        storedProcedurePermissions.EditCustomFields,
-      editLineagePermission:
-        storedProcedurePermissions.EditAll ||
-        storedProcedurePermissions.EditLineage,
-      viewAllPermission: storedProcedurePermissions.ViewAll,
-      viewBasicPermission:
-        storedProcedurePermissions.ViewAll ||
-        storedProcedurePermissions.ViewBasic,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        storedProcedurePermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [storedProcedurePermissions]
   );
 
   const storedProcedureCacheKey = useMemo(
@@ -146,6 +143,14 @@ const StoredProcedurePage = () => {
         STORED_PROCEDURE_DEFAULT_FIELDS
       ),
     [decodedStoredProcedureFQN]
+  );
+
+  const isStoredProcedureQueryEnabled = useMemo(
+    () =>
+      Boolean(
+        decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
+      ),
+    [decodedStoredProcedureFQN, viewBasicPermission, permissionsLoading]
   );
 
   const {
@@ -158,9 +163,7 @@ const StoredProcedurePage = () => {
       decodedStoredProcedureFQN,
       STORED_PROCEDURE_DEFAULT_FIELDS
     ),
-    enabled: Boolean(
-      decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
-    ),
+    enabled: isStoredProcedureQueryEnabled,
   });
 
   useEffect(() => {
@@ -236,26 +239,6 @@ const StoredProcedurePage = () => {
       isFollowing: followers?.some(({ id }) => id === USER_ID),
     };
   }, [followers, USER_ID]);
-
-  const fetchResourcePermission = useCallback(async () => {
-    setPermissionsLoading(true);
-    try {
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.STORED_PROCEDURE,
-        decodedStoredProcedureFQN
-      );
-
-      setStoredProcedurePermissions(permission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  }, [getEntityPermissionByFqn, decodedStoredProcedureFQN, t]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -452,6 +435,8 @@ const StoredProcedurePage = () => {
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -459,6 +444,8 @@ const StoredProcedurePage = () => {
           entity: t('label.stored-procedure-plural'),
         })
       );
+
+      return false;
     }
   };
 
@@ -478,8 +465,19 @@ const StoredProcedurePage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          getPartialNameFromTableFQN(
+            decodedStoredProcedureFQN,
+            [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+            FQN_SEPARATOR_CHAR
+          )
+        )
+      ),
+    [decodedStoredProcedureFQN, navigate]
   );
 
   const afterDomainUpdateAction = useCallback(
@@ -618,19 +616,18 @@ const StoredProcedurePage = () => {
   );
 
   useEffect(() => {
-    if (decodedStoredProcedureFQN) {
-      fetchResourcePermission();
-    }
-  }, [decodedStoredProcedureFQN]);
-
-  useEffect(() => {
     if (viewBasicPermission) {
       fetchTaskCounts();
       fetchActivityCount();
     }
   }, [decodedStoredProcedureFQN, viewBasicPermission]);
 
-  if (permissionsLoading || loading || storedProcedureLoading) {
+  const isPageLoading = useMemo(
+    () => permissionsLoading || loading || storedProcedureLoading,
+    [permissionsLoading, loading, storedProcedureLoading]
+  );
+
+  if (isPageLoading) {
     return <PageLoader />;
   }
 

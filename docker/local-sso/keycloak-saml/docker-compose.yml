@@ -11,6 +11,11 @@ services:
       KC_HEALTH_ENABLED: 'true'
       KC_HTTP_ENABLED: 'true'
       KC_HTTP_PORT: '8080'
+      # KC_HOSTNAME pins the frontchannel URLs and the issuer to the address the
+      # browser uses; BACKCHANNEL_DYNAMIC lets token/JWKS follow the requesting
+      # host so the containerised OM can reach them by container name.
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: 'true'
     ports:
       - '${KEYCLOAK_SAML_PORT:-8080}:8080'
     volumes:

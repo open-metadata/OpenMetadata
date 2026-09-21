@@ -40,7 +40,11 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../../utils/PermissionsUtils';
 import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -105,6 +109,8 @@ export const useTestCaseIncidentHeader = ({
     setTestCase,
   } = useTestCaseStore();
 
+  const isDeleted = Boolean(testCaseData?.deleted);
+
   const { dimensionKey } = useRequiredParams<{
     fqn: string;
     dimensionKey?: string;
@@ -143,7 +149,7 @@ export const useTestCaseIncidentHeader = ({
   );
 
   const handleSeverityUpdate = async (severity?: Severities) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -167,7 +173,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -296,7 +302,7 @@ export const useTestCaseIncidentHeader = ({
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]
   ) => {
-    if (!testCaseData) {
+    if (!testCaseData || isDeleted) {
       return;
     }
 
@@ -319,7 +325,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage
+    return isVersionPage || isDeleted
       ? {
           hasEditStatusPermission: false,
           hasEditOwnerPermission: false,
@@ -338,7 +344,7 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [testCasePermission, isVersionPage, isDeleted]);
 
   const taskLinkInfo = useMemo(
     () =>
@@ -367,8 +373,15 @@ export const useTestCaseIncidentHeader = ({
     dimensionKey,
     hasEditStatusPermission,
     hasEditOwnerPermission,
+    // testCasePermission is undefined until the store's fetch-owner populates it (out of
+    // this file's scope); DEFAULT_ENTITY_PERMISSION (all-false) reproduces the old
+    // Boolean(testCasePermission?.EditAll) undefined/absent-is-false behavior.
     hasEditDomainPermission:
-      !isVersionPage && Boolean(testCasePermission?.EditAll),
+      !isVersionPage &&
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION,
+        isDeleted
+      ).canEditAll,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

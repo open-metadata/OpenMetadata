@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import {
   clickOutside,
   descriptionBox,

@@ -18,6 +18,7 @@ import {
   Dropdown,
   EmptyPlaceholder,
   Input,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
   keepPreviousData,
@@ -43,10 +44,13 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
+  Fragment,
   Key,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -55,17 +59,21 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
@@ -75,7 +83,11 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
+import {
+  EntityReference,
+  EntityStatus,
+  Metric,
+} from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -91,8 +103,14 @@ import {
   getEntityBulkEditPath,
   getEntityImportPath,
 } from '../../../utils/EntityPureUtils';
+import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+} from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -151,6 +169,59 @@ const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
 
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
 
+const shouldShowMetricsLoader = (
+  isPermissionPending: boolean,
+  hasViewPermission: boolean,
+  isMetricsPending: boolean
+) => isPermissionPending || (hasViewPermission && isMetricsPending);
+
+const shouldShowMetricsListingError = (
+  listingError: unknown,
+  searchResponse: unknown
+) => Boolean(listingError) && !searchResponse;
+
+const computeIsMetricListEmpty = (
+  isMetricsFetching: boolean,
+  isSearchPending: boolean,
+  metricsCount: number,
+  searchText: string,
+  statusFilter?: EntityStatus
+) => {
+  const isNotFetchingOrPending = !isMetricsFetching && !isSearchPending;
+  const hasNoFilters = !searchText && !statusFilter;
+
+  return isNotFetchingOrPending && metricsCount === 0 && hasNoFilters;
+};
+
+const renderDomainBadge = (domain: EntityReference): ReactNode => {
+  const badge = (
+    <Badge
+      className="metric-list-glossary-pill"
+      color="blue"
+      size="sm"
+      type="color">
+      {domain.displayName ?? domain.name ?? domain.fullyQualifiedName}
+    </Badge>
+  );
+
+  return domain.fullyQualifiedName ? (
+    <Link key={domain.id} to={getDomainPath(domain.fullyQualifiedName)}>
+      {badge}
+    </Link>
+  ) : (
+    <Fragment key={domain.id}>{badge}</Fragment>
+  );
+};
+
+const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
+  <Box
+    direction="col"
+    role="presentation"
+    onClick={stopPropagationIfInteractive}>
+    {cell}
+  </Box>
+);
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -205,7 +276,17 @@ const MetricListPage = () => {
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
   });
 
-  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+  // Resource-level permission (usePermissionProvider().getResourcePermission), not an
+  // entity-level fetch — but itself OperationPermission-shaped, so it runs through the same
+  // getDerivedPermissionFlags derivation as an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx / Batch 5 ServiceMainTabContent.tsx precedent). No `deleted`
+  // argument: this is a list page with no single entity to gate on.
+  const permissionFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
+
+  const hasViewPermission = permissionFlags.hasViewAccess;
 
   const {
     data: searchResponse,
@@ -335,7 +416,10 @@ const MetricListPage = () => {
     try {
       setIsMetricActionsOpen(false);
       setIsExporting(true);
-      await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      const exportJob = await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      // Claim the just-started job so the tray always surfaces it, even if it
+      // finishes before the tray's first fetch.
+      markCsvJobOwned((exportJob as { jobId?: string })?.jobId);
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -398,6 +482,20 @@ const MetricListPage = () => {
     });
   }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
 
+  const handleRowAction = useCallback(
+    (key: Key) => {
+      // React Aria fires this on row click/Enter (not on the selection checkbox,
+      // which only toggles selection). Navigate to the activated metric.
+      const metric = metrics.find((item) => item.id === key);
+      if (metric?.fullyQualifiedName) {
+        navigate(
+          getEntityDetailsPath(EntityType.METRIC, metric.fullyQualifiedName)
+        );
+      }
+    },
+    [metrics, navigate]
+  );
+
   const handleSearchTextChange = useCallback(
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const text = getInputChangeValue(value);
@@ -437,22 +535,8 @@ const MetricListPage = () => {
       <span className="metric-list-empty-dash">{t('label.empty-dash')}</span>
     );
 
-    const renderTagPills = (tags: TagLabel[], className: string) => (
-      <div className="metric-list-glossary">
-        {tags.length
-          ? tags.map((tag) => (
-              <Badge
-                className={className}
-                color="blue"
-                key={tag.tagFQN}
-                size="sm"
-                type="color">
-                {tag.name ?? tag.tagFQN}
-              </Badge>
-            ))
-          : emptyDash}
-      </div>
-    );
+    const renderTagPills = (tags: TagLabel[]) =>
+      withNestedLinkGuard(<TagsViewer sizeCap={2} tags={tags} />);
 
     const metricColumn = {
       title: t('label.metric'),
@@ -504,19 +588,24 @@ const MetricListPage = () => {
         dataIndex: 'description',
         key: 'description',
         width: 420,
-        render: (description: string) => (
-          <p className="m-0 metric-list-description">
-            {description || emptyDash}
-          </p>
-        ),
+        render: (description: string) =>
+          description ? (
+            <RichTextEditorPreviewerV1
+              className="metric-list-description"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              showReadMoreBtn={false}
+            />
+          ) : (
+            emptyDash
+          ),
       },
       glossary: {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'glossary',
         width: 240,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(glossaryTerms(tags), 'metric-list-glossary-pill'),
+        render: (tags: TagLabel[]) => renderTagPills(glossaryTerms(tags)),
       },
       entityStatus: {
         title: t('label.status'),
@@ -547,22 +636,30 @@ const MetricListPage = () => {
         key: 'owners',
         width: 160,
         render: (owners: Metric['owners']) =>
-          owners?.length ? (
-            <div className="metric-owner-group">
-              {owners.slice(0, 3).map((owner) => (
-                <Avatar
-                  className="metric-owner-avatar"
-                  initials={getOwnerInitials(owner)}
-                  key={owner.id}
-                  size="sm"
-                />
-              ))}
-              {owners.length > 3 && (
-                <span className="metric-owner-extra">+{owners.length - 3}</span>
-              )}
-            </div>
-          ) : (
-            emptyDash
+          withNestedLinkGuard(
+            owners?.length ? (
+              <Box className="metric-owner-group">
+                {owners.slice(0, 3).map((owner) => (
+                  <Link
+                    aria-label={getEntityName(owner)}
+                    key={owner.id}
+                    to={getOwnerPath(owner)}>
+                    <Avatar
+                      className="metric-owner-avatar"
+                      initials={getOwnerInitials(owner)}
+                      size="sm"
+                    />
+                  </Link>
+                ))}
+                {owners.length > 3 && (
+                  <span className="metric-owner-extra">
+                    +{owners.length - 3}
+                  </span>
+                )}
+              </Box>
+            ) : (
+              emptyDash
+            )
           ),
       },
       tags: {
@@ -570,32 +667,19 @@ const MetricListPage = () => {
         dataIndex: 'tags',
         key: 'tags',
         width: 220,
-        render: (tags: TagLabel[]) =>
-          renderTagPills(metricTags(tags), 'metric-list-tag-pill'),
+        render: (tags: TagLabel[]) => renderTagPills(metricTags(tags)),
       },
       domains: {
         title: t('label.domain-plural'),
         dataIndex: 'domains',
         key: 'domains',
         width: 220,
-        render: (domains: Metric['domains']) => (
-          <div className="metric-list-glossary">
-            {domains?.length
-              ? domains.map((domain) => (
-                  <Badge
-                    className="metric-list-glossary-pill"
-                    color="blue"
-                    key={domain.id}
-                    size="sm"
-                    type="color">
-                    {domain.displayName ??
-                      domain.name ??
-                      domain.fullyQualifiedName}
-                  </Badge>
-                ))
-              : emptyDash}
-          </div>
-        ),
+        render: (domains: Metric['domains']) =>
+          withNestedLinkGuard(
+            <Box className="metric-list-glossary">
+              {domains?.length ? domains.map(renderDomainBadge) : emptyDash}
+            </Box>
+          ),
       },
       updatedAt: {
         title: t('label.last-updated'),
@@ -625,11 +709,17 @@ const MetricListPage = () => {
     visibleColumns,
   ]);
 
-  if (isPermissionPending || (hasViewPermission && isMetricsPending)) {
+  if (
+    shouldShowMetricsLoader(
+      isPermissionPending,
+      hasViewPermission,
+      isMetricsPending
+    )
+  ) {
     return <Loader />;
   }
 
-  if (listingError && !searchResponse) {
+  if (shouldShowMetricsListingError(listingError, searchResponse)) {
     return (
       <ErrorPlaceHolder>
         <p className="text-center m-auto">
@@ -639,7 +729,15 @@ const MetricListPage = () => {
     );
   }
 
-  const metricActions = (
+  const isMetricListEmpty = computeIsMetricListEmpty(
+    isMetricsFetching,
+    isSearchPending,
+    metrics.length,
+    searchText,
+    statusFilter
+  );
+
+  const renderMetricActions = () => (
     <div className="d-flex gap-2 metric-list-actions">
       {permission.Create && (
         <LimitWrapper resource="metric">
@@ -654,7 +752,7 @@ const MetricListPage = () => {
           </Button>
         </LimitWrapper>
       )}
-      {permission.EditAll && (
+      {permissionFlags.canEditAll && (
         <Dropdown.Root
           isOpen={isMetricActionsOpen}
           onOpenChange={setIsMetricActionsOpen}>
@@ -705,14 +803,7 @@ const MetricListPage = () => {
     </div>
   );
 
-  const isMetricListEmpty =
-    !isMetricsFetching &&
-    !isSearchPending &&
-    metrics.length === 0 &&
-    !searchText &&
-    !statusFilter;
-
-  const metricEmptyState = (
+  const renderMetricEmptyState = () => (
     <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
@@ -755,252 +846,256 @@ const MetricListPage = () => {
     </Box>
   );
 
+  const renderSelectionBar = () => (
+    <div className="metric-list-selection-bar">
+      <div className="metric-list-selection-left">
+        <span className="metric-list-selection-count">
+          {selectedMetricIds.length}
+        </span>
+        <span>{t('label.selected-lowercase')}</span>
+        <Button
+          className="metric-list-selection-clear"
+          color="link-gray"
+          data-testid="clear-metric-selection"
+          iconLeading={XClose}
+          onPress={() => setSelectedMetricIds([])}>
+          {t('label.clear')}
+        </Button>
+      </div>
+      <div className="metric-list-selection-actions">
+        {permissionFlags.canEditAll && (
+          <Button
+            className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
+            color="link-color"
+            data-testid="bulk-edit-metric"
+            iconLeading={Edit03}
+            onPress={handleBulkEdit}>
+            {t('label.bulk-edit-count', {
+              count: selectedMetricIds.length,
+            })}
+          </Button>
+        )}
+        {permission.Delete && (
+          <Button
+            className="metric-list-selection-action metric-list-selection-delete"
+            color="link-gray"
+            iconLeading={Trash01}
+            onPress={() => setIsDeleteDialogOpen(true)}>
+            {t('label.delete')}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderToolbar = () => (
+    <div className="metric-list-toolbar">
+      <Input
+        className="metric-list-search"
+        data-testid="metric-search"
+        icon={SearchLg}
+        placeholder={t('label.search-entity', {
+          entity: t('label.metric-plural'),
+        })}
+        value={searchText}
+        wrapperClassName="metric-list-search-wrapper"
+        onChange={handleSearchTextChange}
+      />
+      <div className="metric-list-toolbar-actions">
+        <Dropdown.Root>
+          <Button
+            className="metric-list-toolbar-link"
+            color="link-color"
+            iconTrailing={ChevronDown}>
+            {statusFilter
+              ? getMetricStatus(statusFilter).label
+              : t('label.status')}
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              onAction={(key) =>
+                handleStatusFilterChange(
+                  key === 'all' ? undefined : (key as EntityStatus)
+                )
+              }>
+              <Dropdown.Item id="all" label={t('label.all')} />
+              {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
+                <Dropdown.Item
+                  id={status}
+                  key={status}
+                  label={getMetricStatus(status).label}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        {permissionFlags.canEditAll && (
+          <Button
+            className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
+            color="link-color"
+            data-testid="bulk-edit-metric"
+            iconLeading={Edit03}
+            onPress={handleBulkEdit}>
+            {t('label.bulk-edit-all')}
+          </Button>
+        )}
+        <span aria-hidden="true" className="metric-list-toolbar-divider" />
+        <Dropdown.Root>
+          <Button
+            className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
+            color="link-color"
+            iconLeading={Settings01}>
+            {t('label.customize')}
+          </Button>
+          <Dropdown.Popover className="metric-customize-menu">
+            <div className="metric-customize-header">
+              <span>{t('label.column')}</span>
+              <button
+                className="metric-customize-toggle"
+                type="button"
+                onClick={() =>
+                  persistVisibleColumns(
+                    visibleColumns.length === METRIC_COLUMN_ORDER.length
+                      ? []
+                      : METRIC_COLUMN_ORDER
+                  )
+                }>
+                {visibleColumns.length === METRIC_COLUMN_ORDER.length
+                  ? t('label.hide-all')
+                  : t('label.view-all')}
+              </button>
+            </div>
+            <div className="metric-customize-list">
+              {METRIC_COLUMN_ORDER.map((columnId) => {
+                const isVisible = visibleColumns.includes(columnId);
+
+                return (
+                  <button
+                    className="metric-customize-row"
+                    key={columnId}
+                    type="button"
+                    onClick={() => handleToggleColumn(columnId)}>
+                    <span className="metric-customize-grip">::</span>
+                    <span>{t(METRIC_COLUMN_LABEL_KEYS[columnId])}</span>
+                    {isVisible ? (
+                      <Eye className="metric-customize-eye" />
+                    ) : (
+                      <EyeOff className="metric-customize-eye" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      </div>
+    </div>
+  );
+
+  const renderTableCard = () => (
+    <div
+      className={`metric-list-table-card${
+        isMetricListEmpty ? ' metric-list-table-card--borderless' : ''
+      }`}>
+      {isMetricListEmpty ? (
+        renderMetricEmptyState()
+      ) : (
+        <>
+          {selectedMetricIds.length ? renderSelectionBar() : renderToolbar()}
+          <Table
+            columns={columns}
+            customPaginationProps={{
+              showPagination,
+              currentPage,
+              isLoading: isMetricsFetching,
+              isNumberBased: true,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange,
+            }}
+            dataSource={metrics}
+            loading={isMetricsFetching}
+            locale={{
+              emptyText:
+                isMetricsFetching || isSearchPending ? (
+                  <Loader />
+                ) : (
+                  <ErrorPlaceHolder
+                    className="p-y-md border-none"
+                    doc={METRICS_DOCS}
+                    heading={t('label.metric')}
+                    permission={permission.Create}
+                    permissionValue={t('label.create-entity', {
+                      entity: t('label.metric'),
+                    })}
+                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                    onClick={() => navigate(ROUTES.ADD_METRIC)}
+                  />
+                ),
+            }}
+            pagination={false}
+            rowClassName="tw:cursor-pointer"
+            rowKey="id"
+            rowSelection={{
+              selectedRowKeys: selectedMetricIds,
+              onChange: setSelectedMetricIds,
+            }}
+            size="small"
+            onRowAction={handleRowAction}
+          />
+        </>
+      )}
+    </div>
+  );
+
+  const renderHeaderSection = () => (
+    <div>
+      {isAiMode ? (
+        <PageLayout.PageHeader
+          actions={renderMetricActions()}
+          badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              items={[
+                getGlossaryHomeCrumb(t),
+                { label: t('label.metric-plural') },
+              ]}
+              showHome={false}
+            />
+          }
+          className="tw:mb-0!"
+          subtitle={t('message.metric-description')}
+          title={t('label.metric-plural')}
+          variant="gradient"
+        />
+      ) : (
+        <div className="d-flex justify-between">
+          <PageHeader
+            data={{
+              header: t('label.metric-plural'),
+              subHeader: t('message.metric-description'),
+            }}
+            learningPageId={LEARNING_PAGE_IDS.METRICS}
+            title={t('label.metric')}
+          />
+          {renderMetricActions()}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.metric-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
-        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
-        <div>
-          {isAiMode ? (
-            <HeaderShell
-              actions={metricActions}
-              badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
-              breadcrumb={
-                <HeaderBreadcrumb
-                  noMargin
-                  items={[
-                    getGlossaryHomeCrumb(t),
-                    { label: t('label.metric-plural') },
-                  ]}
-                  showHome={false}
-                />
-              }
-              className="tw:mb-0!"
-              padding="comfortable"
-              subtitle={t('message.metric-description')}
-              title={t('label.metric-plural')}
-              variant="gradient"
-            />
-          ) : (
-            <div className="d-flex justify-between">
-              <PageHeader
-                data={{
-                  header: t('label.metric-plural'),
-                  subHeader: t('message.metric-description'),
-                }}
-                learningPageId={LEARNING_PAGE_IDS.METRICS}
-                title={t('label.metric')}
-              />
-              {metricActions}
-            </div>
-          )}
-        </div>
-        <div>
-          <div
-            className={`metric-list-table-card${
-              isMetricListEmpty ? ' metric-list-table-card--borderless' : ''
-            }`}>
-            {isMetricListEmpty ? (
-              metricEmptyState
-            ) : (
-              <>
-                {selectedMetricIds.length ? (
-                  <div className="metric-list-selection-bar">
-                    <div className="metric-list-selection-left">
-                      <span className="metric-list-selection-count">
-                        {selectedMetricIds.length}
-                      </span>
-                      <span>{t('label.selected-lowercase')}</span>
-                      <Button
-                        className="metric-list-selection-clear"
-                        color="link-gray"
-                        iconLeading={XClose}
-                        onPress={() => setSelectedMetricIds([])}>
-                        {t('label.clear')}
-                      </Button>
-                    </div>
-                    <div className="metric-list-selection-actions">
-                      {permission.EditAll && (
-                        <Button
-                          className="metric-list-selection-action"
-                          color="link-color"
-                          data-testid="bulk-edit-metric"
-                          iconLeading={Edit03}
-                          onPress={handleBulkEdit}>
-                          {t('label.edit')}
-                        </Button>
-                      )}
-                      {permission.Delete && (
-                        <Button
-                          className="metric-list-selection-action metric-list-selection-delete"
-                          color="link-gray"
-                          iconLeading={Trash01}
-                          onPress={() => setIsDeleteDialogOpen(true)}>
-                          {t('label.delete')}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="metric-list-toolbar">
-                    <Input
-                      className="metric-list-search"
-                      data-testid="metric-search"
-                      icon={SearchLg}
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.metric-plural'),
-                      })}
-                      value={searchText}
-                      wrapperClassName="metric-list-search-wrapper"
-                      onChange={handleSearchTextChange}
-                    />
-                    <div className="metric-list-toolbar-actions">
-                      <Dropdown.Root>
-                        <Button
-                          className="metric-list-toolbar-link metric-list-status-trigger"
-                          color="link-gray"
-                          iconTrailing={ChevronDown}>
-                          {statusFilter
-                            ? getMetricStatus(statusFilter).label
-                            : t('label.status')}
-                        </Button>
-                        <Dropdown.Popover>
-                          <Dropdown.Menu
-                            onAction={(key) =>
-                              handleStatusFilterChange(
-                                key === 'all'
-                                  ? undefined
-                                  : (key as EntityStatus)
-                              )
-                            }>
-                            <Dropdown.Item id="all" label={t('label.all')} />
-                            {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
-                              <Dropdown.Item
-                                id={status}
-                                key={status}
-                                label={getMetricStatus(status).label}
-                              />
-                            ))}
-                          </Dropdown.Menu>
-                        </Dropdown.Popover>
-                      </Dropdown.Root>
-                      {permission.EditAll && (
-                        <Button
-                          className="metric-list-toolbar-link"
-                          color="link-color"
-                          data-testid="bulk-edit-metric"
-                          iconLeading={Edit03}
-                          onPress={handleBulkEdit}>
-                          {t('label.edit')}
-                        </Button>
-                      )}
-                      <span
-                        aria-hidden="true"
-                        className="metric-list-toolbar-divider"
-                      />
-                      <Dropdown.Root>
-                        <Button
-                          className="metric-list-toolbar-link"
-                          color="link-color"
-                          iconLeading={Settings01}>
-                          {t('label.customize')}
-                        </Button>
-                        <Dropdown.Popover className="metric-customize-menu">
-                          <div className="metric-customize-header">
-                            <span>{t('label.column')}</span>
-                            <button
-                              className="metric-customize-toggle"
-                              type="button"
-                              onClick={() =>
-                                persistVisibleColumns(
-                                  visibleColumns.length ===
-                                    METRIC_COLUMN_ORDER.length
-                                    ? []
-                                    : METRIC_COLUMN_ORDER
-                                )
-                              }>
-                              {visibleColumns.length ===
-                              METRIC_COLUMN_ORDER.length
-                                ? t('label.hide-all')
-                                : t('label.view-all')}
-                            </button>
-                          </div>
-                          <div className="metric-customize-list">
-                            {METRIC_COLUMN_ORDER.map((columnId) => {
-                              const isVisible =
-                                visibleColumns.includes(columnId);
-
-                              return (
-                                <button
-                                  className="metric-customize-row"
-                                  key={columnId}
-                                  type="button"
-                                  onClick={() => handleToggleColumn(columnId)}>
-                                  <span className="metric-customize-grip">
-                                    ::
-                                  </span>
-                                  <span>
-                                    {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
-                                  </span>
-                                  {isVisible ? (
-                                    <Eye className="metric-customize-eye" />
-                                  ) : (
-                                    <EyeOff className="metric-customize-eye" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </Dropdown.Popover>
-                      </Dropdown.Root>
-                    </div>
-                  </div>
-                )}
-                <Table
-                  columns={columns}
-                  customPaginationProps={{
-                    showPagination,
-                    currentPage,
-                    isLoading: isMetricsFetching,
-                    isNumberBased: true,
-                    pageSize,
-                    paging,
-                    pagingHandler: onPageChange,
-                    onShowSizeChange,
-                  }}
-                  dataSource={metrics}
-                  loading={isMetricsFetching}
-                  locale={{
-                    emptyText:
-                      isMetricsFetching || isSearchPending ? (
-                        <Loader />
-                      ) : (
-                        <ErrorPlaceHolder
-                          className="p-y-md border-none"
-                          doc={METRICS_DOCS}
-                          heading={t('label.metric')}
-                          permission={permission.Create}
-                          permissionValue={t('label.create-entity', {
-                            entity: t('label.metric'),
-                          })}
-                          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                          onClick={() => navigate(ROUTES.ADD_METRIC)}
-                        />
-                      ),
-                  }}
-                  pagination={false}
-                  rowKey="id"
-                  rowSelection={{
-                    selectedRowKeys: selectedMetricIds,
-                    onChange: setSelectedMetricIds,
-                  }}
-                  size="small"
-                />
-              </>
-            )}
-          </div>
-        </div>
+        className={classNames('metric-list-page-stack', {
+          'p-b-md m-t-xs': !isAiMode,
+        })}>
+        {renderHeaderSection()}
+        <div>{renderTableCard()}</div>
       </div>
       <DeleteModal
         entityTitle={t('label.metric-plural')}

@@ -21,9 +21,44 @@ class AirbyteSource(Enum):
     POSTGRES = "Postgres"
     MSSQL = "Microsoft SQL Server (MSSQL)"
     MONGODB = "MongoDb"
+    SNOWFLAKE = "Snowflake"
 
 
 class AirbyteDestination(Enum):
     MYSQL = "MySQL"
     POSTGRES = "Postgres"
     MSSQL = "MS SQL Server"
+    SNOWFLAKE = "Snowflake"
+
+
+# The internal API reports connector types as display names (e.g. "Postgres"),
+# while the public API (`api/public/v1`) reports them as slugs (e.g. "postgres").
+# These maps let lineage resolution accept either form.
+SOURCE_TYPE_LOOKUP = {
+    AirbyteSource.MYSQL.value: AirbyteSource.MYSQL,
+    "mysql": AirbyteSource.MYSQL,
+    AirbyteSource.POSTGRES.value: AirbyteSource.POSTGRES,
+    "postgres": AirbyteSource.POSTGRES,
+    AirbyteSource.MSSQL.value: AirbyteSource.MSSQL,
+    "mssql": AirbyteSource.MSSQL,
+    AirbyteSource.MONGODB.value: AirbyteSource.MONGODB,
+    "mongodb": AirbyteSource.MONGODB,
+    "mongodb-v2": AirbyteSource.MONGODB,
+    # Snowflake source exposes a top-level `database`; the schema comes from the
+    # per-stream namespace (generic path, like Postgres), not the config. Issue #26993.
+    AirbyteSource.SNOWFLAKE.value: AirbyteSource.SNOWFLAKE,
+    "snowflake": AirbyteSource.SNOWFLAKE,
+}
+
+DESTINATION_TYPE_LOOKUP = {
+    AirbyteDestination.MYSQL.value: AirbyteDestination.MYSQL,
+    "mysql": AirbyteDestination.MYSQL,
+    AirbyteDestination.POSTGRES.value: AirbyteDestination.POSTGRES,
+    "postgres": AirbyteDestination.POSTGRES,
+    AirbyteDestination.MSSQL.value: AirbyteDestination.MSSQL,
+    "mssql": AirbyteDestination.MSSQL,
+    # Snowflake destination config exposes top-level `database` + `schema`
+    # (public API), which map straight to the OM Snowflake table FQN. Issue #26993.
+    AirbyteDestination.SNOWFLAKE.value: AirbyteDestination.SNOWFLAKE,
+    "snowflake": AirbyteDestination.SNOWFLAKE,
+}

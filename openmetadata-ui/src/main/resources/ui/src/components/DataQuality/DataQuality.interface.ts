@@ -37,7 +37,7 @@ export type TestCaseSearchParams = {
   searchValue?: string;
   tableFqn?: string;
   testPlatforms?: TestPlatform[];
-  testCaseStatus?: TestCaseStatus;
+  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
   testCaseType?: TestCaseType;
   lastRunRange?: DateRangeObject;
   tier?: string;

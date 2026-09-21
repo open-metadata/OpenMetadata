@@ -13,7 +13,7 @@ Airflow REST API source to extract metadata via Airflow REST API
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 from urllib.parse import quote
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -45,6 +45,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -76,8 +77,10 @@ class AirflowApiSource(PipelineServiceSource):
     Pipeline metadata from Airflow's REST API
     """
 
+    _dag_listing_complete = True
+
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None) -> "AirflowApiSource":  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None) -> "AirflowApiSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
@@ -85,15 +88,57 @@ class AirflowApiSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[AirflowApiDagDetails]:
+        self._dag_listing_complete = True
         include_undeployed = self.source_config.includeUnDeployedPipelines
-        for dag_data in self.connection.get_all_dags():
+        try:
+            dags = self.connection.get_all_dags()
+        except Exception:
+            self._dag_listing_complete = False
+            raise
+
+        for dag_data in dags:
             if not include_undeployed and dag_data.get("is_paused"):
                 continue
             try:
                 yield self.connection.build_dag_details(dag_data)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
+                stack_trace = traceback.format_exc()
+                dag_id = dag_data.get("dag_id")
+                self.status.failed(
+                    StackTraceError(
+                        name=dag_id or "Unknown Airflow DAG",
+                        error=f"Error building DAG details for {dag_id}: {exc}",
+                        stackTrace=stack_trace,
+                    )
+                )
+                if dag_id:
+                    self._preserve_failed_dag(dag_id)
+
+    def _preserve_failed_dag(self, dag_id: str) -> None:
+        try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=dag_id,
+            )
+            if pipeline_fqn:
+                self.pipeline_source_state.add(pipeline_fqn)
+                return
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not preserve source state for Airflow DAG {dag_id}: {exc}")
+
+        self._dag_listing_complete = False
+
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._dag_listing_complete:
+            logger.warning(
+                "Skipping stale-pipeline deletion because Airflow DAG discovery was incomplete "
+                "or a known DAG could not be preserved in source state."
+            )
+            return
+        yield from super().mark_pipelines_as_deleted()
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the ``Pipeline`` denominator from the Airflow REST DAG count.
@@ -113,7 +158,7 @@ class AirflowApiSource(PipelineServiceSource):
     def get_pipeline_name(self, pipeline_details: AirflowApiDagDetails) -> str:
         return pipeline_details.dag_id
 
-    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> Optional[PipelineState]:  # noqa: UP045
+    def get_pipeline_state(self, pipeline_details: AirflowApiDagDetails) -> PipelineState | None:
         if pipeline_details.is_paused is None:
             return None
         return PipelineState.Inactive if pipeline_details.is_paused else PipelineState.Active
@@ -130,7 +175,7 @@ class AirflowApiSource(PipelineServiceSource):
             return f"{host}/dags/{quote(dag_id)}"
         return f"{host}/dags/{quote(dag_id)}/grid"
 
-    def get_owners(self, owners: Optional[List[str]]) -> Optional[EntityReferenceList]:  # noqa: UP006, UP045
+    def get_owners(self, owners: list[str] | None) -> EntityReferenceList | None:
         if not self.source_config.includeOwners or not owners:
             return None
         refs = EntityReferenceList(root=[])
@@ -143,7 +188,7 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return refs if refs.root else None
 
-    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> List[Task]:  # noqa: UP006
+    def _build_tasks(self, dag_details: AirflowApiDagDetails) -> list[Task]:
         return [
             Task(
                 name=task.task_id,

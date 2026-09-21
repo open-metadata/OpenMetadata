@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -546,31 +547,15 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
         page
       );
 
-      const importApiCall = page.waitForResponse(
-        (resp) =>
-          resp.url().includes('/importAsync?dryRun=true') &&
-          resp.request().method() === 'PUT'
+      await page.getByRole('button', { name: 'Next' }).click();
+
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
       );
 
-      await page.getByRole('button', { name: 'Next' }).click();
-      await importApiCall;
-
-      // Wait directly for final state (results grid)
-      await page.getByTestId('passed-row').waitFor({
-        state: 'visible',
-      });
-      // Verify no loading state remains
-      await expect(page.getByText('Import is in progress.')).not.toBeVisible();
-
-      await page.locator('text=Import is in progress.').waitFor({
-        state: 'detached',
-      });
+      await loader.waitFor({ state: 'hidden' });
 
       await validateSuccessfulImportStatus(page);
-
-      await page.locator('.rdg-header-row').waitFor({
-        state: 'visible',
-      });
 
       const rowStatus = [
         'Entity updated',
@@ -1087,10 +1072,30 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
           await expect(cell).toBeFocused();
         };
 
+        const isFocused = (cell: Locator) =>
+          cell.evaluate((el) => el === document.activeElement);
+
         // Principle 1: press a bare Arrow key and wait for destination focus.
+        //
+        // RDG drops the press outright while the grid is still settling after a
+        // click or re-render — focus simply stays on the origin cell and the
+        // grid's own keydown handler never runs. Re-press until focus lands,
+        // checking the destination first so a press that did register is never
+        // doubled.
         const move = async (key: string, destination: Locator) => {
-          await page.keyboard.press(key);
-          await expect(destination).toBeFocused();
+          await expect
+            .poll(
+              async () => {
+                if (await isFocused(destination)) {
+                  return true;
+                }
+                await page.keyboard.press(key);
+
+                return isFocused(destination);
+              },
+              { timeout: 15_000, intervals: [200, 400, 800] }
+            )
+            .toBe(true);
         };
 
         // Principle 5 & 9: press Shift+Arrow and assert the expected selection

@@ -7375,10 +7375,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return MAPPER.readTree(client.getHttpClient().executeForString(HttpMethod.GET, url, null));
     }
 
+    /**
+     * Identifies a row by {@code updatedAt:id:version}. The version is what makes the key unique:
+     * an entity created and patched within the same millisecond produces two history rows that
+     * agree on {@code updatedAt} and {@code id}.
+     */
     private List<String> versionKeys(JsonNode result) {
       List<String> versionKeys = new ArrayList<>();
       for (JsonNode item : result.get("data")) {
-        versionKeys.add(item.get("updatedAt").asLong() + ":" + item.get("id").asText());
+        versionKeys.add(
+            item.get("updatedAt").asLong()
+                + ":"
+                + item.get("id").asText()
+                + ":"
+                + item.path("version").asText());
       }
       return versionKeys;
     }
@@ -7402,13 +7412,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           "Paged walk returned the same version more than once");
     }
 
+    /**
+     * Two versions of one entity written in the same millisecond share the {@code (updatedAt, id)}
+     * pair the endpoint sorts and pages on, so their relative order is whatever the database
+     * returns. Ordering is asserted up to that tie; repeats are caught by {@link
+     * #assertNoRepeats(List)}, which compares whole version keys.
+     */
     private void assertNewestFirst(List<String> versionKeys) {
       for (int i = 1; i < versionKeys.size(); i++) {
         String previous = versionKeys.get(i - 1);
         String current = versionKeys.get(i);
         assertTrue(
-            compareVersionKeys(previous, current) > 0,
-            "Versions must be strictly newest-first, got " + previous + " before " + current);
+            compareVersionKeys(previous, current) >= 0,
+            "Versions must be newest-first, got " + previous + " before " + current);
       }
     }
 
@@ -7422,7 +7438,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     private String entityIdOf(String versionKey) {
-      return versionKey.substring(versionKey.indexOf(':') + 1);
+      return versionKey.split(":")[1];
     }
   }
 

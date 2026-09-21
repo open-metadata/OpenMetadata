@@ -24,6 +24,7 @@ import {
   getDomainVersionData,
   getDomainVersionsList,
 } from '../../../rest/domainAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getDomainPath,
   getDomainVersionsPath,
@@ -127,7 +128,9 @@ const DomainVersion = () => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-version', { entity: t('label.domain') })}>
+      pageTitle={t('label.entity-version', {
+        entity: getEntityName(selectedData) || t('label.domain'),
+      })}>
       <div className="version-data page-container p-0">{domainPageRender}</div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}

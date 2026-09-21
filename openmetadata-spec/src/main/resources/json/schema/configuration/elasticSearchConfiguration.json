@@ -53,6 +53,12 @@
       "type": "integer",
       "default": 5
     },
+    "connectionRequestTimeoutSecs": {
+      "description": "Maximum time in seconds to wait for a connection from the HTTP connection pool",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "socketTimeoutSecs": {
       "description": "Socket Timeout in Seconds",
       "type": "integer",
@@ -68,7 +74,7 @@
       "default": 30
     },
     "maxConnPerRoute": {
-      "description": "Maximum connections per host/route in the connection pool",
+      "description": "Maximum connections per host/route in the connection pool. Keep this below maxConnTotal for multi-host clusters so one slow host cannot consume the entire pool; single-host deployments can raise it up to maxConnTotal.",
       "type": "integer",
       "default": 10
     },
@@ -184,12 +190,12 @@
         "keywordWeight": {
           "description": "Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.4
+          "default": 0.6
         },
         "semanticWeight": {
           "description": "Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)",
           "type": "number",
-          "default": 0.6
+          "default": 0.4
         },
         "knnNumCandidatesMultiplier": {
           "description": "Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the cost of latency. Defaults to 2.",
@@ -293,6 +299,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
+  "required": ["scheme", "connectionTimeoutSecs", "connectionRequestTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],
   "additionalProperties": false
 }

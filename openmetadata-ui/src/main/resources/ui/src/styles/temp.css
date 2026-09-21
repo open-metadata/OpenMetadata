@@ -118,7 +118,8 @@
   right: 12px;
   display: none;
   top: 0;
-  transition: top var(--om-duration-200), transform var(--om-duration-200) linear;
+  transition: top var(--om-duration-200),
+    transform var(--om-duration-200) linear;
 }
 
 .media:hover > .action-buttons {
@@ -734,4 +735,7 @@ body .list-option.rdw-option-active {
 
 :root .extra-banner {
   --ant-navbar-height: 144px;
+  /* Custom properties inherit their computed value, so a scope that changes
+   * the shell height must also recompute the available page height. */
+  --om-page-height: calc(100vh - var(--ant-navbar-height));
 }

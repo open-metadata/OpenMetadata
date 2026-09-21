@@ -33,7 +33,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
   RecognizerFeedback,
-} from '../../../generated/entity/feed/thread';
+} from '../../../generated/type/recognizerFeedback';
 import { Task } from '../../../rest/tasksAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
@@ -44,17 +44,24 @@ interface FeedbackApprovalTaskProps {
   task: Task;
 }
 
-const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
-  const { t } = useTranslation();
+const getFeedbackTaskData = (
+  task: Task
+): { feedback?: RecognizerFeedback; recognizerName: string } => {
   const payload =
     task?.payload && typeof task.payload === 'object'
       ? (task.payload as Record<string, unknown>)
       : undefined;
   const feedback = payload?.feedback as RecognizerFeedback | undefined;
-  const recognizer =
-    (payload?.recognizer as { recognizerName?: string } | undefined) ??
-    undefined;
-  const recognizerName = recognizer?.recognizerName || '';
+  const recognizer = payload?.recognizer as
+    | { recognizerName?: string }
+    | undefined;
+
+  return { feedback, recognizerName: recognizer?.recognizerName || '' };
+};
+
+const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
+  const { t } = useTranslation();
+  const { feedback, recognizerName } = getFeedbackTaskData(task);
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {

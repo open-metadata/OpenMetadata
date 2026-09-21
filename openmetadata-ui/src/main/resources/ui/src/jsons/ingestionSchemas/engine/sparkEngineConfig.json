@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Spark Engine Configuration",
+  "description": "This schema defines the configuration for a Spark Engine runner.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.engine.SparkEngineConfig",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "Spark"
+      ],
+      "default": "Spark"
+    },
+    "remote": {
+      "description": "Spark Connect Remote URL.",
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "tempPath": {
+          "description": "Temporary path to store the data.",
+          "type": "string",
+          "default": "/tmp/openmetadata"
+        },
+        "extraConfig": {
+          "title": "Additional Spark Configuration",
+          "description": "Additional Spark configuration properties as key-value pairs.",
+          "existingJavaType": "java.util.Map<String,Object>",
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  },
+  "required": [
+    "type",
+    "remote"
+  ],
+  "additionalProperties": false
+}

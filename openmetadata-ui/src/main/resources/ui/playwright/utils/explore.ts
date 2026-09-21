@@ -18,6 +18,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToExplorePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { openEntitySummaryPanel } from './entityPanel';
+import { waitForAggregation } from './searchAggregation';
 
 export interface Bucket {
   key: string;
@@ -42,10 +43,11 @@ export const searchAndClickOnOption = async (
   checkedAfterClick: boolean
 ) => {
   let testId = (filter.value ?? '').toLowerCase();
-  // Filtering for tiers is done on client side, so no API call will be triggered
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/aggregate?index=dataAsset&field=${filter.key}**`
-  );
+
+  const searchRes = waitForAggregation(page, {
+    field: filter.key,
+    value: filter.value ?? null,
+  });
 
   await page.fill('[data-testid="search-input"]', filter.value ?? '');
   await searchRes;
@@ -93,7 +95,7 @@ export const selectNullOption = async (
 
   const querySearchURL = `/api/v1/search/query?*index=dataAsset*`;
   await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
-  await page.click(`[data-testid="no-option-checkbox"]`);
+  await page.getByTestId('OM_NULL_FIELD').click();
   if (filter.value) {
     await searchAndClickOnOption(page, filter, true);
   }
@@ -121,37 +123,41 @@ export const selectNullOption = async (
   }
 };
 
+/**
+ * Selection state now lives as aria-checked on the menu row itself (the
+ * FilterSelect rows have no hidden input); callers keep passing the legacy
+ * `<value>-checkbox|-radio` id and it is mapped to the row.
+ */
 export const checkCheckboxStatus = async (
   page: Page,
   boxId: string,
   isChecked: boolean
 ) => {
-  const checkbox = page.getByTestId(boxId);
+  const row = page.getByTestId(boxId.replace(/-(checkbox|radio)$/, ''));
 
-  if (isChecked) {
-    await expect(checkbox).toBeChecked();
-  } else {
-    await expect(checkbox).not.toBeChecked();
-  }
+  await expect(row).toHaveAttribute('aria-checked', String(isChecked));
 };
 
 export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: filterValue,
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(filterValue.toLowerCase());
   await dataAssetDropdownRequest;
-  await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
+  const filterRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId(filterValue.toLowerCase());
+  if ((await filterRow.getAttribute('aria-checked')) !== 'true') {
+    await filterRow.click();
+  }
 
   // Legacy mode commits + closes on Update; immediate-apply commits on check but
   // leaves the dropdown open, so close it via its trigger to match the helper's
@@ -198,6 +204,7 @@ export const expandServiceInExploreTree = async (
     // Expanding the serviceType groups its services. The service drill-down
     // goes through the aggregate API (POST /search/aggregate) so the buckets
     // carry service.style top hits for custom service icons.
+    // eslint-disable-next-line openmetadata-playwright/require-aggregation-wait-helper -- not a facet dropdown: the tree drill-down is a POST aggregate with no field/value pair for waitForAggregation to discriminate on
     const serviceNameRes = page.waitForResponse(
       (response) =>
         response.url().endsWith('/api/v1/search/aggregate') &&

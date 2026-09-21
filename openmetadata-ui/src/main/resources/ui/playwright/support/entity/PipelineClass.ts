@@ -14,6 +14,11 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
+import {
+  createOrFetch,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import {
@@ -99,22 +104,23 @@ export class PipelineClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
-      '/api/v1/services/pipelineServices',
-      {
-        data: this.service,
-      }
-    );
-    const entityResponse = await apiContext.post('/api/v1/pipelines', {
+    this.serviceResponseData = await createOrFetch(apiContext, {
+      label: 'PipelineClass.create service',
+      createPath: '/api/v1/services/pipelineServices',
+      fqnSegments: [this.service.name],
+      data: this.service,
+    });
+
+    this.entityResponseData = await createOrFetch(apiContext, {
+      label: 'PipelineClass.create pipeline',
+      createPath: '/api/v1/pipelines',
+      fqnSegments: [this.service.name, this.entity.name],
       data: this.entity,
     });
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.entityResponseData = await entityResponse.json();
-
     return {
-      service: serviceResponse.body,
-      entity: entityResponse.body,
+      service: this.serviceResponseData,
+      entity: this.entityResponseData,
     };
   }
 
@@ -125,17 +131,19 @@ export class PipelineClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-      {
-        data: patchData,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(
+        `/api/v1/pipelines/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+        {
+          data: patchData,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
     );
 
-    this.entityResponseData = await response.json();
+    this.entityResponseData = await okJson(response, 'PipelineClass.patch');
 
     return {
       entity: this.entityResponseData,
@@ -171,16 +179,24 @@ export class PipelineClass extends EntityClass {
             type: 'pipelineService',
           },
           sourceConfig: {
-            config: {},
+            config: {
+              type: 'PipelineMetadata',
+            },
           },
         },
       }
     );
 
-    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+    this.ingestionPipelineResponseData = await okJson(
+      ingestionPipelineResponse,
+      'PipelineClass.createIngestionPipeline'
+    );
 
     return {
-      ingestionPipeline: await ingestionPipelineResponse.json(),
+      ingestionPipeline: await okJson(
+        ingestionPipelineResponse,
+        'PipelineClass.createIngestionPipeline'
+      ),
     };
   }
 

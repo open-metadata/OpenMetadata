@@ -12,8 +12,6 @@
 Hosts the singledispatch to get the schema parsers
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from metadata.generated.schema.type.schema import FieldModel, SchemaType
 from metadata.utils.dispatch import enum_register
 
@@ -32,14 +30,14 @@ class InvalidSchemaTypeException(Exception):  # noqa: N818
 def load_avro_parser(
     topic_name: str,
     schema_text: str,  # pylint: disable=unused-argument
-) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+) -> list[FieldModel] | None:
     from metadata.parsers.avro_parser import parse_avro_schema
 
     return parse_avro_schema(schema_text)
 
 
 @schema_parser_config_registry.add(SchemaType.Protobuf.value.lower())
-def load_protobuf_parser(topic_name: str, schema_text: str) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+def load_protobuf_parser(topic_name: str, schema_text: str) -> list[FieldModel] | None:
     from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
 
     protobuf_parser = ProtobufParser(config=ProtobufParserConfig(schema_name=topic_name, schema_text=schema_text))
@@ -50,7 +48,7 @@ def load_protobuf_parser(topic_name: str, schema_text: str) -> Optional[List[Fie
 def load_json_schema_parser(
     topic_name: str,
     schema_text: str,  # pylint: disable=unused-argument
-) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+) -> list[FieldModel] | None:
     from metadata.parsers.json_schema_parser import parse_json_schema
 
     return parse_json_schema(schema_text)
@@ -60,5 +58,5 @@ def load_json_schema_parser(
 def load_other_schema_parser(
     topic_name: str,
     schema_text: str,  # pylint: disable=unused-argument
-) -> Optional[List[FieldModel]]:  # noqa: UP006, UP045
+) -> list[FieldModel] | None:
     return None

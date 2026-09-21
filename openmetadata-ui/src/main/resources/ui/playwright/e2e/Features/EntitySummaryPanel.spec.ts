@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { ENTITY_TYPES } from '../../constant/entity';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityType } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { getEntityDisplayName } from '../../utils/entity';
 import {
@@ -76,7 +77,11 @@ async function verifyTabNavigation(page: Page) {
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const dataAssetCount = page.waitForResponse(
+      '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await dataAssetCount;
   });
 
   ENTITY_TYPES.forEach((entityType) => {

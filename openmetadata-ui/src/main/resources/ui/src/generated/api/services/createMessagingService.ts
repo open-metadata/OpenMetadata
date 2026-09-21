@@ -66,6 +66,8 @@ export interface MessagingConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -138,6 +140,8 @@ export interface Connection {
     supportsProfiler?:           boolean;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
     /**
@@ -147,6 +151,27 @@ export interface Connection {
      */
     type?:      MessagingServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS authentication method. Leave empty for anonymous authentication.
+     */
+    authType?: AuthenticationType;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: Config;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -182,6 +207,34 @@ export interface Connection {
      */
     sourcePythonClass?: string;
     [property: string]: any;
+}
+
+/**
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ */
+export interface AuthenticationType {
+    /**
+     * Password for NATS authentication.
+     */
+    password?: string;
+    /**
+     * Username for NATS authentication.
+     */
+    username?: string;
+    /**
+     * Token for NATS authentication.
+     */
+    token?: string;
+    /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
 }
 
 /**
@@ -244,6 +297,8 @@ export interface AWSCredentials {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -408,6 +463,8 @@ export enum SecurityProtocol {
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -431,12 +488,13 @@ export interface FilterPattern {
  *
  * Custom messaging service type
  *
- * Type of messaging service - Kafka or Pulsar.
+ * Type of messaging service.
  */
 export enum MessagingServiceType {
     CustomMessaging = "CustomMessaging",
     Kafka = "Kafka",
     Kinesis = "Kinesis",
+    Nats = "Nats",
     PubSub = "PubSub",
     Redpanda = "Redpanda",
 }

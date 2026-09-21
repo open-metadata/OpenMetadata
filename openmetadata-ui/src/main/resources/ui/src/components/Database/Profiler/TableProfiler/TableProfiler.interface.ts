@@ -112,7 +112,6 @@ export interface ProfilerSettingModalState {
   excludeCol: string[];
   includeCol: ColumnProfilerConfig[];
   enablePartition: boolean;
-  partitionData: PartitionProfilerConfig | undefined;
   selectedProfileSampleType: ProfileSampleType | undefined;
 }
 

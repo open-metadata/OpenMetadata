@@ -63,6 +63,7 @@ export const useTestCaseListPage = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     debounceFetchTableData,
     debounceFetchTagOptions,
     debounceFetchServiceOptions,
@@ -98,6 +99,9 @@ export const useTestCaseListPage = () => {
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    handleShowDeletedChange,
+    handleAfterDeleteAction,
   } = useTestCaseList({
     params,
     selectedFilter,
@@ -169,6 +173,7 @@ export const useTestCaseListPage = () => {
     tierOptions,
     serviceOptions,
     dataProductOptions,
+    dimensionOptions,
     debounceFetchTableData,
     debounceFetchTagOptions,
     debounceFetchServiceOptions,
@@ -184,5 +189,8 @@ export const useTestCaseListPage = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    handleShowDeletedChange,
+    handleAfterDeleteAction,
   };
 };

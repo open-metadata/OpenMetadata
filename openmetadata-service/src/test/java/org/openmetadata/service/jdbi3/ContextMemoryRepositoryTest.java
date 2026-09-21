@@ -74,6 +74,19 @@ class ContextMemoryRepositoryTest {
             new ContextMemory().withId(UUID.randomUUID()).withName("mem")));
   }
 
+  @ParameterizedTest
+  @EnumSource(MemoryVisibility.class)
+  void isVectorEmbeddable_trueForEveryVisibility(MemoryVisibility visibility) {
+    assertTrue(repository.isVectorEmbeddable(memory(visibility)));
+  }
+
+  @Test
+  void isVectorEmbeddable_trueWhenShareConfigMissing() {
+    assertTrue(
+        repository.isVectorEmbeddable(
+            new ContextMemory().withId(UUID.randomUUID()).withName("mem")));
+  }
+
   @Test
   void getReindexFilter_doesNotRestrictByVisibility() {
     assertTrue(repository.getReindexFilter().getQueryParams().isEmpty());

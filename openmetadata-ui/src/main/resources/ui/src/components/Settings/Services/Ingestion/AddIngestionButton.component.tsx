@@ -27,6 +27,7 @@ import {
 } from '../../../../utils/IngestionConfigUtils';
 import { getMenuItems } from '../../../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../../../utils/RouterUtils';
+import { useAgentActionAvailability } from '../../../ServiceAgents/hooks/useAgentActionAvailability';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
 function AddIngestionButton({
@@ -39,6 +40,7 @@ function AddIngestionButton({
 }: Readonly<AddIngestionButtonProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { isUnavailable } = useAgentActionAvailability();
 
   const supportedPipelineTypes = useMemo(
     (): PipelineType[] =>
@@ -73,7 +75,11 @@ function AddIngestionButton({
 
   return (
     <LimitWrapper resource="ingestionPipeline">
+      {/* Creating an agent deploys it to the pipeline service, so the whole control closes down
+          when that service is unreachable. `disabled` has to be on the Dropdown as well: the
+          Button carries no click handler, the menu does. */}
       <Dropdown
+        disabled={isUnavailable}
         menu={{
           items: [
             ...getMenuItems(types, isDataInSightIngestionExists),
@@ -92,7 +98,8 @@ function AddIngestionButton({
           color="secondary"
           data-testid="add-new-ingestion-button"
           iconLeading={<Plus height={14} width={14} />}
-          iconTrailing={<DropdownIcon height={12} width={12} />}>
+          iconTrailing={<DropdownIcon height={12} width={12} />}
+          isDisabled={isUnavailable}>
           {t('label.add-agent')}
         </Button>
       </Dropdown>

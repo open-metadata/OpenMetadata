@@ -20,7 +20,7 @@
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
     <quartz.version>2.5.0-rc2</quartz.version>
-    <pac4j.version>5.7.10</pac4j.version>
+    <pac4j.version>6.5.6</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
@@ -29,12 +29,18 @@
     <logback-core.version>1.5.36</logback-core.version>
     <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
@@ -855,14 +861,6 @@
       <artifactId>quartz</artifactId>
       <version>${quartz.version}</version>
     </dependency>
-    <!-- Needed for Quartz -->
-    <!-- 0.14.1 natively depends on mchange-commons-java 0.6.1 (clears
-         SNYK-JAVA-COMMCHANGE-17796416); avoids the 0.12.0-under-0.6.1 API mismatch. -->
-    <dependency>
-      <groupId>com.mchange</groupId>
-      <artifactId>c3p0</artifactId>
-      <version>0.14.1</version>
-    </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
       <artifactId>woodstox-core</artifactId>
@@ -1048,7 +1046,14 @@
       <artifactId>jena-rdfconnection</artifactId>
       <version>${jena.version}</version>
     </dependency>
-    
+    <!-- SHACL was bundled inside jena-arq in Jena 4.x; in Jena 5.x it lives in its own
+         artifact (org.apache.jena.shacl.*). Required by RdfShaclValidator + ShaclValidateTool. -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-shacl</artifactId>
+      <version>${jena.version}</version>
+    </dependency>
+
     <!-- Apache Calcite for SQL parsing -->
     <dependency>
       <groupId>org.apache.calcite</groupId>
@@ -1066,8 +1071,8 @@
          introduced in titanium 1.5.0; pinning 1.4.0 here let the integration
          test `GlossaryOntologyExportIT.testExportGlossaryAsJsonLd` blow up
          with NoClassDefFoundError com/apicatalog/rdf/api/RdfConsumerException
-         on every Jena JSON-LD export. Jena 5.6.0's parent pom uses 1.7.0; we
-         match that. -->
+         on every Jena JSON-LD export. Jena's parent pom pins 1.7.0 (verified
+         unchanged from 5.6.0 through 6.2.0); we match that. -->
     <dependency>
       <groupId>com.apicatalog</groupId>
       <artifactId>titanium-json-ld</artifactId>

@@ -147,7 +147,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -195,6 +195,8 @@ export interface ServiceConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Omni BI connector: models, topics, workbooks/dashboards and lineage
@@ -208,6 +210,8 @@ export interface ServiceConnection {
  * Azure SQL Connection Config
  *
  * Clickhouse Connection Config
+ *
+ * ClickZetta Database Connection Config
  *
  * Databricks Connection Config
  *
@@ -313,6 +317,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  *
  * Kafka Connection Config
@@ -320,6 +326,8 @@ export interface ServiceConnection {
  * Redpanda Connection Config
  *
  * Kinesis Connection Config
+ *
+ * NATS Connection Config
  *
  * Google Cloud Pub/Sub Connection Config
  *
@@ -387,6 +395,8 @@ export interface ServiceConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
  * MlFlow Connection Config
@@ -429,7 +439,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -462,10 +472,15 @@ export interface ConfigObject {
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Prefect API connection.
      */
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
@@ -474,6 +489,8 @@ export interface ConfigObject {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
      *
      * API token to authenticate with Omni.
      *
@@ -507,13 +524,15 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -573,6 +592,13 @@ export interface ConfigObject {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
@@ -612,6 +638,8 @@ export interface ConfigObject {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
@@ -622,6 +650,8 @@ export interface ConfigObject {
      * Host and port of the AzureSQL service.
      *
      * Host and port of the Clickhouse service.
+     *
+     * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
      *
@@ -709,6 +739,9 @@ export interface ConfigObject {
      * Pipeline Service Management/UI URL.
      *
      * Spline REST Server Host & Port.
+     *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
      *
      * KafkaConnect Service Management/UI URI.
      *
@@ -842,6 +875,8 @@ export interface ConfigObject {
      *
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
+     *
+     * Username to connect to ClickZetta.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -1024,7 +1059,7 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -1045,6 +1080,8 @@ export interface ConfigObject {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -1055,7 +1092,11 @@ export interface ConfigObject {
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
+     * NATS authentication method. Leave empty for anonymous authentication.
+     *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Authentication type to connect to Apache Ranger.
      *
@@ -1067,7 +1108,13 @@ export interface ConfigObject {
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used for Alation APIs pagination
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      */
     paginationLimit?: number;
     /**
@@ -1133,10 +1180,6 @@ export interface ConfigObject {
      */
     namespace?:    string;
     certificates?: QlikCertificatesBy;
-    /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
     /**
      * User Directory.
      */
@@ -1234,6 +1277,8 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
+     * Regex to only include or exclude matching databases.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -1245,6 +1290,8 @@ export interface ConfigObject {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include or exclude matching schemas.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -1267,7 +1314,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -1285,6 +1332,8 @@ export interface ConfigObject {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to only include or exclude matching tables.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -1319,6 +1368,12 @@ export interface ConfigObject {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * ClickZetta workspace to ingest.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
+     * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
+     * select which Glue database to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
@@ -1409,6 +1464,8 @@ export interface ConfigObject {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -1437,6 +1494,31 @@ export interface ConfigObject {
      * Establish secure connection with clickhouse
      */
     secure?: boolean;
+    /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -1468,14 +1550,6 @@ export interface ConfigObject {
      * Policy agent configuration for access control extraction.
      */
     policyAgentConfig?: PolicyAgentConfig;
-    /**
-     * Table name to fetch the query history.
-     *
-     * Table name to fetch the query history. When set, this overrides the default
-     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
-     * must expose columns compatible with the selected log path.
-     */
-    queryHistoryTable?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -1541,6 +1615,11 @@ export interface ConfigObject {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -1596,10 +1675,6 @@ export interface ConfigObject {
      */
     queryStatementSource?: string;
     /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
-    /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
      * Verify ( Connection Argument for SSL ) to connect to Trino.
@@ -1624,12 +1699,16 @@ export interface ConfigObject {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -1706,6 +1785,10 @@ export interface ConfigObject {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
     /**
      * Ingest external and internal stages.
      */
@@ -1944,8 +2027,27 @@ export interface ConfigObject {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2163,6 +2265,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2314,6 +2418,22 @@ export interface ConfigObject {
      */
     workspaceId?: string;
     /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -2342,6 +2462,10 @@ export interface ConfigObject {
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
     /**
      * Connection Timeout in Seconds
      */
@@ -2494,6 +2618,12 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include data models (Omni topics) that matches the pattern.
  *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -2522,6 +2652,8 @@ export interface UsernamePasswordAuthentication {
  * pattern.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
  *
@@ -2650,6 +2782,12 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * Common Database Connection Config
+ *
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -2659,10 +2797,6 @@ export enum AuthProvider {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -2682,11 +2816,26 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * NATS authentication method. Leave empty for anonymous authentication.
+ *
+ * Username and password authentication for NATS.
+ *
+ * Token-based authentication for NATS.
+ *
+ * NKey seed authentication for NATS.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
  *
  * Basic Auth Configuration for ElasticSearch
  *
@@ -2722,6 +2871,8 @@ export interface AuthenticationType {
      *
      * Password for the Dremio Software user account.
      *
+     * Password for NATS authentication.
+     *
      * Elastic Search Password for Login
      *
      * Ranger password to authenticate to the API.
@@ -2736,6 +2887,8 @@ export interface AuthenticationType {
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
      * permissions to access metadata.
+     *
+     * Username for NATS authentication.
      *
      * Elastic Search Username for Login
      *
@@ -2777,6 +2930,8 @@ export interface AuthenticationType {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     *
+     * Token for NATS authentication.
      */
     token?: string;
     /**
@@ -2830,13 +2985,32 @@ export interface AuthenticationType {
      */
     hostPort?: string;
     /**
+     * NKey seed for NATS authentication.
+     */
+    nkeySeed?: string;
+    /**
      * Access Token for the API
      */
     accessToken?: string;
     /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -3387,7 +3561,11 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -3470,7 +3648,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3513,7 +3691,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3699,7 +3877,7 @@ export interface SecurityConfigClass {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Password for Superset.
      *
@@ -4143,7 +4321,11 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4299,6 +4481,11 @@ export interface DatabaseConnectionClass {
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
+    /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
     /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
@@ -4824,17 +5011,20 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -4851,6 +5041,7 @@ export enum ConfigScheme {
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     OracleCxOracle = "oracle+cx_oracle",
+    OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     Pinot = "pinot",
     PinotHTTP = "pinot+http",
@@ -4929,15 +5120,18 @@ export interface MCPServerConfig {
      */
     apiKey?: string;
     /**
-     * Arguments to pass to the command
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     args?: string[];
     /**
-     * Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     command?: string;
     /**
-     * Environment variables for the server process
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     env?: { [key: string]: string };
     /**
@@ -4991,7 +5185,11 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
@@ -5180,7 +5378,7 @@ export enum TokenType {
  *
  * Service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5195,6 +5393,7 @@ export enum ConfigType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",
@@ -5208,6 +5407,8 @@ export enum ConfigType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
@@ -5258,6 +5459,7 @@ export enum ConfigType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",
@@ -5268,6 +5470,7 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
@@ -5279,6 +5482,7 @@ export enum ConfigType {
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",

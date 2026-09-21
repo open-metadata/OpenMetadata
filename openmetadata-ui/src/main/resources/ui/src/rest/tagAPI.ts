@@ -24,7 +24,7 @@ import { EntityReference, Tag } from '../generated/entity/classification/tag';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/classifications';
 
@@ -192,6 +192,16 @@ export const getClassificationVersionData = async (
   const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Classification>(url);
+
+  return response.data;
+};
+
+export const exportClassificationInCSVFormat = async (
+  classificationName: string
+) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `${BASE_URL}/name/${getEncodedFqn(classificationName)}/exportAsync`
+  );
 
   return response.data;
 };

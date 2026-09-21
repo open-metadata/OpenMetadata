@@ -16,12 +16,13 @@
   padding: var(--om-space-12) var(--om-space-16);
   position: relative;
   border-radius: var(--om-radius-10);
-  background-color: @white;
+  background-color: var(--tw-background-color-surface);
   border: 1px solid @border-color;
   margin: 0 0 var(--om-space-10);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color var(--om-duration-200) ease, box-shadow var(--om-duration-200) ease,
+  transition: border-color var(--om-duration-200) ease,
+    box-shadow var(--om-duration-200) ease,
     background-color var(--om-duration-200) ease;
   .no-owner-text {
     font-size: @size-sm;
@@ -87,7 +88,7 @@
   // are explicit so no legacy left-accent rule can thicken one edge.
   &.highlight-card {
     border: 1px solid @primary-color;
-    background-color: @white;
+    background-color: var(--tw-background-color-surface);
   }
 
   &:last-child {
@@ -139,7 +140,7 @@
 }
 
 .ranking-details-container {
-  background-color: @white;
+  background-color: var(--tw-background-color-surface);
   border: 1px solid @border-color-4;
   border-radius: var(--om-radius-lg);
   display: flex;

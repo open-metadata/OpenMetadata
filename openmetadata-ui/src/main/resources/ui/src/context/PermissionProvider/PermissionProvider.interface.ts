@@ -40,6 +40,7 @@ export enum ResourceEntity {
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
   SEARCH_SERVICE = 'searchService',
+  SECURITY_SERVICE = 'securityService',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   FEED = 'feed',
@@ -111,8 +112,4 @@ export interface PermissionContextType {
   getResourcePermission: (
     resource: ResourceEntity
   ) => Promise<OperationPermission>;
-}
-
-export interface EntityPermissionMap {
-  [key: string]: OperationPermission;
 }

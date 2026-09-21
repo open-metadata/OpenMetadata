@@ -92,9 +92,7 @@ public class TestDefinitionsTool implements McpTool {
 
   private static ListFilter buildFilter(String entityType, String testPlatform) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
-    }
+    TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
     if (testPlatform != null) {
       filter.addQueryParam("testPlatform", testPlatform);
     }

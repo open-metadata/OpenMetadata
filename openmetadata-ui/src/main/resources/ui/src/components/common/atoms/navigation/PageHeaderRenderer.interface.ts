@@ -18,6 +18,12 @@ export interface PageHeaderRenderProps {
   createPermission: boolean;
   count: number;
   breadcrumb?: ReactNode;
+  /**
+   * The list page's search input, already wired to the page's own search state
+   * and debounce. Custom headers must render this so the search stays in the
+   * header rather than falling back into the table's filter row.
+   */
+  search?: ReactNode;
 }
 
 export type PageHeaderRenderer = (props: PageHeaderRenderProps) => ReactNode;

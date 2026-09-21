@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -17,11 +18,23 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { createRef } from 'react';
+import { createRef, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { KnowledgePagesHierarchyRef } from '../../../interface/knowledge-center.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
+
+const TestWrapper = ({ children }: PropsWithChildren) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  );
+};
 
 const PageHierarchy = [
   {
@@ -242,7 +255,7 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -265,7 +278,7 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -286,7 +299,7 @@ describe('KnowledgePagesHierarchy', () => {
           permissions={DEFAULT_ENTITY_PERMISSION}
         />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -304,7 +317,7 @@ describe('KnowledgePagesHierarchy', () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -314,12 +327,14 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const expandBtn = row?.querySelector('button[slot="chevron"]');
+    const expandBtn = row?.querySelector(
+      'button[slot="chevron"]'
+    ) as HTMLElement;
 
     expect(expandBtn).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(expandBtn!);
+      fireEvent.click(expandBtn);
     });
 
     expect(
@@ -333,7 +348,7 @@ describe('KnowledgePagesHierarchy', () => {
         activeKey="Article_2p7Z8MAN"
         permissions={DEFAULT_ENTITY_PERMISSION}
       />,
-      { wrapper: MemoryRouter }
+      { wrapper: TestWrapper }
     );
 
     await act(async () => {
@@ -345,12 +360,12 @@ describe('KnowledgePagesHierarchy', () => {
     const row = screen
       .getByText('How to Discover Assets of Interest')
       .closest('[role="row"]');
-    const chevron = row?.querySelector('button[slot="chevron"]');
+    const chevron = row?.querySelector('button[slot="chevron"]') as HTMLElement;
 
     expect(chevron).not.toBeNull();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -358,7 +373,7 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(chevron!);
+      fireEvent.click(chevron);
     });
 
     expect(
@@ -391,7 +406,7 @@ describe('KnowledgePagesHierarchy', () => {
           permissions={{ ...DEFAULT_ENTITY_PERMISSION, Delete: true }}
         />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -454,17 +469,19 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
       const row = screen
         .getByText('Mismatched Count Parent')
         .closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -541,15 +558,17 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
       const row = screen.getByText('Paged Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -622,15 +641,17 @@ describe('KnowledgePagesHierarchy', () => {
             permissions={DEFAULT_ENTITY_PERMISSION}
             ref={ref}
           />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
       const row = screen.getByText('Exhausted Parent').closest('[role="row"]');
-      const expandBtn = row?.querySelector('button[slot="chevron"]');
+      const expandBtn = row?.querySelector(
+        'button[slot="chevron"]'
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtn!);
+        fireEvent.click(expandBtn);
       });
 
       await waitFor(() => {
@@ -651,10 +672,10 @@ describe('KnowledgePagesHierarchy', () => {
         .closest('[role="row"]');
       const expandBtnAfterRefresh = rowAfterRefresh?.querySelector(
         'button[slot="chevron"]'
-      );
+      ) as HTMLElement;
 
       await act(async () => {
-        fireEvent.click(expandBtnAfterRefresh!);
+        fireEvent.click(expandBtnAfterRefresh);
       });
 
       await waitFor(() => {
@@ -721,7 +742,7 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
@@ -791,7 +812,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });
@@ -817,7 +838,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });
@@ -843,7 +864,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });

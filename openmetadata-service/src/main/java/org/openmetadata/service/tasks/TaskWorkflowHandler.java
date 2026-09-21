@@ -42,7 +42,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskComment;
-import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -50,11 +49,13 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -66,7 +67,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 /**
  * Handles workflow integration for Task entities.
  *
- * <p>This is a clean replacement for FeedRepository.TaskWorkflow that works directly with the new
+ * <p>This handler works directly with Task V2 entities and their workflow lifecycle.
  * Task entity. It integrates with the Flowable-based Governance Workflow system while keeping all
  * task logic in the new system.
  *
@@ -78,6 +79,9 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
  */
 @Slf4j
 public class TaskWorkflowHandler {
+
+  /** Suggestion payload {@code source} marking a suggestion an agent produced. */
+  private static final String AGENT_SUGGESTION_SOURCE = "Agent";
 
   private static TaskWorkflowHandler instance;
 
@@ -205,21 +209,30 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    // Resolve in Flowable workflow
+    // Resolve in Flowable workflow. A null namespace map means the runtime user task never
+    // materialised (async advance timed out) — completing with no variables would drop the
+    // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
-    boolean workflowSuccess = workflowHandler.resolveTask(taskId, namespacedVariables);
+    boolean workflowSuccess =
+        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        // Report M1: two clients racing the same task, or a stale resolve arriving after
+        // Flowable already advanced past this node. Return a 409 CONFLICT via a typed
+        // WebServiceException so the caller learns the state changed under them — the
+        // generic exception mapper would otherwise surface these as 500s. Kept narrow
+        // (only these two resolve-race sites) so unrelated IllegalStateException bugs
+        // still surface as 500.
         if (resolutionType == null) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format(
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
         LOG.warn(
@@ -228,7 +241,7 @@ public class TaskWorkflowHandler {
         return applyTaskResolution(
             task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
       }
-      throw new IllegalStateException(
+      throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
@@ -241,7 +254,7 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] Non-terminal transition '{}' for task '{}' — workflow advanced, no resolution applied",
           transitionId,
           taskId);
-      if (isApproveTransition(selectedTransition)) {
+      if (TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
@@ -289,16 +302,6 @@ public class TaskWorkflowHandler {
       // production approver-capture failures effectively undiagnosable.
       LOG.warn("[TaskWorkflowHandler] Failed to capture approver for task '{}'", taskId, e);
     }
-  }
-
-  /**
-   * Identify an approval transition by its target status rather than its `id` string. Every
-   * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
-   * coupling the handler to the literal `"approve"` id that the workflow JSON happens to use.
-   */
-  private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
-    return selectedTransition != null
-        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
   }
 
   /**
@@ -367,18 +370,7 @@ public class TaskWorkflowHandler {
             .withComment(comment)
             .withPayload(resolvedPayload);
 
-    if (selectedTransition != null) {
-      task.setWorkflowStageId(selectedTransition.getTargetStageId());
-      task.setWorkflowStageDisplayName(selectedTransition.getTargetStageId());
-      task.setAvailableTransitions(List.of());
-      if (isApproveTransition(selectedTransition)) {
-        task.setApprovedBy(resolvedByRef);
-        task.setApprovedById(resolvedByRef.getId().toString());
-        task.setApprovedAt(System.currentTimeMillis());
-      }
-    }
-
-    task = taskRepository.resolveTask(task, resolution, user);
+    task = taskRepository.resolveTask(task, resolution, selectedTransition, user);
 
     LOG.info(
         "[TaskWorkflowHandler] Task '{}' resolved: status={}, resolution={}",
@@ -674,6 +666,7 @@ public class TaskWorkflowHandler {
         if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
           repository.applyTags(tagsToAdd, targetFqn);
         }
+        RdfUpdater.updateEntity(entity);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
@@ -938,6 +931,7 @@ public class TaskWorkflowHandler {
 
       String targetFqn = entity.getFullyQualifiedName();
       repository.applyTags(List.of(newTier), targetFqn);
+      RdfUpdater.updateEntity(entity);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -1015,6 +1009,24 @@ public class TaskWorkflowHandler {
     }
   }
 
+  /**
+   * Whether the text being applied is what the agent actually proposed.
+   *
+   * <p>The payload here is the reviewer's resolution merged over the task's, and the merge keeps the
+   * original {@code source} — so a reviewer who rewrote the text still arrives labelled
+   * {@code Agent}. Comparing against the task's own suggestion separates the two.
+   */
+  private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
+    boolean agentSourced =
+        AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null));
+    String proposed =
+        Optional.ofNullable(task)
+            .map(Task::getPayload)
+            .map(payload -> JsonUtils.valueToTree(payload).path("suggestedValue").asText(null))
+            .orElse(null);
+    return agentSourced && (proposed == null || proposed.equals(appliedValue));
+  }
+
   private void applySuggestion(
       Task task,
       Object payload,
@@ -1038,7 +1050,7 @@ public class TaskWorkflowHandler {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
           String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null) {
+          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
             repository.patchChangeSummary(
                 entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
           }
@@ -1049,7 +1061,12 @@ public class TaskWorkflowHandler {
         }
         boolean success =
             FieldPathUtils.updateFieldDescription(
-                entity, repository, user, fieldPath, suggestedValue);
+                entity,
+                repository,
+                user,
+                fieldPath,
+                suggestedValue,
+                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
         if (success) {
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
@@ -1061,21 +1078,13 @@ public class TaskWorkflowHandler {
         List<TagLabel> tags =
             JsonUtils.readValue(suggestedValue, new TypeReference<List<TagLabel>>() {});
         if (tags != null && !tags.isEmpty()) {
-          boolean isEntityLevel =
-              fieldPath == null
-                  || fieldPath.isEmpty()
-                  || fieldPath.equals("description")
-                  || !fieldPath.contains("::");
-
-          if (isEntityLevel) {
+          // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
+          // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
+          if (isEntityLevelTagPath(fieldPath)) {
             applyEntityLevelTags(entity, repository, user, tags);
-          } else {
-            String[] parts = fieldPath.split("::");
-            String targetFqn = entity.getFullyQualifiedName();
-            if (parts.length >= 2) {
-              targetFqn = entity.getFullyQualifiedName() + "." + parts[1];
-            }
-            repository.applyTags(tags, targetFqn);
+          } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
+            repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
+            RdfUpdater.updateEntity(entity);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1184,29 +1193,6 @@ public class TaskWorkflowHandler {
         user,
         approved ? "approve" : "reject",
         task.getId());
-  }
-
-  /**
-   * Reopen a previously resolved task.
-   */
-  public Task reopenTask(Task task, String user) {
-    if (task.getStatus() == TaskEntityStatus.Open
-        || task.getStatus() == TaskEntityStatus.InProgress) {
-      LOG.warn("[TaskWorkflowHandler] Task '{}' is already open", task.getId());
-      return task;
-    }
-
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-
-    task.setStatus(TaskEntityStatus.Open);
-    task.setResolution(null);
-    task.setUpdatedBy(user);
-    task.setUpdatedAt(System.currentTimeMillis());
-
-    taskRepository.createOrUpdate(null, task, user);
-
-    LOG.info("[TaskWorkflowHandler] Task '{}' reopened by '{}'", task.getId(), user);
-    return task;
   }
 
   /**

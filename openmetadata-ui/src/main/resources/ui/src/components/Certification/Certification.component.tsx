@@ -22,20 +22,40 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
+import { CERTIFICATION_CATEGORY } from '../../constants/constants';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { isImageUrl, renderIcon } from '../../utils/IconUtils';
+import { isImageUrl } from '../../utils/IconUtils';
+import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
+
+// Lazy-loaded from the dedicated `@openmetadata/ui-core-components/icon`
+// subpath (not the package root) so ICON_MAP's ~44 icon components — a plain
+// object a bundler cannot tree-shake key-by-key — never enter this eagerly
+// rendered component's chunk unless a certification actually has an iconURL.
+const Icon = lazy(() =>
+  import('@openmetadata/ui-core-components/icon').then((m) => ({
+    default: m.Icon,
+  }))
+);
 
 const Certification = ({
   currentCertificate = '',
@@ -65,7 +85,7 @@ const Certification = ({
 
     try {
       const response = await getTags({
-        parent: 'Certification',
+        parent: CERTIFICATION_CATEGORY,
         limit: 50,
         after: page > 1 ? paging.after : undefined,
         disabled: false,
@@ -157,18 +177,38 @@ const Certification = ({
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
 
-            const isIcon = iconURL && !isImageUrl(iconURL);
-            const renderedIcon = iconURL
-              ? renderIcon(iconURL, {
-                  size: 28,
-                  alt: title,
-                })
-              : null;
+            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
+            const renderedIcon = iconURL ? (
+              <Suspense fallback={<CertificationIcon height={28} width={28} />}>
+                <Icon
+                  alt={title}
+                  fallback={<CertificationIcon height={28} width={28} />}
+                  iconValue={iconURL}
+                  size={28}
+                />
+              </Suspense>
+            ) : null;
+
+            let iconContent: ReactNode;
+            if (!renderedIcon) {
+              iconContent = (
+                <div className="certification-icon">
+                  <CertificationIcon height={28} width={28} />
+                </div>
+              );
+            } else if (isIcon) {
+              iconContent = (
+                <div className="certification-icon">{renderedIcon}</div>
+              );
+            } else {
+              iconContent = renderedIcon;
+            }
 
             return (
               <div
                 className="certification-card-item cursor-pointer"
                 key={id}
+                role="presentation"
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
                   setSelectedCertification(fullyQualifiedName ?? '');
@@ -179,17 +219,7 @@ const Certification = ({
                   value={fullyQualifiedName}
                 />
                 <div className="certification-card-content">
-                  {renderedIcon ? (
-                    isIcon ? (
-                      <div className="certification-icon">{renderedIcon}</div>
-                    ) : (
-                      renderedIcon
-                    )
-                  ) : (
-                    <div className="certification-icon">
-                      <CertificationIcon height={28} width={28} />
-                    </div>
-                  )}
+                  {iconContent}
                   <div>
                     <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
                       {title}
@@ -271,12 +301,7 @@ const Certification = ({
                   data-testid="clear-certification"
                   tabIndex={0}
                   onClick={() => updateCertificationData()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      updateCertificationData();
-                    }
-                  }}>
+                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
                   {t('label.clear')}
                 </Typography.Text>
               </Space>

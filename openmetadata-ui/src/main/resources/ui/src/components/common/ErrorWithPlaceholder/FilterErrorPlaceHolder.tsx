@@ -60,6 +60,7 @@ const FilterErrorPlaceHolder = ({
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
                   <a
+                    aria-label={t('label.doc-plural-lowercase')}
                     href={doc}
                     rel="noreferrer"
                     style={{ color: theme.primaryColor }}

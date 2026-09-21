@@ -22,14 +22,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Announcement;
-import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.feed.Conversation;
+import org.openmetadata.schema.entity.feed.ConversationReply;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -51,9 +50,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
   public Set<Recipient> resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
     try {
-      if (Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
-        Thread thread = AlertsRuleEvaluator.getThread(event);
-        return thread == null ? Collections.emptySet() : resolveMentions(thread, destination);
+      if (Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())) {
+        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+        return conversation == null
+            ? Collections.emptySet()
+            : resolveConversationMentions(conversation, destination);
       }
 
       if (Entity.ANNOUNCEMENT.equalsIgnoreCase(event.getEntityType())) {
@@ -86,9 +87,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination) {
     try {
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = Entity.getFeedRepository().get(entityId);
-        return thread == null ? Collections.emptySet() : resolveMentions(thread, destination);
+      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
+        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
+        return conversation == null
+            ? Collections.emptySet()
+            : resolveConversationMentions(conversation, destination);
       }
 
       if (Entity.ANNOUNCEMENT.equalsIgnoreCase(entityType)) {
@@ -113,61 +116,16 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
     }
   }
 
-  private Set<Recipient> resolveMentions(Thread thread, SubscriptionDestination destination) {
-
-    Set<Recipient> recipients = new HashSet<>();
-    SubscriptionDestination.SubscriptionType notificationType = destination.getType();
-
-    if (thread.getType() != null
-        && thread.getType() == ThreadType.Announcement
-        && thread.getAnnouncement() != null) {
-      recipients.addAll(
-          resolveAnnouncementMentions(thread.getAnnouncement().getDescription(), destination));
+  private Set<Recipient> resolveConversationMentions(
+      Conversation conversation, SubscriptionDestination destination) {
+    String message = conversation.getMessage();
+    if (conversation.getReplies() != null && !conversation.getReplies().isEmpty()) {
+      ConversationReply latestReply = conversation.getReplies().getLast();
+      message = latestReply.getMessage();
     }
-
-    // Extract entity links from task suggestion
-    if (thread.getType() != null && thread.getType() == ThreadType.Task) {
-      if (thread.getTask() != null && thread.getTask().getSuggestion() != null) {
-        List<MessageParser.EntityLink> taskEntityLinks =
-            MessageParser.getEntityLinks(thread.getTask().getSuggestion());
-        recipients.addAll(resolveEntityLinks(taskEntityLinks, notificationType));
-      }
-    }
-
-    // Extract entity links from thread message (<#E::{entityType}::{entityFQN}>)
-    if (thread.getMessage() != null) {
-      List<MessageParser.EntityLink> entityLinks =
-          MessageParser.getEntityLinks(thread.getMessage());
-      recipients.addAll(resolveEntityLinks(entityLinks, notificationType));
-    }
-
-    // Extract entity links and post authors from all posts
-    if (thread.getPosts() != null) {
-      for (Post post : thread.getPosts()) {
-        try {
-          // Add post author as recipient
-          if (post.getFrom() != null) {
-            User postAuthor =
-                Entity.getEntityByName(
-                    Entity.USER, post.getFrom(), "id,profile,email", Include.NON_DELETED);
-            if (postAuthor != null) {
-              addIfResolved(recipients, Recipient.fromUser(postAuthor, notificationType));
-            }
-          }
-        } catch (Exception e) {
-          LOG.warn("Failed to resolve post author: {}", post.getFrom(), e);
-        }
-
-        // Extract entity links from post message
-        if (post.getMessage() != null) {
-          List<MessageParser.EntityLink> postEntityLinks =
-              MessageParser.getEntityLinks(post.getMessage());
-          recipients.addAll(resolveEntityLinks(postEntityLinks, notificationType));
-        }
-      }
-    }
-
-    return recipients;
+    return message == null
+        ? Collections.emptySet()
+        : resolveEntityLinks(MessageParser.getEntityLinks(message), destination.getType());
   }
 
   private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {

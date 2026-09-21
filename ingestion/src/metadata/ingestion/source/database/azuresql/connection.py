@@ -13,7 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional, Union
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import URL, Engine
@@ -24,6 +23,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     Authentication,
     AuthenticationMode,
+    AzureSQLScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection as AzureSQLConnectionConfig,
@@ -44,8 +44,10 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
+DEFAULT_SQL_SERVER_PORT = 1433
 
-def get_connection_url(connection: Union[AzureSQLConnectionConfig, MssqlConnection]) -> str:  # noqa: UP007
+
+def get_connection_url(connection: AzureSQLConnectionConfig | MssqlConnection) -> str:
     """
     Build the connection URL
     """
@@ -94,11 +96,35 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        # data-diff reads credentials from the URL authority only, and the Active Directory URL
+        # keeps them inside an opaque `odbc_connect` query parameter - hence the explicit dict.
+        connection = self.service_connection
+        host, _, port = connection.hostPort.partition(":")
+        scheme = connection.scheme or AzureSQLScheme.mssql_pyodbc
+
+        connection_dict = {
+            "driver": scheme.value,
+            "host": host,
+            "port": int(port) if port else DEFAULT_SQL_SERVER_PORT,
+            "user": connection.username,
+            "password": connection.password.get_secret_value() if connection.password else None,
+            "database": connection.database,
+        }
+
+        authentication_mode = connection.authenticationMode
+        if isinstance(authentication_mode, AuthenticationMode) and authentication_mode.authentication is not None:
+            connection_dict["Authentication"] = authentication_mode.authentication.value
+            connection_dict["Encrypt"] = "yes" if authentication_mode.encrypt else "no"
+
+        return connection_dict
+
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

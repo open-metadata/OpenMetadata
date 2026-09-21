@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -56,11 +56,13 @@ test.describe('Data Product Rename', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -243,11 +245,13 @@ test.describe('Data Product Rename', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });

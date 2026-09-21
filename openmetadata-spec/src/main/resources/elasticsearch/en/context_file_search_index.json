@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -28,23 +29,27 @@
         "om_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "word_delimiter_filter",
-            "om_stemmer"
+            "lowercase",
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -69,6 +74,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
@@ -326,16 +335,31 @@
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
-          "keyword": { "type": "keyword", "ignore_above": 256 }
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
         }
       },
       "folder": {
         "properties": {
-          "id": { "type": "keyword" },
-          "type": { "type": "keyword" },
-          "name": { "type": "keyword", "normalizer": "lowercase_normalizer" },
-          "displayName": { "type": "keyword" },
-          "fullyQualifiedName": { "type": "keyword", "normalizer": "lowercase_normalizer" }
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "keyword"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
         }
       },
       "extension": {

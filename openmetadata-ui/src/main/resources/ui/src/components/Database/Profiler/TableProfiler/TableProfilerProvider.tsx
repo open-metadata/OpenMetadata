@@ -51,6 +51,7 @@ import {
 import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -116,10 +117,20 @@ export const TableProfilerProvider = ({
     return subTab ?? defaultTab;
   }, [subTab, isTourOpen]);
 
+  // `permissions` stays raw here — TableProfilerContextInterface exposes it verbatim to
+  // consumers (context contract, kept raw per the GenericProvider precedent). `viewTest` is
+  // purely internal (never exposed via context), so it derives from named flags: hasViewAccess
+  // is a byte-for-byte match for the old raw `ViewAll || ViewBasic` (getDerivedPermissionFlags
+  // computes it from the same two raw fields, unprioritized), and since it already covers the
+  // ViewAll case, ORing in canViewTests (prioritized ViewTests-over-ViewAll) reproduces the old
+  // 3-way flat OR exactly — not an explicit-deny-wins change, because the old ViewAll term
+  // already makes the whole expression true whenever canViewTests' own ViewAll fallback would
+  // have mattered.
   const viewTest = useMemo(() => {
-    return (
-      permissions.ViewAll || permissions.ViewBasic || permissions.ViewTests
-    );
+    const { hasViewAccess, canViewTests } =
+      getDerivedPermissionFlags(permissions);
+
+    return hasViewAccess || canViewTests;
   }, [permissions]);
 
   const getProfileSampleValue = () => {
@@ -253,10 +264,12 @@ export const TableProfilerProvider = ({
     // we are decoding FQN below to avoid double encoding in the API function
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(datasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
-      });
+      const [profiler, customMetricResponse] = await Promise.all([
+        getLatestTableProfileByFqn(datasetFQN),
+        getTableDetailsByFQN(datasetFQN, {
+          fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
+        }),
+      ]);
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
@@ -299,10 +312,9 @@ export const TableProfilerProvider = ({
   };
 
   useEffect(() => {
+    const isProfilerFetchable = !isTableDeleted && datasetFQN && !isTourOpen;
     const fetchProfiler =
-      !isTableDeleted &&
-      datasetFQN &&
-      !isTourOpen &&
+      isProfilerFetchable &&
       [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
         activeTab
       ) &&

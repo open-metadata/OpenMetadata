@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
-import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { isInViewport } from '../../../../utils/BlockEditorPureUtils';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(

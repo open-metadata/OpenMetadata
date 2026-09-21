@@ -35,8 +35,7 @@ export const BotsPageV1 = () => {
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.bot'),
-      })}
-      title="Table details">
+      })}>
       <BotListV1
         handleAddBotClick={handleAddBotClick}
         handleShowDeleted={handleShowDeleted}

@@ -14,9 +14,11 @@
 import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
+import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
@@ -83,6 +85,7 @@ export interface DataQualityTabProps {
   // Per-entity permissions keyed by test-case id, supplied by the list API when
   // includePermissions=true. When present, the tab skips per-row permission calls.
   entityPermissions?: Record<string, ResourcePermission>;
+  deletionMode?: TestCaseDeletionMode;
 }
 
 export interface TestSummaryProps {
@@ -98,17 +101,16 @@ export interface ProfilerLatestValueProps {
 
 export type TestCaseAction = {
   data: TestCase;
-  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+  action: 'UPDATE' | 'DELETE' | 'RESTORE' | 'UPDATE_STATUS';
 };
 
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Thread | number[]>[];
+  data: Record<
+    string,
+    string | number | undefined | Task | Thread | number[]
+  >[];
 };
-
-export interface LineChartRef {
-  container: HTMLElement;
-}
 
 export type TestCasePermission = OperationPermission & {
   fullyQualifiedName?: string;

@@ -13,8 +13,8 @@ Query Parser Source module. Parent class for Lineage & Usage workflows
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -51,6 +51,8 @@ class QueryParserSource(Source, ABC):
     """
 
     progress_mode = ProgressMode.MANUAL
+
+    _result_limit_warned = False
 
     @property
     def progress_tracking(self) -> ProgressTracking:
@@ -107,6 +109,26 @@ class QueryParserSource(Source, ABC):
     def get_schema_name(data: dict) -> str:
         return data.get("schema_name")
 
+    def warn_if_query_log_truncated(self, row_count: int, subject: str) -> None:
+        """Warn at most once per run that a query log batch filled resultLimit.
+
+        Args:
+            row_count: rows read from the batch just processed
+            subject: what the truncation degrades, e.g. "lineage" or "usage"
+        """
+        result_limit = getattr(self.source_config, "resultLimit", None)
+        if not isinstance(result_limit, int) or row_count < result_limit:
+            return
+        # Batches run per day per engine, so an unguarded warning fires hundreds of times
+        if self._result_limit_warned:
+            return
+        self._result_limit_warned = True
+        logger.warning(
+            f"Reached the configured resultLimit of {result_limit} query log entries; "
+            f"the query log may have been truncated and {subject} may be incomplete. "
+            f"Consider increasing resultLimit."
+        )
+
     @staticmethod
     def get_aborted_status(data: dict) -> bool:
         return data.get("aborted", False)
@@ -126,8 +148,8 @@ class QueryParserSource(Source, ABC):
 
     def check_life_cycle_query(
         self,
-        query_type: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
-        query_text: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+        query_type: str | None,  # pylint: disable=unused-argument
+        query_text: str | None,  # pylint: disable=unused-argument
     ) -> bool:
         """
         returns true if query is to be used for life cycle processing.

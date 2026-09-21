@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
@@ -217,13 +218,33 @@ public class PIIMasker {
 
   private static TestCase getTestCase(Column column, TestCase testCase) {
     if (!hasPiiSensitiveTag(column)) return testCase;
+    return maskTestCase(testCase);
+  }
 
+  private static TestCase maskTestCase(TestCase testCase) {
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
     testCase.setName(flagMaskedName(testCase.getName()));
 
     return testCase;
+  }
+
+  /**
+   * A test case outlives the table it points at: the table is hard-deleted while the test case row
+   * survives until DataRetention's {@code OrphanTestCaseCleanup} sweeps it. Resolving that dangling
+   * {@code entityLink} must not fail the request — a single stale row would otherwise turn every
+   * listing that happens to include it into a 404.
+   */
+  private static Table findTableOrNull(String tableFqn) {
+    Table table;
+    try {
+      table = Entity.getEntityByName(Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Test case references table [{}] that no longer exists", tableFqn);
+      table = null;
+    }
+    return table;
   }
 
   public static ResultList<TestCase> getTestCases(
@@ -239,13 +260,16 @@ public class PIIMasker {
                   if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
                     table = entityFQNToTable.get(testCaseLink.getEntityFQN());
                   } else {
-                    table =
-                        Entity.getEntityByName(
-                            Entity.TABLE,
-                            testCaseLink.getEntityFQN(),
-                            "owners,tags,columns",
-                            Include.ALL);
+                    table = findTableOrNull(testCaseLink.getEntityFQN());
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
+                  }
+
+                  if (table == null) {
+                    // The column tags that decide masking died with the table, so fall back to the
+                    // caller's PII authorization rather than exposing the orphan's results.
+                    return authorizer.authorizePII(securityContext, null)
+                        ? testCase
+                        : maskTestCase(testCase);
                   }
 
                   // Ignore table tests

@@ -19,6 +19,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -51,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 2;
+  public static final int CHUNK_DOC_VERSION = 4;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -303,9 +305,10 @@ public class VectorDocBuilder {
    * <ul>
    *   <li>KNN filter fields ({@code entityType}, {@code deleted}, {@code tags}/{@code domains}/
    *       {@code tier}) — the original chunk-doc contract.
-   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts}, {@code synonyms} and
-   *       {@code columns.name} so the shard-fair keyword clauses match on the best-semantic chunk,
-   *       not only on chunk 0's spliced entity doc.
+   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts} and {@code synonyms} so the
+   *       shard-fair keyword clauses match on every chunk, not only on chunk 0's spliced entity
+   *       doc. Column names are deliberately not denormalized here: every chunk would carry the
+   *       entity's whole column list, and {@code textToEmbed} already carries them per chunk.
    *   <li>Filter parity: {@code owners}, {@code serviceType}, {@code service}/{@code database}/
    *       {@code databaseSchema} and {@code certification} so NLQ filters on those facets no longer
    *       exclude every chunk doc.
@@ -368,14 +371,13 @@ public class VectorDocBuilder {
         && !term.getSynonyms().isEmpty()) {
       fields.put("synonyms", new ArrayList<>(term.getSynonyms()));
     }
-    if (entity instanceof Table table) {
-      List<Map<String, Object>> columns = columnNameObjects(table.getColumns());
-      if (!columns.isEmpty()) {
-        fields.put("columns", columns);
-      }
-    }
     if (entity instanceof Metric metric) {
       addMetricFields(fields, metric);
+    }
+    if (entity instanceof ContextMemory memory) {
+      // Reuses the entity-doc definition so both documents stamp identical values; see
+      // ContextMemoryIndex#shareConfigFields.
+      fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
     }
     return fields;
   }
@@ -453,29 +455,26 @@ public class VectorDocBuilder {
     return result;
   }
 
+  /**
+   * Owners as {@code {name, id}}. The id is required because the context memory visibility filter
+   * matches an owner on nested {@code owners.id}, the same field the entity indices carry; name
+   * alone would make an owner unable to find their own restricted memory.
+   */
   private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
     List<Map<String, Object>> owners = new ArrayList<>();
     List<EntityReference> ownerRefs =
         entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
     for (EntityReference owner : ownerRefs) {
-      if (owner.getName() != null) {
-        owners.add(Map.of("name", owner.getName()));
+      Map<String, Object> ownerFields = new HashMap<>();
+      putIfPresent(ownerFields, "name", owner.getName());
+      if (owner.getId() != null) {
+        ownerFields.put("id", owner.getId().toString());
+      }
+      if (!ownerFields.isEmpty()) {
+        owners.add(ownerFields);
       }
     }
     return owners;
-  }
-
-  private static List<Map<String, Object>> columnNameObjects(List<Column> columns) {
-    if (columns == null || columns.isEmpty()) {
-      return Collections.emptyList();
-    }
-    List<Map<String, Object>> result = new ArrayList<>(columns.size());
-    for (Column column : columns) {
-      if (column.getName() != null) {
-        result.add(Map.of("name", column.getName()));
-      }
-    }
-    return result;
   }
 
   /**
@@ -583,7 +582,24 @@ public class VectorDocBuilder {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body);
+    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
+  }
+
+  /**
+   * Share config folded into the content fingerprint, so a visibility change restamps the chunk docs
+   * that the search-time privacy filter reads {@code visibility} from. Sorted, so reordering {@code
+   * sharedWith} is not mistaken for a change. Empty for types without a share config.
+   */
+  @SuppressWarnings("unchecked")
+  private static String shareConfigPart(EntityInterface entity) {
+    String part = "";
+    if (entity instanceof ContextMemory memory) {
+      Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
+      List<String> sharedWithIds = new ArrayList<>((List<String>) shareConfig.get("sharedWithIds"));
+      Collections.sort(sharedWithIds);
+      part = "|" + shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds);
+    }
+    return part;
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {

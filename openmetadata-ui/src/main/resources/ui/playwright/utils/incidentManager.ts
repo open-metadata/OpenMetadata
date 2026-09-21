@@ -15,12 +15,11 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { getCurrentMillis } from './dateTime';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { waitForTaskResolveResponse } from './task';
 
@@ -253,24 +252,30 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await searchUserResponse;
 
   const updateIncident = waitForTaskResolveResponse(page);
-  await page.click(`.ant-popover [title="${user.displayName}"]`);
-  await updateIncident;
-
   await page
-    .getByTestId('assignee')
-    .getByTestId('owner-link')
-    .first()
-    .waitFor();
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: user.displayName })
+    .click();
+  await updateIncident;
 
   const taskHeaderAssignee = page.getByTestId(
     'incident-manager-task-header-container'
   );
+  // List pages can contain several incidents, so a generic first() may assert
+  // against an unrelated unassigned row instead of the incident just updated.
+  const incidentAssignee = testCaseName
+    ? page
+        .locator('tr')
+        .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
+        .first()
+        .getByTestId('assignee')
+    : page.getByTestId('assignee').first();
 
   await expect(
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
-      : page.getByTestId('assignee').first()
-  ).toContainText(user.displayName);
+      : incidentAssignee
+  ).toContainText(user.displayName, { timeout: 30_000 });
 };
 
 export const assignIncident = async (data: {

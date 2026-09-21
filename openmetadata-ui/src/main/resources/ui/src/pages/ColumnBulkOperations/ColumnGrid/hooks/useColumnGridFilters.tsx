@@ -22,9 +22,9 @@ import { AssetsOfEntity } from '../../../../components/Glossary/GlossaryTerms/ta
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getCanonicalEntityType } from '../../../../utils/ExplorePureUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { EntityIconSize } from '../../../../utils/TableUtils';
 import {
   ADDITIONAL_FILTER_KEYS,
   COLUMN_GRID_FILTERS,
@@ -116,11 +116,9 @@ export const useColumnGridFilters = (
         options: f.options.map((opt) => ({
           ...opt,
           icon:
-            searchClassBase.getEntityIcon(
+            searchClassBase.getEntityIconWithBg(
               getCanonicalEntityType(opt.key),
-              'tw:text-quaternary',
-              {},
-              EntityIconSize.Size16
+              EntityIconSize.Size14
             ) ?? undefined,
         })),
       };

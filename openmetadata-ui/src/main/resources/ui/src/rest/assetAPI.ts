@@ -18,7 +18,7 @@ import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export interface CreateFolderRequest {
   name: string;
@@ -260,12 +260,16 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 };
 
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
-  const response = await APIClient.get<Blob>(
-    `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true }, responseType: 'blob' }
-  );
+  try {
+    const response = await APIClient.get<Blob>(
+      `/contextCenter/drive/files/${id}/download`,
+      { params: { redirect: false }, responseType: 'blob' }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {

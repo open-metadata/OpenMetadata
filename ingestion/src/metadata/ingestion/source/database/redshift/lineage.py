@@ -31,7 +31,7 @@ workflowConfig:
 """
 
 import traceback
-from typing import Iterator  # noqa: UP035
+from collections.abc import Iterator
 
 from sqlalchemy import text
 

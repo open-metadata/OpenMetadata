@@ -50,6 +50,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -60,7 +61,9 @@ import org.openmetadata.service.security.Authorizer;
             + "that run against data to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestDefinitions")
+// Seeded after the data quality dimensions (order 0) the shipped test definitions reference:
+// a test definition is rejected when its dimension does not exist yet.
+@Collection(name = "TestDefinitions", order = 1)
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
   private final TestDefinitionMapper mapper = new TestDefinitionMapper();
@@ -73,6 +76,9 @@ public class TestDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find tag definitions and load classification from the json file, if necessary
     List<TestDefinition> testDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");
@@ -101,7 +107,10 @@ public class TestDefinitionResource
                 @Content(
                     mediaType = "application/json",
                     schema =
-                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class)))
+                        @Schema(implementation = TestDefinitionResource.TestDefinitionList.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "entityType is not one of the TestDefinitionEntityType values")
       })
   public ResultList<TestDefinition> list(
       @Context UriInfo uriInfo,
@@ -146,7 +155,9 @@ public class TestDefinitionResource
           @QueryParam("testPlatform")
           String testPlatformParam,
       @Parameter(
-              description = "Filter tests definition by supported data type",
+              description =
+                  "Filter test definitions by supported data type. Returns test definitions that either "
+                      + "have an empty supportedDataTypes list (supporting all data types) or include the specified data type.",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
           String supportedDataTypeParam,
@@ -163,9 +174,7 @@ public class TestDefinitionResource
           @QueryParam("enabled")
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
-    if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
-    }
+    TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
     }

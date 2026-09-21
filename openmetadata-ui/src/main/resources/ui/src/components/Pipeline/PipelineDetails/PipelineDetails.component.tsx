@@ -18,18 +18,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
-import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -41,11 +42,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
@@ -109,11 +106,36 @@ const PipelineDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const [pipelinePermissions, setPipelinePermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
+  // Single useEntityPermissions call, by id — no genuine cycle here (contrast
+  // TableDetailsPageV1.tsx's two-call pattern): unlike a fetch-owning page, this
+  // component already receives {@code pipelineDetails} (and therefore
+  // {@code pipelineDetails.deleted}) as a prop from its first render, so there is no
+  // ordering constraint requiring a separate pre-`deleted` call. The old component never
+  // gated rendering on a permission-loading flag either (it rendered immediately with
+  // deny-all permissions, then re-rendered once the fetch resolved) — this hook call
+  // preserves that by not consuming `isLoading`.
+  const {
+    permissions: pipelinePermissions, // children consume the raw OperationPermission prop
+    error: permissionsError,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewAll: viewAllPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(
+    ResourceEntity.PIPELINE,
+    { id: pipelineDetails.id },
+    { deleted: Boolean(deleted) }
   );
 
-  const { getEntityPermission } = usePermissionProvider();
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -137,28 +159,6 @@ const PipelineDetails = ({
       );
     }
   }, [pipelineFQN]);
-
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const entityPermission = await getEntityPermission(
-        ResourceEntity.PIPELINE,
-        pipelineDetails.id
-      );
-      setPipelinePermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-    }
-  }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
-
-  useEffect(() => {
-    if (pipelineDetails.id) {
-      fetchResourcePermission();
-    }
-  }, [pipelineDetails.id]);
 
   const isFollowing = useMemo(
     () => followers.some(({ id }: { id: string }) => id === userID),
@@ -202,6 +202,8 @@ const PipelineDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -209,6 +211,8 @@ const PipelineDetails = ({
           entity: t('label.pipeline'),
         })
       );
+
+      return false;
     }
   };
 
@@ -229,50 +233,6 @@ const PipelineDetails = ({
       await followPipelineHandler();
     }
   }, [isFollowing, followPipelineHandler, unFollowPipelineHandler]);
-
-  const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          pipelinePermissions,
-          PermissionOperation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          pipelinePermissions,
-          PermissionOperation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          pipelinePermissions,
-          PermissionOperation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          pipelinePermissions,
-          PermissionOperation.EditCustomFields
-        ) && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          pipelinePermissions,
-          PermissionOperation.EditLineage
-        ) && !deleted,
-      viewAllPermission: pipelinePermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        pipelinePermissions,
-        PermissionOperation.ViewCustomFields
-      ),
-    }),
-    [pipelinePermissions, deleted]
-  );
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
@@ -300,8 +260,15 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.PIPELINE_SERVICES,
+          getPartialNameFromTableFQN(pipelineFQN, [FqnPart.Service])
+        )
+      ),
+    [pipelineFQN]
   );
 
   useEffect(() => {
@@ -346,9 +313,6 @@ const PipelineDetails = ({
     handleTagSelection,
     onExtensionUpdate,
     onDescriptionUpdate,
-    editDescriptionPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,

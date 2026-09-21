@@ -40,7 +40,10 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
  *
  * <p>{@code If-Match: *} deterministically forces the optimistic-locking path (the header is present
  * and non-empty, and {@code *} matches any current ETag), without the test needing to read or
- * recompute the entity's ETag.
+ * recompute the entity's ETag. Because {@code *} matches anything, those tests cover the updater
+ * delegation but say nothing about whether a real client can construct a satisfiable precondition —
+ * the weak-version tests below cover that, and are what fails if the client-facing validator format
+ * drifts (see {@code EntityETag.generateWeakETag}).
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -98,6 +101,64 @@ public class OptimisticLockingColumnPatchIT {
         Exception.class,
         () -> client.tables().patch(table.getId(), patch, "\"stale-etag\""),
         "A stale If-Match ETag must be rejected with a precondition failure");
+  }
+
+  @Test
+  void patchWithWeakVersionIfMatch_columnTag_persists(TestNamespace ns) {
+    // The validator a non-Java client can actually reproduce: W/"<version>", built the way
+    // patch_mixin._entity_etag builds it. The strong ETag published on a GET cannot be echoed back
+    // successfully — PATCH validates it against the repository's patchFields projection, not the
+    // caller's `fields` — so this weak form is the only working precondition, and the ingestion
+    // column-tag path depends on it. Every If-Match test here previously used "*", which matches
+    // any ETag and so could not have caught a client/server validator mismatch.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTag(client, ns, "OptLockWeakCls", "OptLockWeakTag");
+    Table table = createTwoColumnTable(client, ns, "optlock_weak_tag");
+
+    JsonNode patch =
+        readTree(
+            "[{\"op\":\"add\",\"path\":\"/columns/0/tags\",\"value\":[{\"tagFQN\":\""
+                + tag.getFullyQualifiedName()
+                + "\",\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]");
+
+    client.tables().patch(table.getId(), patch, weakETag(table.getVersion()));
+
+    Table fetched = client.tables().get(table.getId().toString(), "columns,tags");
+    List<TagLabel> columnTags = fetched.getColumns().get(0).getTags();
+    assertNotNull(columnTags, "Column tag must persist on a weak-version If-Match write");
+    assertFalse(columnTags.isEmpty(), "Column tag must persist on a weak-version If-Match write");
+    assertEquals(tag.getFullyQualifiedName(), columnTags.get(0).getTagFQN());
+  }
+
+  @Test
+  void patchWithStaleWeakVersionIfMatch_isRejected(TestNamespace ns) {
+    // The other half of the contract: the weak validator must still REJECT a stale read, otherwise
+    // it buys nothing over sending no header at all. Patch once to bump the version, then present
+    // the version observed before that bump.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTwoColumnTable(client, ns, "optlock_weak_stale");
+    Double staleVersion = table.getVersion();
+
+    client
+        .tables()
+        .patch(
+            table.getId(),
+            readTree("[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"bump\"}]"),
+            weakETag(staleVersion));
+
+    JsonNode patch =
+        readTree(
+            "[{\"op\":\"add\",\"path\":\"/columns/0/description\",\"value\":\"stale write\"}]");
+
+    assertThrows(
+        Exception.class,
+        () -> client.tables().patch(table.getId(), patch, weakETag(staleVersion)),
+        "A weak If-Match naming a superseded version must fail the precondition");
+  }
+
+  /** Mirrors {@code EntityETag.generateWeakETag} and {@code patch_mixin._entity_etag}. */
+  private String weakETag(Double version) {
+    return "W/\"" + version + "\"";
   }
 
   private Table createTwoColumnTable(OpenMetadataClient client, TestNamespace ns, String name) {

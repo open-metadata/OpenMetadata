@@ -51,7 +51,12 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteDestinationResponse,
     AirbyteSelfHostedJob,
     AirbyteSourceResponse,
+    AirbyteStream,
     AirbyteWorkspace,
+)
+from metadata.ingestion.source.pipeline.airbyte.utils import (
+    get_destination_table_details,
+    get_source_table_details,
 )
 from metadata.utils.constants import UTF_8
 
@@ -257,6 +262,8 @@ class AirbyteUnitTest(TestCase):
             AirbyteConnectionModel.model_validate(c) for c in mock_data.get("connection")
         ]
         self.airbyte.airbyte_cloud = False
+        # Self-hosted internal API: jobs carry nested `attempts`.
+        self.airbyte.use_public_api = False
 
     def setUp(self):
         self.airbyte.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
@@ -275,6 +282,77 @@ class AirbyteUnitTest(TestCase):
     def test_pipeline_status(self):
         status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)]
         assert status == EXPECTED_PIPELINE_STATUS
+
+    def test_pipeline_status_self_hosted_public_api(self):
+        """Self-hosted Airbyte on `api/public/v1` returns flat jobs (no `attempts`).
+
+        Regression for #26993: routing pipeline status on `airbyte_cloud` sent
+        these self-hosted public-API jobs through the attempts-based path, where
+        `job.attempts` raised `AttributeError: 'AirbyteCloudJob' object has no
+        attribute 'attempts'` and execution metadata was silently dropped.
+        """
+        self.airbyte.use_public_api = True
+        self.client.list_jobs.return_value = [
+            AirbyteCloudJob(
+                status="succeeded",
+                startTime="2026-04-01T14:41:11Z",
+                lastUpdatedAt="2026-04-01T14:42:05Z",
+            )
+        ]
+
+        status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)]
+
+        assert len(status) == 1
+        assert status[0].pipeline_status.executionStatus == StatusType.Successful
+        assert status[0].pipeline_status.taskStatus[0].executionStatus == StatusType.Successful
+        assert status[0].pipeline_status.timestamp.root == 1775054471000  # 2026-04-01T14:41:11Z
+
+    def test_pipeline_status_public_api_status_mapping(self):
+        """Every Airbyte job status maps to the right OM StatusType on the public path."""
+        self.airbyte.use_public_api = True
+        cases = {
+            "succeeded": StatusType.Successful,
+            "failed": StatusType.Failed,
+            "cancelled": StatusType.Failed,
+            "incomplete": StatusType.Failed,
+            "running": StatusType.Pending,
+            "pending": StatusType.Pending,
+            "some_new_airbyte_status": StatusType.Pending,  # unknown -> default Pending
+        }
+        for ab_status, expected in cases.items():
+            self.client.list_jobs.return_value = [
+                AirbyteCloudJob(
+                    status=ab_status, startTime="2026-04-01T14:41:11Z", lastUpdatedAt="2026-04-01T14:42:05Z"
+                )
+            ]
+            status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)]
+            assert len(status) == 1
+            assert status[0].pipeline_status.executionStatus == expected, ab_status
+            assert status[0].pipeline_status.taskStatus[0].executionStatus == expected, ab_status
+
+    def test_pipeline_status_public_api_missing_and_bad_timestamps(self):
+        """Edge cases: startTime-only job -> endTime None; unresolvable startTime -> job skipped."""
+        self.airbyte.use_public_api = True
+
+        # Only startTime present (no lastUpdatedAt) -> endTime resolves to None.
+        self.client.list_jobs.return_value = [AirbyteCloudJob(status="succeeded", startTime="2026-04-01T14:41:11Z")]
+        status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)]
+        assert len(status) == 1
+        assert status[0].pipeline_status.taskStatus[0].endTime is None
+
+        # A job whose startTime can't be resolved (null or malformed) must be skipped
+        # cleanly, not raise a ValidationError that the topology runner swallows.
+        self.client.list_jobs.return_value = [
+            AirbyteCloudJob(status="succeeded", startTime=None),
+            AirbyteCloudJob(status="succeeded", startTime="not-a-timestamp"),
+        ]
+        assert list(self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)) == []
+
+    def test_pipeline_status_public_api_no_jobs(self):
+        """A connection with no jobs yields no status (and does not crash)."""
+        self.airbyte.use_public_api = True
+        self.client.list_jobs.return_value = []
+        assert list(self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)) == []
 
     @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
     def test_yield_pipeline_lineage_details(self):
@@ -336,6 +414,256 @@ class AirbyteUnitTest(TestCase):
             # Compare just the UUID string value from both sides
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    def test_yield_pipeline_lineage_details_public_api(self):
+        """Lineage must also work with the public-API response shape.
+
+        The public API (`api/public/v1`) returns the connector type under
+        `sourceType`/`destinationType` (slug, e.g. "postgres") and the config
+        under `configuration` (not `sourceName`/`connectionConfiguration`).
+        Regression for the self-hosted/public-API case where these fields were
+        ignored and no lineage was produced.
+        """
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="postgres",
+            configuration={
+                "database": "mock_source_db",
+                "schema": "mock_source_schema",
+            },
+        )
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="postgres",
+            configuration={
+                "database": "mock_destination_db",
+                "schema": "mock_destination_schema",
+            },
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-connection-id",
+            sourceId="test-source-id",
+            destinationId="test-destination-id",
+            name="Test Connection",
+            syncCatalog={
+                "streams": [
+                    {
+                        "stream": {
+                            "name": "mock_table_name",
+                            "namespace": "mock_source_schema",
+                            "jsonSchema": {},
+                        }
+                    }
+                ]
+            },
+        )
+        test_workspace = AirbyteWorkspace(workspaceId="test-workspace-id")
+        test_pipeline_details = AirbytePipelineDetails(workspace=test_workspace, connection=test_connection)
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+            assert len(lineage_results) > 0
+            lineage = lineage_results[0].right
+            assert lineage.edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+            assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
+            assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
+            assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    def test_yield_pipeline_lineage_details_public_api_configurations_streams(self):
+        """End-to-end: a public-API connection carries streams under `configurations.streams`
+        (no `syncCatalog`). `resolved_streams` must surface them so the lineage loop runs and
+        emits an edge — the exact path that produced 0 lineage before #26993 (verified live).
+        """
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="postgres",
+            configuration={"database": "mock_source_db", "schema": "mock_source_schema"},
+        )
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="postgres",
+            configuration={"database": "mock_destination_db", "schema": "mock_destination_schema"},
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-connection-id",
+            sourceId="test-source-id",
+            destinationId="test-destination-id",
+            name="Test Connection",
+            configurations={"streams": [{"name": "mock_table_name", "namespace": "mock_source_schema"}]},
+        )
+        assert test_connection.syncCatalog is None  # public-API shape: streams live under configurations
+
+        test_pipeline_details = AirbytePipelineDetails(
+            workspace=AirbyteWorkspace(workspaceId="test-workspace-id"),
+            connection=test_connection,
+        )
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+        assert len(lineage_results) == 1
+        lineage = lineage_results[0].right
+        assert lineage.edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+        assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
+        assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    def test_yield_pipeline_lineage_details_snowflake_destination(self):
+        """Snowflake destination lineage (issue #26993).
+
+        The public-API Snowflake destination exposes `database` + `schema`, which
+        now resolve to the OM Snowflake table so a pipeline -> table edge is
+        emitted. Before Snowflake was added to the destination lookup this
+        produced no lineage at all.
+        """
+        self.client.get_source.return_value = AirbyteSourceResponse(
+            sourceType="postgres",
+            configuration={"database": "mock_source_db", "schema": "mock_source_schema"},
+        )
+        self.client.get_destination.return_value = AirbyteDestinationResponse(
+            destinationType="snowflake",
+            configuration={"database": "mock_destination_db", "schema": "mock_destination_schema"},
+        )
+
+        test_connection = AirbyteConnectionModel(
+            connectionId="test-connection-id",
+            sourceId="test-source-id",
+            destinationId="test-destination-id",
+            name="Test Connection",
+            syncCatalog={
+                "streams": [
+                    {"stream": {"name": "mock_table_name", "namespace": "mock_source_schema", "jsonSchema": {}}}
+                ]
+            },
+        )
+        test_pipeline_details = AirbytePipelineDetails(
+            workspace=AirbyteWorkspace(workspaceId="test-workspace-id"),
+            connection=test_connection,
+        )
+
+        with patch.object(self.airbyte, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = mock_get_by_name
+            lineage_results = list(self.airbyte.yield_pipeline_lineage_details(test_pipeline_details))
+
+        assert len(lineage_results) == 1
+        lineage = lineage_results[0].right
+        assert lineage.edge.fromEntity.id == MOCK_POSTGRES_SOURCE_TABLE.id
+        assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
+        assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    def test_get_source_table_details_public_api_slugs(self):
+        """Public-API slugs must resolve for every supported source connector.
+
+        Each connector maps its configuration keys differently, so exercise the
+        distinct branches (not just Postgres) to lock in database/schema handling.
+        """
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+
+        # Postgres: database from config, schema from the stream namespace
+        postgres = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(
+                sourceType="postgres",
+                configuration={"database": "pg_db", "schema": "pg_schema"},
+            ),
+        )
+        assert postgres.database == "pg_db"
+        assert postgres.schema == "mock_namespace"
+
+        # MySQL: no database concept -> config database becomes the schema
+        mysql = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mysql_db"}),
+        )
+        assert mysql.database is None
+        assert mysql.schema == "mysql_db"
+
+        # MSSQL: database from config, schema from the stream namespace
+        mssql = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mssql", configuration={"database": "mssql_db"}),
+        )
+        assert mssql.database == "mssql_db"
+        assert mssql.schema == "mock_namespace"
+
+        # MongoDB: schema comes from the nested database_config, no database
+        mongodb = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(
+                sourceType="mongodb-v2",
+                configuration={"database_config": {"database": "mongo_db"}},
+            ),
+        )
+        assert mongodb.database is None
+        assert mongodb.schema == "mongo_db"
+
+        # MongoDB with database_config explicitly None must not raise
+        mongodb_null = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mongodb", configuration={"database_config": None}),
+        )
+        assert mongodb_null.database is None
+        assert mongodb_null.schema is None
+
+    def test_get_source_table_details_unsupported_type_returns_none(self):
+        """An unrecognized connector slug yields no table details (lineage skipped)."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+        assert (
+            get_source_table_details(
+                stream,
+                AirbyteSourceResponse(sourceType="bigquery", configuration={"database": "x"}),
+            )
+            is None
+        )
+
+    def test_get_destination_table_details_public_api_slugs(self):
+        """Public-API slugs must resolve for every supported destination connector."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+
+        # Postgres: database and schema both taken from config
+        postgres = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="postgres",
+                configuration={"database": "pg_db", "schema": "pg_schema"},
+            ),
+        )
+        assert postgres.database == "pg_db"
+        assert postgres.schema == "pg_schema"
+
+        # MySQL: no database concept -> config database becomes the schema
+        mysql = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mysql_db"}),
+        )
+        assert mysql.database is None
+        assert mysql.schema == "mysql_db"
+
+        # MSSQL: database and schema both taken from config
+        mssql = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="mssql",
+                configuration={"database": "mssql_db", "schema": "mssql_schema"},
+            ),
+        )
+        assert mssql.database == "mssql_db"
+        assert mssql.schema == "mssql_schema"
+
+    def test_get_destination_table_details_unsupported_type_returns_none(self):
+        """An unrecognized destination slug yields no table details (lineage skipped)."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+        assert (
+            get_destination_table_details(
+                stream,
+                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+            )
+            is None
+        )
 
 
 # ================= Airbyte Cloud Test Setup =================
@@ -480,6 +808,7 @@ class AirbyteCloudUnitTest(TestCase):
             AirbyteConnectionModel.model_validate(c) for c in mock_cloud_data.get("connection")
         ]
         self.airbyte.airbyte_cloud = True
+        self.airbyte.use_public_api = True
         self.airbyte.source_url_prefix = "https://cloud.airbyte.com"
 
     def setUp(self):
@@ -501,3 +830,148 @@ class AirbyteCloudUnitTest(TestCase):
     def test_pipeline_status(self):
         status = [either.right for either in self.airbyte.yield_pipeline_status(EXPECTED_CLOUD_AIRBYTE_DETAILS)]
         assert status == EXPECTED_CLOUD_PIPELINE_STATUS
+
+
+def _stream(name="mock_table_name", namespace="mock_source_schema"):
+    return AirbyteStream(name=name, namespace=namespace)
+
+
+def test_get_source_table_details_public_slugs():
+    """Public-API slugs must resolve for every supported source connector type."""
+    # MySQL: schema is taken from the database, database is dropped
+    mysql = get_source_table_details(
+        _stream(), AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mydb"})
+    )
+    assert (mysql.schema, mysql.database) == ("mydb", None)
+
+    # MSSQL: schema from the stream namespace, database from config
+    mssql = get_source_table_details(
+        _stream(), AirbyteSourceResponse(sourceType="mssql", configuration={"database": "mydb"})
+    )
+    assert (mssql.schema, mssql.database) == ("mock_source_schema", "mydb")
+
+    # MongoDB: schema from nested database_config
+    mongo = get_source_table_details(
+        _stream(),
+        AirbyteSourceResponse(sourceType="mongodb", configuration={"database_config": {"database": "mongo_db"}}),
+    )
+    assert (mongo.schema, mongo.database) == ("mongo_db", None)
+
+
+def test_get_source_table_details_mongodb_null_database_config():
+    """database_config present but explicitly None must not raise (public-API shape)."""
+    td = get_source_table_details(
+        _stream(), AirbyteSourceResponse(sourceType="mongodb", configuration={"database_config": None})
+    )
+    assert td.schema is None
+    assert td.database is None
+
+
+def test_get_source_table_details_unsupported():
+    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="bigquery")) is None
+
+
+def test_get_source_table_details_snowflake():
+    """Snowflake source (issue #26993): database from config, schema from the stream namespace.
+
+    Unlike the destination, the source schema comes from the per-stream namespace,
+    not the config `schema`, so a config schema is deliberately ignored here.
+    """
+    td = get_source_table_details(
+        _stream(),
+        AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "SNOW_DB", "schema": "IGNORED"}),
+    )
+    assert (td.schema, td.database) == ("mock_source_schema", "SNOW_DB")
+
+
+def test_get_destination_table_details_public_slugs():
+    # MySQL: schema from database, database dropped
+    mysql = get_destination_table_details(
+        _stream(), AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mydb"})
+    )
+    assert (mysql.schema, mysql.database) == ("mydb", None)
+
+    # MSSQL/Postgres-style: schema + database straight from config
+    mssql = get_destination_table_details(
+        _stream(),
+        AirbyteDestinationResponse(
+            destinationType="mssql", configuration={"schema": "dst_schema", "database": "dst_db"}
+        ),
+    )
+    assert (mssql.schema, mssql.database) == ("dst_schema", "dst_db")
+
+
+def test_get_destination_table_details_unsupported():
+    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
+    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="bigquery")) is None
+
+
+def test_get_destination_table_details_snowflake():
+    """Snowflake destination (issue #26993): database + schema map straight from config."""
+    td = get_destination_table_details(
+        _stream(),
+        AirbyteDestinationResponse(
+            destinationType="snowflake", configuration={"database": "SNOW_DB", "schema": "SNOW_SCHEMA"}
+        ),
+    )
+    assert (td.schema, td.database) == ("SNOW_SCHEMA", "SNOW_DB")
+
+
+def test_resolved_streams_public_api_with_namespace():
+    """Public API delivers streams under `configurations.streams`, not `syncCatalog`.
+
+    Regression for #26993: `resolved_streams` must surface them (a database source's
+    public-API entries carry `namespace`, which must be preserved so source tables
+    resolve), otherwise the connector reads zero streams and produces no lineage.
+    """
+    conn = AirbyteConnectionModel.model_validate(
+        {
+            "connectionId": "cid",
+            "name": "sf-to-sf",
+            "sourceId": "s",
+            "destinationId": "d",
+            "configurations": {
+                "streams": [
+                    {"name": "CUSTOMERS", "namespace": "SRC", "syncMode": "full_refresh_overwrite"},
+                    {"name": "ORDERS", "namespace": "SRC"},
+                ]
+            },
+        }
+    )
+    assert conn.syncCatalog is None  # public API never populates syncCatalog
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("CUSTOMERS", "SRC"), ("ORDERS", "SRC")]
+
+
+def test_resolved_streams_public_api_without_namespace():
+    """Schemaless sources (e.g. pokeapi) omit `namespace` -> resolves to None, no error."""
+    conn = AirbyteConnectionModel.model_validate(
+        {"connectionId": "cid", "configurations": {"streams": [{"name": "pokemon"}]}}
+    )
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("pokemon", None)]
+
+
+def test_resolved_streams_prefers_internal_sync_catalog():
+    """Internal-API shape has `syncCatalog` (with namespace) -> used as-is over configurations."""
+    conn = AirbyteConnectionModel.model_validate(
+        {"connectionId": "cid", "syncCatalog": {"streams": [{"stream": {"name": "T", "namespace": "S"}}]}}
+    )
+    assert [(s.name, s.namespace) for s in conn.resolved_streams] == [("T", "S")]
+
+
+def test_resolved_streams_empty_when_no_streams():
+    """Every empty/None shape -> [] with no crash.
+
+    Preserves the old two-part guard (`syncCatalog and syncCatalog.streams`): a
+    present-but-empty `syncCatalog` must still yield [], not raise.
+    """
+    for data in (
+        {"connectionId": "cid"},
+        {"connectionId": "cid", "syncCatalog": None},
+        {"connectionId": "cid", "syncCatalog": {"streams": None}},
+        {"connectionId": "cid", "syncCatalog": {"streams": []}},
+        {"connectionId": "cid", "configurations": None},
+        {"connectionId": "cid", "configurations": {"streams": []}},
+        {"connectionId": "cid", "configurations": {"streams": [{"namespace": "X"}]}},  # entry w/o name
+    ):
+        assert AirbyteConnectionModel.model_validate(data).resolved_streams == [], data

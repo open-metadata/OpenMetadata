@@ -15,7 +15,7 @@ Data Sampler for the PII Workflow
 from __future__ import annotations
 
 import traceback
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -23,8 +23,8 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (  # noqa: TC001
-    OpenMetadataWorkflowConfig,
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,  # noqa: TC001
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
@@ -32,7 +32,10 @@ from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata  # noqa: TC001
 from metadata.pii.types import ClassifiableEntityType  # noqa: TC001
-from metadata.profiler.api.models import ProfilerProcessorConfig  # noqa: TC001
+from metadata.profiler.api.models import (
+    ProfilerProcessorConfig,
+    processor_config_payload,
+)
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity  # noqa: TC001
 from metadata.sampler.entity_adapters import (
     EntityAdapter,
@@ -76,12 +79,7 @@ class SamplerProcessor(Processor):
 
         self.source_config = self.config.source.sourceConfig.config
 
-        # Messaging and storage auto-classification have no processor to configure,
-        # so the block, or its inner config, is routinely omitted.
-        processor = self.config.processor
-        self.profiler_config = profiler_config_class.model_validate(
-            (processor.model_dump().get("config") if processor else None) or {}
-        )
+        self.profiler_config = profiler_config_class.model_validate(processor_config_payload(self.config.processor))
 
         self._interface_type: str = config.source.type.lower()
 
@@ -170,6 +168,12 @@ class SamplerProcessor(Processor):
                 )
             )
         except Exception as exc:
+            if self.sampler_class.is_skippable_sampling_error(exc):
+                self.status.warning(
+                    entity_fqn,
+                    f"Skipping sample collection for [{entity_fqn}]: {exc}",
+                )
+                return Either(left=None, right=None)
             return Either(
                 left=StackTraceError(
                     name=entity_fqn,
@@ -184,7 +188,7 @@ class SamplerProcessor(Processor):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> Step:
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

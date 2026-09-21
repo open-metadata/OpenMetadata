@@ -14,6 +14,13 @@
 
 import { DEFAULT_THEME } from './Appearance.constants';
 
+export const TEST_STATUS_COLORS = {
+  SUCCESS: '#12B76A',
+  FAILED: '#F04438',
+  ABORTED: '#F79009',
+  QUEUED: '#414651',
+};
+
 export const GREEN_1 = '#067647';
 export const GREEN_6 = '#079455';
 export const GREEN_3 = '#48ca9e';

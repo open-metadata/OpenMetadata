@@ -11,55 +11,64 @@
  *  limitations under the License.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { usePaginatedLiveLog } from '../../../hooks/usePaginatedLiveLog';
-import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
+import { useIngestionLogSource } from '../../../hooks/useIngestionLogSource';
+import { StreamHealth } from '../../../utils/SseStreamUtils';
 import { LogLine } from '../AgentsPage.interface';
-import {
-  getLogTaskFieldForType,
-  parseLogLines,
-} from '../utils/agentsDataMapper';
+import { parseLogLines } from '../utils/agentsDataMapper';
 
 interface UseAgentLogsResult {
   lines: LogLine[];
   rawText: string;
   isLoading: boolean;
   hasMore: boolean;
+  // The run is still producing output. False once the stream reports the run
+  // finished, which lands before the agent's own status row catches up.
+  isLive: boolean;
+  isStreaming: boolean;
+  streamHealth: StreamHealth;
+  streamTruncated: boolean;
+  streamError: string | null;
   loadMore: () => void;
 }
 
 /**
- * Reads the raw logs for a pipeline run via `getIngestionPipelineLogById`,
- * picking the task field for the pipeline type. Delegates cursor pagination
- * (infinite scroll) + tail polling to `usePaginatedLiveLog`; polls the tail
- * only while `isActive`. Parses the accumulated text into LogLine[].
+ * Reads one agent run's logs and parses the accumulated text into LogLine[].
+ *
+ * Source selection — SSE tail while the run is live, paginated REST otherwise —
+ * lives in {@link useIngestionLogSource}, shared with the pipeline log viewer so
+ * the two cannot drift apart. A run with no known id (the agent list has not
+ * caught up, or the deployment reports no run) simply stays on the paginated
+ * path.
  */
 export const useAgentLogs = (
   fqn: string,
   pipelineType: PipelineType,
   enabled: boolean,
-  isActive = false
+  isActive = false,
+  runId?: string
 ): UseAgentLogsResult => {
-  const fetchPage = useCallback(
-    (cursor?: string) =>
-      // Fetch by fqn so the backend serves logs without a prior id -> fqn lookup.
-      getIngestionPipelineLogById(fqn, cursor).then((res) => ({
-        content: getLogTaskFieldForType(res.data, pipelineType),
-        after: res.data.after,
-        total: res.data.total,
-      })),
-    [fqn, pipelineType]
-  );
-
-  const { logs, hasMore, loading, loadMore } = usePaginatedLiveLog({
-    fetchPage,
-    resetKey: fqn,
+  const source = useIngestionLogSource({
     enabled: Boolean(enabled && fqn),
-    isLive: isActive,
+    ingestionFqn: fqn,
+    ingestionType: pipelineType,
+    runId,
+    runActive: isActive,
   });
 
-  const lines = useMemo(() => parseLogLines(logs), [logs]);
+  const lines = useMemo(() => parseLogLines(source.logs), [source.logs]);
 
-  return { lines, rawText: logs, isLoading: loading, hasMore, loadMore };
+  return {
+    lines,
+    rawText: source.logs,
+    isLoading: source.loading,
+    hasMore: source.hasMore,
+    isLive: source.isLive,
+    isStreaming: source.isStreaming,
+    streamHealth: source.streamHealth,
+    streamTruncated: source.streamTruncated,
+    streamError: source.streamError,
+    loadMore: source.loadMore,
+  };
 };

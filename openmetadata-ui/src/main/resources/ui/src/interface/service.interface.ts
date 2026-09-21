@@ -12,7 +12,6 @@
  */
 
 import { ServicesUpdateRequest } from 'Models';
-import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   Pipeline,
@@ -58,6 +57,7 @@ import {
 } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
+import type { FieldFocusMeta } from '../hooks/useFieldFocusManagement';
 
 export interface IngestionSchedule {
   repeatFrequency: string;
@@ -145,13 +145,12 @@ export interface IngestionWorkflowFormProps {
   pipeLineType: PipelineType;
   serviceCategory: ServiceCategory;
   workflowData: IngestionWorkflowData;
-  operationType: FormSubmitType;
   cancelText?: string;
   okText?: string;
   className?: string;
   hideFooter?: boolean;
   onCancel: () => void;
-  onFocus: (fieldId: string) => void;
+  onFocus: (fieldId: string, schemaMeta?: FieldFocusMeta) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
   // Fired once the lazily loaded RJSF templates have resolved and the form is

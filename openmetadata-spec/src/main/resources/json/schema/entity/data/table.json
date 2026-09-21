@@ -37,7 +37,8 @@
         "Foreign",
         "Transient",
         "Stream",
-        "Stage"
+        "Stage",
+        "SemanticView"
       ],
       "javaEnums": [
         {
@@ -78,6 +79,9 @@
         },
         {
           "name": "Stage"
+        },
+        {
+          "name": "SemanticView"
         }
       ]
     },
@@ -1106,6 +1110,14 @@
       "items": {
         "title": "TableConstraint",
         "$ref": "#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "aliases": {
+      "description": "Alternate fully qualified SQL names that resolve to this table, such as SQL Server synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on every run.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },

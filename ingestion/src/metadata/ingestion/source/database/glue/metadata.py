@@ -13,7 +13,8 @@ Glue source methods.
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -44,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -52,12 +54,16 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -65,6 +71,7 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
+    GlueTable,
     StorageDetails,
     TablePage,
 )
@@ -80,7 +87,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
+class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, DatabaseServiceSource):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
@@ -96,12 +103,14 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}
+        self.schema_catalog_id_map = {}
         self.external_location_map = {}
+        self._init_custom_properties()
         with close_on_failure(self._connection):
             self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GlueConnection = config.serviceConnection.root.config
         if not isinstance(connection, GlueConnection):
@@ -117,7 +126,13 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
     def _get_glue_tables(self):
         schema_name = self.context.get().database_schema
         paginator = self.glue.get_paginator("get_tables")
-        paginator_response = paginator.paginate(DatabaseName=schema_name)
+        # Name the schema's own catalog. Defaulting to the caller's catalog reads the
+        # wrong tables, or none, for a schema that came from another one.
+        paginate_args = {"DatabaseName": schema_name}
+        catalog_id = self.schema_catalog_id_map.get(schema_name)
+        if catalog_id:
+            paginate_args["CatalogId"] = catalog_id
+        paginator_response = paginator.paginate(**paginate_args)
         for page in paginator_response:
             yield TablePage(**page)
 
@@ -183,12 +198,19 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
+
+        Without databaseName the OpenMetadata database is the Glue Catalog ID, so a
+        schema from another catalog belongs to a different database. databaseName only
+        labels the single database we create, so every visible Glue database is one of
+        its schemas.
         """
         database_name = self.context.get().database
+        custom_database_name = self.service_connection.databaseName
+        catalog_ids_seen = set()
         for page in self._get_glue_database_and_schemas() or []:
             for schema in page.DatabaseList:
                 try:
-                    if schema.CatalogId != database_name:
+                    if not custom_database_name and schema.CatalogId != database_name:
                         continue
                     schema_fqn = fqn.build(
                         self.metadata,
@@ -205,6 +227,9 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         continue
                     if schema.Description:
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
+                    if schema.CatalogId:
+                        self.schema_catalog_id_map[schema.Name] = schema.CatalogId
+                        catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:
                     self.status.failed(
@@ -214,6 +239,15 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+        if len(catalog_ids_seen) > 1:
+            self.status.warning(
+                database_name,
+                "AWS returned Glue databases from more than one catalog "
+                f"({', '.join(sorted(catalog_ids_seen))}), and all of them were "
+                f"ingested into '{database_name}' because the 'Database Name' field is set on this service. "
+                "If two of those Glue databases share a name, one overwrites the other and its tables go missing. "
+                "Clear the 'Database Name' field to get one OpenMetadata database per AWS catalog instead.",
+            )
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
@@ -239,7 +273,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -296,7 +330,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                         )
                     )
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -336,6 +370,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 ),
                 fileFormat=self.get_format(storage_descriptor),
                 locationPath=storage_descriptor.Location,
+                extension=EntityExtension(extensions) if (extensions := self.get_table_extensions(table)) else None,
             )
             yield Either(right=table_request)
             self.register_record(table_request=table_request)
@@ -348,8 +383,22 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 )
             )
 
+    def get_table_extensions(self, table: GlueTable) -> dict[str, str] | None:
+        """Glue table Parameters as custom properties.
+
+        Takes the table rather than a name, unlike the CommonDbSourceService hook of the same
+        name: GlueSource does not inherit that hook, and yield_table already holds the table.
+        """
+        if not self.custom_properties_enabled or not table.Parameters:
+            return None
+        return self.build_entity_extension(
+            table.Parameters.model_dump(),
+            source_label="Glue table parameters",
+        )
+
     def prepare(self):
-        """Nothing to prepare"""
+        super().prepare()
+        self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
         if column.Type.lower().startswith("union"):
@@ -367,10 +416,32 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         parsed_string["description"] = column.Comment
         return Column(**parsed_string)
 
-    # pylint: disable=too-many-locals
-    def get_columns(self, column_data: StorageDetails) -> Optional[Iterable[Column]]:  # noqa: UP045
+    def get_columns(self, column_data: StorageDetails) -> Iterable[Column] | None:
         """
-        Get columns from Glue.
+        Get columns from Glue, yielding each column name at most once.
+
+        A name can reach us twice for two reasons: Glue lists a partition key in
+        StorageDescriptor.Columns as well as in PartitionKeys, and Glue lower cases column names
+        on write, so a column DT declared alongside a partition key dt arrives as dt twice.
+        Either way the server rejects the whole table with "Column name <name> is repeated".
+        """
+        table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
+        seen_column_names = set()
+        for column in self._iter_columns(column_data):
+            column_name = model_str(column.name)
+            if column_name in seen_column_names:
+                logger.debug(
+                    f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
+                    f"partition key is also in StorageDescriptor.Columns, or when lower casing merges two names."
+                )
+                continue
+            seen_column_names.add(column_name)
+            yield column
+
+    # pylint: disable=too-many-locals
+    def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
+        """
+        Yield the raw Glue columns, regular ones first and partition keys last.
         """
         # Check if this is an Iceberg table
         table = self.context.get().table_data
@@ -382,8 +453,12 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
                 schema_name = self.context.get().database_schema
                 table_name = table.Name
 
-                # Get full table metadata from Glue API
-                response = self.glue.get_table(DatabaseName=schema_name, Name=table_name)
+                # Get full table metadata from Glue API, from the schema's own catalog
+                get_table_args = {"DatabaseName": schema_name, "Name": table_name}
+                catalog_id = self.schema_catalog_id_map.get(schema_name)
+                if catalog_id:
+                    get_table_args["CatalogId"] = catalog_id
+                response = self.glue.get_table(**get_table_args)
 
                 table_info = response["Table"]
 
@@ -440,7 +515,7 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             yield self._get_column_object(column)
 
     @classmethod
-    def get_format(cls, storage: StorageDetails) -> Optional[FileFormat]:  # noqa: UP045
+    def get_format(cls, storage: StorageDetails) -> FileFormat | None:
         library = storage.SerdeInfo.SerializationLibrary
         if library is None:
             return None
@@ -467,10 +542,10 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
 
     def get_source_url(
         self,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for dynamodb
         """

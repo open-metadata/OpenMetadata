@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
 import type {
@@ -230,6 +231,17 @@ export interface TreeItemContentProps {
    * Defaults to `false`.
    */
   showGuideLines?: boolean;
+  /**
+   * Pixels of indentation added per tree level. Defaults to `22`.
+   * Increase to align nested expand icons with parent checkboxes.
+   */
+  indentPerLevel?: number;
+  /**
+   * Caps the visual indent at this tree level. Items deeper than
+   * `maxIndentLevel` render at the same indentation as that level.
+   * Useful for flat glossary views where all terms share one indent.
+   */
+  maxIndentLevel?: number;
 }
 
 const TreeItemContentComponent = ({
@@ -240,6 +252,8 @@ const TreeItemContentComponent = ({
   showExpandIcon = true,
   showGuideLines = false,
   hasChildItems: hasChildItemsProp,
+  indentPerLevel = 22,
+  maxIndentLevel,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
@@ -256,12 +270,18 @@ const TreeItemContentComponent = ({
               'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            style={{
+              marginLeft: `${
+                (Math.min(level, maxIndentLevel ?? level) - 1) *
+                  indentPerLevel +
+                2
+              }px`,
+            }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
-                style={{ left: '-10px' }}
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:dark:bg-gray-blue-800 tw:pointer-events-none"
+                style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}
             {showExpandIcon && (
@@ -306,6 +326,8 @@ const TreeLoadMoreItemComponent = ({
   className,
   ...props
 }: TreeLoadMoreItemProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <AriaTreeLoadMoreItem
       {...props}
@@ -320,7 +342,7 @@ const TreeLoadMoreItemComponent = ({
             aria-hidden="true"
             className="tw:h-4 tw:w-4 tw:animate-spin"
           />
-          {children ?? 'Loading…'}
+          {children ?? t('label.loading', 'Loading…')}
         </span>
       ) : (
         children ?? 'Load more'

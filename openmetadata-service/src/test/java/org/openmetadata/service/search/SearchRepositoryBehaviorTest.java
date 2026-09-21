@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -89,6 +90,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
@@ -262,7 +264,10 @@ class SearchRepositoryBehaviorTest {
 
       for (String entityType : MOCK_ENTITY_TYPES) {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
-        EntityRepository<?> mockRepo = mock(EntityRepository.class);
+        EntityRepository<?> mockRepo =
+            Entity.QUERY.equals(entityType)
+                ? mock(QueryRepository.class)
+                : mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
         doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
@@ -432,6 +437,39 @@ class SearchRepositoryBehaviorTest {
   void getIndexOrAliasNameIsIdempotentForAlreadyPrefixedTokens() {
     assertEquals(
         "cluster_table_search_index", repository.getIndexOrAliasName("cluster_table_search_index"));
+  }
+
+  @Test
+  void getIndexOrAliasNameUsesDataInsightsDataStreamPrefix() {
+    for (String index : List.of("di-data-assets*", "di-data-assets-*", "di-data-assets-table")) {
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName(index));
+      assertEquals("cluster-" + index, repository.getIndexOrAliasName("cluster-" + index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesClusterAliasesStartingWithDataInsightsPrefix() {
+    SearchRepository diCluster = newRepository(Map.of(), "di-data-assets-prod");
+    for (String index :
+        List.of("di-data-assets-prod_table_search_index", "di-data-assets-prod-di-data-assets-*")) {
+      assertEquals(index, diCluster.getIndexOrAliasName(index));
+    }
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesDataInsightsWithoutClusterAlias() {
+    assertEquals(
+        "di-data-assets-*", newRepository(Map.of(), null).getIndexOrAliasName("di-data-assets-*"));
+    assertEquals(
+        "di-data-assets-table",
+        newRepository(Map.of(), "").getIndexOrAliasName("di-data-assets-table"));
+  }
+
+  @Test
+  void getIndexOrAliasNameResolvesMixedDataInsightsAndEntityIndexes() {
+    assertEquals(
+        "cluster_table_search_index,cluster-di-data-assets-*,cluster_dataAsset",
+        repository.getIndexOrAliasName("table, di-data-assets-*, dataAsset"));
   }
 
   /**
@@ -1387,6 +1425,11 @@ class SearchRepositoryBehaviorTest {
             "cluster_table_search_index",
             entity.getId().toString(),
             new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless());
+    final UUID entityId = entity.getId();
+    final String entityFqn = entity.getFullyQualifiedName();
+    QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
+    verify(queryRepository)
+        .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
     EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
@@ -2009,10 +2052,22 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void getScriptWithParamsBuildsFollowerDescriptionAndQueryUsageUpdates() {
+  void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
     EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityReference queryDomain =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("analytics")
+            .withDisplayName("Analytics")
+            .withFullyQualifiedName("analytics")
+            .withDescription("Analytics domain")
+            .withDeleted(false)
+            .withInherited(true)
+            .withHref(URI.create("http://localhost/api/v1/domains/analytics"));
     when(queryEntity.getUpdatedAt()).thenReturn(1234L);
     when(queryEntity.getDescription()).thenReturn("Updated query description");
+    when(queryEntity.getDomains()).thenReturn(List.of(queryDomain));
 
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -2041,11 +2096,23 @@ class SearchRepositoryBehaviorTest {
     assertTrue(script.contains("ctx._source.description = params.description;"));
     assertTrue(script.contains("ctx._source.usageSummary = params.usageSummary;"));
     assertTrue(script.contains("ctx._source.queryUsedIn = params.queryUsedIn;"));
+    assertTrue(script.contains("ctx._source.domains = params.domains;"));
     assertEquals(1234L, params.get("updatedAt"));
     assertEquals("Updated query description", params.get(Entity.FIELD_DESCRIPTION));
     assertNotNull(params.get(Entity.FIELD_FOLLOWERS));
     assertNotNull(params.get(Entity.FIELD_USAGE_SUMMARY));
     assertEquals(List.of(Map.of("name", "dashboard")), params.get("queryUsedIn"));
+    assertEquals(
+        List.of(
+            Map.of(
+                "id", queryDomain.getId().toString(),
+                "type", Entity.DOMAIN,
+                "name", "analytics",
+                "displayName", "Analytics",
+                "fullyQualifiedName", "analytics",
+                "description", "Analytics domain",
+                "deleted", false)),
+        params.get(Entity.FIELD_DOMAINS));
   }
 
   @Test
@@ -2558,9 +2625,10 @@ class SearchRepositoryBehaviorTest {
         .updateChildren(
             SearchClient.GLOBAL_SEARCH_ALIAS,
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                "domain.id", domain.getId().toString()),
+                "domains.id", domain.getId().toString()),
             new org.apache.commons.lang3.tuple.ImmutablePair<>(
-                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT, null));
+                SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT,
+                Map.of("id", domain.getId().toString())));
     verify(searchClient)
         .deleteEntityByFields(
             List.of("cluster_domain_search_index"),
@@ -2999,7 +3067,7 @@ class SearchRepositoryBehaviorTest {
     assertSame(embeddingClient, spyRepository.getEmbeddingClient());
     assertSame(vectorService, spyRepository.getVectorIndexService());
     assertNotNull(spyRepository.getVectorEmbeddingHandler());
-    verify(vectorService).ensureHybridSearchPipeline(0.4, 0.6);
+    verify(vectorService).ensureHybridSearchPipeline(0.6, 0.4);
   }
 
   @Test

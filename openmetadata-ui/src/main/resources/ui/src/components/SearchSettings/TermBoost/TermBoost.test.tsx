@@ -30,6 +30,7 @@ jest.mock('../../common/AsyncSelect/AsyncSelect', () => ({
     <div>
       <p>AsyncSelect</p>
       <input
+        aria-label="Term boost"
         data-testid="term-boost-select"
         type="text"
         onClick={() => api('test')}

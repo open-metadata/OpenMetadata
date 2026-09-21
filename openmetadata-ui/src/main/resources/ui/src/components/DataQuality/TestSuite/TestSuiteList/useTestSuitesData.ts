@@ -94,7 +94,7 @@ export const useTestSuitesData = ({
     const requestParams = {
       ...fetchParams,
       fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
-      q: searchValue ? `*${searchValue}*` : undefined,
+      q: searchValue || undefined,
       owner: ownerFilterValue?.key,
       offset: (page - 1) * pageSize,
       includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,

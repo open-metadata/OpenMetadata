@@ -17,7 +17,8 @@ The main goal is to get the configured table from the API.
 
 import itertools
 import traceback
-from typing import Dict, Iterable, List, Optional, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
@@ -76,7 +77,7 @@ class TestSuiteSource(Source):
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
         # Build at runtime - if not informed in the yaml - the service connection map
-        self.service_connection_map: Dict[str, DatabaseConnection] = self._load_yaml_service_connections()  # noqa: UP006
+        self.service_connection_map: dict[str, DatabaseConnection] = self._load_yaml_service_connections()
 
         self.test_connection()
 
@@ -84,14 +85,14 @@ class TestSuiteSource(Source):
     def name(self) -> str:
         return "OpenMetadata"
 
-    def _load_yaml_service_connections(self) -> Dict[str, DatabaseConnection]:  # noqa: UP006
+    def _load_yaml_service_connections(self) -> dict[str, DatabaseConnection]:
         """Load the service connections from the YAML file"""
         service_connections = self.source_config.serviceConnections
         if not service_connections:
             return {}
         return {conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root) for conn in service_connections}  # noqa: TC006
 
-    def _get_table_entity(self) -> Optional[Table]:  # noqa: UP045
+    def _get_table_entity(self) -> Table | None:
         """given an entity fqn return the table entity
 
         Args:
@@ -184,14 +185,14 @@ class TestSuiteSource(Source):
         args_dict["use_multistage_engine"] = True
         pinot_config.connectionArguments = ConnectionArguments(root=args_dict)
 
-    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:  # noqa: UP006
+    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> list[TestCase]:
         """Return test cases if the test suite exists and has them"""
         test_cases = self.metadata.list_all_entities(
             entity=TestCase,
             fields=["testSuite", "entityLink", "testDefinition"],
             params={"testSuiteId": test_suite.id.root},
         )
-        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker  # noqa: TC006, UP006
+        test_cases = cast(list[TestCase], test_cases)  # satisfy type checker  # noqa: TC006
         if self.source_config.testCases is not None:
             test_cases = [t for t in test_cases if t.name in self.source_config.testCases]
         return test_cases
@@ -260,9 +261,7 @@ class TestSuiteSource(Source):
         else:
             logger.info(f"Using existing test suite for table {table.name.root}")
             test_suite_id = require_entity_reference_id(table.testSuite, "Test suite")
-            test_suite: Optional[TestSuite] = self.metadata.get_by_id(  # noqa: UP045
-                entity=TestSuite, entity_id=test_suite_id
-            )
+            test_suite: TestSuite | None = self.metadata.get_by_id(entity=TestSuite, entity_id=test_suite_id)
             if test_suite is None:
                 yield Either(
                     left=StackTraceError(
@@ -297,7 +296,7 @@ class TestSuiteSource(Source):
             return
 
         logger.info(f"Found test suite: {test_suite.name.root}")
-        test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)  # noqa: UP006
+        test_cases: list[TestCase] = self._get_test_cases_from_test_suite(test_suite)
         grouped_by_table = itertools.groupby(test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root))
         for table_fqn, group in grouped_by_table:
             table_entity: Table = self.metadata.get_by_name(Table, table_fqn, fields=["tableProfilerConfig"])
@@ -336,7 +335,7 @@ class TestSuiteSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

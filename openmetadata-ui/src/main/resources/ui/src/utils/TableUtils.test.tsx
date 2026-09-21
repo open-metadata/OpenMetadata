@@ -1157,6 +1157,7 @@ describe('TableUtils', () => {
     editCustomAttributePermission: true,
     editLineagePermission: true,
     feedCount: {
+      activityCount: 0,
       closedTaskCount: 0,
       conversationCount: 0,
       mentionCount: 0,
@@ -1168,6 +1169,7 @@ describe('TableUtils', () => {
     fetchTableDetails: jest.fn(),
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
+    isQueryCountLoading: false,
     isTourOpen: false,
     isViewTableType: true,
     queryCount: 0,

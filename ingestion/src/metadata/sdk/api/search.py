@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable, Mapping
 from functools import partial
-from typing import (  # noqa: UP035
+from typing import (
     Any,
-    Callable,
     ClassVar,
-    List,
-    Mapping,
-    Optional,
     Protocol,
     TypeVar,
-    Union,
     cast,
     runtime_checkable,
 )
@@ -29,7 +25,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 SearchCallback = Callable[..., JsonDict]
-SuggestCallback = Callable[..., List[str]]  # noqa: UP006
+SuggestCallback = Callable[..., list[str]]
 AggregateCallback = Callable[..., JsonDict]
 ReindexCallback = Callable[..., JsonDict]
 ReindexAllCallback = Callable[..., JsonDict]
@@ -48,7 +44,7 @@ def _encode_params(params: Mapping[str, Any]) -> str:
     return urlencode(filtered, doseq=True)
 
 
-RestReturn = Union[JsonDict, Response, None]  # noqa: UP007
+RestReturn = JsonDict | Response | None
 
 
 def _build_query_filter(filters: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -123,10 +119,10 @@ def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
 class Search:
     """Static fluent API for search operations."""
 
-    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
+    _default_client: ClassVar[OMetaClient | None] = None
 
     @classmethod
-    def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def set_default_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Set the default client for static methods."""
         cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
@@ -141,12 +137,12 @@ class Search:
     def search(  # pylint: disable=too-many-arguments
         cls,
         query: str,
-        index: Optional[str] = None,  # noqa: UP045
+        index: str | None = None,
         from_: int = 0,
         size: int = 10,
-        sort_field: Optional[str] = None,  # noqa: UP045
-        sort_order: Optional[str] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, Any]] = None,  # noqa: UP045
+        sort_field: str | None = None,
+        sort_order: str | None = None,
+        filters: Mapping[str, Any] | None = None,
         include_aggregations: bool = True,
     ) -> JsonDict:
         """Perform a search query.
@@ -199,9 +195,9 @@ class Search:
     def suggest(
         cls,
         query: str,
-        field: Optional[str] = None,  # noqa: UP045
+        field: str | None = None,
         size: int = 5,
-    ) -> List[str]:  # noqa: UP006
+    ) -> list[str]:
         """Fetch entity suggestions."""
         client = cls._get_client()
         suggest_fn_raw = getattr(client, "get_suggest_entities", None)
@@ -224,8 +220,8 @@ class Search:
     def aggregate(
         cls,
         query: str,
-        index: Optional[str] = None,  # noqa: UP045
-        field: Optional[str] = None,  # noqa: UP045
+        index: str | None = None,
+        field: str | None = None,
     ) -> JsonDict:
         """Perform aggregation query."""
         client = cls._get_client()
@@ -283,12 +279,12 @@ class Search:
     async def search_async(  # pylint: disable=too-many-arguments
         cls,
         query: str,
-        index: Optional[str] = None,  # noqa: UP045
+        index: str | None = None,
         from_: int = 0,
         size: int = 10,
-        sort_field: Optional[str] = None,  # noqa: UP045
-        sort_order: Optional[str] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, Any]] = None,  # noqa: UP045
+        sort_field: str | None = None,
+        sort_order: str | None = None,
+        filters: Mapping[str, Any] | None = None,
         include_aggregations: bool = True,
     ) -> JsonDict:
         """Async variant of :meth:`search`."""
@@ -308,9 +304,9 @@ class Search:
     async def suggest_async(
         cls,
         query: str,
-        field: Optional[str] = None,  # noqa: UP045
+        field: str | None = None,
         size: int = 5,
-    ) -> List[str]:  # noqa: UP006
+    ) -> list[str]:
         """Async variant of :meth:`suggest`."""
         return await _run_async(cls.suggest, query, field, size)
 
@@ -318,8 +314,8 @@ class Search:
     async def aggregate_async(
         cls,
         query: str,
-        index: Optional[str] = None,  # noqa: UP045
-        field: Optional[str] = None,  # noqa: UP045
+        index: str | None = None,
+        field: str | None = None,
     ) -> JsonDict:
         """Async variant of :meth:`aggregate`."""
         return await _run_async(cls.aggregate, query, index, field)
@@ -344,12 +340,12 @@ class SearchBuilder:
     """Builder for search queries."""
 
     def __init__(self) -> None:
-        self._query: Optional[str] = None  # noqa: UP045
-        self._index: Optional[str] = None  # noqa: UP045
+        self._query: str | None = None
+        self._index: str | None = None
         self._from: int = 0
         self._size: int = 10
-        self._sort_field: Optional[str] = None  # noqa: UP045
-        self._sort_order: Optional[str] = None  # noqa: UP045
+        self._sort_field: str | None = None
+        self._sort_order: str | None = None
         self._filters: JsonDict = {}
         self._include_aggregations: bool = True
 

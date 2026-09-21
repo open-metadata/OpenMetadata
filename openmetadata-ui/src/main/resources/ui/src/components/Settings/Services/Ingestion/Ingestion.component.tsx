@@ -29,7 +29,7 @@ import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
-import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import DeploymentSummaryCard from '../../../ServiceAgents/components/DeploymentSummaryCard.component';
 import MetadataAgentsView from '../../../ServiceAgents/components/MetadataAgentsView.component';
 import { IngestionProps } from './ingestion.interface';
@@ -40,6 +40,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   serviceDetails,
   ingestionPipelineList,
   airflowInformation,
+  isLoading,
   isCollateAgentLoading,
   collateAgentsList,
   collateAgentPagingInfo,
@@ -85,10 +86,11 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
-  const { isAirflowAvailable, platform } = useMemo(
-    () => airflowInformation,
-    [airflowInformation]
-  );
+  const { platform } = useMemo(() => airflowInformation, [airflowInformation]);
+
+  // Only the pipeline fetch. The airflow status is deliberately not folded in — it gates the
+  // actions on the agents, not whether the agents can be listed.
+  const isAgentsLoading = Boolean(isLoading);
 
   const showAddAgent = useMemo(
     () =>
@@ -114,9 +116,16 @@ const Ingestion: React.FC<IngestionProps> = ({
     [decodedServiceFQN, serviceCategory, tab, navigate]
   );
 
+  // Keyed off the rendered list rather than the raw route param, which is absent on the default
+  // sub-tab — refreshing must never ask for the list the user cannot see.
   const handleRefresh = useCallback(
-    () => refreshAgentsList(subTab as ServiceAgentSubTabs),
-    [refreshAgentsList, subTab]
+    () =>
+      refreshAgentsList(
+        isCollateSubTabSelected
+          ? ServiceAgentSubTabs.COLLATE_AI
+          : ServiceAgentSubTabs.METADATA
+      ),
+    [refreshAgentsList, isCollateSubTabSelected]
   );
 
   const subTabItems = useMemo(() => {
@@ -143,13 +152,26 @@ const Ingestion: React.FC<IngestionProps> = ({
     });
   }, [agentCounts, t]);
 
-  if (!isAirflowAvailable) {
-    return <ErrorPlaceHolderIngestion />;
-  }
-
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      <DeploymentSummaryCard agents={agents} />
+      {/* Carries the reason the pipeline service cannot be reached. It is the one place that
+          explains why the agent controls below are disabled, so the tab keeps listing the agents
+          instead of being replaced by a setup guide. */}
+      <AirflowMessageBanner
+        className="tw:mb-4"
+        unreachableFallbackMessage={t(
+          'message.pipeline-service-unreachable-agent-actions'
+        )}
+      />
+
+      {/* `agents` is one page of the list; the Metadata badge count is the service's real total.
+          Held back until that list is real — its counts read as "0 agents" otherwise. */}
+      {!isAgentsLoading && (
+        <DeploymentSummaryCard
+          agents={agents}
+          totalAgents={agentCounts?.[ServiceAgentSubTabs.METADATA]}
+        />
+      )}
 
       {isCollateAIWidgetSupported && (
         <Tabs
@@ -176,6 +198,8 @@ const Ingestion: React.FC<IngestionProps> = ({
         <MetadataAgentsView
           agents={agents}
           ingestionPipelineList={ingestionPipelineList}
+          isLoading={isAgentsLoading}
+          isRefreshing={isLoading}
           serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           serviceName={decodedServiceFQN}

@@ -12,9 +12,8 @@
  */
 
 import test, { expect, Page } from '@playwright/test';
+import { DataQualityDimensions } from '../../../../src/enums/DataQuality.enum';
 import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
-import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -41,6 +40,7 @@ import {
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
@@ -452,7 +452,8 @@ test.describe(
           user1.responseData.name
         );
         await page
-          .getByRole('listitem', { name: user1.getUserDisplayName() })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.getUserDisplayName() })
           .click();
         for (const apiRes of ownerApiResponse) {
           const responseData = await apiRes;
@@ -982,9 +983,20 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
+        const navFailed = page.waitForURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -992,7 +1004,9 @@ test.describe(
         );
         await navFailed;
         await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 

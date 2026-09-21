@@ -14,7 +14,7 @@ Postgres source module
 
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -43,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import (
     EntityName,
-    FullyQualifiedEntityName,
     Markdown,
 )
 from metadata.ingestion.api.models import Either
@@ -57,11 +56,14 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
-from metadata.ingestion.source.database.mssql.models import STORED_PROC_LANGUAGE_MAP
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.postgres.models import PostgresStoredProcedure
+from metadata.ingestion.source.database.postgres.models import (
+    POSTGRES_STORED_PROC_LANGUAGE_MAP,
+    PostgresStoredProcedure,
+)
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
@@ -93,7 +95,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_schema_descriptions,
     get_table_ddl,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 import_side_effects(
     "metadata.ingestion.source.database.postgres.converter_orm",
@@ -124,7 +125,7 @@ PGDialect.get_foreign_keys = get_foreign_keys
 PGDialect.get_schema_names = get_schema_names
 
 
-class PostgresSource(CommonDbSourceService, MultiDBSource):
+class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Postgres Source
@@ -135,14 +136,14 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(f"Expected PostgresConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
@@ -165,7 +166,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -203,7 +204,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> Tuple[bool, TablePartition]:  # noqa: UP006
+    def get_table_partition_details(self, table_name: str, schema_name: str, inspector) -> tuple[bool, TablePartition]:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(POSTGRES_PARTITION_DETAILS),
@@ -232,27 +233,37 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                        )
-                    )
+                    text(POSTGRES_GET_ALL_TABLE_PG_POLICY),
+                    {
+                        "schema_name": schema_name,
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    },
                 ).all()
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service, *fqn_elements
-                        )
-                    ),
-                    tags=[row[1]],
-                    classification_name=self.service_connection.classificationName,
-                    tag_description="Postgres Tag Value",
-                    classification_description="Postgres Tag Name",
+                entity_fqn = fqn._build(  # pylint: disable=protected-access
+                    self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    *fqn_elements,
                 )
+                try:
+                    tag = self.define_tag(
+                        classification_name=self.service_connection.classificationName,
+                        tag_name=row[1],
+                        tag_description="Postgres Tag Value",
+                        classification_description="Postgres Tag Name",
+                    )
+                    if tag:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name=row[1],
+                            error=f"Error yielding tag [{row[1]}]: [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
+                    )
 
         except Exception as exc:
             yield Either(
@@ -302,7 +313,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 name=EntityName(stored_procedure.name),
                 description=Markdown(stored_procedure.description) if stored_procedure.description else None,
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=POSTGRES_STORED_PROC_LANGUAGE_MAP.get((stored_procedure.language or "").lower()),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
 
@@ -39,12 +41,16 @@ jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
 }));
 
-jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
-  getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
-    pathname: '/data-quality/test-cases',
-    search: `testCaseStatus=${status}`,
-  })),
-}));
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => {
+  const actual = jest.requireActual(
+    '../../../../utils/DataQuality/DataQualityPureUtils'
+  ) as typeof import('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  return {
+    ...actual,
+    getTestCaseTabPath: jest.fn(actual.getTestCaseTabPath),
+  };
+});
 
 jest.mock('../../../../constants/TestSuite.constant', () => ({
   INITIAL_TEST_SUMMARY: {
@@ -62,18 +68,21 @@ jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
         <div>
           CustomPieChart.component
           <button
+            aria-label="segment-0"
             data-testid="segment-0"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Success', value: 4 }, 0)
             }
           />
           <button
+            aria-label="segment-1"
             data-testid="segment-1"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Failed', value: 3 }, 1)
             }
           />
           <button
+            aria-label="segment-2"
             data-testid="segment-2"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Aborted', value: 1 }, 2)
@@ -102,7 +111,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   });
 
   it('should render the component', async () => {
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
     expect(
       await screen.findByText('label.test-case-result')
@@ -113,7 +122,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   });
 
   it('fetchTestCaseSummary should be called', async () => {
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
     await act(async () => {
       await Promise.resolve();
@@ -128,7 +137,9 @@ describe('TestCaseStatusPieChartWidget', () => {
       tags: ['tag1', 'tag2'],
       ownerFqn: 'ownerFqn',
     };
-    render(<TestCaseStatusPieChartWidget chartFilter={filters} />);
+    renderWithQueryClient(
+      <TestCaseStatusPieChartWidget chartFilter={filters} />
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -147,11 +158,9 @@ describe('TestCaseStatusPieChartWidget', () => {
       }
     ).__getMockNavigate();
 
-    render(<TestCaseStatusPieChartWidget />);
+    renderWithQueryClient(<TestCaseStatusPieChartWidget />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await screen.findByText('CustomPieChart.component');
 
     expect(CustomPieChart).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -212,7 +221,7 @@ describe('TestCaseStatusPieChartWidget', () => {
   it('should use the supplied navigate function and test cases path', async () => {
     const navigate = jest.fn();
 
-    render(
+    renderWithQueryClient(
       <TestCaseStatusPieChartWidget
         chartFilter={{ startTs: 100, endTs: 200 }}
         navigate={navigate}
@@ -229,9 +238,18 @@ describe('TestCaseStatusPieChartWidget', () => {
       failedSegment.click();
     });
 
+    const expectedTitle = encodeURIComponent(
+      `${formatDate(100, true)} -> ${formatDate(200, true)}`
+    );
+
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/observability/data-quality/test-cases',
-      search: `testCaseStatus=${TestCaseStatus.Failed}`,
+      search:
+        `testCaseStatus=${TestCaseStatus.Failed}` +
+        '&lastRunRange%5BstartTs%5D=100' +
+        '&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        `&lastRunRange%5Btitle%5D=${expectedTitle}`,
     });
 
     const { getTestCaseTabPath } = jest.requireMock(
@@ -242,5 +260,58 @@ describe('TestCaseStatusPieChartWidget', () => {
       startTs: 100,
       endTs: 200,
     });
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    (fetchTestCaseSummary as jest.Mock).mockImplementation(
+      async (filters: { startTs: number }) => {
+        await gates[filters.startTs];
+
+        return {
+          data: [
+            {
+              document_count: String(filters.startTs),
+              'testCaseResult.testCaseStatus': 'success',
+            },
+          ],
+        };
+      }
+    );
+
+    const { rerender } = renderWithQueryClient(
+      <TestCaseStatusPieChartWidget chartFilter={{ startTs: 1, endTs: 10 }} />
+    );
+    rerender(
+      <TestCaseStatusPieChartWidget
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+    await screen.findByText('CustomPieChart.component');
+    await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 100 }),
+          expect.objectContaining({ value: 0 }),
+          expect.objectContaining({ value: 0 }),
+        ],
+      }),
+      expect.anything()
+    );
   });
 });

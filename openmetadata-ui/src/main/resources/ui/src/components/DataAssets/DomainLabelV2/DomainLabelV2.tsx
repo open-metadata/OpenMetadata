@@ -14,7 +14,15 @@ import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Dispatch,
+  lazy,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -26,6 +34,7 @@ import {
 } from '../../../utils/Assets/AssetsUtils';
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
@@ -46,6 +55,78 @@ const DomainSelectableList = withSuspenseFallback(
   null
 );
 
+const resolveDomainsForPatch = (
+  selectedDomain: EntityReference | EntityReference[]
+): EntityReference[] => {
+  if (Array.isArray(selectedDomain)) {
+    return selectedDomain;
+  }
+
+  return isEmpty(selectedDomain) ? [] : [selectedDomain];
+};
+
+const saveDomainViaOnUpdate = async (
+  selectedDomain: EntityReference | EntityReference[],
+  onUpdate: DomainLabelProps['onUpdate'],
+  setActiveDomain: Dispatch<SetStateAction<EntityReference[]>>
+): Promise<void> => {
+  if (!onUpdate) {
+    return;
+  }
+
+  try {
+    await onUpdate(selectedDomain);
+    const updatedDomains = Array.isArray(selectedDomain)
+      ? selectedDomain
+      : [selectedDomain];
+    setActiveDomain(updatedDomains);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
+  }
+};
+
+const saveDomainViaApi = async (
+  selectedDomain: EntityReference | EntityReference[],
+  entityType: AssetsUnion,
+  entityFqn: string,
+  entityId: string,
+  setActiveDomain: Dispatch<SetStateAction<EntityReference[]>>,
+  afterDomainUpdateAction?: DomainLabelProps['afterDomainUpdateAction']
+): Promise<void> => {
+  try {
+    const entityDetailsResponse = await getEntityAPIfromSource(entityType)(
+      entityFqn,
+      {
+        fields: 'domains',
+      }
+    );
+    if (!entityDetailsResponse) {
+      return;
+    }
+
+    const jsonPatch = compare(entityDetailsResponse, {
+      ...entityDetailsResponse,
+      domains: resolveDomainsForPatch(selectedDomain),
+    });
+
+    const api = getAPIfromSource(entityType);
+    const res = await api(entityId, jsonPatch);
+
+    const entityDomains = get(res, 'domains', {});
+    if (Array.isArray(entityDomains)) {
+      setActiveDomain(entityDomains);
+    } else {
+      // update the domain details here
+      setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
+    }
+    !isUndefined(afterDomainUpdateAction) &&
+      afterDomainUpdateAction(res as DataAssetWithDomains);
+  } catch (err) {
+    // Handle errors as needed
+    showErrorToast(err as AxiosError);
+  }
+};
+
 export const DomainLabelV2 = <
   T extends {
     domains?: EntityReference[];
@@ -61,56 +142,30 @@ export const DomainLabelV2 = <
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
+  const domainLabel = props.multiple
+    ? t('label.domain-plural')
+    : t('label.domain');
+
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
       if (props.onUpdate) {
-        try {
-          await props.onUpdate(selectedDomain);
-          const updatedDomains = Array.isArray(selectedDomain)
-            ? selectedDomain
-            : [selectedDomain];
-          setActiveDomain(updatedDomains);
-        } catch (err) {
-          showErrorToast(err as AxiosError);
-        }
+        await saveDomainViaOnUpdate(
+          selectedDomain,
+          props.onUpdate,
+          setActiveDomain
+        );
 
         return;
       }
 
-      const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
+      await saveDomainViaApi(
+        selectedDomain,
+        entityType as AssetsUnion,
         entityFqn,
-        { fields: 'domains' }
+        entityId,
+        setActiveDomain,
+        props.afterDomainUpdateAction
       );
-
-      try {
-        const entityDetailsResponse = await entityDetails;
-        if (entityDetailsResponse) {
-          const jsonPatch = compare(entityDetailsResponse, {
-            ...entityDetailsResponse,
-            domains: Array.isArray(selectedDomain)
-              ? selectedDomain
-              : isEmpty(selectedDomain)
-              ? []
-              : [selectedDomain],
-          });
-
-          const api = getAPIfromSource(entityType as AssetsUnion);
-          const res = await api(entityId, jsonPatch);
-
-          const entityDomains = get(res, 'domains', {});
-          if (Array.isArray(entityDomains)) {
-            setActiveDomain(entityDomains);
-          } else {
-            // update the domain details here
-            setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
-          }
-          !isUndefined(props.afterDomainUpdateAction) &&
-            props.afterDomainUpdateAction(res as DataAssetWithDomains);
-        }
-      } catch (err) {
-        // Handle errors as needed
-        showErrorToast(err as AxiosError);
-      }
     },
     [entityType, entityId, entityFqn, props.onUpdate]
   );
@@ -131,7 +186,7 @@ export const DomainLabelV2 = <
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain-plural'),
+              entity: domainLabel,
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -162,11 +217,17 @@ export const DomainLabelV2 = <
     }
 
     return null;
-  }, [activeDomain]);
+  }, [activeDomain, domainLabel]);
 
+  // Named-flag derivation (Task 8 sweep): raw EditAll-only read, deleted-gated exactly as
+  // before — identical mapping onto `canEditAll`.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions, data?.deleted),
+    [permissions, data?.deleted]
+  );
   const hasPermission = useMemo(() => {
-    return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
-  }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
+    return props?.hasPermission ?? canEditAll;
+  }, [canEditAll, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
     if (!hasPermission) {
@@ -177,7 +238,7 @@ export const DomainLabelV2 = <
       <WidgetPlusButton
         data-testid="add-domain"
         title={t('label.add-entity', {
-          entity: t('label.domain-plural'),
+          entity: domainLabel,
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -186,7 +247,7 @@ export const DomainLabelV2 = <
         data-testid="edit-domain"
         disabled={!hasPermission}
         title={t('label.edit-entity', {
-          entity: t('label.domain-plural'),
+          entity: domainLabel,
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -202,7 +263,14 @@ export const DomainLabelV2 = <
         {actionButton}
       </DomainSelectableList>
     );
-  }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
+  }, [
+    hasPermission,
+    activeDomain,
+    handleDomainSave,
+    props.isClearable,
+    props.multiple,
+    domainLabel,
+  ]);
 
   const label = useMemo(() => {
     if (props.showDomainHeading) {
@@ -210,7 +278,7 @@ export const DomainLabelV2 = <
         <WidgetCard
           headerExtra={selectableList}
           isExpandDisabled={isEmpty(activeDomain)}
-          title={t('label.domain-plural')}>
+          title={domainLabel}>
           {domainLink && (
             <div className="d-flex items-center gap-1 flex-wrap">
               {domainLink}
@@ -228,7 +296,14 @@ export const DomainLabelV2 = <
         {selectableList}
       </Card>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [
+    activeDomain,
+    hasPermission,
+    selectableList,
+    domainLink,
+    domainLabel,
+    props.showDomainHeading,
+  ]);
 
   return label;
 };

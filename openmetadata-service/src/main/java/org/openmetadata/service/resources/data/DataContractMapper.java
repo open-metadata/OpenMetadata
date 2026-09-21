@@ -19,12 +19,13 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataContractMapper {
   public static DataContract createEntity(CreateDataContract create, String user) {
-    // Create a reference for the entity specified in the contract
     EntityReference entity = create.getEntity();
+    rejectContradictingIdentity(entity);
 
     // Build basic fields
     return new DataContract()
@@ -52,8 +53,34 @@ public class DataContractMapper {
         .withSla(create.getSla())
         .withExtension(create.getExtension())
         .withOdcsQualityRules(create.getOdcsQualityRules())
+        .withOdcsElementExtensions(create.getOdcsElementExtensions())
         .withUpdatedBy(user)
         .withUpdatedAt(System.currentTimeMillis());
+  }
+
+  // The stored reference is built from the entity's id and type, so a name or FQN in the request
+  // must describe that same entity instead of being silently discarded.
+  private static void rejectContradictingIdentity(EntityReference requested) {
+    boolean namesEntity =
+        requested != null
+            && requested.getId() != null
+            && (requested.getName() != null || requested.getFullyQualifiedName() != null);
+    if (namesEntity) {
+      EntityReference actual =
+          Entity.getEntityReferenceById(requested.getType(), requested.getId(), Include.ALL);
+      if (differs(requested.getName(), actual.getName())
+          || differs(requested.getFullyQualifiedName(), actual.getFullyQualifiedName())) {
+        throw BadRequestException.of(
+            String.format(
+                "Entity reference %s %s is '%s', which does not match the name or "
+                    + "fullyQualifiedName in the request",
+                actual.getType(), actual.getId(), actual.getFullyQualifiedName()));
+      }
+    }
+  }
+
+  private static boolean differs(String requested, String actual) {
+    return requested != null && !requested.equals(actual);
   }
 
   public static DataContract trimFields(DataContract dataContract, Include include) {

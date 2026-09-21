@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AmundsenConnection",
+  "description": "Amundsen Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.AmundsenConnection",
+  "definitions": {
+    "amundsenType": {
+      "description": "Amundsen service type",
+      "type": "string",
+      "enum": [
+        "Amundsen"
+      ],
+      "default": "Amundsen"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "default": "Amundsen",
+      "type": "string",
+      "enum": [
+        "Amundsen"
+      ]
+    },
+    "username": {
+      "description": "username to connect to the Amundsen Neo4j Connection.",
+      "type": "string"
+    },
+    "password": {
+      "description": "password to connect to the Amundsen Neo4j Connection.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and port of the Amundsen Neo4j Connection. This expect a URI format like: bolt://localhost:7687.",
+      "type": "string",
+      "format": "uri"
+    },
+    "maxConnectionLifeTime": {
+      "description": "Maximum connection lifetime for the Amundsen Neo4j Connection.",
+      "type": "integer",
+      "default": 50
+    },
+    "validateSSL": {
+      "description": "Enable SSL validation for the Amundsen Neo4j Connection.",
+      "type": "boolean",
+      "default": false
+    },
+    "encrypted": {
+      "description": "Enable encryption for the Amundsen Neo4j Connection.",
+      "type": "boolean",
+      "default": false
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "username",
+    "password",
+    "hostPort"
+  ],
+  "additionalProperties": false
+}

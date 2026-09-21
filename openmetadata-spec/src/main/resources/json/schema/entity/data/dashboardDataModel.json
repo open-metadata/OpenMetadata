@@ -22,6 +22,7 @@
         "TableauEmbeddedDatasource",
         "SupersetDataModel",
         "MetabaseDataModel",
+        "ModeDataModel",
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
@@ -34,6 +35,8 @@
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
         "SsrsDataModel",
+        "RillModel",
+        "RillMetricsView",
         "OmniDataModel"
       ],
       "javaEnums": [
@@ -51,6 +54,9 @@
         },
         {
           "name": "MetabaseDataModel"
+        },
+        {
+          "name": "ModeDataModel"
         },
         {
           "name": "LookMlView"
@@ -87,6 +93,12 @@
         },
         {
           "name": "SsrsDataModel"
+        },
+        {
+          "name": "RillModel"
+        },
+        {
+          "name": "RillMetricsView"
         },
         {
           "name": "OmniDataModel"

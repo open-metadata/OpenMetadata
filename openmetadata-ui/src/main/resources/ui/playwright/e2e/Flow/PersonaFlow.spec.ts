@@ -21,6 +21,7 @@ import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -94,7 +95,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByTestId('displayName').fill(PERSONA_DETAILS.displayName);
 
-    await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
+    await fillDescriptionBox(page, PERSONA_DETAILS.description);
 
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'
@@ -115,7 +116,8 @@ test.describe.serial('Persona operations', () => {
     await searchUser;
 
     await page
-      .getByRole('listitem', { name: user.responseData.displayName })
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.responseData.displayName })
       .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
@@ -354,7 +356,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await searchUser;
 
         await adminPage
-          .getByRole('listitem', { name: user1.responseData.displayName })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.responseData.displayName })
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
@@ -547,6 +550,18 @@ test.describe.serial('Team persona setting flow', () => {
       const personaResponse2 = await personasLoadResponse2;
       expect(personaResponse2.status()).toBe(200);
 
+      // Typing filters via the server-side search endpoint, not client-side.
+      const personaSearchResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/personas/search') &&
+          response.request().method() === 'GET'
+      );
+      await adminPage
+        .locator('[data-testid="default-persona-select-list"] input')
+        .fill(teamPersona2.responseData.displayName);
+      const searchResponse = await personaSearchResponse;
+      expect(searchResponse.status()).toBe(200);
+
       // Click the new persona (teamPersona2)
       const userPersonaOption = adminPage.locator(
         `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
@@ -615,10 +630,26 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;
 
-      // The inherited team persona must NOT be shown as the user's default persona
       await adminPage.getByTestId('persona-details-card').waitFor();
-      await expect(adminPage.getByTestId('default-persona-chip')).toContainText(
-        'No default persona'
+
+      const defaultPersonaChip = adminPage.getByTestId('default-persona-chip');
+      // Asserted so the negative check below cannot pass against a chip that
+      // never rendered.
+      await expect(defaultPersonaChip).toBeVisible();
+
+      // The inherited team persona must NOT be shown as the user's default
+      // persona.
+      //
+      // Deliberately not asserting the literal "No default persona"
+      // placeholder: when a user has no default persona the backend resolves
+      // the field to the *system* default persona, which is global state this
+      // test does not own. The sibling describe in this file sets and clears a
+      // system default, and the environment ships with one pre-seeded, so the
+      // placeholder only appears when unrelated work happens to have cleared
+      // it. The invariant under test is just that the team's persona is not
+      // auto-applied.
+      await expect(defaultPersonaChip).not.toContainText(
+        teamPersona.responseData.displayName
       );
 
       // The misleading inherited icon must not be rendered on the default persona
@@ -818,21 +849,23 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectAssetTypes(adminPage, ['Table']);
 
-      const rule0 = adminPage.locator('.rule').nth(0);
+      const rule0 = adminPage.getByTestId('query-builder-rule-0');
 
       await selectOption(
         adminPage,
-        rule0.locator('.rule--field .ant-select'),
+        rule0.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         adminPage,
-        rule0.locator('.rule--operator .ant-select'),
+        rule0.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
       await rule0
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator(
+          '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+        )
         .fill(WORD_TO_SEARCH.toLowerCase());
     });
 

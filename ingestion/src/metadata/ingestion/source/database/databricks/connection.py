@@ -16,7 +16,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -57,6 +57,7 @@ from metadata.ingestion.connections.test_connections import SourceConnectionExce
 from metadata.ingestion.source.database.databricks.auth import (
     catalog_url,
     get_auth_config,
+    get_data_diff_connection_dict,
     probe_target,
 )
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -187,7 +188,7 @@ class DatabricksEngineWrapper:
             self._inspector = inspect(self.engine)
         return self._inspector
 
-    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
+    def get_schemas(self, schema_name: str | None = None):
         """Get schemas and cache them"""
         if schema_name is not None:
             if self.first_catalog:
@@ -237,7 +238,7 @@ class DatabricksEngineWrapper:
             views = connection.execute(text(f"SHOW VIEWS IN `{catalog}`.`{schema}`"))
             return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
+    def get_catalogs(self, catalog_name: str | None = None):
         """Get catalogs"""
         if catalog_name is not None:
             self.first_catalog = catalog_name
@@ -414,6 +415,10 @@ class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        return get_data_diff_connection_dict(self.service_connection)
 
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner

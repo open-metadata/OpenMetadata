@@ -12,13 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-} from 'react';
+import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -41,9 +35,11 @@ import {
   showSuccessToast,
 } from '../../../utils/ToastUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { BasicAuthContext } from './BasicAuthContext';
 
 import { toLower } from 'lodash';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import { getBase64EncodedString } from '../../../utils/StringUtils';
 import {
   getOidcToken,
   getRefreshToken,
@@ -53,35 +49,6 @@ import { useAuthProvider } from './AuthProvider';
 interface BasicAuthProps {
   children: ReactNode;
 }
-
-interface InitialContext {
-  handleLogin: (email: string, password: string) => void;
-  handleRegister: (payload: RegistrationRequest) => void;
-  handleForgotPassword: (email: string) => Promise<void>;
-  handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
-  handleLogout: () => void;
-}
-
-/**
- * @ignore
- */
-const stub = (): never => {
-  throw new Error('You forgot to wrap your component in <BasicAuthProvider>.');
-};
-
-const initialContext = {
-  handleLogin: stub,
-  handleRegister: stub,
-  handleForgotPassword: stub,
-  handleResetPassword: stub,
-  handleLogout: stub,
-  handleUserCreated: stub,
-};
-
-/**
- * The Basic Auth Context
- */
-export const BasicAuthContext = createContext<InitialContext>(initialContext);
 
 const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   const { t } = useTranslation();
@@ -95,7 +62,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         try {
           const response = await basicAuthSignIn({
             email,
-            password: btoa(password),
+            password: getBase64EncodedString(password),
           });
 
           if (response.accessToken) {
@@ -176,8 +143,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   );
 
   const handleLogout = useCallback(async () => {
-    const token = await getOidcToken();
-    const refreshToken = await getRefreshToken();
+    const [token, refreshToken] = await Promise.all([
+      getOidcToken(),
+      getRefreshToken(),
+    ]);
     const isExpired = extractDetailsFromToken(token).isExpired;
     if (token && !isExpired) {
       try {
@@ -215,6 +184,12 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   );
 };
 
-export const useBasicAuth = () => useContext(BasicAuthContext);
+// `useBasicAuth` and `BasicAuthContext` now live in ./BasicAuthContext
+// (re-exported below for backwards compatibility). Keeping the hook in
+// the lazy-loaded provider file created two module instances — one in the
+// eager graph pulled in by SignInPage, one in the lazy chunk — each with
+// its own `createContext()` object, so the provider populated one context
+// while consumers read from the other and always got the stub default.
+export { BasicAuthContext, useBasicAuth } from './BasicAuthContext';
 
 export default BasicAuthProvider;

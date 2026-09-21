@@ -36,16 +36,22 @@ import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
-  descriptionBox,
+  fillDescriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   readElementInListWithScroll,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from './glossaryPicker';
 import { sidebarClick } from './sidebar';
 
 const waitForSearchDebounce = async (page: Page) => {
@@ -63,29 +69,24 @@ const waitForSearchDebounce = async (page: Page) => {
   }
 };
 
-const clickAvailableWidgetAction = async (
-  addBtn: Locator,
-  editBtn: Locator
-) => {
-  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
-
-  if (await addBtn.isVisible()) {
-    await addBtn.click();
-
-    return;
-  }
-
-  await editBtn.click();
-};
+// A widget shows the add button when the value is unset and the edit button
+// once it is assigned. The caller knows which state the entity is in, so it
+// passes `isUpdate` and we open the exact button — click() auto-waits for it,
+// so there is no need to probe which of the two is currently rendered.
+const openWidgetEditor = (
+  page: Page,
+  addTestId: string,
+  editTestId: string,
+  isUpdate: boolean
+) => page.getByTestId(isUpdate ? editTestId : addTestId).click();
 
 export const addTierWidget = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-tier');
-  const editBtn = page.getByTestId('edit-tier');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(page, 'add-tier', 'edit-tier', isUpdate);
 
   await waitForAllLoadersToDisappear(page);
 
@@ -116,11 +117,15 @@ export const addTierWidget = async (
 export const addCertificationWidget = async (
   page: Page,
   certification: TagClass,
-  endpoint: string
+  endpoint: string,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-certification');
-  const editBtn = page.getByTestId('edit-certification');
-  await clickAvailableWidgetAction(addBtn, editBtn);
+  await openWidgetEditor(
+    page,
+    'add-certification',
+    'edit-certification',
+    isUpdate
+  );
 
   await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
@@ -248,12 +253,10 @@ export const removeCertificationFromWidget = async (
 export const assignDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false
+  multiSelect = false,
+  isUpdate = false
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', isUpdate);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -296,10 +299,8 @@ export const removeDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  // Removing implies a domain is already assigned, so the widget shows edit.
+  await openWidgetEditor(page, 'add-domain', 'edit-domain', true);
   await waitForAllLoadersToDisappear(page);
 
   await page
@@ -339,7 +340,10 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -366,7 +370,10 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+  await page
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: domain.displayName })
+    .click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -447,8 +454,11 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     )
     .toBe(true);
 
+  // Click the domain name cell, not the row center — the row's center column is
+  // the glossary-terms cell whose tags are their own links, so a row-center
+  // click lands on a tag instead of triggering the domain navigation.
   await Promise.all([
-    domainRow.click(),
+    domainRow.getByTestId('entity-name').click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -532,16 +542,51 @@ export const selectDataProduct = async (
   await waitForAllLoadersToDisappear(page);
   await searchBox.waitFor({ state: 'visible' });
 
-  await Promise.all([
-    page.waitForResponse('/api/v1/search/query?q=*&index=dataProduct*'),
-    searchBox.fill(dataProduct.name),
-  ]);
+  const dataProductRow = page.getByTestId(dataProduct.name);
 
-  await waitForSearchDebounce(page);
+  // Same eventual consistency as the domain listing above: a data product
+  // created moments ago can be missing from the first query, and the listing
+  // re-queries only when the search text changes. Retry the search, reloading
+  // between attempts, so the row is clicked only once it is really there.
+  //
+  // The response wait deliberately lives outside this callback -- waits here
+  // are test-bound, so a `waitForResponse` that never matches would hang the
+  // callback and the poll could never retry it.
+  let hasSearched = false;
+  await expect
+    .poll(
+      async () => {
+        if (hasSearched) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+          await searchBox.waitFor({ state: 'visible' });
+        }
+        hasSearched = true;
 
+        await searchBox.fill('');
+        await searchBox.fill(dataProduct.name);
+
+        await waitForSearchDebounce(page);
+
+        return dataProductRow.isVisible();
+      },
+      {
+        message: `Wait for data product "${dataProduct.name}" to appear in the data product listing`,
+        // Deliberately well under the default 60s test budget: most callers of
+        // this helper do not set test.slow(), and a poll sized to the whole
+        // budget would starve the rest of the test instead of failing it.
+        timeout: 30_000,
+        intervals: [1_000, 2_000, 3_000, 5_000],
+      }
+    )
+    .toBe(true);
+
+  // Click the data product name cell, not the row center — the row's center
+  // column can be the glossary-terms cell whose tags are their own links, so a
+  // row-center click lands on a tag instead of triggering navigation.
   await Promise.all([
     page.waitForResponse('/api/v1/dataProducts/name/*'),
-    page.getByTestId(dataProduct.name).click(),
+    dataProductRow.getByTestId('entity-name').click(),
   ]);
 
   await waitForAllLoadersToDisappear(page);
@@ -587,13 +632,25 @@ export const verifyAssetsInDomain = async (
   }
 };
 
+/**
+ * Fill the fields AddDomainForm shares between domains, subdomains and data
+ * products.
+ *
+ * Everything is resolved through the `add-domain-form` container rather than
+ * off `page`: DomainDetails mounts the data product drawer and the subdomain
+ * drawer as siblings, so a page-global `#root/name` or `descriptionBox` can see
+ * a second copy of this very form and strict mode violate (merge queue run
+ * 33847455975 ejected #32465 that way).
+ */
 export const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('#root\\/name').fill(entity.name);
-  await page.locator('#root\\/displayName').fill(entity.displayName);
-  await page.locator(descriptionBox).fill(entity.description);
+  const form = page.getByTestId('add-domain-form');
+
+  await form.locator('#root\\/name').fill(entity.name);
+  await form.locator('#root\\/displayName').fill(entity.displayName);
+  await fillDescriptionBox(form, entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
@@ -616,11 +673,34 @@ export const fillDomainForm = async (
     .getByTestId('add-domain-form')
     .getByTestId('domainType')
     .getByRole('button');
-  await domainTypeTrigger.click();
+  const domainTypeOption = page.getByRole('option', {
+    name: entity.domainType,
+    exact: true,
+  });
 
-  await page
-    .getByRole('option', { name: entity.domainType, exact: true })
-    .click();
+  // React Aria can close the listbox mid-click and detach the option
+  // ("element was detached from the DOM"); selectOptionWithRetry re-resolves the
+  // trigger's expanded state and reopens the popover before retrying the click.
+  await selectOptionWithRetry(domainTypeTrigger, domainTypeOption);
+};
+
+/**
+ * Submit the AddDomain/AddDataProduct drawer via its footer Save button.
+ *
+ * The drawer is a SlideoutMenu whose footer height is coupled to its
+ * (re-rendering) body, so the footer — and the Save button inside it — keeps
+ * shifting while the form settles. A pointer `click()` gates on Playwright's
+ * "stable" actionability check and can spin until the test times out
+ * ("element is not stable" → "element was detached from the DOM"), especially
+ * under CI load. save-btn is a native <button>, so focus it (focus() has no
+ * stability gate) and activate it with Enter, which fires the button's native
+ * click without needing a stable pointer target.
+ */
+export const clickDrawerSave = async (page: Page) => {
+  const saveButton = page.getByTestId('save-btn');
+  await expect(saveButton).toBeVisible();
+  await saveButton.focus();
+  await page.keyboard.press('Enter');
 };
 
 export const checkDomainDisplayName = async (
@@ -1171,51 +1251,43 @@ export const addTagsAndGlossaryToDomain = async (
   {
     tagFqn,
     glossaryTermFqn,
+    glossaryTermName,
     isDomain = true,
   }: {
     tagFqn: string;
     glossaryTermFqn: string;
+    // From the term, never split out of the FQN: a name can contain dots.
+    glossaryTermName: string;
     isDomain?: boolean;
   }
 ) => {
-  const addTagOrTerm = async (
-    containerType: 'tags' | 'glossary',
-    value: string
-  ) => {
-    const container = `[data-testid="${containerType}-container"]`;
+  const patchUrl = (response: import('@playwright/test').Response) =>
+    response
+      .url()
+      .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+    response.request().method() === 'PATCH';
 
-    // Click add button
-    await page.locator(`${container} [data-testid="add-tag"]`).click();
+  // Add classification tag (still uses the old tag-select form)
+  const tagsContainer = '[data-testid="tags-container"]';
+  await page.locator(`${tagsContainer} [data-testid="add-tag"]`).click();
+  const tagInput = page.locator(`${tagsContainer} #tagsForm_tags`);
+  await tagInput.click();
+  await tagInput.fill(tagFqn);
+  await page.getByTestId(`tag-${tagFqn}`).click();
+  const tagPatchResponse = page.waitForResponse(patchUrl);
+  await page.getByTestId('saveAssociatedTag').click();
+  await tagPatchResponse;
 
-    // Fill and select tag/term
-    const input = page.locator(`${container} #tagsForm_tags`);
-    await input.click();
-    await input.fill(value);
-    const tag = page.getByTestId(`tag-${value}`);
-    if (containerType === 'glossary') {
-      // To avoid clicking on white space between checkbox and text
-      await tag.locator('.ant-select-tree-checkbox').click();
-    } else {
-      await tag.click();
-    }
-
-    // Save and wait for response
-    const updateResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
-        response.request().method() === 'PATCH'
-    );
-    await page.getByTestId('saveAssociatedTag').click();
-    await updateResponse;
-  };
-
-  // Add tag
-  await addTagOrTerm('tags', tagFqn);
-
-  // Add glossary term
-  await addTagOrTerm('glossary', glossaryTermFqn);
+  // Add glossary term (uses the new GlossaryTermPicker)
+  await openGlossaryPicker(
+    page,
+    page.locator('[data-testid="glossary-container"] [data-testid="add-tag"]')
+  );
+  await toggleGlossaryTermInPicker(page, {
+    name: glossaryTermName,
+    fullyQualifiedName: glossaryTermFqn,
+  });
+  await applyGlossaryPicker(page, patchUrl);
 };
 
 /**
@@ -1398,11 +1470,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1412,11 +1486,13 @@ export const setupDomainHasDomainTest = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: subDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: subDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1511,11 +1587,13 @@ export const setupNoDomainRule = async (apiContext: APIRequestContext) => {
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: mainDomain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: mainDomain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
@@ -1677,6 +1755,20 @@ export const navigateToPortsTab = async (page: Page) => {
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
 
+  // Already on the ports tab: clicking the active tab is a no-op that fires no
+  // /portsView request — waiting on that response would hang until the test
+  // timeout. The selected tab exposes `aria-selected` via its `role="tab"`.
+  const isActive = await page
+    .getByRole('tab', { selected: true })
+    .getByTestId('input_output_ports')
+    .isVisible();
+
+  if (isActive) {
+    await waitForAllLoadersToDisappear(page);
+
+    return;
+  }
+
   const portsViewResponse = page.waitForResponse((response) =>
     response.url().includes('/portsView')
   );
@@ -1686,16 +1778,117 @@ export const navigateToPortsTab = async (page: Page) => {
 };
 
 /**
+ * Waits for a port row to appear in the ports list, reloading if it does not.
+ *
+ * The ports endpoint sources its rows and its total from two separate queries
+ * and drops records whose entity cannot be resolved without adjusting the
+ * total, so it can answer with no rows next to a non-zero total. The list
+ * fetches only on mount, so that empty result is held until the component
+ * remounts — waiting alone can never recover, but a reload can.
+ */
+export const waitForPortRow = async (page: Page, portId: string) => {
+  const portRow = page.getByTestId(`port-actions-${portId}`);
+
+  await expect
+    .poll(
+      async () => {
+        if (await portRow.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return portRow.isVisible();
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+};
+
+/**
  * Expands the lineage section in the InputOutputPortsTab.
- * Only expands if currently collapsed.
+ * No-op when the section is already expanded.
  */
 export const expandLineageSection = async (page: Page) => {
-  const portsViewRes = page.waitForResponse((response) =>
-    response.url().includes('/portsView')
-  );
-  await page.getByTestId('toggle-lineage-collapse').click();
-  await portsViewRes;
+  const header = page.getByTestId('toggle-lineage-collapse');
+  await header.waitFor({ state: 'visible' });
+
+  // The header is a toggle, so clicking it while the section is already
+  // expanded collapses it — and no /portsView request follows, which left the
+  // response wait below hanging until the test timeout.
+  const alreadyExpanded =
+    (await header.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    // Match only the lineage fetch. The port-count probe hits the same
+    // /portsView endpoint but always carries pagination params, so matching on
+    // '/portsView' alone can resolve against the counts response while the
+    // lineage request is still in flight.
+    const lineageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/portsView') &&
+        !response.url().includes('inputLimit=')
+    );
+
+    await header.click();
+    await lineageResponse;
+  }
+
   await waitForAllLoadersToDisappear(page);
+
+  // Settle on the rendered end state. A loader count alone can pass vacuously
+  // when React has not yet mounted the loader, letting callers act on a panel
+  // that is still loading.
+  await page
+    .getByTestId('ports-lineage-view')
+    .or(page.locator('.ports-lineage-view-empty'))
+    .first()
+    .waitFor({ state: 'visible' });
+};
+
+/**
+ * Expands the lineage section and waits for the populated lineage graph to
+ * render, reloading if it does not.
+ *
+ * `PortsLineageView` decides between the graph and the empty placeholder from
+ * the lineage /portsView response's port arrays, and it builds nodes only on
+ * mount. That endpoint sources rows and total from two separate queries and
+ * drops records whose entity cannot be resolved without adjusting the total,
+ * so it can answer with empty port arrays next to a non-zero total. When it
+ * does, the component paints the empty placeholder (`.ports-lineage-view-empty`,
+ * which has no `toggle-fullscreen-btn`) and holds it until the component
+ * remounts — so waiting alone can never recover, but a reload can. Use this in
+ * tests that assert on or interact with the graph itself.
+ */
+export const waitForLineageGraph = async (page: Page) => {
+  const lineageView = page.getByTestId('ports-lineage-view');
+
+  await expect
+    .poll(
+      async () => {
+        await expandLineageSection(page);
+
+        if (await lineageView.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return false;
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
 };
 
 /**
@@ -1990,11 +2183,13 @@ export const assignDomainToEntity = async (
     patchData: [
       {
         op: 'add',
-        path: '/domains/0',
-        value: {
-          id: domain.responseData.id,
-          type: 'domain',
-        },
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        ],
       },
     ],
   });
