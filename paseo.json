@@ -1,0 +1,5 @@
+{
+  "worktree": {
+    "setup": "cp -r /Users/mohityadav/IdeaProjects/OMTesting/.run ."
+  }
+}

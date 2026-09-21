@@ -1,0 +1,54 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Openmetadata-Google" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="ms-21" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="AIRFLOW_AUTH_PROVIDER" value="google" />
+      <env name="AUTHENTICATION_AUTHORITY" value="https://accounts.google.com" />
+      <env name="AUTHENTICATION_CALLBACK_URL" value="http://localhost:8585/callback" />
+      <env name="AUTHENTICATION_CLIENT_ID" value="709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com" />
+      <env name="AUTHENTICATION_JWT_PRINCIPAL_CLAIMS" value="[sub,email,preferred_username]" />
+      <env name="AUTHENTICATION_PROVIDER" value="google" />
+      <env name="AUTHENTICATION_PUBLIC_KEYS" value="[https://www.googleapis.com/oauth2/v3/certs,http://localhost:8585/api/v1/system/config/jwks]" />
+      <env name="AUTHORIZER_ADMIN_PRINCIPALS" value="[mohit,admin]" />
+      <env name="AUTHORIZER_CLASS_NAME" value="org.openmetadata.service.security.DefaultAuthorizer" />
+      <env name="AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN" value="false" />
+      <env name="AUTHORIZER_INGESTION_PRINCIPALS" value="[custom-bot]" />
+      <env name="AUTHORIZER_PRINCIPAL_DOMAIN" value="getcollate.io" />
+      <env name="AUTHORIZER_REQUEST_FILTER" value="org.openmetadata.service.security.JwtFilter" />
+      <env name="JWT_ISSUER" value="open-metadata.org" />
+      <env name="JWT_KEY_ID" value="&quot;Gb389a-9f76-gdjs-a92j-0242bk94356&quot;" />
+      <env name="OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH" value="/tmp/secret.json" />
+      <env name="RSA_PRIVATE_KEY_FILE_PATH" value="$USER_HOME$/openmetadataContribution/openmetadata-client-repo/conf/private_key.der" />
+      <env name="RSA_PUBLIC_KEY_FILE_PATH" value="$USER_HOME$/openmetadataContribution/openmetadata-client-repo/conf/public_key.der" />
+      <env name="SERVER_HOST_API_URL" value="http://host.docker.internal:8585/api" />
+      <env name="SMTP_SERVER_ENDPOINT" value="smtp.gmail.com" />
+      <env name="SMTP_SERVER_PORT" value="587" />
+      <env name="SMTP_SERVER_PWD" value="psvfgkmnlmstuhbf" />
+      <env name="SMTP_SERVER_STRATEGY" value="SMTP_TLS" />
+      <env name="SMTP_SERVER_USERNAME" value="mohit.y@deuexsolutions.com" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="org.openmetadata.service.OpenMetadataApplication" />
+    <module name="openmetadata-dist" />
+    <option name="PROGRAM_PARAMETERS" value="server ./conf/openmetadata.yaml" />
+    <extension name="net.ashald.envfile">
+      <option name="IS_ENABLED" value="true" />
+      <option name="IS_SUBST" value="true" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+      <option name="IS_IGNORE_MISSING_FILES" value="false" />
+      <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+      <ENTRIES>
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
+        <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH=".claude/worktrees/cranky-dijkstra-4693d0/.idea/env/postgres-opensearch.env" />
+      </ENTRIES>
+    </extension>
+    <extension name="software.aws.toolkits.jetbrains.core.execution.JavaAwsConnectionExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
