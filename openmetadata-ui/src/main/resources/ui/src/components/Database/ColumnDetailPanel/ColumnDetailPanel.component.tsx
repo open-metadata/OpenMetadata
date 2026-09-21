@@ -39,9 +39,10 @@ import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -65,7 +66,7 @@ import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRig
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
-import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
+import LineageTabContent from '../../Explore/EntitySummaryPanel/LineageTab/LineageTabContent';
 import { LineageData } from '../../Lineage/Lineage.interface';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -76,7 +77,7 @@ import {
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
-import { KeyProfileMetrics } from './KeyProfileMetrics';
+import { KeyProfileMetrics } from './KeyProfileMetrics/KeyProfileMetrics.component';
 import { NestedColumnsSection } from './NestedColumnsSection';
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -896,7 +897,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:text-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
-        {stringToHTML(activeColumn.name || '')}
+        {renderHighlightedText(activeColumn.name || '')}
       </Typography.Text>
     );
   }
@@ -963,7 +964,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                       ellipsis
                       className="entity-title-link"
                       data-testid="entity-link">
-                      {stringToHTML(
+                      {renderHighlightedText(
                         (activeColumn as { displayName?: string })
                           .displayName ||
                           activeColumn.name ||

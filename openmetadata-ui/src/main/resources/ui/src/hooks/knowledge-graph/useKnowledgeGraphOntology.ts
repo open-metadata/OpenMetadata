@@ -12,14 +12,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import {
   GraphData,
   GraphNode,
   KnowledgeGraphFilters,
   KnowledgeGraphLevel,
   KnowledgeGraphMode,
-} from '../../components/KnowledgeGraph/KnowledgeGraph.interface';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+} from '../../interface/knowledgeGraph.interface';
 import { getGlossaryTermsByIds } from '../../rest/glossaryAPI';
 import {
   getOntologyScope,
