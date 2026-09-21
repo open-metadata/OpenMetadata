@@ -821,6 +821,10 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders, selectedIds, allDocuments, t, fetchFolders]
   );
 
+  const handleCloseFilePreviewModal = useCallback(() => {
+    setFilePreviewModalFile(undefined);
+  }, []);
+
   const handleUploadToFolder = useCallback((folderId: string) => {
     setSelectedFolderId(folderId);
     setIsUploadModalOpen(true);
@@ -970,7 +974,7 @@ const ContextCenterDocumentsPage: FC = () => {
       <FilePreviewModal
         file={filePreviewModalFile}
         isOpen={Boolean(filePreviewModalFile)}
-        onClose={() => setFilePreviewModalFile(undefined)}
+        onClose={handleCloseFilePreviewModal}
       />
 
       <UploadDocumentModal

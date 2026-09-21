@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useCallback, useState } from 'react';
 import { ProcessingStatus } from '../../../../generated/entity/data/contextFile';
 import FilePreviewModal from './FilePreviewModal';
 
@@ -104,6 +105,37 @@ describe('FilePreviewModal', () => {
     ).toBeInTheDocument();
 
     await waitFor(() => expect(downloadDriveFile).not.toHaveBeenCalled());
+  });
+
+  it('does not refetch when the parent re-renders with a stable onClose', async () => {
+    downloadDriveFile.mockResolvedValue(new Blob(['hi']));
+
+    const ParentWithStableClose = () => {
+      const [renderCount, setRenderCount] = useState(0);
+      const onClose = useCallback(() => undefined, []);
+
+      return (
+        <div>
+          <button
+            data-testid="force-rerender"
+            onClick={() => setRenderCount((prev) => prev + 1)}>
+            {renderCount}
+          </button>
+          <FilePreviewModal isOpen file={baseFile as never} onClose={onClose} />
+        </div>
+      );
+    };
+
+    render(<ParentWithStableClose />);
+
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByTestId('force-rerender'));
+    fireEvent.click(screen.getByTestId('force-rerender'));
+
+    await screen.findByText('previewer');
+
+    expect(downloadDriveFile).toHaveBeenCalledTimes(1);
   });
 
   it('shows an error toast and closes the modal when the fetch fails', async () => {

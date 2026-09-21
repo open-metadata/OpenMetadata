@@ -14,22 +14,27 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PreviewRendererProps } from './FilePreviewer.interface';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
 
+const MAX_PDF_PREVIEW_PAGES = 50;
+
 const PdfRenderer = ({ content }: PreviewRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let cancelled = false;
+    let doc: pdfjsLib.PDFDocumentProxy | undefined;
     const container = containerRef.current;
 
     const renderPdf = async () => {
       const data = await content.arrayBuffer();
       // isEvalSupported: false and disableAutoFetch: true are load-bearing —
       // untrusted PDFs must not execute embedded JS or fetch external resources.
-      const doc = await pdfjsLib.getDocument({
+      doc = await pdfjsLib.getDocument({
         data,
         disableAutoFetch: true,
         isEvalSupported: false,
@@ -38,7 +43,8 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
         return;
       }
       container.replaceChildren();
-      for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
+      const pagesToRender = Math.min(doc.numPages, MAX_PDF_PREVIEW_PAGES);
+      for (let pageNo = 1; pageNo <= pagesToRender; pageNo++) {
         const page = await doc.getPage(pageNo);
         if (cancelled || !container) {
           return;
@@ -54,14 +60,23 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
           await page.render({ canvasContext: ctx, viewport }).promise;
         }
       }
+      if (!cancelled && container && doc.numPages > MAX_PDF_PREVIEW_PAGES) {
+        const notice = document.createElement('div');
+        notice.className = 'tw:text-center tw:text-sm tw:text-secondary tw:p-4';
+        notice.textContent = t('message.file-preview-pdf-page-limit', {
+          count: MAX_PDF_PREVIEW_PAGES,
+        });
+        container.appendChild(notice);
+      }
     };
 
     renderPdf();
 
     return () => {
       cancelled = true;
+      doc?.destroy();
     };
-  }, [content]);
+  }, [content, t]);
 
   return <div className="tw:p-4" ref={containerRef} />;
 };
