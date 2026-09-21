@@ -230,7 +230,7 @@
     "indexName": "query_search_index",
     "indexMappingFile": "/elasticsearch/%s/query_index_mapping.json",
     "alias": "query",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "mlmodel": {
@@ -319,6 +319,15 @@
       "glossary",
       "dataAsset",
       "dataAssetEmbeddings"
+    ],
+    "childAliases": []
+  },
+  "relationshipType": {
+    "indexName": "relationship_type_search_index",
+    "indexMappingFile": "/elasticsearch/relationship_type_index_mapping.json",
+    "alias": "relationshipType",
+    "parentAliases": [
+      "all"
     ],
     "childAliases": []
   },

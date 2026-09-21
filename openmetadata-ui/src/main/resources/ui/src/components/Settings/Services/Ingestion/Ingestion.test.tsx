@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -18,6 +19,7 @@ import {
   RenderResult,
   screen,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
@@ -27,6 +29,24 @@ import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 import Ingestion from './Ingestion.component';
+
+// Ingestion renders MetadataAgentsView, whose useAgentPermissions now derives its
+// per-agent flags through useBulkEntityPermissions (React Query) instead of reading
+// PermissionProvider's context directly. React Query hooks throw without a client, so
+// every render here needs a QueryClientProvider alongside the existing MemoryRouter. A
+// fresh client per wrapper keeps cached permissions from leaking between tests.
+const TestWrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider
+    client={
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+        },
+      })
+    }>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
+);
 
 jest.mock(
   '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
@@ -123,7 +143,7 @@ describe('Ingestion', () => {
 
   it('should give the banner a fallback message for a status call that carries no reason', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     // The fallback is opt-in, so a call site that forgets it silently loses the only explanation
@@ -136,7 +156,7 @@ describe('Ingestion', () => {
 
   it('should give the banner a message for a deployment with the pipeline client switched off', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     // A disabled client answers every call with a healthy 200, so the banner is the only thing
@@ -164,7 +184,7 @@ describe('Ingestion', () => {
             platform: DISABLED,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -188,7 +208,7 @@ describe('Ingestion', () => {
             isAirflowAvailable: false,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -213,7 +233,7 @@ describe('Ingestion', () => {
             isFetchingStatus: true,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -229,7 +249,7 @@ describe('Ingestion', () => {
       platform: 'airflow',
     }));
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.getByTestId('add-agent-skeleton')).toBeInTheDocument();
@@ -239,7 +259,7 @@ describe('Ingestion', () => {
   it('should hide the deployment summary card while the agent list is loading', async () => {
     await act(async () => {
       render(<Ingestion {...ingestionProps} isLoading />, {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       });
     });
 
@@ -248,7 +268,7 @@ describe('Ingestion', () => {
 
   it('should render the deployment summary card once the list has loaded', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.getByText('DeploymentSummaryCard')).toBeInTheDocument();
@@ -256,7 +276,7 @@ describe('Ingestion', () => {
 
   it('should render the AddIngestionButton when create permission is granted', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
@@ -272,7 +292,7 @@ describe('Ingestion', () => {
             platform: DISABLED,
           }}
         />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -281,7 +301,7 @@ describe('Ingestion', () => {
 
   it('should refresh only the visible sub-tab list', async () => {
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     fireEvent.click(screen.getByTestId('agent-group-refresh'));
@@ -295,7 +315,7 @@ describe('Ingestion', () => {
   it('should disable the refresh control while the list is loading', async () => {
     await act(async () => {
       render(<Ingestion {...ingestionProps} isLoading />, {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       });
     });
 
@@ -313,7 +333,7 @@ describe('Ingestion', () => {
       getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
     }));
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+      render(<Ingestion {...ingestionProps} />, { wrapper: TestWrapper });
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
@@ -330,7 +350,7 @@ describe('Ingestion', () => {
 
       await act(async () => {
         view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         });
       });
 
@@ -374,7 +394,7 @@ describe('Ingestion', () => {
     it('should still show skeletons on the first load, before any agent is known', async () => {
       await act(async () => {
         render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         });
       });
 
@@ -390,7 +410,7 @@ describe('Ingestion', () => {
 
       await act(async () => {
         view = render(<Ingestion {...ingestionProps} isLoading agents={[]} />, {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         });
       });
 

@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-# Gates the ingestion-base image on (a) absence of the five Debian 12 OS CVEs
+# Gates the ingestion-base image on (a) absence of the tracked Debian OS CVEs
 # that failed the Collate Snyk gate, and (b) the native driver stack still
 # working after the OS rebase. A clean CVE result with a broken ODBC or Oracle
 # driver is not a pass.
@@ -31,7 +31,7 @@ UNFILTERED_SCAN_OUT=""
 # CVE-2026-66032 / CVE-2026-66034 and reports zero hits for them even on the
 # bookworm image that demonstrably carries the vulnerable libssh2-1 1.10.0-3+b1.
 # Those two are covered by the package-version assertion further down instead.
-TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186"
+TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186 CVE-2026-14457 CVE-2026-68082"
 
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 pass() { echo "PASS: $1"; }
@@ -81,7 +81,7 @@ done
 echo "== libssh2 version assertion (stands in for CVE-2026-66032 / CVE-2026-66034) =="
 # Snyk flagged libssh2 1.10.0-3+b1 specifically. Trivy cannot see those two CVE
 # IDs, so assert the vulnerable version is gone and the t64-renamed replacement
-# is >= 1.11. Authoritative confirmation is Snyk in the Collate CI.
+# is >= 1.11.1-1+deb13u2. Authoritative confirmation is Snyk in the Collate CI.
 # NOTE: use dpkg-query's default tab-separated output plus `cut -f2`. Do NOT use
 # -f/--showformat here: its ${Version} placeholder gets eaten by the nested
 # host-shell -> docker -> container-bash quoting layers and silently yields an
@@ -98,13 +98,13 @@ fi
 
 new="$(in_image 'dpkg-query -W libssh2-1t64 2>/dev/null | cut -f2')"
 if [ -z "$new" ]; then
-  fail "libssh2-1t64 not installed (expected the trixie replacement, >= 1.11)"
+  fail "libssh2-1t64 not installed (expected the trixie replacement, >= 1.11.1-1+deb13u2)"
 else
-  major_minor="$(printf '%s' "$new" | cut -d. -f1-2)"
-  case "$major_minor" in
-    1.1[1-9]|1.[2-9]*) pass "libssh2-1t64 ${new} (>= 1.11)" ;;
-    *)                 fail "libssh2-1t64 ${new} is below 1.11" ;;
-  esac
+  if [ "$(in_image "dpkg --compare-versions '$new' ge '1.11.1-1+deb13u2' && echo ok")" = "ok" ]; then
+    pass "libssh2-1t64 ${new} (>= 1.11.1-1+deb13u2)"
+  else
+    fail "libssh2-1t64 ${new} is below 1.11.1-1+deb13u2"
+  fi
 fi
 
 echo "== OS release =="

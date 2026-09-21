@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/type/relationshipTypeUsage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RelationshipTypeUsage",
+  "description": "Usage count for a governed ontology relationship type.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.RelationshipTypeUsage",
+  "properties": {
+    "relationshipType": {
+      "$ref": "entityReference.json"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["relationshipType", "count"],
+  "additionalProperties": false
+}

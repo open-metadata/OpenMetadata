@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -30,6 +31,7 @@
           "filter": [
             "word_delimiter_filter",
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -38,7 +40,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -312,6 +315,31 @@
           "fullyQualifiedName": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "sourceFile": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "deleted": {
+            "type": "boolean"
           }
         }
       },

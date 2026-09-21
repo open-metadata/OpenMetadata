@@ -1,11 +1,13 @@
 package org.openmetadata.mcp.tools;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -16,6 +18,21 @@ record EntityCreationSpec(
     String entityType,
     EntityRepository<? extends EntityInterface> repository,
     Class<? extends EntityInterface> entityClass) {
+
+  /** Knowledge Page fields maintained by relationships or background processing. */
+  private static final Set<String> PAGE_SYSTEM_FIELDS =
+      Set.of(
+          "attachments",
+          "children",
+          "childrenCount",
+          "dataProducts",
+          "editors",
+          "extractionStats",
+          "followers",
+          "memoryCount",
+          "processingError",
+          "processingStatus",
+          "votes");
 
   private static final Map<String, String> DEDICATED_CREATE_FLOWS =
       Map.of(
@@ -85,7 +102,8 @@ record EntityCreationSpec(
   }
 
   boolean isMcpOwned(String field) {
-    return ContextMemory.class.equals(entityClass) && "sourceType".equals(field);
+    return (ContextMemory.class.equals(entityClass) && "sourceType".equals(field))
+        || (Page.class.equals(entityClass) && PAGE_SYSTEM_FIELDS.contains(field));
   }
 
   boolean hasConditionalRequirements() {

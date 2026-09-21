@@ -30,6 +30,7 @@ FULL_PROJECTS = {
     "GlobalSettings",
     "SystemCertificationTags",
     "IntakeForm",
+    "AdvancedSearch",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -46,6 +47,7 @@ PROJECT_LANES = {
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
+    "AdvancedSearch": "advanced-search",
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
@@ -103,6 +105,11 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
+    # Breached the 20-minute ceiling after the timing-baseline refresh that
+    # landed in main — split into per-spec units to stay within budget.
+    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
+    ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
+    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
@@ -548,6 +555,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
+        "advanced-search",
         "domain-isolation",
         "global-state",
         "import-export",

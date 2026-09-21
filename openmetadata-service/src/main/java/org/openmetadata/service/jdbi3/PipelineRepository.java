@@ -39,12 +39,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -268,15 +271,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setService(getContainer(pipeline.getId()));
 
     // validate all the Tasks
-    for (Status taskStatus : pipelineStatus.getTaskStatus()) {
+    for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it
-    // is unrelated to workflow execution. We should bring back the old behavior for this one.
-    String storedPipelineStatus =
-        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
-    if (storedPipelineStatus != null) {
+    StatusChange statusChange =
+        resolveStatusChange(pipeline.getFullyQualifiedName(), pipelineStatus);
+    if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
+      // A re-sent identical status writes nothing: every ES call here forces a segment refresh, and
+      // ENTITY_NO_CHANGE keeps ChangeEventHandler from emitting an event the alert would fire on.
+      return new RestUtil.PutResponse<>(
+          Response.Status.OK, pipeline.withPipelineStatus(pipelineStatus), ENTITY_NO_CHANGE);
+    }
+
+    if (statusChange.outcome() == StatusOutcome.UPDATED) {
       daoCollection
           .entityExtensionTimeSeriesDao()
           .update(
@@ -294,7 +302,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     ChangeDescription change =
         addPipelineStatusChangeDescription(
-            pipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+            pipeline.getVersion(), pipelineStatus, statusChange.previous());
     pipeline.setPipelineStatus(pipelineStatus);
     pipeline.setChangeDescription(change);
     pipeline.setIncrementalChangeDescription(change);
@@ -326,58 +334,169 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   public RestUtil.PutResponse<?> addBulkPipelineStatus(
-      String fqn, List<PipelineStatus> pipelineStatuses) {
+      String fqn, List<PipelineStatus> pipelineStatuses, String updatedBy) {
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
 
-    if (pipelineStatuses == null || pipelineStatuses.isEmpty()) {
+    // Postgres ON CONFLICT rejects duplicate keys within one statement, so collapse them first.
+    List<PipelineStatus> incoming = dedupeByTimestamp(pipelineStatuses);
+    if (incoming.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, pipeline, ENTITY_NO_CHANGE);
     }
+    validateTasks(pipeline, incoming);
 
+    Map<Long, PipelineStatus> stored = loadStoredStatuses(pipeline, incoming);
+    List<PipelineStatus> written = new ArrayList<>();
+    List<String> changeEvents = new ArrayList<>();
+
+    // incoming is ordered oldest first, so change events are emitted chronologically.
+    for (PipelineStatus status : incoming) {
+      StatusChange statusChange = resolveStatusChange(stored.get(status.getTimestamp()), status);
+      if (statusChange.outcome() == StatusOutcome.UNCHANGED) {
+        continue;
+      }
+      written.add(status);
+      buildStatusChangeEvent(pipeline, status, statusChange.previous(), updatedBy)
+          .ifPresent(changeEvents::add);
+    }
+
+    PipelineStatus latestStatus = incoming.getLast();
+    boolean latestChanged =
+        !written.isEmpty() && written.getLast().getTimestamp().equals(latestStatus.getTimestamp());
+
+    if (!written.isEmpty()) {
+      bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), written);
+      searchRepository.bulkIndexPipelineExecutions(pipeline, written);
+      if (RdfUpdater.isEnabled()) {
+        written.forEach(status -> storePipelineExecutionInRdf(pipeline, status));
+      }
+    }
+
+    pipeline.setPipelineStatus(latestStatus);
+    if (latestChanged) {
+      refreshPipelineIndexes(pipeline);
+    }
+
+    // This endpoint emits one change event per status, which the response filter cannot do, so the
+    // repository owns emission and ENTITY_NO_CHANGE stops the filter adding a duplicate.
+    insertChangeEventsInChunks(changeEvents);
+
+    return new RestUtil.PutResponse<>(
+        Response.Status.OK, pipeline.withPipelineStatus(latestStatus), ENTITY_NO_CHANGE);
+  }
+
+  private static List<PipelineStatus> dedupeByTimestamp(List<PipelineStatus> pipelineStatuses) {
+    Map<Long, PipelineStatus> byTimestamp = new LinkedHashMap<>();
+    for (PipelineStatus status : listOrEmpty(pipelineStatuses)) {
+      byTimestamp.put(status.getTimestamp(), status);
+    }
+    return byTimestamp.values().stream()
+        .sorted(Comparator.comparing(PipelineStatus::getTimestamp))
+        .toList();
+  }
+
+  private void validateTasks(Pipeline pipeline, List<PipelineStatus> statuses) {
     Set<String> validatedTasks = new HashSet<>();
-    for (PipelineStatus pipelineStatus : pipelineStatuses) {
-      for (Status taskStatus : listOrEmpty(pipelineStatus.getTaskStatus())) {
+    for (PipelineStatus status : statuses) {
+      for (Status taskStatus : listOrEmpty(status.getTaskStatus())) {
         if (validatedTasks.add(taskStatus.getName())) {
           validateTask(pipeline, taskStatus.getName());
         }
       }
     }
+  }
 
-    PipelineStatus latestStatus = null;
-    for (PipelineStatus pipelineStatus : pipelineStatuses) {
-      if (latestStatus == null || pipelineStatus.getTimestamp() > latestStatus.getTimestamp()) {
-        latestStatus = pipelineStatus;
-      }
+  private Map<Long, PipelineStatus> loadStoredStatuses(
+      Pipeline pipeline, List<PipelineStatus> incoming) {
+    long from = incoming.getFirst().getTimestamp();
+    long to = incoming.getLast().getTimestamp();
+    Map<Long, PipelineStatus> stored = new HashMap<>();
+    for (String json :
+        getResultsFromAndToTimestamps(
+            pipeline.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION, from, to)) {
+      PipelineStatus status = JsonUtils.readValue(json, PipelineStatus.class);
+      stored.put(status.getTimestamp(), status);
     }
+    return stored;
+  }
 
-    bulkUpsertPipelineStatuses(pipeline.getFullyQualifiedName(), pipelineStatuses);
-
-    searchRepository.bulkIndexPipelineExecutions(pipeline, pipelineStatuses);
-
-    if (RdfUpdater.isEnabled() && latestStatus != null) {
-      storePipelineExecutionInRdf(pipeline, latestStatus);
-    }
-
-    pipeline.setPipelineStatus(latestStatus);
+  private Optional<String> buildStatusChangeEvent(
+      Pipeline pipeline, PipelineStatus status, PipelineStatus previous, String updatedBy) {
     ChangeDescription change =
-        addPipelineStatusChangeDescription(pipeline.getVersion(), latestStatus, null);
-    pipeline.setChangeDescription(change);
-    pipeline.setIncrementalChangeDescription(change);
+        addPipelineStatusChangeDescription(pipeline.getVersion(), status, previous);
+    Pipeline snapshot = JsonUtils.deepCopy(pipeline, Pipeline.class);
+    snapshot.setPipelineStatus(status);
+    snapshot.setChangeDescription(change);
+    snapshot.setIncrementalChangeDescription(change);
+    // Wall-clock, not status.getTimestamp(): /v1/events filters on ChangeEvent.timestamp.
+    snapshot.setUpdatedAt(System.currentTimeMillis());
+    return buildChangeEventJsonForBulkOperation(snapshot, ENTITY_UPDATED, updatedBy);
+  }
 
+  private void insertChangeEventsInChunks(List<String> changeEvents) {
+    for (int i = 0; i < changeEvents.size(); i += CHANGE_EVENT_CHUNK_SIZE) {
+      insertChangeEventsBatch(
+          changeEvents.subList(i, Math.min(i + CHANGE_EVENT_CHUNK_SIZE, changeEvents.size())));
+    }
+  }
+
+  private void refreshPipelineIndexes(Pipeline pipeline) {
     try {
       searchRepository.updateEntityIndex(pipeline);
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices(
+              "upstreamLineage.pipeline.fullyQualifiedName", pipeline.getEntityReference());
     } catch (Exception e) {
       LOG.error("Failed to update pipeline entity index in Elasticsearch", e);
     }
+  }
 
-    return new RestUtil.PutResponse<>(
-        Response.Status.OK,
-        pipeline.withPipelineStatus(latestStatus).withUpdatedAt(System.currentTimeMillis()),
-        ENTITY_UPDATED);
+  enum StatusOutcome {
+    UNCHANGED,
+    CREATED,
+    UPDATED
+  }
+
+  record StatusChange(StatusOutcome outcome, PipelineStatus previous) {}
+
+  private static final int CHANGE_EVENT_CHUNK_SIZE = 100;
+
+  private static final Comparator<Status> BY_TASK_NAME =
+      Comparator.comparing(Status::getName, Comparator.nullsFirst(String::compareTo));
+
+  private StatusChange resolveStatusChange(String pipelineFqn, PipelineStatus incoming) {
+    String storedJson =
+        getExtensionAtTimestamp(pipelineFqn, PIPELINE_STATUS_EXTENSION, incoming.getTimestamp());
+    return resolveStatusChange(
+        storedJson == null ? null : JsonUtils.readValue(storedJson, PipelineStatus.class),
+        incoming);
+  }
+
+  private StatusChange resolveStatusChange(PipelineStatus stored, PipelineStatus incoming) {
+    if (stored == null) {
+      return new StatusChange(StatusOutcome.CREATED, null);
+    }
+    return new StatusChange(
+        isSameStatus(stored, incoming) ? StatusOutcome.UNCHANGED : StatusOutcome.UPDATED, stored);
+  }
+
+  static boolean isSameStatus(PipelineStatus stored, PipelineStatus incoming) {
+    return canonicalize(stored).equals(canonicalize(incoming));
+  }
+
+  // Round-trips through JSON so an explicit null collapses onto the schema default, and orders
+  // taskStatus by name because connectors do not guarantee a stable order across ingestions.
+  private static PipelineStatus canonicalize(PipelineStatus status) {
+    PipelineStatus copy = JsonUtils.readValue(JsonUtils.pojoToJson(status), PipelineStatus.class);
+    if (copy.getTaskStatus() != null) {
+      copy.setTaskStatus(copy.getTaskStatus().stream().sorted(BY_TASK_NAME).toList());
+    }
+    return copy;
   }
 
   private ChangeDescription addPipelineStatusChangeDescription(
-      Double version, Object newValue, Object oldValue) {
+      Double version, PipelineStatus newValue, PipelineStatus oldValue) {
     FieldChange fieldChange =
         new FieldChange().withName("pipelineStatus").withNewValue(newValue).withOldValue(oldValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
@@ -400,9 +519,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
               + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json";
     }
     Entity.getJdbi()
-        .useHandle(
+        .useTransaction(
             handle -> {
-              var batch = handle.prepareBatch(sql);
+              PreparedBatch batch = handle.prepareBatch(sql);
               for (PipelineStatus pipelineStatus : pipelineStatuses) {
                 batch
                     .bind("entityFQNHash", entityFQNHash)
@@ -432,7 +551,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
     String docJson = JsonUtils.pojoToJson(doc);
     String indexName =
-        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+        searchRepository.routeToStagedIfActive(
+            searchRepository.getIndexOrAliasName("pipeline_status_search_index"));
 
     searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
 
@@ -1663,7 +1783,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Call database-level filtered query
-    List<CollectionDAO.PipelineSummaryRow> rows =
+    List<SharedRowMappers.PipelineSummaryRow> rows =
         daoCollection
             .entityExtensionTimeSeriesDao()
             .listPipelineSummariesFiltered(
@@ -1694,7 +1814,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     // Convert rows to Pipeline objects and build summaries
     List<PipelineSummary> summaries = new ArrayList<>();
-    for (CollectionDAO.PipelineSummaryRow row : rows) {
+    for (SharedRowMappers.PipelineSummaryRow row : rows) {
       try {
         // Parse pipeline JSON
         Pipeline pipeline = JsonUtils.readValue(row.getJson(), Pipeline.class);
@@ -1908,7 +2028,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String startTsFilter = buildStartTsFilter(startTs);
       String endTsFilter = buildEndTsFilter(endTs);
 
-      CollectionDAO.PipelineMetricsRow metricsRow =
+      SharedRowMappers.PipelineMetricsRow metricsRow =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getPipelineMetricsData(
@@ -1921,7 +2041,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   tierFilter,
                   startTsFilter,
                   endTsFilter);
-      List<CollectionDAO.ServiceBreakdownRow> serviceRows =
+      List<SharedRowMappers.ServiceBreakdownRow> serviceRows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getServiceBreakdown(
@@ -1948,7 +2068,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       List<ServiceBreakdown> breakdowns = new ArrayList<>();
       metrics.setServiceCount(serviceRows.size());
-      for (CollectionDAO.ServiceBreakdownRow row : serviceRows) {
+      for (SharedRowMappers.ServiceBreakdownRow row : serviceRows) {
         ServiceBreakdown breakdown = new ServiceBreakdown();
         breakdown.setServiceType(row.getServiceType());
         breakdown.setCount(row.getPipelineCount());
@@ -2040,7 +2160,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.ExecutionTrendRow> rows =
+      List<SharedRowMappers.ExecutionTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getExecutionTrendData(
@@ -2058,7 +2178,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       Map<String, PipelineExecutionTrend> trendMap = new HashMap<>();
       int totalSuccess = 0, totalFailed = 0, totalExecutions = 0;
 
-      for (CollectionDAO.ExecutionTrendRow row : rows) {
+      for (SharedRowMappers.ExecutionTrendRow row : rows) {
         PipelineExecutionTrend trend =
             trendMap.computeIfAbsent(
                 row.getDateKey(),
@@ -2208,7 +2328,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       String ownerFilter = buildOwnerFilter(owner);
       String tierFilter = buildTierFilter(tier);
 
-      List<CollectionDAO.RuntimeTrendRow> rows =
+      List<SharedRowMappers.RuntimeTrendRow> rows =
           daoCollection
               .entityExtensionTimeSeriesDao()
               .getRuntimeTrendData(
@@ -2224,7 +2344,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                   tierFilter);
 
       List<PipelineRuntimeTrend> trends = new ArrayList<>();
-      for (CollectionDAO.RuntimeTrendRow row : rows) {
+      for (SharedRowMappers.RuntimeTrendRow row : rows) {
         PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
         trend.setDate(row.getDateKey());
         trend.setTimestamp(row.getFirstTimestamp());

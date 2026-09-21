@@ -577,7 +577,8 @@ export interface AccessDetails {
  */
 export interface PipelineStatus {
     /**
-     * Execution end time
+     * Wall clock time the execution finished. With the per-task `startTime`/`endTime` this is
+     * what alerting reads to decide whether an execution predates a subscription.
      */
     endTime?: number;
     /**
@@ -617,7 +618,10 @@ export interface PipelineStatus {
      */
     taskStatus?: TaskStatus[];
     /**
-     * Timestamp where the job was executed.
+     * Unique key identifying this execution within the pipeline's status history. Connector
+     * defined and NOT a reliable wall clock: sources fill it with whatever is stable per run,
+     * from a scheduler's logical date to the ingestion time. For when the execution actually
+     * ran, use `endTime` or the per-task `startTime`/`endTime`.
      */
     timestamp: number;
     /**
@@ -819,6 +823,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",

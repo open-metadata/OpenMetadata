@@ -34,6 +34,10 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+jest.mock('../../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({ axis: '#123456' }),
+}));
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -163,8 +167,8 @@ jest.mock('recharts', () => ({
   ),
   Pie: ({ data }: { data: { name: string; value: number }[] }) => (
     <div data-length={data.length} data-testid="pie">
-      {data.map((item, index) => (
-        <div data-testid={`pie-cell-${item.name}`} key={index}>
+      {data.map((item) => (
+        <div data-testid={`pie-cell-${item.name}`} key={item.name}>
           {item.name}: {item.value}
         </div>
       ))}

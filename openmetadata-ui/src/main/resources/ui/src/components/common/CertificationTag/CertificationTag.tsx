@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
@@ -19,7 +20,6 @@ import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import { Icon } from '../Icon/Icon';
 import './certification-tag.less';
 
 const CertificationTag = ({
@@ -37,11 +37,11 @@ const CertificationTag = ({
     return (
       <Icon
         alt={`certification: ${name}`}
-        className="certification-img"
         fallback={
           <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
         }
         iconValue={iconURL}
+        imageClassName="tw:h-3.5 tw:w-3.5"
         size={defaultIconSize}
       />
     );

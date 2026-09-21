@@ -2,11 +2,11 @@ package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
@@ -109,7 +109,7 @@ import org.pac4j.oidc.client.GoogleOidcClient;
 import org.pac4j.oidc.client.OidcClient;
 import org.pac4j.oidc.config.AzureAd2OidcConfiguration;
 import org.pac4j.oidc.config.OidcConfiguration;
-import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
+import org.pac4j.oidc.config.method.IPrivateKeyJwtClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
@@ -241,6 +241,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void initializeFields() {
     this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
+    // Create the OIDC metadata resolver during single-threaded startup so concurrent logins never
+    // race to lazily initialize it. pac4j 6 normally does this in client.init(), but OM does not
+    // call it. resolveProviderMetadata() then reads the initialized, cached resolver.
+    client.getConfiguration().ensuresMetadataResolverInitialized();
 
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
@@ -250,8 +254,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             .collect(Collectors.toMap(s -> s[0], s -> s[1]));
     validatePrincipalClaimsMapping(claimsMapping);
     this.teamClaimMapping = authenticationConfiguration.getJwtTeamClaimMapping();
-    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
-    this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    this.principalDomain =
+        SecurityUtil.resolvePrincipalDomain(
+            authorizerConfiguration.getPrincipalDomain(),
+            authorizerConfiguration.getAllowedEmailDomains(),
+            authorizerConfiguration.getAllowedDomains());
+    Integer configuredTokenValidity =
+        authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    if (!TokenValidityResolver.isValid(configuredTokenValidity)) {
+      LOG.warn(
+          "OIDC token validity must be positive; using the {} second default",
+          TokenValidityResolver.DEFAULT_TOKEN_VALIDITY_SECONDS);
+    }
+    this.tokenValidity = TokenValidityResolver.resolveOrDefault(configuredTokenValidity);
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
     this.clientAuthentication = getClientAuthentication(client.getConfiguration());
@@ -421,7 +436,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           pendingLoginContext.nonce(),
           pendingLoginContext.pkceVerifier());
 
-      if (!nullOrEmpty(promptType)) {
+      // prompt=none asks the IdP to authenticate only if it can do so with no user interaction.
+      // That is a web-SSO optimization, and it is self-defeating on the MCP path: an MCP client
+      // has just opened a fresh browser context precisely so the user can log in, so forcing
+      // silent auth there can only come back as login_required (#32671). Every other prompt value
+      // (login, consent, select_account) is deliberate admin policy and still applies to MCP.
+      boolean forcesSilentAuth = "none".equalsIgnoreCase(promptType);
+      if (!nullOrEmpty(promptType) && !(isMcpFlow && forcesSilentAuth)) {
         params.put(OidcConfiguration.PROMPT, promptType);
       }
 
@@ -492,10 +513,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         throw new TechnicalException("Bad authentication response");
       }
 
+      String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
       LOG.debug("Authentication response successful");
       AuthenticationSuccessResponse successResponse = (AuthenticationSuccessResponse) response;
 
-      OIDCProviderMetadata metadata = client.getConfiguration().getProviderMetadata();
+      OIDCProviderMetadata metadata = resolveProviderMetadata(client.getConfiguration());
       if (metadata.supportsAuthorizationResponseIssuerParam()
           && !metadata.getIssuer().equals(successResponse.getIssuer())) {
         throw new TechnicalException("Issuer mismatch, possible mix-up attack.");
@@ -510,11 +532,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Validations
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
-      if (credentials.getIdToken() == null) {
+      // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
+      JWT idToken = credentials.toIdToken();
+      if (idToken == null) {
         throw new TechnicalException("ID token not returned by OIDC provider");
       }
+      JWTClaimsSet idTokenClaims = idToken.getJWTClaimsSet();
+      Date expirationTime = idTokenClaims.getExpirationTime();
+      if (expirationTime != null
+          && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+        LOG.warn(
+            "OIDC provider returned an expired ID token for session {}. Proceeding with claim extraction.",
+            pendingSession.getId());
+      }
 
-      validateNonceIfRequired(pendingSession, credentials.getIdToken().getJWTClaimsSet());
+      validateNonceIfRequired(pendingSession, idTokenClaims);
 
       // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
       // is only available here. Hand the validated credentials over on the session for it to pick
@@ -525,11 +557,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-      claims.putAll(credentials.getIdToken().getJWTClaimsSet().getClaims());
+      claims.putAll(idTokenClaims.getClaims());
 
-      String userName = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
-      String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
-      User user = getOrCreateOidcUser(userName, email, claims);
+      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
+      User user =
+          identity.emailFirstFlow()
+              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
+              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
+      syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       if (Entity.getAuditLogRepository() != null) {
@@ -540,6 +575,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       org.openmetadata.schema.auth.RefreshToken refreshToken =
           TokenUtil.getRefreshToken(user.getId(), UUID.randomUUID());
       Entity.getTokenRepository().insertToken(refreshToken);
+      // pac4j 6 re-parses the stored refresh token on every toRefreshToken() call; parse once.
+      var providerRefreshToken = credentials.toRefreshToken();
       Optional<UserSession> maybeActiveSession =
           sessionService.activatePendingSession(
               req,
@@ -547,9 +584,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
               pendingSession,
               user,
               refreshToken.getToken().toString(),
-              credentials.getRefreshToken() != null
-                  ? credentials.getRefreshToken().getValue()
-                  : null);
+              providerRefreshToken != null ? providerRefreshToken.getValue() : null);
       if (maybeActiveSession.isEmpty()) {
         Entity.getTokenRepository().deleteToken(refreshToken.getToken().toString());
         throw new TechnicalException("Failed to activate OIDC session");
@@ -557,8 +592,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       UserSession activeSession = maybeActiveSession.get();
 
       JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession);
-      sendRedirectWithToken(
-          resp, pendingSession.getRedirectUri(), user, jwtAuthMechanism.getJWTToken());
+      sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -680,7 +714,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     } catch (Exception e) {
       throw new TechnicalException(e);
     }
-    return client.getConfiguration().getProviderMetadata().getAuthorizationEndpointURI().toString()
+    return resolveProviderMetadata(client.getConfiguration())
+            .getAuthorizationEndpointURI()
+            .toString()
         + '?'
         + queryString;
   }
@@ -711,7 +747,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       TokenRequest request =
           createTokenRequest(
               new AuthorizationCodeGrant(
-                  oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
+                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
       executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
     }
   }
@@ -741,22 +777,32 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
+  // pac4j 6 replaces provider-metadata accessors with a lazy IOidcOpMetadataResolver. OM does not
+  // call client.init(), so ensure the resolver exists before loading its cached discovery document.
+  private static OIDCProviderMetadata resolveProviderMetadata(OidcConfiguration configuration) {
+    configuration.ensuresMetadataResolverInitialized();
+    return configuration.getOpMetadataResolver().load();
+  }
+
   private OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
     // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
-      credentials.setCode(code);
+      // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
+      credentials.setCode(code.getValue());
     }
     // get ID token
     JWT idToken = successResponse.getIDToken();
     if (idToken != null) {
-      credentials.setIdToken(idToken);
+      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
+      credentials.setIdToken(idToken.serialize());
     }
     // get access token
     AccessToken accessToken = successResponse.getAccessToken();
     if (accessToken != null) {
-      credentials.setAccessToken(accessToken);
+      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
+      credentials.setAccessTokenObject(accessToken);
     }
 
     return credentials;
@@ -804,7 +850,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     if (configuration.getSecret() != null) {
       // check authentication methods
       List<ClientAuthenticationMethod> metadataMethods =
-          configuration.findProviderMetadata().getTokenEndpointAuthMethods();
+          resolveProviderMetadata(configuration).getTokenEndpointAuthMethods();
 
       ClientAuthenticationMethod preferredMethod = getPreferredAuthenticationMethod(configuration);
 
@@ -840,19 +886,19 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         Secret clientSecret = new Secret(configuration.getSecret());
         clientAuthenticationMechanism = new ClientSecretBasic(clientID, clientSecret);
       } else if (ClientAuthenticationMethod.PRIVATE_KEY_JWT.equals(chosenMethod)) {
-        PrivateKeyJWTClientAuthnMethodConfig privateKetJwtConfig =
+        IPrivateKeyJwtClientAuthnMethodConfig privateKeyJwtConfig =
             configuration.getPrivateKeyJWTClientAuthnMethodConfig();
-        assertNotNull("privateKetJwtConfig", privateKetJwtConfig);
-        JWSAlgorithm jwsAlgo = privateKetJwtConfig.getJwsAlgorithm();
-        assertNotNull("privateKetJwtConfig.getJwsAlgorithm()", jwsAlgo);
-        PrivateKey privateKey = privateKetJwtConfig.getPrivateKey();
-        assertNotNull("privateKetJwtConfig.getPrivateKey()", privateKey);
-        String keyID = privateKetJwtConfig.getKeyID();
+        assertNotNull("privateKeyJwtConfig", privateKeyJwtConfig);
+        JWSAlgorithm jwsAlgo = privateKeyJwtConfig.getJwsAlgorithm();
+        assertNotNull("privateKeyJwtConfig.getJwsAlgorithm()", jwsAlgo);
+        PrivateKey privateKey = privateKeyJwtConfig.getPrivateKey();
+        assertNotNull("privateKeyJwtConfig.getPrivateKey()", privateKey);
+        String keyID = privateKeyJwtConfig.getKeyID();
         try {
           clientAuthenticationMechanism =
               new PrivateKeyJWT(
                   clientID,
-                  configuration.findProviderMetadata().getTokenEndpointURI(),
+                  resolveProviderMetadata(configuration).getTokenEndpointURI(),
                   jwsAlgo,
                   privateKey,
                   keyID,
@@ -905,12 +951,40 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void sendRedirectWithToken(
       HttpServletResponse response, String redirectUri, User user, String accessToken)
       throws IOException {
-    String targetRedirectUri =
-        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
-    String validatedRedirectUri = requireRedirectUri(targetRedirectUri);
-    response.sendRedirect(
-        org.openmetadata.service.security.SecurityUtil.buildRedirectWithToken(
-            validatedRedirectUri, accessToken, user.getEmail(), user.getName()));
+    String validatedRedirectUri = requireRedirectUriOrDefault(redirectUri);
+    SecurityUtil.sendRedirectWithToken(
+        response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
+  }
+
+  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
+      Map<String, Object> claims) {
+    return new OidcIdentityResolver(
+            authenticationConfiguration,
+            authorizerConfiguration,
+            claimsMapping,
+            claimsOrder,
+            principalDomain)
+        .resolve(claims);
+  }
+
+  private User getOrCreateEmailFirstOidcUser(
+      String email, String displayName, Map<String, Object> claims) {
+    List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
+    return EmailFirstUserProvisioner.forProvider(
+            "OIDC",
+            authorizerConfiguration,
+            Entity.getUserRepository(),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
+            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+        .getOrCreate(
+            email,
+            displayName,
+            SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
+            Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private boolean isUserAdmin(String email, String username) {
+    return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
   private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
@@ -922,7 +996,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       User user =
           Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
 
-      boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+      boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
 
       LOG.debug(
@@ -952,7 +1026,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
 
     if (authenticationConfiguration.getEnableSelfSignup()) {
-      boolean isAdmin = getAdminPrincipals().contains(userName);
+      boolean isAdmin = isUserAdmin(email, userName);
       LOG.debug("Creating new OIDC user - Username: {}, isAdmin: {}", userName, isAdmin);
 
       String domain = email.split("@")[1];
@@ -997,8 +1071,23 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     throw new AuthenticationException("User not found and self-signup is disabled");
   }
 
-  private Set<String> getAdminPrincipals() {
-    return new HashSet<>(authorizerConfiguration.getAdminPrincipals());
+  /**
+   * Applies the identity provider's roles claim to the user before the OpenMetadata session token
+   * is minted.
+   *
+   * <p>Until 1.10.x the browser was handed the provider's raw id_token, so JwtFilter saw the
+   * provider's roles on every request and synced them. This callback now mints an OpenMetadata
+   * token carrying OpenMetadata's own roles, which makes that sync compare the database against
+   * itself. This is the last point at which the provider's roles are visible, so the sync has to
+   * happen here.
+   */
+  private void syncRolesFromProvider(User user, Map<String, Object> claims) {
+    if (!Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        || !claims.containsKey(ROLES_CLAIM)) {
+      return;
+    }
+    UserUtil.reSyncUserRolesFromToken(
+        null, user, new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM))));
   }
 
   @SneakyThrows
@@ -1007,14 +1096,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     HTTPResponse httpResponse = executeTokenHttpRequest(request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
-
-    Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
-    if (expirationTime != null
-        && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
-      LOG.warn(
-          "OIDC provider returned an expired ID token for session {}. Proceeding with claim extraction.",
-          session.getId());
-    }
   }
 
   public static boolean isJWT(String token) {
@@ -1039,12 +1120,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private TokenRequest createTokenRequest(final AuthorizationGrant grant) {
     if (clientAuthentication != null) {
       return new TokenRequest(
-          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),
+          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
           this.clientAuthentication,
           grant);
     } else {
       return new TokenRequest(
-          client.getConfiguration().findProviderMetadata().getTokenEndpointURI(),
+          resolveProviderMetadata(client.getConfiguration()).getTokenEndpointURI(),
           new ClientID(client.getConfiguration().getClientId()),
           grant);
     }
@@ -1083,12 +1164,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private void populateCredentialsFromTokenResponse(
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
-    credentials.setAccessToken(oidcTokens.getAccessToken());
+    // pac4j 6 exposes Map-based setters plus set*Object() overloads that retain the nimbus types;
+    // the id token is stored as a serialized String and re-parsed via toIdToken().
+    credentials.setAccessTokenObject(oidcTokens.getAccessToken());
     if (oidcTokens.getRefreshToken() != null) {
-      credentials.setRefreshToken(oidcTokens.getRefreshToken());
+      credentials.setRefreshTokenObject(oidcTokens.getRefreshToken());
     }
     if (oidcTokens.getIDToken() != null) {
-      credentials.setIdToken(oidcTokens.getIDToken());
+      credentials.setIdToken(oidcTokens.getIDToken().serialize());
     }
   }
 
@@ -1115,7 +1198,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
             serverUrl + "/auth/callback",
             serverUrl + "/mcp/callback");
     trusted.addAll(listOrEmpty(authenticationConfiguration.getAdditionalTrustedRedirectUris()));
-    return org.openmetadata.service.security.SecurityUtil.validateRedirectUri(redirectUri, trusted);
+    return SecurityUtil.validateRedirectUri(redirectUri, trusted);
+  }
+
+  private String requireRedirectUriOrDefault(String redirectUri) {
+    String targetRedirectUri =
+        nullOrEmpty(redirectUri) ? serverUrl + "/auth/callback" : redirectUri;
+    return requireRedirectUri(targetRedirectUri);
   }
 
   private User getSessionUser(UserSession session) {
@@ -1233,7 +1322,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       OIDCProviderMetadata providerMetadata =
-          validationClient.getConfiguration().findProviderMetadata();
+          resolveProviderMetadata(validationClient.getConfiguration());
       if (providerMetadata == null) {
         throw new IllegalArgumentException("Failed to retrieve provider metadata from server URL");
       }

@@ -1,0 +1,362 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabaseServiceMetadataPipeline",
+  "description": "DatabaseService Metadata Pipeline Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline",
+  "definitions": {
+    "databaseMetadataConfigType": {
+      "description": "Database Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": [
+        "DatabaseMetadata"
+      ],
+      "default": "DatabaseMetadata"
+    },
+    "incremental": {
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "type": "object",
+      "title": "Incremental Metadata Extraction Configuration",
+      "properties": {
+        "enabled": {
+          "description": "If True, enables Metadata Extraction to be incremental",
+          "type": "boolean",
+          "default": false,
+          "title": "Enabled"
+        },
+        "lookbackDays": {
+          "description": "Number os days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.",
+          "type": "integer",
+          "default": 7,
+          "title": "Successful Pipeline Run Lookback Days"
+        },
+        "safetyMarginDays": {
+          "description": "Number of days to add to the last successful pipeline run timestamp to search for updated entities.",
+          "type": "integer",
+          "default": 1,
+          "title": "Safety Margin Days"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ]
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/databaseMetadataConfigType",
+      "default": "DatabaseMetadata"
+    },
+    "markDeletedTables": {
+      "description": "This is an optional configuration for enabling soft deletion of tables. When this option is enabled, only tables that have been deleted from the source will be soft deleted, and this will apply solely to the schema that is currently being ingested via the pipeline. Any related entities such as test suites or lineage information that were associated with those tables will also be deleted.",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Tables"
+    },
+    "markDeletedStoredProcedures": {
+      "description": "Optional configuration to soft delete stored procedures in OpenMetadata if the source stored procedures are deleted. Also, if the stored procedures is deleted, all the associated entities like lineage, etc., with that stored procedures will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted Stored Procedures"
+    },
+    "markDeletedSchemas": {
+      "description": "Optional configuration to soft delete schemas in OpenMetadata if the source schemas are deleted. Also, if the schema is deleted, all the associated entities like tables, views, stored procedures, lineage, etc., with that schema will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Schemas"
+    },
+    "markDeletedDatabases": {
+      "description": "Optional configuration to soft delete databases in OpenMetadata if the source databases are deleted. Also, if the database is deleted, all the associated entities like schemas, tables, views, stored procedures, lineage, etc., with that database will be deleted",
+      "type": "boolean",
+      "default": false,
+      "title": "Mark Deleted Databases"
+    },
+    "includeTables": {
+      "description": "Optional configuration to turn off fetching metadata for tables.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Tables"
+    },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Views"
+    },
+    "includeTags": {
+      "description": "Optional configuration to toggle the tags ingestion.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Tags"
+    },
+    "includeCustomProperties": {
+      "description": "Optional configuration to toggle the ingestion of source-specific custom properties (e.g. Iceberg table properties) onto the entity extension. When disabled, no custom property definitions are registered and no extension values are set.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include Custom Properties"
+    },
+    "includeOwners": {
+      "title": "Include Owners",
+      "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
+      "type": "boolean",
+      "default": false
+    },
+    "ownerConfig": {
+      "title": "Hierarchical Owner Configuration",
+      "description": "Advanced configuration for managing owners at multiple hierarchy levels (Service, Database, Schema, Table) with custom mappings and inheritance rules.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "javaType": "org.openmetadata.schema.type.OwnerConfig",
+      "type": "object",
+      "definitions": {
+        "ownerValue": {
+          "description": "Single owner or list of owners. Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Single owner (user or team name/email)"
+            },
+            {
+              "type": "array",
+              "description": "Multiple owners (must be all users OR single team, cannot mix)",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        }
+      },
+      "properties": {
+        "default": {
+          "description": "Default owner applied to all entities when no specific owner is configured (user or team name/email)",
+          "type": "string",
+          "examples": [
+            "data-engineering-team",
+            "admin@company.com"
+          ]
+        },
+        "service": {
+          "description": "Owner for the service level",
+          "type": "string"
+        },
+        "database": {
+          "description": "Owner for database entities. Can be a single owner for all databases, or a map of database names to owner(s).",
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Single owner (user or team) for all databases"
+            },
+            {
+              "type": "object",
+              "description": "Map of database names to their owner(s)",
+              "additionalProperties": {
+                "$ref": "#/properties/ownerConfig/definitions/ownerValue"
+              },
+              "examples": [
+                {
+                  "sales_db": "sales-team",
+                  "analytics_db": "analytics-team",
+                  "shared_db": [
+                    "alice",
+                    "bob",
+                    "charlie"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "databaseSchema": {
+          "description": "Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs to owner(s).",
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Single owner (user or team) for all schemas"
+            },
+            {
+              "type": "object",
+              "description": "Map of schema names/FQNs to their owner(s)",
+              "additionalProperties": {
+                "$ref": "#/properties/ownerConfig/definitions/ownerValue"
+              },
+              "examples": [
+                {
+                  "public": "public-schema-team",
+                  "analytics_db.analytics_schema": "analytics-team",
+                  "shared_schema": [
+                    "alice",
+                    "bob"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "table": {
+          "description": "Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to owner(s).",
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Single owner (user or team) for all tables"
+            },
+            {
+              "type": "object",
+              "description": "Map of table names/FQNs to their owner(s)",
+              "additionalProperties": {
+                "$ref": "#/properties/ownerConfig/definitions/ownerValue"
+              }
+            }
+          ]
+        },
+        "enableInheritance": {
+          "description": "Enable child entities to inherit owner from parent entities when they don't have a specific owner configured",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "default": "data-platform-team"
+        },
+        {
+          "default": "data-team",
+          "database": "database-admins",
+          "databaseSchema": "schema-owners",
+          "table": "table-stewards",
+          "enableInheritance": true
+        },
+        {
+          "default": "data-team",
+          "database": {
+            "sales_db": "sales-team",
+            "analytics_db": "analytics-team"
+          },
+          "databaseSchema": {
+            "public": "public-team",
+            "analytics_db.reporting": "reporting-team"
+          },
+          "enableInheritance": true
+        },
+        {
+          "default": "data-team",
+          "table": {
+            "customers": "customer-team",
+            "orders": [
+              "alice",
+              "bob"
+            ],
+            "sales_db.public.shared_data": [
+              "charlie",
+              "david",
+              "emma"
+            ]
+          },
+          "enableInheritance": true
+        }
+      ]
+    },
+    "includeStoredProcedures": {
+      "description": "Optional configuration to toggle the Stored Procedures ingestion.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Stored Procedures"
+    },
+    "includeDDL": {
+      "description": "Optional configuration to toggle the DDL Statements ingestion.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include DDL Statements"
+    },
+    "overrideMetadata": {
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "queryLogDuration": {
+      "description": "Configuration to tune how far we want to look back in query logs to process Stored Procedures results.",
+      "type": "integer",
+      "default": 1,
+      "title": "Query Log Duration"
+    },
+    "queryParsingTimeoutLimit": {
+      "description": "Configuration to set the timeout for parsing the query in seconds.",
+      "type": "integer",
+      "default": 300,
+      "title": "Query Parsing Timeout Limit"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "schemaFilterPattern": {
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Schema Filter Pattern"
+    },
+    "tableFilterPattern": {
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "title": "Table Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Database Filter Pattern"
+    },
+    "storedProcedureFilterPattern": {
+      "description": "Regex to only include/exclude stored procedures that matches the pattern.",
+      "$ref": "#/properties/tableFilterPattern",
+      "title": "Stored Procedure Filter Pattern"
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize Table ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads"
+    },
+    "incremental": {
+      "title": "Incremental Metadata Extraction Configuration",
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "$ref": "#/definitions/incremental"
+    },
+    "extractJsonSchema": {
+      "title": "Extract JSON Schema",
+      "description": "Extract JSON schema from JSON columns by sampling data. This requires SELECT permission on the tables. If disabled or if SELECT fails, JSON columns will be ingested without schema information.",
+      "type": "boolean",
+      "default": false
+    },
+    "jsonSchemaSampleSize": {
+      "title": "JSON Schema Sample Size",
+      "description": "Number of rows to sample for inferring JSON schema. A larger sample size provides more accurate schema inference but increases query time.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1,
+      "maximum": 1000
+    }
+  },
+  "additionalProperties": false
+}

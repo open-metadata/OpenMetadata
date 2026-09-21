@@ -173,8 +173,9 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
 });
 
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(<></>),
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
@@ -221,16 +222,15 @@ jest.mock('../../common/ListView/ListView.component', () => ({
             })}
           </div>
           <div data-testid="table-props-container">
-            {tableProps.columns.map(
-              (column: ColumnsType[0], key: string) =>
-                column.render && (
-                  <>
-                    <div key={key}>{column.title as string}</div>
-                    <div key={key}>
-                      {column.render(column.title, column, 1) as ReactNode}
-                    </div>
-                  </>
-                )
+            {tableProps.columns.map((column: ColumnsType[0]) =>
+              column.render ? (
+                <React.Fragment key={column.key as string}>
+                  <div>{column.title as string}</div>
+                  <div>
+                    {column.render(column.title, column, 1) as ReactNode}
+                  </div>
+                </React.Fragment>
+              ) : null
             )}
           </div>
         </div>

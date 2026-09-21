@@ -14,8 +14,6 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column, MetaData, inspect, text
 
 from metadata.generated.schema.entity.data.table import Table
@@ -28,18 +26,12 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
-    SnowflakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.snowflake.queries import (
-    set_session_tag_query,
-)
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
@@ -63,21 +55,6 @@ class SQAInterfaceMixin(Root):
     def get_columns(self) -> Column:
         """get columns from an orm object"""
         return inspect(super().table).c
-
-    def set_session_tag(self, session) -> None:
-        """
-        Set session query tag for snowflake
-
-        Args:
-            service_connection_config: connection details for the specific service
-        """
-        if (
-            self.service_connection_config.type.value == SnowflakeType.Snowflake.value
-            and hasattr(self.service_connection_config, "queryTag")
-            and self.service_connection_config.queryTag
-        ):
-            query_tag = self.service_connection_config.queryTag  # pyright: ignore[reportAttributeAccessIssue]
-            session.execute(text(set_session_tag_query(query_tag)))
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.
@@ -103,7 +80,7 @@ class SQAInterfaceMixin(Root):
         """close session"""
         self.session.close()
 
-    def _get_sample_columns(self) -> List[str]:  # noqa: UP006
+    def _get_sample_columns(self) -> list[str]:
         """Get the list of columns to use for the sampler"""
         return [
             column.name
@@ -111,9 +88,7 @@ class SQAInterfaceMixin(Root):
             if column.name in {col.name.root for col in self.table_entity.columns}
         ]
 
-    def build_table_orm(
-        self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
-    ) -> Optional[type]:  # noqa: UP045
+    def build_table_orm(self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata) -> type | None:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
         if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
             orm_obj = ometa_to_sqa_orm(table, ometa_client, MetaData())

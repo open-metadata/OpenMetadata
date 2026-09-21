@@ -125,6 +125,21 @@ public class DefaultToolContext {
         case "root_cause_analysis":
           result = new RootCauseAnalysisTool().execute(authorizer, securityContext, params);
           break;
+        case "sparql_query":
+          result = new SparqlQueryTool().execute(authorizer, securityContext, params);
+          break;
+        case "entity_neighborhood":
+          result = new EntityNeighborhoodTool().execute(authorizer, securityContext, params);
+          break;
+        case "find_by_tag":
+          result = new FindByTagTool().execute(authorizer, securityContext, params);
+          break;
+        case "shacl_validate":
+          result = new ShaclValidateTool().execute(authorizer, securityContext, params);
+          break;
+        case "ontology_describe":
+          result = new OntologyDescribeTool().execute(authorizer, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               errorResult(errorPayload("Unknown function: " + toolName, STATUS_BAD_REQUEST)),
@@ -327,12 +342,21 @@ public class DefaultToolContext {
                   meta.name().contains("Authorization")
                       || meta.name().contains("Forbidden")
                       || meta.name().contains("Unauthorized")
+                      || meta.name().contains("FederationDisallowed")
                       || meta.message().contains("forbidden")
                       || meta.message().contains("unauthorized")
                       || meta.message().contains("access denied")
                       || meta.message().contains("permission denied"),
               McpToolCallUsage.ErrorCategory.AUTH,
               STATUS_FORBIDDEN),
+          // A disabled RDF triplestore is a deployment state, not an outage. Left unmatched it
+          // fell through to 500, and summarizeFailure then told the caller the backend was broken
+          // and that a narrower request might help - both wrong. Matched by name so the message
+          // text stays free to change.
+          new CategoryMatcher(
+              meta -> meta.name().contains("RdfNotEnabled"),
+              McpToolCallUsage.ErrorCategory.VALIDATION,
+              STATUS_BAD_REQUEST),
           // Validation by class name runs before the NotFound message heuristic below, so a
           // bad-argument exception whose message merely contains "not found" (e.g.
           // IllegalArgumentException("parameter not found")) stays a 400 rather than a 404.

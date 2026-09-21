@@ -89,6 +89,8 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  // The `fields` example documented on the testCaseResults search endpoints
+  private static final String TEST_CASE_RESULT_FIELDS = "testCase,testDefinition";
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -2635,6 +2637,70 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   /**
+   * {@code testCaseResults/search/latest} validated its {@code fields} param against a placeholder
+   * allowed-fields set, so every real field name — including the endpoint's own documented example
+   * {@code testCase,testDefinition} — came back as HTTP 400. Pins the parity with the sibling
+   * {@code /search/list}, which resolves the allowed fields from the repository.
+   */
+  @Test
+  void test_testCaseResultSearchLatestWithFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_latest_fields"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setTestCaseStatus(TestCaseStatus.Failed);
+    result.setResult("failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String testCaseFQN = testCase.getFullyQualifiedName();
+    // Independent of search convergence: the documented `fields` example must not be rejected.
+    assertDoesNotThrow(
+        () -> searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS),
+        "testCaseResults/search/latest must accept fields=" + TEST_CASE_RESULT_FIELDS);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response = searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              JsonNode latest = JsonUtils.readTree(response);
+              assertEquals(testCaseFQN, latest.path("testCaseFQN").asText());
+              assertEquals(
+                  testCase.getId().toString(),
+                  latest.path("testCase").path("id").asText(),
+                  "the requested `testCase` field must be resolved, got: " + response);
+              assertFalse(
+                  latest.path("testDefinition").path("id").asText().isEmpty(),
+                  "the requested `testDefinition` field must be resolved, got: " + response);
+            });
+  }
+
+  private String searchLatestTestCaseResult(String testCaseFQN, String fields) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/dataQuality/testCases/testCaseResults/search/latest",
+            null,
+            RequestOptions.builder()
+                .queryParam("testCaseFQN", testCaseFQN)
+                .queryParam("fields", fields)
+                .build());
+  }
+
+  /**
    * The picker's request shape. A null {@code query} omits {@code q} entirely rather than sending
    * {@code *}: with {@code q} parsed as literal text a lone asterisk matches nothing, so passing it
    * as a stand-in for "no search term" would silently assert against an empty list.
@@ -2905,7 +2971,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
-    // TEAM11 is a Group team (TEAM1 is Department which can't own entities)
+    // TEAM11 aliases the shared Group team used for direct ownership.
     request.setOwners(List.of(shared.TEAM11.getEntityReference()));
 
     TestCase testCase = client.testCases().create(request);
@@ -3788,6 +3854,142 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> createEntity(request2),
         "Should fail when invalid parameter is provided");
+  }
+
+  @Test
+  void post_testWithInvalidFailureThreshold_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    InvalidRequestException negative =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "negative_threshold",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("-1"))));
+    assertTrue(
+        negative.getMessage().contains("threshold")
+            && negative.getMessage().contains("must not be negative"),
+        "The error must explain the negative threshold but was: " + negative.getMessage());
+
+    // A percentage of the failing rows cannot go past 100 for a row-countable test.
+    InvalidRequestException overHundred =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "percentage_over_100",
+                        columnLink,
+                        "columnValuesToBeNotNull",
+                        new TestCaseParameterValue().withName("threshold").withValue("150"),
+                        new TestCaseParameterValue()
+                            .withName("thresholdUnit")
+                            .withValue("PERCENTAGE"))));
+    assertTrue(
+        overHundred.getMessage().contains("cannot exceed 100"),
+        "The error must explain the 100% cap but was: " + overHundred.getMessage());
+
+    // A row tolerance means nothing on the `matchEnum: false` branch.
+    InvalidRequestException withoutMatchEnum =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                createEntity(
+                    thresholdRequest(
+                        ns,
+                        "in_set_without_match_enum",
+                        columnLink,
+                        "columnValuesToBeInSet",
+                        new TestCaseParameterValue().withName("allowedValues").withValue("[1,2]"),
+                        new TestCaseParameterValue().withName("matchEnum").withValue("false"),
+                        new TestCaseParameterValue().withName("threshold").withValue("10"))));
+    assertTrue(
+        withoutMatchEnum.getMessage().contains("matchEnum"),
+        "The error must name matchEnum but was: " + withoutMatchEnum.getMessage());
+  }
+
+  @Test
+  void post_testWithStatisticalPercentageThresholdOver100_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
+    // The threshold is a deviation from the bounds here, not a share of the rows, so tolerating the
+    // mean being 200% off is loose but coherent — the cap is class-aware, not a blanket range
+    // check.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "mean_percentage_over_100",
+                columnLink,
+                "columnValueMeanToBeBetween",
+                new TestCaseParameterValue().withName("minValueForMeanInCol").withValue("10"),
+                new TestCaseParameterValue().withName("maxValueForMeanInCol").withValue("20"),
+                new TestCaseParameterValue().withName("threshold").withValue("200"),
+                new TestCaseParameterValue().withName("thresholdUnit").withValue("PERCENTAGE")));
+
+    assertNotNull(testCase.getId());
+  }
+
+  @Test
+  void post_and_put_testWithNegativeCustomSqlComparisonBound_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // `tableCustomSQLQuery` declares `thresholdUnit`, but its `threshold` is the bound the SQL
+    // result is compared against through `operator` rather than a failure tolerance, so a signed
+    // delta compared with `>=` legitimately carries a negative one.
+    TestCase testCase =
+        createEntity(
+            thresholdRequest(
+                ns,
+                "custom_sql_negative_bound",
+                tableLink,
+                "tableCustomSQLQuery",
+                new TestCaseParameterValue()
+                    .withName("sqlExpression")
+                    .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+                new TestCaseParameterValue().withName("operator").withValue(">="),
+                new TestCaseParameterValue().withName("threshold").withValue("-25")));
+    assertNotNull(testCase.getId());
+
+    // `validateTestParameters` runs on update too, so the bound must also survive a PUT.
+    CreateTestCase update =
+        thresholdRequest(
+            ns,
+            "custom_sql_negative_bound",
+            tableLink,
+            "tableCustomSQLQuery",
+            new TestCaseParameterValue()
+                .withName("sqlExpression")
+                .withValue("SELECT SUM(c1) - SUM(c2) FROM t"),
+            new TestCaseParameterValue().withName("operator").withValue(">="),
+            new TestCaseParameterValue().withName("threshold").withValue("-50"));
+    update.setDescription("Tolerating a wider negative delta");
+    assertNotNull(updateEntity(testCase.getId().toString(), update).getId());
+  }
+
+  private CreateTestCase thresholdRequest(
+      TestNamespace ns,
+      String name,
+      String entityLink,
+      String testDefinition,
+      TestCaseParameterValue... parameterValues) {
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
+    request.setTestDefinition(testDefinition);
+    request.setParameterValues(List.of(parameterValues));
+    return request;
   }
 
   @Test

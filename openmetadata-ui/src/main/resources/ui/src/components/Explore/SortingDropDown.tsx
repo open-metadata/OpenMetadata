@@ -38,16 +38,21 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
     'data-testid': 'dropdown-menu-item',
   }));
 
-  const label = fieldList.find((field) => field.value === sortField)?.name;
+  // Fall back to the first option so a stale/unsupported sortField (not present in
+  // fieldList) never renders a blank trigger label.
+  const label =
+    fieldList.find((field) => field.value === sortField)?.name ??
+    fieldList[0]?.name;
 
   return (
     <Dropdown.Root data-testid="dropdown">
+      {/* Keep sorting labels aligned with the 14px filter treatment across consumers. */}
       <Button
         hideFocusOutline
         color="tertiary"
         data-testid="sorting-dropdown-label"
         iconTrailing={<ChevronDown size={14} />}
-        size="xs">
+        size="sm">
         {label}
       </Button>
 

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Space } from 'antd';
+import classNames from 'classnames';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -25,6 +26,7 @@ import {
 
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { isFeedPostAuthor } from '../../../utils/FeedUtilsPure';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
 
@@ -37,31 +39,90 @@ const ConfirmationModal = withSuspenseFallback(
 
 interface ActivityFeedActionsProps {
   conversation?: Conversation;
-  conversationId: string;
+  conversationId?: string;
   reply?: ConversationReply;
   isReply: boolean;
+  /**
+   * Whether this user may edit / delete. Default to the feed's own
+   * author-or-admin rule so existing call sites are unaffected; a caller whose
+   * backend applies a different rule per action - task comments, where the
+   * author edits but the author *or* an admin deletes - passes them
+   * explicitly.
+   */
+  canEdit?: boolean;
+  canDelete?: boolean;
   onEditPost?: () => void;
+  /**
+   * Replaces the provider-backed delete. Required by callers outside the
+   * activity feed, which have no conversation to delete a post from.
+   */
+  onDelete?: () => void | Promise<void>;
+  /**
+   * Reveal styling from the owning card. These actions stay mounted so they
+   * remain reachable by Tab and by a screen reader; a consumer that wants them
+   * revealed on pointer hover does that with opacity on a `tw:group` ancestor,
+   * never by unmounting them.
+   */
+  className?: string;
 }
+
+/**
+ * Fall back to the feed's own author-or-admin rule for whichever action the
+ * caller did not state a permission for.
+ *
+ * This default is the *conversation* rule, not the task-comment one. A
+ * conversation reply is authorized through RBAC
+ * (ConversationRepository#patchReply / #deleteReply ask the authorizer for
+ * EDIT_ALL / DELETE), which an admin passes for both. A task comment is not:
+ * TaskRepository#editComment takes no `isAdmin` at all and permits the author
+ * only, while #deleteComment takes one and permits author-or-admin. The two
+ * rules are deliberately different - do not collapse them. Callers rendering
+ * task comments pass `canEdit`/`canDelete` explicitly, derived from
+ * `resolveCommentPermissions` in utils/TaskCommentUtils.
+ */
+const resolveActionVisibility = (
+  isAuthor: boolean,
+  isAdmin: boolean,
+  canEdit?: boolean,
+  canDelete?: boolean
+) => {
+  const canManage = isAuthor || isAdmin;
+
+  return {
+    canManage,
+    showDelete: canDelete ?? canManage,
+    showEdit: canEdit ?? canManage,
+  };
+};
+
+const getIsAuthor = (
+  isReply: boolean,
+  currentUser: { id?: string; name?: string } | undefined,
+  conversation?: Conversation,
+  reply?: ConversationReply
+): boolean =>
+  isFeedPostAuthor(
+    currentUser,
+    isReply ? reply?.author : conversation?.createdBy
+  );
 
 const ActivityFeedActions = ({
   conversation,
   conversationId,
   reply,
   isReply,
+  canEdit,
+  canDelete,
   onEditPost,
+  onDelete,
+  className,
 }: ActivityFeedActionsProps) => {
   const { t, i18n } = useTranslation();
   const dir = i18n.dir();
   const { currentUser } = useApplicationStore();
-  const author = isReply
-    ? reply?.author.name ?? reply?.author.fullyQualifiedName
-    : conversation?.createdBy?.name ??
-      conversation?.createdBy?.fullyQualifiedName;
-  const authorId = isReply ? reply?.author.id : conversation?.createdBy?.id;
-  const isAuthor = authorId
-    ? authorId === currentUser?.id
-    : author === currentUser?.name;
+  const isAuthor = getIsAuthor(isReply, currentUser, conversation, reply);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus, updateFeed } =
     useActivityFeedProvider();
 
@@ -74,21 +135,56 @@ const ActivityFeedActions = ({
     updateEditorFocus(true);
   };
 
-  const handleDelete = () => {
-    const targetId = reply?.id ?? conversationId;
-    deleteFeed(conversationId, targetId, !isReply).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
+  const handleDelete = async () => {
+    if (onDelete) {
+      // The confirmation stays open for the length of the request, so without
+      // this the button remains clickable and a second click fires a
+      // concurrent delete - the first succeeds, the second 404s, and the user
+      // is shown a failure for a delete that actually worked.
+      if (isDeleting) {
+        return;
+      }
+
+      setIsDeleting(true);
+      try {
+        await onDelete();
+        setShowDeleteDialog(false);
+      } catch {
+        // Leave the confirmation open so the delete can be retried. The caller
+        // owns reporting the failure.
+      } finally {
+        setIsDeleting(false);
+      }
+
+      return;
+    }
+
     setShowDeleteDialog(false);
+
+    if (!conversationId) {
+      return;
+    }
+
+    deleteFeed(conversationId, reply?.id ?? conversationId, !isReply).catch(
+      () => {
+        // ignore since error is displayed in toast in the parent promise.
+      }
+    );
+
     if (!isReply) {
       hideDrawer();
     }
   };
 
-  const canManage = isAuthor || Boolean(currentUser?.isAdmin);
+  const { canManage, showEdit, showDelete } = resolveActionVisibility(
+    isAuthor,
+    Boolean(currentUser?.isAdmin),
+    canEdit,
+    canDelete
+  );
 
   const handleResolvedChange = () => {
-    if (!conversation || isReply) {
+    if (!conversation || isReply || !conversationId) {
       return;
     }
     updateFeed(conversationId, conversationId, true, [
@@ -103,49 +199,58 @@ const ActivityFeedActions = ({
   return (
     <>
       <Space
-        className="feed-actions"
+        aria-label={t('label.action-plural')}
+        className={classNames('feed-actions', className)}
         data-testid="feed-actions"
         dir={dir}
+        role="group"
         size={12}>
         {!isReply && conversation && (
-          <Icon
+          <ButtonUtility
             className="toolbar-button"
-            component={IconReply}
+            color="tertiary"
             data-testid="add-reply"
-            style={{ fontSize: '16px' }}
+            icon={IconReply}
+            size="xs"
+            tooltip={t('label.reply')}
             onClick={onReply}
           />
         )}
 
         {!isReply && conversation && canManage && (
-          <Icon
-            aria-label={
+          <ButtonUtility
+            className="toolbar-button"
+            color="tertiary"
+            data-testid="toggle-resolved"
+            icon={ResolveIcon}
+            size="xs"
+            tooltip={
               conversation.resolved ? t('label.open') : t('label.resolve')
             }
-            className="toolbar-button"
-            component={ResolveIcon}
-            data-testid="toggle-resolved"
-            style={{ fontSize: '16px' }}
             onClick={handleResolvedChange}
           />
         )}
 
-        {canManage && (
-          <Icon
+        {showEdit && (
+          <ButtonUtility
             className="toolbar-button"
-            component={IconEdit}
+            color="tertiary"
             data-testid="edit-message"
-            style={{ fontSize: '16px' }}
+            icon={IconEdit}
+            size="xs"
+            tooltip={t('label.edit')}
             onClick={onEditPost}
           />
         )}
 
-        {canManage && (
-          <Icon
+        {showDelete && (
+          <ButtonUtility
             className="toolbar-button"
-            component={DeleteIcon}
+            color="tertiary"
             data-testid="delete-message"
-            style={{ fontSize: '16px' }}
+            icon={DeleteIcon}
+            size="xs"
+            tooltip={t('label.delete')}
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
@@ -155,6 +260,7 @@ const ActivityFeedActions = ({
         cancelText={t('label.cancel')}
         confirmText={t('label.delete')}
         header={t('message.delete-message-question-mark')}
+        isLoading={isDeleting}
         visible={showDeleteDialog}
         onCancel={() => setShowDeleteDialog(false)}
         onConfirm={handleDelete}

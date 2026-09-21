@@ -16,7 +16,6 @@ Validator for column value to be not in set test case
 import traceback
 from abc import abstractmethod
 from ast import literal_eval
-from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -57,12 +56,12 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
+            column: SQALikeColumn | Column = self.get_column()
             res = self._run_results(Metrics.countInSet, column, values=test_params[self.FORBIDDEN_VALUES])
 
             metric_values = {Metrics.countInSet.name: res}
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
 
         except (ValueError, RuntimeError) as exc:
@@ -118,17 +117,17 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             Metrics.countInSet.name: Metrics.countInSet,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: Optional[dict] = None) -> TestEvaluation:  # noqa: UP045
-        """Evaluate the in-set test condition
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
+        """Evaluate the not-in-set test condition
 
-        For in-set test, behavior depends on match_enum flag:
-        - match_enum=False: Pass if at least one value is in the set (count_in_set > 0)
-        - match_enum=True: Pass if ALL values are in the set (row_count - count_in_set == 0)
+        Test passes if the forbidden values found (count_in_set) stay within the failure
+        threshold, counted against the table row count. With the default threshold, that
+        means count_in_set == 0.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -147,8 +146,8 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             raise ValueError("test_params is required for columnValuesToNotBeInSet._evaluate_test_condition")
         count_in_set = metric_values[Metrics.countInSet.name]
 
-        matched = count_in_set == 0
         total_rows = metric_values.get(Metrics.rowCount.name)
+        matched = self._apply_row_threshold(count_in_set, total_rows)
         failed_count = count_in_set
         if total_rows:
             passed_count = total_rows - failed_count
@@ -165,8 +164,8 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
-        test_params: Optional[dict] = None,  # noqa: UP045
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for in-set test
 
@@ -188,7 +187,7 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         else:  # noqa: RET505
             return f"Found countInSet={count_in_set}. It should be 0."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for in-set test
 
         Args:
@@ -205,11 +204,11 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column], **kwargs):  # noqa: UP007
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(self, column: Union[SQALikeColumn, Column]):  # noqa: UP007
+    def compute_row_count(self, column: SQALikeColumn | Column):
         """Compute row count for the given column
 
         Args:

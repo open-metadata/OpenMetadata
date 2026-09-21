@@ -19,7 +19,7 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
-import { usePaging } from '../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getExploreTabPath } from '../../utils/RouterUtils';
 import ExplorePageV1 from './ExplorePageV1.component';
@@ -50,6 +50,19 @@ jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });
 
+jest.mock(
+  '../../components/discovery/explore/ExploreHeader/ExploreSearchCard',
+  () => ({
+    ExploreSearchCard: () => (
+      <div data-testid="explore-search-card">Explore search</div>
+    ),
+  })
+);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
@@ -68,13 +81,23 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
   })),
 }));
 
+// Opt one case onto the real hook, so what it writes to the shared URL can be asserted rather
+// than which callback it reached for.
+let mockUseRealPaging = false;
+
 jest.mock('../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn(() => ({
-    currentPage: 3,
-    handlePageChange: mockHandlePageChange,
-    handlePageSizeChange: mockHandlePageSizeChange,
-    pageSize: 25,
-  })),
+  usePaging: jest.fn((defaultPageSize?: number, pageSizeOptions?: number[]) =>
+    mockUseRealPaging
+      ? jest
+          .requireActual('../../hooks/paging/usePaging')
+          .usePaging(defaultPageSize, pageSizeOptions)
+      : {
+          currentPage: 3,
+          handlePageChange: mockHandlePageChange,
+          handlePageSizeChange: mockHandlePageSizeChange,
+          pageSize: 25,
+        }
+  ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -100,14 +123,46 @@ describe('ExplorePageV1', () => {
       preferences: {
         globalPageSize: 25,
       },
+      // The real hook persists the size it settles on; without this the case that drives it
+      // would fail on a missing setter rather than on what it wrote.
+      setPreference: jest.fn(),
     });
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+    mockUseRealPaging = false;
   });
 
   it('renders without crashing', async () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
-    expect(usePaging).toHaveBeenCalledWith(25);
+  });
+
+  it('does not write a page size it cannot offer back to the shared URL', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    // 24 is the connections grid's size, in the shared param because app mode keeps this page
+    // mounted behind that one. Correcting it from here overwrote the grid's selection.
+    mockLocation.search = '?pageSize=24';
+    mockUseRealPaging = true;
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    const wrotePageSize = mockNavigate.mock.calls.some(
+      ([to]) => typeof to === 'object' && to?.search?.includes('pageSize=')
+    );
+
+    expect(wrotePageSize).toBe(false);
+  });
+
+  it('stretches the AI search header wrapper across the Explore page', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ExplorePageV1 {...mockProps} />);
+
+    expect(
+      (await screen.findByTestId('explore-search-card')).parentElement
+    ).toHaveClass('tw:w-full');
   });
 
   it('calls navigate exactly once with quickFilter when filter changes', async () => {
@@ -160,7 +215,7 @@ describe('ExplorePageV1', () => {
     const mockNavigate = jest.fn();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
     (useCustomLocation as jest.Mock).mockReturnValue({
-      pathname: '/context-center/dashboard',
+      pathname: '/context-center/overview',
       search: '',
     });
 
@@ -192,7 +247,7 @@ describe('ExplorePageV1', () => {
       getExploreTabPath('tables')
     );
     expect(mockNavigate.mock.calls[0][0].pathname).not.toEqual(
-      '/context-center/dashboard'
+      '/context-center/overview'
     );
   });
 

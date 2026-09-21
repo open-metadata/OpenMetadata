@@ -15,7 +15,6 @@ Validator for column value mean to be between test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -58,7 +57,7 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
+            column: SQALikeColumn | Column = self.get_column()
             mean_value = self._run_results(Metrics.mean, column)
 
             metric_values = {
@@ -101,12 +100,13 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         Returns:
             dict: Test parameters including min and max bounds
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:  # noqa: UP045
+    def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:
         """Get metrics that need to be computed for this test
 
         Args:
@@ -153,8 +153,8 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
-        test_params: Optional[dict] = None,  # noqa: UP045
+        dimension_info: DimensionInfo | None = None,
+        test_params: dict | None = None,
     ) -> str:
         """Format the result message for mean-to-be-between test
 
@@ -181,7 +181,7 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         else:  # noqa: RET505
             return f"Found mean={mean_value} vs. the expected min={min_bound}, max={max_bound}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
+    def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for mean-to-be-between test
 
         Args:
@@ -198,18 +198,18 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
+    def _run_results(self, metric: Metrics, column: SQALikeColumn | Column):
         raise NotImplementedError
 
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],  # noqa: UP007
-        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
+        column: SQALikeColumn | Column,
+        dimension_col: SQALikeColumn | Column,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation query for a single dimension column
 
         Args:

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
@@ -20,16 +21,36 @@ import {
   closeColumnDetailPanel,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import {
+  applyGlossaryPicker,
+  openGlossaryPicker,
+  searchGlossaryPicker,
+  toggleGlossaryTermInPicker,
+} from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const searchGlossaryInSelector = async (page: Page, glossaryName: string) => {
-  const searchInput = page
-    .getByTestId('KnowledgePanel.GlossaryTerms')
-    .getByRole('combobox');
-  await searchInput.fill(glossaryName);
-  await waitForAllLoadersToDisappear(page);
+const POPOVER = 'glossary-term-picker-popover';
+
+// getByTestId + .or() so FQNs with quotes and percent signs stay escaped.
+const selectionControl = (page: Page, fqn: string) => {
+  const popover = page.getByTestId(POPOVER);
+
+  return popover
+    .getByTestId(`checkbox-${fqn}`)
+    .or(popover.getByTestId(`radio-${fqn}`));
+};
+
+const treeNode = (page: Page, fqn: string) =>
+  page.getByTestId(POPOVER).getByTestId(`tree-node-${fqn}`);
+
+const openAndSearch = async (page: Page, glossaryName: string) => {
+  await openGlossaryPicker(
+    page,
+    page.getByTestId('KnowledgePanel.GlossaryTerms').getByTestId('add-tag')
+  );
+  await searchGlossaryPicker(page, glossaryName);
 };
 
 test.describe('Glossary Mutual Exclusivity Feature', () => {
@@ -76,46 +97,18 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        // Open glossary term selector
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        // Wait for dropdown to open
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
-        );
-        await expect(parentTermNode).toBeVisible();
-
-        // Search and expand the ME parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
-        // Verify children have checkboxes
-        const child1Node = page.getByTestId(
-          `tag-${child1.responseData.fullyQualifiedName}`
-        );
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
-        await expect(child1Checkbox).toBeVisible();
-
-        const child2Node = page.getByTestId(
-          `tag-${child2.responseData.fullyQualifiedName}`
-        );
-        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
-        await expect(child2Checkbox).toBeVisible();
-
-        const child3Node = page.getByTestId(
-          `tag-${child3.responseData.fullyQualifiedName}`
-        );
-        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
-        await expect(child3Checkbox).toBeVisible();
+        // Verify children have selection controls (checkboxes for ME children)
+        await expect(
+          selectionControl(page, child1.responseData.fullyQualifiedName)
+        ).toBeVisible();
+        await expect(
+          selectionControl(page, child2.responseData.fullyQualifiedName)
+        ).toBeVisible();
+        await expect(
+          selectionControl(page, child3.responseData.fullyQualifiedName)
+        ).toBeVisible();
 
         await table.delete(apiContext);
       } finally {
@@ -163,70 +156,35 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
+        const c1 = selectionControl(
+          page,
+          child1.responseData.fullyQualifiedName
         );
-        await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
+        const c2 = selectionControl(
+          page,
+          child2.responseData.fullyQualifiedName
+        );
+        const c3 = selectionControl(
+          page,
+          child3.responseData.fullyQualifiedName
+        );
 
         // Select first child
-        const child1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
-        await child1Node.click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
+        await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        // Verify child1 is selected
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        // Select second child — first should auto-deselect (ME)
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
+        await expect(c2).toHaveAttribute('data-selected', 'true');
+        await expect(c1).toHaveAttribute('data-selected', 'false');
 
-        // Select second child
-        const child2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
-        await child2Node.click();
-
-        // Verify child2 is now selected and child1 is deselected (mutual exclusivity)
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child1Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-
-        // Select third child
-        const child3Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
-        await child3Node.click();
-
-        // Verify only child3 is selected (mutual exclusivity auto-deselects siblings)
-        await expect(child3Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child2Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child1Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        // Select third child — only third remains selected
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
+        await expect(c3).toHaveAttribute('data-selected', 'true');
+        await expect(c2).toHaveAttribute('data-selected', 'false');
+        await expect(c1).toHaveAttribute('data-selected', 'false');
 
         await table.delete(apiContext);
       } finally {
@@ -272,66 +230,34 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
+        const c1 = selectionControl(
+          page,
+          child1.responseData.fullyQualifiedName
         );
-        await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
-        // Select first child
-        const child1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
-        await child1Node.click();
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
+        const c2 = selectionControl(
+          page,
+          child2.responseData.fullyQualifiedName
+        );
+        const c3 = selectionControl(
+          page,
+          child3.responseData.fullyQualifiedName
         );
 
-        // Select second child
-        const child2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
-        await child2Node.click();
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
+        await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        // Select third child
-        const child3Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
-        await child3Node.click();
-        await expect(child3Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
+        await expect(c2).toHaveAttribute('data-selected', 'true');
 
-        // Verify all three are still selected
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child3Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
+        await expect(c3).toHaveAttribute('data-selected', 'true');
+
+        // All three should still be selected (non-ME parent allows multi-select)
+        await expect(c1).toHaveAttribute('data-selected', 'true');
+        await expect(c2).toHaveAttribute('data-selected', 'true');
+        await expect(c3).toHaveAttribute('data-selected', 'true');
 
         await table.delete(apiContext);
       } finally {
@@ -365,42 +291,21 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
+        const c1 = selectionControl(
+          page,
+          child1.responseData.fullyQualifiedName
         );
-        await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
-        const child1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
+        const node = treeNode(page, child1.responseData.fullyQualifiedName);
 
         // Select child
-        await child1Node.click();
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await node.click();
+        await expect(c1).toHaveAttribute('data-selected', 'true');
 
         // Click again to deselect
-        await child1Node.click();
-        await expect(child1Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await node.click();
+        await expect(c1).toHaveAttribute('data-selected', 'false');
 
         await table.delete(apiContext);
       } finally {
@@ -463,99 +368,54 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        // Assert and expand ME parent
-        const meParentNode = page.getByTestId(
-          `tag-${meParent.responseData.fullyQualifiedName}`
+        const nmc1 = selectionControl(
+          page,
+          nonMeChild1.responseData.fullyQualifiedName
         );
-        await expect(meParentNode).toBeVisible();
-        await meParentNode.getByTestId('expand-icon').first().click();
-
-        // Assert and expand non-ME parent
-        const nonMeParentNode = page.getByTestId(
-          `tag-${nonMeParent.responseData.fullyQualifiedName}`
+        const nmc2 = selectionControl(
+          page,
+          nonMeChild2.responseData.fullyQualifiedName
         );
-        await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
+        const mc1 = selectionControl(
+          page,
+          meChild1.responseData.fullyQualifiedName
+        );
+        const mc2 = selectionControl(
+          page,
+          meChild2.responseData.fullyQualifiedName
+        );
 
         // Select non-ME children first
-        const nonMeChild1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${nonMeChild1.responseData.fullyQualifiedName}`);
-        const nonMeChild1Checkbox = nonMeChild1Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-        await nonMeChild1Node.click();
-        await expect(nonMeChild1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(
+          page,
+          nonMeChild1.responseData.fullyQualifiedName
+        ).click();
+        await expect(nmc1).toHaveAttribute('data-selected', 'true');
 
-        const nonMeChild2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${nonMeChild2.responseData.fullyQualifiedName}`);
-        const nonMeChild2Checkbox = nonMeChild2Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-        await nonMeChild2Node.click();
-        await expect(nonMeChild2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(
+          page,
+          nonMeChild2.responseData.fullyQualifiedName
+        ).click();
+        await expect(nmc2).toHaveAttribute('data-selected', 'true');
 
         // Select ME child
-        const meChild1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${meChild1.responseData.fullyQualifiedName}`);
-        const meChild1Checkbox = meChild1Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-        await meChild1Node.click();
-        await expect(meChild1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, meChild1.responseData.fullyQualifiedName).click();
+        await expect(mc1).toHaveAttribute('data-selected', 'true');
 
         // Non-ME children should still be selected
-        await expect(nonMeChild1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(nonMeChild2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await expect(nmc1).toHaveAttribute('data-selected', 'true');
+        await expect(nmc2).toHaveAttribute('data-selected', 'true');
 
-        // Select another ME child
-        const meChild2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${meChild2.responseData.fullyQualifiedName}`);
-        const meChild2Checkbox = meChild2Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-        await meChild2Node.click();
-
-        // ME child 1 should be deselected, ME child 2 selected (mutual exclusivity)
-        await expect(meChild2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(meChild1Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        // Select another ME child — first ME child should auto-deselect
+        await treeNode(page, meChild2.responseData.fullyQualifiedName).click();
+        await expect(mc2).toHaveAttribute('data-selected', 'true');
+        await expect(mc1).toHaveAttribute('data-selected', 'false');
 
         // Non-ME children should still be selected
-        await expect(nonMeChild1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(nonMeChild2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await expect(nmc1).toHaveAttribute('data-selected', 'true');
+        await expect(nmc2).toHaveAttribute('data-selected', 'true');
 
         await table.delete(apiContext);
       } finally {
@@ -589,40 +449,16 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        // Open glossary selector
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
+        await treeNode(page, child.responseData.fullyQualifiedName).click();
 
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
-        );
-        await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
-        const childNode = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child.responseData.fullyQualifiedName}`);
-        await childNode.click();
-
-        // Save
-        const patchResponse = page.waitForResponse(
+        await applyGlossaryPicker(
+          page,
           (response) =>
             response.url().includes('/api/v1/tables/') &&
             response.request().method() === 'PATCH'
         );
-        await page.click('[data-testid="saveAssociatedTag"]');
-        await patchResponse;
 
         // Verify tag appears
         await expect(
@@ -674,49 +510,24 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await expect(panelContainer).toBeVisible();
         await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
 
-        // Click edit glossary terms button in the column detail panel
-        const glossaryEditButton = panelContainer.getByTestId(
-          'edit-glossary-terms'
+        await openGlossaryPicker(
+          page,
+          panelContainer.getByTestId('edit-glossary-terms')
         );
-        await expect(glossaryEditButton).toBeVisible();
-        await glossaryEditButton.click();
 
-        // Wait for selectable list to appear
-        const selectableList = page.locator('[data-testid="selectable-list"]');
-        await expect(selectableList).toBeVisible();
-
-        // Search for the glossary term
-        const searchBar = page.locator(
-          '[data-testid="glossary-term-select-search-bar"]'
-        );
-        await expect(searchBar).toBeVisible();
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('glossaryTerm') &&
-            response.request().method() === 'GET'
-        );
-        await searchBar.fill(child.responseData.displayName);
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        // Select the glossary term from the flat list
-        const termOption = page.locator('.ant-list-item').filter({
-          hasText: child.responseData.displayName,
+        await toggleGlossaryTermInPicker(page, {
+          name: child.responseData.name,
+          displayName: child.responseData.displayName,
+          fullyQualifiedName: child.responseData.fullyQualifiedName,
         });
-        await expect(termOption).toBeVisible();
-        await termOption.click();
 
-        // Save via Update button
-        const updateResponse = page.waitForResponse(
-          (response) =>
+        await applyGlossaryPicker(page, (response) =>
+          Boolean(
             response.url().includes('/api/v1/columns/name/') ||
-            response.url().includes('/api/v1/tables/')
+              response.url().includes('/api/v1/tables/')
+          )
         );
-        const updateButton = page.getByRole('button', { name: 'Update' });
-        await expect(updateButton).toBeVisible();
-        await updateButton.click();
-        await updateResponse;
+
         await waitForAllLoadersToDisappear(page);
 
         // Verify glossary term appears in the column detail panel
@@ -804,32 +615,11 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        const parentTermNode = page.getByTestId(
-          `tag-${parentTerm.responseData.fullyQualifiedName}`
-        );
-        await expect(parentTermNode).toBeVisible();
-
-        // Expand the parent term
-        await parentTermNode.getByTestId('expand-icon').first().click();
-
-        // Children should now have checkboxes with ME behavior (ME was toggled on)
-        const child1Node = page.getByTestId(
-          `tag-${child1.responseData.fullyQualifiedName}`
-        );
+        // Children should now have selection controls (ME was toggled on)
         await expect(
-          child1Node.locator('.ant-select-tree-checkbox')
+          selectionControl(page, child1.responseData.fullyQualifiedName)
         ).toBeVisible();
 
         await table.delete(apiContext);
@@ -867,52 +657,28 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        // Search for the glossary to bring it into view
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        // Assert the glossary node is visible (search auto-expands it)
-        const glossaryNode = page.getByTestId(
-          `tag-${glossary.responseData.fullyQualifiedName}`
+        const t1 = selectionControl(
+          page,
+          term1.responseData.fullyQualifiedName
         );
-        await expect(glossaryNode).toBeVisible();
+        const t2 = selectionControl(
+          page,
+          term2.responseData.fullyQualifiedName
+        );
 
-        // Terms directly under ME glossary should be checkboxes
-        const term1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${term1.responseData.fullyQualifiedName}`);
-        await expect(
-          term1Node.locator('.ant-select-tree-checkbox')
-        ).toBeVisible();
-
-        const term2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${term2.responseData.fullyQualifiedName}`);
-        await expect(
-          term2Node.locator('.ant-select-tree-checkbox')
-        ).toBeVisible();
+        // Terms directly under ME glossary should have selection controls
+        await expect(t1).toBeVisible();
+        await expect(t2).toBeVisible();
 
         // Verify mutual exclusivity works (selecting one deselects the other)
-        await term1Node.click();
-        await expect(
-          term1Node.locator('.ant-select-tree-checkbox')
-        ).toHaveClass(/ant-select-tree-checkbox-checked/);
+        await treeNode(page, term1.responseData.fullyQualifiedName).click();
+        await expect(t1).toHaveAttribute('data-selected', 'true');
 
-        await term2Node.click();
-        await expect(
-          term2Node.locator('.ant-select-tree-checkbox')
-        ).toHaveClass(/ant-select-tree-checkbox-checked/);
-        await expect(
-          term1Node.locator('.ant-select-tree-checkbox')
-        ).not.toHaveClass(/ant-select-tree-checkbox-checked/);
+        await treeNode(page, term2.responseData.fullyQualifiedName).click();
+        await expect(t2).toHaveAttribute('data-selected', 'true');
+        await expect(t1).toHaveAttribute('data-selected', 'false');
 
         await table.delete(apiContext);
       } finally {
@@ -988,99 +754,44 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        // Expand ME grandparent
-        const grandparentNode = page.getByTestId(
-          `tag-${meGrandparent.responseData.fullyQualifiedName}`
+        const c1 = selectionControl(
+          page,
+          child1.responseData.fullyQualifiedName
         );
-        await expect(grandparentNode).toBeVisible();
-        await grandparentNode.getByTestId('expand-icon').first().click();
-
-        // Expand non-ME parent
-        const nonMeParentNode = page.getByTestId(
-          `tag-${nonMeParent.responseData.fullyQualifiedName}`
+        const c2 = selectionControl(
+          page,
+          child2.responseData.fullyQualifiedName
         );
-        await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
-
-        // Children under non-ME parent should allow multi-select (checkboxes)
-        const child1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
-        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
-
-        // Click checkboxes directly for deep-nested nodes
-        await child1Checkbox.click();
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
+        const sc1 = selectionControl(
+          page,
+          sibChild1.responseData.fullyQualifiedName
+        );
+        const sc2 = selectionControl(
+          page,
+          sibChild2.responseData.fullyQualifiedName
         );
 
-        await child2Checkbox.click();
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        // Non-ME parent children allow multi-select
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
+        await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        // Both should remain selected (non-ME parent allows multi-select)
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
+        await expect(c2).toHaveAttribute('data-selected', 'true');
+        await expect(c1).toHaveAttribute('data-selected', 'true');
 
-        // Expand ME sibling to verify its children enforce ME
-        const meSiblingNode = page.getByTestId(
-          `tag-${meSibling.responseData.fullyQualifiedName}`
-        );
-        await expect(meSiblingNode).toBeVisible();
-        await meSiblingNode.getByTestId('expand-icon').first().click();
+        // ME sibling children enforce mutual exclusivity
+        await treeNode(page, sibChild1.responseData.fullyQualifiedName).click();
+        await expect(sc1).toHaveAttribute('data-selected', 'true');
 
-        const sibChild1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${sibChild1.responseData.fullyQualifiedName}`);
-        const sibChild2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${sibChild2.responseData.fullyQualifiedName}`);
-        const sibChild1Checkbox = sibChild1Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-        const sibChild2Checkbox = sibChild2Node.locator(
-          '.ant-select-tree-checkbox'
-        );
-
-        // Click checkboxes directly for deep-nested ME children
-        await sibChild1Checkbox.click();
-        await expect(sibChild1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-
-        // Select second ME sibling child → first should auto-deselect
-        await sibChild2Checkbox.click();
-        await expect(sibChild2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(sibChild1Checkbox).not.toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await treeNode(page, sibChild2.responseData.fullyQualifiedName).click();
+        await expect(sc2).toHaveAttribute('data-selected', 'true');
+        await expect(sc1).toHaveAttribute('data-selected', 'false');
 
         // Non-ME children should still be selected (cross-parent independence)
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await expect(c1).toHaveAttribute('data-selected', 'true');
+        await expect(c2).toHaveAttribute('data-selected', 'true');
 
         await table.delete(apiContext);
       } finally {
@@ -1133,54 +844,30 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
 
-        await page
-          .getByTestId('KnowledgePanel.GlossaryTerms')
-          .getByTestId('add-tag')
-          .click();
+        await openAndSearch(page, glossary.responseData.name);
 
-        await page.waitForSelector('.async-tree-select-list-dropdown', {
-          state: 'visible',
-        });
-
-        await searchGlossaryInSelector(page, glossary.responseData.name);
-
-        // Expand the non-ME parent (search auto-expands glossary, need to expand parent)
-        const nonMeParentNode = page.getByTestId(
-          `tag-${nonMeParent.responseData.fullyQualifiedName}`
+        const c1 = selectionControl(
+          page,
+          child1.responseData.fullyQualifiedName
         );
-        await expect(nonMeParentNode).toBeVisible();
-        await nonMeParentNode.getByTestId('expand-icon').first().click();
+        const c2 = selectionControl(
+          page,
+          child2.responseData.fullyQualifiedName
+        );
+        const c3 = selectionControl(
+          page,
+          child3.responseData.fullyQualifiedName
+        );
 
-        // Select all three children - all should remain selected (non-ME parent)
-        const child1Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child1.responseData.fullyQualifiedName}`);
-        const child2Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child2.responseData.fullyQualifiedName}`);
-        const child3Node = page
-          .getByRole('tree')
-          .getByTestId(`tag-${child3.responseData.fullyQualifiedName}`);
-
-        const child1Checkbox = child1Node.locator('.ant-select-tree-checkbox');
-        const child2Checkbox = child2Node.locator('.ant-select-tree-checkbox');
-        const child3Checkbox = child3Node.locator('.ant-select-tree-checkbox');
-
-        await child1Node.click();
-        await child2Node.click();
-        await child3Node.click();
+        await treeNode(page, child1.responseData.fullyQualifiedName).click();
+        await treeNode(page, child2.responseData.fullyQualifiedName).click();
+        await treeNode(page, child3.responseData.fullyQualifiedName).click();
 
         // All three should be selected despite glossary being ME
         // because the immediate parent is non-ME
-        await expect(child1Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child2Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
-        await expect(child3Checkbox).toHaveClass(
-          /ant-select-tree-checkbox-checked/
-        );
+        await expect(c1).toHaveAttribute('data-selected', 'true');
+        await expect(c2).toHaveAttribute('data-selected', 'true');
+        await expect(c3).toHaveAttribute('data-selected', 'true');
 
         await table.delete(apiContext);
       } finally {

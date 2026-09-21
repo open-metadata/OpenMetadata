@@ -1,0 +1,136 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyBulkRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyBulkRequest",
+  "description": "Typed QTT-style bulk authoring request for an ontology glossary.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyBulkRequest",
+  "definitions": {
+    "operation": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkOperation",
+      "type": "string",
+      "enum": [
+        "CSV_UPSERT",
+        "FIND_REPLACE",
+        "RETYPE_RELATIONSHIPS"
+      ]
+    },
+    "matchField": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkMatchField",
+      "type": "string",
+      "enum": [
+        "NAME",
+        "DISPLAY_NAME",
+        "DESCRIPTION"
+      ]
+    },
+    "matchMode": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkMatchMode",
+      "type": "string",
+      "enum": [
+        "EXACT",
+        "CONTAINS"
+      ]
+    },
+    "findReplace": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkFindReplace",
+      "type": "object",
+      "properties": {
+        "field": {
+          "$ref": "#/definitions/matchField"
+        },
+        "matchMode": {
+          "$ref": "#/definitions/matchMode"
+        },
+        "find": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "replacement": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "caseSensitive": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "field",
+        "matchMode",
+        "find",
+        "replacement",
+        "caseSensitive"
+      ],
+      "additionalProperties": false
+    },
+    "retype": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyBulkRetypeRelationships",
+      "type": "object",
+      "properties": {
+        "fromRelationshipTypeId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "toRelationshipTypeId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "termIds": {
+          "description": "Optional bounded term scope. Omit to inspect every term in the glossary.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/uuid"
+          },
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "fromRelationshipTypeId",
+        "toRelationshipTypeId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "glossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "operation": {
+      "$ref": "#/definitions/operation"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "default": true
+    },
+    "csv": {
+      "description": "UTF-8 CSV payload for CSV_UPSERT.",
+      "type": "string",
+      "maxLength": 20971520
+    },
+    "findReplace": {
+      "$ref": "#/definitions/findReplace"
+    },
+    "retype": {
+      "$ref": "#/definitions/retype"
+    },
+    "changeSetName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "changeSetDisplayName": {
+      "type": "string"
+    },
+    "changeSetDescription": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    }
+  },
+  "required": [
+    "glossaryId",
+    "operation",
+    "dryRun",
+    "changeSetName",
+    "changeSetDescription"
+  ],
+  "additionalProperties": false
+}

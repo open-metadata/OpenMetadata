@@ -13,42 +13,42 @@
 Databricks Source Model module
 """
 
-from typing import List, Optional, Union  # noqa: UP035
+from typing import Union
 
 from pydantic import BaseModel
 
 
 class DatabricksTable(BaseModel):
-    name: Optional[str] = None  # noqa: UP045
-    catalog_name: Optional[str] = None  # noqa: UP045
-    schema_name: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    catalog_name: str | None = None
+    schema_name: str | None = None
 
 
 class ForeignConstrains(BaseModel):
-    child_columns: Optional[List[str]] = []  # noqa: UP006, UP045
-    parent_columns: Optional[List[str]] = []  # noqa: UP006, UP045
+    child_columns: list[str] | None = []
+    parent_columns: list[str] | None = []
     parent_table: str
 
 
 class Metadata(BaseModel):
-    comment: Optional[str] = None  # noqa: UP045
+    comment: str | None = None
 
 
 class ColumnJson(BaseModel):
-    name: Optional[str] = None  # noqa: UP045
-    type: Optional[Union["Type", str]] = None  # noqa: UP045
-    metadata: Optional[Metadata] = None  # noqa: UP045
+    name: str | None = None
+    type: Union["Type", str] | None = None
+    metadata: Metadata | None = None
 
 
 class ElementType(BaseModel):
-    type: Optional[str] = None  # noqa: UP045
-    fields: Optional[List[ColumnJson]] = None  # noqa: UP006, UP045
+    type: str | None = None
+    fields: list[ColumnJson] | None = None
 
 
 class Type(BaseModel):
-    type: Optional[str] = None  # noqa: UP045
-    elementType: Optional[Union[ElementType, str]] = None  # noqa: N815, UP007, UP045
-    fields: Optional[List[ColumnJson]] = None  # noqa: UP006, UP045
+    type: str | None = None
+    elementType: ElementType | str | None = None  # noqa: N815
+    fields: list[ColumnJson] | None = None
 
 
 ColumnJson.model_rebuild()

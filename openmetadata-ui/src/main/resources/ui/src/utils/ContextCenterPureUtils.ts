@@ -43,6 +43,14 @@ export const CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK = EntityLink.getEntityLink(
   CONTEXT_CENTER_DOCUMENTS_FQN
 );
 
+export const getContextCenterHeaderPresentation = (isAiMode: boolean) => ({
+  // OSS does not override the extension hooks, so AI mode itself must opt into
+  // the same embedded header treatment used by downstream applications.
+  breadcrumbInsideCard:
+    isAiMode || contextCenterClassBase.isBreadcrumbInsideCard(),
+  isEmbedded: isAiMode || contextCenterClassBase.isEmbeddedMode(),
+});
+
 export const formatBytes = (bytes?: number): string => {
   if (isUndefined(bytes) || isNull(bytes)) {
     return '';
@@ -78,21 +86,25 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): KnowledgePageArticleItem => ({
-  description: data.description ?? '',
-  href:
-    data.pageType === PageType.QUICK_LINK
-      ? (data.page as QuickLink)?.url
-      : data.fullyQualifiedName
-      ? contextCenterClassBase.getArticlePath(data.fullyQualifiedName)
-      : undefined,
-  id: data.id,
-  lastEditedAt: data.updatedAt,
-  tags: (data.tags ?? []).map((tag) => ({
-    label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
-  })),
-  title: getEntityName(data) || untitledLabel,
-});
+): KnowledgePageArticleItem => {
+  let href: string | undefined;
+  if (data.pageType === PageType.QUICK_LINK) {
+    href = (data.page as QuickLink)?.url;
+  } else if (data.fullyQualifiedName) {
+    href = contextCenterClassBase.getArticlePath(data.fullyQualifiedName);
+  }
+
+  return {
+    description: data.description ?? '',
+    href,
+    id: data.id,
+    lastEditedAt: data.updatedAt,
+    tags: (data.tags ?? []).map((tag) => ({
+      label: tag.tagFQN.split('.').pop() ?? tag.tagFQN,
+    })),
+    title: getEntityName(data) || untitledLabel,
+  };
+};
 
 export const fetchContextCenterDocuments = async (
   params?: ListParams

@@ -996,6 +996,12 @@ export interface Pipeline {
  *
  * Regex to exclude or include data models (Omni topics) that matches the pattern.
  *
+ * Regex to only include or exclude matching databases.
+ *
+ * Regex to only include or exclude matching schemas.
+ *
+ * Regex to only include or exclude matching tables.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -1068,6 +1074,10 @@ export interface FilterPattern {
  *
  * Cache Warmup Application Configuration.
  *
+ * RDF indexing application configuration.
+ *
+ * Scheduled RDF inference materialization configuration.
+ *
  * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
@@ -1122,6 +1132,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events sent in a batch (Default 100).
      *
      * Number of entities to process in each batch.
+     *
+     * Maximum number of entities processed in a batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -1147,12 +1159,16 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
      *
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     *
+     * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: string[];
     /**
@@ -1187,6 +1203,9 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
+     *
+     * Number of entities per partition for distributed RDF indexing. Smaller values create more
+     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -1195,10 +1214,14 @@ export interface CollateAIAppConfig {
     payLoadSize?: number;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of producer threads to use for non-distributed RDF reindexing
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -1224,6 +1247,8 @@ export interface CollateAIAppConfig {
     enableDistributedClaim?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
+     *
+     * Materialize every enabled rule even when its durable dirty flag is clear.
      */
     force?: boolean;
     /**
@@ -1237,6 +1262,38 @@ export interface CollateAIAppConfig {
      * warmup, so enable it only when first-read relationship latency matters.
      */
     warmRelationships?: boolean;
+    /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
+     * Recreate the RDF store before indexing.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
+    /**
+     * Enable distributed RDF indexing across multiple servers with partition coordination and
+     * recovery.
+     */
+    useDistributedIndexing?: boolean;
+    /**
+     * Optional rule name for an on-demand single-rule run.
+     */
+    ruleName?: string;
     /**
      * Enter the retention period for comments on Activity Events in days. Use 0 to retain
      * activity comments forever.
@@ -1272,6 +1329,12 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
     /**
      * Whether the AutoPilot Workflow should be active or not.
      */
@@ -2182,6 +2245,7 @@ export enum CollateAIAppConfigType {
     CollateAI = "CollateAI",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    RDFIndexing = "RdfIndexing",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -3258,6 +3322,8 @@ export interface ServiceConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Omni BI connector: models, topics, workbooks/dashboards and lineage
@@ -3271,6 +3337,8 @@ export interface ServiceConnection {
  * Azure SQL Connection Config
  *
  * Clickhouse Connection Config
+ *
+ * ClickZetta Database Connection Config
  *
  * Databricks Connection Config
  *
@@ -3376,6 +3444,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * Salesforce Data 360 (formerly DataCloud) Connection Config
+ *
  * SAP BW/4HANA Database Connection Config
  *
  * Kafka Connection Config
@@ -3451,6 +3521,8 @@ export interface ServiceConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
@@ -3533,6 +3605,9 @@ export interface Connection {
     sslConfig?: SSLConfigObject;
     /**
      * Supports Metadata Extraction.
+     *
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
      */
     supportsMetadataExtraction?: boolean;
     /**
@@ -3541,6 +3616,8 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
      *
      * API token to authenticate with Omni.
      *
@@ -3581,6 +3658,8 @@ export interface Connection {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -3640,6 +3719,13 @@ export interface Connection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional URL for human-facing Looker links when the API URL differs from the browser
+     * URL.
+     *
+     * Qlik Sense Base URL, used for genrating dashboard & chat url
+     */
+    displayUrl?: string;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
@@ -3679,6 +3765,8 @@ export interface Connection {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
@@ -3689,6 +3777,8 @@ export interface Connection {
      * Host and port of the AzureSQL service.
      *
      * Host and port of the Clickhouse service.
+     *
+     * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
      *
@@ -3913,6 +4003,8 @@ export interface Connection {
      * Username to connect to Clickhouse. This user should have privileges to read all the
      * metadata in Clickhouse.
      *
+     * Username to connect to ClickZetta.
+     *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
      *
@@ -4115,6 +4207,8 @@ export interface Connection {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * Choose the ClickZetta authentication configuration.
+     *
      * Choose between different authentication types for Databricks.
      *
      * Choose Auth Config Type.
@@ -4141,7 +4235,13 @@ export interface Connection {
      *
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-100
+     *
      * Pagination limit used for Alation APIs pagination
+     *
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
      */
     paginationLimit?: number;
     /**
@@ -4207,10 +4307,6 @@ export interface Connection {
      */
     namespace?:    string;
     certificates?: QlikCertificatesBy;
-    /**
-     * Qlik Sense Base URL, used for genrating dashboard & chat url
-     */
-    displayUrl?: string;
     /**
      * User Directory.
      */
@@ -4308,6 +4404,8 @@ export interface Connection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
+     * Regex to only include or exclude matching databases.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -4319,6 +4417,8 @@ export interface Connection {
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to only include or exclude matching schemas.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -4360,6 +4460,8 @@ export interface Connection {
     /**
      * Regex to only include/exclude tables that matches the pattern.
      *
+     * Regex to only include or exclude matching tables.
+     *
      * Regex to include/exclude FHIR resource types
      *
      * Regex to only include/exclude tables that match the pattern.
@@ -4393,6 +4495,8 @@ export interface Connection {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * ClickZetta workspace to ingest.
      *
      * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
      * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
@@ -4487,6 +4591,8 @@ export interface Connection {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      *
+     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -4515,6 +4621,31 @@ export interface Connection {
      * Establish secure connection with clickhouse
      */
     secure?: boolean;
+    /**
+     * Protocol used to connect to ClickZetta.
+     *
+     * Protocol ( Connection Argument ) to connect to Presto.
+     */
+    protocol?: string;
+    /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
+     * ClickZetta virtual cluster used for metadata extraction.
+     */
+    virtualCluster?: string;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -4546,14 +4677,6 @@ export interface Connection {
      * Policy agent configuration for access control extraction.
      */
     policyAgentConfig?: PolicyAgentConfig;
-    /**
-     * Table name to fetch the query history.
-     *
-     * Table name to fetch the query history. When set, this overrides the default
-     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
-     * must expose columns compatible with the selected log path.
-     */
-    queryHistoryTable?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -4619,6 +4742,11 @@ export interface Connection {
      */
     encrypt?: boolean;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Trust the server certificate without validation. Set to false in production to validate
      * server certificates against the certificate authority.
      */
@@ -4674,10 +4802,6 @@ export interface Connection {
      */
     queryStatementSource?: string;
     /**
-     * Protocol ( Connection Argument ) to connect to Presto.
-     */
-    protocol?: string;
-    /**
      * Verify ( Connection Argument for SSL ) to connect to Presto.
      *
      * Verify ( Connection Argument for SSL ) to connect to Trino.
@@ -4702,12 +4826,16 @@ export interface Connection {
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
+     *
+     * Consumer key provided when you setup your Salesforce connected app
      */
     consumerKey?: string;
     /**
      * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
      * from your Salesforce Connected App configuration. Required along with Consumer Key for
      * OAuth authentication.
+     *
+     * Consumer secret provided when you setup your Salesforce connected app
      */
     consumerSecret?: string;
     /**
@@ -5417,6 +5545,22 @@ export interface Connection {
      */
     workspaceId?: string;
     /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?: string;
+    /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
@@ -5660,6 +5804,12 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * Common Database Connection Config
+ *
+ * Choose the ClickZetta authentication configuration.
+ *
+ * Choose Auth Config Type.
+ *
  * Choose between different authentication types for Databricks.
  *
  * Personal Access Token authentication for Databricks.
@@ -5669,10 +5819,6 @@ export enum AuthProvider {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
- *
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
  *
  * IAM Auth Database Connection Config
  *
@@ -7088,6 +7234,11 @@ export interface DatabaseConnectionClass {
      */
     hostPort?: string;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
@@ -7617,12 +7768,15 @@ export enum AirflowConnectionScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
     Druid = "druid",
+    DruidHTTP = "druid+http",
+    DruidHTTPS = "druid+https",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -7706,15 +7860,18 @@ export interface MCPServerConfig {
      */
     apiKey?: string;
     /**
-     * Arguments to pass to the command
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     args?: string[];
     /**
-     * Command to execute for Stdio transport (e.g., 'npx', 'uvx', 'python')
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     command?: string;
     /**
-     * Environment variables for the server process
+     * Deprecated: Stdio transport has been removed; run the server over HTTP and set 'url'
+     * instead.
      */
     env?: { [key: string]: string };
     /**
@@ -7979,6 +8136,7 @@ export enum AirflowConnectionType {
     BurstIQ = "BurstIQ",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Clickzetta = "Clickzetta",
     Cockroach = "Cockroach",
     Collibra = "Collibra",
     Couchbase = "Couchbase",
@@ -7992,6 +8150,8 @@ export enum AirflowConnectionType {
     CustomStorage = "CustomStorage",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360 = "Data360",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
@@ -8065,6 +8225,7 @@ export enum AirflowConnectionType {
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",

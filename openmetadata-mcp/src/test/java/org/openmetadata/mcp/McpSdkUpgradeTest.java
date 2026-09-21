@@ -129,12 +129,14 @@ public class McpSdkUpgradeTest {
 
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getHeader("Authorization")).thenReturn("Bearer my-jwt-token");
+    when(mockRequest.getHeader("X-OpenMetadata-Persona")).thenReturn("Data Steward");
 
     McpTransportContext context = extractor.extract(mockRequest);
 
     assertThat(context).isNotNull();
     // JwtFilter.extractToken strips "Bearer " prefix
     assertThat(context.get("Authorization")).isEqualTo("my-jwt-token");
+    assertThat(context.get("X-OpenMetadata-Persona")).isEqualTo("Data Steward");
   }
 
   @Test
@@ -191,6 +193,25 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void searchToolsAdvertiseTheExplicitPersonaScopeBypass() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .filteredOn(tool -> List.of("search_metadata", "semantic_search").contains(tool.name()))
+        .hasSize(2)
+        .allSatisfy(
+            tool -> {
+              Object schema = tool.inputSchema().properties().get("ignorePersonaScope");
+              assertThat(schema).isInstanceOf(Map.class);
+              Map<?, ?> property = (Map<?, ?>) schema;
+              assertThat(property.get("type")).isEqualTo("boolean");
+              assertThat(property.get("default")).isEqualTo(false);
+              assertThat(property.get("description").toString())
+                  .contains("after the scoped search returns no results");
+            });
+  }
+
+  @Test
   void testMcpUtilsGetToolPropertiesMarksPatchEntityAsDestructive() {
     List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
 
@@ -227,8 +248,7 @@ public class McpSdkUpgradeTest {
     }
   }
 
-  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
-      List.of("create_entity", "create_test_case");
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS = List.of("create_test_case");
 
   @Test
   void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {

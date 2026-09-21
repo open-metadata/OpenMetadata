@@ -13,10 +13,9 @@ Base class for ingesting security services
 """
 
 from abc import ABC
-from typing import Set  # noqa: UP035
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.securityService import (
     SecurityConnection,
@@ -90,7 +89,7 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = SecurityServiceTopology()
     context = TopologyContextManager(topology)
-    security_source_state: Set = set()  # noqa: RUF012, UP006
+    security_source_state: set = set()  # noqa: RUF012
 
     def __init__(
         self,

@@ -18,13 +18,11 @@ import {
 } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
-import {
-  DataAssetFiltersSection,
-  DataAssetFormSection,
-  EventTriggerFilterSection,
-  MetadataFormSection,
-  TriggerConfigSection,
-} from './';
+import { DataAssetFiltersSection } from './DataAssetFiltersSection';
+import { DataAssetFormSection } from './DataAssetFormSection';
+import { EventTriggerFilterSection } from './EventTriggerFilterSection';
+import { MetadataFormSection } from './MetadataFormSection';
+import { TriggerConfigSection } from './TriggerConfigSection';
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;

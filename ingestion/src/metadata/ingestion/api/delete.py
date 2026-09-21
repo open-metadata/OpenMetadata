@@ -13,7 +13,7 @@ Delete methods
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Set, Type  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.config.settings import ingestion_settings
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -35,7 +35,7 @@ def _default_dispatch_async() -> bool:
     return ingestion_settings.delete_async
 
 
-def _scope_params_as_fqn(params: Optional[Dict[str, str]]) -> Optional[Dict[str, str]]:  # noqa: UP006, UP045
+def _scope_params_as_fqn(params: dict[str, str] | None) -> dict[str, str] | None:
     """
     Return ``params`` with the service scope expressed as an FQN instead of a raw name.
 
@@ -61,11 +61,11 @@ def _scope_params_as_fqn(params: Optional[Dict[str, str]]) -> Optional[Dict[str,
 
 def delete_entity_from_source(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_source_state: Set[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_source_state: set[str],
     recursive: bool = True,
-    params: Optional[Dict[str, str]] = None,  # noqa: UP006, UP045
-    dispatch_async: Optional[bool] = None,  # noqa: UP045
+    params: dict[str, str] | None = None,
+    dispatch_async: bool | None = None,
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Soft-delete the entities of ``entity_type`` within ``params`` scope that were not seen in
@@ -126,10 +126,10 @@ def delete_entity_from_source(
 
 def _delete_stale_entities_legacy(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_source_state: Set[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_source_state: set[str],
     recursive: bool,
-    params: Optional[Dict[str, str]],  # noqa: UP006, UP045
+    params: dict[str, str] | None,
     dispatch_async: bool,
 ) -> Iterable[Either[DeleteEntity]]:
     """Legacy client-side stale detection: paginate the scope and diff FQNs locally."""
@@ -148,10 +148,10 @@ def _delete_stale_entities_legacy(
 
 def delete_entity_by_name(
     metadata: OpenMetadata,
-    entity_type: Type[T],  # noqa: UP006
-    entity_names: List[str],  # noqa: UP006
+    entity_type: type[T],
+    entity_names: list[str],
     recursive: bool = True,
-    dispatch_async: Optional[bool] = None,  # noqa: UP045
+    dispatch_async: bool | None = None,
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Method to delete the entities contained on a given list

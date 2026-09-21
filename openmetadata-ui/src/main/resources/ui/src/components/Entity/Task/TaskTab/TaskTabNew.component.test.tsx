@@ -303,13 +303,14 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+const mockFetchUpdatedThread = jest.fn().mockResolvedValue({});
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn().mockResolvedValue({}),
       updateTask: jest.fn(),
-      fetchUpdatedThread: jest.fn().mockResolvedValue({}),
+      fetchUpdatedThread: mockFetchUpdatedThread,
       updateTestCaseIncidentStatus: jest.fn(),
       testCaseResolutionStatus: [],
       isPostsLoading: false,
@@ -317,11 +318,19 @@ jest.mock(
   })
 );
 
+const mockShowErrorToast = jest.fn();
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+}));
+
 jest.mock('../../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../../rest/tasksAPI'),
   resolveTask: jest.fn().mockResolvedValue({}),
   closeTask: jest.fn().mockResolvedValue({}),
   patchTask: jest.fn().mockResolvedValue({}),
+  editTaskComment: jest.fn().mockResolvedValue({}),
+  deleteTaskComment: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../rest/userAPI', () => ({
@@ -404,8 +413,9 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <p>ProfilePicture</p>);
 });
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('../../../common/IconButtons/EditIconButton', () => ({
@@ -423,10 +433,15 @@ jest.mock(
   }
 );
 
+const mockCommentCardProps: Record<string, unknown>[] = [];
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component',
+  '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component',
   () => {
-    return jest.fn().mockImplementation(() => <p>TaskCommentCard</p>);
+    return jest.fn().mockImplementation((props) => {
+      mockCommentCardProps.push(props);
+
+      return <p>CommentCard</p>;
+    });
   }
 );
 
@@ -452,6 +467,7 @@ const mockProps = {
 describe('TaskTabNew Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCommentCardProps.length = 0;
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
       useApplicationStore,
@@ -1267,6 +1283,152 @@ describe('TaskTabNew Component', () => {
           reviewNotes: 'Needs final verification',
         },
       });
+    });
+  });
+
+  describe('task comments', () => {
+    // The card re-renders, so assert against the props it was last handed rather
+    // than a render count.
+    const lastCommentCardProps = () =>
+      mockCommentCardProps[mockCommentCardProps.length - 1];
+
+    const MOCK_TASK_WITH_COMMENT: Task = {
+      ...MOCK_TASK,
+      comments: [
+        {
+          id: 'comment-1',
+          message: 'A comment on the incident',
+          createdAt: 1735732800000,
+          author: { id: 'user-1', type: 'user', name: 'alice' },
+        },
+      ],
+    };
+
+    const renderWithComment = async () => {
+      await act(async () => {
+        render(<TaskTabNew {...mockProps} task={MOCK_TASK_WITH_COMMENT} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+    };
+
+    it('should pass the comment through to the card', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({
+          reply: expect.objectContaining({
+            author: expect.objectContaining({ name: 'alice' }),
+            createdAt: 1735732800000,
+            message: 'A comment on the incident',
+          }),
+        })
+      );
+    });
+
+    it('should deny edit and delete to a non-author, non-admin user', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: false, canEdit: false })
+      );
+    });
+
+    it('should let an admin delete but not edit someone elses comment', async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockReturnValue({
+        currentUser: {
+          id: 'admin-id',
+          name: 'an-admin',
+          isAdmin: true,
+          teams: [],
+        },
+      });
+
+      await renderWithComment();
+
+      expect(lastCommentCardProps()).toEqual(
+        expect.objectContaining({ canDelete: true, canEdit: false })
+      );
+    });
+
+    it('should omit onReaction so the card hides its reactions footer', async () => {
+      await renderWithComment();
+
+      expect(lastCommentCardProps().onReaction).toBeUndefined();
+    });
+
+    it('should delete the comment and refetch the thread', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        await (lastCommentCardProps().onDelete as () => Promise<void>)();
+      });
+
+      expect(deleteTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1'
+      );
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
+    });
+
+    it('should toast and rethrow when deleting the comment fails', async () => {
+      const { deleteTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      deleteTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      // Rethrown on purpose: the card keeps its confirmation open only if the
+      // callback it awaited actually rejects.
+      await expect(
+        (lastCommentCardProps().onDelete as () => Promise<void>)()
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
+    });
+
+    it('should toast and rethrow when editing the comment fails', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      const failure = new Error('nope');
+      editTaskComment.mockRejectedValueOnce(failure);
+      await renderWithComment();
+
+      await expect(
+        (lastCommentCardProps().onEdit as (m: string) => Promise<void>)('x')
+      ).rejects.toThrow('nope');
+
+      expect(mockShowErrorToast).toHaveBeenCalledWith(failure);
+    });
+
+    it('should edit the comment and refetch the thread', async () => {
+      const { editTaskComment } = require('../../../../rest/tasksAPI');
+      await renderWithComment();
+
+      mockFetchUpdatedThread.mockClear();
+
+      await act(async () => {
+        await (
+          lastCommentCardProps().onEdit as (message: string) => Promise<void>
+        )('an edited comment');
+      });
+
+      expect(editTaskComment).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        'comment-1',
+        'an edited comment'
+      );
+      expect(mockFetchUpdatedThread).toHaveBeenCalledWith(
+        MOCK_TASK_WITH_COMMENT.id,
+        true
+      );
     });
   });
 });

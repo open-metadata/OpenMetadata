@@ -29,6 +29,45 @@ import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModa
 import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
+type TFunc = ReturnType<typeof useTranslation>['t'];
+
+const getRunFieldValues = <T extends PipelineStatus | AppRunRecord>(
+  run: T
+) => ({
+  pipelineState:
+    (run as PipelineStatus)?.pipelineState ?? (run as AppRunRecord)?.status,
+  runId: (run as PipelineStatus)?.runId ?? (run as AppRunRecord)?.appId,
+  startDate:
+    (run as PipelineStatus)?.startDate ?? (run as AppRunRecord)?.startTime,
+  endDate: (run as PipelineStatus)?.endDate ?? (run as AppRunRecord)?.endTime,
+});
+
+const getRunTooltipContent = (
+  timestamp: number | undefined,
+  startDate: number | undefined,
+  endDate: number | undefined,
+  t: TFunc
+): JSX.Element => (
+  <div className="text-left">
+    {timestamp && (
+      <p>
+        {`${t('label.execution-date')}:`} {formatDateTimeLong(timestamp)}
+      </p>
+    )}
+    {startDate && (
+      <p>
+        {t('label.start-entity', { entity: t('label.date') })}:{' '}
+        {formatDateTimeLong(startDate)}
+      </p>
+    )}
+    {endDate && (
+      <p>
+        {`${t('label.end-date')}:`} {formatDateTimeLong(endDate)}
+      </p>
+    )}
+  </div>
+);
+
 export const IngestionRecentRuns = <
   T extends PipelineStatus | AppRunRecord,
   U extends IngestionPipeline | App
@@ -115,14 +154,8 @@ export const IngestionRecentRuns = <
         </Typography.Text>
       ) : (
         recentRunStatus.map((r, i) => {
-          const pipelineState =
-            (r as PipelineStatus)?.pipelineState ?? (r as AppRunRecord)?.status;
-          const runId =
-            (r as PipelineStatus)?.runId ?? (r as AppRunRecord)?.appId;
-          const startDate =
-            (r as PipelineStatus)?.startDate ?? (r as AppRunRecord)?.startTime;
-          const endDate =
-            (r as PipelineStatus)?.endDate ?? (r as AppRunRecord)?.endTime;
+          const { pipelineState, runId, startDate, endDate } =
+            getRunFieldValues(r);
 
           const status = (
             <Tag
@@ -147,27 +180,7 @@ export const IngestionRecentRuns = <
 
           return showTooltip ? (
             <Popover
-              content={
-                <div className="text-left">
-                  {r.timestamp && (
-                    <p>
-                      {`${t('label.execution-date')}:`}{' '}
-                      {formatDateTimeLong(r.timestamp)}
-                    </p>
-                  )}
-                  {startDate && (
-                    <p>
-                      {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {formatDateTimeLong(startDate)}
-                    </p>
-                  )}
-                  {endDate && (
-                    <p>
-                      {`${t('label.end-date')}:`} {formatDateTimeLong(endDate)}
-                    </p>
-                  )}
-                </div>
-              }
+              content={getRunTooltipContent(r.timestamp, startDate, endDate, t)}
               key={`${runId}-timestamp`}>
               {status}
             </Popover>

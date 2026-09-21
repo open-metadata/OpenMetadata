@@ -1,7 +1,5 @@
 """Trino spec for data diff"""
 
-from typing import Optional, Union
-
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
     BaseTableParameter,
 )
@@ -24,8 +22,8 @@ class TrinoTableParameter(BaseTableParameter):
         self,
         db_service: DatabaseService,
         table_fqn: str,
-        override_url: Optional[Union[str, dict]] = None,  # noqa: UP007, UP045
-    ) -> Union[str, dict]:  # noqa: UP007
+        override_url: str | dict | None = None,
+    ) -> str | dict:
         source_url = super().get_data_diff_url(db_service, table_fqn, override_url)
         if isinstance(source_url, dict):
             # Work on a copy to avoid mutating a dict that might be reused

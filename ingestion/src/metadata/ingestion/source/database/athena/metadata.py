@@ -11,19 +11,15 @@
 
 """Athena source module"""
 
-import hashlib
-import re
 import traceback
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.api.data.createCustomProperty import (
-    CreateCustomPropertyRequest,
-)
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -42,13 +38,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.custom_properties import (
-    CustomPropertyDataTypes,
-    OMetaCustomProperties,
-)
+from metadata.ingestion.models.lf_tags_model import TagItem
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
@@ -62,6 +54,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
+)
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -69,7 +64,6 @@ from metadata.ingestion.source.database.glue.models import DatabasePage
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
@@ -85,9 +79,6 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
-PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_.\-]")
-PROPERTY_NAME_REPLACEMENT = "__"
-PROPERTY_NAME_MAX_LENGTH = 256
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -100,14 +91,14 @@ ATHENA_INTERVAL_TYPE_MAP = {
 }
 
 
-class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
+class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Athena Source
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
@@ -124,8 +115,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
-        self._processed_prop: set[str] = set()
-        self._string_property_type_ref = None
+        self._init_custom_properties()
 
     def prepare(self):
         """
@@ -146,13 +136,9 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         except Exception as exc:
             logger.warning(f"Error preparing Athena source: {exc}")
             logger.debug(traceback.format_exc())
-        try:
-            self._string_property_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
-        except Exception as exc:
-            logger.warning(f"Failed to fetch string property type ref: {exc}")
-            logger.debug(traceback.format_exc())
+        self._load_string_property_type_ref()
 
-    def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -182,7 +168,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         """Get Athena table partition detail
 
         Args:
@@ -218,11 +204,33 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
         return self.external_location_map.get((self.context.get().database, schema_name, table_name))
+
+    def _register_lf_tag(self, entity_fqn: str, tag: TagItem) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register each LF-tag value and attach it to the source entity."""
+        for value in tag.TagValues:
+            try:
+                definition = self.define_tag(
+                    classification_name=tag.TagKey,
+                    tag_name=value,
+                    classification_description=ATHENA_TAG_CLASSIFICATION,
+                    tag_description=ATHENA_TAG,
+                )
+                if definition:
+                    self.attach_tag(entity_fqn=entity_fqn, tag=definition)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=value,
+                        error=f"Error yielding tag [{value}]: [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -232,18 +240,18 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 tags = self.athena_lake_formation_client.get_database_tags(name=schema_name)
                 for tag in tags or []:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            DatabaseSchema,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
+                    yield from self._register_lf_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                DatabaseSchema,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=schema_name,
+                            ),
                         ),
-                        tags=tag.TagValues,
-                        classification_name=tag.TagKey,
-                        tag_description=ATHENA_TAG,
-                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                        tag=tag,
                     )
             except Exception as exc:
                 yield Either(
@@ -256,7 +264,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Method to yield table and column tags
@@ -265,44 +273,45 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             try:
                 table_name, _ = table_name_and_type
                 table_tags = self.athena_lake_formation_client.get_table_and_column_tags(
-                    schema_name=self.context.get().database_schema,
+                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name=table_name,
                 )
 
                 # yield the table tags
                 for tag in table_tags.LFTagsOnTable or []:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Table,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                            table_name=table_name,
+                    yield from self._register_lf_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                Table,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                table_name=table_name,
+                                skip_es_search=True,
+                            ),
                         ),
-                        tags=tag.TagValues,
-                        classification_name=tag.TagKey,
-                        tag_description=ATHENA_TAG,
-                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                        tag=tag,
                     )
 
                 # yield the column tags
                 for column in table_tags.LFTagsOnColumns or []:
                     for tag in column.LFTags or []:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=fqn.build(
-                                self.metadata,
-                                Column,
-                                service_name=self.context.get().database_service,
-                                database_name=self.context.get().database,
-                                schema_name=self.context.get().database_schema,
-                                table_name=table_name,
-                                column_name=column.Name,
+                        yield from self._register_lf_tag(
+                            entity_fqn=cast(
+                                "str",
+                                fqn.build(
+                                    self.metadata,
+                                    Column,
+                                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                    table_name=table_name,
+                                    column_name=column.Name,
+                                ),
                             ),
-                            tags=tag.TagValues,
-                            classification_name=tag.TagKey,
-                            tag_description=ATHENA_TAG,
-                            classification_description=ATHENA_TAG_CLASSIFICATION,
+                            tag=tag,
                         )
             except Exception as exc:
                 yield Either(
@@ -352,46 +361,17 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
 
     def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:
-        if not getattr(self.source_config, "includeCustomProperties", False):
+        if not self.custom_properties_enabled:
             return None
         if not self._string_property_type_ref:
             return None
         if table_type != TableType.Iceberg:
             return None
         schema_name: str = getattr(self.context.get(), "database_schema", "")
-        tbl_properties = self._fetch_iceberg_properties(schema_name, table_name)
-        if not tbl_properties:
-            return None
-        registered_properties = {}
-        for prop_name, prop_value in tbl_properties.items():
-            if not prop_value:
-                continue
-            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
-            if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
-                sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
-            if sanitized_name not in self._processed_prop:
-                try:
-                    self.metadata.create_or_update_custom_property(  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
-                        OMetaCustomProperties(
-                            entity_type=Table,
-                            createCustomPropertyRequest=CreateCustomPropertyRequest(
-                                name=EntityName(sanitized_name),
-                                displayName=prop_name,
-                                description=Markdown(prop_name),
-                                propertyType=self._string_property_type_ref,
-                                customPropertyConfig=None,
-                            ),
-                        )
-                    )
-                    self._processed_prop.add(sanitized_name)
-                except Exception as exc:
-                    logger.warning(
-                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-                    continue
-            registered_properties[sanitized_name] = prop_value
-        return registered_properties or None
+        return self.build_entity_extension(
+            self._fetch_iceberg_properties(schema_name, table_name),
+            source_label="Athena table properties",
+        )
 
     def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> dict[str, str]:
         """Read Iceberg native properties from Athena's `<table>$properties` metatable."""

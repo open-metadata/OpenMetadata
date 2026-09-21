@@ -1,6 +1,5 @@
 import json
 import uuid
-from typing import List  # noqa: UP035
 from unittest.mock import create_autospec
 
 import pytest
@@ -158,13 +157,13 @@ def setter(
 
 
 @pytest.fixture
-def parameter_values() -> List[TestCaseParameterValue]:  # noqa: UP006
+def parameter_values() -> list[TestCaseParameterValue]:
     return [TestCaseParameterValue(name="table2", value="TestService2.test_db.test_schema.table2")]
 
 
 def test_setter_gets_default_key_columns(
     setter: TableDiffParamsSetter,
-    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
+    parameter_values: list[TestCaseParameterValue],
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
@@ -189,7 +188,7 @@ def test_setter_gets_default_key_columns(
 
 def test_setter_gets_per_table_key_columns(
     setter: TableDiffParamsSetter,
-    parameter_values: List[TestCaseParameterValue],  # noqa: UP006
+    parameter_values: list[TestCaseParameterValue],
 ) -> None:
     test_case = TestCase.model_construct(
         parameterValues=[
@@ -262,7 +261,7 @@ class TestForSnowflake:
     def test_setter_gets_parameters_for_snowflake(
         self,
         setter: TableDiffParamsSetter,
-        parameter_values: List[TestCaseParameterValue],  # noqa: UP006
+        parameter_values: list[TestCaseParameterValue],
     ) -> None:
         test_case = TestCase.model_construct(
             parameterValues=[

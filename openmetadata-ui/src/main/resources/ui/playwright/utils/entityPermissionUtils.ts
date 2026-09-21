@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { Browser, expect, Page } from '@playwright/test';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -84,7 +84,12 @@ const checkElementVisibility = async (
       }
 
       case 'multiple-containers': {
-        // Handle elements that exist in multiple containers
+        // Handle elements that exist in multiple containers. A container
+        // testId (e.g. tags-container) can be rendered once per row/column
+        // (e.g. Container entities' data model table), so resolve each
+        // locator to its full list of matched buttons via `.all()` instead
+        // of calling `.isVisible()` directly on a locator that may match
+        // more than one element (which throws a strict-mode violation).
         const containerLocators =
           config.containers?.map((container) =>
             testUserPage
@@ -92,11 +97,15 @@ const checkElementVisibility = async (
               .locator(`button[data-testid="${testId}"]`)
           ) || [];
 
-        const containerVisibilityChecks = await Promise.all(
-          containerLocators.map((locator) => locator.isVisible())
+        const containerButtons = await Promise.all(
+          containerLocators.map((locator) => locator.all())
         );
 
-        // In allow case: any one of the containers should have the element visible
+        const containerVisibilityChecks = await Promise.all(
+          containerButtons.flat().map((button) => button.isVisible())
+        );
+
+        // In allow case: any one of the matched buttons should be visible
         expect(
           containerVisibilityChecks.some((visible) => visible)
         ).toBeTruthy();
@@ -142,7 +151,11 @@ const checkElementVisibility = async (
       }
 
       case 'multiple-containers': {
-        // Handle elements that exist in multiple containers for deny case
+        // Handle elements that exist in multiple containers for deny case.
+        // Resolve each locator to its full list of matched buttons via
+        // `.all()` — see the allow-case comment above for why `.isVisible()`
+        // cannot be called directly on a locator that may match more than
+        // one element.
         const containerLocators =
           config.containers?.map((container) =>
             testUserPage
@@ -150,11 +163,15 @@ const checkElementVisibility = async (
               .locator(`button[data-testid="${testId}"]`)
           ) || [];
 
-        const containerVisibilityChecks = await Promise.all(
-          containerLocators.map((locator) => locator.isVisible())
+        const containerButtons = await Promise.all(
+          containerLocators.map((locator) => locator.all())
         );
 
-        // In deny case: none of the containers should have the element visible
+        const containerVisibilityChecks = await Promise.all(
+          containerButtons.flat().map((button) => button.isVisible())
+        );
+
+        // In deny case: none of the matched buttons should be visible
         expect(
           containerVisibilityChecks.every((visible) => !visible)
         ).toBeTruthy();
@@ -676,7 +693,7 @@ export const serviceEntityConfig = {
 
 // Function to create custom properties for different entity types
 export const createCustomPropertyForEntity = async (
-  browser: any,
+  browser: Browser,
   entityType: string,
   customPropertyName: string,
   adminUser: UserClass

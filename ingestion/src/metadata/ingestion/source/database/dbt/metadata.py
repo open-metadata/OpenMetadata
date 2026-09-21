@@ -17,9 +17,10 @@ DBT source methods.
 import contextlib
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -44,6 +45,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -166,6 +168,7 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        self.extracted_data_products = {}
         # Upstream nodes already reported as unresolved, so a dbt project whose source
         # database was never ingested reports each missing upstream once instead of once
         # per referencing model. Bounded by the number of distinct upstream nodes in the
@@ -174,7 +177,7 @@ class DbtSource(DbtServiceSource):
         self._load_omd_custom_properties()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -205,7 +208,7 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:
             logger.warning(f"Error loading custom properties: {exc}")
 
-    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:  # noqa: UP045
+    def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
         """
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
@@ -232,7 +235,7 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:  # noqa: C901, UP045
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Any | None) -> EntityReferenceList | None:  # noqa: C901
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -354,7 +357,7 @@ class DbtSource(DbtServiceSource):
                     else:
                         logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
 
-    def filter_tags(self, tags: List[str]) -> List[str]:  # noqa: UP006
+    def filter_tags(self, tags: list[str]) -> list[str]:
         """
         Filter tags based on tag filter pattern if configured
         """
@@ -409,6 +412,52 @@ class DbtSource(DbtServiceSource):
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Attach the table to every Data Product listed in
+        meta.openmetadata.dataProducts. Products are resolved through the
+        OpenMetadata API; unknown products are reported as warnings and never
+        created implicitly. Re-running is idempotent because the assets/add
+        endpoint only adds the relationship when it is missing.
+        """
+        table_entity: Table = data_model_link.table_entity
+
+        if not table_entity:
+            return
+
+        table_fqn = model_str(table_entity.fullyQualifiedName)
+        product_names = self.extracted_data_products.get(table_fqn)
+
+        if not product_names:
+            return
+
+        asset_ref = EntityReference(id=table_entity.id, type="table")
+
+        for product_name in product_names:
+            try:
+                data_product = self.metadata.get_by_name(entity=DataProduct, fqn=product_name)
+
+                if not data_product:
+                    logger.warning(
+                        "Data Product '%s' not found in OpenMetadata for table %s; skipping assignment",
+                        product_name,
+                        table_fqn,
+                    )
+                    continue
+
+                self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
+                logger.info("Added table %s to Data Product '%s'", table_fqn, product_name)
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to assign Data Product '%s' to %s: %s. If this is a domain validation "
+                    "error, ensure the table's domain matches the Data Product's domain.",
+                    product_name,
+                    table_fqn,
+                    exc,
+                )
+                logger.debug(traceback.format_exc())
+
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using new patch_custom_properties method
@@ -457,8 +506,8 @@ class DbtSource(DbtServiceSource):
     def _validate_custom_properties(
         self,
         table_entity: Table,
-        custom_properties: Dict[str, Any],  # noqa: UP006
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        custom_properties: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         Validates and converts custom properties with comprehensive type checking.
 
@@ -743,8 +792,8 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
-        def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
+    def _get_table_entity(self, table_fqn) -> Table | None:
+        def search_table(fqn_search_string: str) -> Table | None:
             table_entities = get_entity_from_es_result(
                 entity_list=self.metadata.es_search_from_fqn(
                     entity_type=Table,
@@ -1054,7 +1103,7 @@ class DbtSource(DbtServiceSource):
 
         return upstream_nodes
 
-    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:  # noqa: UP006
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> list[Column]:
         """
         Method to parse the DBT columns
         """
@@ -1146,7 +1195,7 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:  # noqa: UP045
+    def parse_exposure_node(self, exposure_spec) -> Any | None:
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
@@ -1202,7 +1251,7 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)  # noqa: UP045
+                from_entity: Table | None = self._get_table_entity(table_fqn=upstream_node)
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
@@ -1308,7 +1357,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
+                from_entity: Table | list[Table] | None = get_entity_from_es_result(
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1417,12 +1466,44 @@ class DbtSource(DbtServiceSource):
         return metric_expression, related_metrics
 
     @staticmethod
+    def _metric_aggregation(type_params: Any) -> str | None:
+        """Return the aggregation function name from the dbt 1.12+ inline spec.
+
+        In the measure-less spec the aggregation lives on
+        ``type_params.metric_aggregation_params.agg``. The manifest parser keeps that
+        block as an extra attribute, so it may arrive as a dict or an object. Returns
+        ``None`` for the pre-1.12 spec, where the measure itself carries the aggregation.
+        """
+        params = getattr(type_params, "metric_aggregation_params", None)
+        if params is None:
+            return None
+        agg = params.get("agg") if isinstance(params, dict) else getattr(params, "agg", None)
+        return getattr(agg, "value", agg) if agg else None
+
+    @staticmethod
+    def _is_simple_metric(metric_node: Any) -> bool:
+        """True when the metric is a dbt ``simple`` metric.
+
+        Only simple metrics own a measure, so only they get a synthesised measure from
+        the 1.12 inline fields. Derived/ratio/cumulative/conversion carry their formula in
+        type_params but do not represent a measure.
+        """
+        metric_type = getattr(metric_node, "type", None)
+        dbt_type = getattr(metric_type, "value", str(metric_type)) if metric_type else None
+        return dbt_type == "simple"
+
+    @staticmethod
     def _simple_metric_expression(type_params):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
             expression = MetricExpression(language=Language.SQL, code=measure_name)
+        else:
+            # dbt 1.12+ inline spec: measure ref is absent; use type_params.expr directly
+            expr = getattr(type_params, "expr", None)
+            if expr:
+                expression = MetricExpression(language=Language.SQL, code=expr)
         return expression, None
 
     @staticmethod
@@ -1464,6 +1545,15 @@ class DbtSource(DbtServiceSource):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if not measure_name:
+            # dbt 1.12+ inline spec: the measure is gone; a cumulative metric now wraps
+            # another metric referenced on cumulative_type_params.metric.
+            cum_params = getattr(type_params, "cumulative_type_params", None)
+            metric_ref = getattr(cum_params, "metric", None) if cum_params else None
+            if isinstance(metric_ref, dict):
+                measure_name = metric_ref.get("name")
+            else:
+                measure_name = getattr(metric_ref, "name", None) if metric_ref else None
         if measure_name:
             window_str = DbtSource._cumulative_window_str(type_params)
             expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
@@ -1534,6 +1624,25 @@ class DbtSource(DbtServiceSource):
                         aggregation=agg_value,
                         description=getattr(measure, "description", None),
                         expression=getattr(measure, "expr", None),
+                    )
+                )
+        # dbt 1.12+ inline spec: a simple metric no longer references a measure; its
+        # aggregation is defined directly on the metric. When the semantic model yields no
+        # measures, synthesise one from type_params.expr + metric_aggregation_params so the
+        # measure matches the metadata the pre-1.12 spec produced. Restricted to simple
+        # metrics: derived/ratio/etc. also carry type_params.expr (their formula), and that
+        # belongs only in the metric expression, not as a fabricated measure.
+        if not result and self._is_simple_metric(metric_node):
+            type_params = getattr(metric_node, "type_params", None)
+            expr = getattr(type_params, "expr", None) if type_params else None
+            aggregation = self._metric_aggregation(type_params) if type_params else None
+            if expr or aggregation:
+                result.append(
+                    MetricMeasure(
+                        name=getattr(metric_node, "name", ""),
+                        aggregation=aggregation,
+                        description=None,
+                        expression=expr,
                     )
                 )
         return result
@@ -1775,6 +1884,9 @@ class DbtSource(DbtServiceSource):
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.dataProducts:
+                self.extracted_data_products[table_fqn] = dbt_meta_info.openmetadata.dataProducts
+
             if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
                     if not tag_fqn:
@@ -1981,7 +2093,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: str | None) -> None:
         """
         Keep the description of an already ingested test case in sync with dbt.
 
@@ -2012,7 +2124,7 @@ class DbtSource(DbtServiceSource):
             return TestCaseStatus.Failed, 0
         return TestCaseStatus.Aborted, 0
 
-    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> datetime | None:
         """
         Resolve when a dbt result was produced.
 
@@ -2045,7 +2157,7 @@ class DbtSource(DbtServiceSource):
         return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
 
     @staticmethod
-    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
+    def _get_freshness_result_details(dbt_test_result) -> str | None:
         """
         Build the result detail of a source freshness check.
 
@@ -2072,7 +2184,7 @@ class DbtSource(DbtServiceSource):
 
         return "; ".join(details) or None
 
-    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a `dbt source freshness` run.
 
@@ -2106,7 +2218,7 @@ class DbtSource(DbtServiceSource):
             ),
         )
 
-    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a dbt test recorded in run_results.json
         """

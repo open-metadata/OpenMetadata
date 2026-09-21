@@ -28,6 +28,17 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 
+const renderViewMoreExpandIcon = (
+  t: ReturnType<typeof useTranslation>['t']
+) => (
+  <div className="expand-icon-container">
+    <Typography.Text className="text-primary">
+      {t('label.view-more')}
+    </Typography.Text>
+    <ArrowSvg className="text-primary" height={14} width={14} />
+  </div>
+);
+
 function PlatformInsightsWidget({
   chartsData,
   isLoading,
@@ -59,14 +70,7 @@ function PlatformInsightsWidget({
     <Collapse
       className="service-insights-collapse-widget platform-insights-card"
       defaultActiveKey={['1']}
-      expandIcon={() => (
-        <div className="expand-icon-container">
-          <Typography.Text className="text-primary">
-            {t('label.view-more')}
-          </Typography.Text>
-          <ArrowSvg className="text-primary" height={14} width={14} />
-        </div>
-      )}
+      expandIcon={() => renderViewMoreExpandIcon(t)}
       expandIconPosition="end">
       <Collapse.Panel
         header={

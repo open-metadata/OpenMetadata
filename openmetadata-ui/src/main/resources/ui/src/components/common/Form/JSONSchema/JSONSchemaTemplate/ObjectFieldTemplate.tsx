@@ -115,12 +115,12 @@ export const ObjectFieldTemplate: FunctionComponent<
           data: additionalFieldContent,
         })}
 
-      {updatedNormalProperties.map((element, index) => (
+      {updatedNormalProperties.map((element) => (
         <div
           className={classNames('property-wrapper', {
             'additional-fields': schema.additionalProperties,
           })}
-          key={`${element.content.key}-${index}`}>
+          key={element.content.key}>
           {element.content}
         </div>
       ))}
@@ -130,12 +130,12 @@ export const ObjectFieldTemplate: FunctionComponent<
           className="advanced-properties-collapse m-t-sm"
           expandIconPosition="end">
           <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
-            {advancedProperties.map((element, index) => (
+            {advancedProperties.map((element) => (
               <div
                 className={classNames('property-wrapper', {
                   'additional-fields': schema.additionalProperties,
                 })}
-                key={`${element.content.key}-${index}`}>
+                key={element.content.key}>
                 {element.content}
               </div>
             ))}

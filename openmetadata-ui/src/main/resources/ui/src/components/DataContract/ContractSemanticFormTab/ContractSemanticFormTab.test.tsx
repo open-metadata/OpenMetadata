@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -31,15 +31,15 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
   })),
 }));
 
-jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
-  return function MockQueryBuilderWidgetV1({
+jest.mock('../../common/QueryBuilder/QueryBuilder', () => {
+  return function MockQueryBuilder({
     onChange,
-    getQueryActions,
+    onActionsReady,
     value,
     readonly,
   }: {
     onChange?: (value: string, tree: JsonTree) => void;
-    getQueryActions?: (actions: Actions) => void;
+    onActionsReady?: (actions: Actions) => void;
     value?: string;
     readonly?: boolean;
   }) {
@@ -54,7 +54,7 @@ jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
             onChange?.('{"and":[{"==":[{"var":"name"},"10"]}]}', {
               type: 'group',
             } as JsonTree);
-            getQueryActions?.({ addRule: jest.fn() } as unknown as Actions);
+            onActionsReady?.({ addRule: jest.fn() } as unknown as Actions);
           }}>
           Change Query
         </button>
@@ -287,7 +287,7 @@ describe('ContractSemanticFormTab', () => {
   });
 
   describe('Query Builder Integration', () => {
-    it('should render QueryBuilderWidgetV1 in edit mode', async () => {
+    it('should render the query builder in edit mode', async () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
@@ -307,7 +307,7 @@ describe('ContractSemanticFormTab', () => {
       expect(screen.getByText('Readonly: false')).toBeInTheDocument();
     });
 
-    it('should render QueryBuilderWidgetV1 in readonly mode', () => {
+    it('should render the query builder in readonly mode', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}

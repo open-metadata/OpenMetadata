@@ -19,6 +19,9 @@ on:
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
+permissions:
+  contents: read
+
 jobs:
   maven-build:
     runs-on: ubuntu-latest
@@ -56,6 +59,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     name: Release app with workflow_dispatch event
     runs-on: ubuntu-latest
+    # `gh release upload` needs write, overriding the workflow-level read.
+    permissions:
+      contents: write
     needs: maven-build
     steps:
 

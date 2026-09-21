@@ -42,9 +42,11 @@ test('suppresses string warnings in test TSX files', async () => {
     filePath: 'src/Component.test.tsx',
   });
   const stringRuleMessages = result.messages.filter(({ ruleId }) =>
-    ['i18next/no-literal-string', 'sonarjs/no-duplicate-string'].includes(
-      ruleId
-    )
+    [
+      'i18next/no-literal-string',
+      'sonarjs/no-duplicate-string',
+      'openmetadata-i18n/no-duplicate-string',
+    ].includes(ruleId)
   );
 
   assert.deepEqual(stringRuleMessages, []);
@@ -57,13 +59,15 @@ test('suppresses string warnings in test TS files', async () => {
     filePath,
   });
   const stringRuleMessages = result.messages.filter(({ ruleId }) =>
-    ['i18next/no-literal-string', 'sonarjs/no-duplicate-string'].includes(
-      ruleId
-    )
+    [
+      'i18next/no-literal-string',
+      'sonarjs/no-duplicate-string',
+      'openmetadata-i18n/no-duplicate-string',
+    ].includes(ruleId)
   );
 
   assert.equal(config.rules['i18next/no-literal-string']?.[0], 0);
-  assert.equal(config.rules['sonarjs/no-duplicate-string']?.[0], 0);
+  assert.equal(config.rules['openmetadata-i18n/no-duplicate-string']?.[0], 0);
   assert.deepEqual(stringRuleMessages, []);
 });
 
@@ -74,5 +78,8 @@ test('keeps string warnings enabled in production TSX files', async () => {
   const reportedRuleIds = new Set(result.messages.map(({ ruleId }) => ruleId));
 
   assert.equal(reportedRuleIds.has('i18next/no-literal-string'), true);
-  assert.equal(reportedRuleIds.has('sonarjs/no-duplicate-string'), true);
+  assert.equal(
+    reportedRuleIds.has('openmetadata-i18n/no-duplicate-string'),
+    true
+  );
 });

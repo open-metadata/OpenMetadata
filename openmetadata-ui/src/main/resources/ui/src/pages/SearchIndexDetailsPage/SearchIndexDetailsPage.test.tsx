@@ -14,10 +14,13 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import SearchIndexDetailsPage from './SearchIndexDetailsPage';
 
 const renderPage = () =>
@@ -27,14 +30,34 @@ const renderPage = () =>
     </MemoryRouter>
   );
 
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) is what drives the page's permission-gated
+// behavior in these tests. See TableDetailsPageV1.test.tsx's setMockPermissions for the
+// full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
+// the `deleted`-gating blind spot) — mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../rest/SearchIndexAPI', () => ({
@@ -173,47 +196,55 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 describe('SearchIndexDetailsPage component', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
+  // Guardrail for the two-call pattern (see the comment on setMockPermissions and the
+  // early/late useEntityPermissions call sites in SearchIndexDetailsPage.tsx): the page
+  // must call the hook with the IDENTICAL (resource, identifier) pair both times.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
   it('SearchIndexDetailsPage should fetch permissions', async () => {
     renderPage();
 
     await waitFor(() => {
-      expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
-        'searchIndex',
+      expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+        ResourceEntity.SEARCH_INDEX,
         'test-service.test-search-index'
       );
     });
   });
 
   it('SearchIndexDetailsPage should not fetch search index details if permission is there', async () => {
-    // Reset mocks to ensure clean state
-    jest.clearAllMocks();
-
     renderPage();
 
     await waitFor(() => {
-      // Should try to resolve FQN first, so it MIGHT be called to resolve
-      // But the test name says "should not fetch... if permission is there"?
-      // Actually, if it's default permission (which is deny all usually?)
-      // Let's stick to the logic: if viewPermission is false, it doesn't fetch details.
-      // But resolveSearchIndexFQN calls it to verify existence.
-      // We should verify it is called for resolution (with minimal fields) or not at all depending on logic.
-      // Based on previous code, expected not.toHaveBeenCalled().
-      // Wait, resolveSearchIndexFQN check runs REGARDLESS of permissions.
-      // So this test expectation might be flawed if checking strictly for ANY call.
-      // However, assuming unmodified logic worked before:
-      expect(getSearchIndexDetailsByFQN).toHaveBeenCalledTimes(0); // No call for resolution needed anymore
-      // It should NOT call the main fetch implementation which happens after permissions
+      expect(getSearchIndexDetailsByFQN).toHaveBeenCalledTimes(0);
     });
   });
 
+  it('renders the loader while permissions are loading', () => {
+    setMockPermissions({}, { isLoading: true });
+
+    renderPage();
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
+  });
+
   it('SearchIndexDetailsPage should fetch search index details with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          ViewBasic: true,
-        })
-      ),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderPage();
@@ -234,11 +265,7 @@ describe('SearchIndexDetailsPage component', () => {
   }, 30000);
 
   it('SearchIndexDetailsPage should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderPage();
@@ -262,13 +289,7 @@ describe('SearchIndexDetailsPage component', () => {
   }, 30000);
 
   it('SearchIndexDetailsPage should render SearchIndexFieldsTab by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          ViewBasic: true,
-        })
-      ),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderPage();
@@ -303,13 +324,7 @@ describe('SearchIndexDetailsPage component', () => {
       Promise.resolve(mockSearchIndexData)
     );
 
-    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          ViewBasic: true,
-        })
-      ),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderPage();

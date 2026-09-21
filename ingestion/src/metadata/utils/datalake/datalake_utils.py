@@ -19,7 +19,7 @@ import json
 import random
 import traceback
 from collections import Counter
-from typing import Any, Dict, List, Optional, Union, cast  # noqa: UP035
+from typing import Any, Optional, Union, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -53,7 +53,7 @@ _TYPE_PRECEDENCE = (
 )
 
 
-def _resolve_col_type(type_list: List[str]) -> str:  # noqa: UP006
+def _resolve_col_type(type_list: list[str]) -> str:
     """Pick the dominant type from type_list.
 
     Frequency-first: the most common type in the sample wins.
@@ -78,7 +78,7 @@ class _ArrayOfStruct:
 
     __slots__ = ("struct",)
 
-    def __init__(self, struct: Dict):  # noqa: UP006
+    def __init__(self, struct: dict):
         self.struct = struct
 
 
@@ -88,7 +88,7 @@ def fetch_dataframe_generator(
     file_fqn: DatalakeTableSchemaWrapper,
     session=None,
     **kwargs,
-) -> Optional[DatalakeColumnWrapper]:  # noqa: UP045
+) -> DatalakeColumnWrapper | None:
     """Return the datafgrame generator
 
     Args:
@@ -105,7 +105,7 @@ def fetch_dataframe_generator(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(  # noqa: UP045
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -154,7 +154,7 @@ def fetch_dataframe_first_chunk(
     key: str = file_fqn.key
     bucket_name: str = file_fqn.bucket_name
     try:
-        file_extension: Optional[SupportedTypes] = file_fqn.file_extension or next(  # noqa: UP045
+        file_extension: SupportedTypes | None = file_fqn.file_extension or next(
             supported_type or None for supported_type in SupportedTypes if key.endswith(supported_type.value)
         )
         if file_extension and not key.endswith("/"):
@@ -229,7 +229,7 @@ class DataFrameColumnParser:
     def create(
         cls,
         data_frame: "DataFrame",  # noqa: F821
-        file_type: Optional[SupportedTypes] = None,  # noqa: UP045
+        file_type: SupportedTypes | None = None,
         sample: bool = True,
         shuffle: bool = False,
         raw_data: Any = None,
@@ -265,9 +265,9 @@ class DataFrameColumnParser:
 
     @staticmethod
     def _get_data_frame(
-        data_frame: Union[List["DataFrame"], "DataFrame"],  # noqa: F821, UP006
+        data_frame: Union[list["DataFrame"], "DataFrame"],  # noqa: F821
         sample: bool,
-        shuffle: bool,  # noqa: F821, RUF100
+        shuffle: bool,
     ):
         """Return the dataframe to use for parsing"""
 
@@ -438,7 +438,7 @@ class GenericDataFrameColumnParser:
         return data_type or DataType.STRING
 
     @classmethod
-    def unique_json_structure(cls, dicts: List[Dict]) -> Dict:  # noqa: UP006
+    def unique_json_structure(cls, dicts: list[dict]) -> dict:
         """Given a sample of `n` json objects, return a json object that represents the unique
         structure of all `n` objects. Note that the type of the key will be that of
         the last object seen in the sample.
@@ -466,7 +466,7 @@ class GenericDataFrameColumnParser:
         return result
 
     @classmethod
-    def construct_json_column_children(cls, json_column: Dict) -> List[Dict]:  # noqa: UP006
+    def construct_json_column_children(cls, json_column: dict) -> list[dict]:
         """Construt a dict representation of a Column object
 
         Args:
@@ -493,7 +493,7 @@ class GenericDataFrameColumnParser:
         return children
 
     @classmethod
-    def get_children(cls, json_column) -> List[Dict]:  # noqa: UP006
+    def get_children(cls, json_column) -> list[dict]:
         """Get children of json column.
 
         Args:
@@ -533,7 +533,7 @@ class GenericDataFrameColumnParser:
         return cls.construct_json_column_children(json_structure)
 
     @classmethod
-    def _get_array_struct_children(cls, array_column: Any) -> List[Dict]:  # noqa: UP006
+    def _get_array_struct_children(cls, array_column: Any) -> list[dict]:
         """For an ARRAY column whose elements are dicts, infer the merged struct shape and
         return it as children. Returns an empty list when elements are not dicts.
         """
@@ -600,7 +600,7 @@ class ParquetDataFrameColumnParser:
         """
         import pyarrow as pa  # noqa: TC002
 
-        schema: List[pa.Field] = self._arrow_table.schema  # noqa: UP006
+        schema: list[pa.Field] = self._arrow_table.schema
         columns = []
         for column in schema:
             parsed_column = {
@@ -731,7 +731,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             and isinstance(data["schema"]["fields"], list)
         )
 
-    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:  # noqa: UP006
+    def _parse_iceberg_delta_schema(self, data: dict) -> list[Column]:
         """
         Parse Iceberg/Delta Lake metadata file schema to extract columns.
         """
@@ -778,7 +778,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
 
         return columns
 
-    def _parse_struct_fields(self, fields: list) -> List[dict]:  # noqa: UP006
+    def _parse_struct_fields(self, fields: list) -> list[dict]:
         """
         Parse nested struct fields in Iceberg/Delta Lake metadata.
         """

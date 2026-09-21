@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/core';
 import React from 'react';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
@@ -62,6 +68,7 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
     ({ markdown, className }: { markdown: string; className?: string }) => (
       <div
         className={className ?? 'service-doc-content'}
+        // eslint-disable-next-line react/no-danger -- test mock rendering controlled markdown fixture
         dangerouslySetInnerHTML={{ __html: markdown }}
       />
     )
@@ -802,6 +809,74 @@ describe('ServiceDocPanel Component', () => {
         );
       });
     });
+
+    it('should fall back to the field schema metadata when the workflow markdown documents no such field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Metadata Workflow',
+          '$$section',
+          '### Enable Debug Log $(id="enableDebugLog")',
+          'Debug log guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          activeField="root/ownerConfig/database"
+          activeFieldMeta={{
+            title: 'Database',
+            description: 'Owner for database entities.',
+          }}
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Database')).toBeInTheDocument();
+        expect(
+          screen.getByText('Owner for database entities.')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should prefer the curated workflow markdown over the field schema metadata', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Metadata Workflow',
+          '$$section',
+          '### Database Filter Pattern $(id="databaseFilterPattern")',
+          'Include and exclude regex guidance with examples.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          activeField="root/databaseFilterPattern"
+          activeFieldMeta={{
+            title: 'Database Filter Pattern',
+            description: 'Regex to only include/exclude databases.',
+          }}
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Include and exclude regex guidance')
+        );
+        expect(
+          screen.queryByText('Regex to only include/exclude databases.')
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('Focused Doc Eyebrow', () => {
@@ -1137,6 +1212,50 @@ describe('ServiceDocPanel Component', () => {
     });
   });
 
+  describe('Stale markdown responses', () => {
+    // fetchRequirement runs on the same serviceName that starts empty and then
+    // changes, so a superseded response must not be allowed to blank the panel.
+    it('should ignore a superseded panel markdown response when switching service', async () => {
+      const release: Record<string, (v: string) => void> = {};
+
+      mockFetchMarkdownFile.mockImplementation(
+        (filePath: string) =>
+          new Promise<string>((resolve) => {
+            release[filePath.includes('Snowflake') ? 'snowflake' : 'bigquery'] =
+              resolve;
+          })
+      );
+
+      const { rerender } = render(
+        <ServiceDocPanel {...defaultProps} serviceName="BigQuery" />
+      );
+      await waitFor(() => expect(release.bigquery).toBeDefined());
+
+      rerender(<ServiceDocPanel {...defaultProps} serviceName="Snowflake" />);
+      await waitFor(() => expect(release.snowflake).toBeDefined());
+
+      await act(async () => {
+        release.snowflake('# Snowflake docs body');
+      });
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Snowflake docs body')
+        );
+      });
+
+      mockProcessDocMarkdown.mockClear();
+
+      // the superseded BigQuery request answers last
+      await act(async () => {
+        release.bigquery('# BigQuery docs body');
+      });
+
+      expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+        expect.stringContaining('BigQuery docs body')
+      );
+    });
+  });
+
   describe('Connector Docs URL', () => {
     const getDocsLink = (container: HTMLElement) =>
       container.querySelector('.focused-service-docs-link');
@@ -1200,7 +1319,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should fall back to the first connectors link when no link matches the service name', async () => {
+    it('should fall back to the connectors overview page rather than a connectors/ingestion workflow page', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# MockConnector',
@@ -1218,10 +1337,150 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
+      });
+    });
+
+    it('should resolve the connector docs from the connector markdown, not the workflow markdown', async () => {
+      mockFetchMarkdownFile.mockImplementation((filePath: string) =>
+        Promise.resolve(
+          filePath.includes('/workflows/')
+            ? 'Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database">this</a>.'
+            : 'See the <a href="https://docs.open-metadata.org/connectors/database/bigquery">docs</a>.'
+        )
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
         expect(getDocsLink(container)).toHaveAttribute(
           'href',
-          `${CONNECTORS_DOCS}/ingestion/workflows/usage`
+          `${CONNECTORS_DOCS}/database/bigquery`
         );
+      });
+    });
+
+    // A connector file that does not exist is served as the SPA's index.html
+    // with a 200, so the guard is on the content and not on a rejection.
+    // The host pages render once with no service loaded, so the panel is first
+    // mounted with an empty serviceName. That path names no connector and must
+    // not be requested at all.
+    it('should not request a connector file while no service is loaded', async () => {
+      mockFetchMarkdownFile.mockResolvedValue('# Metadata');
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName=""
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalled();
+      });
+
+      expect(mockFetchMarkdownFile).not.toHaveBeenCalledWith(
+        expect.stringMatching(/\/\.md$/)
+      );
+    });
+
+    // Navigating between two services reuses the component, so serviceName can
+    // change without a remount and the first response can land last.
+    it('should ignore a superseded connector response when switching service', async () => {
+      const release: Record<string, (v: string) => void> = {};
+      const link = (slug: string) =>
+        `See the <a href="https://docs.open-metadata.org/connectors/database/${slug}">docs</a>.`;
+
+      mockFetchMarkdownFile.mockImplementation((filePath: string) => {
+        if (filePath.includes('/workflows/')) {
+          return Promise.resolve('# Metadata');
+        }
+
+        return new Promise<string>((resolve) => {
+          release[filePath.includes('Snowflake') ? 'snowflake' : 'bigquery'] =
+            resolve;
+        });
+      });
+
+      const { container, rerender } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => expect(release.bigquery).toBeDefined());
+
+      rerender(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="Snowflake"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => expect(release.snowflake).toBeDefined());
+
+      // the newer service answers first
+      await act(async () => {
+        release.snowflake(link('snowflake'));
+      });
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/snowflake`
+        );
+      });
+
+      // the superseded BigQuery request now answers last
+      await act(async () => {
+        release.bigquery(link('bigquery'));
+      });
+
+      expect(getDocsLink(container)).toHaveAttribute(
+        'href',
+        `${CONNECTORS_DOCS}/database/snowflake`
+      );
+    });
+
+    it('should fall back to the connectors overview page when the connector markdown is unavailable in workflow mode', async () => {
+      mockFetchMarkdownFile.mockImplementation((filePath: string) =>
+        Promise.resolve(
+          filePath.includes('/workflows/')
+            ? 'Checkout <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/metadata/filter-patterns/database">this</a>.'
+            : '<!doctype html><html><body><div id="root"></div></body></html>'
+        )
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          serviceName="BigQuery"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
       });
     });
   });

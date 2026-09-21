@@ -14,6 +14,7 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Owner,
   Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
@@ -36,7 +37,6 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -158,7 +158,7 @@ export const TestSuitesTable = ({
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
-        <OwnerLabel
+        <Owner
           isCompactView={false}
           maxVisibleOwners={4}
           owners={record.owners}
@@ -225,12 +225,15 @@ export const TestSuitesTable = ({
               // Keep the table footprint stable while a page or cached query
               // changes, rather than flashing the true empty-state message.
               <Box className="tw:p-4">
-                {Array.from({ length: 5 }).map((_, index) => (
+                {Array.from(
+                  { length: 5 },
+                  (_, index) => `test-suite-skeleton-${index}`
+                ).map((skeletonKey) => (
                   <Skeleton
                     className="tw:mb-2"
                     data-testid="test-suite-loading-row"
                     height={40}
-                    key={index}
+                    key={skeletonKey}
                     width="100%"
                   />
                 ))}
