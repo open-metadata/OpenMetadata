@@ -20,7 +20,7 @@ import {
   LogStreamEndReason,
   LogStreamEvent,
   LogStreamEventType,
-} from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
+} from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import {
   getIngestionLogStreamUrl,
   useLogStream,
@@ -31,7 +31,7 @@ jest.mock('@microsoft/fetch-event-source', () => ({
   fetchEventSource: jest.fn(),
 }));
 
-jest.mock('../../../utils/SwTokenStorageUtils', () => ({
+jest.mock('../utils/SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn().mockResolvedValue('test-jwt-token'),
 }));
 
@@ -41,13 +41,13 @@ const mockEnsureFreshToken = jest.fn().mockResolvedValue(undefined);
 // directly so the read of `mockEnsureFreshToken` is deferred until the real
 // call site invokes it — jest hoists this factory above the `const`
 // declaration above, so an eager read would throw a TDZ ReferenceError.
-jest.mock('../../../utils/Auth/AuthCoordinator', () => ({
+jest.mock('../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
   authCoordinator: {
     ensureFreshToken: (...args: unknown[]) => mockEnsureFreshToken(...args),
   },
 }));
 
-jest.mock('../../../utils/HistoryUtils', () => ({
+jest.mock('../utils/HistoryUtils', () => ({
   getBasePath: jest.fn().mockReturnValue(''),
 }));
 

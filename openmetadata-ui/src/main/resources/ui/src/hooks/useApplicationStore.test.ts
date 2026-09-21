@@ -12,7 +12,7 @@
  */
 
 import { act } from 'react';
-import { authCoordinator } from '../utils/Auth/AuthCoordinator';
+import { authCoordinator } from '../utils/Auth/AuthCoordinator/AuthCoordinator';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { useApplicationStore } from './useApplicationStore';
 

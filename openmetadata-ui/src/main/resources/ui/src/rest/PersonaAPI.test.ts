@@ -12,10 +12,10 @@
  */
 
 import { Persona } from '../generated/entity/teams/persona';
-import axiosClient from './index';
+import axiosClient from './axiosClient';
 import { searchPersonas } from './PersonaAPI';
 
-jest.mock('./index');
+jest.mock('./axiosClient');
 
 describe('PersonaAPI', () => {
   const mockClient = axiosClient as jest.Mocked<typeof axiosClient>;
