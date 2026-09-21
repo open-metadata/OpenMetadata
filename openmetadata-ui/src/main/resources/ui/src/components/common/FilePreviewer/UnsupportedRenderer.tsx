@@ -13,7 +13,7 @@
 
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { PreviewRendererProps } from './FilePreviewer.interface';
+import { PreviewRendererProps } from './FilePreviewer.types';
 
 const UnsupportedRenderer = ({ fileName, objectUrl }: PreviewRendererProps) => {
   const { t } = useTranslation();

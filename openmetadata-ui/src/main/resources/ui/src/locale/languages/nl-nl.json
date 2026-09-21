@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Dit geeft aan of certificaten moeten worden geverifieerd bij het gebruik van een SSL-connectie met Elasticsearch. Het wordt standaard genegeerd en is ingesteld op true. Zorg ervoor dat je de certificaten in de eigenschap 'CA-certificaten' verzendt.",
     "file-format-size": "{{formats}} (max. {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "Bestandsgrootte overschrijdt de maximaal toegestane grootte van {{size}}",
     "file-size-limit-exceeded": "Sommige bestanden overschrijden de limiet van 5 MB en zijn niet geüpload.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

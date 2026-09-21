@@ -13,10 +13,7 @@
 
 import { lazy, useEffect, useMemo } from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  FilePreviewerProps,
-  PreviewRendererId,
-} from './FilePreviewer.interface';
+import { FilePreviewerProps, PreviewRendererId } from './FilePreviewer.types';
 import { resolveRenderer } from './FilePreviewer.utils';
 import ImageRenderer from './ImageRenderer';
 import TextRenderer from './TextRenderer';

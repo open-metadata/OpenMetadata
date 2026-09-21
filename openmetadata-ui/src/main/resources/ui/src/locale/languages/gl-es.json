@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Indica se se deben verificar certificados ao usar conexión SSL con Elasticsearch. Por defecto, está ignorado e establecido en verdadeiro. Asegúrate de enviar os certificados na propiedade 'Certificados CA'.",
     "file-format-size": "{{formats}} (máx. {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "O tamaño do ficheiro excede o máximo permitido de {{size}}",
     "file-size-limit-exceeded": "Algúns ficheiros exceden o límite de tamaño de 5 MB e non se cargaron.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

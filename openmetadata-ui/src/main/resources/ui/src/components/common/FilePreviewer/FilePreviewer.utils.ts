@@ -12,10 +12,7 @@
  */
 
 import { FileType } from '../../../generated/entity/data/contextFile';
-import {
-  PreviewRendererId,
-  ResolveRendererArgs,
-} from './FilePreviewer.interface';
+import { PreviewRendererId, ResolveRendererArgs } from './FilePreviewer.types';
 
 const isSvg = (ext?: string, mime?: string): boolean =>
   ext === 'svg' || mime === 'image/svg+xml';

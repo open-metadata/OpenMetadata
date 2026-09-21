@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Detta anger om certifikat ska verifieras vid SSL-anslutning till Elasticsearch. Det ignoreras som standard och är inställt på true. Se till att du skickar certifikaten i egenskapen `CA Certificates`.",
     "file-format-size": "{{formats}} (max. {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "Filstorleken överskrider den högsta tillåtna storleken på {{size}}",
     "file-size-limit-exceeded": "Vissa filer överskrider storleksgränsen på 5 MB och laddades inte upp.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

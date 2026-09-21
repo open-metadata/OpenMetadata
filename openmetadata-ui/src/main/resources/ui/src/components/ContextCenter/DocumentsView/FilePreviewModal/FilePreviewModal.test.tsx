@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { CanceledError } from 'axios';
 import { useCallback, useState } from 'react';
 import { ProcessingStatus } from '../../../../generated/entity/data/contextFile';
 import FilePreviewModal from './FilePreviewModal';
@@ -19,7 +20,8 @@ import FilePreviewModal from './FilePreviewModal';
 const downloadDriveFile = jest.fn();
 
 jest.mock('../../../../rest/assetAPI', () => ({
-  downloadDriveFile: (id: string) => downloadDriveFile(id),
+  downloadDriveFile: (id: string, signal?: AbortSignal) =>
+    downloadDriveFile(id, signal),
 }));
 
 jest.mock('../../../common/FilePreviewer/FilePreviewer', () => ({
@@ -32,6 +34,14 @@ const mockShowErrorToast = jest.fn();
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
+
+const mockHandleAssetDownload = jest.fn();
+
+jest.mock('../../../../utils/ContextCenterPureUtils', () => ({
+  handleAssetDownload: (...args: unknown[]) => mockHandleAssetDownload(...args),
+}));
+
+const MAX_PREVIEW_SIZE = 25 * 1024 * 1024;
 
 const baseFile = {
   id: 'f1',
@@ -48,9 +58,23 @@ describe('FilePreviewModal', () => {
     render(
       <FilePreviewModal isOpen file={baseFile as never} onClose={jest.fn()} />
     );
-    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalledWith('f1'));
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalled());
 
     expect(await screen.findByText('previewer')).toBeInTheDocument();
+  });
+
+  it('passes an AbortSignal to downloadDriveFile so unmount can cancel it', async () => {
+    downloadDriveFile.mockResolvedValue(new Blob(['hi']));
+    render(
+      <FilePreviewModal isOpen file={baseFile as never} onClose={jest.fn()} />
+    );
+
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalled());
+
+    expect(downloadDriveFile).toHaveBeenCalledWith(
+      'f1',
+      expect.any(AbortSignal)
+    );
   });
 
   it('shows too-large message and does not fetch over the cap', async () => {
@@ -66,6 +90,20 @@ describe('FilePreviewModal', () => {
       await screen.findByTestId('file-preview-too-large')
     ).toBeInTheDocument();
     expect(downloadDriveFile).not.toHaveBeenCalled();
+  });
+
+  it('treats an oversized resolved blob as too-large even when metadata size is small', async () => {
+    downloadDriveFile.mockResolvedValue(
+      new Blob([new Uint8Array(MAX_PREVIEW_SIZE + 1)])
+    );
+    render(
+      <FilePreviewModal isOpen file={baseFile as never} onClose={jest.fn()} />
+    );
+
+    expect(
+      await screen.findByTestId('file-preview-too-large')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('previewer')).not.toBeInTheDocument();
   });
 
   it('does not fetch when processing failed', async () => {
@@ -148,5 +186,42 @@ describe('FilePreviewModal', () => {
     await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalled());
 
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('stays silent when the download is cancelled (no toast, no close)', async () => {
+    const onClose = jest.fn();
+    downloadDriveFile.mockRejectedValue(new CanceledError('canceled'));
+    render(
+      <FilePreviewModal isOpen file={baseFile as never} onClose={onClose} />
+    );
+
+    await waitFor(() => expect(downloadDriveFile).toHaveBeenCalled());
+
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('offers a download action from the too-large branch', async () => {
+    const file = { ...baseFile, fileSize: 26 * 1024 * 1024 };
+    render(
+      <FilePreviewModal isOpen file={file as never} onClose={jest.fn()} />
+    );
+
+    const downloadButton = await screen.findByText('label.download');
+    fireEvent.click(downloadButton);
+
+    expect(mockHandleAssetDownload).toHaveBeenCalledWith(file);
+  });
+
+  it('offers a download action from the blocked (unsupported/failed) branch', async () => {
+    const file = { ...baseFile, processingStatus: ProcessingStatus.Failed };
+    render(
+      <FilePreviewModal isOpen file={file as never} onClose={jest.fn()} />
+    );
+
+    const downloadButton = await screen.findByText('label.download');
+    fireEvent.click(downloadButton);
+
+    expect(mockHandleAssetDownload).toHaveBeenCalledWith(file);
   });
 });

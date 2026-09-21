@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "يشير هذا إلى ما إذا كان سيتم التحقق من الشهادات عند استخدام اتصال SSL بـ Elasticsearch. يتم تجاهله افتراضيًا ويتم تعيينه على صحيح. تأكد من إرسال الشهادات في خاصية 'شهادات المرجع المصدق'.",
     "file-format-size": "{{formats}} (الحد الأقصى {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "حجم الملف يتجاوز الحد الأقصى المسموح به للـ {{size}}",
     "file-size-limit-exceeded": "تتجاوز بعض الملفات الحد الأقصى للحجم 5 ميجابايت ولم يتم تحميلها.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

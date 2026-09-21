@@ -12,6 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import * as pdfjsLib from 'pdfjs-dist';
 import PdfRenderer from './PdfRenderer';
 
 const getDocument = jest.fn();
@@ -20,6 +21,7 @@ const getPage = jest.fn();
 
 jest.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: { workerSrc: '' },
+  RenderingCancelledException: class RenderingCancelledException extends Error {},
   getDocument: (opts: unknown) => getDocument(opts),
 }));
 
@@ -85,5 +87,58 @@ describe('PdfRenderer', () => {
     unmount();
 
     await waitFor(() => expect(destroy).toHaveBeenCalledTimes(1));
+  });
+
+  it('destroys the document if unmounted before it finishes loading', async () => {
+    let resolveDoc: (doc: unknown) => void = (_doc: unknown) => undefined;
+    getDocument.mockReturnValue({
+      promise: new Promise((resolve) => {
+        resolveDoc = resolve;
+      }),
+    });
+
+    const { unmount } = render(
+      <PdfRenderer content={new Blob()} objectUrl="" />
+    );
+
+    await waitFor(() => expect(getDocument).toHaveBeenCalled());
+
+    unmount();
+    resolveDoc({ destroy, getPage, numPages: 1 });
+
+    await waitFor(() => expect(destroy).toHaveBeenCalledTimes(1));
+  });
+
+  it('shows a fallback message instead of a blank modal when the document fails to load', async () => {
+    const rejection = Promise.reject(new Error('bad pdf'));
+    // Attach a no-op handler synchronously so Node doesn't flag this as an
+    // unhandled rejection before PdfRenderer's own `await` catches it.
+    rejection.catch(() => undefined);
+    getDocument.mockReturnValue({ promise: rejection });
+
+    render(<PdfRenderer content={new Blob()} objectUrl="" />);
+
+    expect(await screen.findByTestId('pdf-preview-error')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.file-preview-render-failed')
+    ).toBeInTheDocument();
+  });
+
+  it('swallows a RenderingCancelledException without showing the error fallback', async () => {
+    const renderRejection = Promise.reject(
+      new pdfjsLib.RenderingCancelledException('cancelled', 0)
+    );
+    renderRejection.catch(() => undefined);
+    const page = {
+      getViewport: () => ({ width: 100, height: 100 }),
+      render: () => ({ promise: renderRejection }),
+    };
+    getPage.mockResolvedValue(page);
+
+    render(<PdfRenderer content={new Blob()} objectUrl="" />);
+
+    await waitFor(() => expect(getPage).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('pdf-preview-error')).not.toBeInTheDocument();
   });
 });

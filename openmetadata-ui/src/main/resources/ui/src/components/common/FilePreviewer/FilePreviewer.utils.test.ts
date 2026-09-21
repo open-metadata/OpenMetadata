@@ -12,10 +12,7 @@
  */
 
 import { FileType } from '../../../generated/entity/data/contextFile';
-import {
-  PreviewRendererId,
-  ResolveRendererArgs,
-} from './FilePreviewer.interface';
+import { PreviewRendererId, ResolveRendererArgs } from './FilePreviewer.types';
 import { resolveRenderer } from './FilePreviewer.utils';
 
 const resolve = (a: ResolveRendererArgs) => resolveRenderer(a);

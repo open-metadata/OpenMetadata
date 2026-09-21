@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Elasticsearch शी SSL कनेक्शन वापरताना प्रमाणपत्रे सत्यापित करायची की नाही हे दर्शवते. डीफॉल्टनुसार हे दुर्लक्ष केले जाते आणि ते सत्य आहे. कृपया 'CA प्रमाणपत्रे' गुणधर्मात प्रमाणपत्रे पाठवा.",
     "file-format-size": "{{formats}} (कमाल {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "फाइल आकार परवानगी असलेल्या कमाल आकार {{size}} पेक्षा जास्त आहे",
     "file-size-limit-exceeded": "काही फायली 5 MB आकार मर्यादा ओलांडतात आणि अपलोड केल्या गेल्या नाहीत.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

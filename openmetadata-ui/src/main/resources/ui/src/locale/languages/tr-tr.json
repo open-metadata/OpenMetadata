@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Bu, Elasticsearch'e SSL bağlantısı kullanılırken sertifikaların doğrulanıp doğrulanmayacağını gösterir. Varsayılan olarak yok sayılır ve true olarak ayarlanır. Sertifikaları `CA Sertifikaları` özelliğinde gönderdiğinizden emin olun.",
     "file-format-size": "{{formats}} (maks. {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "Dosya boyutu izin verilen maksimum boyut {{size}}'ı aşıyor",
     "file-size-limit-exceeded": "Bazı dosyalar 5 MB boyut sınırını aşıyor ve yüklenmedi.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

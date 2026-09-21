@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "מציין האם לאמת תעוזיות בעת שימוש בחיבור SSL ל-Elasticsearch. נתעלם מברירת המחדל ומוגדר ל-true. וודא שאתה שולח את התעוזיות במאפיין `CA Certificates`.",
     "file-format-size": "{{formats}} (מקסימום {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "גודל הקובץ עולה על הגודל המקסימלי המותר {{size}}",
     "file-size-limit-exceeded": "חלק מהקבצים חורגים ממגבלת הגודל של 5 MB ולא הועלו.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

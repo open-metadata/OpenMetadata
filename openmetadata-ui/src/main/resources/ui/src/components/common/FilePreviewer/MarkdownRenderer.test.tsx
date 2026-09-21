@@ -12,6 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { MAX_PREVIEW_TEXT_CHARS } from './FilePreviewer.constants';
 import MarkdownRenderer from './MarkdownRenderer';
 
 const blobOf = (s: string) => new Blob([s], { type: 'text/markdown' });
@@ -50,5 +51,16 @@ describe('MarkdownRenderer', () => {
     const a = container.querySelector('a');
 
     expect(a?.getAttribute('href') ?? '').not.toContain('javascript:');
+  });
+
+  it('truncates markdown over the cap and shows a notice', async () => {
+    const overCap = 'a'.repeat(MAX_PREVIEW_TEXT_CHARS + 1);
+    render(<MarkdownRenderer content={blobOf(overCap)} objectUrl="" />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('message.file-preview-text-truncated')
+      ).toBeInTheDocument()
+    );
   });
 });

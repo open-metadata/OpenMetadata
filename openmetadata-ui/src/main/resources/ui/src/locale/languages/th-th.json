@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "บ่งชี้ว่าต้องการตรวจสอบใบรับรองเมื่อใช้การเชื่อมต่อ SSL กับ Elasticsearch หรือไม่ โดยค่าเริ่มต้นมันจะถูกละเลยและตั้งค่าเป็น true ตรวจสอบให้แน่ใจว่าคุณได้ส่งใบรับรองในคุณสมบัติ `CA Certificates`",
     "file-format-size": "{{formats}} (สูงสุด {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "ขนาดไฟล์เกินขนาดสูงสุดที่อนุญาต {{size}}",
     "file-size-limit-exceeded": "ไฟล์บางไฟล์เกินขีดจำกัดขนาด 5 MB และไม่ได้รับการอัปโหลด",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

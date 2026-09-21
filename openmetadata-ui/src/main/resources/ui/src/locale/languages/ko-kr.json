@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Elasticsearch에 SSL 연결을 사용할 때 인증서를 확인할지 여부를 나타냅니다. 기본적으로 무시되며 true로 설정됩니다. 'CA 인증서' 속성에 인증서를 보내야 합니다.",
     "file-format-size": "{{formats}} (최대 {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "파일 크기가 허용된 최대 크기 {{size}}를 초과합니다",
     "file-size-limit-exceeded": "일부 파일이 5MB 크기 제한을 초과하여 업로드되지 않았습니다.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

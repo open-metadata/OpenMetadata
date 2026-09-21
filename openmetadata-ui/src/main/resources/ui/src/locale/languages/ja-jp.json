@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Elasticsearch への SSL 接続時に証明書を検証するかどうかを指定します。デフォルトでは無視され true になります。`CA Certificates` プロパティに証明書を渡してください。",
     "file-format-size": "{{formats}}（最大 {{size}}）",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "ファイルサイズが許可された最大サイズ{{size}}を超えています",
     "file-size-limit-exceeded": "一部のファイルが5 MBの制限を超えているため、アップロードされませんでした。",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

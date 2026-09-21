@@ -3959,6 +3959,8 @@
     "field-verify-certs-description": "Указывает, следует ли проверять сертификаты при использовании SSL-подключения к Elasticsearch. По умолчанию игнорируется и имеет значение true. Убедитесь, что вы отправляете сертификаты в свойстве «Сертификаты ЦС».",
     "file-format-size": "{{formats}} (макс. {{size}})",
     "file-preview-pdf-page-limit": "Showing the first {{count}} pages. Download the file to view all pages.",
+    "file-preview-render-failed": "Unable to render this file. Download it to view.",
+    "file-preview-text-truncated": "Preview truncated. Download the file to view the full content.",
     "file-size-exceeded": "Размер файла превышает максимально допустимый размер {{size}}",
     "file-size-limit-exceeded": "Некоторые файлы превышают предел размера 5 МБ и не были загружены.",
     "file-too-large-to-preview": "This file is too large to preview. Download it to view.",

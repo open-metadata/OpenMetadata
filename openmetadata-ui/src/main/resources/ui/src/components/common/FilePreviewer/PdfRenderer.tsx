@@ -11,24 +11,41 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import * as pdfjsLib from 'pdfjs-dist';
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PreviewRendererProps } from './FilePreviewer.interface';
+import { PreviewRendererProps } from './FilePreviewer.types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorker;
 
 const MAX_PDF_PREVIEW_PAGES = 50;
 
+const isRenderingCancelledError = (error: unknown): boolean =>
+  error instanceof pdfjsLib.RenderingCancelledException;
+
 const PdfRenderer = ({ content }: PreviewRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    let destroyed = false;
     let doc: pdfjsLib.PDFDocumentProxy | undefined;
     const container = containerRef.current;
+
+    // Guards against destroying twice: cleanup may run before `doc` exists
+    // (document still loading), in which case it is a no-op here and the
+    // in-flight `renderPdf` call destroys it once loading finishes instead.
+    const destroyDoc = () => {
+      if (destroyed || !doc) {
+        return;
+      }
+      destroyed = true;
+      doc.destroy();
+    };
 
     const renderPdf = async () => {
       const data = await content.arrayBuffer();
@@ -39,7 +56,14 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
         disableAutoFetch: true,
         isEvalSupported: false,
       }).promise;
-      if (cancelled || !container) {
+      if (cancelled) {
+        // The consumer navigated away/unmounted while the document was still
+        // loading — nothing destroyed it yet, so do it now to free the worker.
+        destroyDoc();
+
+        return;
+      }
+      if (!container) {
         return;
       }
       container.replaceChildren();
@@ -70,13 +94,31 @@ const PdfRenderer = ({ content }: PreviewRendererProps) => {
       }
     };
 
-    renderPdf();
+    renderPdf().catch((error) => {
+      // A cancellation (unmount mid-render, or pdf.js aborting `page.render`
+      // when `doc.destroy()` runs concurrently) is expected teardown, not a
+      // failure — surface only genuine parse/render errors.
+      if (cancelled || isRenderingCancelledError(error)) {
+        return;
+      }
+      setHasError(true);
+    });
 
     return () => {
       cancelled = true;
-      doc?.destroy();
+      destroyDoc();
     };
   }, [content, t]);
+
+  if (hasError) {
+    return (
+      <div data-testid="pdf-preview-error">
+        <Typography className="tw:p-8 tw:text-center" color="secondary">
+          {t('message.file-preview-render-failed')}
+        </Typography>
+      </div>
+    );
+  }
 
   return <div className="tw:p-4" ref={containerRef} />;
 };
