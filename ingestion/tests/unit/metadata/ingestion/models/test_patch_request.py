@@ -13,13 +13,15 @@
 Check the JSONPatch operations work as expected
 """
 
+import json
+import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import jsonpatch
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -28,7 +30,13 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    JsonPatchUpdater,
+    build_patch,
+)
 
 
 class JsonPatchUpdaterTest(TestCase):
@@ -438,3 +446,167 @@ def test_build_patch_drops_nested_children_when_column_becomes_scalar():
         operation for operation in patch.patch if operation["path"] == "/columns"
     )
     assert "children" not in columns_operation["value"][0]
+
+
+class TestBuildPatchTagAppend:
+    """A tag added at the source has to reach an entity that is already tagged.
+
+    With overrideMetadata off, tags are additive: the server merges them on a PUT
+    (EntityRepository.updateTags), and the connector-side patch has to do the same.
+    Keeping the stored list as-is would mean a tag added in Snowflake never lands on
+    a table or column that carries any tag already.
+    """
+
+    @staticmethod
+    def _label(tag_fqn, label_type=LabelType.Automated):
+        return TagLabel(
+            tagFQN=TagFQN(tag_fqn),
+            source=TagSource.Classification,
+            labelType=label_type,
+            state=State.Suggested,
+        )
+
+    def _table(self, table_tags, column_tags, children_tags=None):
+        children = None
+        if children_tags is not None:
+            children = [
+                Column(
+                    name="street",
+                    dataType=DataType.STRING,
+                    ordinalPosition=1,
+                    tags=[self._label(tag) for tag in children_tags],
+                )
+            ]
+        return Table(
+            id=str(uuid.uuid4()),
+            name="customers",
+            fullyQualifiedName="svc.db.schema.customers",
+            columns=[
+                Column(
+                    name="address",
+                    dataType=DataType.STRUCT if children else DataType.VARCHAR,
+                    dataLength=None if children else 100,
+                    ordinalPosition=1,
+                    tags=[self._label(tag) for tag in column_tags],
+                    children=children,
+                )
+            ],
+            tags=[self._label(tag) for tag in table_tags],
+        )
+
+    def _patched(self, stored, ingested, override_metadata=False):
+        """Apply the patch the sink would send, and return the resulting entity."""
+        patch = build_patch(
+            source=stored,
+            destination=ingested,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=override_metadata,
+            skip_on_failure=False,
+        )
+        document = json.loads(stored.model_dump_json(exclude_none=True))
+
+        return jsonpatch.apply_patch(document, patch.patch) if patch else document
+
+    @staticmethod
+    def _tag_fqns(tags):
+        return [tag["tagFQN"] for tag in tags or []]
+
+    def test_column_tag_is_appended_when_column_already_tagged(self):
+        result = self._patched(
+            self._table(["Governance.certified"], ["Governance.certified"]),
+            self._table(
+                ["Governance.certified", "Sensitivity.pii"],
+                ["Governance.certified", "Sensitivity.pii"],
+            ),
+        )
+
+        assert self._tag_fqns(result["columns"][0]["tags"]) == [
+            "Governance.certified",
+            "Sensitivity.pii",
+        ]
+
+    def test_nested_column_tag_is_appended(self):
+        result = self._patched(
+            self._table([], [], children_tags=["Governance.certified"]),
+            self._table(
+                [],
+                [],
+                children_tags=["Governance.certified", "Sensitivity.pii"],
+            ),
+        )
+
+        assert self._tag_fqns(result["columns"][0]["children"][0]["tags"]) == [
+            "Governance.certified",
+            "Sensitivity.pii",
+        ]
+
+    def test_table_tag_is_appended_whatever_order_the_source_lists_it_in(self):
+        """account_usage.tag_references has no ORDER BY, so the new tag can come first."""
+        result = self._patched(
+            self._table(["Governance.certified"], []),
+            self._table(["Sensitivity.pii", "Governance.certified"], []),
+        )
+
+        assert sorted(self._tag_fqns(result["tags"])) == [
+            "Governance.certified",
+            "Sensitivity.pii",
+        ]
+
+    def test_tag_dropped_at_the_source_is_kept(self):
+        """Without override the patch is additive, so a tag removed upstream stays."""
+        result = self._patched(
+            self._table(
+                ["Governance.certified", "Sensitivity.pii"],
+                ["Governance.certified", "Sensitivity.pii"],
+            ),
+            self._table(["Governance.certified"], ["Governance.certified"]),
+        )
+
+        assert self._tag_fqns(result["tags"]) == [
+            "Governance.certified",
+            "Sensitivity.pii",
+        ]
+        assert self._tag_fqns(result["columns"][0]["tags"]) == [
+            "Governance.certified",
+            "Sensitivity.pii",
+        ]
+
+    def test_tag_the_user_added_in_the_ui_survives(self):
+        result = self._patched(
+            self._table(["Tier.Tier1"], ["Tier.Tier1"]),
+            self._table(["Sensitivity.pii"], ["Sensitivity.pii"]),
+        )
+
+        assert self._tag_fqns(result["tags"]) == ["Tier.Tier1", "Sensitivity.pii"]
+        assert self._tag_fqns(result["columns"][0]["tags"]) == [
+            "Tier.Tier1",
+            "Sensitivity.pii",
+        ]
+
+    def test_unchanged_tags_produce_no_operation(self):
+        stored = self._table(["Governance.certified"], ["Governance.certified"])
+        ingested = self._table(["Governance.certified"], ["Governance.certified"])
+
+        patch = build_patch(
+            source=stored,
+            destination=ingested,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            skip_on_failure=False,
+        )
+
+        assert patch is None
+
+    def test_override_metadata_still_replaces_tags(self):
+        """overrideMetadata is the force-sync path: the source list wins outright."""
+        result = self._patched(
+            self._table(["Governance.certified"], ["Governance.certified"]),
+            self._table(["Sensitivity.pii"], ["Sensitivity.pii"]),
+            override_metadata=True,
+        )
+
+        assert self._tag_fqns(result["tags"]) == ["Sensitivity.pii"]
+        assert self._tag_fqns(result["columns"][0]["tags"]) == ["Sensitivity.pii"]
