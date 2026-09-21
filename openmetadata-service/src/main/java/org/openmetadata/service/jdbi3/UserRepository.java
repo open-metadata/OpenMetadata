@@ -105,6 +105,7 @@ import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.AsyncService;
@@ -295,7 +296,10 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return Collections.emptyList(); // No inherited roles for bots
     }
-    return SubjectContext.getRolesForTeams(getTeams(user));
+    // setFields resolves teams before inherited roles, so re-reading them here is a wasted query.
+    // Teams are stripped from the stored JSON, so a non-null value can only have come from there.
+    List<EntityReference> teams = user.getTeams() != null ? user.getTeams() : getTeams(user);
+    return SubjectContext.getRolesForTeams(teams);
   }
 
   @Override
@@ -428,15 +432,10 @@ public class UserRepository extends EntityRepository<User> {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
-      if (!nullOrEmpty(teams)) {
-        for (EntityReference team : teams) {
-          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
-          combinedParent.addAll(parent.getDomains());
-        }
-      }
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+      combinedParent.addAll(TeamHierarchyResolver.domainsForTeams(teams));
       user.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
               user.getDomains(), combinedParent.stream().toList()));
@@ -999,12 +998,32 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     Map<UUID, List<EntityReference>> userToTeams = batchFetchTeamsForUsers(userIds);
+    // One hierarchy walk for the whole page rather than one per user: members of the same teams
+    // share almost all of it, and a user in many teams would otherwise pay for each of them.
+    Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy =
+        TeamHierarchyResolver.closure(effectiveTeams(users, userToTeams));
 
     for (User user : users) {
       List<EntityReference> roleRefs = userToRoles.get(user.getId());
       user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
-      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId())));
+      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId()), hierarchy));
     }
+  }
+
+  /** Teams whose roles the page inherits, with the organization standing in for no membership. */
+  private Set<EntityReference> effectiveTeams(
+      List<User> users, Map<UUID, List<EntityReference>> userToTeams) {
+    Set<EntityReference> teams = new HashSet<>();
+    for (User user : users) {
+      if (!Boolean.TRUE.equals(user.getIsBot())) {
+        teams.addAll(effectiveTeams(userToTeams.get(user.getId())));
+      }
+    }
+    return teams;
+  }
+
+  private List<EntityReference> effectiveTeams(List<EntityReference> teams) {
+    return nullOrEmpty(teams) ? List.of(getOrganization()) : teams;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchTeamsForUsers(List<String> userIds) {
@@ -1026,14 +1045,13 @@ public class UserRepository extends EntityRepository<User> {
     return userToTeams;
   }
 
-  private List<EntityReference> getInheritedRoles(User user, List<EntityReference> teams) {
+  private List<EntityReference> getInheritedRoles(
+      User user, List<EntityReference> teams, Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy) {
     List<EntityReference> roles;
     if (Boolean.TRUE.equals(user.getIsBot())) {
       roles = Collections.emptyList();
     } else {
-      List<EntityReference> effectiveTeams =
-          nullOrEmpty(teams) ? new ArrayList<>(List.of(getOrganization())) : teams;
-      roles = SubjectContext.getRolesForTeams(effectiveTeams);
+      roles = TeamHierarchyResolver.rolesForTeams(effectiveTeams(teams), hierarchy);
     }
     return roles;
   }
