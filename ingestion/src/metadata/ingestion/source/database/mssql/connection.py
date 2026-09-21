@@ -211,6 +211,22 @@ def with_default_query_timeout(connection: MssqlConnectionConfig) -> MssqlConnec
     return connection
 
 
+def configured_query_timeout(connection: MssqlConnectionConfig) -> int:
+    """
+    The query bound this service configured, falling back to the default.
+
+    ``timeout`` is the only knob for this, and pyodbc spends it on the login, so
+    without reading it back here a service that asked for a tighter bound would
+    still run its queries against the default - the opposite of what setting it
+    means. On pyodbc the one value therefore bounds both.
+    """
+    arguments = connection.connectionArguments.root if connection.connectionArguments else None
+    configured = (arguments or {}).get("timeout")
+    if isinstance(configured, (int, float)):
+        return int(configured)
+    return DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
 def bound_pyodbc_query_timeout(engine: Engine, timeout_seconds: int = DEFAULT_QUERY_TIMEOUT_SECONDS) -> None:
     """
     Bound pyodbc's query timeout, which is a connection attribute rather than a
@@ -308,7 +324,7 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
             pool_pre_ping=True,
         )
         if uses_pyodbc(self.service_connection):
-            bound_pyodbc_query_timeout(engine)
+            bound_pyodbc_query_timeout(engine, configured_query_timeout(self.service_connection))
         self._on_close(engine.dispose)
         return engine
 

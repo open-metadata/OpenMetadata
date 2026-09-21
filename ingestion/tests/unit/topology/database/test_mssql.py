@@ -216,6 +216,10 @@ EXPECTED_TABLE = [
 ]
 
 
+# Where the connection points before the run walks to its first database.
+ENTRY_POINT_DATABASE = "<entry point>"
+
+
 class MssqlUnitTest(TestCase):
     """
     Implements the necessary methods to extract
@@ -525,47 +529,61 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
-    def test_description_maps_load_after_the_inspector_is_switched(self):
+    def _record_which_database_each_load_reads(self):
+        """
+        Stand in for the connection: `set_inspector` moves it, the description
+        loaders record where it was pointing when they ran. That pairing is the
+        property under test - reading before the move records the database the
+        run has just left, which is what left every database undocumented.
+
+        Whether the inspector truly repoints, and whether the descriptions that
+        come back belong to that database, is asserted against a real server in
+        tests/integration/sql_server/test_reflection.py.
+        """
+        connection = {"database": ENTRY_POINT_DATABASE}
+        read_from = []
+
+        def switch(database_name):
+            connection["database"] = database_name
+
+        def load():
+            read_from.append(connection["database"])
+
+        return (
+            read_from,
+            patch.object(MssqlSource, "set_inspector", side_effect=switch),
+            patch.object(MssqlSource, "_load_description_maps", side_effect=load),
+        )
+
+    def test_descriptions_are_read_from_each_database_after_connecting_to_it(self):
         """Every description query reads the connected database (they select
-        DB_NAME()), so they must run once the inspector points at the database
-        being ingested. Loading first keys the maps by the previously connected
-        database and no lookup can match them."""
+        DB_NAME()), so a load that runs before the switch reads the previous
+        database and no lookup can match the maps it builds."""
         self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
         self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        calls = []
+        read_from, switching, loading = self._record_which_database_each_load_reads()
 
         with (
             patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["db_one", "db_two"])),
-            patch.object(MssqlSource, "_load_description_maps", side_effect=lambda: calls.append("load")),
-            patch.object(
-                MssqlSource,
-                "set_inspector",
-                side_effect=lambda database_name: calls.append(f"switch:{database_name}"),
-            ),
+            switching,
+            loading,
         ):
             yielded = list(self.mssql.get_database_names())
 
         assert yielded == ["db_one", "db_two"]
-        assert calls == ["switch:db_one", "load", "switch:db_two", "load"]
+        assert read_from == yielded
 
-    def test_description_maps_load_after_the_inspector_for_a_single_database(self):
-        """The single-database path keeps the same order as the multi-database one."""
+    def test_descriptions_are_read_after_connecting_for_a_single_database(self):
+        """The single-database path holds the same property as the multi-database one."""
         self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
         configured_database = self.mssql.config.serviceConnection.root.config.database
-        calls = []
+        read_from, switching, loading = self._record_which_database_each_load_reads()
 
-        with (
-            patch.object(MssqlSource, "_load_description_maps", side_effect=lambda: calls.append("load")),
-            patch.object(
-                MssqlSource,
-                "set_inspector",
-                side_effect=lambda database_name: calls.append(f"switch:{database_name}"),
-            ),
-        ):
+        with switching, loading:
             yielded = list(self.mssql.get_database_names())
 
         assert yielded == [configured_database]
-        assert calls == [f"switch:{configured_database}", "load"]
+        assert read_from == yielded
 
     @staticmethod
     def _inspector_listing(*view_names):

@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.mssql.connection import (
     MssqlConnection,
     _mssql_number,
     bound_pyodbc_query_timeout,
+    configured_query_timeout,
     get_connection_url,
     with_default_query_timeout,
 )
@@ -540,6 +541,45 @@ def test_the_engine_is_built_with_pre_ping():
         _ = MssqlConnection(_config()).client
 
     assert mock_connection.call_args.kwargs["pool_pre_ping"] is True
+
+
+def test_a_configured_timeout_is_the_bound_pyodbc_queries_get():
+    """pyodbc spends `timeout` on the login, so a service that asked for a tighter
+    bound would otherwise keep running its queries against the default."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": 30},
+    )
+
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection"),
+        patch(f"{CONNECTION_MODULE}.bound_pyodbc_query_timeout") as mock_bound,
+    ):
+        _ = MssqlConnection(config).client
+
+    assert mock_bound.call_args.args[1] == 30
+
+
+def test_the_default_bound_applies_when_nothing_is_configured():
+    assert configured_query_timeout(_config(scheme=MssqlScheme.mssql_pyodbc)) == DEFAULT_QUERY_TIMEOUT_SECONDS
+
+
+def test_a_non_numeric_timeout_falls_back_to_the_default():
+    """Whatever the driver makes of it, it is not a bound this can apply."""
+    config = MssqlConnectionConfig(
+        scheme=MssqlScheme.mssql_pyodbc,
+        username="user",
+        password="pass",
+        hostPort="myhost:1433",
+        database="mydb",
+        connectionArguments={"timeout": "thirty"},
+    )
+
+    assert configured_query_timeout(config) == DEFAULT_QUERY_TIMEOUT_SECONDS
 
 
 @pytest.mark.parametrize(
