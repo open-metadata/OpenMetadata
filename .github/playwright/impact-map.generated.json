@@ -4864,6 +4864,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
@@ -4998,7 +4999,6 @@
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -5073,6 +5073,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
@@ -6062,7 +6063,6 @@
         "playwright/e2e/Features/Permissions/DomainPermissions.spec.ts",
         "playwright/e2e/Features/Permissions/GlossaryPermissions.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Entity.spec.ts",
@@ -6134,6 +6134,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Domain/AddDomainForm/AddDomainForm.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts",
@@ -8229,16 +8230,10 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/AsyncSelectList.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
-        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
-        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
       ]
@@ -8248,16 +8243,10 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/AsyncSelectList/TreeAsyncSelectList.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
-        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
-        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts"
       ]
@@ -8818,7 +8807,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/InlineEdit/InlineEdit.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/Tasks/TaskAssigneeManagement.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -11130,6 +11118,7 @@
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/DataQuality/CertificationFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/DataObservabilityGovernanceTab.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
@@ -11622,16 +11611,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/Table.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
       ]
     },
     {
