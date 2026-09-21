@@ -40,11 +40,14 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   // Known gap: counts are per file+rule, so swapping one violation for another
   // of the same rule in the same file stays invisible here.
   const EXPECTED = {
-    'om-playwright/justified-rule-disable': 12,
-    'om-playwright/no-positional-locator': 1304,
+    'om-playwright/justified-rule-disable': 10,
+    'om-playwright/no-blanket-test-slow': 1,
+    // 1202 on main, less the six positional locators the CodeMirror 6 selectors
+    // replaced (MetricCustomUnitFlow, CustomProperties, customProperty, metric).
+    'om-playwright/no-positional-locator': 1196,
     'om-playwright/require-assertion-per-test': 1,
-    'playwright/no-skipped-test': 4,
-    'playwright/no-wait-for-selector': 35,
+    'playwright/no-skipped-test': 2,
+    'playwright/no-wait-for-selector': 25,
   };
 
   assert.deepStrictEqual(

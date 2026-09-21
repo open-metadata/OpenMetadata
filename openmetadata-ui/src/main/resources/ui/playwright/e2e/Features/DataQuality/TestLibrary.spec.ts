@@ -15,6 +15,7 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -27,6 +28,8 @@ const UPDATE_TEST_DEFINITION_DISPLAY_NAME = `Aaro Updated Custom Test Definition
 const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
+// Only for the multi-select combobox — its popup is typing-driven, so
+// selectOptionWithRetry's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -41,6 +44,20 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
     optionBox.x + optionBox.width / 2,
     optionBox.y + optionBox.height / 2
   );
+};
+
+// Assert on the trigger, never on the Select root: the root also holds React
+// Aria's hidden <select>, whose <option> text makes toContainText on the root
+// pass for any value the field offers, selected or not.
+const selectEntityType = async (page: Page, entityType: string) => {
+  const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
+
+  await selectOptionWithRetry(
+    entityTypeTrigger,
+    page.getByRole('option', { name: entityType, exact: true })
+  );
+
+  await expect(entityTypeTrigger).toContainText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -147,13 +164,7 @@ test.describe(
           .locator('textarea')
           .fill(TEST_DEFINITION_DESCRIPTION);
 
-        // Select entity type (react-aria Select: click the field, pick option)
-        await page.locator('[id="root/entityType"]').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Supported data types (core MultiSelect: type into its combobox input to
         // populate the options, then pick — required while the OpenMetadata
@@ -346,7 +357,9 @@ test.describe(
       await expect(page.getByTestId('test-definition-form-body')).toBeVisible();
     });
 
-    test('should require supported data types only when OpenMetadata platform is selected', async ({
+    // Leaving supported data types empty means "all data types", so the form must
+    // submit without them on any platform, OpenMetadata included. See issue #27718.
+    test('should create a test definition without supported data types', async ({
       page,
     }) => {
       test.slow();
@@ -361,50 +374,14 @@ test.describe(
             .waitFor({ state: 'visible' });
         });
 
-        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
-          // Fill required fields except supportedDataTypes
+        await test.step('Submit with the default OpenMetadata platform and no supported data types', async () => {
+          // Fill every required field, leaving supportedDataTypes untouched
           await page
             .getByTestId('test-definition-name')
             .locator('input')
             .fill(`validation-test-${uuid()}`);
-          await page.getByTestId('entity-type').click();
-          const entityTypeOption = page.getByRole('option', {
-            name: 'TABLE',
-            exact: true,
-          });
-          await entityTypeOption.click();
+          await selectEntityType(page, 'TABLE');
 
-          // Submit the form
-          await page.getByTestId('save-test-definition').click();
-
-          // Expect validation error on supportedDataTypes
-          await expect(page.getByTestId('supported-data-types')).toBeVisible();
-        });
-
-        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-          // Remove OpenMetadata from testPlatforms via its chip's remove button,
-          // then assert it is gone so a mis-matched selector can't silently no-op.
-          await page
-            .getByTestId('test-platforms')
-            .locator('div')
-            .filter({ hasText: 'OpenMetadata' })
-            .getByRole('button')
-            .first()
-            .click();
-          await expect(
-            page
-              .getByTestId('test-platforms')
-              .getByText('OpenMetadata', { exact: true })
-          ).toHaveCount(0);
-
-          // Add dbt
-          await page.getByTestId('test-platforms').click();
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
-
-          // Close dropdown
-          await page.keyboard.press('Escape');
-
-          // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -502,17 +479,35 @@ test.describe(
       expect(tagCount).toBeGreaterThan(0);
     });
 
-    test('should not show edit and delete buttons for system test definitions', async ({
+    test('should keep system test definitions editable but not deletable', async ({
       page,
     }) => {
       const systemTestDef = await findSystemTestDefinition(page);
 
-      // Verify edit button does not exist for system test definition
+      // The form opens for a system test definition because its data quality dimension can be
+      // reclassified — every other field stays read-only — but it can never be deleted.
       const editButton = page.getByTestId(
         `edit-test-definition-${systemTestDef.name}`
       );
 
-      await expect(editButton).toBeDisabled();
+      await expect(editButton).toBeEnabled();
+
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+      await expect(
+        page.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await page.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        page.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
 
       // Verify delete button does not exist for system test definition
       const deleteButton = page.getByTestId(
@@ -632,22 +627,7 @@ test.describe(
           .locator('textarea')
           .fill('External test for read-only validation');
 
-        const entityTypeSelect = page.getByTestId('entity-type');
-        const entityTypeTrigger = entityTypeSelect.getByRole('button');
-
-        // The documentation panel reacts to focus and rerenders the form. Let
-        // that update settle before the mouse press so React Aria does not
-        // cancel the press when CI is under load.
-        await entityTypeTrigger.focus();
-        await expect(entityTypeTrigger).toBeFocused();
-        await entityTypeTrigger.click();
-        const tableOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await selectOptionWithMouse(page, tableOption);
-
-        await expect(entityTypeSelect).toContainText('TABLE');
+        await selectEntityType(page, 'TABLE');
 
         // OpenMetadata is selected by default. Remove its chip (the chip is a
         // span with the label and an unlabeled remove button) and add dbt so the
@@ -764,26 +744,17 @@ test.describe(
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        const dimensionField = page.getByTestId('data-quality-dimension');
+        const dimensionTrigger = page
+          .getByTestId('data-quality-dimension')
+          .getByRole('button');
         const accuracyOption = page.getByRole('option', {
           name: 'Accuracy',
           exact: true,
         });
 
-        // The listbox is a non-modal React Aria popover, so it is dismissed by any
-        // scroll of the pane holding the trigger — including the one Playwright
-        // emits to bring this field into view, delivered a frame after the popup
-        // opened. Reopen on each attempt; nothing else reopens it.
-        await expect(async () => {
-          if (!(await accuracyOption.isVisible())) {
-            await dimensionField.getByRole('button').click();
-            await expect(accuracyOption).toBeVisible({ timeout: 2_000 });
-          }
-          await selectOptionWithMouse(page, accuracyOption);
-          await expect(dimensionField).toContainText('Accuracy', {
-            timeout: 2_000,
-          });
-        }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
+        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
+
+        await expect(dimensionTrigger).toContainText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -867,13 +838,7 @@ test.describe(
           .locator('textarea')
           .fill('Test definition to validate supported services filtering');
 
-        await page.getByTestId('entity-type').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await expect(entityTypeOption).toBeVisible();
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();
@@ -1211,12 +1176,7 @@ test.describe(
           .locator('textarea')
           .fill('Test definition for pagination behavior testing');
 
-        await page.getByTestId('entity-type').click();
-        const entityTypeOption = page.getByRole('option', {
-          name: 'TABLE',
-          exact: true,
-        });
-        await entityTypeOption.click();
+        await selectEntityType(page, 'TABLE');
 
         // Select supported data types (required when OpenMetadata platform is selected)
         await page.getByTestId('supported-data-types').click();

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, type ComponentType } from 'react';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -82,14 +83,6 @@ const APIEndpointSchema = withSuspenseFallback(
   lazy(
     () =>
       import('../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema')
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -229,6 +222,14 @@ const PartitionedKeys = withSuspenseFallback(
   )
 );
 
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((m) => ({ default: m.TableAliases }))
+  )
+);
+
 export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.GLOSSARY_TERMS]: () => (
     <TagsViewer
@@ -279,7 +280,12 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.OWNER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={DUMMY_OWNER_LIST}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: () => (
     <div className="flex gap-2 flex-col">
@@ -311,7 +317,12 @@ export const WIDGET_COMPONENTS = {
   ),
 
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: () => (
-    <OwnerLabel hasPermission={false} owners={DUMMY_OWNER_LIST} />
+    <Owner
+      hasPermission={false}
+      isCompactView={false}
+      owners={DUMMY_OWNER_LIST}
+      showLabel={false}
+    />
   ),
   [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
     <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
@@ -342,9 +353,11 @@ export const WIDGET_COMPONENTS = {
     <DashboardChartTable isCustomizationPage />
   ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
-    <OwnerLabel
+    <Owner
       hasPermission={false}
+      isCompactView={false}
       owners={domainClassBase.getDummyData().experts ?? []}
+      showLabel={false}
     />
   ),
   [DetailPageWidgetKeys.API_ENDPOINTS]: () => (
@@ -364,6 +377,9 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
+  ),
+  [DetailPageWidgetKeys.TABLE_ALIASES]: () => (
+    <TableAliases renderAsExpandableCard={false} />
   ),
   [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: () => (
     <MarketplaceDataProductsWidget

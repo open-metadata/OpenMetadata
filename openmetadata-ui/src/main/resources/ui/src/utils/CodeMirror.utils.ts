@@ -18,9 +18,11 @@ import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
+import { tags as t } from '@lezer/highlight';
 import {
   bracketMatching,
   defaultHighlightStyle,
+  HighlightStyle,
   foldGutter,
   indentUnit,
   StreamLanguage,
@@ -147,6 +149,28 @@ export const getCodeMirrorExtensions = (
 };
 
 /**
+ * Syntax hues as CSS variables, defined for both themes in `code-mirror.less`.
+ * The tag groups mirror the CodeMirror 5 token classes they replace.
+ */
+const THEMED_HIGHLIGHT_STYLE = HighlightStyle.define([
+  { tag: t.keyword, color: 'var(--cm-token-keyword)' },
+  {
+    tag: [t.definition(t.variableName), t.standard(t.variableName)],
+    color: 'var(--cm-token-def)',
+  },
+  { tag: [t.propertyName, t.variableName], color: 'var(--cm-token-property)' },
+  {
+    tag: [t.number, t.atom, t.bool, t.attributeName],
+    color: 'var(--cm-token-number)',
+  },
+  { tag: [t.string, t.special(t.string)], color: 'var(--cm-token-string)' },
+  { tag: [t.typeName, t.className], color: 'var(--cm-token-type)' },
+  { tag: [t.operator, t.meta], color: 'var(--cm-token-operator)' },
+  { tag: t.comment, color: 'var(--cm-token-comment)', fontStyle: 'italic' },
+  { tag: t.invalid, color: 'var(--cm-token-error)' },
+]);
+
+/**
  * The editor behaviour that is not driven by an option: undo history, the
  * default key bindings, selection and drop cursors, and syntax colouring.
  *
@@ -162,6 +186,11 @@ export const getCodeMirrorBaseExtensions = (): Extension[] => [
   history(),
   drawSelection(),
   dropCursor(),
+  // Token colours come from CSS variables so one style serves both themes —
+  // CodeMirror 6 generates its own opaque class names, so the v5 approach of
+  // restyling `.cm-keyword` & co. from a `.dark-mode` block cannot work.
+  // defaultHighlightStyle stays underneath for tags this style does not name.
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  syntaxHighlighting(THEMED_HIGHLIGHT_STYLE),
   keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap]),
 ];

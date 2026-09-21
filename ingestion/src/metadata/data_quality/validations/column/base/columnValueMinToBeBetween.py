@@ -97,9 +97,10 @@ class BaseColumnValueMinToBeBetweenValidator(BaseTestValidator):
         Returns:
             dict: Test parameters including min and max bounds
         """
+        min_bound, max_bound = self.get_bounds(self.MIN_BOUND, self.MAX_BOUND)
         return {
-            self.MIN_BOUND: self.get_min_bound(self.MIN_BOUND),
-            self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
+            self.MIN_BOUND: min_bound,
+            self.MAX_BOUND: max_bound,
         }
 
     def _get_metrics_to_compute(self, test_params: dict | None = None) -> dict:

@@ -50,6 +50,179 @@ import { ScheduleIntervalProps, StateValue } from './ScheduleInterval.types';
 import { validateCronExpression } from './ScheduleInterval.utils';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
 
+type CronSelectOption = { id: string; label: string };
+
+// The day / date / minute pickers differ only by label, options and target
+// state key, so they share one component instead of three near-identical blocks.
+const CronOptionSelect = ({
+  label,
+  testId,
+  disabled,
+  items,
+  selectedValue,
+  onSelect,
+}: {
+  label: string;
+  testId: string;
+  disabled?: boolean;
+  items: CronSelectOption[];
+  selectedValue?: string | number;
+  onSelect: (value: string) => void;
+}) => (
+  <Grid.Item span={8}>
+    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
+    <label className="tw:font-medium">{label}</label>
+    <Select
+      aria-label={label}
+      className="tw:mt-2 tw:w-full"
+      data-testid={testId}
+      isDisabled={disabled}
+      items={items}
+      selectedKey={selectedValue ?? null}
+      onSelectionChange={(key: Key | null) =>
+        key !== null && onSelect(String(key))
+      }>
+      {(item) => (
+        <Select.Item id={item.id} key={item.id} textValue={item.label}>
+          {item.label}
+        </Select.Item>
+      )}
+    </Select>
+  </Grid.Item>
+);
+
+const ScheduleFieldsGrid = ({
+  showWeekSelect,
+  showMonthSelect,
+  showTimePicker,
+  showMinuteOnly,
+  showCustomInput,
+  disabled,
+  dayOptions,
+  dateOptions,
+  minuteOptions,
+  dow,
+  dom,
+  minValue,
+  timeValue,
+  cronString,
+  customCronError,
+  handleStateChange,
+  handleCustomCronChange,
+}: {
+  showWeekSelect: boolean;
+  showMonthSelect: boolean;
+  showTimePicker: boolean;
+  showMinuteOnly: boolean;
+  showCustomInput: boolean;
+  disabled?: boolean;
+  dayOptions: CronSelectOption[];
+  dateOptions: CronSelectOption[];
+  minuteOptions: CronSelectOption[];
+  dow?: string | number;
+  dom?: string | number;
+  minValue?: string | number;
+  timeValue: TimePickerValue | null;
+  cronString?: string;
+  customCronError?: string;
+  handleStateChange: (next: Record<string, string>) => void;
+  handleCustomCronChange: (value: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Grid gap="4">
+      {showWeekSelect && (
+        <CronOptionSelect
+          disabled={disabled}
+          items={dayOptions}
+          label={t('label.day')}
+          selectedValue={dow}
+          testId="day-options"
+          onSelect={(dowValue) => handleStateChange({ dow: dowValue })}
+        />
+      )}
+
+      {showMonthSelect && (
+        <CronOptionSelect
+          disabled={disabled}
+          items={dateOptions}
+          label={t('label.date')}
+          selectedValue={dom}
+          testId="date-options"
+          onSelect={(domValue) => handleStateChange({ dom: domValue })}
+        />
+      )}
+
+      {showTimePicker && (
+        <Grid.Item span={8}>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- TimePicker below has its own aria-label */}
+          <label className="tw:font-medium">{t('label.time')}</label>
+          <TimePicker
+            aria-label={t('label.time')}
+            className="tw:mt-2"
+            data-testid="time-picker"
+            isDisabled={disabled}
+            value={timeValue}
+            onChange={(time: TimePickerValue | null) =>
+              time !== null &&
+              handleStateChange({
+                hour: String(time.hour),
+                min: String(time.minute),
+              })
+            }
+          />
+        </Grid.Item>
+      )}
+
+      {showMinuteOnly && (
+        <CronOptionSelect
+          disabled={disabled}
+          items={minuteOptions}
+          label={t('label.minute')}
+          selectedValue={minValue}
+          testId="minute-options"
+          onSelect={(min) => handleStateChange({ min })}
+        />
+      )}
+
+      {showCustomInput && (
+        <Grid.Item span={24}>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
+          <label className="tw:font-medium">{t('label.cron')}</label>
+          <Input
+            aria-label={t('label.cron')}
+            className="tw:mt-2"
+            data-testid="custom-cron-input"
+            isDisabled={disabled}
+            placeholder="0 0 * * *"
+            value={cronString ?? ''}
+            onChange={handleCustomCronChange}
+          />
+          {customCronError && (
+            <Typography
+              className="tw:text-fg-error-primary tw:mt-1"
+              data-testid="custom-cron-error"
+              size="text-xs">
+              {customCronError}
+            </Typography>
+          )}
+        </Grid.Item>
+      )}
+    </Grid>
+  );
+};
+
+// Keep the fallback outside this already complex component so restoring a
+// saved schedule does not add another branch to its interaction logic.
+const getScheduleRestoreValue = (
+  savedCron: string | undefined,
+  defaultSchedule: string | undefined,
+  includePeriodOptions: string[] | undefined
+) =>
+  savedCron ||
+  getDefaultScheduleValue({ defaultSchedule, includePeriodOptions });
+
 const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   value,
   onChange,
@@ -108,6 +281,9 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   // the custom field. Normalized because consumers store a cleared cron as an
   // empty string but hand it back as undefined.
   const lastEmittedValueRef = useRef(value || undefined);
+  // Preserve external schedule state across the controlled undefined echo
+  // emitted by On Demand. External resets still replace this restore target.
+  const savedCronRef = useRef(lastEmittedValueRef.current);
 
   const emitChange = useCallback(
     (cron?: string) => {
@@ -150,12 +326,13 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
         setState((prev) => ({ ...prev, cron: undefined }));
         emitChange(undefined);
       } else {
-        // When switching to schedule, use default schedule
-        const nonEmptyScheduleValue = getDefaultScheduleValue({
-          includePeriodOptions,
-          defaultSchedule,
-        });
-        const newState = getStateValue(nonEmptyScheduleValue);
+        const newState = getStateValue(
+          getScheduleRestoreValue(
+            savedCronRef.current,
+            defaultSchedule,
+            includePeriodOptions
+          )
+        );
         setState(newState);
         emitChange(newState.cron);
       }
@@ -320,6 +497,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
     }
 
     lastEmittedValueRef.current = normalizedValue;
+    savedCronRef.current = normalizedValue;
 
     if (isEmpty(value)) {
       setSelectedSchedular(SchedularOptions.ON_DEMAND);
@@ -374,135 +552,27 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
                 </div>
               </div>
 
-              <Grid gap="4">
-                {showWeekSelect && (
-                  <Grid.Item span={8}>
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label className="tw:font-medium">{t('label.day')}</label>
-                    <Select
-                      aria-label={t('label.day')}
-                      className="tw:mt-2 tw:w-full"
-                      data-testid="day-options"
-                      isDisabled={disabled}
-                      items={dayOptions}
-                      selectedKey={dow ?? null}
-                      onSelectionChange={(key: Key | null) =>
-                        key !== null && handleStateChange({ dow: String(key) })
-                      }>
-                      {(item) => (
-                        <Select.Item
-                          id={item.id}
-                          key={item.id}
-                          textValue={item.label}>
-                          {item.label}
-                        </Select.Item>
-                      )}
-                    </Select>
-                  </Grid.Item>
-                )}
-
-                {showMonthSelect && (
-                  <Grid.Item span={8}>
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label className="tw:font-medium">{t('label.date')}</label>
-                    <Select
-                      aria-label={t('label.date')}
-                      className="tw:mt-2 tw:w-full"
-                      data-testid="date-options"
-                      isDisabled={disabled}
-                      items={dateOptions}
-                      selectedKey={dom ?? null}
-                      onSelectionChange={(key: Key | null) =>
-                        key !== null && handleStateChange({ dom: String(key) })
-                      }>
-                      {(item) => (
-                        <Select.Item
-                          id={item.id}
-                          key={item.id}
-                          textValue={item.label}>
-                          {item.label}
-                        </Select.Item>
-                      )}
-                    </Select>
-                  </Grid.Item>
-                )}
-
-                {showTimePicker && (
-                  <Grid.Item span={8}>
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- TimePicker below has its own aria-label */}
-                    <label className="tw:font-medium">{t('label.time')}</label>
-                    <TimePicker
-                      aria-label={t('label.time')}
-                      className="tw:mt-2"
-                      data-testid="time-picker"
-                      isDisabled={disabled}
-                      value={timeValue}
-                      onChange={(time: TimePickerValue | null) => {
-                        if (time !== null) {
-                          handleStateChange({
-                            hour: String(time.hour),
-                            min: String(time.minute),
-                          });
-                        }
-                      }}
-                    />
-                  </Grid.Item>
-                )}
-
-                {showMinuteOnly && (
-                  <Grid.Item span={8}>
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Select below has its own aria-label */}
-                    <label className="tw:font-medium">
-                      {t('label.minute')}
-                    </label>
-                    <Select
-                      aria-label={t('label.minute')}
-                      className="tw:mt-2 tw:w-full"
-                      data-testid="minute-options"
-                      isDisabled={disabled}
-                      items={minuteOptions}
-                      selectedKey={
-                        state.min === undefined ? null : String(state.min)
-                      }
-                      onSelectionChange={(key: Key | null) =>
-                        key !== null && handleStateChange({ min: String(key) })
-                      }>
-                      {(item) => (
-                        <Select.Item
-                          id={item.id}
-                          key={item.id}
-                          textValue={item.label}>
-                          {item.label}
-                        </Select.Item>
-                      )}
-                    </Select>
-                  </Grid.Item>
-                )}
-
-                {showCustomInput && (
-                  <Grid.Item span={24}>
-                    {/* eslint-disable-next-line jsx-a11y/label-has-for -- Input below has its own aria-label */}
-                    <label className="tw:font-medium">{t('label.cron')}</label>
-                    <Input
-                      aria-label={t('label.cron')}
-                      className="tw:mt-2"
-                      data-testid="custom-cron-input"
-                      isDisabled={disabled}
-                      placeholder="0 0 * * *"
-                      value={cronString ?? ''}
-                      onChange={handleCustomCronChange}
-                    />
-                    {customCronError && (
-                      <Typography
-                        className="tw:text-fg-error-primary tw:mt-1"
-                        data-testid="custom-cron-error"
-                        size="text-xs">
-                        {customCronError}
-                      </Typography>
-                    )}
-                  </Grid.Item>
-                )}
-              </Grid>
+              <ScheduleFieldsGrid
+                cronString={cronString}
+                customCronError={customCronError}
+                dateOptions={dateOptions}
+                dayOptions={dayOptions}
+                disabled={disabled}
+                dom={dom}
+                dow={dow}
+                handleCustomCronChange={handleCustomCronChange}
+                handleStateChange={handleStateChange}
+                minValue={
+                  state.min === undefined ? undefined : String(state.min)
+                }
+                minuteOptions={minuteOptions}
+                showCustomInput={showCustomInput}
+                showMinuteOnly={showMinuteOnly}
+                showMonthSelect={showMonthSelect}
+                showTimePicker={showTimePicker}
+                showWeekSelect={showWeekSelect}
+                timeValue={timeValue}
+              />
             </div>
           </Grid.Item>
         )}

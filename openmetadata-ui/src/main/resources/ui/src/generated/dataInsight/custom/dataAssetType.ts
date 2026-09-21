@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 /**
- * Entity type reachable under the `di-data-assets-*` wildcard, and the single source of
- * truth for which entity types Data Insights covers. The first sixteen are ingested by
- * DataInsightsApp into a datastream of their own and are keyed by
- * `dataInsights/config.json`. The last two are supplied instead by a `dataInsightAliases`
- * entry in `indexMapping.json`, which aliases the live entity search index into the
- * wildcard, so Data Insights reads them without ever writing them; those two must never be
- * added to the ingestion subset.
+ * Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by
+ * DataInsightsApp and configured in `dataInsights/config.json`. Test results and resolution
+ * statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the app must never
+ * create or delete data streams for those live-index aliases.
  */
 export enum DataAssetType {
+    APIEndpoint = "apiEndpoint",
     Chart = "chart",
     Container = "container",
     Dashboard = "dashboard",

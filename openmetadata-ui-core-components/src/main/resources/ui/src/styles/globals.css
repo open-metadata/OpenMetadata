@@ -89,6 +89,9 @@
     0px 4px 4px -2px rgba(10, 13, 18, 0.04);
   --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
+  --shadow-card: theme(--shadow-xs);
+  --shadow-raised: theme(--shadow-lg);
+  --shadow-overlay: theme(--shadow-xl);
 
   --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
     0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset;
@@ -720,6 +723,8 @@
   --color-text-disabled: var(--color-text-disabled, theme(--color-gray-500));
   --color-text-placeholder: var(--color-text-placeholder, theme(--color-gray-500));
   --color-text-placeholder_subtle: var(--color-text-placeholder_subtle, theme(--color-gray-300));
+  --color-text-link: var(--color-text-link, theme(--color-brand-600));
+  --color-text-link-hover: var(--color-text-link-hover, theme(--color-brand-700));
   --color-text-primary_on-brand: var(--color-text-primary_on-brand, theme(--color-white));
   --color-text-secondary_on-brand: var(--color-text-secondary_on-brand, theme(--color-brand-200));
   --color-text-tertiary_on-brand: var(--color-text-tertiary_on-brand, theme(--color-brand-200));
@@ -734,12 +739,18 @@
   --color-border-primary: var(--color-border-primary, theme(--color-gray-300));
   --color-border-secondary: var(--color-border-secondary, theme(--color-gray-200));
   --color-border-secondary_alt: var(--color-border-secondary_alt, rgb(0 0 0 / 0.08));
+  --color-border-subtle: var(--color-border-subtle, theme(--color-border-secondary_alt));
+  --color-border-hover: var(--color-border-hover, theme(--color-gray-400));
   --color-border-tertiary: var(--color-border-tertiary, theme(--color-gray-100));
   --color-border-error: var(--color-border-error, theme(--color-error-500));
   --color-border-error_subtle: var(--color-border-error_subtle, theme(--color-error-300));
+  --color-border-error-subtle: var(--color-border-error-subtle, theme(--color-error-300));
+  --color-border-warning-subtle: var(--color-border-warning-subtle, theme(--color-warning-300));
+  --color-border-success-subtle: var(--color-border-success-subtle, theme(--color-success-300));
   --color-border-disabled: var(--color-border-disabled, theme(--color-gray-300));
   --color-border-disabled_subtle: var(--color-border-disabled_subtle, theme(--color-gray-200));
   --color-border-brand: var(--color-border-brand, theme(--color-brand-500));
+  --color-border-brand-subtle: var(--color-border-brand-subtle, theme(--color-brand-300));
   --color-border-brand_alt: var(--color-border-brand_alt, theme(--color-brand-600));
 
   /* FOREGROUND COLORS */
@@ -791,6 +802,11 @@
   --color-bg-disabled_subtle: var(--color-bg-disabled_subtle, theme(--color-gray-50));
   --color-bg-active: var(--color-bg-active, theme(--color-gray-50));
   --color-bg-overlay: var(--color-bg-overlay, theme(--color-gray-950));
+  --color-bg-page: var(--color-bg-page, theme(--color-bg-primary));
+  --color-bg-canvas: var(--color-bg-canvas, theme(--color-bg-secondary));
+  --color-bg-surface: var(--color-bg-surface, theme(--color-bg-primary));
+  --color-bg-raised: var(--color-bg-raised, theme(--color-bg-primary));
+  --color-bg-overlay-surface: var(--color-bg-overlay-surface, theme(--color-bg-primary));
   --color-bg-brand-primary: var(--color-bg-brand-primary, theme(--color-brand-50));
   --color-bg-brand-primary_alt: var(--color-bg-brand-primary_alt, theme(--color-brand-50));
   --color-bg-brand-secondary: var(--color-bg-brand-secondary, theme(--color-brand-100));
@@ -847,6 +863,11 @@
   --background-color-disabled: var(--background-color-disabled, theme(--color-bg-disabled));
   --background-color-disabled_subtle: var(--background-color-disabled_subtle, theme(--color-bg-disabled_subtle));
   --background-color-overlay: var(--background-color-overlay, theme(--color-bg-overlay));
+  --background-color-page: var(--background-color-page, theme(--color-bg-page));
+  --background-color-canvas: var(--background-color-canvas, theme(--color-bg-canvas));
+  --background-color-surface: var(--background-color-surface, theme(--color-bg-surface));
+  --background-color-raised: var(--background-color-raised, theme(--color-bg-raised));
+  --background-color-overlay-surface: var(--background-color-overlay-surface, theme(--color-bg-overlay-surface));
   --background-color-brand-primary: var(--background-color-brand-primary, theme(--color-bg-brand-primary));
   --background-color-brand-primary_alt: var(--background-color-brand-primary_alt, theme(--color-bg-brand-primary_alt));
   --background-color-brand-secondary: var(--background-color-brand-secondary, theme(--color-bg-brand-secondary));
@@ -884,6 +905,8 @@
   --text-color-disabled: var(--text-color-disabled, theme(--color-text-disabled));
   --text-color-placeholder: var(--text-color-placeholder, theme(--color-text-placeholder));
   --text-color-placeholder_subtle: var(--text-color-placeholder_subtle, theme(--color-text-placeholder_subtle));
+  --text-color-link: var(--text-color-link, theme(--color-text-link));
+  --text-color-link-hover: var(--text-color-link-hover, theme(--color-text-link-hover));
   --text-color-brand-primary: var(--text-color-brand-primary, theme(--color-text-brand-primary));
   --text-color-brand-secondary: var(--text-color-brand-secondary, theme(--color-text-brand-secondary));
   --text-color-brand-secondary_hover: var(--text-color-brand-secondary_hover, theme(--color-text-brand-secondary_hover));
@@ -899,12 +922,18 @@
   --border-color-primary: var(--border-color-primary, theme(--color-border-primary));
   --border-color-secondary: var(--border-color-secondary, theme(--color-border-secondary));
   --border-color-secondary_alt: var(--border-color-secondary_alt, theme(--color-border-secondary_alt));
+  --border-color-subtle: var(--border-color-subtle, theme(--color-border-subtle));
+  --border-color-hover: var(--border-color-hover, theme(--color-border-hover));
   --border-color-tertiary: var(--border-color-tertiary, theme(--color-border-tertiary));
   --border-color-disabled: var(--border-color-disabled, theme(--color-border-disabled));
   --border-color-disabled_subtle: var(--border-color-disabled_subtle, theme(--color-border-disabled_subtle));
   --border-color-error: var(--border-color-error, theme(--color-border-error));
   --border-color-error_subtle: var(--border-color-error_subtle, theme(--color-border-error_subtle));
+  --border-color-error-subtle: var(--border-color-error-subtle, theme(--color-border-error-subtle));
+  --border-color-warning-subtle: var(--border-color-warning-subtle, theme(--color-border-warning-subtle));
+  --border-color-success-subtle: var(--border-color-success-subtle, theme(--color-border-success-subtle));
   --border-color-brand: var(--border-color-brand, theme(--color-border-brand));
+  --border-color-brand-subtle: var(--border-color-brand-subtle, theme(--color-border-brand-subtle));
   --border-color-brand_alt: var(--border-color-brand_alt, theme(--color-border-brand_alt));
   --border-color-brand-solid: var(--border-color-brand-solid, theme(--color-bg-brand-solid));
   --border-color-brand-solid_hover: var(--border-color-brand-solid_hover, theme(--color-bg-brand-solid_hover));
@@ -928,6 +957,7 @@
   --outline-color-primary: var(--outline-color-primary, theme(--color-border-primary));
   --outline-color-secondary: var(--outline-color-secondary, theme(--color-border-secondary));
   --outline-color-secondary_alt: var(--outline-color-secondary_alt, theme(--color-border-secondary_alt));
+  --outline-color-subtle: var(--outline-color-subtle, theme(--color-border-subtle));
   --outline-color-tertiary: var(--outline-color-tertiary, theme(--color-border-tertiary));
   --outline-color-error: var(--outline-color-error, theme(--color-border-error));
   --outline-color-error_subtle: var(--outline-color-error_subtle, theme(--color-border-error_subtle));
@@ -948,13 +978,17 @@
 
     /* UTILITY COLORS */
 
+    /* Approved AI dark palette: the blue-tinted neutral ramp from the design source of truth
+       (Collate dark-mode prototype / palette guideline). Dark-scoped so light-mode and static
+       canvas fallbacks keep their :root values. Surface, text, and border roles below alias
+       these steps, so re-tinting here re-tints every dark surface consistently. */
     --color-gray-25: rgb(250 250 250);
     --color-gray-50: rgb(247 247 247);
-    --color-gray-100: rgb(240 240 241);
-    --color-gray-200: rgb(236 236 237);
+    --color-gray-100: rgb(228 229 231);
+    --color-gray-200: rgb(217 218 221);
     --color-gray-300: rgb(206 207 210);
     --color-gray-400: rgb(148 151 156);
-    --color-gray-500: rgb(133 136 142);
+    --color-gray-500: rgb(123 127 134);
     --color-gray-600: rgb(97 101 108);
     --color-gray-700: rgb(55 58 65);
     --color-gray-800: rgb(34 38 47);
@@ -1143,8 +1177,10 @@
     --color-text-brand-primary: theme(--color-gray-50);
     --color-text-brand-secondary: theme(--color-gray-300);
     --color-text-brand-tertiary: theme(--color-gray-400);
-    --color-text-placeholder: theme(--color-gray-500);
+    --color-text-placeholder: theme(--color-gray-400);
     --color-text-placeholder_subtle: theme(--color-gray-700);
+    --color-text-link: theme(--color-brand-300);
+    --color-text-link-hover: theme(--color-brand-200);
     --color-text-primary_on-brand: theme(--color-gray-50);
     --color-text-secondary_on-brand: theme(--color-gray-300);
     --color-text-tertiary_on-brand: theme(--color-gray-400);
@@ -1156,12 +1192,18 @@
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-700);
     --color-border-secondary: theme(--color-gray-800);
-    --color-border-secondary_alt: theme(--color-gray-800);
+    --color-border-secondary_alt: --alpha(theme(--color-white) / 8%);
+    --color-border-subtle: --alpha(theme(--color-white) / 8%);
+    --color-border-hover: theme(--color-gray-600);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
+    --color-border-brand-subtle: --alpha(theme(--color-brand-400) / 35%);
     --color-border-brand_alt: theme(--color-gray-700);
     --color-border-error: theme(--color-error-400);
-    --color-border-error_subtle: theme(--color-error-500);
+    --color-border-error-subtle: --alpha(theme(--color-error-400) / 35%);
+    --color-border-error_subtle: var(--color-border-error-subtle);
+    --color-border-warning-subtle: --alpha(theme(--color-warning-400) / 35%);
+    --color-border-success-subtle: --alpha(theme(--color-success-400) / 35%);
     --color-border-disabled: theme(--color-gray-700);
     --color-border-disabled_subtle: theme(--color-gray-800);
 
@@ -1192,33 +1234,39 @@
     --color-bg-primary: theme(--color-gray-950);
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
-    --color-bg-primary_hover: theme(--color-gray-800);
+    --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
-    --color-bg-secondary_hover: theme(--color-gray-800);
+    --color-bg-secondary_hover: --alpha(theme(--color-white) / 6%);
     --color-bg-tertiary: theme(--color-gray-800);
     --color-bg-quaternary: theme(--color-gray-700);
-    --color-bg-error-primary: theme(--color-error-950);
+    /* Translucent feedback roles preserve the owning page, canvas, or surface elevation. */
+    --color-bg-error-primary: --alpha(theme(--color-error-500) / 16%);
     --color-bg-error-secondary: theme(--color-error-600);
     --color-bg-error-solid: theme(--color-error-600);
     --color-bg-error-solid_hover: theme(--color-error-500);
-    --color-bg-warning-primary: theme(--color-warning-950);
+    --color-bg-warning-primary: --alpha(theme(--color-warning-500) / 16%);
     --color-bg-warning-secondary: theme(--color-warning-600);
     --color-bg-warning-solid: theme(--color-warning-600);
-    --color-bg-success-primary: theme(--color-success-950);
+    --color-bg-success-primary: --alpha(theme(--color-success-500) / 16%);
     --color-bg-success-secondary: theme(--color-success-600);
     --color-bg-success-solid: theme(--color-success-600);
-    --color-bg-active: theme(--color-gray-800);
+    --color-bg-active: --alpha(theme(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: theme(--color-brand-500);
+    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 16%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
     --color-bg-brand-solid: theme(--color-brand-600);
     --color-bg-brand-solid_hover: theme(--color-brand-500);
     --color-bg-overlay: theme(--color-gray-800);
+    --color-bg-page: theme(--color-gray-950);
+    --color-bg-canvas: theme(--color-gray-900);
+    --color-bg-surface: theme(--color-gray-800);
+    --color-bg-raised: theme(--color-gray-700);
+    --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
 
@@ -1359,6 +1407,7 @@
     --outline-color-primary: theme(--color-border-primary);
     --outline-color-secondary: theme(--color-border-secondary);
     --outline-color-secondary_alt: theme(--color-border-secondary_alt);
+    --outline-color-subtle: theme(--color-border-subtle);
     --outline-color-tertiary: theme(--color-border-tertiary);
     --outline-color-disabled: theme(--color-border-disabled);
     --outline-color-disabled_subtle: theme(--color-border-disabled_subtle);
@@ -1402,6 +1451,11 @@
     --tw-background-color-error-solid: var(--color-bg-error-solid);
     --tw-background-color-error-solid_hover: var(--color-bg-error-solid_hover);
     --tw-background-color-overlay: var(--color-bg-overlay);
+    --tw-background-color-page: var(--color-bg-page);
+    --tw-background-color-canvas: var(--color-bg-canvas);
+    --tw-background-color-surface: var(--color-bg-surface);
+    --tw-background-color-raised: var(--color-bg-raised);
+    --tw-background-color-overlay-surface: var(--color-bg-overlay-surface);
     --tw-background-color-primary-solid: var(--color-bg-primary-solid);
     --tw-background-color-primary: var(--color-bg-primary);
     --tw-background-color-primary_alt: var(--color-bg-primary_alt);
@@ -1429,10 +1483,16 @@
     --tw-border-color-disabled_subtle: var(--color-border-disabled_subtle);
     --tw-border-color-error: var(--color-border-error);
     --tw-border-color-error_subtle: var(--color-border-error_subtle);
+    --tw-border-color-error-subtle: var(--color-border-error-subtle);
+    --tw-border-color-warning-subtle: var(--color-border-warning-subtle);
+    --tw-border-color-success-subtle: var(--color-border-success-subtle);
     --tw-border-color-primary: var(--color-border-primary);
     --tw-border-color-secondary: var(--color-border-secondary);
     --tw-border-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-border-color-subtle: var(--color-border-subtle);
+    --tw-border-color-hover: var(--color-border-hover);
     --tw-border-color-tertiary: var(--color-border-tertiary);
+    --tw-border-color-brand-subtle: var(--color-border-brand-subtle);
 
     /* --tw-outline-color-* — Tailwind utility layer (outline-*) */
     --tw-outline-color-brand-solid: var(--color-bg-brand-solid);
@@ -1446,6 +1506,7 @@
     --tw-outline-color-primary: var(--color-border-primary);
     --tw-outline-color-secondary: var(--color-border-secondary);
     --tw-outline-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-outline-color-subtle: var(--color-border-subtle);
     --tw-outline-color-tertiary: var(--color-border-tertiary);
 
     /* --tw-ring-color-* — Tailwind utility layer (ring-*, historical) */
@@ -1472,6 +1533,8 @@
     --tw-text-color-disabled: var(--color-text-disabled);
     --tw-text-color-error-primary: var(--color-text-error-primary);
     --tw-text-color-error-primary_hover: var(--color-text-error-primary_hover);
+    --tw-text-color-link: var(--color-text-link);
+    --tw-text-color-link-hover: var(--color-text-link-hover);
     --tw-text-color-placeholder: var(--color-text-placeholder);
     --tw-text-color-placeholder_subtle: var(--color-text-placeholder_subtle);
     --tw-text-color-primary: var(--color-text-primary);
@@ -1487,6 +1550,150 @@
     --tw-text-color-tertiary_on-brand: var(--color-text-tertiary_on-brand);
     --tw-text-color-tooltip-supporting-text: var(--color-tooltip-supporting-text);
     --tw-text-color-warning-primary: var(--color-text-warning-primary);
+
+    /* --tw-color-utility-* — Tailwind utility layer (bg-/text-/outline-utility-*).
+     * All utility-color utilities read this single --tw-color-* namespace, so the
+     * --color-utility-* dark remaps above only reach them once mirrored here. */
+    --tw-color-utility-blue-50: var(--color-utility-blue-50);
+    --tw-color-utility-blue-100: var(--color-utility-blue-100);
+    --tw-color-utility-blue-200: var(--color-utility-blue-200);
+    --tw-color-utility-blue-300: var(--color-utility-blue-300);
+    --tw-color-utility-blue-400: var(--color-utility-blue-400);
+    --tw-color-utility-blue-500: var(--color-utility-blue-500);
+    --tw-color-utility-blue-600: var(--color-utility-blue-600);
+    --tw-color-utility-blue-700: var(--color-utility-blue-700);
+    --tw-color-utility-brand-50: var(--color-utility-brand-50);
+    --tw-color-utility-gray-50: var(--color-utility-gray-50);
+    --tw-color-utility-brand-100: var(--color-utility-brand-100);
+    --tw-color-utility-gray-100: var(--color-utility-gray-100);
+    --tw-color-utility-brand-200: var(--color-utility-brand-200);
+    --tw-color-utility-gray-200: var(--color-utility-gray-200);
+    --tw-color-utility-brand-300: var(--color-utility-brand-300);
+    --tw-color-utility-gray-300: var(--color-utility-gray-300);
+    --tw-color-utility-brand-400: var(--color-utility-brand-400);
+    --tw-color-utility-gray-400: var(--color-utility-gray-400);
+    --tw-color-utility-brand-500: var(--color-utility-brand-500);
+    --tw-color-utility-gray-500: var(--color-utility-gray-500);
+    --tw-color-utility-brand-600: var(--color-utility-brand-600);
+    --tw-color-utility-gray-600: var(--color-utility-gray-600);
+    --tw-color-utility-brand-700: var(--color-utility-brand-700);
+    --tw-color-utility-gray-700: var(--color-utility-gray-700);
+    --tw-color-utility-brand-800: var(--color-utility-brand-800);
+    --tw-color-utility-gray-800: var(--color-utility-gray-800);
+    --tw-color-utility-brand-900: var(--color-utility-brand-900);
+    --tw-color-utility-gray-900: var(--color-utility-gray-900);
+    --tw-color-utility-error-50: var(--color-utility-error-50);
+    --tw-color-utility-error-100: var(--color-utility-error-100);
+    --tw-color-utility-error-200: var(--color-utility-error-200);
+    --tw-color-utility-error-300: var(--color-utility-error-300);
+    --tw-color-utility-error-400: var(--color-utility-error-400);
+    --tw-color-utility-error-500: var(--color-utility-error-500);
+    --tw-color-utility-error-600: var(--color-utility-error-600);
+    --tw-color-utility-error-700: var(--color-utility-error-700);
+    --tw-color-utility-warning-50: var(--color-utility-warning-50);
+    --tw-color-utility-warning-100: var(--color-utility-warning-100);
+    --tw-color-utility-warning-200: var(--color-utility-warning-200);
+    --tw-color-utility-warning-300: var(--color-utility-warning-300);
+    --tw-color-utility-warning-400: var(--color-utility-warning-400);
+    --tw-color-utility-warning-500: var(--color-utility-warning-500);
+    --tw-color-utility-warning-600: var(--color-utility-warning-600);
+    --tw-color-utility-warning-700: var(--color-utility-warning-700);
+    --tw-color-utility-success-50: var(--color-utility-success-50);
+    --tw-color-utility-success-100: var(--color-utility-success-100);
+    --tw-color-utility-success-200: var(--color-utility-success-200);
+    --tw-color-utility-success-300: var(--color-utility-success-300);
+    --tw-color-utility-success-400: var(--color-utility-success-400);
+    --tw-color-utility-success-500: var(--color-utility-success-500);
+    --tw-color-utility-success-600: var(--color-utility-success-600);
+    --tw-color-utility-success-700: var(--color-utility-success-700);
+    --tw-color-utility-orange-50: var(--color-utility-orange-50);
+    --tw-color-utility-orange-100: var(--color-utility-orange-100);
+    --tw-color-utility-orange-200: var(--color-utility-orange-200);
+    --tw-color-utility-orange-300: var(--color-utility-orange-300);
+    --tw-color-utility-orange-400: var(--color-utility-orange-400);
+    --tw-color-utility-orange-500: var(--color-utility-orange-500);
+    --tw-color-utility-orange-600: var(--color-utility-orange-600);
+    --tw-color-utility-orange-700: var(--color-utility-orange-700);
+    --tw-color-utility-blue-dark-50: var(--color-utility-blue-dark-50);
+    --tw-color-utility-blue-dark-100: var(--color-utility-blue-dark-100);
+    --tw-color-utility-blue-dark-200: var(--color-utility-blue-dark-200);
+    --tw-color-utility-blue-dark-300: var(--color-utility-blue-dark-300);
+    --tw-color-utility-blue-dark-400: var(--color-utility-blue-dark-400);
+    --tw-color-utility-blue-dark-500: var(--color-utility-blue-dark-500);
+    --tw-color-utility-blue-dark-600: var(--color-utility-blue-dark-600);
+    --tw-color-utility-blue-dark-700: var(--color-utility-blue-dark-700);
+    --tw-color-utility-indigo-50: var(--color-utility-indigo-50);
+    --tw-color-utility-indigo-100: var(--color-utility-indigo-100);
+    --tw-color-utility-indigo-200: var(--color-utility-indigo-200);
+    --tw-color-utility-indigo-300: var(--color-utility-indigo-300);
+    --tw-color-utility-indigo-400: var(--color-utility-indigo-400);
+    --tw-color-utility-indigo-500: var(--color-utility-indigo-500);
+    --tw-color-utility-indigo-600: var(--color-utility-indigo-600);
+    --tw-color-utility-indigo-700: var(--color-utility-indigo-700);
+    --tw-color-utility-fuchsia-50: var(--color-utility-fuchsia-50);
+    --tw-color-utility-fuchsia-100: var(--color-utility-fuchsia-100);
+    --tw-color-utility-fuchsia-200: var(--color-utility-fuchsia-200);
+    --tw-color-utility-fuchsia-300: var(--color-utility-fuchsia-300);
+    --tw-color-utility-fuchsia-400: var(--color-utility-fuchsia-400);
+    --tw-color-utility-fuchsia-500: var(--color-utility-fuchsia-500);
+    --tw-color-utility-fuchsia-600: var(--color-utility-fuchsia-600);
+    --tw-color-utility-fuchsia-700: var(--color-utility-fuchsia-700);
+    --tw-color-utility-pink-50: var(--color-utility-pink-50);
+    --tw-color-utility-pink-100: var(--color-utility-pink-100);
+    --tw-color-utility-pink-200: var(--color-utility-pink-200);
+    --tw-color-utility-pink-300: var(--color-utility-pink-300);
+    --tw-color-utility-pink-400: var(--color-utility-pink-400);
+    --tw-color-utility-pink-500: var(--color-utility-pink-500);
+    --tw-color-utility-pink-600: var(--color-utility-pink-600);
+    --tw-color-utility-pink-700: var(--color-utility-pink-700);
+    --tw-color-utility-purple-50: var(--color-utility-purple-50);
+    --tw-color-utility-purple-100: var(--color-utility-purple-100);
+    --tw-color-utility-purple-200: var(--color-utility-purple-200);
+    --tw-color-utility-purple-300: var(--color-utility-purple-300);
+    --tw-color-utility-purple-400: var(--color-utility-purple-400);
+    --tw-color-utility-purple-500: var(--color-utility-purple-500);
+    --tw-color-utility-purple-600: var(--color-utility-purple-600);
+    --tw-color-utility-purple-700: var(--color-utility-purple-700);
+    --tw-color-utility-orange-dark-50: var(--color-utility-orange-dark-50);
+    --tw-color-utility-orange-dark-100: var(--color-utility-orange-dark-100);
+    --tw-color-utility-orange-dark-200: var(--color-utility-orange-dark-200);
+    --tw-color-utility-orange-dark-300: var(--color-utility-orange-dark-300);
+    --tw-color-utility-orange-dark-400: var(--color-utility-orange-dark-400);
+    --tw-color-utility-orange-dark-500: var(--color-utility-orange-dark-500);
+    --tw-color-utility-orange-dark-600: var(--color-utility-orange-dark-600);
+    --tw-color-utility-orange-dark-700: var(--color-utility-orange-dark-700);
+    --tw-color-utility-blue-light-50: var(--color-utility-blue-light-50);
+    --tw-color-utility-blue-light-100: var(--color-utility-blue-light-100);
+    --tw-color-utility-blue-light-200: var(--color-utility-blue-light-200);
+    --tw-color-utility-blue-light-300: var(--color-utility-blue-light-300);
+    --tw-color-utility-blue-light-400: var(--color-utility-blue-light-400);
+    --tw-color-utility-blue-light-500: var(--color-utility-blue-light-500);
+    --tw-color-utility-blue-light-600: var(--color-utility-blue-light-600);
+    --tw-color-utility-blue-light-700: var(--color-utility-blue-light-700);
+    --tw-color-utility-gray-blue-50: var(--color-utility-gray-blue-50);
+    --tw-color-utility-gray-blue-100: var(--color-utility-gray-blue-100);
+    --tw-color-utility-gray-blue-200: var(--color-utility-gray-blue-200);
+    --tw-color-utility-gray-blue-300: var(--color-utility-gray-blue-300);
+    --tw-color-utility-gray-blue-400: var(--color-utility-gray-blue-400);
+    --tw-color-utility-gray-blue-500: var(--color-utility-gray-blue-500);
+    --tw-color-utility-gray-blue-600: var(--color-utility-gray-blue-600);
+    --tw-color-utility-gray-blue-700: var(--color-utility-gray-blue-700);
+    --tw-color-utility-green-50: var(--color-utility-green-50);
+    --tw-color-utility-green-100: var(--color-utility-green-100);
+    --tw-color-utility-green-200: var(--color-utility-green-200);
+    --tw-color-utility-green-300: var(--color-utility-green-300);
+    --tw-color-utility-green-400: var(--color-utility-green-400);
+    --tw-color-utility-green-500: var(--color-utility-green-500);
+    --tw-color-utility-green-600: var(--color-utility-green-600);
+    --tw-color-utility-green-700: var(--color-utility-green-700);
+    --tw-color-utility-yellow-50: var(--color-utility-yellow-50);
+    --tw-color-utility-yellow-100: var(--color-utility-yellow-100);
+    --tw-color-utility-yellow-200: var(--color-utility-yellow-200);
+    --tw-color-utility-yellow-300: var(--color-utility-yellow-300);
+    --tw-color-utility-yellow-400: var(--color-utility-yellow-400);
+    --tw-color-utility-yellow-500: var(--color-utility-yellow-500);
+    --tw-color-utility-yellow-600: var(--color-utility-yellow-600);
+    --tw-color-utility-yellow-700: var(--color-utility-yellow-700);
   }
 }
 
@@ -1527,6 +1734,48 @@
   animation: copy-link-ring-pulse 0.55s ease-out forwards;
 }
 
+
+/* Entity tag chips (ClassificationTag/GlossaryTag/DomainTag/DataProductTag/
+AutoClassificationTag). Tint math for an arbitrary runtime hex, carried in via
+the --tag-color custom property (the only inline style these components set).
+Values mirror the opacities used across all tag variants: 5% bg, 32% border,
+60% close-icon, full opacity text.
+
+No fallback for browsers predating color-mix() support (~Chrome 109-110, iOS
+Safari 15.6-15.8, a narrow sliver of traffic): those browsers simply keep
+Badge's own default neutral border/background instead of the tint. */
+
+.tag-tinted {
+  outline: none;
+  border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
+  background-color: color-mix(in srgb, var(--tag-color) 6%, transparent);
+  color: var(--tag-color);
+}
+
+.tag-accent {
+  outline: none;
+  border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
+  border-left: 4px solid var(--tag-color);
+  /* !important: Badge's `type="modern"` root class always includes
+  `tw:bg-primary`, which this variant must stay transparent under regardless
+  of stylesheet load order. */
+  background-color: transparent !important;
+  color: var(--tag-color);
+}
+
+.tag-tinted__close-icon button,
+.tag-accent__close-icon button {
+  color: color-mix(in srgb, var(--tag-color) 60%, transparent);
+}
+
+/* Typography wraps its content in a `.prose` div, which sets its own
+unconditional `color` — that intermediate declaration silences inherited
+`var(--tag-color)` from the badge span above it. Applied directly to the
+label/icon elements so it wins regardless of the .prose/Tailwind cascade
+order. */
+.tag-color-text {
+  color: var(--tag-color) !important;
+}
 /* Let the consumer generate utilities for classes used inside the packaged
 core-components bundle. */
 @source "../../dist/**/*.{js,mjs,cjs}";

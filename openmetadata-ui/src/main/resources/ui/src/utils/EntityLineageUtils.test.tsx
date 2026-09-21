@@ -1017,6 +1017,25 @@ describe('Test EntityLineageUtils utility', () => {
         childrenCount: 0,
       });
     });
+
+    it('should expose a METRIC entity as its own single lineage endpoint', () => {
+      const node = {
+        id: 'metric-id',
+        type: EntityType.METRIC,
+        entityType: EntityType.METRIC,
+        name: 'total_sales',
+        fullyQualifiedName: 'metricService.total_sales',
+      };
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
+
+      expect(result).toEqual({
+        children: [node],
+        childrenHeading: 'label.metric',
+        childrenCount: 0,
+      });
+    });
   });
 
   describe('getColumnFunctionValue', () => {

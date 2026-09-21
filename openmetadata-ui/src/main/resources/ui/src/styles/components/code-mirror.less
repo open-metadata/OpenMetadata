@@ -110,3 +110,66 @@
     }
   }
 }
+
+// Syntax hues for every editor (SchemaEditor, query cards, JSON/manifest
+// widgets, query console). CodeMirror 6 generates its own class names for
+// highlighted tokens, so these are consumed by THEMED_HIGHLIGHT_STYLE in
+// CodeMirror.utils rather than by selectors here. Light values keep the hues
+// CodeMirror shipped; the dark block below retunes them for a dark surface,
+// where the saturated originals fail contrast.
+.cm-editor {
+  --cm-token-keyword: #708;
+  --cm-token-def: #00c;
+  --cm-token-property: #05a;
+  --cm-token-number: #164;
+  --cm-token-string: #a11;
+  --cm-token-type: #085;
+  --cm-token-operator: var(--color-text-secondary);
+  --cm-token-comment: #940;
+  --cm-token-error: var(--color-error-600);
+}
+
+// Dark mode. CodeMirror ships a light theme, so without this the editor
+// surface, gutter, line numbers, cursor, selection and active line stay tuned
+// for a light background. Appended last so it wins over the light
+// `.custom-code-mirror-theme`.
+.dark-mode {
+  .cm-editor {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+
+    --cm-token-keyword: var(--color-purple-300);
+    --cm-token-def: var(--color-blue-400);
+    --cm-token-property: var(--color-blue-300);
+    --cm-token-number: var(--color-orange-300);
+    --cm-token-string: var(--color-green-300);
+    --cm-token-type: var(--color-success-400);
+    --cm-token-operator: var(--color-text-secondary);
+    --cm-token-comment: var(--color-text-tertiary);
+    --cm-token-error: var(--color-error-400);
+  }
+  .custom-code-mirror-theme .cm-editor {
+    background: var(--color-bg-surface);
+  }
+  .cm-gutters {
+    background-color: var(--color-bg-canvas);
+    border-right-color: var(--color-border-subtle);
+    color: var(--color-text-tertiary);
+  }
+  .cm-cursor,
+  .cm-dropCursor {
+    border-left-color: var(--color-text-primary);
+  }
+  // Both states: the focused selection is a separate rule in CodeMirror's own
+  // base theme and would otherwise win during active editing.
+  .cm-selectionBackground,
+  .cm-editor.cm-focused .cm-selectionBackground {
+    background: var(--color-bg-secondary_hover);
+  }
+  .cm-activeLine {
+    background: var(--color-bg-secondary);
+  }
+  .cm-activeLineGutter {
+    background: var(--color-bg-secondary);
+  }
+}
