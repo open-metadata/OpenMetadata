@@ -114,7 +114,10 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
   private static final String HIERARCHY_FIELDS = "parent,children,childrenCount";
   // Data quality dimensions are entities now; classify by the dimension's name.
-  private static final String CONSISTENCY_DIMENSION = "Consistency";
+  // Deliberately not "Consistency": DataQualityDimensionMigrationIT deletes that row outright
+  // (DELETE FROM data_quality_dimension) to prove the migration re-seeds it, on the documented
+  // assumption that no other test uses it. Completeness is only ever read, never removed.
+  private static final String OBSERVABILITY_DIMENSION = "Completeness";
   private static final String RESTRICTED_TAG_FQN = "PII.Sensitive";
 
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -2734,21 +2737,21 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                         .withFromEntity(table.getEntityReference())
                         .withToEntity(metric.getEntityReference())));
 
-    TestDefinition consistencyDefinition =
+    TestDefinition dimensionDefinition =
         client
             .testDefinitions()
             .create(
                 new CreateTestDefinition()
-                    .withName(ns.uniqueShortId() + "_consistency")
-                    .withDescription("Consistency dimension for Metric observability")
+                    .withName(ns.uniqueShortId() + "_completeness")
+                    .withDescription("Completeness dimension for Metric observability")
                     .withEntityType(TestDefinitionEntityType.TABLE)
                     .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
-                    .withDataQualityDimension(CONSISTENCY_DIMENSION));
+                    .withDataQualityDimension(OBSERVABILITY_DIMENSION));
     TestCase tableTest =
         TestCaseBuilder.create(client)
             .name(ns.uniqueShortId() + "_table")
             .forTable(table)
-            .testDefinition(consistencyDefinition.getFullyQualifiedName())
+            .testDefinition(dimensionDefinition.getFullyQualifiedName())
             .create();
     TestCase columnTest =
         TestCaseBuilder.create(client)
@@ -2818,17 +2821,17 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(1, observability.get("statusCounts").get("queued").asInt());
     assertEquals(1, observability.get("statusCounts").get("missing").asInt());
     assertEquals(2, observability.get("statusCounts").get("terminal").asInt());
-    JsonNode consistency = null;
+    JsonNode scoredDimension = null;
     for (JsonNode dimension : observability.get("dimensions")) {
-      if (CONSISTENCY_DIMENSION.equals(dimension.get("dimension").asText())) {
-        consistency = dimension;
+      if (OBSERVABILITY_DIMENSION.equals(dimension.get("dimension").asText())) {
+        scoredDimension = dimension;
         break;
       }
     }
-    assertNotNull(consistency);
-    assertEquals(1, consistency.get("total").asInt());
-    assertEquals(0, consistency.get("passed").asInt());
-    assertEquals(1, consistency.get("failed").asInt());
+    assertNotNull(scoredDimension);
+    assertEquals(1, scoredDimension.get("total").asInt());
+    assertEquals(0, scoredDimension.get("passed").asInt());
+    assertEquals(1, scoredDimension.get("failed").asInt());
     assertEquals(start + 300, observability.get("latestRunTime").asLong());
     assertEquals(4, observability.get("tests").size());
     assertEquals(1, observability.get("incidents").size());
