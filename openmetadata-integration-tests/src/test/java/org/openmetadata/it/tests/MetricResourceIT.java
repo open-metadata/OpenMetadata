@@ -113,11 +113,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
           + "metricGroup";
 
   private static final String HIERARCHY_FIELDS = "parent,children,childrenCount";
-  // Data quality dimensions are entities now; classify by the dimension's name.
-  // Deliberately not "Consistency": DataQualityDimensionMigrationIT deletes that row outright
-  // (DELETE FROM data_quality_dimension) to prove the migration re-seeds it, on the documented
-  // assumption that no other test uses it. Completeness is only ever read, never removed.
-  private static final String OBSERVABILITY_DIMENSION = "Completeness";
+  private static final String DIMENSIONS_PATH = "/v1/dataQuality/dimensions";
   private static final String RESTRICTED_TAG_FQN = "PII.Sensitive";
 
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -2737,16 +2733,23 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                         .withFromEntity(table.getEntityReference())
                         .withToEntity(metric.getEntityReference())));
 
+    // A dimension of its own, rather than one of the seeded system dimensions. Two reasons, and
+    // each one alone is enough: the rollup below asserts the bucket holds exactly this test, so
+    // any dimension a built-in definition already carries (columnValuesToBeNotNull is
+    // Completeness, tableRowCountToEqual is Integrity) would count two; and
+    // DataQualityDimensionMigrationIT removes "Consistency" with a raw DELETE to prove the
+    // migration re-seeds it. Creating the dimension keeps this test independent of both.
+    String observabilityDimension = createDimension(client, "metricObs" + ns.uniqueShortId());
     TestDefinition dimensionDefinition =
         client
             .testDefinitions()
             .create(
                 new CreateTestDefinition()
-                    .withName(ns.uniqueShortId() + "_completeness")
-                    .withDescription("Completeness dimension for Metric observability")
+                    .withName(ns.uniqueShortId() + "_dimension")
+                    .withDescription("Dedicated dimension for Metric observability")
                     .withEntityType(TestDefinitionEntityType.TABLE)
                     .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
-                    .withDataQualityDimension(OBSERVABILITY_DIMENSION));
+                    .withDataQualityDimension(observabilityDimension));
     TestCase tableTest =
         TestCaseBuilder.create(client)
             .name(ns.uniqueShortId() + "_table")
@@ -2823,7 +2826,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(2, observability.get("statusCounts").get("terminal").asInt());
     JsonNode scoredDimension = null;
     for (JsonNode dimension : observability.get("dimensions")) {
-      if (OBSERVABILITY_DIMENSION.equals(dimension.get("dimension").asText())) {
+      if (observabilityDimension.equals(dimension.get("dimension").asText())) {
         scoredDimension = dimension;
         break;
       }
@@ -3103,6 +3106,18 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     } finally {
       admin.policies().delete(policy.getId());
     }
+  }
+
+  /** Creates a data quality dimension and returns its name. */
+  private String createDimension(OpenMetadataClient client, String name) {
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            DIMENSIONS_PATH,
+            Map.of("name", name, "displayName", name),
+            Object.class);
+    return name;
   }
 
   private JsonNode getObservability(OpenMetadataClient client, Metric metric) {
