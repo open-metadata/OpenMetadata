@@ -183,14 +183,14 @@ test.describe('Service Agents visibility after a run is killed', () => {
     // The refetch is held open for REFETCH_HOLD_MS from here. Give React a beat to paint whatever
     // it renders for a loading list before sampling it — there is no event to wait on, because
     // the assertion is about what does *not* happen.
-    // eslint-disable-next-line playwright/no-wait-for-timeout
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- the assertion is that the list is *not* blanked, so there is no event or state to wait on; a fixed beat is the only way to sample mid-refetch.
     await page.waitForTimeout(500);
 
     await test.step('Both agents are still listed while the refetch is in flight', async () => {
       // `isVisible()` deliberately does not retry, and the web-first matchers are wrong here: they
       // would wait the held request out and pass on a list that had been blanked for the whole
       // window — which is the defect itself. These read the DOM as it stands right now, mid-refetch.
-      /* eslint-disable playwright/prefer-web-first-assertions */
+      /* eslint-disable playwright/prefer-web-first-assertions -- web-first matchers retry, so they would wait the held request out and pass on a list that had been blank for the whole window; these must read the DOM as it stands. */
       expect(await page.getByTestId('agent-group-skeleton').isVisible()).toBe(
         false
       );
