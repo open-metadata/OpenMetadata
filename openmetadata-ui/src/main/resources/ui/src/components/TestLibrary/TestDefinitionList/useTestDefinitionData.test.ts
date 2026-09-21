@@ -192,7 +192,10 @@ describe('useTestDefinitionData', () => {
       });
     });
 
-    it('should list the page ordered by display name, falling back to the name', async () => {
+    // The keyset cursor walks the server's display-name collation, so a page
+    // re-sorted here would be reshuffled against the sequence the next page
+    // continues from - rows would repeat or disappear across a page boundary.
+    it('should list the page in the order the server returned it', async () => {
       (getListTestDefinitions as jest.Mock).mockResolvedValueOnce({
         data: [
           { id: 'id-z', name: 'aaa', displayName: 'Zulu rule' },
@@ -205,9 +208,9 @@ describe('useTestDefinitionData', () => {
       const { result } = await renderAndSettle();
 
       expect(result.current.testDefinitions.map((row) => row.id)).toEqual([
-        'id-a',
-        'id-m',
         'id-z',
+        'id-m',
+        'id-a',
       ]);
     });
 

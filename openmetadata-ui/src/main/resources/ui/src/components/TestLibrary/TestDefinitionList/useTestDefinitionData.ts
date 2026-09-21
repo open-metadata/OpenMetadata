@@ -25,7 +25,6 @@ import {
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { columnSorter } from '../../../utils/EntitySortUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface UseTestDefinitionDataProps {
@@ -93,14 +92,12 @@ export const useTestDefinitionData = ({
           return;
         }
 
-        // Rules are listed by the label the table renders, matching the order
-        // the server pages in - so a page read on its own is still in display
-        // name order, whatever collation the server sorted it with.
-        const sortedData = [...data].sort(columnSorter);
-
-        setTestDefinitions(sortedData);
+        // Rendered in the order the server returned them. The keyset cursor
+        // walks the server's display-name collation, so re-sorting a page here
+        // would only reshuffle it against a sequence the next page continues.
+        setTestDefinitions(data);
         handlePagingChange(responsePaging);
-        fetchTestDefinitionPermissions(sortedData);
+        fetchTestDefinitionPermissions(data);
       } catch (error) {
         if (requestId === latestRequestRef.current) {
           showErrorToast(error as AxiosError);

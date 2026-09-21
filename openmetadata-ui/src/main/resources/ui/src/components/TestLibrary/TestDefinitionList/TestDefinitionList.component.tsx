@@ -21,11 +21,11 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import {
   SelectMode,
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
