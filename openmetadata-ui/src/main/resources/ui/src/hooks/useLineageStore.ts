@@ -12,7 +12,13 @@
  */
 import { uniq } from 'lodash';
 import { LoadingState } from 'Models';
-import type { Edge, EdgeChange, Node, NodeChange } from 'reactflow';
+import type {
+  Edge,
+  EdgeChange,
+  Node,
+  NodeChange,
+  ReactFlowInstance,
+} from 'reactflow';
 import { applyEdgeChanges, applyNodeChanges } from 'reactflow';
 import { create } from 'zustand';
 // Type-only import of the shared Lineage interface (also consumed the same way by
@@ -21,6 +27,7 @@ import { create } from 'zustand';
 import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
 import type { LineageConfig } from '../interface/lineage.interface';
@@ -60,6 +67,10 @@ interface LineageState {
   status: LoadingState;
   init: boolean;
   loading: boolean;
+  entity?: SourceType;
+  entityType?: EntityType;
+  entityFqn: string;
+  reactFlowInstance?: ReactFlowInstance;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -108,6 +119,12 @@ interface LineageState {
   setLoadError: () => void;
   commitEdits: () => void;
   resetData: () => void;
+  setEntityContext: (args: {
+    entity?: SourceType;
+    entityType?: EntityType;
+    entityFqn: string;
+  }) => void;
+  setReactFlowInstance: (instance?: ReactFlowInstance) => void;
 }
 
 const defaultLineageSettings = {
@@ -143,6 +160,10 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   status: 'initial',
   init: false,
   loading: false,
+  entity: undefined,
+  entityType: undefined,
+  entityFqn: '',
+  reactFlowInstance: undefined,
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -331,6 +352,10 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       status: 'initial',
       init: false,
       loading: false,
+      entity: undefined,
+      entityType: undefined,
+      entityFqn: '',
+      reactFlowInstance: undefined,
     }),
 
   setNodes: (nodes: Node[]) => set({ nodes }),
@@ -395,4 +420,10 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       init: false,
       loading: false,
     }),
+
+  setEntityContext: ({ entity, entityType, entityFqn }) =>
+    set({ entity, entityType, entityFqn }),
+
+  setReactFlowInstance: (reactFlowInstance?: ReactFlowInstance) =>
+    set({ reactFlowInstance }),
 }));

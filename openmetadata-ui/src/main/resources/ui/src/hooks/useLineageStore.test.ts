@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
+import type { ReactFlowInstance } from 'reactflow';
 import { Edge, Node } from 'reactflow';
 // Type-only import of the shared Lineage interface (also consumed the same way by
 // LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
@@ -18,8 +19,10 @@ import { Edge, Node } from 'reactflow';
 import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
+import type { SourceType } from '../interface/source.interface';
 import { useLineageStore } from './useLineageStore';
 
 describe('useLineageStore', () => {
@@ -713,5 +716,33 @@ describe('data slice', () => {
 
     expect(s.entityLineage).toBe(updated);
     expect(s.updatedEntityLineage).toBeUndefined();
+  });
+});
+
+describe('entity + rf slices', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setEntityContext sets entity, entityType, entityFqn together', () => {
+    useLineageStore.getState().setEntityContext({
+      entity: { id: 'x' } as unknown as SourceType,
+      entityType: EntityType.TABLE,
+      entityFqn: 'svc.db.schema.tbl',
+    });
+    const s = useLineageStore.getState();
+
+    expect(s.entityFqn).toBe('svc.db.schema.tbl');
+    expect(s.entityType).toBe(EntityType.TABLE);
+    expect(s.entity?.id).toBe('x');
+  });
+
+  it('setReactFlowInstance stores instance and clears on undefined', () => {
+    const inst = { fitView: jest.fn() } as unknown as ReactFlowInstance;
+    useLineageStore.getState().setReactFlowInstance(inst);
+
+    expect(useLineageStore.getState().reactFlowInstance).toBe(inst);
+
+    useLineageStore.getState().setReactFlowInstance(undefined);
+
+    expect(useLineageStore.getState().reactFlowInstance).toBeUndefined();
   });
 });
