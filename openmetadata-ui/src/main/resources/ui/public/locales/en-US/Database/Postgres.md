@@ -118,7 +118,7 @@ $$
 
 $$section
 ### Auth Config $(id="authType")
-There are 2 types of auth configs:
+There are 3 types of auth configs:
 - Basic Auth.
 - IAM based Auth.
 - Azure Based Auth.
