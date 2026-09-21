@@ -989,6 +989,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
+  private void authorizeViewOnAboutEntity(
+      SecurityContext securityContext, EntityReference aboutRef) {
+    if (aboutRef == null || aboutRef.getType() == null || aboutRef.getId() == null) {
+      return;
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(aboutRef.getType(), MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null, Include.ALL));
+  }
+
   /**
    * Enforce domain-only policy: Users with DOMAIN_ONLY_ACCESS_ROLE can only create tasks on entities
    * within their domains.
@@ -1902,12 +1913,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
 
-    // Report M4 note: QA flagged that this endpoint returns the full Task with private
-    // payload / assignee / comment history to whoever calls it. That is a *view-side*
-    // information-disclosure concern that belongs on the GET / listing paths, not here — add-
-    // comment is intentionally open (any collaborator can add a comment, same as the feed),
-    // so we do NOT gate this on EDIT_TASK. Follow-up: redact `payload` on GET responses for
-    // callers that don't hold viewer-level permission on the DAR's target entity.
+    // The response returns the full Task (payload, assignees, comment history), so adding a
+    // comment discloses the task's target entity. Require the same ViewBasic the entity itself
+    // requires — otherwise a caller denied access to the entity reads its task through this
+    // endpoint (issue #18158). A task with no target has nothing to gate.
+    authorizeViewOnAboutEntity(securityContext, task.getAbout());
 
     TaskComment comment =
         new TaskComment()

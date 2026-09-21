@@ -36,6 +36,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.feed.CreatePost;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
@@ -52,6 +53,7 @@ import org.openmetadata.service.jdbi3.ActivityStreamRepository;
 import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -188,6 +190,19 @@ public class ActivityResource {
           @Max(200)
           @QueryParam("limit")
           int limit) {
+    // A listing scoped to one entity returns that entity's change history (old and new field
+    // values), so a caller who cannot view the entity must not read it here (issue #18158). This
+    // endpoint already degrades to a permission/domain-filtered feed, so a denied target yields an
+    // empty page rather than a 403 — matching the domain-only-access contract exercised by
+    // ActivityResourceIT.
+    if (entityType != null && entityId != null) {
+      try {
+        authorizeTargetView(
+            securityContext, new ResourceContext<>(entityType, entityId, null, Include.ALL));
+      } catch (AuthorizationException | EntityNotFoundException denied) {
+        return new ResultList<>(List.of(), null, null, 0);
+      }
+    }
     return activityStreamRepository.listActivityEvents(
         securityContext, entityType, entityId, actorId, domainsParam, domain, days, limit);
   }
