@@ -327,20 +327,26 @@ export const addTagToTableColumn = async (
   await page.click(
     `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
   );
-  await page.fill('[data-testid="tag-selector"] input', tagName);
-  await page.click(`[data-testid="tag-${tagFqn}"]`);
 
   await expect(
-    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
-  ).toContainText(tagDisplayName);
+    page.getByTestId('classification-tag-picker-search')
+  ).toBeVisible();
 
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+  );
+  await page.getByTestId('classification-tag-picker-search').fill(tagName);
+  await searchTagResponse;
+
+  await page.getByTestId(`tree-node-${tagFqn}`).click();
+
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
   const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
-  await page.click('[data-testid="saveAssociatedTag"]');
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
   await saveAssociatedTag;
 
-  await page.locator('.ant-select-dropdown').first().waitFor({
-    state: 'detached',
-  });
+  await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
   await expect(
     page.getByRole('row', { name: rowName }).getByTestId('tags-container')
@@ -662,4 +668,5 @@ export const selectTagInTagSuggestion = async (
   await tagSearchResponse;
 
   await page.getByTestId(tagFqn).click();
+  await page.keyboard.press('Escape');
 };

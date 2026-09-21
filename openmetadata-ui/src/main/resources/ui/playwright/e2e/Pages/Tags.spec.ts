@@ -434,14 +434,27 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="edit-button"]');
 
-    await page.click('[data-testid="remove-tags"]');
+    await expect(
+      page.getByTestId('classification-tag-picker-search')
+    ).toBeVisible();
+
+    const searchRemove = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
+    );
+    await page.getByTestId('classification-tag-picker-search').fill('Personal');
+    await searchRemove;
+
+    await page.getByTestId('tree-node-PersonalData.Personal').click();
+
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
     const removeTags = page.waitForResponse(
       (response) =>
         response.request().method() === 'PATCH' &&
         response.url().includes('/api/v1/databaseSchemas/')
     );
-    await page.click('[data-testid="saveAssociatedTag"]');
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await removeTags;
   });
 

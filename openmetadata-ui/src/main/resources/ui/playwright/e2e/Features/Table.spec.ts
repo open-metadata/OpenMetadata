@@ -577,24 +577,24 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       await editButton.click();
     }
 
-    await page
-      .locator('.ant-select-dropdown:visible')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
-    await page
-      .locator('[data-testid="tag-selector"] input')
-      .fill(testTag.data.name);
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
-      .click();
+    await expect(
+      page.getByTestId('classification-tag-picker-search')
+    ).toBeVisible();
+
+    const addSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
+    );
+    await page.getByTestId('classification-tag-picker-search').fill(testTag.data.name);
+    await addSearchResponse;
+
+    await page.getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`).click();
 
     const saveTagResponse = page.waitForResponse('api/v1/columns/name/*');
-    await page.getByTestId('saveAssociatedTag').click();
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await saveTagResponse;
+    await expect(page.getByTestId('update-btn')).not.toBeVisible();
 
     await expect(
       page
@@ -625,24 +625,23 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
     );
 
-    await page.locator('.ant-select-dropdown').waitFor({ state: 'visible' });
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId('loader')
-      .first()
-      .waitFor({
-        state: 'detached',
-      });
-    await page
-      .locator('[data-testid="tag-selector"] input')
-      .fill(testTag.data.name);
-    await page
-      .locator('.ant-select-dropdown')
-      .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
-      .click();
+    await expect(
+      page.getByTestId('classification-tag-picker-search')
+    ).toBeVisible();
+
+    const removeSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
+    );
+    await page.getByTestId('classification-tag-picker-search').fill(testTag.data.name);
+    await removeSearchResponse;
+
+    // Tag is currently selected — clicking again unchecks it
+    await page.getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`).click();
 
     const removeTagResponse = page.waitForResponse('api/v1/columns/name/*');
-    await page.getByTestId('saveAssociatedTag').click();
+    await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+    await expect(page.getByTestId('update-btn')).toBeEnabled();
+    await page.getByTestId('update-btn').click();
     await removeTagResponse;
 
     await expect(

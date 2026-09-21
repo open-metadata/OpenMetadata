@@ -316,25 +316,25 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Click add tag button in tags container
       await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
-      // Wait for tag selector
-      await page.getByTestId('tag-selector').waitFor({
-        state: 'visible',
-      });
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
       // Search for a tag
-      await page.getByTestId('tag-selector').click();
-      const tagSearchResponse = page.waitForResponse('/api/v1/search/query*');
-      await page.keyboard.type('Personal');
-
-      // Wait for search results
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
+      );
+      await page.getByTestId('classification-tag-picker-search').fill('Personal');
       await tagSearchResponse;
 
-      // Select the tag (use first() to handle duplicates)
-      await page.getByTestId('tag-PersonalData.Personal').first().click();
+      // Select the tag
+      await page.getByTestId('tree-node-PersonalData.Personal').click();
 
       // Save
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchRes;
 
       // Verify tag is displayed

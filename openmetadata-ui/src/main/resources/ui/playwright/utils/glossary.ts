@@ -1470,16 +1470,21 @@ export const assignTagToGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
+  await expect(
+    page.getByTestId('classification-tag-picker-search')
+  ).toBeVisible();
+
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
-  await page.locator('#tagsForm_tags').fill(tag);
+  await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;
-  await page.getByTestId(`tag-${tag}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await page.getByTestId(`tree-node-${tag}`).click();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+  await expect(page.getByTestId('update-btn')).toBeEnabled();
+  await page.getByTestId('update-btn').click();
 
   await expect(page.getByRole('heading')).toContainText(
     'Would you like to proceed with updating the tags?'

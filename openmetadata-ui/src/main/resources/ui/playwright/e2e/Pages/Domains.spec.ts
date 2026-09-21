@@ -3318,21 +3318,32 @@ test.describe('Domain Tree View Functionality', () => {
       await page
         .locator('[data-testid="tags-container"] [data-testid="add-tag"]')
         .click();
-      const input = page.locator(
-        '[data-testid="tags-container"] #tagsForm_tags'
+
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
+
+      const searchTagResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(testTag.responseData.fullyQualifiedName)}*`
       );
-      await input.click();
-      await input.fill(testTag.responseData.fullyQualifiedName);
       await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+        .getByTestId('classification-tag-picker-search')
+        .fill(testTag.responseData.fullyQualifiedName);
+      await searchTagResponse;
+
+      await page
+        .getByTestId(`tree-node-${testTag.responseData.fullyQualifiedName}`)
         .click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
       const updateResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/domains/') &&
           response.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await updateResponse;
 
       await testTag.visitPage(page);

@@ -720,16 +720,18 @@ test.describe('Glossary CRUD Operations', () => {
         if (await editTagBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await editTagBtn.click();
 
-          const removeIcon = page
-            .locator('.ant-select-selection-item-remove')
-            .first();
+          const pickerSearch = page.getByTestId('classification-tag-picker-search');
 
           if (
-            await removeIcon.isVisible({ timeout: 2000 }).catch(() => false)
+            await pickerSearch.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
-            await removeIcon.click();
+            // Clear the current selection by clicking the first selected tree node
+            const selectedNode = page.locator('[data-testid^="tree-node-"]');
+            if (await selectedNode.isVisible({ timeout: 2000 }).catch(() => false)) {
+              await selectedNode.click();
+            }
 
-            const saveBtn = page.getByTestId('saveAssociatedTag');
+            const saveBtn = page.getByTestId('update-btn');
 
             if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
               await saveBtn.click();

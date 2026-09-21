@@ -49,6 +49,7 @@ test(
     const columnRowSelector = `[data-row-key$="${firstColumnName}"]`;
 
     // Add PII.Sensitive tag to the first column
+    await page.waitForLoadState('domcontentloaded');
     await page.click(
       `${columnRowSelector} [data-testid*="classification-tags"] [data-testid="add-tag"]`
     );
