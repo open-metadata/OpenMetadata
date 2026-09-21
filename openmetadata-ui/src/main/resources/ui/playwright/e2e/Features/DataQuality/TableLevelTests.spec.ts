@@ -899,9 +899,12 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
+        // The strategy options read as sentences, not as the stored ROWS/COUNT
+        // enum, and react-aria's listbox items expose no key attribute — so
+        // they are matched on the distinctive part of their wording.
         await selectOptionWithRetry(
           page.locator('#testCaseFormV1_params_strategy'),
-          page.getByRole('option', { name: 'ROWS' })
+          page.getByRole('option', { name: 'count the rows' })
         );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
@@ -950,8 +953,8 @@ test.describe(
           .getByRole('textbox')
           .fill(' update');
         await selectOptionWithRetry(
-          page.getByRole('button', { name: 'ROWS Strategy' }),
-          page.getByRole('option', { name: 'COUNT' })
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'use the single number' })
         );
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
