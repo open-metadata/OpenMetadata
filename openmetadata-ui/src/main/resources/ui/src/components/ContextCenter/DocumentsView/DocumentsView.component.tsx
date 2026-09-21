@@ -24,7 +24,7 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronRight } from '@untitledui/icons';
+import { Check, ChevronRight, Eye } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';
@@ -444,6 +444,7 @@ const FileRow: FC<FileRowProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onOpenPreview,
   onPreview,
   onSelectFile,
   onLoadMoreFolders,
@@ -576,6 +577,13 @@ const FileRow: FC<FileRowProps> = ({
         <ButtonUtility
           className="tw:ml-1.5"
           color="tertiary"
+          data-testid="preview-btn"
+          icon={<Eye height={20} width={20} />}
+          tooltip={t('label.preview')}
+          onClick={() => onOpenPreview?.(file)}
+        />
+        <ButtonUtility
+          color="tertiary"
           data-testid="download-btn"
           icon={<DownloadIcon height={20} width={20} />}
           tooltip={t('label.download')}
@@ -630,6 +638,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onDeleteFile,
   onDownload,
   onFileMoved,
+  onOpenPreview,
   onPreview,
   onSelectFile,
   onScrollEnd,
@@ -738,6 +747,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
                     onLoadMoreFolders={onLoadMoreFolders}
+                    onOpenPreview={onOpenPreview}
                     onPreview={onPreview}
                     onSelectFile={onSelectFile}
                   />

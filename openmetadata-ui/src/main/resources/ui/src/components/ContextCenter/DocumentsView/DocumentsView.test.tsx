@@ -259,8 +259,23 @@ describe('DocumentsView', () => {
       />
     );
 
-    fireEvent.click(screen.getAllByText('btn')[0]);
+    fireEvent.click(screen.getByTestId('download-btn'));
 
     expect(onDownload).toHaveBeenCalledWith(mockFiles[0]);
+  });
+
+  it('calls onOpenPreview when the preview button is clicked', () => {
+    const onOpenPreview = jest.fn();
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        onOpenPreview={onOpenPreview}
+      />
+    );
+
+    fireEvent.click(screen.getAllByTestId('preview-btn')[0]);
+
+    expect(onOpenPreview).toHaveBeenCalledWith(mockFiles[0]);
   });
 });
