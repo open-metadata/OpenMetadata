@@ -17,11 +17,10 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import { ChevronDown, Sort } from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
 import { ArticleSortOption } from '../../../constants/ContextCenter.constants';
 
 const SORT_BUTTON_CLS =
@@ -74,10 +73,7 @@ const ArticlesListToolbar = ({
           <AriaButton
             className={SORT_BUTTON_CLS}
             data-testid="articles-sort-button">
-            <FunnelIcon className="tw:text-quaternary" height={14} width={14} />
-            <Typography className="tw:text-secondary" weight="medium">
-              {t('label.sort')}:
-            </Typography>
+            <Sort className="tw:text-quaternary" size={14} />
             <Typography className="tw:text-secondary" weight="medium">
               {t(selectedSortLabel)}
             </Typography>

@@ -209,6 +209,7 @@ describe('KnowledgePageListComponent data path', () => {
         })
       );
     });
+
     expect(mockGetList).not.toHaveBeenCalled();
   });
 });

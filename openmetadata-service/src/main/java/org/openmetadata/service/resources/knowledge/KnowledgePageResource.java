@@ -183,7 +183,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"name", "createdAt", "updatedAt"}))
+                      allowableValues = {"name", "displayName", "createdAt", "updatedAt"}))
           @QueryParam("sortBy")
           String sortBy,
       @Parameter(

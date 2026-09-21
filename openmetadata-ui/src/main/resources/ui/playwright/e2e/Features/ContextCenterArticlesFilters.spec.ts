@@ -148,10 +148,10 @@ test.describe(
         createdArticleFqns.push(fqn);
       }
 
-      await waitForSearchIndexed(
-        apiContext,
-        createdArticleFqns[createdArticleFqns.length - 1],
-        'page'
+      await Promise.all(
+        createdArticleFqns.map((fqn) =>
+          waitForSearchIndexed(apiContext, fqn, 'page')
+        )
       );
 
       await afterAction();

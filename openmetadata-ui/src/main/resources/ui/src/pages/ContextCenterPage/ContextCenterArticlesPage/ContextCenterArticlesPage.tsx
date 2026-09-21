@@ -36,8 +36,10 @@ import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
+import ArticlesListToolbar from '../../../components/ContextCenter/ArticlesListToolbar/ArticlesListToolbar';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import ExploreQuickFilters from '../../../components/Explore/ExploreQuickFilters';
 import '../../../components/KnowledgeCenter/KnowledgeCenterLayout/knowledge-center-layout.less';
 import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
 import KnowledgePageListComponent from '../../../components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
@@ -46,17 +48,12 @@ import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
-import ArticlesListToolbar from '../../../components/ContextCenter/ArticlesListToolbar/ArticlesListToolbar';
-import ExploreQuickFilters from '../../../components/Explore/ExploreQuickFilters';
 import {
   ARTICLE_QUICK_FILTER_FIELDS,
   ARTICLE_SORT_OPTIONS,
   DEFAULT_ARTICLE_SORT_OPTION,
 } from '../../../constants/ContextCenter.constants';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
-import { SearchIndex } from '../../../enums/search.enum';
-import { ExploreQuickFilterField } from '../../../interface/quickFilter.interface';
-import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -64,6 +61,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
@@ -76,6 +74,7 @@ import {
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { ExploreQuickFilterField } from '../../../interface/quickFilter.interface';
 import { queryClient } from '../../../queryClient';
 import {
   getKnowledgePageByFqn,
@@ -84,6 +83,7 @@ import {
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -100,13 +100,10 @@ function getIsArticleListingUnfiltered(
   permissionFetchFailed: boolean,
   hasActiveFilters: boolean
 ): boolean {
-  return (
-    !fqn &&
-    !version &&
-    !articleSearchQuery &&
-    !permissionFetchFailed &&
-    !hasActiveFilters
-  );
+  const isEntityScoped = Boolean(fqn) || Boolean(version);
+  const isFilteredOrSearched = Boolean(articleSearchQuery) || hasActiveFilters;
+
+  return !isEntityScoped && !isFilteredOrSearched && !permissionFetchFailed;
 }
 
 const ContextCenterArticlesPage = () => {
@@ -455,10 +452,10 @@ const ContextCenterArticlesPage = () => {
         permissions={permissions}
         quickFilterQuery={quickFilterQuery}
         ref={knowledgeCenterPageRef}
+        restSortField={selectedSort.restSortBy}
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
-        restSortField={selectedSort.restSortBy}
         searchQuery={debouncedArticleSearchQuery}
         sortField={selectedSort.esSortField}
         sortOrder={selectedSort.sortOrder}
