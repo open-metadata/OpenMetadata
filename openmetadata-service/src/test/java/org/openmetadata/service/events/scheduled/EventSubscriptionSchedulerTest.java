@@ -70,10 +70,11 @@ class EventSubscriptionSchedulerTest {
         "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate",
         quartz.get("org.quartz.jobStore.driverDelegateClass"));
     assertEquals("10", quartz.get("org.quartz.threadPool.threadCount"));
-    assertEquals(
-        "13",
-        quartz.get("org.quartz.dataSource.myDS.maxConnections"),
-        "the worker threads plus the three connections Quartz asks for beside them");
+    assertEquals("OMEventSubSchedulerDS", quartz.get("org.quartz.jobStore.dataSource"));
+    assertTrue(
+        quartz.stringPropertyNames().stream()
+            .noneMatch(name -> name.startsWith("org.quartz.dataSource.")),
+        "the pool is the server's own, so Quartz is given no data source of its own to build");
   }
 
   @Test

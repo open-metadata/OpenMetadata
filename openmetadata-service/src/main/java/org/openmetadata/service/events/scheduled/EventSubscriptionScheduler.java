@@ -60,6 +60,8 @@ import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.events.subscription.matching.AlertMatching;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
+import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
@@ -78,6 +80,7 @@ import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
+import org.quartz.utils.DBConnectionManager;
 
 @Slf4j
 public class EventSubscriptionScheduler {
@@ -92,8 +95,17 @@ public class EventSubscriptionScheduler {
   // Quartz cannot acquire a trigger that is later than this, and a tick may hold a thread for a
   // time budget plus one slow event. Ticks are polls, so misfire handling protects nothing here.
   static final long MISFIRE_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
-  // Quartz asks for the worker threads plus three.
-  private static final int JOB_STORE_CONNECTIONS_BESIDE_WORKERS = 3;
+
+  // Derived from the scheduler's instance name, which Quartz already requires to be unique per
+  // cluster. DBConnectionManager is a process-wide singleton whose registration is an unguarded
+  // map put, so two schedulers sharing a datasource name silently discard the first pool; keying
+  // off a name that is unique by construction makes that collision unrepresentable.
+  private static final String DATA_SOURCE_NAME = SCHEDULER_NAME + "DS";
+  private static final String POOL_NAME = SCHEDULER_NAME + "-pool";
+
+  // One connection per worker thread that may be doing job-store work, plus the misfire handler,
+  // the cluster manager and the reconciler, which each hold one while they run.
+  private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 3;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -119,6 +131,15 @@ public class EventSubscriptionScheduler {
     ServerStopping.registerShutdownHook();
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(quartzProperties(config.getDataSourceFactory()));
+    // Must precede getScheduler(): that is where the job store resolves its datasource name.
+    DBConnectionManager.getInstance()
+        .addConnectionProvider(
+            DATA_SOURCE_NAME,
+            new QuartzConnectionProvider(
+                config
+                    .getDataSourceFactory()
+                    .buildSubsystemPool(
+                        POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.alertsScheduler = factory.getScheduler();
 
     DIContainer di = new DIContainer();
@@ -147,15 +168,9 @@ public class EventSubscriptionScheduler {
     properties.put("org.quartz.jobStore.useProperties", "true");
     properties.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
     properties.put("org.quartz.jobStore.isClustered", "true");
-    properties.put("org.quartz.jobStore.dataSource", "myDS");
-    properties.put(
-        "org.quartz.dataSource.myDS.maxConnections",
-        String.valueOf(SCHEDULER_THREAD_COUNT + JOB_STORE_CONNECTIONS_BESIDE_WORKERS));
-    properties.put("org.quartz.dataSource.myDS.validationQuery", "select 1");
-    properties.put("org.quartz.dataSource.myDS.driver", database.getDriverClass());
-    properties.put("org.quartz.dataSource.myDS.URL", database.getUrl());
-    properties.put("org.quartz.dataSource.myDS.user", database.getUser());
-    properties.put("org.quartz.dataSource.myDS.password", database.getPassword());
+    // No org.quartz.dataSource.* properties: those make Quartz build its own c3p0 pool from a
+    // captured static password. The pool is registered against this name by the constructor.
+    properties.put("org.quartz.jobStore.dataSource", DATA_SOURCE_NAME);
     properties.put("org.quartz.jobStore.driverDelegateClass", driverDelegate(database));
     return properties;
   }

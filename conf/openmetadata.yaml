@@ -945,6 +945,7 @@ rdf:
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
 # Redis L2 cache; it falls back to NoopCacheProvider if Redis is unreachable at startup.
+# Multi-server deployments must use Redis so credential revocations reach every server.
 cache:
   # Cache provider: none (default) or redis
   provider: ${CACHE_PROVIDER:-none}
