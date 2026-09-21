@@ -14,7 +14,7 @@ from presidio_analyzer.nlp_engine import NlpEngine
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
@@ -48,6 +48,44 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+
+# Column-name tokens that identify a column as a generic audit / event timestamp.
+# DATE_TIME content hits are suppressed when the column name contains "timestamp",
+# because event_timestamp / created_timestamp score 1.0 via ValidatedDateRecognizer
+# but are not PII.
+_TECHNICAL_TIMESTAMP_COLUMN_TOKENS: frozenset[str] = frozenset({"timestamp"})
+
+
+def _is_technical_timestamp_column(context_tokens: list[str], column: Column) -> bool:
+    """Return True when the column is a database-level or event/audit timestamp.
+
+    Criteria (either is sufficient):
+    - Data type is TIMESTAMP or TIMESTAMPZ (definitionally a database timestamp).
+    - Column name contains "timestamp" as a split token (e.g. event_timestamp,
+      created_timestamp).
+    """
+    technical_datatypes = frozenset({DataType.TIMESTAMP, DataType.TIMESTAMPZ})
+    return (
+        column.dataType in technical_datatypes
+        or bool(_TECHNICAL_TIMESTAMP_COLUMN_TOKENS.intersection(context_tokens))
+    )
+
+
+def _filter_date_time_for_technical_timestamps(
+    results: list[RecognizerResult],
+    context_tokens: list[str],
+    column: Column,
+) -> list[RecognizerResult]:
+    """Drop DATE_TIME recognizer hits for technical event/audit timestamp columns.
+
+    ValidatedDateRecognizer scores any parseable datetime at 1.0, so event_timestamp
+    and created_timestamp would otherwise always receive a PII tag.  We suppress the
+    hit when the column is identified as a database-level or event timestamp rather than
+    a personal-date column (birth_date, dob, hire_date etc.).
+    """
+    if _is_technical_timestamp_column(context_tokens, column):
+        return [r for r in results if r.entity_type != "DATE_TIME"]
+    return results
 
 
 @dataclass(frozen=True)
@@ -287,7 +325,8 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                content_results = _corroborated_content_results(content_evidence)
+                corroborated = _corroborated_content_results(content_evidence)
+                content_results = _filter_date_time_for_technical_timestamps(corroborated, context, self._column)
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
                 # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any

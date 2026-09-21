@@ -38,7 +38,9 @@ _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     ],
     PIITag.EMAIL_ADDRESS: "^(email|e-mail|mail)(.*address)?$",
     PIITag.PERSON: "^.*(user|client|person|first|last|maiden|nick).*(name).*$",
-    PIITag.DATE_TIME: "^.*(date|time|dob|birthday|dod).*$",
+    # "timestamp" is excluded via the negative lookahead: event_timestamp /
+    # created_timestamp / updated_timestamp are technical audit fields, not personal dates.
+    PIITag.DATE_TIME: r"^(?!.*timestamp).*(date|time|dob|birthday|dod).*$",
     PIITag.NRP: "^.*(gender|nationality).*$",
     PIITag.LOCATION: "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
     PIITag.PHONE_NUMBER: "^.*(phone).*$",
