@@ -166,7 +166,7 @@ class BaseColumnValuesMissingCountValidator(BaseTestValidator):
         total_missing_count = metric_values[self.TOTAL_MISSING_COUNT]
         expected_missing_count = test_params[self.MISSING_COUNT_VALUE]
 
-        matched = total_missing_count == expected_missing_count
+        matched = self.matches_expected(total_missing_count, expected_missing_count, "the expected missing count")
 
         return {
             "matched": matched,
