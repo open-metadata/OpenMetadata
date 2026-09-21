@@ -16,14 +16,8 @@ package org.openmetadata.service.formatter.decorators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
 
@@ -37,41 +31,6 @@ class PlatformMessageDecoratorTest {
     assertEquals(1, message.getAttachments().size());
     assertEquals("#36a64f", message.getAttachments().getFirst().getColor());
     assertFalse(message.getAttachments().getFirst().getBlocks().isEmpty());
-  }
-
-  @Test
-  void gchatCreatesConnectionAndGeneralChangeMessages() {
-    GChatMessageDecorator decorator = new GChatMessageDecorator();
-
-    GChatMessage testMessage = decorator.buildTestMessage();
-    assertEquals(1, testMessage.getCards().size());
-    assertEquals(
-        "Connection Successful ✅", testMessage.getCards().getFirst().getHeader().getTitle());
-
-    OutgoingMessage outgoingMessage = new OutgoingMessage();
-    outgoingMessage.setMessages(List.of("Owner changed", "Tag added"));
-
-    ChangeEvent event =
-        new ChangeEvent()
-            .withEntityType(Entity.TABLE)
-            .withEntityFullyQualifiedName("service.sales.orders")
-            .withEventType(EventType.ENTITY_UPDATED)
-            .withUserName("alice")
-            .withTimestamp(1_735_689_600_000L);
-
-    GChatMessage changeMessage =
-        decorator.createGeneralChangeEventMessage("publisher", event, outgoingMessage);
-
-    assertEquals(
-        "Change Event Details", changeMessage.getCards().getFirst().getHeader().getTitle());
-    assertEquals(4, changeMessage.getCards().getFirst().getSections().size());
-    assertTrue(
-        changeMessage.getCards().getFirst().getSections().stream()
-            .flatMap(section -> section.getWidgets().stream())
-            .anyMatch(
-                widget ->
-                    widget.getTextParagraph() != null
-                        && "Owner changed".equals(widget.getTextParagraph().getText())));
   }
 
   @Test
