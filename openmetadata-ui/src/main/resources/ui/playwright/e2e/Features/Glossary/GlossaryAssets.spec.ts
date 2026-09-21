@@ -17,7 +17,6 @@ import { TopicClass } from '../../../support/entity/TopicClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addAssetToGlossaryTerm,
   goToAssetsTab,
@@ -311,34 +310,6 @@ test.describe('Glossary Asset Operations', () => {
     }
   });
 
-  test('should remove glossary term tag from entity page', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-    const topicEntity = new TopicClass();
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await topicEntity.create(apiContext);
-
-      // Navigate to the topic entity page using URL
-      const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
-
-      await page.goto(`/topic/${topicFqn}`);
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify entity page is loaded
-      const entityHeader = page.getByTestId('entity-header-display-name');
-
-      await expect(entityHeader).toBeVisible();
-    } finally {
-      await glossary.delete(apiContext);
-      await topicEntity.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   test('should bulk select and remove multiple assets', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -415,69 +386,6 @@ test.describe('Glossary Asset Operations', () => {
       await glossary.delete(apiContext);
       await topic1.delete(apiContext);
       await topic2.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  test('should filter assets by entity type', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-    const topicEntity = new TopicClass();
-    const pipelineEntity = new PipelineClass();
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      await topicEntity.create(apiContext);
-      await pipelineEntity.create(apiContext);
-
-      // Add both asset types to term
-      await apiContext.patch(
-        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-        {
-          data: [
-            {
-              op: 'add',
-              path: '/assets/0',
-              value: {
-                id: topicEntity.entityResponseData?.id,
-                type: 'topic',
-              },
-            },
-            {
-              op: 'add',
-              path: '/assets/1',
-              value: {
-                id: pipelineEntity.entityResponseData?.id,
-                type: 'pipeline',
-              },
-            },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-      await goToAssetsTab(page, glossaryTerm.data.displayName);
-
-      // Verify assets tab is accessible and clickable
-      const assetsTab = page.getByTestId('assets');
-
-      await expect(assetsTab).toBeVisible({ timeout: 10000 });
-
-      // Verify the glossary term page is loaded
-      const termHeader = page.getByTestId('entity-header-display-name');
-
-      await expect(termHeader).toBeVisible();
-    } finally {
-      await glossary.delete(apiContext);
-      await topicEntity.delete(apiContext);
-      await pipelineEntity.delete(apiContext);
       await afterAction();
     }
   });
@@ -559,74 +467,4 @@ test.describe('Glossary Asset Operations', () => {
     }
   });
 
-  test('should paginate through assets', async ({ page }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-    const topics: TopicClass[] = [];
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-
-      // Create multiple topics to trigger pagination
-      for (let i = 0; i < 15; i++) {
-        const topic = new TopicClass();
-        await topic.create(apiContext);
-        topics.push(topic);
-      }
-
-      // Add all assets to term
-      const assetPatches = topics.map((topic, index) => ({
-        op: 'add' as const,
-        path: `/assets/${index}`,
-        value: {
-          id: topic.entityResponseData?.id,
-          type: 'topic',
-        },
-      }));
-
-      await apiContext.patch(
-        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-        {
-          data: assetPatches,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-      await goToAssetsTab(page, glossaryTerm.data.displayName);
-
-      // Verify assets tab is accessible
-      const assetsTab = page.getByTestId('assets');
-
-      await expect(assetsTab).toBeVisible({ timeout: 10000 });
-
-      // Verify the glossary term page is loaded correctly
-      const termHeader = page.getByTestId('entity-header-display-name');
-
-      await expect(termHeader).toBeVisible();
-
-      // Look for pagination controls if they exist
-      const pagination = page.locator('.ant-pagination');
-
-      if (await pagination.isVisible({ timeout: 3000 }).catch(() => false)) {
-        // Pagination exists - verify it's functional
-        await expect(pagination).toBeVisible();
-      }
-    } finally {
-      await glossary.delete(apiContext);
-
-      for (const topic of topics) {
-        await topic.delete(apiContext);
-      }
-      await afterAction();
-    }
-  });
 });

@@ -17,6 +17,7 @@ import {
   createNewPage,
   disableEtagConditionalReads,
 } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -58,6 +59,16 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   // Deep hierarchy: 5 levels with different statuses
   const deepTerms: GlossaryTerm[] = [];
+
+  // Expand-all mixed-status hierarchy:
+  // ApprovedParent (Approved) -> [ApprovedChild1, ApprovedChild2, MixedStatusChild (Draft)]
+  // DraftParent (Draft) -> DraftChild (Draft)
+  let approvedParent: GlossaryTerm;
+  let approvedChild1: GlossaryTerm;
+  let approvedChild2: GlossaryTerm;
+  let mixedStatusChild: GlossaryTerm;
+  let draftParent: GlossaryTerm;
+  let draftChild: GlossaryTerm;
 
   // Helper to set term status via PATCH API
   const setTermStatus = async (
@@ -170,6 +181,39 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await collapseIcon.click();
       await collapseIcon.waitFor({ state: 'detached' }).catch(() => {});
     }
+  };
+
+  // Helper to click the expand-all button and wait for terms to load
+  const clickExpandAll = async (page: Page) => {
+    const expandButton = page.getByTestId('expand-collapse-all-button');
+    await expect(expandButton).toBeEnabled();
+
+    const termRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200
+    );
+    await expandButton.click();
+    const response = await termRes;
+    expect(response.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  // Helper to click the collapse-all button and wait for the filter to re-apply
+  const clickCollapseAll = async (page: Page) => {
+    const collapseButton = page.getByTestId('expand-collapse-all-button');
+    await expect(collapseButton).toBeEnabled();
+
+    const termRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.status() === 200
+    );
+    await collapseButton.click();
+    await termRes;
+
+    await waitForAllLoadersToDisappear(page);
   };
 
   // Helper to verify term is visible in table
@@ -299,6 +343,39 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       deepTerms.push(term);
       parentFqn = term.responseData.fullyQualifiedName;
     }
+
+    // Create expand-all mixed-status hierarchy:
+    // ApprovedParent (Approved) -> ApprovedChild1, ApprovedChild2, MixedStatusChild (Draft)
+    approvedParent = new GlossaryTerm(glossary, undefined, 'ApprovedParent');
+    await approvedParent.create(apiContext);
+
+    approvedChild1 = new GlossaryTerm(glossary, undefined, 'ApprovedChild1');
+    approvedChild1.data.parent = approvedParent.responseData.fullyQualifiedName;
+    await approvedChild1.create(apiContext);
+
+    approvedChild2 = new GlossaryTerm(glossary, undefined, 'ApprovedChild2');
+    approvedChild2.data.parent = approvedParent.responseData.fullyQualifiedName;
+    await approvedChild2.create(apiContext);
+
+    mixedStatusChild = new GlossaryTerm(
+      glossary,
+      undefined,
+      'MixedStatusChild'
+    );
+    mixedStatusChild.data.parent =
+      approvedParent.responseData.fullyQualifiedName;
+    await mixedStatusChild.create(apiContext);
+    await setTermStatus(apiContext, mixedStatusChild, 'Draft');
+
+    // DraftParent (Draft) -> DraftChild (Draft)
+    draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
+    await draftParent.create(apiContext);
+    await setTermStatus(apiContext, draftParent, 'Draft');
+
+    draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
+    draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
+    await draftChild.create(apiContext);
+    await setTermStatus(apiContext, draftChild, 'Draft');
 
     await afterAction();
   });
@@ -531,6 +608,44 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
       // Parent chain should NOT be visible (different statuses)
       await verifyTermNotVisible(page, deepTerms[0].data.displayName);
+    });
+  });
+
+  // ==================== EXPAND ALL REGARDLESS OF STATUS FILTER ====================
+
+  test.describe('Expand All Regardless of Status Filter', () => {
+    test('Expand All shows all children regardless of status filter', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Apply Draft filter and expand all', async () => {
+        await applyStatusFilter(page, ['Draft']);
+        await clickExpandAll(page);
+      });
+
+      await test.step('Verify MixedStatusChild (Draft) appears under ApprovedParent', async () => {
+        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
+        await expect(page.getByTestId('MixedStatusChild')).toBeVisible();
+      });
+
+      await test.step('Collapse all and verify filter re-applies', async () => {
+        await clickCollapseAll(page);
+
+        await expect(page.getByTestId('DraftParent')).toBeVisible();
+      });
+
+      await test.step('Switch to Approved filter and expand again', async () => {
+        await applyStatusFilter(page, ['Approved']);
+        await clickExpandAll(page);
+
+        await expect(page.getByTestId('ApprovedParent')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild1')).toBeVisible();
+        await expect(page.getByTestId('ApprovedChild2')).toBeVisible();
+        await expect(page.getByTestId('MixedStatusChild')).toBeVisible();
+        await expect(page.getByTestId('DraftParent')).toBeVisible();
+        await expect(page.getByTestId('DraftChild')).toBeVisible();
+      });
     });
   });
 });
