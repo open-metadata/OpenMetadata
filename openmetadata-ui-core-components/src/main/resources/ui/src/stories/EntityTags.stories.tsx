@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
+import { AutoClassificationTag } from '../components/application/tag/auto-classification-tag';
 import { ClassificationTag } from '../components/application/tag/classification-tag';
 import { DataProductTag } from '../components/application/tag/data-product-tag';
 import { DomainTag } from '../components/application/tag/domain-tag';
@@ -38,6 +39,7 @@ export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <ClassificationTag color="#7F56D9" label="PII.Sensitive" />
+      <AutoClassificationTag label="BirthDate" />
       <GlossaryTag color="#2E90FA" label="Customer" />
       <DomainTag color="#12B76A" label="Engineering" />
       <DataProductTag color="#F79009" label="Reporting Suite" />

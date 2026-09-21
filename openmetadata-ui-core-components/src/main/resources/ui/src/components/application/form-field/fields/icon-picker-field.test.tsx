@@ -11,11 +11,23 @@
  *  limitations under the License.
  */
 
-/**
- * @deprecated Import `FilterSelectDropdown` directly. This module only exists
- * so Collate `main` keeps building against this branch: it still imports this
- * path, and Collate cannot be fixed first because its own migration
- * (openmetadata-collate#6487) pins this branch as its submodule. Delete this
- * file once #6487 has merged — nothing in OpenMetadata imports it.
- */
-export { default } from '../common/FilterSelectDropdown/FilterSelectDropdown';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { IconPickerField } from './icon-picker-field';
+
+describe('IconPickerField', () => {
+  it('renders a stored palette color through its presentation token', () => {
+    render(
+      <IconPickerField
+        backgroundColor="#ffb01a"
+        items={[]}
+        name="icon"
+        value=""
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Select icon' })).toHaveStyle({
+      backgroundColor: 'var(--color-entity-palette-amber)',
+    });
+  });
+});
