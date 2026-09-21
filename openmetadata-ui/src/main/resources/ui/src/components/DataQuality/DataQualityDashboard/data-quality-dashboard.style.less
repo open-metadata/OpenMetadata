@@ -24,6 +24,17 @@
   }
 }
 
+// The legacy @grey-* card surface is bridged to dark via variables.less +
+// app.less, but that bridge is not reliably present in every build (it is
+// stripped where it breaks a downstream LESS color-fn). Pin the dark surface
+// here directly so the card never falls back to its light hex in dark mode.
+.dark-mode {
+  .data-quality-dashboard-card-section .data-quality-dashboard-pie-chart {
+    background-color: var(--tw-color-bg-primary);
+    border-color: var(--tw-color-border-secondary);
+  }
+}
+
 .data-quality-governance-tab-wrapper {
   background-color: var(--tw-color-bg-primary);
   padding: @padding-md;
