@@ -637,6 +637,15 @@ const captureMetricList = async (
   page: Page,
   viewport: 'desktop' | 'narrow'
 ) => {
+  // Each card's health pill lazy-loads behind an IntersectionObserver and renders a Skeleton
+  // until its slot intersects. gotoForScreenshot's skeleton guard runs while the sidebar is
+  // still expanded, and at 390px that leaves the cards far enough below the fold that the
+  // observer never fires, so the pills stay skeletons and the guard times out. Removing the
+  // observer takes MetricListHealth's own documented fallback — it loads eagerly when the API
+  // is absent — which is the resolved state both committed baselines were captured in.
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(window, 'IntersectionObserver');
+  });
   await setupMetricRoutes(page);
 
   await gotoForScreenshot(page, '/metrics');
