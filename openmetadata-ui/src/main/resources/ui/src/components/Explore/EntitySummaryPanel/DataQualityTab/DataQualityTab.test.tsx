@@ -134,7 +134,7 @@ jest.mock('antd', () => {
 });
 
 // Mock child components
-jest.mock('../../../common/DataQualitySection', () => {
+jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest
     .fn()
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
