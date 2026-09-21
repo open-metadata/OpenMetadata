@@ -10,12 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/**
+ * Rill Connection Config
+ */
+export interface RillConnection {
+    /**
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     */
+    hostPort:                    string;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * API token to authenticate with Rill.
+     */
+    token?: string;
+    /**
+     * Service Type
+     */
+    type?: RillType;
+    /**
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     */
+    verifySSL?: boolean;
+}
 
 /**
- * @deprecated Import `FilterSelectDropdown` directly. This module only exists
- * so Collate `main` keeps building against this branch: it still imports this
- * path, and Collate cannot be fixed first because its own migration
- * (openmetadata-collate#6487) pins this branch as its submodule. Delete this
- * file once #6487 has merged — nothing in OpenMetadata imports it.
+ * Service Type
+ *
+ * Service type.
  */
-export { default } from '../common/FilterSelectDropdown/FilterSelectDropdown';
+export enum RillType {
+    Rill = "Rill",
+}
