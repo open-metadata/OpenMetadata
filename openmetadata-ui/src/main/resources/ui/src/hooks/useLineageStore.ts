@@ -80,6 +80,11 @@ interface LineageState {
   reactFlowInstance?: ReactFlowInstance;
   selectedQuickFilters: ExploreQuickFilterField[];
   timeFilter: LineageTimeRange;
+  showAddEdgeModal: boolean;
+  showDeleteModal: boolean;
+  isDrawerOpen: boolean;
+  newAddedNode?: Node;
+  deletionState: { loading: boolean; status: LoadingState };
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -140,6 +145,14 @@ interface LineageState {
       | ((prev: ExploreQuickFilterField[]) => ExploreQuickFilterField[])
   ) => void;
   setTimeFilter: (range: LineageTimeRange) => void;
+  openAddEdgeModal: () => void;
+  closeAddEdgeModal: () => void;
+  openDeleteModal: () => void;
+  closeDeleteModal: () => void;
+  openDrawer: () => void;
+  closeDrawer: () => void;
+  setNewAddedNode: (node?: Node) => void;
+  setDeletionState: (next: { loading: boolean; status: LoadingState }) => void;
 }
 
 const defaultLineageSettings = {
@@ -181,6 +194,11 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   reactFlowInstance: undefined,
   selectedQuickFilters: [],
   timeFilter: {},
+  showAddEdgeModal: false,
+  showDeleteModal: false,
+  isDrawerOpen: false,
+  newAddedNode: undefined,
+  deletionState: { loading: false, status: 'initial' },
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -375,6 +393,11 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       reactFlowInstance: undefined,
       selectedQuickFilters: [],
       timeFilter: {},
+      showAddEdgeModal: false,
+      showDeleteModal: false,
+      isDrawerOpen: false,
+      newAddedNode: undefined,
+      deletionState: { loading: false, status: 'initial' },
     }),
 
   setNodes: (nodes: Node[]) => set({ nodes }),
@@ -453,4 +476,23 @@ export const useLineageStore = create<LineageState>((set, get) => ({
     })),
 
   setTimeFilter: (timeFilter: LineageTimeRange) => set({ timeFilter }),
+
+  openAddEdgeModal: () => set({ showAddEdgeModal: true }),
+
+  closeAddEdgeModal: () => set({ showAddEdgeModal: false }),
+
+  openDeleteModal: () => set({ showDeleteModal: true }),
+
+  closeDeleteModal: () => set({ showDeleteModal: false }),
+
+  openDrawer: () => set({ isDrawerOpen: true }),
+
+  closeDrawer: () => set({ isDrawerOpen: false }),
+
+  setNewAddedNode: (newAddedNode?: Node) => set({ newAddedNode }),
+
+  setDeletionState: (deletionState: {
+    loading: boolean;
+    status: LoadingState;
+  }) => set({ deletionState }),
 }));
