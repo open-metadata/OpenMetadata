@@ -59,8 +59,10 @@ const ANALYTICS_COLLECT = '**/api/v1/analytics/web/events/collect';
  *   dataConsumer, dataSteward and owner), so caching it would serve the first
  *   identity's profile to the rest. The failure mode is a permission test
  *   quietly seeing the admin profile and passing, which is worse than the test
- *   not existing. The identity-keyed cache below makes this safe in principle,
- *   but nothing about a false pass is worth 497 requests a shard.
+ *   not existing. The cache below is keyed on URL alone (see cacheKey), so
+ *   caching it would serve the first identity's profile to every later one
+ *   outright — the exclusion is what keeps that from happening, and it is why
+ *   nothing identity-scoped may ever join this list.
  * - `services/ingestionPipelines/status` — flagged in review, and the reason it
  *   is unsafe is the third condition rather than a missed writer. It reports
  *   whether the pipeline service client is reachable, which moves on its own as
@@ -105,11 +107,11 @@ type CacheEntry = {
   response: CachedResponse;
 };
 
-// One entry per (identity + path + query). Ten paths, but the identity half is
-// unbounded — every fresh user that boots the app adds a set — so the cap is
-// load-bearing rather than belt-and-braces, and eviction is LRU (see the hit
-// path in serveBootConfig) so identity churn cannot evict the admin entries
-// that account for most boots.
+// One entry per (path + query). The key is the URL alone (see cacheKey), so the
+// space is the ~9 cacheable paths plus any query variants — bounded and small.
+// The cap stays as a guard against an unforeseen query-string explosion; at its
+// ~9-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();
 let writeGeneration = 0;
@@ -210,14 +212,23 @@ const CACHEABLE_BOOT_PATTERN = new RegExp(
 );
 
 /**
- * The cache is per worker and a worker runs many identities, so the caller's
- * credentials are part of the key. Every path in CACHEABLE_BOOT_PATHS is
- * global today, which makes this redundant — it is here so that adding an
- * identity-scoped path later degrades into a cache miss rather than into one
- * user being served another user's response.
+ * Every path in CACHEABLE_BOOT_PATHS is global — its response does not depend on
+ * the caller's identity — so the key is the URL alone.
+ *
+ * This once folded the `Authorization` header in, defensively. That keyed every
+ * fresh JWT as a distinct entry, so each re-login missed and refetched a value
+ * that had not changed: measured at ~35 avoidable server hits a shard on the
+ * post-login paths (`system/version` 88 hits against the empty-auth
+ * `config/auth` floor of 53, over 406 boots). Dropping the header collapses the
+ * post-login paths to that same per-worker floor.
+ *
+ * The trade is real: with a URL-only key, an identity-scoped path added to
+ * CACHEABLE_BOOT_PATHS would serve the first caller's response to every later
+ * one. So the list must stay global-only — which was always its contract (see
+ * the `users/loggedInUser` exclusion above). The key does not enforce it; the
+ * list's own review does.
  */
-const cacheKey = (request: Request) =>
-  `${request.headers()['authorization'] ?? ''}::${request.url()}`;
+const cacheKey = (request: Request) => request.url();
 
 /**
  * Playwright hands back the *decoded* body, so replaying the original
@@ -267,12 +278,10 @@ const serveBootConfig = async (route: Route) => {
   const cached = bootCache.get(key);
 
   if (cached) {
-    // Re-inserting on a hit makes eviction LRU rather than FIFO, which matters
-    // now that the Authorization header is part of the key: the key space is
-    // unbounded in identities (106 call sites build their own context, and
-    // performUserLogin mints a fresh user), while the cap is 6.4 identities'
-    // worth of entries. Under FIFO a burst of short-lived users would evict the
-    // admin entries that account for most boots, and they would all refetch.
+    // Re-insert on a hit so eviction is LRU rather than FIFO. With the URL-only
+    // key the working set is ~9 entries and the cap never trips, so this no
+    // longer changes behaviour; kept so it stays correct if a query-string
+    // variant ever pushes the set past the cap.
     bootCache.delete(key);
     bootCache.set(key, cached);
 

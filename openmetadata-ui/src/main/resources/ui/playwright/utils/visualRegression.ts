@@ -13,6 +13,30 @@
 import { expect, Page } from '@playwright/test';
 import { waitForPageLoaded } from './polling';
 
+/**
+ * Wait out skeleton placeholders.
+ *
+ * `waitForPageLoaded` clears loader *spinners*, which is a different thing: a
+ * widget that renders `<Skeleton />` while its query is in flight shows no
+ * spinner, so the page reads as settled while half of it is still grey blocks.
+ * A screenshot taken then records the skeletons, and the baseline only matches
+ * while the next run is equally slow — which is how `data-quality.png` came to
+ * hold a half-loaded page.
+ *
+ * Matched on the class rather than a testid because core-components' `Skeleton`
+ * exposes none; `tw:animate-pulse` is what it always renders, and the substring
+ * match sidesteps escaping the `tw:` prefix in a CSS selector.
+ */
+const waitForSkeletonsToResolve = async (page: Page) => {
+  await expect
+    .poll(() => page.locator('[class*="animate-pulse"]').count(), {
+      timeout: 30_000,
+      message:
+        'Skeleton placeholders never resolved, so the screenshot would have recorded a half-loaded page',
+    })
+    .toBe(0);
+};
+
 export const FIXED_DATE = new Date('2026-01-15T10:00:00.000Z');
 export const VISUAL_GLOSSARY_NAME = 'pw_visual_regression_glossary';
 export const VISUAL_GLOSSARY_DISPLAY_NAME = 'Visual regression glossary';
@@ -50,6 +74,7 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.clock.setFixedTime(FIXED_DATE);
   await page.goto(path, { waitUntil: 'domcontentloaded' });
   await waitForPageLoaded(page);
+  await waitForSkeletonsToResolve(page);
   await page.addStyleTag({ content: FREEZE_CSS });
   await page.evaluate(() => {
     window.scrollTo(0, 0);

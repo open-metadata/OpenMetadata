@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
-/**
- * @deprecated Import `FilterSelectDropdown` directly. This module only exists
- * so Collate `main` keeps building against this branch: it still imports this
- * path, and Collate cannot be fixed first because its own migration
- * (openmetadata-collate#6487) pins this branch as its submodule. Delete this
- * file once #6487 has merged — nothing in OpenMetadata imports it.
- */
-export { default } from '../common/FilterSelectDropdown/FilterSelectDropdown';
+// Distance (px) from the bottom that still counts as "scrolled to the end".
+// Must be a tolerance, not an exact equality: under OS display scaling
+// (e.g. Edge on Windows at 125%/150%) scrollTop is fractional, so
+// scrollHeight - scrollTop - clientHeight never lands on exactly 0.
+export const SCROLL_BOTTOM_THRESHOLD = 8;
+
+export function isNearScrollBottom({
+  scrollHeight,
+  scrollTop,
+  clientHeight,
+}: {
+  scrollHeight: number;
+  scrollTop: number;
+  clientHeight: number;
+}): boolean {
+  return scrollHeight - scrollTop - clientHeight <= SCROLL_BOTTOM_THRESHOLD;
+}

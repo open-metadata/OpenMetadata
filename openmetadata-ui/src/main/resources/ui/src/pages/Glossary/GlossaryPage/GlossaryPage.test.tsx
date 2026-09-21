@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -231,6 +231,12 @@ it.each([true, false])(
       data: hasGlossary ? [MOCK_GLOSSARY] : [],
       paging: { total: hasGlossary ? 1 : 0 },
     });
+    // Unknown is now decided by a real 404 from the by-name fetch, not by the
+    // FQN being absent from the list: the sidebar paginates, so a miss there is
+    // not proof the glossary does not exist. Reject the way the server would.
+    (getGlossariesByName as jest.Mock).mockRejectedValue({
+      response: { status: 404 },
+    });
     renderWithQueryClient(<GlossaryPage {...mockProps} />);
 
     expect(await screen.findByTestId('empty-placeholder')).toHaveTextContent(
@@ -435,6 +441,7 @@ describe('Test GlossaryComponent page', () => {
         fullyQualifiedName: 'Glossary 3',
       };
 
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'Glossary 2' });
       (
         useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
       ).mockImplementation(() => ({
@@ -477,5 +484,47 @@ describe('Test GlossaryComponent page', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('GlossaryPage nonexistent glossary FQN', () => {
+  const NON_EXISTENT_FQN = 'NonExistentGlossary_1789732487181';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useFqn as jest.Mock).mockReturnValue({ fqn: NON_EXISTENT_FQN });
+    (getGlossariesByName as jest.Mock).mockRejectedValue({
+      response: { status: 404 },
+    });
+    (
+      useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
+    ).mockImplementation(() => ({
+      glossaries: [MOCK_GLOSSARY],
+      setGlossaries: mockSetGlossaries,
+      activeGlossary: MOCK_GLOSSARY,
+      setActiveGlossary: mockSetActiveGlossary,
+      updateActiveGlossary: mockUpdateActiveGlossary,
+    }));
+  });
+
+  it('should fetch the glossary by FQN instead of relying on the list', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(getGlossariesByName).toHaveBeenCalledWith(
+      NON_EXISTENT_FQN,
+      expect.anything()
+    );
+  });
+
+  it('should render not-found and not fall back to the first glossary on 404', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(screen.queryByText(/Glossary.component/i)).not.toBeInTheDocument();
+    expect(mockSetActiveGlossary).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

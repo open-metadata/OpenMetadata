@@ -872,6 +872,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   }, [tab]);
 
   useEffect(() => {
+    // Clear eagerly so a stale debounced save from the previous article cannot
+    // match this ref and set SAVING state after we've already navigated away.
+    knowledgePageIdRef.current = undefined;
     setContentChangeState(ContentChangeState.SAVED);
   }, [fqn]);
 
