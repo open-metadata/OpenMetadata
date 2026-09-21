@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-.reset-logo {
-  display: flex;
-  justify-content: center;
-}
-
-.ant-col {
-  .reset-password-text {
-    padding-left: 0;
-  }
-}
+// Query key for the sidebar inbox badge's unread count. Lives in constants so
+// the hook that reads it does not have to import the Inbox page.
+export const INBOX_UNREAD_ACTIVITY_COUNT_QUERY_KEY = [
+  'inbox-unread-activity-count',
+] as const;

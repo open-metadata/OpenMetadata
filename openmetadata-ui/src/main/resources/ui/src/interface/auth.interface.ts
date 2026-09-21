@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,24 +11,12 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../styles/variables.less';
+// The application store keeps the resolved auth config, so the type has to be
+// reachable without importing the auth provider component.
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 
-.page-not-found-container {
-  position: relative;
-  height: 100vh;
-
-  .not-found-text-image {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-
-  .text-column {
-    background-color: @background-color;
-  }
-
-  .image-column {
-    background-color: var(--tw-color-utility-gray-blue-50);
-  }
-}
+export type AuthenticationConfigurationWithScope =
+  AuthenticationConfiguration & {
+    responseType?: string;
+    scope: string;
+  };

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,5 @@
  *  limitations under the License.
  */
 
-.basic-auth-card .children-container {
-  margin: var(--om-space-16) var(--om-space-48);
-}
+// Read by the knowledge-graph canvas hook, so it sits below the UI layer.
+export const ZOOM_RANGE: [number, number] = [0.3, 1.6];

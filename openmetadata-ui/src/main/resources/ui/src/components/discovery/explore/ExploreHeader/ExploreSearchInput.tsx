@@ -63,7 +63,7 @@ const INPUT_FIELD_CONTAINER_CLASS =
 
 const INPUT_CLASS = classNames(
   'tw:m-0 tw:w-full tw:bg-transparent tw:outline-hidden',
-  'tw:placeholder:text-sm tw:placeholder:text-tertiary',
+  'tw:placeholder:text-sm tw:placeholder:text-placeholder',
   'tw:autofill:rounded-lg tw:autofill:text-primary',
   'tw:px-3 tw:py-2 tw:pl-10 tw:text-xs tw:font-normal tw:text-primary'
 );
