@@ -32,6 +32,36 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/src/index.tsx'
       - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**'
       - 'openmetadata-ui/src/main/resources/ui/playwright/utils/sso-providers/**'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/utils/ssoLogin.ts'
+      # Page-level auth screens. A ui-migration PR touching these can silently
+      # invalidate the SSO fixtures' locators (see #33646 for the antd →
+      # ui-core-components migration that dropped `.signin-button` and moved
+      # the `full-name-input` testid onto a wrapper `<div>` — the PR-lane
+      # only ran non-SSO Playwright specs, so the drift merged green and
+      # only surfaced in the nightly). Bringing these into the SSO gate
+      # forces the matrix to run when these pages change, catching the
+      # class of regression that #33646 fixed.
+      - 'openmetadata-ui/src/main/resources/ui/src/pages/LoginPage/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/pages/SignUp/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/pages/ForgotPassword/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/components/common/LoginButton/**'
+      # Shared primitives that the auth screens render. The core-components
+      # migration in #33575 changed the DOM shape of Button (dropped the
+      # legacy `signin-button` class) and Input (react-aria wrapper puts
+      # the testid on a `<div data-input-wrapper>` instead of the actual
+      # `<input>`); catching that cross-package breakage on the ORIGINATING
+      # PR is the whole point of adding these paths. The `form/**` and
+      # `form-field/**` layers are here because the Basic and LDAP fixtures
+      # locate inputs via `getByLabel(/email/i)` / `getByLabel(/password/i)`,
+      # and `render-field-element.tsx` is what wires the label → input
+      # association plus forwards signup test IDs — the same class of
+      # cross-package regression as Button/Input would otherwise slip past
+      # the PR gate (greptile r4056182832).
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/buttons/**'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/input/**'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/form/**'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/application/form-field/**'
       # Backend auth surface — narrow to the packages the SSO matrix
       # actually exercises (login/refresh, JWT filter, SAML handler,
       # OIDC/SAML code flow, LDAP/basic authenticators, the servlet

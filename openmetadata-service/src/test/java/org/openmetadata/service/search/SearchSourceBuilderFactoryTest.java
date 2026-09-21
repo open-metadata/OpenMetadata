@@ -1040,6 +1040,37 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testShippedRankingAllowsUiTermBoostFields() {
+    SearchSettings settings = JsonUtils.deepCopy(shippedSearchSettings, SearchSettings.class);
+    AssetTypeConfiguration table =
+        settings.getAssetTypeConfigurations().stream()
+            .filter(config -> Entity.TABLE.equals(config.getAssetType()))
+            .findFirst()
+            .orElseThrow();
+    table.setTermBoosts(
+        List.of(
+            createTermBoost("certification.tagLabel.tagFQN", "Certification.Repro26414", 100.0),
+            createTermBoost("tags.tagFQN", "PII.Sensitive", 50.0)));
+
+    String osQuery =
+        new OpenSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toJsonString();
+    String esQuery =
+        new ElasticSearchSourceBuilderFactory(settings)
+            .getSearchSourceBuilderV2(Entity.TABLE, "accounts", 0, 15)
+            .query()
+            .toString();
+
+    for (String value : List.of("Certification.Repro26414", "PII.Sensitive")) {
+      assertAll(
+          () -> assertTrue(osQuery.contains(value), osQuery),
+          () -> assertTrue(esQuery.contains(value), esQuery));
+    }
+  }
+
+  @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
