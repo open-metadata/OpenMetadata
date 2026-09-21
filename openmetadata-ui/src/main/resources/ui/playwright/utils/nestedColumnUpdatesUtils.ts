@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
 import { DataType as FileDataType } from '../../src/generated/entity/data/file';
 import { DataType as SearchIndexDataType } from '../../src/generated/entity/data/searchIndex';
 import { DataType as TableDataType } from '../../src/generated/entity/data/table';
@@ -26,8 +26,29 @@ type EntityTypes = InstanceType<
   (typeof nestedChildrenTestData)[keyof typeof nestedChildrenTestData]['CreationClass']
 >;
 
+/**
+ * The nested-children shape each entity response exposes under a different key.
+ * Declared required so the per-type branches below can read the one key that
+ * entity actually carries without a guard for the keys it never has.
+ */
+type NestedChildrenNode = {
+  name: string;
+  fullyQualifiedName?: string;
+  children: NestedChildrenNode[];
+};
+
+type NestedChildrenResponse = {
+  fullyQualifiedName: string;
+  columns: NestedChildrenNode[];
+  fields: NestedChildrenNode[];
+  requestSchema: { schemaFields: NestedChildrenNode[] };
+  messageSchema: { schemaFields: NestedChildrenNode[] };
+  dataModel: { columns: NestedChildrenNode[] };
+};
+
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
-  const entityData = data.entityResponseData as any;
+  const entityData =
+    data.entityResponseData as unknown as NestedChildrenResponse;
   const fqn = entityData.fullyQualifiedName;
 
   switch (type) {
@@ -1002,7 +1023,9 @@ export const createWorksheetEntity = async (apiContext: APIRequestContext) => {
     entity,
     service,
     deleteService: () =>
-      worksheetClass.delete(apiContext).then(() => ({} as any)),
+      worksheetClass
+        .delete(apiContext)
+        .then(() => ({} as unknown as APIResponse)),
     visitPage: async (page: Page) => {
       await worksheetClass.visitEntityPage(page);
     },
@@ -1070,7 +1093,8 @@ export const createFileEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () => fileClass.delete(apiContext).then(() => ({} as any)),
+    deleteService: () =>
+      fileClass.delete(apiContext).then(() => ({} as unknown as APIResponse)),
     visitPage: async (page: Page) => {
       await fileClass.visitEntityPage(page);
       await page.getByTestId('schema').click();
