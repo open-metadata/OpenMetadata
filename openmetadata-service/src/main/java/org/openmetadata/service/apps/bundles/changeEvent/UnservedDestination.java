@@ -24,20 +24,27 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 
 /**
- * A destination whose channel is not registered on this server. Nothing is resolved, rendered or
- * sent for it, and it is never sent through the channel of its type instead.
+ * A destination nothing can be sent through: its channel is not registered on this server, or its
+ * stored configuration is one the channel can no longer be built with. Nothing is resolved,
+ * rendered or sent for it, it is never sent through another channel instead, and it costs the
+ * alert's other destinations nothing.
  */
 @Slf4j
 final class UnservedDestination implements Destination<ChangeEvent> {
   private final EventSubscription alert;
   @Getter private final SubscriptionDestination subscriptionDestination;
-  private final String channelId;
+  private final String reason;
 
-  UnservedDestination(
-      EventSubscription alert, SubscriptionDestination destination, String channelId) {
+  UnservedDestination(EventSubscription alert, SubscriptionDestination destination, String reason) {
     this.alert = alert;
     this.subscriptionDestination = destination;
-    this.channelId = channelId;
+    this.reason = reason;
+  }
+
+  static UnservedDestination ofAnUnregisteredChannel(
+      EventSubscription alert, SubscriptionDestination destination, String channelId) {
+    return new UnservedDestination(
+        alert, destination, "The channel " + channelId + " is not registered on this server");
   }
 
   @Override
@@ -74,6 +81,6 @@ final class UnservedDestination implements Destination<ChangeEvent> {
   public void close() {}
 
   private String reason() {
-    return "The channel " + channelId + " is not registered on this server";
+    return reason;
   }
 }

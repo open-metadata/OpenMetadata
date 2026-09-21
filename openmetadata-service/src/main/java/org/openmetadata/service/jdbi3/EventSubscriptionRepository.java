@@ -42,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertDefinition;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -148,6 +149,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
+      DestinationValidation.ofANewAlert(entity);
       compileNewDefinition(entity);
     }
 
@@ -303,6 +305,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         EventSubscription original, EventSubscription updated, Operation operation) {
       super(original, updated, operation);
       settleDefinition(original, updated, operation);
+      DestinationValidation.ofWhatChanged(original, updated);
     }
 
     @Override

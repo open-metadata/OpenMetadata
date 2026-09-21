@@ -236,6 +236,62 @@ class AlertDefinitionIT {
     assertEquals("No chosen trigger applies to this source, so none of its events match.", warning);
   }
 
+  // Destinations were checked by the REST resource on POST and PUT only, so a PATCH could store
+  // one that no channel can deliver to.
+  @Test
+  void patchedInvalidDestinationIs400(TestNamespace ns) {
+    EventSubscription alert = create(tableAlert(ns, "patched_invalid_destination"));
+
+    String message =
+        messageOfTheRefusal(
+            () ->
+                patch(
+                    alert,
+                    "[{\"op\":\"replace\",\"path\":\"/destinations/0/config/endpoint\","
+                        + "\"value\":\"ftp://not-a-webhook.example.com\"}]"));
+
+    assertTrue(message.contains("Invalid webhook endpoint URL"), message);
+  }
+
+  // A destination saved under older rules must not stop its alert from being edited.
+  @Test
+  void renameOfAlertWithStaleDestinationSucceeds(TestNamespace ns) {
+    EventSubscription alert = withADestinationTodaysRulesReject(ns, "stale_destination_rename");
+
+    patch(alert, "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"Renamed\"}]");
+
+    assertEquals("Renamed", AlertFixtures.stored(alert.getId()).getDisplayName());
+  }
+
+  @Test
+  void unchangedDestinationIsNotRevalidated(TestNamespace ns) {
+    EventSubscription alert = withADestinationTodaysRulesReject(ns, "stale_destination_put");
+    CreateEventSubscription sameDestinations =
+        tableAlert(ns, "stale_destination_put")
+            .withDescription("edited by put")
+            .withDestinations(alert.getDestinations());
+
+    put(sameDestinations);
+
+    assertEquals("edited by put", AlertFixtures.stored(alert.getId()).getDescription());
+    assertRejected(
+        () ->
+            patch(
+                alert,
+                "[{\"op\":\"replace\",\"path\":\"/destinations/0/config/endpoint\","
+                    + "\"value\":\"ftp://still-not-a-webhook.example.com\"}]"));
+  }
+
+  private static EventSubscription withADestinationTodaysRulesReject(
+      TestNamespace ns, String name) {
+    EventSubscription alert = create(tableAlert(ns, name));
+    alert
+        .getDestinations()
+        .getFirst()
+        .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+    return AlertFixtures.writeBehindTheServer(alert);
+  }
+
   private static String messageOfTheRefusal(Runnable save) {
     OpenMetadataException rejected = assertThrows(OpenMetadataException.class, save::run);
     assertEquals(400, rejected.getStatusCode());

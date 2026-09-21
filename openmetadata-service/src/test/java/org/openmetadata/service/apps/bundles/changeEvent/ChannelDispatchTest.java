@@ -24,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.AlertingSettings.Sending;
@@ -122,6 +124,27 @@ class ChannelDispatchTest {
     assertEquals(
         "Not attempted: the file it carries could not be produced",
         statusOf(report).getLastFailedReason());
+  }
+
+  // A configuration saved under older rules must cost this destination only, never the tick.
+  @Test
+  void destinationWhoseStoredConfigurationIsUnusableIsNotAttempted() throws Exception {
+    SubscriptionDestination savedLongAgo =
+        new SubscriptionDestination()
+            .withId(UUID.randomUUID())
+            .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+            .withEnabled(true)
+            .withConfig(new Webhook().withEndpoint(URI.create("ftp://saved-long-ago.example.com")));
+
+    Destination<ChangeEvent> unusable =
+        AlertFactory.getAlert(new EventSubscription(), savedLongAgo, Map.of());
+    Optional<EventPublisherException> failure = dispatch(Set.of(), unusable).send(EVENT, CONTENT);
+
+    assertTrue(failure.isEmpty());
+    assertTrue(
+        statusOf(unusable)
+            .getLastFailedReason()
+            .startsWith("Not attempted: its stored configuration is not usable"));
   }
 
   @Test

@@ -86,9 +86,9 @@ import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.events.subscription.DestinationValidation;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.events.subscription.SourceCapabilities;
-import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.matching.MatcherGate;
 import org.openmetadata.service.events.subscription.matching.MatcherModes;
 import org.openmetadata.service.events.subscription.matching.ShadowReports;
@@ -341,11 +341,6 @@ public class EventSubscriptionResource
           NoSuchMethodException,
           InstantiationException,
           IllegalAccessException {
-    if (request.getDestinations() != null && !request.getDestinations().isEmpty()) {
-      for (SubscriptionDestination destination : request.getDestinations()) {
-        validateDestinationConfig(destination);
-      }
-    }
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, eventSub);
@@ -372,11 +367,6 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
-    if (create.getDestinations() != null && !create.getDestinations().isEmpty()) {
-      for (SubscriptionDestination destination : create.getDestinations()) {
-        validateDestinationConfig(destination);
-      }
-    }
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
@@ -1621,7 +1611,7 @@ public class EventSubscriptionResource
 
   private SubscriptionDestination sendTestMessageToDestination(
       SubscriptionDestination destination) {
-    validateDestinationConfig(destination);
+    DestinationValidation.validate(destination, Map.of());
     try {
       Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
       alert.sendTestMessage();
@@ -1643,33 +1633,6 @@ public class EventSubscriptionResource
       result = URL_QUERY_PATTERN.matcher(reason).replaceAll(REDACTED_QUERY_REPLACEMENT);
     }
     return result;
-  }
-
-  private void validateDestinationConfig(SubscriptionDestination destination) {
-    boolean isInternalDestination = isInternalDestination(destination.getCategory());
-    if (isInternalDestination) {
-      return;
-    }
-
-    Object config = destination.getConfig();
-
-    if (config == null) {
-      throw new WebApplicationException(
-          String.format("Destination configuration is required for %s type", destination.getType()),
-          Response.Status.BAD_REQUEST);
-    }
-
-    if (config instanceof Map && ((Map<?, ?>) config).isEmpty()) {
-      throw new WebApplicationException(
-          String.format("Destination configuration is empty for %s type", destination.getType()),
-          Response.Status.BAD_REQUEST);
-    }
-
-    Channels.required(destination).configRules().validate(destination);
-  }
-
-  private boolean isInternalDestination(SubscriptionDestination.SubscriptionCategory category) {
-    return category != null && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors() {

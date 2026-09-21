@@ -87,6 +87,27 @@ public abstract class AbstractEventConsumer
   /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
   private TickHealth healthOfThisTick = new TickHealth();
 
+  /**
+   * What the consumer an alert names declares, for code that must know before any tick runs. An
+   * alert whose consumer cannot be loaded declares nothing, and its first tick says why.
+   */
+  public static Map<String, String> declaredChannelsOf(EventSubscription alert) {
+    Map<String, String> declared = Map.of();
+    if (alert.getClassName() != null) {
+      try {
+        declared =
+            Class.forName(alert.getClassName())
+                .asSubclass(AbstractEventConsumer.class)
+                .getDeclaredConstructor(DIContainer.class)
+                .newInstance((DIContainer) null)
+                .declaredChannels();
+      } catch (ReflectiveOperationException | RuntimeException e) {
+        LOG.debug("The consumer {} declares no channels: {}", alert.getClassName(), e.toString());
+      }
+    }
+    return declared;
+  }
+
   protected abstract ConsumerKind kind();
 
   /**
