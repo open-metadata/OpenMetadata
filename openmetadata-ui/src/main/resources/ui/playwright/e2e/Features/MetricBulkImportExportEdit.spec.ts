@@ -1060,11 +1060,23 @@ test.describe(
         expect(response.status()).toBe(202);
         // Verify exactly one export request was fired (no duplicate calls).
         await expect.poll(() => exportRequestCount).toBe(1);
-        await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
+        // A job reaching a terminal state auto-opens the tray, and the launcher
+        // button only renders while the tray is closed -- so a fast export
+        // removes the very element this used to wait for, and the test lost a
+        // race it could not win. Accept either state, and click only if the
+        // tray has not opened itself.
+        const trayLauncher = page.locator('.csv-jobs-tray-launcher');
+        const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+        await expect(trayLauncher.or(trayPopover)).toBeVisible({
           timeout: 30000,
         });
-        await page.locator('.csv-jobs-tray-launcher').click();
-        await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+
+        if (await trayLauncher.isVisible()) {
+          await trayLauncher.click();
+        }
+
+        await expect(trayPopover).toBeVisible();
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.
@@ -1074,7 +1086,9 @@ test.describe(
             .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
         ).toBeVisible();
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 
@@ -1118,7 +1132,9 @@ test.describe(
 
         await expectImportedMetricComplexFields(importedMetricName);
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 
@@ -1213,7 +1229,9 @@ test.describe(
           [metricCustomPropertyName]: 'updated custom value',
         });
       } finally {
-        await page.close();
+        // A failed test tears the context down first, so closing here throws a
+        // protocol error that replaces the real failure in the report.
+        await page.close().catch(() => undefined);
       }
     });
 

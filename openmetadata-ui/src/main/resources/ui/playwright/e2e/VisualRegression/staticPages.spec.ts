@@ -61,8 +61,34 @@ const PAGES: {
   },
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
-  { name: 'database-services', route: '/settings/services/databases' },
-  { name: 'data-quality', route: '/data-quality' },
+  {
+    name: 'database-services',
+    route: '/settings/services/databases',
+    // The services list contains playwright-seeded services with random name
+    // suffixes (pw-database-service-<hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the page chrome, search,
+    // and column headers stay under test.
+    mask: ['[data-testid="services-container"] tbody'],
+  },
+  {
+    name: 'data-quality',
+    route: '/data-quality',
+    // The Data Health cards count whatever assets the environment happens to
+    // hold — 322 tables in CI, 486 on a dev box — so the donut and its legend
+    // counts cannot be baselined. Mask those two and nothing else: the cards,
+    // their icons and headings, and the legend's dots and labels stay under
+    // test, as do the page chrome, tabs, filter row and Data Dimensions.
+    //
+    // A mask is sized to the element it covers, and these counts are inline, so
+    // the baseline does still encode their digit *width* — 322 and 486 both
+    // being three digits is why this holds across environments. If the seeded
+    // totals ever cross a digit boundary the text after them shifts and this
+    // goes red; mask the legend container then, at the cost of its labels.
+    mask: [
+      '[data-testid$="-pie-chart-widget"] [id$="-pie-chart"]',
+      '[data-testid$="-pie-chart-widget"] [data-testid^="legend-count-"]',
+    ],
+  },
   {
     name: 'incident-manager',
     route: '/incident-manager',
@@ -72,7 +98,15 @@ const PAGES: {
     maskColor: '#ffffff',
   },
   { name: 'users', route: '/settings/members/users' },
-  { name: 'teams', route: '/settings/members/teams' },
+  {
+    name: 'teams',
+    route: '/settings/members/teams',
+    // The Organization team list includes playwright-seeded teams with random
+    // name suffixes (PW Data Consumer Team <hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the org header (owners,
+    // description), tabs, search, and column headers stay under test.
+    mask: ['[data-testid="team-hierarchy-table"] tbody'],
+  },
   // 'roles' intentionally omitted: the roles listing renders seeded roles
   // with per-run random names, so it is non-deterministic run-to-run in CI
   // (no committed baseline can be stable). Re-add with a dedicated

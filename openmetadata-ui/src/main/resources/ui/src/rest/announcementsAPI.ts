@@ -12,7 +12,7 @@
  */
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/announcements';
 

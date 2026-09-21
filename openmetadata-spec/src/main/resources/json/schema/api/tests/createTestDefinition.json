@@ -33,6 +33,7 @@
       }
     },
     "supportedDataTypes": {
+      "description": "List of column data types that this test definition supports. When empty, it implies all data types are supported.",
       "type": "array",
       "items": {
         "$ref": "../../entity/data/table.json#/definitions/dataType"
@@ -48,7 +49,8 @@
       }
     },
     "dataQualityDimension": {
-      "$ref": "../../tests/testDefinition.json#/definitions/dataQualityDimensions"
+      "description": "Name of the data quality dimension test cases of this test definition are classified with by default. Any dimension registered in Settings > Preferences > Data Quality can be used, system and custom alike.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "supportedServices": {
       "description": "List of services that this test definition supports. When empty, it implies all services are supported.",

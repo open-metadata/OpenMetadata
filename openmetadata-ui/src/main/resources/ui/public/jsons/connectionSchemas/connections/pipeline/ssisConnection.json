@@ -137,9 +137,7 @@
                   "accept": [
                     ".pem",
                     ".crt",
-                    ".cer",
-                    ".der",
-                    ".p12"
+                    ".cer"
                   ],
                   "uiFieldType": "fileOrInput"
                 },
@@ -151,9 +149,7 @@
                   "accept": [
                     ".pem",
                     ".crt",
-                    ".cer",
-                    ".der",
-                    ".p12"
+                    ".cer"
                   ],
                   "uiFieldType": "fileOrInput"
                 },
@@ -165,9 +161,7 @@
                   "accept": [
                     ".pem",
                     ".crt",
-                    ".cer",
-                    ".der",
-                    ".p12"
+                    ".cer"
                   ],
                   "uiFieldType": "fileOrInput"
                 }
@@ -178,6 +172,12 @@
         "ingestAllDatabases": {
           "title": "Ingest All Databases",
           "description": "Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.",
+          "type": "boolean",
+          "default": false
+        },
+        "includeSynonyms": {
+          "title": "Include Synonyms",
+          "description": "Discover SQL Server synonyms and record them as alternate names (aliases) on the table they resolve to. Also enables alias resolution when building lineage.",
           "type": "boolean",
           "default": false
         },

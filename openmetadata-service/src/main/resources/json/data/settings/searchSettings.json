@@ -428,6 +428,16 @@
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
+        },
+        {
+          "field": "aliases",
+          "boost": 5.0,
+          "matchType": "standard"
+        },
+        {
+          "field": "aliases.keyword",
+          "boost": 10.0,
+          "matchType": "exact"
         }
       ],
       "aggregations": [
@@ -447,7 +457,8 @@
       "highlightFields": [
         "name",
         "description",
-        "displayName"
+        "displayName",
+        "aliases"
       ],
       "fieldValueBoosts": [
         {
@@ -817,7 +828,7 @@
         {
           "name": "fieldNames",
           "type": "terms",
-          "field": "fieldsNames"
+          "field": "fieldNames"
         }
       ],
       "scoreMode": "sum",
@@ -1498,9 +1509,14 @@
           "field": "requestSchema.schemaFields.name.keyword"
         },
         {
-          "name": "fieldNames",
+          "name": "requestFieldNames",
           "type": "terms",
-          "field": "fieldsNames"
+          "field": "requestFieldNames"
+        },
+        {
+          "name": "responseFieldNames",
+          "type": "terms",
+          "field": "responseFieldNames"
         }
       ],
       "scoreMode": "sum",
@@ -2726,13 +2742,15 @@
       },
       "disMaxTieBreaker": 0.05,
       "signals": {
-        "purpose": "Use entity type, Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
+        "purpose": "Use entity type, Tier, Tags, Certification, Status, Usage, and Votes only to break ties between similarly relevant results.",
         "boostMode": "sum",
         "scoreMode": "sum",
         "maxBoost": 2.0,
         "fields": [
           "entityType",
           "tier.tagFQN",
+          "tags.tagFQN",
+          "certification.tagLabel.tagFQN",
           "entityStatus",
           "usageSummary.weeklyStats.count",
           "usageSummary.weeklyStats.percentileRank",
@@ -2945,6 +2963,14 @@
         {
           "name": "columns.description",
           "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
+        },
+        {
+          "name": "aliases",
+          "description": "Alternate SQL names such as SQL Server synonyms that resolve to this table. Searching an alias returns the canonical table."
+        },
+        {
+          "name": "aliases.keyword",
+          "description": "Exact match on an alternate SQL name (alias) for precise FQN-style lookups."
         }
       ]
     },

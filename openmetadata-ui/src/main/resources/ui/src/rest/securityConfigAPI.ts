@@ -18,7 +18,7 @@ import {
 } from '../constants/SSO.constant';
 import { FieldError } from '../generated/system/securityValidationResponse';
 import { TestLoginResult } from '../generated/system/testLoginResult';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const SECURITY_CONFIG_PATH = '/system/security/config';
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';

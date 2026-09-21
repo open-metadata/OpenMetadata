@@ -15,7 +15,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { expect, test as base } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
   addServicesToDomain,
@@ -23,6 +23,7 @@ import {
   setupAssetsForDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 import { setToken } from '../../utils/tokenStorage';
@@ -104,6 +105,24 @@ test.describe('Ingestion Bot ', () => {
     const { assets: domainAsset2, assetCleanup: assetCleanup2 } =
       await setupAssetsForDomain(page);
 
+    // setupAssetsForDomain creates these assets over the REST API, and their
+    // Elasticsearch indexing is eventually consistent. addAssetsToDomain drives
+    // the search-backed asset-selection modal, so gate on indexing first —
+    // otherwise the modal search returns no rows and the row check() waits out
+    // the whole test timeout, ejecting the test from the merge queue.
+    const { apiContext, afterAction: disposeApiContext } = await getApiContext(
+      page
+    );
+    await Promise.all(
+      [...domainAsset1, ...domainAsset2].map((asset) =>
+        waitForSearchIndexed(
+          apiContext,
+          asset.entityResponseData.fullyQualifiedName,
+          'all'
+        )
+      )
+    );
+
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -181,5 +200,6 @@ test.describe('Ingestion Bot ', () => {
 
     await assetCleanup1();
     await assetCleanup2();
+    await disposeApiContext();
   });
 });

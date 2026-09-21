@@ -26,8 +26,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   tooltipFormatter,
   updateActiveChartFilter,
@@ -42,6 +42,7 @@ const OperationDateBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const { axis, grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -81,17 +82,17 @@ const OperationDateBarChart = ({
         <XAxis
           dataKey="name"
           padding={{ left: 16, right: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
         />
         <YAxis
           allowDataOverflow
           padding={{ top: 16, bottom: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           // need to show empty string to hide the tick value, to align the chart with other charts
           tickFormatter={() => ''}
           tickLine={false}
         />
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid stroke={grid} />
         <Tooltip
           content={
             <CustomTooltip

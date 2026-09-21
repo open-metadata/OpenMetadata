@@ -24,7 +24,6 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OntologyExplorer } from '../../components/OntologyExplorer';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import {
   OntologyEditLeaseState,
@@ -32,6 +31,7 @@ import {
 } from '../../components/OntologyExplorer/hooks/useOntologyEditLease';
 import OntologyAiAssistant from '../../components/OntologyExplorer/OntologyAiAssistant';
 import OntologyEditLeaseStatus from '../../components/OntologyExplorer/OntologyEditLeaseStatus';
+import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
 import { OntologyGraphData } from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import OntologyImportExportMenu from '../../components/OntologyExplorer/OntologyImportExportMenu';
 import OntologyLibrary from '../../components/OntologyExplorer/OntologyLibrary';
@@ -51,6 +51,7 @@ import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 
@@ -367,6 +368,7 @@ function resolveQuerySurfaceChange(id: string): QuerySurface | undefined {
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
   const { currentUser } = useApplicationStore();
@@ -546,6 +548,9 @@ const OntologyExplorerPage: React.FC = () => {
     isRdfEnabled,
     isCapabilityLoading
   );
+
+  const showDefaultSurface =
+    !showAiAssistant && !showQuerySurface && !showRdfDisabledNotice;
 
   const defaultModeContent = showModelingWorkbench ? (
     <OntologyModelingWorkbench
@@ -802,7 +807,7 @@ const OntologyExplorerPage: React.FC = () => {
       );
     }
 
-    return defaultModeContent;
+    return null;
   }
 
   function renderMainSection() {
@@ -814,6 +819,15 @@ const OntologyExplorerPage: React.FC = () => {
             ? 'tw:bg-secondary'
             : 'tw:bg-primary'
         )}>
+        {/* Query and AI must not discard the loaded graph or restart its requests. */}
+        <div
+          className={classNames(
+            'tw:min-h-0 tw:min-w-0 tw:flex-1',
+            showDefaultSurface ? 'tw:flex' : 'tw:hidden'
+          )}
+          hidden={!showDefaultSurface}>
+          {defaultModeContent}
+        </div>
         {renderMainContent()}
       </section>
     );
@@ -822,8 +836,12 @@ const OntologyExplorerPage: React.FC = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className="tw:p-0!"
-      mainContainerClassName="ontology-studio-page-layout"
+      className={classNames('tw:p-0!', {
+        'tw:h-full!': isAiMode,
+      })}
+      mainContainerClassName={classNames('ontology-studio-page-layout', {
+        'tw:h-full!': isAiMode,
+      })}
       pageTitle={t('label.ontology-studio')}>
       <main
         className="tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-tertiary tw:font-body tw:antialiased"

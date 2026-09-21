@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Dot,
+  GlossaryTag,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -27,11 +28,8 @@ import { OwnerType } from '../../../enums/user.enum';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   KnowledgePage,
   PageType,
@@ -46,7 +44,6 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -55,6 +52,7 @@ import {
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
 import { Trash01 } from '@untitledui/icons';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { queryClient } from '../../../queryClient';
@@ -129,23 +127,27 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
 
       <span className="tw:flex-1" />
       <Box align="center" className="tw:gap-1.5">
-        {tagList.slice(0, 2).map((tag) => (
-          <Badge
-            className="tw:max-w-30"
-            key={String(tag.tagFQN ?? '')}
-            size="md"
-            type="modern">
-            <Typography ellipsis className="tw:text-secondary" size="text-xs">
-              {getEntityName(tag)}
-            </Typography>
-          </Badge>
-        ))}
+        {tagList.slice(0, 2).map((tag) => {
+          const isGlossaryTerm = tag.source === TagSource.Glossary;
+          const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
+
+          return (
+            <TagComponent
+              color={tag.style?.color}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN ?? ''}
+              label={getEntityName(tag)}
+              tooltip={getEntityName(tag)}
+            />
+          );
+        })}
         {tagList.length > 2 && (
-          <Badge size="md" type="modern">
-            <Typography className="tw:text-secondary" size="text-xs">
-              +{tagList.length - 2}
-            </Typography>
-          </Badge>
+          <Typography
+            className="tw:text-secondary tw:whitespace-nowrap"
+            size="text-xs"
+            weight="medium">
+            +{tagList.length - 2}
+          </Typography>
         )}
       </Box>
     </Box>
@@ -158,12 +160,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   onRefreshTagsCategory,
   readonly = false,
 }) => {
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
   const [knowledgePage, setKnowledgePage] = useState(knowledgeItem);
-  const [permissions, setPermissions] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
   const {
     name,
@@ -183,25 +180,39 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const fetchPermission = useCallback(
-    async (fqn: string) => {
-      try {
-        const response = await getEntityPermissionByFqn(
-          ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity,
-          fqn
-        );
-        setPermissions(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [getEntityPermissionByFqn]
-  );
-
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
     ? (knowledgePage.page as QuickLink).url
     : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
+
+  // Single useEntityPermissions call, `enabled: isQuickLink` — only quick-link cards render
+  // edit/delete affordances (`quickLinkActions`), matching the old `fetchPermission` call,
+  // which only ever ran inside `if (knowledgeItem.pageType === PageType.QUICK_LINK)`.
+  // Identifier is `knowledgeItem.fullyQualifiedName` (the prop), not `knowledgePage`'s (local
+  // state) — mirrors the old effect's `[knowledgeItem, fetchPermission]` dependency exactly,
+  // so a new card instance (new FQN prop) triggers a refetch via the query key. `deleted`
+  // (from `knowledgePage`, the most current local state) is a documented addition: the old
+  // `editPermission` never gated on it, but every canEdit*-consuming fetcher in this sweep is
+  // deleted-gated by convention (see KnowledgePageDetailComponent.tsx, same batch).
+  const {
+    permissions,
+    error: permissionsError,
+    canDelete,
+    canEditDisplayName,
+    canEditDescription,
+    canEditTags,
+    canEditAll,
+  } = useEntityPermissions(
+    ResourceEntity.KNOWLEDGE_PAGE,
+    knowledgeItem.fullyQualifiedName,
+    { enabled: isQuickLink, deleted: Boolean(knowledgePage.deleted) }
+  );
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const { firstDomain } = useMemo(() => {
     const domains = knowledgePage.domains ?? [];
@@ -253,11 +264,14 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   );
 
   const quickLinkActions = useMemo(() => {
+    // `canEditAll` is ORed in explicitly alongside the three prioritized field flags to
+    // reproduce the old raw 4-term OR exactly: the old expression let a bare `EditAll: true`
+    // win unconditionally even if EditDisplayName/EditDescription/EditTags were all explicitly
+    // `false` — ORing only the three prioritized flags (which each already fall back to
+    // EditAll only when their own key is *absent*) would lose that case. Adding `canEditAll`
+    // back in as its own term restores byte-for-byte equivalence with the old expression.
     const editPermission =
-      permissions?.EditAll ||
-      permissions?.EditDisplayName ||
-      permissions?.EditDescription ||
-      permissions?.EditTags;
+      canEditAll || canEditDisplayName || canEditDescription || canEditTags;
 
     return (
       <Box align="center" gap={1}>
@@ -273,7 +287,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             }}
           />
         )}
-        {permissions?.Delete && (
+        {canDelete && (
           <ButtonUtility
             color="tertiary"
             data-testid="delete-quick-link-btn"
@@ -287,7 +301,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         )}
       </Box>
     );
-  }, [permissions]);
+  }, [
+    canEditAll,
+    canEditDisplayName,
+    canEditDescription,
+    canEditTags,
+    canDelete,
+  ]);
 
   const handleQuickLinkRecentView = useCallback(() => {
     if (isQuickLink) {
@@ -297,12 +317,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     }
   }, [isQuickLink, knowledgePage]);
 
+  // Permission fetching itself now lives in useEntityPermissions (called above, gated by
+  // `enabled: isQuickLink`, keyed off `knowledgeItem.fullyQualifiedName`) — this effect keeps
+  // the one other thing the old effect did: syncing local `knowledgePage` state whenever the
+  // `knowledgeItem` prop changes.
   useEffect(() => {
     setKnowledgePage(knowledgeItem);
-    if (knowledgeItem.pageType === PageType.QUICK_LINK) {
-      fetchPermission(knowledgeItem.fullyQualifiedName);
-    }
-  }, [knowledgeItem, fetchPermission]);
+  }, [knowledgeItem]);
 
   return (
     <Card

@@ -12,6 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Drawer, Row, Space, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,12 +23,12 @@ import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
@@ -41,17 +42,13 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
-
-  const canEditOwners = useMemo(
-    () => EditAll || EditOwners,
-    [EditAll, EditOwners]
+  // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
+  // off `permission` — canEditOwners/canEditDescription/canEditTags already
+  // fold the "field permission wins over EditAll" prioritization in.
+  const { canEditOwners, canEditDescription, canEditTags } = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
   );
-  const canEditDescription = useMemo(
-    () => EditDescription || EditAll,
-    [EditDescription, EditAll]
-  );
-  const canEditTags = useMemo(() => EditAll || EditTags, [EditAll, EditTags]);
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
@@ -124,7 +121,7 @@ const TableQueryRightPanel = ({
                   </Space>
                 ),
               }}>
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
                 owners={query.owners}

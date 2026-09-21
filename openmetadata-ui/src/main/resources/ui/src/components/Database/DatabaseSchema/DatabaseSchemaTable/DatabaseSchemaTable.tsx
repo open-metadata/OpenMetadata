@@ -54,12 +54,15 @@ import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsU
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -73,7 +76,7 @@ import { getUsagePercentile } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
@@ -97,11 +100,16 @@ export const DatabaseSchemaTable = ({
 
   const { deleted: isDatabaseDeleted } = data ?? {};
 
+  // Resource-level permission (usePermissionProvider().permissions, not an entity-level
+  // fetch) — `permissions.databaseSchema` is itself OperationPermission-shaped, so the same
+  // named-flag derivation applies. No `deleted` argument: old code never gated this
+  // expression on isDatabaseDeleted (unlike the bulk-edit button below, which explicitly did)
+  // — preserved verbatim rather than unifying the two derivations, since unifying would
+  // silently add deleted-gating to the DisplayName edit affordance.
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionPage &&
-      (permissions.databaseSchema.EditAll ||
-        permissions.databaseSchema.EditDisplayName)
+      getDerivedPermissionFlags(permissions.databaseSchema).canEditDisplayName
     );
   }, [permissions, isVersionPage]);
 
@@ -264,7 +272,7 @@ export const DatabaseSchemaTable = ({
         sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
             hasEditPermission={allowEditDisplayNamePermission}
@@ -278,7 +286,9 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),
@@ -390,7 +400,10 @@ export const DatabaseSchemaTable = ({
             </Typography.Text>{' '}
           </span>
           {getBulkEditButton(
-            permissions.databaseSchema.EditAll && !isDatabaseDeleted,
+            getDerivedPermissionFlags(
+              permissions.databaseSchema,
+              isDatabaseDeleted
+            ).canEditAll,
             handleEditTable
           )}
         </>

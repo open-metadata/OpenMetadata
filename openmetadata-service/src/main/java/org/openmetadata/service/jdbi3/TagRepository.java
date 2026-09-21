@@ -68,6 +68,7 @@ import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -559,6 +560,7 @@ public class TagRepository extends EntityRepository<Tag> {
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -622,6 +624,7 @@ public class TagRepository extends EntityRepository<Tag> {
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -701,6 +704,7 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -740,6 +744,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (!dryRun) {
       // Update the parent table's search index
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
   }
 
@@ -997,16 +1002,6 @@ public class TagRepository extends EntityRepository<Tag> {
       renameProcessed = false;
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -1230,18 +1225,6 @@ public class TagRepository extends EntityRepository<Tag> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Tag tag) {
-    tag =
-        Entity.getEntityByName(
-            Entity.TAG,
-            tag.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        tag.getFullyQualifiedName(), new ArrayList<>(tag.getReviewers()), tag.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {

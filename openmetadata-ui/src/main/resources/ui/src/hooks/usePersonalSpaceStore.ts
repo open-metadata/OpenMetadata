@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { InboxDateRange } from '../components/discovery/personal-space/InboxPage/inbox.utils';
+import { InboxDateRange } from '../interface/inbox.interface';
 
 /**
  * The Profile modal overlays the current AI page. This store tracks whether it's
