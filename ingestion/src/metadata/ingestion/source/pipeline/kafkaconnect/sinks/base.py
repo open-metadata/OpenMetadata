@@ -19,7 +19,7 @@ as branches in the shared lineage path.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import SUPPORTED_DATASETS
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
@@ -42,15 +42,15 @@ class SinkDatasetResolver(ABC):
     def resolve_datasets(
         self,
         config: dict,
-        topics: Optional[List[KafkaConnectTopics]],  # noqa: UP006, UP045
-    ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
+        topics: list[KafkaConnectTopics] | None,
+    ) -> list[KafkaConnectDatasetDetails]:
         """Return one dataset per target this connector writes to."""
 
     @abstractmethod
-    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
+    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Any | None:
         """Return the Topic entity feeding this dataset, or None."""
 
-    def column_mappings(self, config: dict, topic_entity: Any) -> List[KafkaConnectColumnMapping]:  # noqa: UP006
+    def column_mappings(self, config: dict, topic_entity: Any) -> list[KafkaConnectColumnMapping]:
         """
         Explicit source-field -> target-column mappings.
 
@@ -59,7 +59,7 @@ class SinkDatasetResolver(ABC):
         """
         return []
 
-    def topic_patterns(self, config: dict) -> List[str]:  # noqa: UP006
+    def topic_patterns(self, config: dict) -> list[str]:
         """Topic selectors that must be expanded against the messaging service."""
         return []
 
@@ -89,8 +89,8 @@ class DefaultResolver(SinkDatasetResolver):
     def resolve_datasets(  # noqa: C901
         self,
         config: dict,
-        topics: Optional[List[KafkaConnectTopics]] = None,  # noqa: UP006, UP045
-    ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
+        topics: list[KafkaConnectTopics] | None = None,
+    ) -> list[KafkaConnectDatasetDetails]:
         datasets_to_process = []
         found_values = {}
 
@@ -98,7 +98,7 @@ class DefaultResolver(SinkDatasetResolver):
             for key in key_categories.get("single", []):
                 if key in config:
                     found_values[dataset_type] = [config[key]]
-                    logger.debug(f"Found single value for {dataset_type} from key '{key}'")
+                    logger.debug("Found single value for %s from key '%s'", dataset_type, key)
                     break
 
             if dataset_type not in found_values:
@@ -107,8 +107,10 @@ class DefaultResolver(SinkDatasetResolver):
                         value = config[key]
                         found_values[dataset_type] = [v.strip() for v in value.split(",") if v.strip()]
                         logger.debug(
-                            f"Found list values for {dataset_type} from key '{key}': "
-                            f"{len(found_values[dataset_type])} items"
+                            "Found list values for %s from key '%s': %s items",
+                            dataset_type,
+                            key,
+                            len(found_values[dataset_type]),
                         )
                         break
 
@@ -119,8 +121,10 @@ class DefaultResolver(SinkDatasetResolver):
                         mappings = [m.strip() for m in value.split(",")]
                         found_values[dataset_type] = [m.split(":")[-1].strip() for m in mappings if ":" in m]
                         logger.debug(
-                            f"Found mapping values for {dataset_type} from key '{key}': "
-                            f"{len(found_values[dataset_type])} items"
+                            "Found mapping values for %s from key '%s': %s items",
+                            dataset_type,
+                            key,
+                            len(found_values[dataset_type]),
                         )
                         break
 
@@ -139,7 +143,7 @@ class DefaultResolver(SinkDatasetResolver):
                     if len(parts) == 2:
                         result["schema"] = parts[0]
                         result["table"] = parts[1]
-                        logger.debug(f"Parsed schema-qualified table: schema='{parts[0]}', table='{parts[1]}'")
+                        logger.debug("Parsed schema-qualified table: schema='%s', table='%s'", parts[0], parts[1])
                         continue
 
                 result[dataset_type] = value
@@ -149,19 +153,19 @@ class DefaultResolver(SinkDatasetResolver):
 
         return datasets_to_process
 
-    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
+    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Any | None:
         if not dataset.table:
             return None
 
         if dataset.table in topic_entity_map:
-            logger.info(f"Matched sink dataset table '{dataset.table}' to topic '{dataset.table}' (exact match)")
+            logger.info("Matched sink dataset table '%s' to topic '%s' (exact match)", dataset.table, dataset.table)
             return topic_entity_map[dataset.table]
 
         pattern = None
         for key in ("collection.name.format", "table.name.format"):
             if key in config:
                 pattern = config[key]
-                logger.debug(f"Found naming format using key '{key}': {pattern}")
+                logger.debug("Found naming format using key '%s': %s", key, pattern)
                 break
 
         if not pattern:
@@ -172,8 +176,10 @@ class DefaultResolver(SinkDatasetResolver):
             sanitized_topic = topic_name.replace(".", "_")
             resolved_table = pattern.replace("${topic}", sanitized_topic).lower()
             if resolved_table == dataset.table.lower():
-                logger.info(f"Matched sink dataset table '{dataset.table}' to topic '{topic_name}' (case-insensitive)")
+                logger.info(
+                    "Matched sink dataset table '%s' to topic '%s' (case-insensitive)", dataset.table, topic_name
+                )
                 return topic_entity
 
-        logger.warning(f"No matching topic found for sink dataset table '{dataset.table}'")
+        logger.warning("No matching topic found for sink dataset table '%s'", dataset.table)
         return None

@@ -14,7 +14,7 @@ Dataset resolution for the Snowflake Sink connector (managed and self-managed).
 
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.type.schema import DataTypeTopic, SchemaType
 from metadata.ingestion.ometa.utils import model_str
@@ -111,7 +111,7 @@ def snowflake_table_name(topic: str, sanitize: bool = True) -> str:
         # Upstream indexes position 0 unconditionally here and throws on a topic that is
         # nothing but wildcards; there is no table name to predict, so say so rather than
         # inventing one that cannot exist.
-        logger.warning(f"Topic '{topic}' leaves no derivable Snowflake table name; skipping its lineage")
+        logger.warning("Topic '%s' leaves no derivable Snowflake table name; skipping its lineage", topic)
         return ""
 
     if re.match(r"[_a-zA-Z]", stripped[0]):
@@ -140,8 +140,8 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
     def resolve_datasets(
         self,
         config: dict,
-        topics: Optional[List[KafkaConnectTopics]] = None,  # noqa: UP006, UP045
-    ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
+        topics: list[KafkaConnectTopics] | None = None,
+    ) -> list[KafkaConnectDatasetDetails]:
         topic_names = self._topic_names(config, topics)
         mappings = self._topic2table_mappings(config)
         if mappings is None:
@@ -154,12 +154,12 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             # connector writes nothing. With nothing left naming a topic, defer: that keeps
             # self-managed sinks at the lineage they had before this resolver existed.
             logger.info(
-                f"Snowflake sink '{config.get('name')}' declares no topics; "
-                f"resolving its target from the connector config keys instead"
+                "Snowflake sink '%s' declares no topics; resolving its target from the connector config keys instead",
+                config.get("name"),
             )
             datasets = DefaultResolver().resolve_datasets(config, topics)
             if not datasets:
-                logger.warning(f"Snowflake sink '{config.get('name')}' declares no topics; no lineage can be built")
+                logger.warning("Snowflake sink '%s' declares no topics; no lineage can be built", config.get("name"))
             return datasets
 
         database = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS)
@@ -190,7 +190,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             )
         return datasets
 
-    def topic_patterns(self, config: dict) -> List[str]:  # noqa: UP006
+    def topic_patterns(self, config: dict) -> list[str]:
         # A metachar-free key names one topic, so escaping it keeps discovery exact.
         # Compiled raw, its dots turn into wildcards and `prod.orders` claims a real
         # `prodXorders`, minting lineage for a topic this connector never consumes.
@@ -201,7 +201,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             for mapping in self._topic2table_mappings(config) or []
         ]
 
-    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
+    def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Any | None:
         if not dataset.source_topic:
             # Datasets from the resolve_datasets fallback above carry no originating topic,
             # so the generic name-based match is the only one left that can pair them.
@@ -209,12 +209,13 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         topic_entity = topic_entity_map.get(dataset.source_topic)
         if topic_entity is None:
             logger.warning(
-                f"Topic '{dataset.source_topic}' feeding Snowflake table "
-                f"'{dataset.table}' was not found in OpenMetadata"
+                "Topic '%s' feeding Snowflake table '%s' was not found in OpenMetadata",
+                dataset.source_topic,
+                dataset.table,
             )
         return topic_entity
 
-    def column_mappings(self, config: dict, topic_entity: Any) -> List[KafkaConnectColumnMapping]:  # noqa: UP006
+    def column_mappings(self, config: dict, topic_entity: Any) -> list[KafkaConnectColumnMapping]:
         """
         Map topic fields to columns when a Flatten SMT rewrites nested paths.
 
@@ -238,7 +239,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         ]
 
     @staticmethod
-    def _flatten_delimiter(config: dict) -> Optional[str]:  # noqa: UP045
+    def _flatten_delimiter(config: dict) -> str | None:
         """
         The delimiter of the chain's Flatten transform, or None when it has none.
 
@@ -254,7 +255,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return None
 
     @staticmethod
-    def _leaf_paths(topic_entity: Any) -> List[List[str]]:  # noqa: UP006
+    def _leaf_paths(topic_entity: Any) -> list[list[str]]:
         """
         Field-name paths to every leaf of the topic schema, with Avro type levels dropped.
 
@@ -269,9 +270,9 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         roots = getattr(schema, "schemaFields", None) or []
         schema_type = getattr(schema, "schemaType", None)
 
-        paths: List[List[str]] = []  # noqa: UP006
+        paths: list[list[str]] = []
 
-        def walk(field: Any, prefix: List[str]) -> None:  # noqa: UP006
+        def walk(field: Any, prefix: list[str]) -> None:
             path = [*prefix, model_str(field.name)]
             # Flatten recurses into STRUCT only. An array is copied through whole, so an
             # array of records is one VARIANT column named after the array field -- descending
@@ -305,7 +306,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return paths
 
     @staticmethod
-    def _warn_on_partial_qualification(config: dict, database: Optional[str], schema: Optional[str]) -> None:  # noqa: UP045
+    def _warn_on_partial_qualification(config: dict, database: str | None, schema: str | None) -> None:
         """
         Report a config that names a database but no schema, or the reverse.
 
@@ -320,12 +321,15 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         else:
             present, missing = f"schema '{schema}'", ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS[0]
         logger.warning(
-            f"Snowflake sink '{config.get('name')}' declares a {present} but no '{missing}'; "
-            f"its tables cannot be addressed by a full FQN and lineage may be missed"
+            "Snowflake sink '%s' declares a %s but no '%s'; "
+            "its tables cannot be addressed by a full FQN and lineage may be missed",
+            config.get("name"),
+            present,
+            missing,
         )
 
     @staticmethod
-    def _with_mapped_topics(config: dict, topic_names: list[str], mappings: list[TopicTableMapping]) -> List[str]:  # noqa: UP006
+    def _with_mapped_topics(config: dict, topic_names: list[str], mappings: list[TopicTableMapping]) -> list[str]:
         """
         `topic_names` plus any topic that only topic2table.map knows about.
 
@@ -343,13 +347,15 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         ]
         if mapped_only:
             logger.info(
-                f"Snowflake sink '{config.get('name')}' maps topic(s) missing from its topic list "
-                f"({', '.join(mapped_only)}); building their datasets from snowflake.topic2table.map"
+                "Snowflake sink '%s' maps topic(s) missing from its topic list "
+                "(%s); building their datasets from snowflake.topic2table.map",
+                config.get("name"),
+                ", ".join(mapped_only),
             )
         return [*topic_names, *mapped_only]
 
     @staticmethod
-    def _first_configured(config: dict, keys: List[str]) -> Optional[str]:  # noqa: UP006, UP045
+    def _first_configured(config: dict, keys: list[str]) -> str | None:
         """The value of the first of `keys` the connector actually set."""
         for key in keys:
             value = config.get(key)
@@ -358,7 +364,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return None
 
     @staticmethod
-    def _topic2table_mappings(config: dict) -> Optional[List[TopicTableMapping]]:  # noqa: UP006, UP045
+    def _topic2table_mappings(config: dict) -> list[TopicTableMapping] | None:
         """
         The parsed map, or None when it is one the connector would reject.
 
@@ -372,13 +378,13 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         try:
             mappings = SnowflakeSinkResolver._parse_topic2table_mappings(raw_mapping)
         except ValueError as exc:
-            logger.warning(f"Ignoring invalid snowflake.topic2table.map for sink '{config.get('name')}': {exc}")
+            logger.warning("Ignoring invalid snowflake.topic2table.map for sink '%s': %s", config.get("name"), exc)
             return None
         else:
             return mappings
 
     @staticmethod
-    def _parse_topic2table_mappings(raw_mapping: str) -> List[TopicTableMapping]:  # noqa: UP006
+    def _parse_topic2table_mappings(raw_mapping: str) -> list[TopicTableMapping]:
         """
         Transliteration of TopicToTableParser.parseAndValidate.
 
@@ -389,7 +395,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         the first-match-wins resolution below is deterministic rather than merely arbitrary.
         """
         entries = SnowflakeSinkResolver._parse_entries(raw_mapping)
-        seen: List[str] = []  # noqa: UP006
+        seen: list[str] = []
         for entry in entries:
             # Upstream only compiles a key when something first matches against it, so a lone
             # unparseable pattern surfaces as a task failure rather than a config error. Same
@@ -412,7 +418,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return entries
 
     @staticmethod
-    def _parse_entries(raw_mapping: str) -> List[TopicTableMapping]:  # noqa: UP006
+    def _parse_entries(raw_mapping: str) -> list[TopicTableMapping]:
         """Transliteration of TopicToTableParser.parseEntries."""
         entries = []
         index = 0
@@ -491,7 +497,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             raise ValueError(f"invalid topic selector {pattern!r}: {exc}") from exc
 
     @staticmethod
-    def _mapped_table(topic: str, mappings: list[TopicTableMapping], config: dict) -> tuple[bool, Optional[str]]:  # noqa: UP045
+    def _mapped_table(topic: str, mappings: list[TopicTableMapping], config: dict) -> tuple[bool, str | None]:
         """
         The table this map sends `topic` to, mirroring whichever resolver the connector builds.
 
@@ -507,7 +513,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return SnowflakeSinkResolver._resolve_static(topic, mappings)
 
     @staticmethod
-    def _resolve_static(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, Optional[str]]:  # noqa: UP045
+    def _resolve_static(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, str | None]:
         """Transliteration of StaticTopicToTableResolver.resolve -- no group substitution."""
         mapping = next((entry for entry in mappings if entry.topic_pattern == topic), None)
         if mapping is None:
@@ -520,13 +526,13 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return True, SnowflakeSinkResolver._fold(mapping.table_template, mapping)
 
     @staticmethod
-    def _resolve_with_replacement(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, Optional[str]]:  # noqa: UP045
+    def _resolve_with_replacement(topic: str, mappings: list[TopicTableMapping]) -> tuple[bool, str | None]:
         """Transliteration of RegexTopicToTableResolver.resolve -- declaration order, then expand."""
         for mapping in mappings:
             try:
                 match = re.fullmatch(mapping.topic_pattern, topic)
             except re.error as exc:
-                logger.warning(f"Ignoring invalid topic2table regex '{mapping.topic_pattern}': {exc}")
+                logger.warning("Ignoring invalid topic2table regex '%s': %s", mapping.topic_pattern, exc)
                 continue
             if not match:
                 continue
@@ -537,7 +543,10 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
                 expanded = match.expand(replacement)
             except (IndexError, re.error) as exc:
                 logger.warning(
-                    f"Unable to expand Snowflake table mapping '{mapping.table_template}' for topic '{topic}': {exc}"
+                    "Unable to expand Snowflake table mapping '%s' for topic '%s': %s",
+                    mapping.table_template,
+                    topic,
+                    exc,
                 )
                 return True, None
             # Upstream uppercases *after* substitution, so an unquoted template folds the
@@ -550,7 +559,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         try:
             return re.fullmatch(pattern, topic) is not None
         except re.error as exc:
-            logger.warning(f"Ignoring invalid topic2table regex '{pattern}': {exc}")
+            logger.warning("Ignoring invalid topic2table regex '%s': %s", pattern, exc)
             return False
 
     @staticmethod
@@ -607,7 +616,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return column
 
     @staticmethod
-    def _topic_names(config: dict, topics: Optional[List[KafkaConnectTopics]]) -> List[str]:  # noqa: UP006, UP045
+    def _topic_names(config: dict, topics: list[KafkaConnectTopics] | None) -> list[str]:
         names = [str(topic.name) for topic in topics or [] if topic.name]
         if names:
             return names

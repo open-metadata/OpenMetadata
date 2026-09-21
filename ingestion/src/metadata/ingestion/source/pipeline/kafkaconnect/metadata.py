@@ -479,7 +479,7 @@ class KafkaconnectSource(PipelineServiceSource):
             topic_patterns.extend(sink_resolver.topic_patterns(config))
         if topic_patterns:
             connector_kind = "storage sink" if is_storage_sink else "sink"
-            logger.info(f"Discovering concrete topics for {connector_kind} selectors: {topic_patterns}")
+            logger.info("Discovering concrete topics for %s selectors: %s", connector_kind, topic_patterns)
             discovered_topics.extend(
                 self._search_topics_by_patterns(
                     topic_patterns=topic_patterns,
@@ -671,11 +671,14 @@ class KafkaconnectSource(PipelineServiceSource):
                     return dataset_entity
 
         logger.warning(
-            f"Table '{dataset_details.table}' not found in OpenMetadata "
-            f"(database={dataset_details.database}, schema={dataset_details.schema}). "
-            f"Tried services: {self.get_db_service_names() or 'none configured'}. "
-            f"If the table exists, set lineageInformation.dbServiceNames on this "
-            f"pipeline service to the database service holding it."
+            "Table '%s' not found in OpenMetadata (database=%s, schema=%s). "
+            "Tried services: %s. "
+            "If the table exists, set lineageInformation.dbServiceNames on this "
+            "pipeline service to the database service holding it.",
+            dataset_details.table,
+            dataset_details.database,
+            dataset_details.schema,
+            self.get_db_service_names() or "none configured",
         )
         return None
 
@@ -1141,7 +1144,7 @@ class KafkaconnectSource(PipelineServiceSource):
             try:
                 patterns.append((topic_pattern, re.compile(topic_pattern)))
             except re.error as exc:
-                logger.warning(f"Invalid topic pattern '{topic_pattern}': {exc}")
+                logger.warning("Invalid topic pattern '%s': %s", topic_pattern, exc)
         if not patterns:
             return []
 
@@ -1159,16 +1162,16 @@ class KafkaconnectSource(PipelineServiceSource):
                         fqn=model_str(topic.fullyQualifiedName),
                     )
                 )
-                logger.debug(f"Topic selector matched topic: {topic_name}")
+                logger.debug("Topic selector matched topic: %s", topic_name)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by pattern: {exc}")
+            logger.error("Unable to search topics by pattern: %s", exc)
             return []
         else:
             if topics_found:
-                logger.info(f"Found {len(topics_found)} topics matching configured topic selectors")
+                logger.info("Found %s topics matching configured topic selectors", len(topics_found))
             else:
-                logger.warning(f"No topics found matching configured topic selectors: {topic_patterns}")
+                logger.warning("No topics found matching configured topic selectors: %s", topic_patterns)
             return topics_found
 
     def _resolver_for(self, pipeline_details: KafkaConnectPipelineDetails) -> SinkDatasetResolver:
@@ -1595,7 +1598,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 resolver = sink_resolver or self._resolver_for(pipeline_details)
                 datasets_to_process = resolver.resolve_datasets(pipeline_details.config, topic_result.topics)
                 if datasets_to_process:
-                    logger.info(f"Resolved {len(datasets_to_process)} dataset(s) from connector config")
+                    logger.info("Resolved %s dataset(s) from connector config", len(datasets_to_process))
 
             # Fallback to datasets field if available (for backward compatibility)
             if not datasets_to_process and pipeline_details.datasets:
