@@ -19,7 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, UseFormReturn } from 'react-hook-form';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
 import {
   SubscriptionCategory,
@@ -122,6 +122,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Input: forwardRef<
       HTMLInputElement,
       {
+        hint?: ReactNode;
+        isInvalid?: boolean;
         onChange?: (val: string) => void;
         value?: string;
         type?: string;
@@ -131,6 +133,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       }
     >(function MockInput(
       {
+        hint,
+        isInvalid,
         onChange,
         value,
         type,
@@ -141,15 +145,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ref
     ) {
       return (
-        <input
-          aria-label={inputDataTestId ?? tid}
-          data-testid={inputDataTestId ?? tid}
-          disabled={isDisabled}
-          ref={ref}
-          type={type}
-          value={value ?? ''}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
+        <>
+          <input
+            aria-invalid={isInvalid}
+            aria-label={inputDataTestId ?? tid}
+            data-testid={inputDataTestId ?? tid}
+            disabled={isDisabled}
+            ref={ref}
+            type={type}
+            value={value ?? ''}
+            onChange={(e) => onChange?.(e.target.value)}
+          />
+          {hint}
+        </>
       );
     }),
     Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -167,13 +175,24 @@ function renderWithForm(
   ui: React.ReactElement,
   defaultValues: Record<string, unknown> = {}
 ) {
+  const methodsRef: {
+    current: UseFormReturn<Record<string, unknown>> | null;
+  } = { current: null };
+
   function Wrapper({ children }: { children: ReactNode }) {
     const methods = useForm({ defaultValues });
+
+    methodsRef.current = methods;
 
     return <FormProvider {...methods}>{children}</FormProvider>;
   }
 
-  return render(ui, { wrapper: Wrapper });
+  const result = render(ui, { wrapper: Wrapper });
+
+  return {
+    ...result,
+    methods: methodsRef.current as UseFormReturn<Record<string, unknown>>,
+  };
 }
 
 describe('DestinationFormItem', () => {
@@ -428,5 +447,169 @@ describe('DestinationFormItem', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('connection-timeout-input')).toBeDisabled();
     expect(screen.getByTestId('read-timeout-input')).toBeDisabled();
+  });
+
+  describe('timeout and readTimeout coercion', () => {
+    it('stores a numeric connection timeout instead of the raw string', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('connection-timeout-input'), {
+          target: { value: '25' },
+        });
+      });
+
+      expect(methods.getValues('timeout')).toBe(25);
+      expect(typeof methods.getValues('timeout')).toBe('number');
+      expect(screen.getByTestId('connection-timeout-input')).toHaveValue(25);
+    });
+
+    it('coerces a cleared connection timeout to undefined (never "")', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('connection-timeout-input'), {
+          target: { value: '' },
+        });
+      });
+
+      expect(methods.getValues('timeout')).toBeUndefined();
+    });
+
+    it('coerces a cleared read timeout to undefined (never "")', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('read-timeout-input'), {
+          target: { value: '' },
+        });
+      });
+
+      expect(methods.getValues('readTimeout')).toBeUndefined();
+    });
+  });
+
+  describe('timeout and readTimeout validation', () => {
+    it('accepts the default connection timeout without an error', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      let isValid = true;
+      await act(async () => {
+        isValid = await methods.trigger('timeout');
+      });
+
+      expect(isValid).toBe(true);
+      expect(methods.formState.errors.timeout).toBeUndefined();
+    });
+
+    it('rejects a cleared connection timeout', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('connection-timeout-input'), {
+          target: { value: '' },
+        });
+      });
+
+      let isValid = true;
+      await act(async () => {
+        isValid = await methods.trigger('timeout');
+      });
+
+      expect(isValid).toBe(false);
+      expect(methods.formState.errors.timeout).toBeDefined();
+      expect(screen.getByTestId('connection-timeout-input')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    });
+
+    it('rejects a cleared read timeout', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId('read-timeout-input'), {
+          target: { value: '' },
+        });
+      });
+
+      let isValid = true;
+      await act(async () => {
+        isValid = await methods.trigger('readTimeout');
+      });
+
+      expect(isValid).toBe(false);
+      expect(methods.formState.errors.readTimeout).toBeDefined();
+      expect(screen.getByTestId('read-timeout-input')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['connection-timeout-input', 'timeout', '1.5'],
+      ['read-timeout-input', 'readTimeout', '2.5'],
+    ])(
+      'rejects a fractional value for %s',
+      async (testId, fieldName, value) => {
+        const { methods } = renderWithForm(<DestinationFormItem />, {
+          resources: ['container'],
+        });
+
+        await act(async () => {
+          fireEvent.change(screen.getByTestId(testId), {
+            target: { value },
+          });
+        });
+
+        let isValid = true;
+        await act(async () => {
+          isValid = await methods.trigger(fieldName);
+        });
+
+        expect(isValid).toBe(false);
+        expect(screen.getByText('label.field-invalid')).toBeInTheDocument();
+      }
+    );
+
+    it('rejects zero and negative connection timeouts', async () => {
+      const { methods } = renderWithForm(<DestinationFormItem />, {
+        resources: ['container'],
+      });
+      const input = screen.getByTestId('connection-timeout-input');
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '0' } });
+      });
+      let isValid = true;
+      await act(async () => {
+        isValid = await methods.trigger('timeout');
+      });
+
+      expect(isValid).toBe(false);
+
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '-5' } });
+      });
+      await act(async () => {
+        isValid = await methods.trigger('timeout');
+      });
+
+      expect(isValid).toBe(false);
+    });
   });
 });

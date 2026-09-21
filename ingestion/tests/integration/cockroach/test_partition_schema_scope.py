@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from testcontainers.cockroachdb import CockroachDBContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.workflow.metadata import MetadataWorkflow
@@ -23,6 +24,8 @@ def cockroach_container():
     container = CockroachDBContainer(image=PARTITION_TEST_IMAGE)
     container.start()
     try:
+        # Testcontainers returns after user creation, before database privileges are granted.
+        wait_for_logs(container, "end running init files from /docker-entrypoint-initdb.d")
         yield container
     finally:
         container.stop()

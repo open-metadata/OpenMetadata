@@ -27,6 +27,7 @@ import {
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { InboxDateRange } from '../../../../interface/inbox.interface';
 import {
   addActivityReaction,
   removeActivityReaction,
@@ -134,18 +135,7 @@ export type InboxScope = 'all' | 'me';
 
 // Selected date window for the Inbox (Activity + Tasks), passed to the feed/task
 // list APIs as startTs/endTs (server-side filtering).
-export interface InboxDateRange {
-  startTs?: number;
-  endTs?: number;
-  // Preset key of the selected range (e.g. 'last30days', 'customRange'). Kept so
-  // the persisted range can be compared to the default by key rather than by
-  // timestamps, which drift between mounts (now-based vs day-aligned millis).
-  key?: string;
-  // Label the picker shows for this range (e.g. "Custom Range"). Persisted so the
-  // dropdown button re-seeds to the selected range after a tab-switch remount
-  // instead of falling back to the default preset title.
-  title?: string;
-}
+export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // Default Inbox window: the last 30 days (start-of-day to now), used by the page
 // on first render and by the sidebar inbox-icon count.
@@ -257,10 +247,22 @@ export interface ActivityBucket {
   items: Conversation[];
 }
 
-// Exported because useInboxActivity sorts the merged activity+conversation list
-// by it. createdAt is the Conversation V2 counterpart of the legacy threadTs.
+// Display timestamp for a conversation card/drawer ("Posted on …"). createdAt is
+// the Conversation V2 counterpart of the legacy threadTs, so the posted time is
+// shown createdAt-first (matches upstream's card display). Used by
+// ActivityDetailDrawer and by getActivityBuckets (display grouping), NOT by the
+// merged-list sort (use getFeedSortTimestamp for that).
 export const getFeedTimestamp = (feed: Conversation): number =>
   feed.createdAt ?? feed.updatedAt ?? 0;
+
+// Sort key for the merged inbox list. Mirrors upstream's getConversationTimestamp
+// (ActivityFeedListV1New.component.tsx): last-activity (updatedAt) first, falling
+// back to createdAt. Kept separate from getFeedTimestamp so the displayed
+// timestamp (createdAt-first) is unaffected — many products order threads by
+// last activity while showing the original post time, which is what upstream and
+// the inbox display both do (OpenMetadata#30879, #30909).
+export const getFeedSortTimestamp = (feed: Conversation): number =>
+  feed.updatedAt ?? feed.createdAt ?? 0;
 
 const SINGLE_DAY_FORMAT = 'cccc, LLLL d';
 const RANGE_DAY_FORMAT = 'LLLL d';

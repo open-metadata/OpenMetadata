@@ -13,14 +13,15 @@
 
 package org.openmetadata.service.migration.postgres.v202;
 
-import static org.openmetadata.service.migration.utils.v202.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
-import static org.openmetadata.service.migration.utils.v202.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v202.SearchAllowedFieldsRepair.repairAllowedFields;
 import static org.openmetadata.service.migration.utils.v202.SearchNameKeywordRepair.repairNameKeywordSearchFields;
+import static org.openmetadata.service.migration.utils.v202.TableAliasesSearchSettingsMigration.addAliasesSearchSettings;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
@@ -34,10 +35,12 @@ public class Migration extends MigrationProcessImpl {
     // Complete allowedFields from the seed so removed search fields stay re-addable on upgraded
     // clusters (SettingsCache refreshes it in memory but never persists it). Idempotent.
     repairAllowedFields();
-    // Repair installs already upgraded to 2.0.0/2.0.1: v200 dropped DataConsumerPolicy's
-    // CreateTask-Rule via a stale L1 cache (#32668), and v200 will not re-run on those installs.
-    // Re-invoke the now cache-safe helpers here. Idempotent — no-op when the rules already exist.
-    addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
-    addTaskRuleToDataConsumerPolicy(collectionDAO);
+    // Log and continue rather than abort: alias search degrades to not matching synonyms, which
+    // is not worth failing an upgrade over. Matches v201's pattern.
+    try {
+      addAliasesSearchSettings();
+    } catch (Exception e) {
+      LOG.error("v202: failed to backfill the table 'aliases' search settings", e);
+    }
   }
 }

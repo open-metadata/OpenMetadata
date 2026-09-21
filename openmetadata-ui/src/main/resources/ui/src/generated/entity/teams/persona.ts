@@ -225,6 +225,15 @@ export interface ContextRule {
      */
     entityType: string;
     /**
+     * Deliver this rule as a search scope instead of preloading its entities. When true the
+     * rule contributes its entityType and queryFilter to the persona search scope handed to AI
+     * search tools, and alwaysInContext, fullyRendered, sections and maxAssets are ignored.
+     * Absent is read as false so rules stored before this field keep preloading; the rule
+     * creation API stamps true when the client omits it, making search scoping the default for
+     * new rules.
+     */
+    filteredInSearch?: boolean;
+    /**
      * Serialized react-awesome-query-builder JSON tree used only to restore the rule editor UI.
      */
     filterJsonTree?: string;

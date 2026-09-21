@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,9 +16,10 @@ import { Link01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -35,17 +36,20 @@ import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_ITEMS,
+  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -60,6 +64,10 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
+  // Allows panels (e.g. Access Control) to override the header breadcrumbs
+  // and title without needing a separate route.
+  const [headerOverride, setHeaderOverride] =
+    useState<ProfileHeaderOverride | null>(null);
 
   const fetchUser = useCallback(async () => {
     if (!currentUser?.name) {
@@ -132,8 +140,13 @@ const ProfilePage: React.FC = () => {
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
   // pick the app-mode variant of a tab it also contributes to classic pages.
   const navItems: ProfileNavItem[] = useMemo(() => {
+    const isAdmin = Boolean(currentUser?.isAdmin);
+    const coreItems = PROFILE_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
     if (!userData) {
-      return PROFILE_NAV_ITEMS;
+      return coreItems;
     }
     const context: PluginEntityDetailsContext = {
       userData,
@@ -153,16 +166,41 @@ const ProfilePage: React.FC = () => {
           group: 'credentials' as ProfileNavGroup,
           label: typeof tab.label === 'string' ? tab.label : tab.key,
           description: tab.description ?? '',
-          icon: tab.icon ?? Link01,
+          icon: (tab.icon ?? Link01) as FC<{ className?: string }>,
           render: () => <TabComponent {...context} />,
         };
       });
 
-    return [...PROFILE_NAV_ITEMS, ...contributed];
-  }, [extensionRegistry, userData]);
+    const workspaceItems = WORKSPACE_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
+    return [...coreItems, ...workspaceItems, ...contributed];
+  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
+
+  // Clear header override whenever the user switches nav items.
+  const handleNavSelect = useCallback(
+    (id: ProfileNavId) => {
+      if (id === selectedId) {
+        return;
+      }
+      setSelectedId(id);
+      setHeaderOverride(null);
+    },
+    [selectedId]
+  );
 
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
+
+  // Resolve header props — prefer panel-supplied override, fall back to defaults.
+  const headerIcon = headerOverride?.icon ?? activeItem.icon;
+  const headerTitle = headerOverride?.title ?? t(activeItem.label);
+  const headerDescription =
+    headerOverride?.description ?? t(activeItem.description);
+  const headerBreadcrumbs = headerOverride?.breadcrumbs;
+  const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
+  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
   return (
     <Box
@@ -176,26 +214,45 @@ const ProfilePage: React.FC = () => {
           <ProfileSideNav
             items={navItems}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleNavSelect}
           />
           <Box
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
             <ProfileContentHeader
-              breadcrumbRoot={t(PROFILE_NAV_GROUP_LABEL[activeItem.group])}
-              description={t(activeItem.description)}
-              icon={activeItem.icon}
-              title={t(activeItem.label)}
+              actions={headerOverride?.actions}
+              breadcrumbRoot={headerBreadcrumbRoot}
+              breadcrumbs={headerBreadcrumbs}
+              description={headerDescription}
+              icon={headerIcon}
+              iconNode={headerOverride?.iconNode}
+              title={headerTitle}
+              titleInput={headerOverride?.titleInput}
+              titleSuffix={headerOverride?.titleSuffix}
+              onBreadcrumbAction={headerBreadcrumbAction}
             />
-            <div
-              className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0 "
-              data-testid="profile-content-body">
-              {activeItem.render({
-                userData,
-                isProfileLoading,
-                updateUserDetails,
-              })}
-            </div>
+            {activeItem.selfContainedLayout ? (
+              <React.Fragment key={selectedId}>
+                {activeItem.render({
+                  userData,
+                  isProfileLoading,
+                  updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
+                })}
+              </React.Fragment>
+            ) : (
+              <div
+                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
+                data-testid="profile-content-body"
+                key={selectedId}>
+                {activeItem.render({
+                  userData,
+                  isProfileLoading,
+                  updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
+                })}
+              </div>
+            )}
           </Box>
         </>
       )}

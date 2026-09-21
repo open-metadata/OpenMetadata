@@ -188,10 +188,28 @@ export const createOrFetch = async <T = ResponseBody>(
       `${lookupPath}/${encodeURIComponent(entityFqn)}?${params.join('&')}`
     );
 
-    return await okJson<T>(
+    const existing = await okJson<T>(
       getResponse,
       `${label}: fetch existing "${entityFqn}"`
     );
+
+    // `include=all` above will happily return a soft-deleted entity, and handing
+    // one back gives the caller an id that 404s on its next write -- surfacing
+    // as "instance not found" several calls later, far from the cause.
+    //
+    // No caller is known to reach this: fixture names carry a uuid, and the
+    // shared fixtures are hard-deleted in teardown, so a soft-deleted name
+    // collision should not be constructible. It is kept because the cost is one
+    // comparison and the alternative failure is very hard to read -- not because
+    // it was observed. Delete it rather than build on it if it stays unreached.
+    if ((existing as { deleted?: boolean })?.deleted) {
+      throw new Error(
+        `${label}: "${entityFqn}" exists but is soft-deleted, so it cannot be written ` +
+          `to. Something is reusing a name across a delete -- do not silently adopt it.`
+      );
+    }
+
+    return existing;
   }
 
   return await okJson<T>(createResponse, label);
