@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 import type { NodePortStyleProps } from '@antv/g6';
 import { EntityGraphExportFormat } from '../../rest/rdfAPI.interface';
-import { ExportFormat } from '../OntologyExplorer/ExportGraphPanel.interface';
+import { ExportFormat } from '../../components/OntologyExplorer/ExportGraphPanel.interface';
 
 /**
  * Pulls the entity id off the tail of an RDF node URI
@@ -41,7 +41,8 @@ export const FIT_MIN_ZOOM = 0.55;
 /** Fitting never magnifies a small graph past this, so two cards do not become a poster. */
 export const FIT_MAX_ZOOM = 1.1;
 /** What the wheel and the zoom buttons can reach; wider than the fit band so detail stays available. */
-export { ZOOM_RANGE } from '../../constants/KnowledgeGraph.constants';
+// Read by the knowledge-graph canvas hook, so it sits below the UI layer.
+export const ZOOM_RANGE: [number, number] = [0.3, 1.6];
 export const ZOOM_IN_FACTOR = 1.15;
 export const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 export const ZOOM_DURATION_MS = 300;

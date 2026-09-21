@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { resolveCssColor } from '../utils/common/cssColor.utils';
-import type { KnowledgeGraphEdge } from './knowledgeGraph.interface';
+import { resolveCssColor } from '../../utils/common/cssColor.utils';
+import type { KnowledgeGraphEdge } from './knowledge-graph.interface';
 
 /**
  * Every RDF predicate the graph can return is folded into one of these six

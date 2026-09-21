@@ -15,17 +15,17 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
-    GraphData,
-    GraphNode,
-    KnowledgeGraphFilters,
-    KnowledgeGraphLevel,
-    KnowledgeGraphMode
+  GraphData,
+  GraphNode,
+  KnowledgeGraphFilters,
+  KnowledgeGraphLevel,
+  KnowledgeGraphMode,
 } from '../../../interface/discovery/knowledge-graph.interface';
 import { getGlossaryTermsByIds } from '../../../rest/glossaryAPI';
 import { graphLevelToDepth } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
-    getOntologyScope,
-    graphEntityId
+  getOntologyScope,
+  graphEntityId,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import { isConceptNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';

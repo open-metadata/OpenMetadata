@@ -77,10 +77,8 @@ export const useKnowledgeGraphColumns = (
   }
 
   const effective = query.data ?? lastData.current;
-  const columns =
-    effective?.pages.flatMap((page) => page.data ?? []) ?? [];
-  const total =
-    effective?.pages[effective.pages.length - 1]?.paging.total ?? 0;
+  const columns = effective?.pages.flatMap((page) => page.data ?? []) ?? [];
+  const total = effective?.pages[effective.pages.length - 1]?.paging.total ?? 0;
 
   return {
     columns,

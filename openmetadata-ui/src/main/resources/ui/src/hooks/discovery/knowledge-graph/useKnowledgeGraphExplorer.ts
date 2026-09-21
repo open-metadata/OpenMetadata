@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,9 +20,9 @@ import {
   KnowledgeGraphMode,
   KnowledgeGraphPresentation,
   MappingCoverage,
-} from '../../interface/knowledgeGraph.interface';
-import { RelationCategory } from '../../interface/knowledgeGraphRelations.interface';
-import { addDeclaredOntologyProperties } from '../../utils/knowledge-graph/knowledgeGraphOntology.utils';
+} from '../../../interface/discovery/knowledge-graph.interface';
+import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
+import { addDeclaredOntologyProperties } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
@@ -31,13 +31,13 @@ import {
   getMappingCoverage,
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
-} from '../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import {
   countRelationCategories,
   graphLevelToDepth,
   resolveFocusNodeId,
   transformToG6Format,
-} from '../../utils/KnowledgeGraph.utils';
+} from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
 import {

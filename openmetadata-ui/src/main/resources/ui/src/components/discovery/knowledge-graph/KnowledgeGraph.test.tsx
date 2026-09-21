@@ -14,19 +14,25 @@
 import { EdgeData, Graph, GraphOptions, NodeData } from '@antv/g6';
 import {
   act,
+  configure,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
 import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { downloadEntityGraph, getEntityGraphData } from '../../../rest/rdfAPI';
 import { GraphData } from '../../../rest/rdfAPI.interface';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import KnowledgeGraph from './KnowledgeGraph';
+
+// React Query adds microtask hops between fetch → observer → re-render → derived
+// scene → overlay; the 1s default trips flakily on CI. 8s is well under the
+// per-test 15s cap set with jest.setTimeout below.
+configure({ asyncUtilTimeout: 8000 });
+jest.setTimeout(15000);
 
 jest.mock('@antv/g6', () => ({
   ExtensionCategory: { NODE: 'node' },
@@ -69,8 +75,14 @@ jest.mock('@antv/g6', () => ({
       zoomTo: async (value: number) => {
         zoom = value;
       },
+      zoomBy: async (factor: number) => {
+        zoom *= factor;
+      },
       getZoom: () => zoom,
       getViewportByCanvas: (point: [number, number]) => point,
+      getSize: () => [800, 600],
+      translateBy: jest.fn().mockResolvedValue(undefined),
+      emit: jest.fn(),
       on: jest.fn(),
       resize: jest.fn(),
       destroy() {
@@ -131,18 +143,39 @@ const api = getEntityGraphData as jest.MockedFunction<
   typeof getEntityGraphData
 >;
 const entity = { id: 'root', type: 'table', name: 'Orders' };
-const openGraph = () =>
-  render(
+const openGraph = async () => {
+  const result = renderWithQueryClient(
     <ThemeProvider>
       <MemoryRouter>
         <KnowledgeGraph entity={entity} entityType="table" />
       </MemoryRouter>
     </ThemeProvider>
   );
-const press = async (element: Element) =>
-  act(async () => {
+  // React Query resolves its promise outside React's `act` scope, so the RQ
+  // cache reaches `success`/`error` but the component tree stays on `pending`
+  // until we tick React one more time inside `act`. Wait for the initial fetch
+  // and flush several microtask/macrotask cycles so the observer notification,
+  // the derived useMemo chain, the canvas queue draw, and the overlay update
+  // have all landed before the test asserts on the DOM.
+  await waitFor(() => expect(api).toHaveBeenCalled());
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  return result;
+};
+const press = async (element: Element) => {
+  await act(async () => {
     await userEvent.click(element);
   });
+  // A click can trigger a new React Query fetch; flush its resolved-outside-
+  // act observer notification the same way openGraph does.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
 const chooseLevel = async (level: number) => {
   await press(screen.getByRole('button', { name: /label.kg-levels/ }));
   await press(screen.getByTestId('graph-level-' + level));
@@ -195,9 +228,7 @@ describe('KnowledgeGraph', () => {
             ],
           }
     );
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await press(screen.getByRole('radio', { name: 'label.ontology' }));
     await screen.findByTestId('edge-Customer-Places-Order');
 
@@ -218,9 +249,7 @@ describe('KnowledgeGraph', () => {
   });
 
   it('defaults to the direct neighborhood with exactly three level choices', async () => {
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await waitFor(() =>
       expect(api).toHaveBeenCalledWith(expect.objectContaining({ depth: 1 }), {
         signal: expect.any(AbortSignal),
@@ -248,9 +277,7 @@ describe('KnowledgeGraph', () => {
   ])(
     'requests level %i as depth %i and exports it as depth %i',
     async (level, depth, exportDepth) => {
-      await act(async () => {
-        openGraph();
-      });
+      await openGraph();
       await waitFor(() =>
         expect(screen.getByTestId('knowledge-graph-edges').innerHTML).toContain(
           'Downstream'
@@ -293,9 +320,7 @@ describe('KnowledgeGraph', () => {
         },
       ],
     });
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByTestId('edge-Orders-Downstream-Customers');
     const graph = (Graph as unknown as jest.Mock).mock.results[0]
       .value as Graph;
@@ -331,9 +356,7 @@ describe('KnowledgeGraph', () => {
   });
 
   it('explains an empty level 1 as a missing profile rather than a hidden graph', async () => {
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByTestId('edge-Orders-Downstream-Customers');
 
     await chooseLevel(1);
@@ -346,9 +369,7 @@ describe('KnowledgeGraph', () => {
   });
 
   it('keeps its canvas and zoom when labels change and keeps every relationship', async () => {
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByTestId('edge-Orders-Related to-Customers');
     const canvas = screen
       .getByTestId('knowledge-graph-canvas')
@@ -379,9 +400,7 @@ describe('KnowledgeGraph', () => {
 
   it('keeps controls on failure and retries the selected level', async () => {
     api.mockRejectedValueOnce(new Error('offline'));
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByRole('alert');
 
     expect(screen.getByTestId('level-chooser')).toBeVisible();
@@ -394,9 +413,7 @@ describe('KnowledgeGraph', () => {
 
   it('marks partial responses and keeps the prior graph on a failed refresh', async () => {
     api.mockResolvedValueOnce({ ...graphData, truncated: true });
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByTestId('graph-partial');
     api.mockRejectedValueOnce(new Error('offline'));
     await press(screen.getByTestId('refresh'));
@@ -409,9 +426,7 @@ describe('KnowledgeGraph', () => {
   });
 
   it('clears filters without changing the level', async () => {
-    await act(async () => {
-      openGraph();
-    });
+    await openGraph();
     await screen.findByTestId('edge-Orders-Downstream-Customers');
     await chooseLevel(3);
     await press(screen.getByTestId('graph-filters-toggle'));
