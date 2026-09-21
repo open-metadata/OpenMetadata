@@ -275,4 +275,15 @@ describe('formatClientContent: mentions and hashtags', () => {
     expect(result).toContain('@Infrastructure');
     expect(result.match(/@Infrastructure/g) ?? []).toHaveLength(1);
   });
+
+  it('should preserve legacy link text when data-label is missing', () => {
+    const input =
+      '<p><a data-type="mention" href="https://example.com/docs">Legacy documentation</a></p>';
+
+    const result = formatClientContent(input);
+
+    expect(result).toContain('href="https://example.com/docs"');
+    expect(result).toContain('Legacy documentation');
+    expect(result).not.toContain('@null');
+  });
 });

@@ -38,7 +38,6 @@ import { isString, startCase, toString } from 'lodash';
 import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -139,13 +138,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       <AntDTagSuggestion
         {...(props as unknown as AntDTagSuggestionProps)}
         newLook
-      />
-    ),
-  }),
-  [FieldTypes.TREE_ASYNC_SELECT_LIST]: ({ props }) => ({
-    element: (
-      <TreeAsyncSelectList
-        {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
       />
     ),
   }),

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
@@ -864,7 +865,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -882,7 +884,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );

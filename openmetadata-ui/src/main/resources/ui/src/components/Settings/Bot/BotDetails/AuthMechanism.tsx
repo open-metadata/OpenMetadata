@@ -21,7 +21,10 @@ import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
-import { getTokenExpiry } from '../../../../utils/BotsUtils';
+import {
+  getTokenExpiry,
+  getTokenIssuedAtMs,
+} from '../../../../utils/BotsUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './auth-mechanism.less';
@@ -64,6 +67,18 @@ const AuthMechanism: FC<Props> = ({
   }, [isBot, authenticationMechanism]);
 
   const { tokenExpiryDate, isTokenExpired } = getTokenExpiry(JWTTokenExpiresAt);
+
+  const tokenCreatedOnLabel = useMemo(() => {
+    const issuedAtMs = getTokenIssuedAtMs(JWTToken);
+    if (issuedAtMs) {
+      return new Date(issuedAtMs).toLocaleString();
+    }
+    if (botData?.updatedAt) {
+      return new Date(botData.updatedAt).toLocaleString();
+    }
+
+    return '';
+  }, [JWTToken, botData?.updatedAt]);
 
   const renderExpiryText = () => {
     if (!JWTTokenExpiresAt) {
@@ -146,7 +161,7 @@ const AuthMechanism: FC<Props> = ({
             </Typography.Text>
 
             <Typography.Text className="created-on-value">
-              {new Date(botData?.updatedAt ?? '').toLocaleString()}
+              {tokenCreatedOnLabel}
             </Typography.Text>
           </div>
         </div>

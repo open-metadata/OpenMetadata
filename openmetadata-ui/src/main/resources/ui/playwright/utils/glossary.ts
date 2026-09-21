@@ -52,6 +52,7 @@ import {
   openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { pickGlossaryTermInField } from './glossaryPicker';
 import { waitForAggregation } from './searchAggregation';
 import { sidebarClick } from './sidebar';
 import {
@@ -1283,22 +1284,16 @@ export const changeTermHierarchyFromModal = async (
     .getByRole('dialog');
   await expect(hierarchyModal).toBeVisible();
 
-  const parentSelect = hierarchyModal.getByLabel('Select Parent');
-  await expect(parentSelect).toBeVisible();
-  await expect(parentSelect).toBeEnabled();
-  await parentSelect.click();
-
-  await page.locator('.async-tree-select-list-dropdown').waitFor({
-    state: 'visible',
-  });
-
-  if (isGlossaryTerm) {
-    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await parentSelect.fill(entityDisplayName);
-    await searchRes;
-  }
-
-  await page.getByTestId(`tag-${entityFqn}`).click();
+  // A glossary sits at the picker's root; only a term has to be searched for.
+  await pickGlossaryTermInField(
+    page,
+    hierarchyModal.getByTestId('change-parent-select'),
+    {
+      name: entityDisplayName,
+      displayName: isGlossaryTerm ? entityDisplayName : undefined,
+      fullyQualifiedName: entityFqn,
+    }
+  );
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page
@@ -1387,18 +1382,14 @@ export const addRelatedTerms = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
-  const autocompleteInput = page
-    .locator('[data-testid^="term-autocomplete-"]')
-    .first()
-    .locator('input');
+  const trigger = page.locator('[data-testid^="term-picker-"]').first();
 
   for (const term of relatedTerms) {
-    const entityDisplayName =
-      get(term, 'responseData.displayName') || get(term, 'responseData.name');
-    const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
-    await autocompleteInput.fill(entityDisplayName);
-    await searchRes;
-    await page.getByRole('option', { name: entityDisplayName }).click();
+    await pickGlossaryTermInField(page, trigger, {
+      name: get(term, 'responseData.name'),
+      displayName: get(term, 'responseData.displayName'),
+      fullyQualifiedName: get(term, 'responseData.fullyQualifiedName'),
+    });
   }
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -1439,19 +1430,14 @@ export const addRelatedTermsByRelationType = async (
     await expect(option).toBeVisible();
     await option.click();
 
-    const autocompleteInput = rowLocator
-      .locator('[data-testid^="term-autocomplete-"]')
-      .locator('input');
+    const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 
     for (const term of row.terms) {
-      const entityDisplayName =
-        get(term, 'responseData.displayName') || get(term, 'responseData.name');
-      const searchRes = page.waitForResponse('**/api/v1/glossaryTerms/search*');
-      await autocompleteInput.fill(entityDisplayName);
-      await searchRes;
-      await page
-        .getByRole('option', { exact: true, name: entityDisplayName })
-        .click();
+      await pickGlossaryTermInField(page, trigger, {
+        name: get(term, 'responseData.name'),
+        displayName: get(term, 'responseData.displayName'),
+        fullyQualifiedName: get(term, 'responseData.fullyQualifiedName'),
+      });
     }
   }
 

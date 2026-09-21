@@ -39,10 +39,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-  LabelType,
-  State,
   TagLabel,
-  TagSource,
 } from '../../../generated/type/tagLabel';
 import {
   CreateKnowledgePage,
@@ -50,7 +47,6 @@ import {
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
 import { queryClient } from '../../../queryClient';
-import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
@@ -66,9 +62,9 @@ import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TagSelector from '../../Tag/TagSelector/TagSelector';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -87,7 +83,7 @@ interface QuickLinkFormValues {
   url: string;
   description: string;
   tags: TagLabel[];
-  glossaryTerms: QuickLinkFormSelectItem[];
+  glossaryTerms: TagLabel[];
   relatedEntities: QuickLinkFormSelectItem[];
 }
 
@@ -102,13 +98,6 @@ export interface QuickLinkFormModalProps {
   onSave: (data: QuickLinkFormModalFormData) => void;
   onCancel: () => void;
 }
-
-const mapTagLabelToSelectItem = (tag: TagLabel): QuickLinkFormSelectItem => ({
-  id: tag.tagFQN,
-  label: getTagDisplay(tag.displayName || tag.name) || tag.tagFQN,
-  supportingText: tag.tagFQN,
-  value: tag,
-});
 
 const mapEntityReferenceToSelectItem = (
   ref: EntityReference
@@ -128,9 +117,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 }) => {
   const { t } = useTranslation('translation', { i18n });
   const [isUpdating, setIsUpdating] = useState(false);
-  const [glossaryOptions, setGlossaryOptions] = useState<
-    QuickLinkFormSelectItem[]
-  >([]);
   const [assetOptions, setAssetOptions] = useState<QuickLinkFormSelectItem[]>(
     []
   );
@@ -141,8 +127,8 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   // directly to `canEditAll` (identical, EditAll-only read). `displayNameField`/
   // `descriptionField`/`tagsField` move from a hand-rolled raw OR (`field || EditAll`) to the
   // prioritized `canEdit*` flags — the same explicit-deny-wins fix as the sanctioned
-  // canViewBasic precedent (Task 6 Finding 1). `glossaryTermsField` reuses `EditTags` (not a
-  // separate EditGlossaryTerms check) in the old code too — preserved verbatim via
+  // canViewBasic precedent (Task 6 Finding 1). The glossary picker reuses `EditTags` (not a
+  // separate EditGlossaryTerms check) as the old code did — preserved verbatim via
   // `canEditTags`, not "corrected" to `canEditGlossaryTerms`.
   const { canEditAll, canEditDisplayName, canEditDescription, canEditTags } =
     useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
@@ -190,7 +176,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         url: (quickLink.page as QuickLink)?.url ?? '',
         description: quickLink.description ?? '',
         tags: classification,
-        glossaryTerms: glossaries.map(mapTagLabelToSelectItem),
+        glossaryTerms: glossaries,
         relatedEntities: filteredRelatedDataAssets.map(
           mapEntityReferenceToSelectItem
         ),
@@ -217,39 +203,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     };
   }, [isOpen]);
 
-  const fetchGlossaryOptions = useCallback(async (searchText = '') => {
-    try {
-      const response = await searchGlossaryTerms(searchText);
-      const hits = response?.hits?.hits ?? [];
-      const options = hits.map(
-        (hit: {
-          _source: {
-            fullyQualifiedName?: string;
-            displayName?: string;
-            name?: string;
-            description?: string;
-          };
-        }) => {
-          const source = hit._source;
-
-          return mapTagLabelToSelectItem({
-            labelType: LabelType.Manual,
-            source: TagSource.Glossary,
-            state: State.Confirmed,
-            tagFQN: source.fullyQualifiedName ?? '',
-            displayName: source.displayName,
-            name: source.name,
-            description: source.description,
-          });
-        }
-      );
-
-      setGlossaryOptions(options);
-    } catch {
-      setGlossaryOptions([]);
-    }
-  }, []);
-
   const fetchAssetOptions = useCallback(async (searchText = '') => {
     try {
       const escaped = escapeESReservedCharacters(searchText);
@@ -274,11 +227,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     }
   }, []);
 
-  const debouncedGlossarySearch = useMemo(
-    () => debounce((text: string) => void fetchGlossaryOptions(text), 250),
-    [fetchGlossaryOptions]
-  );
-
   const debouncedAssetSearch = useMemo(
     () => debounce((text: string) => void fetchAssetOptions(text), 250),
     [fetchAssetOptions]
@@ -286,10 +234,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(
     () => () => {
-      debouncedGlossarySearch.cancel();
       debouncedAssetSearch.cancel();
     },
-    [debouncedAssetSearch, debouncedGlossarySearch]
+    [debouncedAssetSearch]
   );
 
   const handleQuickLinkUpdate = async (
@@ -371,7 +318,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       url: values.url,
       description: values.description,
       tags: values.tags,
-      glossaryTerms: values.glossaryTerms.map((item) => item.value as TagLabel),
+      glossaryTerms: values.glossaryTerms,
       relatedEntities,
     };
 
@@ -426,34 +373,6 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       disabled: !canEditDescription,
     },
     placeholder: t('label.description'),
-  };
-
-  const glossaryTermsField: FieldProp = {
-    name: 'glossaryTerms',
-    required: false,
-    label: t('label.glossary-term-plural'),
-    id: 'root/glossaryTerms',
-    type: FieldTypes.GLOSSARY_TAG_SUGGESTION,
-    props: {
-      'data-testid': 'glossaryTerms-container',
-      disabled: !canEditTags,
-      filterOption: () => true,
-      multiple: true,
-      onFocus: () => void fetchGlossaryOptions(),
-      onSearchChange: (text: string) => debouncedGlossarySearch(text),
-      options: glossaryOptions,
-      renderItem: (item: FormSelectItem) => (
-        <Autocomplete.Item
-          id={item.id}
-          key={item.id}
-          label={item.label}
-          supportingText={item.supportingText}
-        />
-      ),
-    },
-    placeholder: t(SELECT_FIELD_LABEL_KEY, {
-      field: t('label.glossary-term-plural'),
-    }),
   };
 
   const relatedEntitiesField: FieldProp = {
@@ -526,7 +445,17 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
                   />
                 )}
               </FormField>
-              {getField(glossaryTermsField)}
+              <FormField control={form.control} name="glossaryTerms">
+                {({ field }) => (
+                  <GlossaryTermPicker
+                    data-testid="glossaryTerms-container"
+                    disabled={!canEditTags}
+                    label={t('label.glossary-term-plural')}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
+              </FormField>
               {getField(relatedEntitiesField)}
             </HookForm>
           </Dialog.Content>

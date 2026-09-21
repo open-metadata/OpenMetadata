@@ -116,6 +116,8 @@ export interface TreeSelectProps<T = unknown> {
   pageSize?: number;
 
   noDataMessage?: string;
+  /** Shown under a branch that loaded no children; defaults to noDataMessage. */
+  emptyBranchMessage?: string;
   loadingMessage?: string;
   searchPlaceholder?: string;
 
