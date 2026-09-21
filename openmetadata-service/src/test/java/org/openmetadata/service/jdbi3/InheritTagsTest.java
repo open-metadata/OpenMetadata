@@ -238,6 +238,39 @@ class InheritTagsTest {
     assertEquals("retentionPeriod", EntityRepository.inheritanceParentFields(false, true, false));
   }
 
+  /**
+   * Read-time inheritance is only safe on the write path because inherited labels are stamped
+   * {@code DERIVED} and the write path throws that label class away before it validates.
+   *
+   * <p>PATCH loads its original through {@code getByName}, which applies inheritance, and the patch
+   * is then applied on top -- so an inherited {@code Tier.Tier1} does reach {@code prepareInternal}
+   * alongside a caller's {@code Tier.Tier2}. What stops that being rejected as mutually exclusive
+   * is {@code validateTags} calling {@link TagLabelUtil#addDerivedTags} first, which filters
+   * {@code DERIVED} out before {@code checkMutuallyExclusive} sees the list. {@code applyTags}
+   * skips {@code DERIVED} for the same reason, which is why nothing inherited is persisted.
+   *
+   * <p>This test exists because that safety is not local to the inheritance code: stamping
+   * inherited labels anything other than {@code DERIVED}, or validating before the filter, would
+   * start rejecting writes over tags the caller never applied.
+   */
+  @Test
+  void addDerivedTags_dropsInheritedLabelsBeforeExclusivityIsChecked() {
+    List<TagLabel> fromInheritance =
+        List.of(manual("Tier.Tier2"), derived("Tier.Tier1"), derived("PII.Sensitive"));
+
+    List<String> survived =
+        TagLabelUtil.addDerivedTags(fromInheritance).stream().map(TagLabel::getTagFQN).toList();
+
+    assertEquals(
+        List.of("Tier.Tier2"),
+        survived,
+        "an inherited label must not reach the mutually-exclusive check as a caller's tag");
+  }
+
+  private static TagLabel derived(String fqn) {
+    return manual(fqn).withLabelType(TagLabel.LabelType.DERIVED);
+  }
+
   private static boolean propagatesField(
       List<PropagationDescriptor> descriptors, String fieldName) {
     return descriptors.stream().anyMatch(d -> fieldName.equals(d.fieldName()));
