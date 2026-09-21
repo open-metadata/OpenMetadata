@@ -69,11 +69,6 @@ export const searchGlossaryPicker = async (
   await box.fill(term);
 };
 
-// `display: contents` on the popover has no box, so open state reads off the trigger.
-export const expectGlossaryPickerOpen = async (trigger: Locator) => {
-  await expect(trigger).toHaveAttribute('data-treeselect-open', 'true');
-};
-
 // Opens the picker and waits for the treegrid to render.
 //
 // The picker uses TreeSelect's custom-trigger path (renderTrigger + onClick={toggle}),

@@ -44,10 +44,7 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
-import {
-  expectGlossaryPickerOpen,
-  searchGlossaryPicker,
-} from './glossaryPicker';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -703,11 +700,8 @@ export const fillGlossaryTermDetails = async (
   const picker = page.getByTestId('csv-glossary-terms-picker');
   await expect(picker).toBeVisible();
 
-  // Clicking only ever opens this trigger, so it settles whichever state the
-  // grid left the freshly mounted editor in without reading it first.
-  await picker.click();
-  await expectGlossaryPickerOpen(picker);
-
+  // Filling focuses the trigger's input, and its onFocus opens the tree — a
+  // click here would instead close the grid's cell editor.
   await searchGlossaryPicker(page, glossary.name, picker);
 
   const row = page.getByTestId(
