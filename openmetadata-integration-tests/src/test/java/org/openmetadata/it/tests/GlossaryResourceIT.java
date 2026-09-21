@@ -1913,10 +1913,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     assertEquals("Balance", accountBalance.getName());
     assertEquals("Balance", loanBalance.getName());
     assertEquals(
-        account.getFullyQualifiedName() + ".Balance",
-        accountBalance.getFullyQualifiedName());
-    assertEquals(
-        loan.getFullyQualifiedName() + ".Balance",
-        loanBalance.getFullyQualifiedName());
+        account.getFullyQualifiedName() + ".Balance", accountBalance.getFullyQualifiedName());
+    assertEquals(loan.getFullyQualifiedName() + ".Balance", loanBalance.getFullyQualifiedName());
   }
 }
