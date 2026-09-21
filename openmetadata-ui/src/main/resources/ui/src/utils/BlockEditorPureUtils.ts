@@ -76,6 +76,38 @@ const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
 // as rendered content.
 const MARKDOWN_CODE_REGION = /```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`/g;
 
+// Markdown's third code form: a line indented by four spaces or a tab, opening
+// after a blank line or at the start of the document.
+const INDENTED_CODE_LINE = /^(?: {4}|\t)/;
+
+/**
+ * Blanks out every markdown code region — fenced blocks, code spans, and
+ * four-space-indented blocks — leaving the surrounding text in place.
+ *
+ * An indented block runs from its opening line until a line that is neither
+ * indented nor blank, which is why this is a line walk rather than one regex.
+ */
+const stripMarkdownCodeRegions = (content: string) => {
+  let isInIndentedBlock = false;
+  let previousLineWasBlank = true;
+
+  return content
+    .replace(MARKDOWN_CODE_REGION, '')
+    .split('\n')
+    .map((line) => {
+      const isBlank = line.trim() === '';
+      const isIndented = INDENTED_CODE_LINE.test(line);
+
+      isInIndentedBlock = isInIndentedBlock
+        ? isIndented || isBlank
+        : previousLineWasBlank && isIndented;
+      previousLineWasBlank = isBlank;
+
+      return isInIndentedBlock ? '' : line;
+    })
+    .join('\n');
+};
+
 export const isHTMLString = (content: string) => {
   const commonHtmlTags =
     /<(p|div|span|a|ul|ol|li|table|h[1-6]|br|strong|em|code|pre)[>\s]/i;
@@ -88,13 +120,30 @@ export const isHTMLString = (content: string) => {
     const parser = new DOMParser();
     const parsedDocument = parser.parseFromString(content, 'text/html');
 
-    const hasHtmlElements = Array.from(parsedDocument.body.childNodes).some(
-      (node) => node.nodeType === Node.ELEMENT_NODE
+    const outsideCodeRegions = parser.parseFromString(
+      stripMarkdownCodeRegions(content),
+      'text/html'
     );
 
-    const outsideCodeRegions = parser.parseFromString(
-      content.replace(MARKDOWN_CODE_REGION, ''),
-      'text/html'
+    // Bare text between the markup is what makes a document markdown prose.
+    // Serialized editor output has none, and its indentation is pretty
+    // printing rather than a code block — so only prose is read with code
+    // regions removed. Reading serialized HTML that way would discard its own
+    // markup and hand it back to the converter, which is the corruption this
+    // whole guard exists to prevent.
+    const hasProseAroundMarkup = Array.from(
+      parsedDocument.body.childNodes
+    ).some(
+      (node) =>
+        node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
+    );
+
+    const renderedMarkup = hasProseAroundMarkup
+      ? outsideCodeRegions
+      : parsedDocument;
+
+    const hasHtmlElements = Array.from(renderedMarkup.body.childNodes).some(
+      (node) => node.nodeType === Node.ELEMENT_NODE
     );
 
     if (
