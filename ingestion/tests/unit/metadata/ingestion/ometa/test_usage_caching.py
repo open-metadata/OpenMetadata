@@ -22,11 +22,15 @@ Covers:
 """
 
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
+from metadata.ingestion.stage.table_usage import TableUsageStage
 
 QUERY_ID = "00000000-0000-0000-0000-000000000100"
 USER_REF_NAME = "john.doe"
@@ -70,7 +74,7 @@ class TestQueryGetOrCreateCache:
         assert result_b is query_entity
         mixin.get_by_name.assert_called_once()
 
-    def test_miss_is_not_cached_so_second_table_still_checks(self):
+    def test_created_query_is_cached_for_second_table(self):
         mixin = _make_query_mixin()
         query_entity = MagicMock(spec=Query)
         mixin.get_by_name = MagicMock(return_value=None)
@@ -89,6 +93,23 @@ class TestQueryGetOrCreateCache:
 
         assert result_b is query_entity
         assert mixin.get_by_name.call_count == 1, "cached hit should skip get_by_name"
+
+    def test_failed_lookup_and_create_is_not_cached(self):
+        mixin = _make_query_mixin()
+        mixin.get_by_name = MagicMock(return_value=None)
+        mixin.client.put = MagicMock(return_value=None)
+        mixin.get_suffix = MagicMock(return_value="/queries")
+
+        request_a = _make_create_query_request("SELECT * FROM customers")
+        request_b = _make_create_query_request("SELECT * FROM customers")
+
+        result_a = mixin._get_or_create_query(request_a)
+        result_b = mixin._get_or_create_query(request_b)
+
+        assert result_a is None
+        assert result_b is None
+        assert mixin.get_by_name.call_count == 2
+        assert mixin.client.put.call_count == 2
 
     def test_none_query_body_returns_none_without_caching(self):
         mixin = _make_query_mixin()
@@ -179,3 +200,19 @@ class TestQueryCacheKeyIncludesService:
         )
         assert result_a_again is entity_a
         assert mixin.get_by_name.call_count == 2, "second lookup for service_a should be cached"
+
+
+class TestTableUsageUserReference:
+    def test_user_reference_fqn_is_returned_as_string(self):
+        stage = TableUsageStage.__new__(TableUsageStage)
+        stage.metadata = MagicMock()
+        stage.metadata.get_cached_user_reference.return_value = EntityReference(
+            id=Uuid(UUID("00000000-0000-0000-0000-000000000200")),
+            type="user",
+            fullyQualifiedName=USER_REF_NAME,
+        )
+
+        users, used_by = stage._get_user_entity(USER_REF_NAME)
+
+        assert users == [USER_REF_NAME]
+        assert used_by == [USER_REF_NAME]
