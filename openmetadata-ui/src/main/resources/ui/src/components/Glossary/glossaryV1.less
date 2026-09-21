@@ -234,6 +234,37 @@
       top: 0;
       z-index: var(--om-z-2);
     }
+
+    // TableV2 (ui-core-components) has no `.ant-col`/`.ant-table-wrapper` —
+    // this container needs to be a flex column itself so the rules below,
+    // which stretch TableV2's own scroll chain, have somewhere to grow
+    // into. Mirrors the fix in ClassificationDetails'
+    // classification-details.less.
+    //
+    // Without this, TableV2's outer scroll wrapper (`[data-testid=
+    // 'glossary-terms-table']`) and the div immediately wrapping the
+    // `<table>` element both shrink to the row content's height instead of
+    // filling the card — `scroll.y` only caps the inner one with a
+    // max-height, it doesn't stretch it. That leaves the table's own
+    // horizontal scrollbar floating mid-panel with empty space below it,
+    // while the outer container (forced to scroll too, to reach the
+    // columns that overflow past it) grows a *second*, redundant
+    // scrollbar flush at the panel's bottom edge. Stretching the whole
+    // chain removes the outer scrollbar and moves the table's own
+    // scrollbar down to that same, correct bottom position.
+    display: flex;
+    flex-direction: column;
+
+    [data-testid='glossary-terms-table'] {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    [data-testid='glossary-terms-table'] div:has(> table[role='grid']) {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none !important;
+    }
   }
 }
 
