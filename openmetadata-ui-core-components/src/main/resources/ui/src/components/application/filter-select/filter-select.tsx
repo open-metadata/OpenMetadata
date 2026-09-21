@@ -283,7 +283,7 @@ const OptionRow = ({
               {iconNode}
             </span>
           )}
-          <Typography className="tw:grow tw:truncate" title={optionText(option)}>
+          <Typography className="not-prose tw:grow tw:truncate" title={optionText(option)}>
             {option.label}
           </Typography>
           {!hideCounts && option.count !== undefined && (
