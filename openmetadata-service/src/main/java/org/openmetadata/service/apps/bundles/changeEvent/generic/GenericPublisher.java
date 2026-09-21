@@ -36,6 +36,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.builtin.HttpWebhookTransport;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -78,7 +79,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
     try {
-      String eventJson = JsonUtils.pojoToJson(event);
+      String eventJson = payloadOf(event);
 
       List<WebhookRecipient> webhookRecipients =
           recipients.stream()
@@ -99,11 +100,37 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  private String payloadOf(ChangeEvent event) {
+    return JsonUtils.pojoToJson(event);
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event) {
+    return payloadOf(event);
+  }
+
+  @Override
+  public void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    if (recipient instanceof WebhookRecipient webhookRecipient) {
+      sendTo(webhookRecipient, (String) prepared);
+    }
+  }
+
   private void sendTo(WebhookRecipient recipient, String eventJson) throws EventPublisherException {
     Invocation.Builder target = recipient.getConfiguredRequest(client, eventJson);
     if (target != null) {
       postOrMarkUnknownHost(recipient, target, eventJson);
     }
+  }
+
+  // Deliveries have always been a POST whatever the destination configures. The setting makes
+  // them follow the configuration, as test sends already do.
+  private Webhook.HttpMethod methodOfADelivery() {
+    boolean configured =
+        AlertingSettings.current().sending().honourWebhookMethod()
+            && webhook != null
+            && webhook.getHttpMethod() != null;
+    return configured ? webhook.getHttpMethod() : Webhook.HttpMethod.POST;
   }
 
   private void postOrMarkUnknownHost(
@@ -127,14 +154,15 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       WebhookRecipient recipient, Invocation.Builder target, String eventJson)
       throws EventPublisherException {
     try {
-      postWebhookMessage(this, target, eventJson);
+      postWebhookMessage(this, target, eventJson, methodOfADelivery());
     } catch (EventPublisherException ex) {
       if (!isOAuth2Configured() || !ex.getMessage().contains("HTTP 401")) {
         throw ex;
       }
       LOG.debug("OAuth2 token rejected (401), invalidating and retrying");
       invalidateOAuth2Token();
-      postWebhookMessage(this, recipient.getConfiguredRequest(client, eventJson), eventJson);
+      postWebhookMessage(
+          this, recipient.getConfiguredRequest(client, eventJson), eventJson, methodOfADelivery());
     }
   }
 

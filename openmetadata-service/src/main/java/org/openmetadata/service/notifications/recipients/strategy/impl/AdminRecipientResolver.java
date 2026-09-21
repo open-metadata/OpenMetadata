@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -70,6 +71,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
           .collect(Collectors.toSet());
 
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to resolve admin recipients", e);
       return Collections.emptySet();
     }
@@ -93,6 +95,7 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to query admin users", e);
     }
 

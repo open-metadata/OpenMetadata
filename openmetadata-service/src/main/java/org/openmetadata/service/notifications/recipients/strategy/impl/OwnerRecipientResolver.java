@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -76,6 +77,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       }
       return resolveOwnersFromEntity(entity, destination);
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.warn(
           "Failed to resolve owners for event entity {} {}",
           event.getEntityType(),
@@ -108,6 +110,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       return resolveOwnersFromEntity(entity, destination);
 
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.warn("Failed to resolve owners for entity {} {}", entityType, entityId, e);
       return Collections.emptySet();
     }
@@ -137,6 +140,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
           recipients.addAll(resolveEntityReferences(parentEntity.getOwners(), destination));
         }
       } catch (Exception e) {
+        RecipientLookups.rethrowUnlessAbsent(e);
         LOG.debug("Failed to resolve parent entity owners for conversation", e);
       }
     }

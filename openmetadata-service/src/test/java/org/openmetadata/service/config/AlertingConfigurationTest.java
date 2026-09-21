@@ -39,6 +39,7 @@ class AlertingConfigurationTest {
 
     assertEquals(Duration.ofSeconds(60), settings.tickTimeBudget());
     assertFalse(settings.skipUnreachableTargetWithinTick());
+    assertEquals(AlertingSettings.Sending.AS_BEFORE, settings.sending());
     assertTrue(VALIDATOR.validate(new AlertingConfiguration()).isEmpty());
   }
 
@@ -52,6 +53,15 @@ class AlertingConfigurationTest {
   }
 
   @Test
+  void targetsSentAtOnceAreBetweenOneAndEight() {
+    assertTrue(VALIDATOR.validate(withTargetsAtOnce(1)).isEmpty());
+    assertTrue(VALIDATOR.validate(withTargetsAtOnce(8)).isEmpty());
+    assertFalse(VALIDATOR.validate(withTargetsAtOnce(0)).isEmpty());
+    assertFalse(VALIDATOR.validate(withTargetsAtOnce(9)).isEmpty());
+    assertEquals(4, AlertingSettings.from(withTargetsAtOnce(4)).sending().targetSendConcurrency());
+  }
+
+  @Test
   void shippedYamlCarriesTheDefaults() throws Exception {
     assumeTrue(System.getenv("ALERTING_TICK_TIME_BUDGET_SECONDS") == null);
 
@@ -59,6 +69,9 @@ class AlertingConfigurationTest {
 
     assertEquals(60, shipped.getTickTimeBudgetSeconds());
     assertFalse(shipped.isSkipUnreachableTargetWithinTick());
+    assertFalse(shipped.isHonourWebhookMethod());
+    assertFalse(shipped.isAwaitEmailOutcome());
+    assertEquals(1, shipped.getTargetSendConcurrency());
   }
 
   @Test
@@ -89,6 +102,12 @@ class AlertingConfigurationTest {
     } finally {
       Files.deleteIfExists(withThatBudget);
     }
+  }
+
+  private static AlertingConfiguration withTargetsAtOnce(int targets) {
+    AlertingConfiguration configuration = new AlertingConfiguration();
+    configuration.setTargetSendConcurrency(targets);
+    return configuration;
   }
 
   private static AlertingConfiguration withBudget(int seconds) {

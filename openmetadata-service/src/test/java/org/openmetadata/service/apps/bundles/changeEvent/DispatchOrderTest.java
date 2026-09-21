@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -19,6 +20,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,8 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEve
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionDAOs.EventSubscriptionDAO;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -50,6 +54,7 @@ import org.quartz.Scheduler;
 
 /** The order a tick works in, and where it may stop. The ledger of these tests stands at 7. */
 class DispatchOrderTest {
+  private static final Recipient SHARED = new EmailRecipient("shared@example.com");
 
   // Sorted by id these read third, second, first: the opposite of the order they happened in.
   private static final ChangeEvent FIRST = eventWithId("00000000-0000-0000-0000-000000000003");
@@ -83,11 +88,12 @@ class DispatchOrderTest {
       EventSubscription alert = alertWithDestinations(2);
       Destination<ChangeEvent> declaredFirst = channelOf(alert, 0);
       Destination<ChangeEvent> declaredSecond = channelOf(alert, 1);
+      when(declaredFirst.requiresRecipients()).thenReturn(true);
 
       tick(alert, List.of(declaredFirst, declaredSecond), mock(Scheduler.class));
 
-      verify(declaredFirst, times(3)).sendMessage(any(), any());
-      verify(declaredSecond, never()).sendMessage(any(), any());
+      verify(declaredFirst, times(3)).sendTo(any(), eq(SHARED));
+      verify(declaredSecond, never()).sendTo(any(), any());
     }
   }
 
@@ -169,7 +175,11 @@ class DispatchOrderTest {
         MockedStatic<AlertRows> rows = mockStatic(AlertRows.class);
         MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedStatic<AlertFactory> factory = mockStatic(AlertFactory.class);
-        MockedConstruction<RecipientResolver> ignored = mockConstruction(RecipientResolver.class)) {
+        MockedConstruction<RecipientResolver> ignored =
+            mockConstruction(
+                RecipientResolver.class,
+                (resolver, construction) ->
+                    when(resolver.recipientsOf(any(), any())).thenReturn(Set.of(SHARED)))) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       alertUtil
@@ -226,13 +236,18 @@ class DispatchOrderTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static Destination<ChangeEvent> channelOf(EventSubscription alert, int position) {
+  private static Destination<ChangeEvent> channelOf(EventSubscription alert, int position)
+      throws Exception {
     Destination<ChangeEvent> channel = mock(Destination.class);
     lenient().when(channel.getEnabled()).thenReturn(true);
     lenient()
         .when(channel.getSubscriptionDestination())
         .thenReturn(alert.getDestinations().get(position));
     lenient().when(channel.requiresRecipients()).thenReturn(false);
+    lenient().when(channel.prepare(any())).thenCallRealMethod();
+    lenient().when(channel.prepare(any(), any())).thenCallRealMethod();
+    lenient().doCallRealMethod().when(channel).sendTo(any(), any());
+    lenient().when(channel.notAttemptedBecause()).thenCallRealMethod();
     return channel;
   }
 

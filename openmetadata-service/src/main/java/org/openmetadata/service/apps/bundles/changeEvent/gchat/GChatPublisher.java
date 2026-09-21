@@ -37,6 +37,7 @@ import org.openmetadata.service.events.subscription.channels.builtin.HttpWebhook
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.GChatMessageDecorator;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.gchat.GChatMessageV2;
@@ -71,13 +72,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
     try {
-      // Generate message using Handlebars
-      NotificationMessage message =
-          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
-      GChatMessageV2 gchatMessage = (GChatMessageV2) message;
-
-      // Convert to JSON
-      String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
+      String json = (String) prepare(event);
 
       List<WebhookRecipient> webhookRecipients =
           recipients.stream()
@@ -95,6 +90,30 @@ public class GChatPublisher implements Destination<ChangeEvent> {
           CatalogExceptionMessage.eventPublisherFailedToPublish(
               subscriptionDestination.getType(), e.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
+    }
+  }
+
+  // Rendered once for an event, whatever the number of targets it is sent to.
+  private String payloadOf(ChangeEvent event, EventContent content) {
+    NotificationMessage message =
+        messageEngine.format(content.by(messageEngine), subscriptionDestination);
+    return JsonUtils.pojoToJsonIgnoreNull((GChatMessageV2) message);
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event) {
+    return prepare(event, new EventContent(event, eventSubscription));
+  }
+
+  @Override
+  public Object prepare(ChangeEvent event, EventContent content) {
+    return payloadOf(event, content);
+  }
+
+  @Override
+  public void sendTo(Object prepared, Recipient recipient) throws EventPublisherException {
+    if (recipient instanceof WebhookRecipient webhookRecipient) {
+      sendTo(webhookRecipient, (String) prepared);
     }
   }
 

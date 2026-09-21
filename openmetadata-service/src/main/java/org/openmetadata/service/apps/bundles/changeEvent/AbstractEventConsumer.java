@@ -46,9 +46,10 @@ import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.events.subscription.matching.AlertMatching;
 import org.openmetadata.service.events.subscription.matching.ShadowReports;
+import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.notifications.EventContent;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
@@ -84,6 +85,8 @@ public abstract class AbstractEventConsumer
   }
 
   /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
+  private TickHealth healthOfThisTick = new TickHealth();
+
   protected abstract ConsumerKind kind();
 
   /**
@@ -195,8 +198,10 @@ public abstract class AbstractEventConsumer
     Map<String, List<Destination<ChangeEvent>>> destinationsByChannel =
         groupDestinationsByChannel(destinationIds);
     List<EventPublisherException> failures = new ArrayList<>();
+    // Rendered when the first channel that renders asks, and shared by the alert's other channels.
+    EventContent content = new EventContent(event, eventSubscription);
     for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
-      sendToDestinationType(event, sameChannel, resolver).ifPresent(failures::add);
+      sendToDestinationType(event, content, sameChannel, resolver).ifPresent(failures::add);
     }
     recordSendFailures(event, failures);
     int successCount = destinationsByChannel.size() - failures.size();
@@ -206,11 +211,14 @@ public abstract class AbstractEventConsumer
   private record EventDeliveryResult(boolean delivered, int successCount, int failedCount) {}
 
   private Optional<EventPublisherException> sendToDestinationType(
-      ChangeEvent event, List<Destination<ChangeEvent>> destinations, RecipientResolver resolver) {
+      ChangeEvent event,
+      EventContent content,
+      List<Destination<ChangeEvent>> destinations,
+      RecipientResolver resolver) {
     Destination<ChangeEvent> publisher = destinations.getFirst();
     EventPublisherException failure = null;
     try {
-      sendThroughPrimary(event, destinations, publisher, resolver);
+      failure = dispatchOf(destinations, resolver).send(event, content).orElse(null);
     } catch (EventPublisherException e) {
       LOG.error("Failed to send alert: {}", e.getMessage());
       failure = e;
@@ -238,23 +246,10 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  // Send via primary destination only, with deduplicated recipients (one send per type).
-  // Empty recipients is treated as successful (no-op send).
-  private void sendThroughPrimary(
-      ChangeEvent event,
-      List<Destination<ChangeEvent>> destinations,
-      Destination<ChangeEvent> publisher,
-      RecipientResolver resolver)
-      throws EventPublisherException {
-    Set<Recipient> recipients = Set.of();
-    if (publisher.requiresRecipients()) {
-      List<SubscriptionDestination> subDestinations =
-          destinations.stream().map(Destination::getSubscriptionDestination).toList();
-      recipients = resolver.resolveRecipients(event, subDestinations);
-    }
-    if (!publisher.requiresRecipients() || !recipients.isEmpty()) {
-      publisher.sendMessage(event, recipients);
-    }
+  private ChannelDispatch dispatchOf(
+      List<Destination<ChangeEvent>> ofOneChannel, RecipientResolver resolver) {
+    return new ChannelDispatch(
+        ofOneChannel, new TargetResolver(resolver::recipientsOf), healthOfThisTick);
   }
 
   private static EventPublisherException unexpectedSendFailure(
@@ -395,10 +390,11 @@ public abstract class AbstractEventConsumer
     this.eventSubscription = alert;
     this.ledger = openLedger;
     this.destinationMap = loadDestinationsMap();
+    this.healthOfThisTick = new TickHealth();
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
     this.matching = null;
-    TickMemory.begin();
+    TickMemory.begin(stopSignal);
     try {
       doInit(context);
       if (kind() != ConsumerKind.SELF_DRIVEN) {
@@ -564,15 +560,17 @@ public abstract class AbstractEventConsumer
     return matching;
   }
 
-  // Publishers leave their outcome on the destination they sent through. The alert was read from
-  // its row a moment ago, so anything found here was set by this tick.
+  // A consumer that sends by itself leaves its outcome on the destination it sent through. What
+  // the tick sent target by target is summed per destination, and is what counts when both exist.
   private void reportDestinationStatus() {
     for (Map.Entry<UUID, Destination<ChangeEvent>> entry : destinationMap.entrySet()) {
       Object status = entry.getValue().getSubscriptionDestination().getStatusDetails();
-      if (status instanceof SubscriptionStatus reported) {
+      boolean sentByItself = !healthOfThisTick.covers(entry.getKey());
+      if (sentByItself && status instanceof SubscriptionStatus reported) {
         ledger.destinationStatus(entry.getKey(), reported);
       }
     }
+    healthOfThisTick.reportTo(ledger::destinationStatus);
   }
 
   private void closeDestinations() {

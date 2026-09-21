@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -75,6 +76,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to resolve mentions for entity {}", event.getEntityId(), e);
       return Collections.emptySet();
     }
@@ -111,6 +113,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       return Collections.emptySet();
 
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to resolve mentions for entity {}", entityId, e);
       return Collections.emptySet();
     }
@@ -168,6 +171,7 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
           }
         }
       } catch (Exception e) {
+        RecipientLookups.rethrowUnlessAbsent(e);
         LOG.warn("Failed to resolve entity link: {}", link.getEntityFQN(), e);
       }
     }

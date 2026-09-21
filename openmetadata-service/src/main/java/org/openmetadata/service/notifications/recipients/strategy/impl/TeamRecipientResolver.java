@@ -26,6 +26,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -75,6 +76,7 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       Team team = Entity.getEntityByName(Entity.TEAM, teamName, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to resolve team recipient for team {}", teamName, e);
       return null;
     }
@@ -110,6 +112,7 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
       Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
       return Recipient.fromTeam(team, destination);
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.error("Failed to resolve team recipient for team {}", teamId, e);
       return null;
     }

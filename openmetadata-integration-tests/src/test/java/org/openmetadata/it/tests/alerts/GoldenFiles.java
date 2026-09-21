@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Compares what a dispatch run produced with a checked-in file. Values that differ from run to
@@ -28,6 +29,8 @@ final class GoldenFiles {
   private static final Path DIRECTORY = Path.of("src", "test", "resources", "golden", "dispatch");
   private static final String GENERATE_PROPERTY = "golden.generate";
   private static final String TIME_TOKEN = "<time>";
+  private static final Pattern FAILING_STREAK =
+      Pattern.compile(", failing for \\d+ ticks since \\S+");
   private static final Set<String> WALL_CLOCK_FIELDS =
       Set.of("timestamp", "lastSuccessfulAt", "lastFailedAt", "nextAttempt", "updatedAt");
   private static final ObjectMapper MAPPER =
@@ -97,7 +100,8 @@ final class GoldenFiles {
   }
 
   private String withTokens(String text) {
-    String result = text;
+    // How long a destination has been failing depends on how many ticks a run was split into.
+    String result = FAILING_STREAK.matcher(text).replaceAll("");
     for (Map.Entry<String, String> token : sortedByLength()) {
       result = result.replace(token.getKey(), token.getValue());
     }

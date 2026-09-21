@@ -9,7 +9,7 @@
     "destination" : "<destination-0>",
     "status" : {
       "lastFailedAt" : "<time>",
-      "lastFailedReason" : "Internal Server Error",
+      "lastFailedReason" : "1 of 1 recipients failed. configured endpoint: Webhook delivery failed with HTTP 500: Internal Server Error",
       "lastFailedStatusCode" : 500,
       "nextAttempt" : "<time>",
       "status" : "awaitingRetry",
@@ -18,6 +18,8 @@
   }, {
     "destination" : "<destination-1>",
     "status" : {
+      "lastSuccessfulAt" : "<time>",
+      "nextAttempt" : "<time>",
       "status" : "active",
       "timestamp" : "<time>"
     }

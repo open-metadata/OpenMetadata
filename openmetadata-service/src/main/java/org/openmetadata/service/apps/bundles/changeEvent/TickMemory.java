@@ -1,7 +1,8 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import java.util.HashSet;
+import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * What one tick remembers and the next must not: the targets whose connection failed. A tick runs
@@ -12,12 +13,40 @@ public final class TickMemory {
 
   private static final ThreadLocal<TickMemory> OF_THIS_THREAD = new ThreadLocal<>();
 
-  private final Set<Object> unreachableTargets = new HashSet<>();
+  private static final Duration LONGEST_WAIT_WITHOUT_A_BUDGET = Duration.ofSeconds(30);
 
-  private TickMemory() {}
+  // Several of one event's targets may be sent to at the same time, each on a thread of its own.
+  private final Set<Object> unreachableTargets = ConcurrentHashMap.newKeySet();
+  private final TickStopSignal stopSignal;
+
+  private TickMemory(TickStopSignal stopSignal) {
+    this.stopSignal = stopSignal;
+  }
 
   static void begin() {
-    OF_THIS_THREAD.set(new TickMemory());
+    begin(null);
+  }
+
+  static void begin(TickStopSignal stopSignal) {
+    OF_THIS_THREAD.set(new TickMemory(stopSignal));
+  }
+
+  /** The memory of the tick running on this thread, for a thread that sends on its behalf. */
+  static TickMemory current() {
+    return OF_THIS_THREAD.get();
+  }
+
+  static void adopt(TickMemory ofTheTick) {
+    OF_THIS_THREAD.set(ofTheTick);
+  }
+
+  /** How long a send may still wait for an answer before the tick's budget is spent. */
+  public static Duration timeLeft() {
+    TickMemory memory = OF_THIS_THREAD.get();
+    boolean budgeted = memory != null && memory.stopSignal != null;
+    return budgeted
+        ? memory.stopSignal.timeLeft(LONGEST_WAIT_WITHOUT_A_BUDGET)
+        : LONGEST_WAIT_WITHOUT_A_BUDGET;
   }
 
   static void end() {

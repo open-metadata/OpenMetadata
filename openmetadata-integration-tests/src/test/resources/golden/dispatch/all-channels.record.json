@@ -40,7 +40,9 @@
   }, {
     "destination" : "<destination-4>",
     "status" : {
-      "status" : "active",
+      "lastFailedAt" : "<time>",
+      "lastFailedReason" : "Not attempted: the mail server is not enabled",
+      "status" : "failed",
       "timestamp" : "<time>"
     }
   } ],

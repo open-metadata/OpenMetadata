@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -29,20 +30,27 @@ public final class IsolatedSends {
     failures.throwIfAny(targets.size());
   }
 
-  private static <T> void attempt(T target, Send<T> send, Failures failures) {
+  /** Sends to one target and answers what went wrong, if anything did. */
+  public static <T> Optional<Exception> attemptOne(T target, Send<T> send) {
+    Exception failure = null;
     if (givenUpForThisTick(target)) {
-      failures.add(new IOException("Not attempted: unreachable earlier in this tick"));
+      failure = new IOException("Not attempted: unreachable earlier in this tick");
     } else {
       try {
         send.to(target);
       } catch (Exception e) {
         // Cause-agnostic on purpose: whatever one target throws must not cost the others.
-        failures.add(e);
+        failure = e;
         if (ConnectionFailures.neverReachedTheTarget(e)) {
           TickMemory.rememberUnreachable(target);
         }
       }
     }
+    return Optional.ofNullable(failure);
+  }
+
+  private static <T> void attempt(T target, Send<T> send, Failures failures) {
+    attemptOne(target, send).ifPresent(failures::add);
   }
 
   private static boolean givenUpForThisTick(Object target) {

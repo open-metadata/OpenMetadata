@@ -111,7 +111,7 @@ class DispatchIsolationTest {
   }
 
   @Test
-  void publishersAreClosedAfterEachTick() {
+  void publishersAreClosedAfterEachTick() throws Exception {
     Destination<ChangeEvent> first = destinationOfType(WEBHOOK);
     Destination<ChangeEvent> second = destinationOfType(WEBHOOK);
     doThrow(new IllegalStateException("already closed")).when(first).close();
@@ -175,13 +175,17 @@ class DispatchIsolationTest {
 
   @SuppressWarnings("unchecked")
   private static Destination<ChangeEvent> destinationOfType(
-      SubscriptionDestination.SubscriptionType type) {
+      SubscriptionDestination.SubscriptionType type) throws Exception {
     Destination<ChangeEvent> destination = mock(Destination.class);
     SubscriptionDestination stored =
         new SubscriptionDestination().withId(UUID.randomUUID()).withType(type);
     lenient().when(destination.getEnabled()).thenReturn(true);
     lenient().when(destination.getSubscriptionDestination()).thenReturn(stored);
     lenient().when(destination.requiresRecipients()).thenReturn(false);
+    lenient().when(destination.prepare(any())).thenCallRealMethod();
+    lenient().when(destination.prepare(any(), any())).thenCallRealMethod();
+    lenient().doCallRealMethod().when(destination).sendTo(any(), any());
+    lenient().when(destination.notAttemptedBecause()).thenCallRealMethod();
     return destination;
   }
 

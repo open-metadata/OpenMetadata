@@ -118,41 +118,12 @@ public class RecipientResolver {
     return allRecipients;
   }
 
-  /**
-   * Resolves recipients for a single destination by extracting the action config from the
-   * destination configuration.
-   */
+  // For callers that send to whoever could be found: a lookup that fails reaches nobody.
   private Set<Recipient> resolveRecipientsForDestination(
       ChangeEvent event, SubscriptionDestination destination) {
-
-    Set<Recipient> recipients = new HashSet<>();
-
+    Set<Recipient> recipients = Set.of();
     try {
-      SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
-
-      // 1. Get primary recipients based on category
-      RecipientResolutionStrategy strategy = STRATEGIES.get(category);
-      if (strategy == null) {
-        LOG.error("No strategy found for category {}", category);
-        return Set.of();
-      }
-
-      SubscriptionAction action = extractActionConfig(destination);
-      // All entities (including threads) use the same category-based strategy routing
-      // Use ChangeEvent method to safely handle deleted entities via payload snapshot
-      recipients.addAll(strategy.resolve(event, action, destination));
-
-      // 2. Add downstream recipients if enabled (only for INTERNAL categories)
-      if (Boolean.TRUE.equals(destination.getNotifyDownstream())
-          && category != SubscriptionDestination.SubscriptionCategory.EXTERNAL) {
-        LineageBasedDownstreamHandler downstreamHandler =
-            new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy);
-        Set<Recipient> downstreamRecipients =
-            downstreamHandler.resolveDownstreamRecipients(
-                action, destination, event, destination.getDownstreamDepth());
-        recipients.addAll(downstreamRecipients);
-      }
-
+      recipients = recipientsOf(event, destination);
     } catch (Exception e) {
       LOG.error(
           "Failed to resolve recipients for event {}-{}",
@@ -160,7 +131,43 @@ public class RecipientResolver {
           event.getEntityId(),
           e);
     }
+    return recipients;
+  }
 
+  /**
+   * The recipients of one destination for one event. A lookup that fails is thrown, so the caller
+   * can tell a destination nobody could be looked up for from one that reaches nobody.
+   */
+  public Set<Recipient> recipientsOf(ChangeEvent event, SubscriptionDestination destination) {
+    Set<Recipient> recipients = new HashSet<>();
+    SubscriptionDestination.SubscriptionCategory category = destination.getCategory();
+    RecipientResolutionStrategy strategy = STRATEGIES.get(category);
+    if (strategy == null) {
+      LOG.error("No strategy found for category {}", category);
+    } else {
+      SubscriptionAction action = extractActionConfig(destination);
+      recipients.addAll(strategy.resolve(event, action, destination));
+      recipients.addAll(downstreamRecipients(event, action, destination, strategy));
+    }
+    return recipients;
+  }
+
+  // Only for internal categories: an external destination names its receivers itself.
+  private Set<Recipient> downstreamRecipients(
+      ChangeEvent event,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      RecipientResolutionStrategy strategy) {
+    Set<Recipient> recipients = Set.of();
+    boolean wanted =
+        Boolean.TRUE.equals(destination.getNotifyDownstream())
+            && destination.getCategory() != SubscriptionDestination.SubscriptionCategory.EXTERNAL;
+    if (wanted) {
+      recipients =
+          new LineageBasedDownstreamHandler(LINEAGE_RESOLVERS, strategy)
+              .resolveDownstreamRecipients(
+                  action, destination, event, destination.getDownstreamDepth());
+    }
     return recipients;
   }
 

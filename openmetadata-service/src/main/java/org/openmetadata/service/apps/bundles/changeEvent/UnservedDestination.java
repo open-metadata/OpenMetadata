@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
+import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,11 @@ final class UnservedDestination implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients) {
     LOG.debug("Destination {} not attempted: {}", subscriptionDestination.getId(), reason());
+  }
+
+  @Override
+  public Optional<String> notAttemptedBecause() {
+    return Optional.of(reason());
   }
 
   @Override

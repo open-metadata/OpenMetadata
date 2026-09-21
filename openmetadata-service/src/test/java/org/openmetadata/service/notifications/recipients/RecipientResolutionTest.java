@@ -15,6 +15,7 @@ package org.openmetadata.service.notifications.recipients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
@@ -82,7 +84,7 @@ class RecipientResolutionTest {
               () ->
                   Entity.getEntity(
                       eq(Entity.TEAM), eq(TEAM_WITHOUT_CONTACT_ID), any(), eq(Include.NON_DELETED)))
-          .thenThrow(new IllegalStateException("team not found"));
+          .thenThrow(EntityNotFoundException.byMessage("team not found"));
 
       Set<Recipient> recipients =
           new TeamRecipientResolver()
@@ -91,6 +93,29 @@ class RecipientResolutionTest {
                   destination(SubscriptionType.EMAIL));
 
       assertEquals(Set.of(TEAM_EMAIL), emailsOf(recipients));
+    }
+  }
+
+  // A team that does not exist reaches nobody. A database that did not answer is a failure.
+  @Test
+  void lookupThatFailsIsToldApartFromATeamThatDoesNotExist() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TEAM), eq(TEAM_WITHOUT_CONTACT_ID), any(), eq(Include.NON_DELETED)))
+          .thenThrow(new IllegalStateException("the database did not answer"));
+
+      RecipientLookups.LookupFailedException failure =
+          assertThrows(
+              RecipientLookups.LookupFailedException.class,
+              () ->
+                  new TeamRecipientResolver()
+                      .resolve(
+                          List.of(TEAM_WITHOUT_CONTACT_ID), destination(SubscriptionType.EMAIL)));
+
+      assertEquals("the database did not answer", failure.getMessage());
     }
   }
 

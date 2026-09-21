@@ -65,24 +65,40 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       EventSubscription subscription,
       SubscriptionDestination destination,
       NotificationTemplate template) {
+    return format(renderWith(event, subscription, template), destination);
+  }
 
-    // Create deep copy of event to avoid modifying the original
+  /** The template that applies to the event, rendered to Markdown. No channel is involved yet. */
+  public EventContent.Rendered render(ChangeEvent event, EventSubscription subscription) {
+    return renderWith(event, subscription, resolveTemplate(event, subscription));
+  }
+
+  /** Markdown made once, in the format of the destination's channel. */
+  public NotificationMessage format(
+      EventContent.Rendered content, SubscriptionDestination destination) {
+    return rendererOf(destination).render(content.body(), content.subject());
+  }
+
+  // From a copy of the event, so no template helper can change what a webhook sends or what the
+  // delivered record stores.
+  private EventContent.Rendered renderWith(
+      ChangeEvent event, EventSubscription subscription, NotificationTemplate template) {
     ChangeEvent eventCopy = JsonUtils.deepCopy(event, ChangeEvent.class);
-
-    // Phase 1: Render Handlebars template to Markdown
     Map<String, Object> context = buildEventContext(eventCopy, subscription);
-    String markdownContent = templateProcessor.process(template.getTemplateBody(), context);
-    String markdownSubject = null;
-
+    String body = templateProcessor.process(template.getTemplateBody(), context);
+    String subject = null;
     if (template.getTemplateSubject() != null && !template.getTemplateSubject().isEmpty()) {
-      markdownSubject = templateProcessor.process(template.getTemplateSubject(), context);
+      subject = templateProcessor.process(template.getTemplateSubject(), context);
     }
+    return new EventContent.Rendered(body, subject);
+  }
 
-    // Phase 2: Convert Markdown to channel-specific format
-    ChannelRenderer renderer = rendererOf(destination);
-
-    // Let the renderer handle markdown parsing and conversion
-    return renderer.render(markdownContent, markdownSubject);
+  /** What a template may say about the server. Read from the settings, which a unit test lacks. */
+  protected Map<String, Object> serverSettings() {
+    Map<String, Object> settings = new HashMap<>();
+    settings.put("baseUrl", EmailUtil.getOMBaseURL());
+    settings.put("emailingEntity", EmailUtil.getSmtpSettings().getEmailingEntity());
+    return settings;
   }
 
   private ChannelRenderer rendererOf(SubscriptionDestination destination) {
@@ -114,9 +130,8 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       // Already a Map or POJO
       context.put("entity", rawEntity);
     }
-    context.put("baseUrl", EmailUtil.getOMBaseURL());
+    context.putAll(serverSettings());
     context.put("publisherName", getDisplayNameOrFqn(subscription));
-    context.put("emailingEntity", EmailUtil.getSmtpSettings().getEmailingEntity());
     return context;
   }
 

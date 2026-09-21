@@ -28,6 +28,16 @@ public final class TickStopSignal {
     return ServerStopping.isSet() || budgetHasPassed();
   }
 
+  /** At least a second, so a send made at the very end of a budget can still hear an answer. */
+  Duration timeLeft(Duration withoutABudget) {
+    Duration left = withoutABudget;
+    if (budget.isPositive()) {
+      long spent = nanoClock.getAsLong() - startedAtNanos;
+      left = Duration.ofNanos(Math.max(budget.toNanos() - spent, Duration.ofSeconds(1).toNanos()));
+    }
+    return left;
+  }
+
   boolean budgetHasPassed() {
     return budget.isPositive() && nanoClock.getAsLong() - startedAtNanos >= budget.toNanos();
   }

@@ -16,6 +16,7 @@ package org.openmetadata.service.notifications.recipients.context;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation.Builder;
 import jakarta.ws.rs.client.WebTarget;
+import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -47,8 +48,27 @@ import org.openmetadata.service.util.URLValidator;
 public final class WebhookRecipient extends Recipient {
   private final Webhook webhook;
 
+  private record Identity(URI endpoint, Map<String, String> queryParams) {}
+
   public WebhookRecipient(Webhook webhook) {
+    this(webhook, CONFIGURED);
+  }
+
+  public WebhookRecipient(Webhook webhook, String name) {
+    super(name);
     this.webhook = Objects.requireNonNull(webhook, "webhook cannot be null");
+  }
+
+  /**
+   * The endpoint as written, with the query parameters its configuration adds, which some
+   * endpoints route by. Nothing else is normalised, so no two endpoints that get separate
+   * messages today become one.
+   */
+  @Override
+  public Object identity() {
+    Map<String, String> queryParams =
+        CommonUtil.nullOrEmpty(webhook.getQueryParams()) ? Map.of() : webhook.getQueryParams();
+    return new Identity(webhook.getEndpoint(), Map.copyOf(queryParams));
   }
 
   /**
@@ -56,26 +76,10 @@ public final class WebhookRecipient extends Recipient {
    * subscriptions. Null when there is none or its endpoint is not an allowed URL.
    */
   public static WebhookRecipient ofProfile(
-      Profile profile, Function<SubscriptionConfig, Webhook> ofTheChannel) {
+      String name, Profile profile, Function<SubscriptionConfig, Webhook> ofTheChannel) {
     boolean hasSubscriptions = profile != null && profile.getSubscription() != null;
     Webhook webhook = hasSubscriptions ? ofTheChannel.apply(profile.getSubscription()) : null;
-    return isUsable(webhook) ? new WebhookRecipient(webhook) : null;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof WebhookRecipient that)) {
-      return false;
-    }
-    return Objects.equals(webhook.getEndpoint(), that.webhook.getEndpoint());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(webhook.getEndpoint());
+    return isUsable(webhook) ? new WebhookRecipient(webhook, name) : null;
   }
 
   /**

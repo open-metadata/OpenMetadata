@@ -16,12 +16,25 @@ import org.openmetadata.service.events.subscription.matching.MatcherModes;
 public record AlertingSettings(
     Duration tickTimeBudget,
     boolean skipUnreachableTargetWithinTick,
-    Function<AlertType, AlertMatcherMode> matcherMode) {
+    Function<AlertType, AlertMatcherMode> matcherMode,
+    Sending sending) {
+  /** How messages leave. The defaults are what the server did before each could be chosen. */
+  public record Sending(
+      boolean honourWebhookMethod, boolean awaitEmailOutcome, int targetSendConcurrency) {
+    public static final Sending AS_BEFORE = new Sending(false, false, 1);
+  }
 
   private static volatile AlertingSettings current = from(new AlertingConfiguration());
 
   public AlertingSettings(Duration tickTimeBudget, boolean skipUnreachableTargetWithinTick) {
-    this(tickTimeBudget, skipUnreachableTargetWithinTick, MatcherModes::of);
+    this(tickTimeBudget, skipUnreachableTargetWithinTick, MatcherModes::of, Sending.AS_BEFORE);
+  }
+
+  public AlertingSettings(
+      Duration tickTimeBudget,
+      boolean skipUnreachableTargetWithinTick,
+      Function<AlertType, AlertMatcherMode> matcherMode) {
+    this(tickTimeBudget, skipUnreachableTargetWithinTick, matcherMode, Sending.AS_BEFORE);
   }
 
   public static AlertingSettings current() {
@@ -34,8 +47,13 @@ public record AlertingSettings(
 
   public static AlertingSettings from(AlertingConfiguration configuration) {
     return new AlertingSettings(
-        Duration.ofSeconds(configuration.getTickTimeBudgetSeconds()),
-        configuration.isSkipUnreachableTargetWithinTick());
+            Duration.ofSeconds(configuration.getTickTimeBudgetSeconds()),
+            configuration.isSkipUnreachableTargetWithinTick())
+        .withSending(
+            new Sending(
+                configuration.isHonourWebhookMethod(),
+                configuration.isAwaitEmailOutcome(),
+                configuration.getTargetSendConcurrency()));
   }
 
   public boolean hasTimeBudget() {
@@ -43,7 +61,13 @@ public record AlertingSettings(
   }
 
   public AlertingSettings withMatcherMode(AlertMatcherMode mode) {
-    return new AlertingSettings(tickTimeBudget, skipUnreachableTargetWithinTick, alertType -> mode);
+    return new AlertingSettings(
+        tickTimeBudget, skipUnreachableTargetWithinTick, alertType -> mode, sending);
+  }
+
+  public AlertingSettings withSending(Sending howMessagesLeave) {
+    return new AlertingSettings(
+        tickTimeBudget, skipUnreachableTargetWithinTick, matcherMode, howMessagesLeave);
   }
 
   /** Alerts whose rules were written by hand have no plan, so the stored rules decide them. */

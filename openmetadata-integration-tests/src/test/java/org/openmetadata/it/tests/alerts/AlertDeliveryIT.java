@@ -91,6 +91,39 @@ class AlertDeliveryIT {
     }
   }
 
+  // Endpoints that route by query parameter are different addresses, and one address reached
+  // through two destinations is still one.
+  @Test
+  void endpointsThatRouteByQueryParameterEachReceiveTheEvent(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert =
+          AlertFixtures.tableAlert(
+              ns,
+              "routes_by_query",
+              null,
+              List.of(routedTo(receiver, "a"), routedTo(receiver, "b"), routedTo(receiver, "a")));
+      QuietAlert.settle(alert);
+
+      FixtureEvents.insert(
+          List.of(JsonUtils.pojoToJson(MatchingCorpus.events().get("table created"))));
+      DirectTick.run(alert);
+
+      List<String> routes =
+          receiver.received().stream().map(RecordingReceiver.Received::query).sorted().toList();
+      assertEquals(List.of("route=a", "route=b"), routes);
+    }
+  }
+
+  private static SubscriptionDestination routedTo(RecordingReceiver receiver, String route) {
+    return new SubscriptionDestination()
+        .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(
+            new Webhook()
+                .withEndpoint(URI.create(receiver.url("/routed")))
+                .withQueryParams(Map.of("route", route)));
+  }
+
   private static EventSubscription createWorkedExample(TestNamespace ns, String endpoint) {
     AlertFilteringInput triggers =
         new AlertFilteringInput()

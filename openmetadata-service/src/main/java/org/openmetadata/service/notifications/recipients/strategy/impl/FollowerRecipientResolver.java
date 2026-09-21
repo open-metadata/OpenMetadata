@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
+import org.openmetadata.service.notifications.recipients.RecipientLookups;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 
@@ -69,6 +70,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       EntityInterface entity = AlertsRuleEvaluator.getEntity(event);
       return resolveFollowersFromEntity(entity, destination);
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.warn(
           "Failed to resolve followers for event entity {} {}",
           event.getEntityType(),
@@ -97,6 +99,7 @@ public class FollowerRecipientResolver implements RecipientResolutionStrategy {
       return resolveFollowersFromEntity(entity, destination);
 
     } catch (Exception e) {
+      RecipientLookups.rethrowUnlessAbsent(e);
       LOG.warn("Failed to resolve followers for {} {}", entityType, entityId, e);
       return Collections.emptySet();
     }
