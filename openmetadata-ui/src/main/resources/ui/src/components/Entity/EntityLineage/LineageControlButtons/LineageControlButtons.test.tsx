@@ -16,7 +16,6 @@ import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLoca
 import LineageControlButtons from './LineageControlButtons';
 
 const mockNavigate = jest.fn();
-const mockToggleColumnView = jest.fn();
 const mockZoomIn = jest.fn();
 const mockZoomOut = jest.fn();
 const mockFitView = jest.fn();
@@ -29,13 +28,6 @@ const mockReactFlowInstance = {
   fitView: mockFitView,
   setCenter: mockSetCenter,
   getNodes: mockGetNodes,
-};
-
-const mockLineageProviderValues = {
-  activeLayer: [],
-  isEditMode: false,
-  expandAllColumns: false,
-  toggleColumnView: mockToggleColumnView,
 };
 
 const mockLineageState = {
@@ -58,12 +50,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   __esModule: true,
   default: jest.fn(() => ({ search: '' })),
-}));
-
-jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
-    ...mockLineageProviderValues,
-  })),
 }));
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
