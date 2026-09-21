@@ -765,7 +765,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         category: TaskCategory.Approval,
         type: TaskEntityType.RequestApproval,
         aboutEntity: fqn,
-        limit: 50,
+        limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees',
       });
 

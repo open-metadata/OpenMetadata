@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
@@ -865,7 +866,7 @@ describe('Test GlossaryTermTab component', () => {
             category: 'Approval',
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
-            limit: 50,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -884,7 +885,7 @@ describe('Test GlossaryTermTab component', () => {
             category: 'Approval',
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
-            limit: 50,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
