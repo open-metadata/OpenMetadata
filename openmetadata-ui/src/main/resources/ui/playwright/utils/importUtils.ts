@@ -1042,6 +1042,10 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
+  // csvAsyncJobs is per-user and every worker is admin, so another worker's job
+  // finishing re-expands the tray over this grid mid-fill.
+  await suppressCsvJobsTray(page);
+
   await selectActiveRowCellByColumn(page, 'name');
   if (isBulkEdit) {
     await expect(
