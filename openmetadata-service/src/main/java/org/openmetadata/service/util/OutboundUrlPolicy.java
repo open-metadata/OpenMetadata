@@ -25,6 +25,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 
@@ -91,7 +92,7 @@ public class OutboundUrlPolicy {
     if (url == null) {
       return "Invalid URL format";
     }
-    String scheme = url.getProtocol().toLowerCase();
+    String scheme = url.getProtocol().toLowerCase(Locale.ROOT);
     if (!ALLOWED_SCHEMES.contains(scheme)) {
       return "URL scheme not allowed: " + scheme;
     }
@@ -99,7 +100,7 @@ public class OutboundUrlPolicy {
     if (host == null || host.trim().isEmpty()) {
       return "URL must have a valid host";
     }
-    return hostRejection(host.toLowerCase(), rejectUnresolvable);
+    return hostRejection(host.toLowerCase(Locale.ROOT), rejectUnresolvable);
   }
 
   private String hostRejection(String host, boolean rejectUnresolvable) {

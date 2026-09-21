@@ -26,6 +26,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -379,7 +380,7 @@ public class SubscriptionUtil {
       if (oauth2Active && "Authorization".equalsIgnoreCase(name)) {
         continue;
       }
-      if (PROTECTED_HEADERS.contains(name.toLowerCase())) {
+      if (PROTECTED_HEADERS.contains(name.toLowerCase(Locale.ROOT))) {
         LOG.warn("Dropping protected header {} from webhook request", name);
         continue;
       }
