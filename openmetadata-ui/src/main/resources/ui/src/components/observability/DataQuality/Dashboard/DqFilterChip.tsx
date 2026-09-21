@@ -38,8 +38,10 @@ const DqFilterChip = ({
   if (filter.type === 'glossaryTerm') {
     return (
       <GlossaryTermPicker
-        data-testid={`search-dropdown-${filter.key}`}
+        commitMode="staged"
+        data-testid={`search-dropdown-${filter.searchKey}`}
         label={filter.label}
+        triggerVariant="button"
         value={fqnsToGlossaryTags(filter.selectedFqns)}
         onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
       />

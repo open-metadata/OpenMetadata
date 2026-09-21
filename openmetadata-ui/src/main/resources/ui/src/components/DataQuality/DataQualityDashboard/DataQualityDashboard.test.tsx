@@ -116,9 +116,9 @@ jest.mock(
   () =>
     jest.fn().mockImplementation(({ label, onChange }) => (
       <button
-        data-testid={`search-dropdown-${label}`}
+        data-testid="search-dropdown-glossaryTerms"
         onClick={() => onChange([{ tagFQN: 'tag1' }])}>
-        GlossaryTermPicker
+        {label}
       </button>
     ))
 );
@@ -335,7 +335,7 @@ describe('DataQualityDashboard', () => {
       screen.getByTestId('search-dropdown-label.data-product')
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('search-dropdown-label.glossary-term')
+      screen.getByTestId('search-dropdown-glossaryTerms')
     ).toBeInTheDocument();
     expect(screen.getByTestId('date-picker-menu')).toBeInTheDocument();
     expect(
@@ -608,9 +608,7 @@ describe('DataQualityDashboard', () => {
     it('should handle glossary term filter changes', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId('search-dropdown-glossaryTerms'));
 
       await waitFor(() => {
         // Verify glossary terms are included in tag filters for widgets
@@ -629,9 +627,7 @@ describe('DataQualityDashboard', () => {
 
       // Apply both tag and glossary term filters
       fireEvent.click(screen.getByTestId('search-dropdown-label.tag'));
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId('search-dropdown-glossaryTerms'));
 
       await waitFor(() => {
         // Should merge both filter types into tags array
@@ -815,7 +811,7 @@ describe('DataQualityDashboard', () => {
         screen.queryByTestId('search-dropdown-label.data-product')
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId('search-dropdown-glossaryTerms')
       ).not.toBeInTheDocument();
     });
 
@@ -1031,7 +1027,7 @@ describe('DataQualityDashboard', () => {
         screen.getByTestId('search-dropdown-label.tier')
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId('search-dropdown-glossaryTerms')
       ).toBeInTheDocument();
     });
 
@@ -1041,7 +1037,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId('search-dropdown-glossaryTerms')
       ).not.toBeInTheDocument();
       expect(
         screen.getByTestId('user-team-selectable-list')
@@ -1069,7 +1065,7 @@ describe('DataQualityDashboard', () => {
         screen.getByTestId('search-dropdown-label.tag')
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId('search-dropdown-glossaryTerms')
       ).toBeInTheDocument();
     });
 
@@ -1088,7 +1084,7 @@ describe('DataQualityDashboard', () => {
         screen.getByTestId('search-dropdown-label.tag')
       ).toBeInTheDocument();
       expect(
-        screen.getByTestId('search-dropdown-label.glossary-term')
+        screen.getByTestId('search-dropdown-glossaryTerms')
       ).toBeInTheDocument();
     });
 
@@ -1207,7 +1203,7 @@ describe('DataQualityDashboard', () => {
         screen.queryByTestId('search-dropdown-label.tier')
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId('search-dropdown-label.glossary-term')
+        screen.queryByTestId('search-dropdown-glossaryTerms')
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('search-dropdown-label.tag')
@@ -1355,9 +1351,7 @@ describe('DataQualityDashboard', () => {
     it('glossaryTerms filter change merges into tags for area chart widgets', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-label.glossary-term')
-      );
+      fireEvent.click(screen.getByTestId('search-dropdown-glossaryTerms'));
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(

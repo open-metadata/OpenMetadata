@@ -139,9 +139,11 @@ const DataQualityDashboard = ({
             if (filter.type === 'glossaryTerm') {
               return (
                 <GlossaryTermPicker
-                  data-testid={`search-dropdown-${filter.label}`}
+                  commitMode="staged"
+                  data-testid={`search-dropdown-${filter.searchKey}`}
                   key={filter.key}
                   label={filter.label}
+                  triggerVariant="button"
                   value={fqnsToGlossaryTags(filter.selectedFqns)}
                   onChange={(terms) =>
                     filter.onChange(glossaryTagsToFqns(terms))

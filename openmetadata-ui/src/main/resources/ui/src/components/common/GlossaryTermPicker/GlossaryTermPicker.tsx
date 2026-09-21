@@ -36,6 +36,7 @@ type InheritedTreeSelectProps = Pick<
   | 'isOpen'
   | 'onOpenChange'
   | 'renderTrigger'
+  | 'triggerVariant'
   | 'label'
   | 'placeholder'
   | 'required'
@@ -64,6 +65,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
   isOpen,
   onOpenChange,
   renderTrigger,
+  triggerVariant,
   label,
   placeholder,
   required = false,
@@ -170,6 +172,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.glossary-term-plural'),
       })}
+      triggerVariant={triggerVariant}
       value={selectedValue}
       onChange={handleChange}
       onOpenChange={onOpenChange}
