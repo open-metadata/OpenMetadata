@@ -23,7 +23,9 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
+  escapeESReservedCharacters,
   getFirstRowColumnLink,
+  openClassificationTagPicker,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -571,18 +573,10 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
 
     await expect(addButton.or(editButton)).toBeVisible({ timeout: 15000 });
 
-    if (await addButton.isVisible()) {
-      await addButton.click();
-    } else {
-      await editButton.click();
-    }
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, addButton.or(editButton));
 
     const addSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(testTag.data.name)}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(testTag.data.name))}*`
     );
     await page
       .getByTestId('classification-tag-picker-search')

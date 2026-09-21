@@ -36,7 +36,9 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import {
+  escapeESReservedCharacters,
   fillDeleteConfirmationIfPresent,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -314,15 +316,14 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add tag button in tags container
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      await expect(
-        page.getByTestId('classification-tag-picker-search')
-      ).toBeVisible();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search for a tag
       const tagSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters('Personal'))}*`
       );
       await page
         .getByTestId('classification-tag-picker-search')

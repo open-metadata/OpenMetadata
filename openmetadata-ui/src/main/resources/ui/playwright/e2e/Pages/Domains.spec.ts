@@ -3317,11 +3317,6 @@ test.describe('Domain Tree View Functionality', () => {
         page.getByTestId('classification-tag-picker-search')
       ).toBeVisible();
 
-      // const searchTagResponse = page.waitForResponse(
-      //   `/api/v1/search/query?q=*${encodeURIComponent(
-      //     testTag.responseData.fullyQualifiedName
-      //   )}*`
-      // );
       const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&

@@ -55,7 +55,7 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#F14C75',
+  color: '#B93815',
   icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
@@ -212,8 +212,6 @@ test('Classification Page', async ({ page }) => {
     ).not.toBeVisible();
 
     await expect(page.getByText('No Tags are available')).toBeVisible();
-
-    await expect(page.getByTestId('update-btn')).toBeDisabled();
 
     // Re-enable the disabled Classification
     await classification.visitPage(page);

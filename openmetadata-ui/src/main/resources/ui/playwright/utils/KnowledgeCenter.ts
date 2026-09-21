@@ -315,10 +315,10 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagsTrigger = modal.locator('[data-testid^="search-dropdown-"]');
+  const tagsTrigger = modal.getByTestId('tags-container');
   await tagsTrigger.click();
 
-  const searchInput = modal.getByTestId('search-input');
+  const searchInput = page.getByTestId('drop-down-menu').getByTestId('search-input');
   await searchInput.waitFor({ state: 'visible' });
   await searchInput.fill(knowledgePageQuickLink.tag);
 
@@ -327,8 +327,7 @@ export const updateQuickLink = async (
     .getByTestId(knowledgePageQuickLink.tagFqn)
     .click();
 
-  await tagsTrigger.click();
-
+  await page.keyboard.press('Escape');
   await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {

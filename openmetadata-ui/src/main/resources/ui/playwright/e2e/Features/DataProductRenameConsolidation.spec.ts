@@ -33,7 +33,11 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -267,14 +271,13 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
 
       // Step 2: Add a tag (this triggers consolidation logic)
       await page.getByTestId('documentation').click();
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      await expect(
-        page.getByTestId('classification-tag-picker-search')
-      ).toBeVisible();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       const tagSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(tag.data.name)}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag.data.name))}*`
       );
       await page
         .getByTestId('classification-tag-picker-search')
