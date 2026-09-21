@@ -1659,6 +1659,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return runIngestionPipeline(uriInfo, ingestionPipeline, service, RunOptions.NONE);
   }
 
+  /**
+   * For callers running the pipeline against its own service. The explicit-service overload stays
+   * for the callers that run a pipeline against something else - a data contract's test suite, or
+   * an app whose ingestion runner was set on the service first.
+   */
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, RunOptions options) {
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    return runIngestionPipeline(uriInfo, ingestionPipeline, service, options);
+  }
+
   public PipelineServiceClientResponse runIngestionPipeline(
       UriInfo uriInfo,
       IngestionPipeline ingestionPipeline,

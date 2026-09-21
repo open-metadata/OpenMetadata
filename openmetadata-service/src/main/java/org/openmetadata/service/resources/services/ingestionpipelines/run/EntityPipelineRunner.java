@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -35,8 +34,8 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineSecrets;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineTriggers;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
@@ -87,7 +86,7 @@ public class EntityPipelineRunner {
     IngestionPipeline pipeline =
         runnablePipelineAmong(resolver.pipelinesOwning(target, pipelineType))
             .orElseThrow(() -> noRunnablePipeline(target, pipelineType));
-    authorizeTrigger(securityContext, pipeline);
+    IngestionPipelineTriggers.authorizeTrigger(authorizer, limits, securityContext, pipeline);
     SourceConfigScoper scoper = SCOPERS.get(pipelineType);
     scoper.checkScopable(pipeline);
     RunOptions options = RunOptions.withSourceConfigOverride(scoper.sourceConfigOverride(target));
@@ -145,19 +144,6 @@ public class EntityPipelineRunner {
         new ResourceContext<>(entityType, target.getId(), null));
   }
 
-  // Same checks as the pipeline's own /trigger, so running it for one entity is never a way around
-  // a policy that withholds Trigger on it, or around the limits on running it.
-  private void authorizeTrigger(SecurityContext securityContext, IngestionPipeline pipeline) {
-    OperationContext trigger =
-        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.TRIGGER);
-    authorizer.authorize(
-        securityContext,
-        trigger,
-        new ResourceContext<>(Entity.INGESTION_PIPELINE, pipeline.getId(), null));
-    limits.enforceLimits(
-        securityContext, new CreateResourceContext<>(Entity.INGESTION_PIPELINE, pipeline), trigger);
-  }
-
   // As the pipeline's own /trigger does: the runner needs the decrypted connection and the bot's
   // server connection, and a caller without ViewAll on the pipeline does not get its source config.
   // The scope is unaffected, as it travels in the run options rather than in that config.
@@ -168,8 +154,6 @@ public class EntityPipelineRunner {
       RunOptions options) {
     IngestionPipelineSecrets.decryptOrNullify(
         authorizer, securityContext, repository.getOpenMetadataApplicationConfig(), pipeline, true);
-    ServiceEntityInterface service =
-        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return repository.runIngestionPipeline(uriInfo, pipeline, service, options);
+    return repository.runIngestionPipeline(uriInfo, pipeline, options);
   }
 }

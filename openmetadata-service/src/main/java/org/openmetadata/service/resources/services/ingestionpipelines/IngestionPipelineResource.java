@@ -86,6 +86,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -112,7 +113,6 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
@@ -841,7 +841,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    return triggerPipelineInternal(id, uriInfo, securityContext, null);
+    return triggerPipelineInternal(id, uriInfo, securityContext);
   }
 
   @POST
@@ -1595,31 +1595,13 @@ public class IngestionPipelineResource
   }
 
   public PipelineServiceClientResponse triggerPipelineInternal(
-      UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    if (pipelineServiceClient == null) {
-      return new PipelineServiceClientResponse()
-          .withCode(200)
-          .withReason("Pipeline Client Disabled");
-    }
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
-    CreateResourceContext<IngestionPipeline> createResourceContext =
-        new CreateResourceContext<>(entityType, ingestionPipeline);
-    limits.enforceLimits(securityContext, createResourceContext, operationContext);
-    if (CommonUtil.nullOrEmpty(botName)) {
-      // Use Default Ingestion Bot
-      ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
-    } else {
-      ingestionPipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
-    }
+      UUID id, UriInfo uriInfo, SecurityContext securityContext) {
+    // FIELD_OWNERS is read because both checks in authorizeTrigger can be conditioned on owners.
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, getFields(FIELD_OWNERS));
+    IngestionPipelineTriggers.authorizeTrigger(
+        authorizer, limits, securityContext, ingestionPipeline);
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    return repository.runIngestionPipeline(uriInfo, ingestionPipeline, service);
+    return repository.runIngestionPipeline(uriInfo, ingestionPipeline, RunOptions.NONE);
   }
 
   private void decryptOrNullify(
