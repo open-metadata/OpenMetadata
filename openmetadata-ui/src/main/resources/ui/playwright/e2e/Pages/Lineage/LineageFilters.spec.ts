@@ -138,7 +138,11 @@ test.describe('Lineage Filters', () => {
     );
 
     await lineageEntity.create(apiContext);
-    await Promise.all(entities.map((entity) => entity.create(apiContext)));
+    // Sequential: 15 entities each also create their own service, and firing
+    // them in parallel makes the server reset connections (socket hang up).
+    for (const entity of entities) {
+      await entity.create(apiContext);
+    }
 
     await connectEdgeBetweenNodesViaAPI(
       apiContext,
@@ -483,6 +487,8 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -685,6 +691,8 @@ test.describe('Lineage Filters', () => {
   test('Verify Impact Analysis service type filter selection', async ({
     page,
   }) => {
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
