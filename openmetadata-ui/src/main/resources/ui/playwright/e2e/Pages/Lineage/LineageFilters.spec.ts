@@ -42,6 +42,7 @@ import {
   rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
+  performZoomOut,
 } from '../../../utils/lineage';
 import { waitForSearchIndexed } from '../../../utils/polling';
 import { test } from '../../fixtures/pages';
@@ -1042,17 +1043,18 @@ test.describe('Lineage Filters', () => {
     const searchSelect = page.getByTestId('lineage-search');
     await expect(searchSelect).toBeVisible();
     const topicEntity = entities[1];
-
+    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
+    await performZoomOut(page);
+    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    
     await searchSelect.click();
     await page
       .getByTestId('lineage-search')
       .getByRole('combobox')
       .fill(topicEntity.entity.name);
 
-    const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
     await page.getByTestId(`option-${topicFqn}`).click();
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-
+   
     await page.locator('.lineage-entity-panel').waitFor();
     await page
       .getByTestId('entity-summary-panel-container')
