@@ -291,18 +291,9 @@ public class AlertsRuleEvaluator {
       return true;
     }
     TestCase testCase = (TestCase) getEntity(changeEvent);
-    String parentFqn = resolveParentTableFqn(testCase);
-    return parentFqn != null && tableFqns.contains(parentFqn);
-  }
-
-  private String resolveParentTableFqn(TestCase testCase) {
-    if (testCase.getEntityFQN() != null) {
-      return testCase.getEntityFQN();
-    }
-    if (testCase.getEntityLink() != null) {
-      return MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN();
-    }
-    return null;
+    // The link's entity, not entityFQN, which is <table>.<column> for a column-level test.
+    return tableFqns.contains(
+        MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
   }
 
   @Function(
