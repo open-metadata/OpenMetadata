@@ -87,7 +87,7 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     'ask-domain-scope__card tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-left',
     isActiveScope
       ? 'tw:border-brand tw:bg-brand-primary'
-      : 'tw:border-secondary tw:bg-primary tw:hover:bg-secondary'
+      : 'tw:border-secondary tw:bg-surface tw:hover:bg-secondary'
   );
 
   const cardInner = (

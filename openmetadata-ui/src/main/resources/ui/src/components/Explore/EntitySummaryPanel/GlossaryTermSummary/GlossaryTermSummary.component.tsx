@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
-import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
@@ -33,7 +32,6 @@ function GlossaryTermSummary({
   isLoading,
 }: GlossaryTermSummaryProps) {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [selectedData, setSelectedData] = useState<GlossaryTerm>();
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(() => {
@@ -98,8 +96,7 @@ function GlossaryTermSummary({
             {reviewers.length > 0 ? (
               <Owner
                 isCompactView={false}
-                owners={toOwnersWithHref(reviewers)}
-                renderOwnerContent={renderOwnerContent}
+                owners={reviewers}
                 showLabel={false}
               />
             ) : (
