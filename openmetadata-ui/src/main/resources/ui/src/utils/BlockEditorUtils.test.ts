@@ -302,6 +302,74 @@ please contact the support team <test@test.com>.
     expect(isHTMLString(content)).toBe(true);
   });
 
+  it('should return false for an indented HTML table example', () => {
+    // Markdown's third code form. `DOMParser` parses the `<table>` into a
+    // real element exactly as it does inside a fence, so the indented block
+    // has to be recognised too.
+    const markdown = [
+      'Example:',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should return false for a tab-indented HTML list example', () => {
+    const markdown = ['Example:', '', '\t<ul><li>one</li></ul>'].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should return false for a multi-line indented example', () => {
+    // The block runs on through its own blank lines until a line that is
+    // neither indented nor blank.
+    const markdown = [
+      'Example:',
+      '',
+      '    <ul>',
+      '      <li>one</li>',
+      '',
+      '      <li>two</li>',
+      '    </ul>',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should return true for pretty-printed HTML, not read it as indented code', () => {
+    // Indentation in serialized editor output is pretty printing. Reading it
+    // as a code block would strip the document's own markup.
+    const html = [
+      '<div>',
+      '',
+      '    <ul>',
+      '      <li>one</li>',
+      '    </ul>',
+      '',
+      '</div>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should return true for an indented line continuing a paragraph', () => {
+    // No blank line before it, so it is a continuation rather than a block.
+    const html = ['<p>Intro</p>', '    <ul><li>one</li></ul>'].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should return true for an indented snippet with no prose around it', () => {
+    // Ambiguous by construction: with nothing around it, a lone indented
+    // block is equally a code example and pretty-printed markup, and no
+    // amount of parsing separates the two. It resolves to HTML, like the
+    // complex-HTML case above — a code example in a real description has
+    // prose introducing it, and that prose is what marks the document as
+    // markdown.
+    expect(isHTMLString('    <ul><li>one</li></ul>')).toBe(true);
+  });
+
   it('should not misread markdown characters in attributes as markdown', () => {
     expect(
       isHTMLString('<p><a href="https://x.dev/a__b__c">link</a></p>')
@@ -1354,6 +1422,22 @@ describe('getHtmlStringFromMarkdownString: HTML code examples', () => {
       '```html',
       '<table><tr><td>Cell</td></tr></table>',
       '```',
+    ].join('\n');
+
+    const result = getHtmlStringFromMarkdownString(markdown);
+
+    expect(result).toContain('<pre>');
+    expect(result).toContain('&lt;table&gt;');
+    expect(result).not.toContain('<table>');
+  });
+});
+
+describe('getHtmlStringFromMarkdownString: indented code examples', () => {
+  it('should render an indented HTML table example as code, not as a table', () => {
+    const markdown = [
+      'Example:',
+      '',
+      '    <table><tr><td>Cell</td></tr></table>',
     ].join('\n');
 
     const result = getHtmlStringFromMarkdownString(markdown);
