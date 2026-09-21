@@ -283,7 +283,9 @@ const OptionRow = ({
               {iconNode}
             </span>
           )}
-          <Typography className="not-prose tw:grow tw:truncate" title={optionText(option)}>
+          <Typography
+            className="not-prose tw:grow tw:truncate"
+            title={optionText(option)}>
             {option.label}
           </Typography>
           {!hideCounts && option.count !== undefined && (
@@ -788,7 +790,10 @@ const FilterSelect = ({
 
           {isEmpty && (
             <div className="tw:px-4 tw:py-2 tw:text-center">
-              <Typography className="not-prose tw:text-tertiary" size="text-xs">
+              <Typography
+                className="not-prose"
+                color="secondary"
+                size="text-xs">
                 {emptyState ?? t('label.no-data-found')}
               </Typography>
             </div>
@@ -839,7 +844,8 @@ const FilterSelect = ({
           {showStatusFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
               <Typography
-                className="not-prose tw:text-tertiary"
+                className="not-prose"
+                color="secondary"
                 data-testid="selected-count"
                 size="text-xs"
                 weight="regular">
