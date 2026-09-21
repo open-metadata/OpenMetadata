@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isEmpty, isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
@@ -35,6 +35,7 @@ import {
   transitionIncident,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import type { ResolveTask } from '../../../../rest/tasksAPI';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
@@ -82,6 +83,7 @@ export interface UseTestCaseIncidentHeaderResult {
   canAddMultipleTeamOwner: boolean;
   handleSeverityUpdate: (severity?: Severities) => Promise<void>;
   handleAssigneeUpdate: (assignee?: EntityReference[]) => Promise<void>;
+  handleAcknowledgeIncident: () => Promise<void>;
   handleDomainUpdate: (
     selectedDomain: EntityReference | EntityReference[]
   ) => Promise<void>;
@@ -167,55 +169,72 @@ export const useTestCaseIncidentHeader = ({
     }
   };
 
-  const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
-    setTestCaseStatusData(data);
-    updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
-  };
+  const onIncidentStatusUpdate = useCallback(
+    (data: TestCaseResolutionStatus) => {
+      setTestCaseStatusData(data);
+      updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
+    },
+    [testCaseResolutionStatus, updateTestCaseIncidentStatus]
+  );
+
+  // The task transition returns the task, not the resolution status the header
+  // renders, so the new status is read back before it is published.
+  const applyIncidentTransition = useCallback(
+    async (request: ResolveTask) => {
+      if (isDeleted || isUndefined(testCaseStatusData)) {
+        return;
+      }
+
+      const taskId = testCaseStatusData.stateId;
+      if (!taskId) {
+        return;
+      }
+
+      try {
+        await transitionIncident(taskId, request);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const latest = refreshed?.data?.[0];
+        if (latest) {
+          onIncidentStatusUpdate(latest);
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [isDeleted, testCaseStatusData, onIncidentStatusUpdate]
+  );
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isDeleted || isUndefined(testCaseStatusData)) {
-      return;
-    }
-
-    const taskId = testCaseStatusData.stateId;
-    if (!taskId) {
-      return;
-    }
-
     const assigneeData = assignee?.[0];
     const transitionId =
-      testCaseStatusData.testCaseResolutionStatusType ===
+      testCaseStatusData?.testCaseResolutionStatusType ===
       TestCaseResolutionStatusTypes.Assigned
         ? 'reassign'
         : 'assign';
 
-    try {
-      await transitionIncident(taskId, {
-        transitionId,
-        payload: assigneeData
-          ? {
-              assignees: [
-                {
-                  id: assigneeData.id,
-                  type: assigneeData.type ?? 'user',
-                  name: assigneeData.name,
-                  fullyQualifiedName:
-                    assigneeData.fullyQualifiedName ?? assigneeData.name,
-                  displayName: assigneeData.displayName,
-                },
-              ],
-            }
-          : undefined,
-      });
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        onIncidentStatusUpdate(latest);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
+    await applyIncidentTransition({
+      transitionId,
+      payload: assigneeData
+        ? {
+            assignees: [
+              {
+                id: assigneeData.id,
+                type: assigneeData.type ?? 'user',
+                name: assigneeData.name,
+                fullyQualifiedName:
+                  assigneeData.fullyQualifiedName ?? assigneeData.name,
+                displayName: assigneeData.displayName,
+              },
+            ],
+          }
+        : undefined,
+    });
   };
+
+  const handleAcknowledgeIncident = useCallback(
+    () => applyIncidentTransition({ transitionId: 'ack' }),
+    [applyIncidentTransition]
+  );
 
   const fetchTestCaseResolution = async (id: string) => {
     try {
@@ -386,6 +405,7 @@ export const useTestCaseIncidentHeader = ({
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,
     handleAssigneeUpdate,
+    handleAcknowledgeIncident,
     handleDomainUpdate,
     onIncidentStatusUpdate,
   };

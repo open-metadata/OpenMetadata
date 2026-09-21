@@ -327,6 +327,27 @@ describe('useTestCaseIncidentHeader', () => {
     ).toHaveBeenCalled();
   });
 
+  it('handleAcknowledgeIncident should ack the incident and publish the new status', async () => {
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleAcknowledgeIncident();
+    });
+
+    expect(transitionIncident).toHaveBeenCalledWith(
+      MOCK_TEST_CASE_INCIDENT.data[0].stateId,
+      { transitionId: 'ack' }
+    );
+    expect(result.current.testCaseStatusData).toEqual(
+      MOCK_TEST_CASE_INCIDENT.data[0]
+    );
+    expect(
+      mockUseActivityFeedProviderValue.updateTestCaseIncidentStatus
+    ).toHaveBeenCalled();
+  });
+
   it('handleDomainUpdate should patch the test case domains', async () => {
     const { result } = renderIncidentHeaderHook();
 

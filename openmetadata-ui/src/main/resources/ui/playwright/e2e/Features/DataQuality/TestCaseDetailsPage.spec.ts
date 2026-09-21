@@ -16,6 +16,7 @@ import { escapeRegExp } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   openTestCaseDetailsPage,
@@ -332,6 +333,114 @@ test.describe(
           /\/observability\/test-case\/[^/]+\/test-case-results/
         );
         await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+      });
+    });
+  }
+);
+
+test.describe(
+  'Test Case Details Page - Incident strip',
+  { tag: ['@Features', '@Observability'] },
+  () => {
+    let failedTable!: TableClass;
+    let failedTestCase!: { name: string; fullyQualifiedName: string };
+
+    test.beforeAll(
+      'Create a test case whose failed run opens an incident',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        failedTable = new TableClass();
+        await failedTable.create(apiContext);
+        const testCase = await failedTable.createTestCase(apiContext);
+        failedTestCase = {
+          name: testCase.name as string,
+          fullyQualifiedName: testCase.fullyQualifiedName as string,
+        };
+
+        const failedTimestamp = getCurrentMillis();
+        await failedTable.addTestCaseResult(
+          apiContext,
+          failedTestCase.fullyQualifiedName,
+          {
+            result: 'Found rowCount=2 vs. the expected range 12 to 34',
+            testCaseStatus: 'Failed',
+            timestamp: failedTimestamp,
+          }
+        );
+
+        // The incident is opened asynchronously by the server once the failed
+        // result lands, so the strip has nothing to render until it exists.
+        await expect
+          .poll(
+            async () => {
+              const response = await apiContext.get(
+                `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=${
+                  failedTimestamp - 60_000
+                }&endTs=${failedTimestamp + 60_000}`
+              );
+              const { data } = await response.json();
+
+              return Boolean(
+                data?.some(
+                  (incident: {
+                    testCaseReference?: { fullyQualifiedName?: string };
+                  }) =>
+                    incident.testCaseReference?.fullyQualifiedName ===
+                    failedTestCase.fullyQualifiedName
+                )
+              );
+            },
+            { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+          )
+          .toBe(true);
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await failedTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('acknowledges the incident from the failed run banner', async ({
+      page,
+    }) => {
+      await enableAiAppMode(page);
+      await openTestCaseDetailsPage(page, failedTestCase.fullyQualifiedName);
+
+      const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+      const strip = page.getByTestId('test-case-last-run-incident');
+      const acknowledge = strip.getByTestId('acknowledge-incident-button');
+      const headerStatus = page.getByTestId(`${failedTestCase.name}-status`);
+
+      await test.step('The strip carries the reason and a new incident', async () => {
+        await expect(banner).toContainText(
+          'Found rowCount=2 vs. the expected range 12 to 34'
+        );
+        await expect(strip).toBeVisible();
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'New'
+        );
+        await expect(acknowledge).toBeVisible();
+      });
+
+      await test.step('Acknowledge updates the strip and the header chip', async () => {
+        const transition = page.waitForResponse(
+          (response) =>
+            /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(response.url()) &&
+            response.request().method() === 'POST'
+        );
+        await acknowledge.click();
+        await transition;
+
+        await expect(strip.getByTestId('test-case-incident-status')).toHaveText(
+          'Acknowledged'
+        );
+        await expect(acknowledge).toBeHidden();
+        await expect(headerStatus).toContainText('Ack');
       });
     });
   }

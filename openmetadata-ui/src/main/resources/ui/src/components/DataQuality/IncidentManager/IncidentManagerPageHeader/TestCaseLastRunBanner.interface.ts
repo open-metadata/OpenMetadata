@@ -27,8 +27,10 @@ import type {
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
+  hasEditStatusPermission?: boolean;
   incidentTask: Task | null;
   nextRunTimestamp?: number;
+  onAcknowledge?: () => Promise<void>;
   parameterValues?: TestCaseParameterValue[];
   testCaseResult?: TestCaseResult;
   testCaseStatus?: TestCaseStatus;
@@ -44,10 +46,12 @@ export interface LastRunBannerLayoutProps {
 }
 
 export interface IncidentDetailsProps {
+  canAcknowledge?: boolean;
   config: StatusConfig;
   description?: string;
   incidentId?: string;
   incidentLink: TaskLinkInfo | null;
+  onAcknowledge?: () => Promise<void>;
   statusConfig?: IncidentStatusConfig;
 }
 

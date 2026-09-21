@@ -138,6 +138,9 @@ const IncidentManagerDetailPage = ({
                   className="tw:px-4 tw:pt-4"
                   data-testid="test-case-last-run-banner-tab-container">
                   <TestCaseLastRunBanner
+                    hasEditStatusPermission={
+                      incidentHeaderData.hasEditStatusPermission
+                    }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
                     parameterValues={testCase?.parameterValues}
@@ -145,6 +148,7 @@ const IncidentManagerDetailPage = ({
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                    onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
                   />
                 </div>
               )}
@@ -154,6 +158,8 @@ const IncidentManagerDetailPage = ({
       })),
     [
       dimensionKey,
+      incidentHeaderData.handleAcknowledgeIncident,
+      incidentHeaderData.hasEditStatusPermission,
       incidentHeaderData.incidentTask,
       incidentHeaderData.taskLinkInfo,
       incidentHeaderData.testCaseStatusData,
