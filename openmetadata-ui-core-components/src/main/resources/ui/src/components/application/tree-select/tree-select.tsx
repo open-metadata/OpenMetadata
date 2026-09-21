@@ -559,23 +559,9 @@ export const TreeSelect = <T = unknown,>({
   };
 
   // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
-  // Only that restore is suppressed: it lands in the same frame, so the flag is
-  // dropped straight after, leaving a later Tab back to the trigger free to open.
+  // The restore arrives a frame or more later, so the flag has to stay armed
+  // until a focus event consumes it — a timed reset loses the race and reopens.
   const skipNextFocusOpen = useRef(false);
-  const skipFocusFrame = useRef<number>();
-
-  const suppressRestoreFocusOpen = useCallback(() => {
-    // Armed unconditionally: at capture-phase pointerdown focus is still inside
-    // the trigger, so testing for it here would skip the very restore this
-    // guards against and the dropdown would reopen on dismissal.
-    skipNextFocusOpen.current = true;
-    cancelAnimationFrame(skipFocusFrame.current ?? 0);
-    skipFocusFrame.current = requestAnimationFrame(() => {
-      skipNextFocusOpen.current = false;
-    });
-  }, []);
-
-  useEffect(() => () => cancelAnimationFrame(skipFocusFrame.current ?? 0), []);
 
   const openOnFocus = () => {
     if (skipNextFocusOpen.current) {
@@ -588,13 +574,13 @@ export const TreeSelect = <T = unknown,>({
 
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
-    suppressRestoreFocusOpen();
+    skipNextFocusOpen.current = true;
     if (isStaged) {
       setSelection(toArray(value));
     }
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen, suppressRestoreFocusOpen]);
+  }, [isStaged, setSelection, value, setOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
