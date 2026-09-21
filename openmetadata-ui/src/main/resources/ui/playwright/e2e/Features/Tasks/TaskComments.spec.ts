@@ -142,12 +142,9 @@ test.describe('Task Comments - Add Comment', () => {
 
     await expect(actions).toHaveCSS('opacity', '0');
 
-    // The bar stays in normal flow and is revealed by opacity alone, so it
-    // occupies its space whether or not the card is hovered - that is what
-    // stops the reveal reflowing the comment body under the pointer. Asserted
-    // on the computed value rather than by measuring boxes: a bounding-box
-    // comparison across `hover()` measures viewport coordinates, which shift
-    // when Playwright's actionability check scrolls the card into view.
+    // In normal flow at rest, so the bar occupies its space before anything
+    // reveals it. The hover half of the same invariant is asserted in
+    // 'comment author should see edit/delete options'.
     await expect(actions).toHaveCSS('position', 'static');
 
     // Regression coverage for the affordance being an `<Icon onClick>` span:
@@ -412,7 +409,38 @@ test.describe('Task Comments - Edit/Delete', () => {
       .locator('[data-testid="feed-reply-card"]')
       .filter({ hasText: message });
     await expect(comment).toHaveCount(1);
+
+    // The bar sits in normal flow and is revealed by opacity alone, so hover
+    // must not touch any property that could reflow the comment body beneath
+    // it. Sampled as computed styles rather than boxes: a bounding-box
+    // comparison across `hover()` reads viewport coordinates, which shift when
+    // Playwright's actionability check scrolls the card into view - that is
+    // what made the previous geometry check report a 9px "reflow" that was
+    // really a 9px scroll. Longhands, not the `margin`/`padding` shorthands,
+    // so an empty computed value cannot make this pass by comparing '' to ''.
+    const actionsLayout = () =>
+      comment.getByTestId('feed-actions').evaluate((element) => {
+        const style = getComputedStyle(element);
+
+        return {
+          display: style.display,
+          height: style.height,
+          marginBottom: style.marginBottom,
+          marginTop: style.marginTop,
+          paddingBottom: style.paddingBottom,
+          paddingTop: style.paddingTop,
+          position: style.position,
+        };
+      });
+
+    // Park the pointer away from the card so the resting sample is unhovered.
+    await page.mouse.move(0, 0);
+
+    const layoutAtRest = await actionsLayout();
+
     await comment.hover();
+
+    expect(await actionsLayout()).toEqual(layoutAtRest);
 
     // The author may both edit and delete their own comment.
     await expect(comment.getByTestId('edit-message')).toBeVisible();
