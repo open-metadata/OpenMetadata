@@ -564,7 +564,7 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
+    if (BotTokenCache.isTokenValid(userName, tokenFromHeader)) {
       return;
     }
     throw AuthenticationException.getInvalidTokenException(
@@ -577,8 +577,7 @@ public class JwtFilter implements ContainerRequestFilter {
     String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
     if (claims.containsKey(TOKEN_TYPE)
         && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
-      Set<String> userTokens = UserTokenCache.getToken(userName);
-      if (userTokens != null && userTokens.contains(tokenFromHeader)) {
+      if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
         return;
       }
       throw AuthenticationException.getInvalidTokenException("Invalid personal access token!");

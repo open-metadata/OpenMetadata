@@ -53,6 +53,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
+  renderHighlightedText: jest.fn((text) => text ?? ''),
   highlightEntityNameAndDescription: jest.fn((source, highlight) => {
     if (!highlight) {
       return source;

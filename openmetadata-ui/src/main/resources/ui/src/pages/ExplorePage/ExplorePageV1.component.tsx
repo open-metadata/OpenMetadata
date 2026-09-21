@@ -94,17 +94,11 @@ const ExplorePageV1: FC<unknown> = () => {
   const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
+  // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
+  // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
+  // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize);
-  const currentPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)
-    ? pageSize
-    : defaultPageSize;
-
-  useEffect(() => {
-    if (!EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)) {
-      handlePageSizeChange(defaultPageSize);
-    }
-  }, [defaultPageSize, handlePageSizeChange, pageSize]);
+    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -395,7 +389,7 @@ const ExplorePageV1: FC<unknown> = () => {
       sortOrder,
       showDeleted,
       page: currentPage,
-      size: currentPageSize,
+      size: pageSize,
       searchIndex: tab
         ? searchIndex
         : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex),
@@ -410,7 +404,7 @@ const ExplorePageV1: FC<unknown> = () => {
     sortOrder,
     showDeleted,
     currentPage,
-    currentPageSize,
+    pageSize,
     searchIndex,
     tab,
     showRankingDetails,
@@ -563,7 +557,7 @@ const ExplorePageV1: FC<unknown> = () => {
         sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -595,7 +589,7 @@ const ExplorePageV1: FC<unknown> = () => {
         sortValue: effectiveSortValue,
         sortOrder,
         page: currentPage,
-        size: currentPageSize,
+        size: pageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -642,7 +636,7 @@ const ExplorePageV1: FC<unknown> = () => {
       currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
-      pageSize={currentPageSize}
+      pageSize={pageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
