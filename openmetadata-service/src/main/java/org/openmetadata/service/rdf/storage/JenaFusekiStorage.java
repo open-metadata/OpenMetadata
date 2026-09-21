@@ -652,6 +652,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  /** Fuseki could not be reached or reported itself unavailable (502/503/504). */
+  public static boolean isUnavailableFailure(Throwable t) {
+    return isConnectError(t) || isServerError(t);
+  }
+
+  public static boolean isTimeoutFailure(Throwable t) {
+    return isTimeoutError(t);
+  }
+
   static boolean isCircuitBreakerFailure(Throwable t) {
     return isConnectError(t) || isTimeoutError(t) || isServerError(t);
   }
