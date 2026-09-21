@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.events.subscription.channels.Channels;
 
 /**
  * Base class for notification recipients.
@@ -27,35 +28,13 @@ import org.openmetadata.schema.entity.teams.User;
 @Slf4j
 public abstract sealed class Recipient permits EmailRecipient, WebhookRecipient {
 
-  /**
-   * Create a recipient from a user based on notification type.
-   *
-   * @param user the user to create a recipient from
-   * @param notificationType the notification type
-   * @return an EmailRecipient or WebhookRecipient instance, or null if the user has no contact
-   *     information for the notification type
-   */
-  public static Recipient fromUser(
-      User user, SubscriptionDestination.SubscriptionType notificationType) {
-    if (notificationType == SubscriptionDestination.SubscriptionType.EMAIL) {
-      return EmailRecipient.fromUser(user);
-    }
-    return WebhookRecipient.fromUser(user, notificationType);
+  /** Where the destination's channel reaches this user, or null when it has no address. */
+  public static Recipient fromUser(User user, SubscriptionDestination destination) {
+    return Channels.required(destination).directory().ofUser(user);
   }
 
-  /**
-   * Create a recipient from a team based on notification type.
-   *
-   * @param team the team to create a recipient from
-   * @param notificationType the notification type
-   * @return an EmailRecipient or WebhookRecipient instance, or null if the team has no contact
-   *     information for the notification type
-   */
-  public static Recipient fromTeam(
-      Team team, SubscriptionDestination.SubscriptionType notificationType) {
-    if (notificationType == SubscriptionDestination.SubscriptionType.EMAIL) {
-      return EmailRecipient.fromTeam(team);
-    }
-    return WebhookRecipient.fromTeam(team, notificationType);
+  /** Where the destination's channel reaches this team, or null when it has no address. */
+  public static Recipient fromTeam(Team team, SubscriptionDestination destination) {
+    return Channels.required(destination).directory().ofTeam(team);
   }
 }

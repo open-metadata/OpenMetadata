@@ -54,6 +54,7 @@ import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
 import org.openmetadata.service.events.subscription.matching.AlertMatching;
@@ -713,6 +714,7 @@ public class EventSubscriptionScheduler {
     if (instance != null) {
       instance.reconciler.stop();
       instance.alertsScheduler.shutdown(true);
+      Channels.closeTransports();
     }
   }
 }

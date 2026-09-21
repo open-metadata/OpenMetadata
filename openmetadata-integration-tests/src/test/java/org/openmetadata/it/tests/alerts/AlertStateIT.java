@@ -188,6 +188,28 @@ class AlertStateIT {
     assertEquals(SubscriptionStatus.Status.FAILED, afterwards.getStatus());
   }
 
+  // A test send is a question about an endpoint, not something that happened to the alert.
+  @Test
+  void testSendLeavesLiveHealthUnchanged(TestNamespace ns) throws Exception {
+    EventSubscription alert = create(ns, "test_send_health", true);
+    SubscriptionDestination destination = alert.getDestinations().getFirst();
+    String before = health(alert);
+    String storedBefore =
+        JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()).getDestinations());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            ALERTS_PATH + "/testDestination",
+            Map.of("destinations", List.of(destination)),
+            Object.class);
+
+    assertEquals(before, health(alert));
+    assertEquals(
+        storedBefore, JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()).getDestinations()));
+  }
+
   @Test
   void diagnosticsReadCreatesNoRow(TestNamespace ns) {
     EventSubscription neverScheduled = create(ns, "never_scheduled", false);

@@ -14,54 +14,35 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.StatusContext;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Profile;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.notifications.recipients.RecipientResolver;
-import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
-import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
@@ -70,251 +51,23 @@ public class SubscriptionUtil {
     /* Hidden constructor */
   }
 
-  /*
-      This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
-      DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
-  */
-  public static Set<String> getAdminsData(SubscriptionDestination.SubscriptionType type) {
-    Set<String> data = new HashSet<>();
-    UserRepository userEntityRepository = (UserRepository) Entity.getEntityRepository(USER);
-    ResultList<User> result;
-    ListFilter listFilter = new ListFilter(Include.ALL);
-    listFilter.addQueryParam("isAdmin", "true");
+  /** The email of every admin user. */
+  public static Set<String> getAdminEmails() {
+    Set<String> emails = new HashSet<>();
+    UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
     String after = null;
     try {
       do {
-        result =
-            userEntityRepository.listAfter(
-                null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
-        data.addAll(getEmailOrWebhookEndpointForUsers(result.getData(), type));
-        after = result.getPaging().getAfter();
+        ResultList<User> page = users.listAfter(null, users.getFields("email"), admins, 50, after);
+        page.getData().stream().map(User::getEmail).forEach(emails::add);
+        after = page.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
       LOG.error("Failed in listing all Users , Reason", ex);
     }
-    return data;
-  }
-
-  public static Set<String> getEmailOrWebhookEndpointForUsers(
-      List<User> users, SubscriptionDestination.SubscriptionType type) {
-    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
-      return users.stream().map(User::getEmail).collect(Collectors.toSet());
-    } else {
-      return users.stream()
-          .map(user -> getWebhookUrlFromProfile(user.getProfile(), user.getId(), USER, type))
-          .filter(Optional::isPresent)
-          .map(Optional::get)
-          .collect(Collectors.toSet());
-    }
-  }
-
-  public static Set<String> getEmailOrWebhookEndpointForTeams(
-      List<Team> users, SubscriptionDestination.SubscriptionType type) {
-    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
-      return users.stream().map(Team::getEmail).collect(Collectors.toSet());
-    } else {
-      return users.stream()
-          .map(team -> getWebhookUrlFromProfile(team.getProfile(), team.getId(), TEAM, type))
-          .filter(Optional::isPresent)
-          .map(Optional::get)
-          .collect(Collectors.toSet());
-    }
-  }
-
-  /*
-      This Method Return a list of Owner/Follower Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Owner/Follower User
-      of an Entity.
-      DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
-  */
-
-  public static Set<String> getOwnerOrFollowers(
-      SubscriptionDestination.SubscriptionType type,
-      CollectionDAO daoCollection,
-      UUID entityId,
-      String entityType,
-      Relationship relationship) {
-    Set<String> data = new HashSet<>();
-    try {
-      List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
-          daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
-      // Users
-      List<User> users =
-          ownerOrFollowers.stream()
-              .filter(e -> USER.equals(e.getType()))
-              .map(user -> (User) Entity.getEntity(USER, user.getId(), "", Include.NON_DELETED))
-              .toList();
-      data.addAll(getEmailOrWebhookEndpointForUsers(users, type));
-
-      // Teams
-      List<Team> teams =
-          ownerOrFollowers.stream()
-              .filter(e -> TEAM.equals(e.getType()))
-              .map(
-                  team ->
-                      (Team)
-                          Entity.getEntity(
-                              TEAM, team.getId(), "id,profile,email", Include.NON_DELETED))
-              .toList();
-      data.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
-    } catch (Exception ex) {
-      LOG.error("Failed in listing all Owners/Followers, Reason : ", ex);
-    }
-    return data;
-  }
-
-  private static Optional<String> getWebhookUrlFromProfile(
-      Profile profile, UUID id, String entityType, SubscriptionDestination.SubscriptionType type) {
-    if (profile != null) {
-      SubscriptionConfig subscriptionConfig = profile.getSubscription();
-      if (subscriptionConfig != null) {
-        Webhook webhookConfig =
-            switch (type) {
-              case SLACK -> profile.getSubscription().getSlack();
-              case MS_TEAMS -> profile.getSubscription().getMsTeams();
-              case G_CHAT -> profile.getSubscription().getgChat();
-              case WEBHOOK -> profile.getSubscription().getGeneric();
-              default -> null;
-            };
-        if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
-          String endpointStr = webhookConfig.getEndpoint().toString();
-          // Validate URL before returning
-          try {
-            URLValidator.validateURL(endpointStr);
-            return Optional.of(endpointStr);
-          } catch (Exception e) {
-            LOG.warn(
-                "[GetWebhookUrlsFromProfile] Invalid webhook URL for owner with id {} type {}: {}",
-                id,
-                entityType,
-                e.getMessage());
-            return Optional.empty();
-          }
-        } else {
-          LOG.debug(
-              "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is missing for type {}, webhookConfig {} ",
-              id,
-              entityType,
-              type.value(),
-              webhookConfig);
-        }
-      }
-    }
-    LOG.debug(
-        "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
-        id,
-        type);
-    return Optional.empty();
-  }
-
-  public static Set<String> buildReceiversListFromActions(
-      SubscriptionAction action,
-      SubscriptionDestination.SubscriptionCategory category,
-      SubscriptionDestination.SubscriptionType type,
-      CollectionDAO daoCollection,
-      UUID entityId,
-      String entityType) {
-    Set<String> receiverList = new HashSet<>();
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.USERS)) {
-      if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-        throw new IllegalArgumentException(
-            "Email Alert Invoked with Illegal Type and Settings. Empty or Null Users Recipients List");
-      }
-      List<User> users =
-          action.getReceivers().stream()
-              .map(user -> (User) Entity.getEntityByName(USER, user, "", Include.NON_DELETED))
-              .toList();
-      receiverList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
-    } else if (category.equals(SubscriptionDestination.SubscriptionCategory.TEAMS)) {
-      if (action.getReceivers() == null || action.getReceivers().isEmpty()) {
-        throw new IllegalArgumentException(
-            "Email Alert Invoked with Illegal Type and Settings. Empty or Null Teams Recipients List");
-      }
-      List<Team> teams =
-          action.getReceivers().stream()
-              .map(team -> (Team) Entity.getEntityByName(TEAM, team, "", Include.NON_DELETED))
-              .toList();
-      receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
-    } else {
-      receiverList =
-          action.getReceivers() == null ? receiverList : new HashSet<>(action.getReceivers());
-    }
-
-    // Send to Admins
-    if (Boolean.TRUE.equals(action.getSendToAdmins())) {
-      receiverList.addAll(getAdminsData(type));
-    }
-
-    // Send To Owners
-    if (Boolean.TRUE.equals(action.getSendToOwners())) {
-      receiverList.addAll(
-          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.OWNS));
-    }
-
-    // Send To Followers
-    if (Boolean.TRUE.equals(action.getSendToFollowers())) {
-      receiverList.addAll(
-          getOwnerOrFollowers(type, daoCollection, entityId, entityType, Relationship.FOLLOWS));
-    }
-
-    return receiverList;
-  }
-
-  public static Set<String> getTargetsForAlert(
-      SubscriptionAction action, SubscriptionDestination destination, ChangeEvent event) {
-    SubscriptionDestination effectiveDestination = destination;
-    if (effectiveDestination.getConfig() == null && action != null) {
-      effectiveDestination =
-          JsonUtils.convertValue(destination, SubscriptionDestination.class).withConfig(action);
-    }
-    return new RecipientResolver()
-        .resolveRecipients(event, List.of(effectiveDestination)).stream()
-            .map(SubscriptionUtil::recipientTarget)
-            .collect(Collectors.toSet());
-  }
-
-  private static String recipientTarget(Recipient recipient) {
-    return switch (recipient) {
-      case EmailRecipient emailRecipient -> emailRecipient.getEmail();
-      case WebhookRecipient webhookRecipient -> webhookRecipient
-          .getWebhook()
-          .getEndpoint()
-          .toString();
-    };
-  }
-
-  public static List<Invocation.Builder> getTargetsForWebhookAlert(
-      Webhook webhook,
-      SubscriptionDestination destination,
-      Client client,
-      ChangeEvent event,
-      String outgoingMessage) {
-    List<Invocation.Builder> targets = new ArrayList<>();
-    for (String url : getTargetsForAlert(webhook, destination, event)) {
-      targets.add(appendHeadersAndQueryParamsToTarget(client, url, webhook, outgoingMessage));
-    }
-    return targets;
-  }
-
-  public static Invocation.Builder appendHeadersAndQueryParamsToTarget(
-      Client client, String uri, Webhook webhook, String json) {
-    // Validate the URI to prevent SSRF attacks
-    URLValidator.validateURL(uri);
-
-    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    WebTarget target = client.target(uri);
-
-    // Add query parameters if they exist
-    if (webhook.getQueryParams() != null && !webhook.getQueryParams().isEmpty()) {
-      for (Map.Entry<String, String> entry : webhook.getQueryParams().entrySet()) {
-        target = target.queryParam(entry.getKey(), entry.getValue());
-      }
-    }
-
-    Invocation.Builder result = SecurityUtil.addHeaders(target, authHeaders);
-    // Prepare webhook headers, including HMAC signature if secret key is provided
-    prepareWebhookHeaders(result, webhook, json);
-    return result;
+    return emails;
   }
 
   public static void prepareWebhookHeaders(
@@ -464,32 +217,6 @@ public class SubscriptionUtil {
         .withLocation(
             response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY)
         .withTimestamp(System.currentTimeMillis());
-  }
-
-  public static Client getClient(int connectTimeout, int readTimeout) {
-    // Cap timeouts to prevent runaway webhook destinations from exhausting resources
-    // Minimum 5 seconds to allow reasonable connection establishment
-    // Maximum 30 seconds for connect, 120 seconds for read to prevent indefinite waits
-    int effectiveConnectTimeout = Math.min(Math.max(connectTimeout, 5), 30);
-    int effectiveReadTimeout = Math.min(Math.max(readTimeout, 10), 120);
-
-    if (connectTimeout != effectiveConnectTimeout) {
-      LOG.debug(
-          "Connect timeout {} clamped to {} (valid range: 5-30 seconds)",
-          connectTimeout,
-          effectiveConnectTimeout);
-    }
-    if (readTimeout != effectiveReadTimeout) {
-      LOG.debug(
-          "Read timeout {} clamped to {} (valid range: 10-120 seconds)",
-          readTimeout,
-          effectiveReadTimeout);
-    }
-
-    ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-    clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
-    clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
-    return clientBuilder.build();
   }
 
   public static Invocation.Builder getTarget(Client client, Webhook webhook, String json) {

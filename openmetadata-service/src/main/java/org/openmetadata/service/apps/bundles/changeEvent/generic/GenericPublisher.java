@@ -13,9 +13,7 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
-import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
@@ -38,6 +36,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.apps.bundles.changeEvent.IsolatedSends;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.channels.builtin.HttpWebhookTransport;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
@@ -60,23 +59,19 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   public GenericPublisher(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType() == WEBHOOK) {
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
+    this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
 
-      // Validate webhook URL to prevent SSRF
-      if (this.webhook != null && this.webhook.getEndpoint() != null) {
-        org.openmetadata.service.util.URLValidator.validateURL(
-            this.webhook.getEndpoint().toString());
-      }
-
-      this.client =
-          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
-    } else {
-      throw new IllegalArgumentException(
-          "GenericWebhook Alert Invoked with Illegal Type and Settings.");
+    // Validate webhook URL to prevent SSRF
+    if (this.webhook != null && this.webhook.getEndpoint() != null) {
+      org.openmetadata.service.util.URLValidator.validateURL(this.webhook.getEndpoint().toString());
     }
+
+    this.client =
+        HttpWebhookTransport.shared()
+            .clientFor(
+                subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
   }
 
   @Override
@@ -94,10 +89,12 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       IsolatedSends.sendToEach(webhookRecipients, this, recipient -> sendTo(recipient, eventJson));
     } catch (Exception ex) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), event, ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
   }
@@ -149,7 +146,8 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       deliverTestWebhookMessage(this, target, testJson, webhook.getHttpMethod());
     } catch (Exception ex) {
       String message =
-          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+          CatalogExceptionMessage.eventPublisherFailedToPublish(
+              subscriptionDestination.getType(), ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);
     }
@@ -179,9 +177,6 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
-  public void close() {
-    if (client != null) {
-      client.close();
-    }
-  }
+  // The client belongs to the transport, which closes it when the server shuts down.
+  public void close() {}
 }

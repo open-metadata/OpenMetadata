@@ -125,8 +125,12 @@ class DispatchIsolationTest {
         MockedStatic<AlertFactory> factory = mockStatic(AlertFactory.class)) {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
-      factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 0)))).thenReturn(first);
-      factory.when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 1)))).thenReturn(second);
+      factory
+          .when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 0)), any()))
+          .thenReturn(first);
+      factory
+          .when(() -> AlertFactory.getAlert(any(), argThat(hasId(alert, 1)), any()))
+          .thenReturn(second);
       consumer.tick(alert, TestLedgers.fresh(), context);
     }
 

@@ -30,7 +30,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -42,6 +41,7 @@ import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
+import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.events.subscription.matching.AlertMatching;
@@ -85,6 +85,16 @@ public abstract class AbstractEventConsumer
 
   /** Which kind of consumer this is. The kind decides what a tick reads and guarantees. */
   protected abstract ConsumerKind kind();
+
+  /**
+   * The channel this consumer's alerts use for destinations of a type, by the type's value.
+   *
+   * @deprecated from the start: it exists only until a destination names its channel itself.
+   */
+  @Deprecated
+  protected Map<String, String> declaredChannels() {
+    return Map.of();
+  }
 
   protected void doInit(JobExecutionContext context) {
     // To be implemented by the Subclass if needed
@@ -135,7 +145,8 @@ public abstract class AbstractEventConsumer
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
       subscriptionDest.setStatusDetails(null);
       dMap.put(
-          subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
+          subscriptionDest.getId(),
+          AlertFactory.getAlert(eventSubscription, subscriptionDest, declaredChannels()));
     }
     return dMap;
   }
@@ -180,15 +191,15 @@ public abstract class AbstractEventConsumer
 
   private EventDeliveryResult publishEvent(
       ChangeEvent event, Set<UUID> destinationIds, RecipientResolver resolver) {
-    // Group destinations by type to enable cross-destination recipient deduplication
-    Map<SubscriptionType, List<Destination<ChangeEvent>>> destinationsByType =
-        groupDestinationsByType(destinationIds);
+    // Group destinations by channel to enable cross-destination recipient deduplication
+    Map<String, List<Destination<ChangeEvent>>> destinationsByChannel =
+        groupDestinationsByChannel(destinationIds);
     List<EventPublisherException> failures = new ArrayList<>();
-    for (List<Destination<ChangeEvent>> sameType : destinationsByType.values()) {
-      sendToDestinationType(event, sameType, resolver).ifPresent(failures::add);
+    for (List<Destination<ChangeEvent>> sameChannel : destinationsByChannel.values()) {
+      sendToDestinationType(event, sameChannel, resolver).ifPresent(failures::add);
     }
     recordSendFailures(event, failures);
-    int successCount = destinationsByType.size() - failures.size();
+    int successCount = destinationsByChannel.size() - failures.size();
     return new EventDeliveryResult(successCount > 0, successCount, failures.size());
   }
 
@@ -261,7 +272,7 @@ public abstract class AbstractEventConsumer
     }
   }
 
-  private Map<SubscriptionType, List<Destination<ChangeEvent>>> groupDestinationsByType(
+  private Map<String, List<Destination<ChangeEvent>>> groupDestinationsByChannel(
       Set<UUID> destinationIds) {
     return destinationMap.entrySet().stream()
         .filter(entry -> destinationIds.contains(entry.getKey()))
@@ -269,7 +280,9 @@ public abstract class AbstractEventConsumer
         .filter(Destination::getEnabled)
         .collect(
             Collectors.groupingBy(
-                dest -> dest.getSubscriptionDestination().getType(),
+                dest ->
+                    ChannelResolution.of(dest.getSubscriptionDestination(), declaredChannels())
+                        .channelId(),
                 LinkedHashMap::new,
                 Collectors.toList()));
   }
