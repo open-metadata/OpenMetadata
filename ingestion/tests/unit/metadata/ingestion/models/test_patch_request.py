@@ -438,3 +438,126 @@ class TestBuildPatchTableAliases:
 
     def test_unchanged_aliases_produce_no_operation(self):
         assert self._patch_ops(["svc.db.schema.orders_syn"], ["svc.db.schema.orders_syn"]) == []
+
+
+class TestColumnTagsAdditiveWithOverrideOff:
+    """When overrideMetadata=False, new ingestion tags must be appended to
+    columns that already carry tags — not silently dropped.
+
+    Regression for https://github.com/open-metadata/OpenMetadata/issues/33709
+    """
+
+    @staticmethod
+    def _tag(fqn: str):
+        from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
+
+        return TagLabel(
+            tagFQN=fqn,
+            source=TagSource.Classification,
+            labelType=LabelType.Manual,
+            state=State.Suggested,
+        )
+
+    @staticmethod
+    def _column(name: str, tags=None):
+        from metadata.generated.schema.entity.data.table import Column, DataType
+
+        return Column(
+            name=name,
+            dataType=DataType.VARCHAR,
+            tags=tags or [],
+        )
+
+    @staticmethod
+    def _table_with_columns(cols):
+        from metadata.generated.schema.entity.data.table import Table
+
+        return Table(
+            id=str(uuid.uuid4()),
+            name="orders",
+            fullyQualifiedName="svc.db.schema.orders",
+            columns=cols,
+        )
+
+    def test_new_tag_appended_to_column_with_existing_tag(self):
+        """Column already has tag-A in OM; ingestion brings tag-A + tag-B.
+        Without override, the result must contain both (additive)."""
+        tag_a = self._tag("Classification.TagA")
+        tag_b = self._tag("Classification.TagB")
+
+        # source = current OM state (has tag-A)
+        source = self._table_with_columns([self._column("col1", [tag_a])])
+        # destination = new ingestion state (has tag-A and tag-B)
+        destination = self._table_with_columns([self._column("col1", [tag_a, tag_b])])
+
+        result = build_patch(
+            source=source,
+            destination=destination,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=False,
+            skip_on_failure=False,
+        )
+
+        assert result is not None
+        col_patch = next(op for op in result.patch if "/columns" in op["path"])
+        col_tags = col_patch["value"][0]["tags"]
+        tag_fqns = {t["tagFQN"] for t in col_tags}
+        assert "Classification.TagA" in tag_fqns
+        assert "Classification.TagB" in tag_fqns
+
+    def test_existing_tag_not_removed_when_ingestion_omits_it(self):
+        """Column has tag-A in OM; ingestion brings only tag-B.
+        Without override, tag-A must be preserved (additive — no removal)."""
+        tag_a = self._tag("Classification.TagA")
+        tag_b = self._tag("Classification.TagB")
+
+        source = self._table_with_columns([self._column("col1", [tag_a])])
+        destination = self._table_with_columns([self._column("col1", [tag_b])])
+
+        result = build_patch(
+            source=source,
+            destination=destination,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=False,
+            skip_on_failure=False,
+        )
+
+        # Either no patch (both tags already present after merge) or
+        # a patch whose column tags include tag-A (not removed).
+        if result is not None:
+            col_patch = next(
+                (op for op in result.patch if "/columns" in op["path"]), None
+            )
+            if col_patch:
+                col_tags = col_patch["value"][0]["tags"]
+                tag_fqns = {t["tagFQN"] for t in col_tags}
+                assert "Classification.TagA" in tag_fqns
+
+    def test_override_true_replaces_tags(self):
+        """When override=True, ingestion tags fully replace the column's tags."""
+        tag_a = self._tag("Classification.TagA")
+        tag_b = self._tag("Classification.TagB")
+
+        source = self._table_with_columns([self._column("col1", [tag_a])])
+        destination = self._table_with_columns([self._column("col1", [tag_b])])
+
+        result = build_patch(
+            source=source,
+            destination=destination,
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=True,
+            skip_on_failure=False,
+        )
+
+        assert result is not None
+        col_patch = next(op for op in result.patch if "/columns" in op["path"])
+        col_tags = col_patch["value"][0]["tags"]
+        tag_fqns = {t["tagFQN"] for t in col_tags}
+        assert "Classification.TagA" not in tag_fqns
+        assert "Classification.TagB" in tag_fqns

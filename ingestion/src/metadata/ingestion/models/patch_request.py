@@ -572,6 +572,28 @@ def _should_update_restricted_field(source_value, dest_value, override_metadata:
     return override_metadata
 
 
+def _merge_tags_additive(source_tags, dest_tags):
+    """Return the union of two tag lists, deduplicating by tagFQN.
+
+    Existing OM tags (source) are preserved; new ingestion tags (dest) that
+    are not already present are appended.  This implements the additive
+    semantics the server uses in ``EntityRepository.updateTags`` when
+    ``overrideMetadata`` is off.
+    """
+    if not source_tags:
+        return dest_tags
+    if not dest_tags:
+        return source_tags
+    seen = {t.tagFQN.root for t in source_tags}
+    merged = list(source_tags)
+    for tag in dest_tags:
+        fqn = tag.tagFQN.root
+        if fqn not in seen:
+            merged.append(tag)
+            seen.add(fqn)
+    return merged
+
+
 def _sort_array_entity_fields(
     source: T,
     destination: T,
@@ -614,6 +636,10 @@ def _sort_array_entity_fields(
                         if k in restrict_set:
                             src_val = getattr(source_attr, k, None)
                             if not _should_update_restricted_field(src_val, v, override_metadata):
+                                # Tags are additive: keep existing OM tags and append
+                                # new ingestion tags not already present (by tagFQN).
+                                if k == "tags" and not override_metadata:
+                                    update_dict[k] = _merge_tags_additive(src_val, v)
                                 continue
                         update_dict[k] = v
                     updated_attributes.append(source_attr.model_copy(update=update_dict))
