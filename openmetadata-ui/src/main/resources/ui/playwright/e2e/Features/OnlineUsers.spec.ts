@@ -104,7 +104,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     const userPage = await browser.newPage();
     try {
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
       await sidebarClick(userPage, SidebarItem.EXPLORE);
       await waitForAllLoadersToDisappear(userPage);
@@ -235,7 +235,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
       const userPage = await browser.newPage();
-      await testUser.login(userPage);
+      await testUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       // 1 step - go to explore page using new user

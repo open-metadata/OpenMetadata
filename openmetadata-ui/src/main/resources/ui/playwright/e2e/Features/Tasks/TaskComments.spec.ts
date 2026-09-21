@@ -92,7 +92,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('assignee should be able to add comment to task', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -119,7 +119,7 @@ test.describe('Task Comments - Add Comment', () => {
   test('revealing the delete affordance on hover must not reflow the comment body', async ({
     page,
   }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -187,7 +187,7 @@ test.describe('Task Comments - Add Comment', () => {
   test('the comment actions are reachable and operable by keyboard alone', async ({
     page,
   }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -229,7 +229,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('non-assignee should be able to add comment', async ({ page }) => {
-    await commentingUser.login(page);
+    await commentingUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -247,7 +247,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('admin should be able to add comment to any task', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -312,7 +312,7 @@ test.describe('Task Comments - @Mention', () => {
   });
 
   test('typing @ should show user suggestion dropdown', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -351,7 +351,7 @@ test.describe('Task Comments - @Mention', () => {
   test('selecting user from @ dropdown should add mention', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -455,7 +455,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('comment author should see edit/delete options', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -484,7 +484,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('should be able to edit own comment', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);
@@ -617,7 +617,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   test('should be able to delete own comment', async ({ page }) => {
     // assigneeUser is a regular (non-admin) user, so a successful delete here
     // exercises the author-match branch of canDelete, not the admin override.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
 
     const message = `Author-deletable comment ${Date.now()}`;
     const { drawer, taskCommentId } = await postCommentAsUser(page, message);
@@ -633,13 +633,13 @@ test.describe('Task Comments - Edit/Delete', () => {
     // this test doesn't depend on execution order relative to the one above.
     const authorContext = await browser.newContext();
     const authorPage = await authorContext.newPage();
-    await assigneeUser.login(authorPage);
+    await assigneeUser.signIn(authorPage);
 
     const message = `Admin-deletable comment ${Date.now()}`;
     const { taskCommentId } = await postCommentAsUser(authorPage, message);
     await authorContext.close();
 
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     const { drawer } = await postCommentAsUser(page, `unused-${Date.now()}`);
     // postCommentAsUser leaves an extra comment behind as a side effect of
     // reusing it purely for its navigation-to-the-open-drawer behavior; that
@@ -664,13 +664,13 @@ test.describe('Task Comments - Edit/Delete', () => {
     try {
       const authorContext = await browser.newContext();
       const authorPage = await authorContext.newPage();
-      await assigneeUser.login(authorPage);
+      await assigneeUser.signIn(authorPage);
 
       const message = `Not-my-comment ${Date.now()}`;
       await postCommentAsUser(authorPage, message);
       await authorContext.close();
 
-      await otherUser.login(page);
+      await otherUser.signIn(page);
       const { drawer } = await postCommentAsUser(
         page,
         `viewer-comment-${Date.now()}`
@@ -704,7 +704,7 @@ test.describe('Task Comments - Edit/Delete', () => {
     // (which closes the drawer) instead of the dialog's confirm button, and
     // this test will hang/time out waiting for the DELETE response instead
     // of silently passing.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
 
     const message = `Drawer-delete comment ${Date.now()}`;
     const { drawer, taskCommentId } = await postCommentAsUser(page, message);
@@ -765,7 +765,7 @@ test.describe('Task Comments - Long Comment Overflow', () => {
     // overflows needs the toggle rendered to stay readable. Covered end to end
     // rather than in Jest because the value being guarded is that a real user
     // can recover the full text, not that the previewer trims a string.
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await openEntityTasksTab(page);

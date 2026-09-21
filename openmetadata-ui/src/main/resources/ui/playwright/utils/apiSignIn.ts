@@ -15,6 +15,23 @@ import { suppressWelcomeScreen } from './common';
 import { setToken } from './tokenStorage';
 
 /**
+ * A path on the app's origin that the app does not serve, used only to obtain a
+ * document to seed storage into.
+ *
+ * Seeding used to navigate to `/`, which boots the entire SPA — bundle,
+ * bootstrap requests, render — purely so the next two lines have an origin to
+ * write to. That is a whole extra app boot on every sign-in, and it showed:
+ * once the suite migrated to `signIn()`, CI measured 2.59 app boots per UI
+ * scenario against a 2.23 baseline, ~1700 extra boots per run.
+ *
+ * Storage is scoped to the *origin*, not to the app, so a stubbed blank
+ * document on that origin gives `suppressWelcomeScreen` and `setToken` exactly
+ * the same access for one intercepted request and no boot. `TokenStorage.spec`
+ * holds a case on this, since sign-in now depends on it.
+ */
+const PRIMER_PATH = '/__playwright_auth_primer__';
+
+/**
  * Sign a page in by asking the API for a token and writing it where the app
  * looks, instead of driving the sign-in form.
  *
@@ -35,10 +52,10 @@ import { setToken } from './tokenStorage';
  *   `setOidcToken()` puts the access token after a basic-auth login;
  * - `suppressWelcomeScreen` is the same call `UserClass.login()` makes.
  *
- * The navigation to the app origin before writing the token is required, not
- * incidental: IndexedDB is origin-scoped, so there is nowhere to write until
- * the page has loaded the origin. Unauthenticated it lands on /signin, which is
- * the same origin and serves fine as a place to seed from.
+ * A navigation before writing the token is required, not incidental: IndexedDB
+ * and localStorage are origin-scoped, so there is nowhere to write until the
+ * page owns a document on the app's origin. It does not have to be the *app* —
+ * see `PRIMER_PATH` below.
  *
  * The trailing assertion is deliberate. If the injected session is not accepted
  * — a changed token key, a refresh token the app has started to require, an
@@ -90,20 +107,39 @@ export const signInViaApi = async (
     );
   }
 
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // Registered last, so it wins over any broader `**/*` handler an enclosing
+  // fixture installed, and removed again before the real navigation below.
+  await page.route(`**${PRIMER_PATH}`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><title>auth primer</title>',
+    })
+  );
 
-  if (credentials.suppressWelcome ?? true) {
-    await suppressWelcomeScreen(
-      page,
-      credentials.userName ?? credentials.email
-    );
+  try {
+    await page.goto(PRIMER_PATH, { waitUntil: 'domcontentloaded' });
+
+    if (credentials.suppressWelcome ?? true) {
+      await suppressWelcomeScreen(
+        page,
+        credentials.userName ?? credentials.email
+      );
+    }
+    await setToken(page, accessToken);
+  } finally {
+    await page.unroute(`**${PRIMER_PATH}`);
   }
-  await setToken(page, accessToken);
+
   await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
 
+  // Either shell counts. A user whose persona resolves to AI mounts the AI route
+  // tree, whose sidebar is `ask-sidebar` — waiting only for `left-sidebar` made
+  // this time out for such a user and then blame tokenStorage, which is the one
+  // thing that was working. Found by signing an AI-persona user in this way.
   await expect(
-    page.getByTestId('left-sidebar'),
-    `API sign-in as "${credentials.email}" did not produce a signed-in session — the app shell never rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
+    page.getByTestId('left-sidebar').or(page.getByTestId('ask-sidebar')),
+    `API sign-in as "${credentials.email}" did not produce a signed-in session — neither the Classic shell (left-sidebar) nor the AI shell (ask-sidebar) rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
   ).toBeAttached({ timeout: 30_000 });
 
   return accessToken;

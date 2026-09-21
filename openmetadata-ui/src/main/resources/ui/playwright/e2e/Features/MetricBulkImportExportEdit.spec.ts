@@ -1035,7 +1035,7 @@ test.describe(
       browser,
     }) => {
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         await redirectToHomePage(page);
         await waitForMetricsPage(page);
@@ -1097,7 +1097,7 @@ test.describe(
     }) => {
       test.slow();
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         const importedMetricName = `${fixtures.prefix}_imported`;
         fixtures.metrics.push({
@@ -1167,7 +1167,7 @@ test.describe(
     }) => {
       test.slow();
       const page = await browser.newPage();
-      await metricExportUser.login(page);
+      await metricExportUser.signIn(page);
       try {
         const existingMetricName = fixtures.metrics[1].name;
         const updatedDisplayName = `${fixtures.prefix} Import Updated`;
@@ -1437,7 +1437,7 @@ test.describe(
       browser,
     }) => {
       const metricEditorPage = await browser.newPage();
-      await metricEditorUser.login(metricEditorPage);
+      await metricEditorUser.signIn(metricEditorPage);
 
       try {
         await redirectToHomePage(metricEditorPage);
@@ -1476,7 +1476,7 @@ test.describe(
     }) => {
       test.slow();
       const customViewOnlyPage = await browser.newPage();
-      await viewOnlyUser.login(customViewOnlyPage);
+      await viewOnlyUser.signIn(customViewOnlyPage);
 
       try {
         for (const restrictedPage of [

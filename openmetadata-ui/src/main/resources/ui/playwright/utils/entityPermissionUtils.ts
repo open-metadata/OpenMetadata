@@ -699,7 +699,7 @@ export const createCustomPropertyForEntity = async (
   adminUser: UserClass
 ) => {
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
 
   // Map entity types to their correct API types (same as used in working tests)
   const entityTypeMapping: Record<string, string> = {

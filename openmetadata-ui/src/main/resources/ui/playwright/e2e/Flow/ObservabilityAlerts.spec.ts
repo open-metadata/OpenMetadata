@@ -80,13 +80,13 @@ const test = base.extend<{
 }>({
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user1.login(page);
+    await user1.signIn(page);
     await use(page);
     await page.close();
   },
   userWithoutPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user2.login(page);
+    await user2.signIn(page);
     await use(page);
     await page.close();
   },
