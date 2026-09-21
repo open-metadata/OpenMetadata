@@ -16,7 +16,13 @@ import { Button, List, Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemoveColored } from '../../../assets/svg/ic-remove-colored.svg';
 import {
@@ -84,6 +90,9 @@ export const SelectableList = ({
   const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();
   const [pagingInfo, setPagingInfo] = useState<Paging>(pagingObject);
+  // Guards against duplicate page fetches: several scroll events can land in the
+  // widened bottom threshold before the in-flight request settles.
+  const isFetchingNextPage = useRef(false);
 
   const [selectedItemsInternal, setSelectedItemsInternal] = useState<
     Map<string, EntityReference>
@@ -174,13 +183,19 @@ export const SelectableList = ({
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     async (e) => {
       if (
-        // If user reachs to end of container fetch more options
-        isNearScrollBottom(e.currentTarget) &&
-        // If there are other options available which can be determine form the cursor value
-        pagingInfo.after &&
-        // If we have all the options already we don't need to fetch more
-        uniqueOptions.length < pagingInfo.total
+        !isNearScrollBottom(e.currentTarget) ||
+        // Only fetch when the cursor says there are more options
+        !pagingInfo.after ||
+        // Stop once everything is already loaded
+        uniqueOptions.length >= pagingInfo.total ||
+        // Don't start a new page while one is already in flight
+        isFetchingNextPage.current
       ) {
+        return;
+      }
+
+      isFetchingNextPage.current = true;
+      try {
         const { data, paging } = await fetchOptions(
           searchText,
           pagingInfo.after
@@ -188,9 +203,11 @@ export const SelectableList = ({
 
         setUniqueOptions((prevData) => [...prevData, ...data]);
         setPagingInfo(paging);
+      } finally {
+        isFetchingNextPage.current = false;
       }
     },
-    [pagingInfo, uniqueOptions, searchText]
+    [pagingInfo, uniqueOptions, searchText, fetchOptions]
   );
 
   const handleUpdate = useCallback(
