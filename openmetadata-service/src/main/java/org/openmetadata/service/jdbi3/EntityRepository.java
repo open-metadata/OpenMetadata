@@ -125,6 +125,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -151,6 +152,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -2492,6 +2494,93 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * A list request whose rows must additionally pass an in-process authorization check that the SQL
+   * layer cannot express. {@code canView} is applied to every candidate row before it reaches the
+   * caller's page.
+   */
+  public record AuthorizedListRequest<E>(
+      Fields fields, ListFilter filter, int limit, Predicate<E> canView) {}
+
+  /**
+   * Rows rejected by {@code canView} still cost a page fetch, so a page is refilled by scanning
+   * forward at most this many batches. Bounds the worst case (a user who may view almost nothing)
+   * instead of scanning the whole table for one page.
+   */
+  private static final int MAX_AUTHORIZATION_FILL_BATCHES = 10;
+
+  /**
+   * Forward paging that returns only rows the caller may view. Cursors are {@code (name, id)}
+   * positions in the table's own ordering, so dropping unauthorized rows never invalidates them —
+   * it only shortens the page. Scanning continues from the last row consumed until the page is full
+   * (or the scan bound is hit), keeping page size stable for the UI.
+   *
+   * <p>{@code paging.total} remains the unfiltered row count: an exact authorized total would
+   * require evaluating the whole table. It is therefore an upper bound.
+   */
+  public ResultList<T> listAfterAuthorized(
+      UriInfo uriInfo, AuthorizedListRequest<T> request, String after) {
+    int limitParam = request.limit();
+    ListFilter filter = request.filter();
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    if (limitParam <= 0) {
+      return getResultList(new ArrayList<>(), null, null, total);
+    }
+    Map<String, String> cursorMap =
+        parseCursorMap(after == null || after.isEmpty() ? "" : RestUtil.decodeCursor(after));
+    List<T> entities =
+        collectAuthorizedAfter(
+            uriInfo,
+            request,
+            FullyQualifiedName.unquoteName(cursorMap.get("name")),
+            cursorMap.get("id"));
+
+    String beforeCursor = resolveBeforeCursor(after, entities);
+    String afterCursor = null;
+    if (entities.size() > limitParam) {
+      entities.remove(limitParam);
+      afterCursor = getCursorValue(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private String resolveBeforeCursor(String after, List<T> entities) {
+    String beforeCursor;
+    if (after == null || after.isEmpty()) {
+      beforeCursor = null;
+    } else if (entities.isEmpty()) {
+      beforeCursor = after;
+    } else {
+      beforeCursor = getCursorValue(entities.getFirst());
+    }
+    return beforeCursor;
+  }
+
+  private List<T> collectAuthorizedAfter(
+      UriInfo uriInfo, AuthorizedListRequest<T> request, String afterName, String afterId) {
+    int wanted = request.limit() + 1; // the extra row signals "a next page exists"
+    List<T> authorized = new ArrayList<>();
+    String cursorName = afterName;
+    String cursorId = afterId;
+    for (int batch = 0;
+        batch < MAX_AUTHORIZATION_FILL_BATCHES && authorized.size() < wanted;
+        batch++) {
+      List<String> jsons = dao.listAfter(request.filter(), wanted, cursorName, cursorId);
+      if (jsons.isEmpty()) {
+        break;
+      }
+      List<T> candidates = listInternal(jsons, request.fields(), uriInfo, request.filter());
+      T lastConsumed = candidates.getLast();
+      cursorName = lastConsumed.getName();
+      cursorId = String.valueOf(lastConsumed.getId());
+      candidates.stream().filter(request.canView()).forEach(authorized::add);
+      if (jsons.size() < wanted) {
+        break; // fewer rows than asked for means the table is exhausted
+      }
+    }
+    return authorized.size() > wanted ? new ArrayList<>(authorized.subList(0, wanted)) : authorized;
+  }
+
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
@@ -2615,6 +2704,66 @@ public abstract class EntityRepository<T extends EntityInterface> {
       cursorMap = JsonUtils.readValue(param, Map.class);
     }
     return cursorMap;
+  }
+
+  /** Reverse paging counterpart of {@link #listAfterAuthorized}. */
+  public ResultList<T> listBeforeAuthorized(
+      UriInfo uriInfo, AuthorizedListRequest<T> request, String before) {
+    int limitParam = request.limit();
+    ListFilter filter = request.filter();
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    if (limitParam <= 0) {
+      return getResultList(new ArrayList<>(), null, null, total);
+    }
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
+    List<T> entities =
+        collectAuthorizedBefore(
+            uriInfo,
+            request,
+            FullyQualifiedName.unquoteName(cursorMap.get("name")),
+            cursorMap.get("id"));
+
+    String beforeCursor = null;
+    if (entities.size() > limitParam) {
+      entities.remove(0);
+      beforeCursor = getCursorValue(entities.getFirst());
+    }
+    String afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast());
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<T> collectAuthorizedBefore(
+      UriInfo uriInfo, AuthorizedListRequest<T> request, String beforeName, String beforeId) {
+    int wanted = request.limit() + 1;
+    Deque<List<T>> batches = new ArrayDeque<>();
+    int authorizedCount = 0;
+    String cursorName = beforeName;
+    String cursorId = beforeId;
+    for (int batch = 0;
+        batch < MAX_AUTHORIZATION_FILL_BATCHES && authorizedCount < wanted;
+        batch++) {
+      List<String> jsons = dao.listBefore(request.filter(), wanted, cursorName, cursorId);
+      if (jsons.isEmpty()) {
+        break;
+      }
+      List<T> candidates = listInternal(jsons, request.fields(), uriInfo, request.filter());
+      T firstConsumed = candidates.getFirst();
+      cursorName = firstConsumed.getName();
+      cursorId = String.valueOf(firstConsumed.getId());
+      List<T> allowed = candidates.stream().filter(request.canView()).toList();
+      // Earlier batches sort before later ones when scanning backward.
+      batches.addFirst(allowed);
+      authorizedCount += allowed.size();
+      if (jsons.size() < wanted) {
+        break;
+      }
+    }
+    List<T> authorized = new ArrayList<>();
+    batches.forEach(authorized::addAll);
+    // Keep the rows nearest the before-cursor, mirroring a single dao.listBefore page.
+    return authorized.size() > wanted
+        ? new ArrayList<>(authorized.subList(authorized.size() - wanted, authorized.size()))
+        : authorized;
   }
 
   public ResultList<T> listBefore(

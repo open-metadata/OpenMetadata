@@ -12,9 +12,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -34,6 +37,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -419,6 +423,60 @@ public class PermissionsResourceIT {
     cleanupTable(adminClient, table);
   }
 
+  @Test
+  void testListEntitiesWithPermissions_paginationRemainsIntact() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    DatabaseSchema schema = createTestSchema(ns);
+    List<Table> created = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      created.add(createTableInSchema(client, ns, schema, "perm_page_" + i));
+    }
+
+    // Walk the whole collection two rows at a time. Filtering must not drop, duplicate, or
+    // short-change a page: every authorized row appears exactly once and the cursor chain
+    // terminates on its own.
+    Set<String> seen = new LinkedHashSet<>();
+    String after = null;
+    int pagesFetched = 0;
+    do {
+      TableListWrapper page = listTablesPaged(client, schema.getFullyQualifiedName(), 2, after);
+      assertNotNull(page.entityPermissions, "opted-in page must carry the permission sidecar");
+      assertEquals(
+          page.data.stream().map(table -> table.getId().toString()).collect(Collectors.toSet()),
+          page.entityPermissions.keySet(),
+          "sidecar must describe exactly the rows returned on this page");
+      for (Table table : page.data) {
+        assertTrue(seen.add(table.getId().toString()), "row returned twice: " + table.getName());
+      }
+      after = page.paging == null ? null : page.paging.getAfter();
+      pagesFetched++;
+    } while (after != null && pagesFetched < 10);
+
+    assertEquals(
+        created.size(), seen.size(), "paging must surface every authorized row exactly once");
+
+    for (Table table : created) {
+      cleanupTable(client, table);
+    }
+  }
+
+  private TableListWrapper listTablesPaged(
+      OpenMetadataClient client, String schemaFqn, int limit, String after) throws Exception {
+    StringBuilder path =
+        new StringBuilder("/v1/tables?includePermissions=true&limit=")
+            .append(limit)
+            .append("&databaseSchema=")
+            .append(URLEncoder.encode(schemaFqn, StandardCharsets.UTF_8));
+    if (after != null) {
+      path.append("&after=").append(URLEncoder.encode(after, StandardCharsets.UTF_8));
+    }
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, path.toString(), null);
+    return OBJECT_MAPPER.readValue(response, TableListWrapper.class);
+  }
+
   private boolean hasAllow(ResourcePermission permission, MetadataOperation operation) {
     return permission.getPermissions().stream()
         .anyMatch(p -> p.getOperation() == operation && p.getAccess() == Permission.Access.ALLOW);
@@ -630,5 +688,6 @@ public class PermissionsResourceIT {
   private static class TableListWrapper {
     public List<Table> data;
     public Map<String, ResourcePermission> entityPermissions;
+    public Paging paging;
   }
 }

@@ -131,6 +131,31 @@ Add `buildListPredicate(subject, resourceType, ops)` and a batched-page evaluato
 the **visible** page only, computed by one batched subject evaluation. Controls the sidecar only;
 filtering is always enforced.
 
+## 4.7 Interim implementation shipped in this PR (in-process filtering)
+
+Ahead of the SQL predicate, the opt-in path already **filters rows the caller may not view**, so the
+list no longer returns assets the user has no access to:
+
+- `EntityRepository.listAfterAuthorized` / `listBeforeAuthorized` take an
+  `AuthorizedListRequest(fields, filter, limit, canView)` and apply `canView` to every candidate row.
+- **Pagination is preserved.** Cursors are `(name, id)` positions in the table's own ordering, so
+  dropping rows never invalidates them — it only shortens a page. Each page therefore **refills** by
+  continuing the scan from the last row consumed, bounded by
+  `MAX_AUTHORIZATION_FILL_BATCHES` so a user who may view almost nothing cannot scan the whole table
+  for one page. Result: stable page size, no duplicated or skipped rows, cursor chain intact.
+- `EntityResource.ListPermissionEvaluator` evaluates each entity's policy **once** and feeds both the
+  filter and the sidecar (otherwise every surviving row would be evaluated twice).
+
+**Known gap (closed by the SQL predicate, §4.3):** `paging.total` is still the unfiltered row count,
+i.e. an **upper bound** — an exact authorized total would mean evaluating every row in the table.
+Cursor navigation is unaffected; offset-style page-number UIs may show trailing pages that resolve
+to fewer rows. This is precisely the "filter before counting" requirement that only a database-side
+predicate can satisfy, and is the reason §5 Stage 1 remains the real fix.
+
+Scope note: the search-backed list paths (`searchInternal`, `listInternalFromSearch`) still only
+attach the sidecar — row filtering there is already the job of the existing SearchRBAC path, which
+§5 Stage 4 unifies with this predicate.
+
 ## 5. Staging (each stage = its own reviewable PR)
 - **1 — linchpin:** IR + compiler + `SqlPredicateRenderer` for `IsOwner`/`NoOwner` + **parity ITs on
   MySQL and Postgres** (compiled-SQL vs exact `PolicyEvaluator` over interleaved visible/hidden
