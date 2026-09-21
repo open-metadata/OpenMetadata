@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { uniq } from 'lodash';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, EdgeChange, Node, NodeChange } from 'reactflow';
+import { applyEdgeChanges, applyNodeChanges } from 'reactflow';
 import { create } from 'zustand';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
@@ -44,6 +45,9 @@ interface LineageState {
   isCanvasReady: boolean;
   lineageMutationTick: number;
   sceneBand?: LineageBand;
+  nodes: Node[];
+  edges: Edge[];
+  columnEdges: Edge[];
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -77,6 +81,13 @@ interface LineageState {
   bumpLineageMutationTick: () => void;
   setSceneBand: (sceneBand?: LineageBand) => void;
   reset: () => void;
+  setNodes: (nodes: Node[]) => void;
+  setEdges: (edges: Edge[]) => void;
+  setColumnEdges: (edges: Edge[]) => void;
+  applyNodesChange: (changes: NodeChange[]) => void;
+  applyEdgesChange: (changes: EdgeChange[]) => void;
+  redraw: () => void;
+  resetGraph: () => void;
 }
 
 const defaultLineageSettings = {
@@ -104,6 +115,9 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   isRepositioning: false,
   isCanvasReady: false,
   lineageMutationTick: 0,
+  nodes: [],
+  edges: [],
+  columnEdges: [],
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -282,5 +296,33 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       isCanvasReady: false,
       lineageMutationTick: 0,
       sceneBand: undefined,
+      nodes: [],
+      edges: [],
+      columnEdges: [],
     }),
+
+  setNodes: (nodes: Node[]) => set({ nodes }),
+
+  setEdges: (edges: Edge[]) => set({ edges }),
+
+  setColumnEdges: (columnEdges: Edge[]) => set({ columnEdges }),
+
+  applyNodesChange: (changes: NodeChange[]) =>
+    set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) })),
+
+  applyEdgesChange: (changes: EdgeChange[]) =>
+    set((state) => ({ edges: applyEdgeChanges(changes, state.edges) })),
+
+  redraw: () =>
+    set((state) => ({
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
+
+  resetGraph: () =>
+    set((state) => ({
+      nodes: [],
+      edges: [],
+      columnEdges: [],
+      lineageMutationTick: state.lineageMutationTick + 1,
+    })),
 }));

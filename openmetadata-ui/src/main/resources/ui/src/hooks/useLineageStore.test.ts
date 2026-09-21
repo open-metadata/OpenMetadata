@@ -621,3 +621,51 @@ describe('useLineageStore', () => {
     });
   });
 });
+
+describe('graph slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setNodes replaces the nodes array', () => {
+    const n: Node[] = [{ id: 'a', position: { x: 0, y: 0 }, data: {} }];
+    useLineageStore.getState().setNodes(n);
+
+    expect(useLineageStore.getState().nodes).toBe(n);
+  });
+
+  it('applyNodesChange applies reactflow changes', () => {
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'a', position: { x: 0, y: 0 }, data: {} }]);
+    useLineageStore
+      .getState()
+      .applyNodesChange([
+        { id: 'a', type: 'position', position: { x: 10, y: 20 } },
+      ]);
+
+    expect(useLineageStore.getState().nodes[0].position).toEqual({
+      x: 10,
+      y: 20,
+    });
+  });
+
+  it('resetGraph clears nodes/edges/columnEdges and bumps tick', () => {
+    useLineageStore
+      .getState()
+      .setNodes([{ id: 'a', position: { x: 0, y: 0 }, data: {} }]);
+    const before = useLineageStore.getState().lineageMutationTick;
+    useLineageStore.getState().resetGraph();
+    const s = useLineageStore.getState();
+
+    expect(s.nodes).toHaveLength(0);
+    expect(s.edges).toHaveLength(0);
+    expect(s.columnEdges).toHaveLength(0);
+    expect(s.lineageMutationTick).toBe(before + 1);
+  });
+
+  it('redraw bumps mutation tick', () => {
+    const before = useLineageStore.getState().lineageMutationTick;
+    useLineageStore.getState().redraw();
+
+    expect(useLineageStore.getState().lineageMutationTick).toBe(before + 1);
+  });
+});
