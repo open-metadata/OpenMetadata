@@ -60,6 +60,7 @@ import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import { replacePlus } from '../../../utils/StringUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -381,10 +382,7 @@ export const AddTestCaseList = ({
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      if (
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === 500 &&
-        items.length < totalCount
-      ) {
+      if (isNearScrollBottom(e.currentTarget) && items.length < totalCount) {
         !isLoading &&
           fetchTestCases({
             searchText: searchTerm,
