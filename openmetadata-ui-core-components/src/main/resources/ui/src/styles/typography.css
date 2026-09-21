@@ -1,27 +1,25 @@
-@layer base {
-  .prose:not(:where([class~='not-prose'], [class~='not-prose'] *)) {
-    --tw-prose-body: theme(--color-text-tertiary);
-    --tw-prose-headings: theme(--color-text-primary);
-    --tw-prose-lead: theme(--color-text-tertiary);
-    --tw-prose-links: theme(--color-text-tertiary);
-    --tw-prose-bold: theme(--color-text-primary);
-    --tw-prose-counters: theme(--color-text-tertiary);
-    --tw-prose-bullets: theme(--color-text-tertiary);
-    --tw-prose-hr: theme(--color-border-secondary);
-    --tw-prose-quotes: theme(--color-text-primary);
-    --tw-prose-quote-borders: theme(--color-fg-brand-primary_alt);
-    --tw-prose-captions: theme(--color-text-tertiary);
-    --tw-prose-code: theme(--color-text-tertiary);
-    --tw-prose-pre-code: theme(--color-text-tertiary);
-    --tw-prose-pre-bg: theme(--color-bg-primary);
-    --tw-prose-th-borders: theme(--color-border-primary);
-    --tw-prose-td-borders: theme(--color-border-secondary);
+.prose:not(:where([class~='not-prose'], [class~='not-prose'] *)) {
+  --tw-prose-body: theme(--color-text-tertiary);
+  --tw-prose-headings: theme(--color-text-primary);
+  --tw-prose-lead: theme(--color-text-tertiary);
+  --tw-prose-links: theme(--color-text-tertiary);
+  --tw-prose-bold: theme(--color-text-primary);
+  --tw-prose-counters: theme(--color-text-tertiary);
+  --tw-prose-bullets: theme(--color-text-tertiary);
+  --tw-prose-hr: theme(--color-border-secondary);
+  --tw-prose-quotes: theme(--color-text-primary);
+  --tw-prose-quote-borders: theme(--color-fg-brand-primary_alt);
+  --tw-prose-captions: theme(--color-text-tertiary);
+  --tw-prose-code: theme(--color-text-tertiary);
+  --tw-prose-pre-code: theme(--color-text-tertiary);
+  --tw-prose-pre-bg: theme(--color-bg-primary);
+  --tw-prose-th-borders: theme(--color-border-primary);
+  --tw-prose-td-borders: theme(--color-border-secondary);
 
-    /* Base */
-    color: theme(--color-text-primary);
-    font-size: theme(--text-sm);
-    line-height: theme(--text-sm--line-height);
-  }
+  /* Base */
+  color: theme(--color-text-primary);
+  font-size: theme(--text-sm);
+  line-height: theme(--text-sm--line-height);
 }
 
 .prose :not(:where([class~='not-prose'], [class~='not-prose'] *)) {
