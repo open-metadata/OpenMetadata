@@ -155,6 +155,67 @@ WHERE name IN (
   )
   AND NOT JSON_CONTAINS_PATH(json, 'one', '$.parameterDefinition');
 
+-- `tableRowInsertedCountToBeBetween` cannot run without `columnName` / `rangeType` /
+-- `rangeInterval`, yet deployments still carry a definition that only declares `min` and `max`
+-- (issue #33617): the 1.4.0 script rewrote the whole parameter array to just those two, and the
+-- 1.12.0 fix that added the three back was only ever written for Postgres. These run before the
+-- `threshold` / `thresholdUnit` statements below so the resulting parameter order matches the seeded
+-- definition. Guarded on each parameter being absent, which keeps re-runs -- and every deployment
+-- that already has them -- a no-op.
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'columnName',
+        'displayName', 'Column Name',
+        'description', 'Name of the Column. It should be a timestamp, date or datetime field.',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"columnName"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeType',
+        'displayName', 'Range Type',
+        'description', 'One of ''HOUR'', ''DAY'', ''MONTH'', ''YEAR''',
+        'dataType', 'STRING',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeType"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'rangeInterval',
+        'displayName', 'Interval',
+        'description', 'Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we''ll check the numbers of rows inserted where columnName=-1 DAY',
+        'dataType', 'INT',
+        'required', true
+    )
+)
+WHERE name = 'tableRowInsertedCountToBeBetween'
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"rangeInterval"'
+  );
+
 UPDATE test_definition
 SET json = JSON_ARRAY_APPEND(
     json,

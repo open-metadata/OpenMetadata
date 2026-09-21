@@ -38,7 +38,7 @@ import { RelationshipTypeUsage } from '../generated/type/relationshipTypeUsage';
 import { TermRelation } from '../generated/type/termRelation';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
