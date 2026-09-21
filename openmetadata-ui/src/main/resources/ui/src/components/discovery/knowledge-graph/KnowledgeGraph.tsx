@@ -21,6 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import {
+  ZOOM_IN_FACTOR,
+  ZOOM_OUT_FACTOR,
+} from '../../../constants/discovery/knowledge-graph.constants';
+import {
   GraphSelection,
   useKnowledgeGraphCanvas,
 } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
@@ -29,20 +33,16 @@ import { useKnowledgeGraphExplorer } from '../../../hooks/discovery/knowledge-gr
 import { downloadEntityGraph } from '../../../rest/rdfAPI';
 import { EntityGraphExportFormat } from '../../../rest/rdfAPI.interface';
 import { resolveCssColor } from '../../../utils/common/cssColor.utils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
-import { getGraphRelationshipRows } from '../../../utils/discovery/knowledge-graph/knowledgeGraphExport.utils';
 import {
   getGroupRelationship,
   graphLevelToExportDepth,
   normalizeGraphLevel,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { getGraphRelationshipRows } from '../../../utils/discovery/knowledge-graph/knowledgeGraphExport.utils';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import CustomNode from './GraphElements/CustomNode';
-import {
-  ZOOM_IN_FACTOR,
-  ZOOM_OUT_FACTOR,
-} from '../../../constants/discovery/knowledge-graph.constants';
 import {
   KnowledgeGraphDrawer,
   KnowledgeGraphFilters,
@@ -296,15 +296,8 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   }, [isFullscreen]);
 
   const handleZoom = useCallback(
-    (factor: number) => {
-      const graph = canvas.graphRef.current;
-      if (graph && canvas.ready) {
-        void graph
-          .zoomTo(graph.getZoom() * factor, false)
-          .catch((error) => showErrorToast(error as AxiosError));
-      }
-    },
-    [canvas.graphRef, canvas.ready]
+    (factor: number) => canvas.zoomBy(factor),
+    [canvas]
   );
   const handleFit = canvas.fit;
   const handleExport = useCallback(

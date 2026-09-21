@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,10 +16,13 @@ import type {
   NodeData as G6NodeData,
   NodeData,
 } from '@antv/g6';
-import { EntityReference } from '../generated/entity/type';
-import { GraphData as RdfGraphData } from '../rest/rdfAPI.interface';
-import { GraphEdge, GraphFilterOptions } from '../types/knowledgeGraph.types';
-import type { RelationCategory } from './knowledgeGraphRelations.interface';
+import { EntityReference } from '../../generated/entity/type';
+import { GraphData as RdfGraphData } from '../../rest/rdfAPI.interface';
+import {
+  GraphEdge,
+  GraphFilterOptions,
+} from '../../types/knowledgeGraph.types';
+import type { RelationCategory } from './knowledge-graph-relations.interface';
 
 export interface KnowledgeGraphProps {
   entity?: EntityReference;
@@ -92,6 +95,37 @@ export interface KnowledgeGraphEdge extends GraphEdge {
   members?: KnowledgeGraphEdge[];
   category?: RelationCategory;
   /** A connector to an expanded member represents an existing bundle, not another RDF statement. */
+  presentationOnly?: boolean;
+}
+
+/**
+ * Shape of the `data` blob attached to a G6 node in the knowledge graph. G6's
+ * own `NodeData` types this as `Record<string, unknown>`, so this interface
+ * documents the fields the graph relies on and narrows accessors to typed
+ * reads instead of `as` assertions at the call site.
+ */
+export interface KnowledgeGraphNodeData {
+  type?: string;
+  label?: string;
+  level?: number;
+  presentation?: GraphNodePresentation;
+  colorMain?: string;
+  colorLight?: string;
+  highlighted?: boolean;
+  dimmed?: boolean;
+}
+
+/**
+ * Shape of the `data` blob attached to a G6 edge in the knowledge graph. G6's
+ * own `EdgeData` types this as `Record<string, unknown>`, so accessors read
+ * through this shape rather than casting.
+ */
+export interface KnowledgeGraphEdgeData {
+  label?: string;
+  category?: RelationCategory;
+  relationType?: string;
+  derivation?: GraphDerivation;
+  members?: KnowledgeGraphEdge[];
   presentationOnly?: boolean;
 }
 
