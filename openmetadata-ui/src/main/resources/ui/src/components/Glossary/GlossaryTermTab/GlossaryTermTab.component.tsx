@@ -754,8 +754,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
-    lastFetchedTaskFqnRef.current = fqn;
-
     try {
       // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
       // only tasks for terms under this glossary are returned — no client-side
@@ -768,6 +766,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees',
       });
+      lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
