@@ -1,25 +1,15 @@
 #!/usr/bin/env bash
-# Builds a fixed-width per-provider summary of the SSO Login Nightly matrix
-# from the outcome artifacts uploaded by each matrix leg
-# (`sso-login-outcome-<provider>`, containing `status.txt` and optionally
-# `results.json`).
+# Shared summary for SSO Login Nightly's Slack + PR-comment notifiers.
 #
-# Consumed by both the Slack notifier (`notify-slack`) and the PR-comment
-# notifier (`notify-pr`) in `.github/workflows/playwright-sso-login-nightly.yml`
-# so the two surfaces render identical tables.
+# Input:  $OUTCOMES_DIR (default `outcomes`) — where download-artifact
+#         wrote the `sso-login-outcome-*` pattern download.
+# Output: three files under $1 (default `/tmp/sso-summary`):
+#         table.txt / totals.txt / status.txt  (verdict: passed|failed|skipped).
 #
-# Input: $OUTCOMES_DIR (default `outcomes`) — the directory
-#   `actions/download-artifact` wrote the pattern download to.
-# Output: writes three files under $1 (default `/tmp/sso-summary`):
-#   table.txt   header + divider + one row per provider (no code fences)
-#   totals.txt  one-line totals string
-#   status.txt  passed | failed | skipped  (overall verdict for the run)
-#
-# Table status column is plain ASCII (`pass`, `flaky`, `skipped`, `FAIL`,
-# `SETUP-FAIL`, `NO-REPORT`, `unknown`) — uppercase for failures so they read
-# louder inside a monospace code block. Emoji short codes would misalign the
-# columns because raw source width ≠ rendered glyph width; the overall
-# verdict (status.txt) drives the header emoji in each notifier instead.
+# Table uses plain ASCII (uppercase for failures) rather than emoji short
+# codes because raw source width ≠ rendered glyph width — the columns would
+# misalign inside the monospace code block each notifier posts. Emoji lives
+# in the header line instead, driven by status.txt.
 
 set -euo pipefail
 

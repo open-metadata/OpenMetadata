@@ -104,6 +104,13 @@ jobs:
   check-changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # dorny/paths-filter calls the PR-files API on pull_request events; the
+    # workflow-level `contents: read` block implicitly zeroes every other
+    # scope, so grant read here explicitly (public-repo default happens to
+    # allow it today, private forks would silently see zero changed files).
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       okta: ${{ steps.filter.outputs.okta }}
     steps:
@@ -451,26 +458,27 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
 
-  # Consolidates every matrix leg's outcome into ONE Slack message with a
-  # fixed-width table (a code block in Slack renders as monospace, keeping
-  # columns aligned). Fires on schedule + opt-in dispatch; PR runs get a
-  # sticky PR comment via `notify-pr` below instead. The overall verdict emoji
-  # in the header line comes from the shared summary script — no emoji
-  # inside the table itself, since raw source width would misalign columns.
+  # Slack renders a triple-backtick block as monospace — that's the only
+  # reason the table lines up. Any emoji inside the table would misalign
+  # (raw source width ≠ rendered glyph width), so emoji lives only in the
+  # header line, driven by the summary's verdict.
   notify-slack:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
     runs-on: ubuntu-latest
     steps:
+      # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
+      # since these run before every notify + fetch the tree/artifacts the
+      # notifier trusts.
       - name: Checkout (for shared summary script)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           sparse-checkout: |
             .github/scripts/build_sso_login_summary.sh
           sparse-checkout-cone-mode: false
 
       - name: Download leg outcomes
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: sso-login-outcome-*
           path: outcomes
@@ -524,11 +532,9 @@ jobs:
             exit 1
           fi
 
-  # PR runs get a sticky comment instead of a Slack message — the same
-  # fixed-width table, updated in place on subsequent pushes so the PR
-  # thread never accumulates duplicate summaries. Uses the default
-  # GITHUB_TOKEN; on fork PRs the token is read-only, so the post step
-  # tolerates the 403 rather than red-x'ing the whole workflow.
+  # continue-on-error on the post step: fork PRs run under a read-only
+  # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
+  # than red-x'ing the whole workflow for a nice-to-have.
   notify-pr:
     if: ${{ always() && github.event_name == 'pull_request' }}
     needs: sso-login
@@ -538,14 +544,14 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout (for shared summary script)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           sparse-checkout: |
             .github/scripts/build_sso_login_summary.sh
           sparse-checkout-cone-mode: false
 
       - name: Download leg outcomes
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           pattern: sso-login-outcome-*
           path: outcomes
@@ -570,8 +576,6 @@ jobs:
             *)       header=':fast_forward: SSO Login Nightly — **SKIPPED**';;
           esac
 
-          # Hidden marker keeps the comment sticky — the search below looks
-          # for it to decide between update and create.
           marker='<!-- sso-login-nightly-summary -->'
           {
             echo "$marker"
@@ -586,11 +590,13 @@ jobs:
             echo "**$totals**"
           } > /tmp/pr-comment.md
 
-          # Find any existing sticky comment on this PR by marker; edit in
-          # place if present, otherwise create a new one.
+          # Sticky lookup: match the marker AND scope to the workflow bot's
+          # own comments. Marker-only would let any PR participant paste the
+          # string into their comment and have subsequent runs overwrite it.
           existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
             --paginate --jq \
-            ".[] | select(.body | contains(\"${marker}\")) | .id" | head -n1 || true)
+            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
+            | head -n1 || true)
 
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
