@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -276,6 +276,11 @@ const GlossaryPage = () => {
     enabled: isTermView,
   });
 
+  const glossaryQueryEnabled = useMemo(
+    () => isGlossaryView && !glossaryFoundInList,
+    [isGlossaryView, glossaryFoundInList]
+  );
+
   // Resolve the active glossary by FQN so a nonexistent FQN produces a real
   // 404 instead of silently rendering the first glossary from the list.
   // Skipped when glossaryFoundInList is truthy — the list data is sufficient.
@@ -287,10 +292,13 @@ const GlossaryPage = () => {
     queryKey: ['glossary', glossaryFqn] as const,
     queryFn: () =>
       getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
-    enabled: isGlossaryView && !glossaryFoundInList,
+    enabled: glossaryQueryEnabled,
   });
 
-  const glossaryDetails = glossaryFoundInList ?? glossaryFetchedDetails;
+  const glossaryDetails = useMemo(
+    () => glossaryFoundInList ?? glossaryFetchedDetails,
+    [glossaryFoundInList, glossaryFetchedDetails]
+  );
 
   const setGlossaryTermDetails = useCallback(
     (
@@ -390,6 +398,11 @@ const GlossaryPage = () => {
     isGlossaryView,
     glossaryFetching,
   ]);
+
+  const showFullPageLoader = useMemo(
+    () => isLoading && !isGlossaryNotFound && !isTermNotFound,
+    [isLoading, isGlossaryNotFound, isTermNotFound]
+  );
 
   const updateGlossary = useCallback(
     async (updatedData: Glossary) => {
@@ -552,10 +565,7 @@ const GlossaryPage = () => {
     []
   );
 
-  // Skip the full-page loader when the FQN query has already confirmed a 404 —
-  // the not-found state is known and should surface immediately without waiting
-  // for the sidebar list to finish paginating.
-  if (isLoading && !isGlossaryNotFound && !isTermNotFound) {
+  if (showFullPageLoader) {
     return <Loader />;
   }
 
