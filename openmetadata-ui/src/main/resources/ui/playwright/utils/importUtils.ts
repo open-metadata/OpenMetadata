@@ -44,7 +44,10 @@ import {
   fillTableColumnInputDetails,
 } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
-import { searchGlossaryPicker } from './glossaryPicker';
+import {
+  expectGlossaryPickerOpen,
+  searchGlossaryPicker,
+} from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
@@ -697,12 +700,16 @@ export const fillGlossaryTermDetails = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  // The cell editor mounts the picker already open and focused.
-  await expect(
-    page.getByTestId('csv-glossary-terms-picker-popover')
-  ).toBeVisible();
+  const picker = page.getByTestId('csv-glossary-terms-picker');
+  await expect(picker).toBeVisible();
 
-  await searchGlossaryPicker(page, glossary.name);
+  // The editor mounts it open, but the grid's focus handling can close it again.
+  if ((await picker.getAttribute('data-treeselect-open')) !== 'true') {
+    await picker.click();
+  }
+  await expectGlossaryPickerOpen(picker);
+
+  await searchGlossaryPicker(page, glossary.name, picker);
 
   const row = page.getByTestId(
     `tree-node-"${glossary.parent}"."${glossary.name}"`

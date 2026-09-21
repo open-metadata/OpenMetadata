@@ -27,8 +27,7 @@ const POPOVER = '.glossary-term-picker-popover';
 // Only the button and custom-trigger variants put a search box in the popover.
 const popoverSearchBox = (page: Page) => page.locator(POPOVER).locator('input');
 
-const tree = (page: Page) =>
-  page.locator(POPOVER).locator('[role="treegrid"]');
+const tree = (page: Page) => page.locator(POPOVER).locator('[role="treegrid"]');
 
 // Terms are keyed by FQN, glossary roots by bare `name` — accept both spellings.
 const termRow = (page: Page, term: GlossaryTermRef) =>
@@ -56,14 +55,23 @@ export const isGlossaryTermSelected = (row: Locator) =>
     .then((n) => n > 0);
 
 // The tree debounces and may skip the call, so the caller's row assertion is the wait.
-export const searchGlossaryPicker = async (page: Page, term: string) => {
+export const searchGlossaryPicker = async (
+  page: Page,
+  term: string,
+  trigger?: Locator
+) => {
   const inPopover = popoverSearchBox(page);
-  // The input variant's own trigger is the search box, and it holds focus while open.
+  // The input variant's own trigger is the search box; prefer it over `:focus`.
   const box = (await inPopover.count())
     ? inPopover
-    : page.locator('input:focus');
+    : trigger?.locator('input') ?? page.locator('input:focus');
 
   await box.fill(term);
+};
+
+// `display: contents` on the popover has no box, so open state reads off the trigger.
+export const expectGlossaryPickerOpen = async (trigger: Locator) => {
+  await expect(trigger).toHaveAttribute('data-treeselect-open', 'true');
 };
 
 // Opens the picker and waits for the treegrid to render.
