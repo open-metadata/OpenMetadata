@@ -26,7 +26,7 @@ import {
 } from '../generated/tests/testCaseResolutionStatus';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
+import APIClient from './axiosClient';
 import type { ListTasksParams, ResolveTask, Task } from './tasksAPI';
 import { getTaskById, listTasks, resolveTask, TaskCategory } from './tasksAPI';
 

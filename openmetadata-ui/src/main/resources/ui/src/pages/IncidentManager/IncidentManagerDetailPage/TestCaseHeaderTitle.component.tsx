@@ -22,7 +22,7 @@ import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TestCase } from '../../../generated/tests/testCase';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
 interface TestCaseHeaderTitleProps {
@@ -57,11 +57,11 @@ const TestCaseHeaderTitle = ({
             className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
             data-testid="entity-header-display-name"
             ellipsis={{
-              tooltip: breakableTooltipText(stringToHTML(displayName)),
+              tooltip: breakableTooltipText(renderHighlightedText(displayName)),
             }}
             size="text-lg"
             weight="bold">
-            {stringToHTML(displayName)}
+            {renderHighlightedText(displayName)}
           </Typography>
         )}
         <Typography
