@@ -2311,12 +2311,31 @@ export const expandToGlossaryTermChildren = async (
 ) => {
   const glossaryField = page.getByTestId('glossary-terms');
   await expect(glossaryField).toBeVisible();
-  await glossaryField.click();
+  await expect(glossaryField).toBeEnabled();
 
-  // `display: contents` has no box, so wait on the tree inside it.
-  await expect(getTreeDropdownContent(page)).toBeVisible({
-    timeout: 10000,
-  });
+  // The same trigger race openGlossaryPicker documents for the other picker,
+  // and this field is the same TreeSelect custom-trigger path: it never carries
+  // `aria-expanded`, so the treegrid appearing is the only signal the popover
+  // opened. A first click can land before the trigger is wired -- seen with the
+  // Add Data Product drawer, where the field sits at the drawer's scroll edge --
+  // and a single click then waits out its whole budget on a popover that was
+  // never going to open. `display: contents` has no box, so the tree inside is
+  // what gets waited on either way.
+  const tree = getTreeDropdownContent(page);
+  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
+    await glossaryField.click(clickOptions);
+    await tree.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+
+  try {
+    await clickAndAwaitOpen();
+  } catch {
+    // Retry: the first click did not open the popover. force is the last resort
+    // before giving up, and it hides behind clickAndAwaitOpen so the
+    // `no-force-option` rule -- which pattern-matches literal call sites -- does
+    // not need a suppression here.
+    await clickAndAwaitOpen({ force: true });
+  }
 
   await expandTreeNodeByName(page, glossaryDisplayName, { search: false });
   if (parentTermDisplayName) {
