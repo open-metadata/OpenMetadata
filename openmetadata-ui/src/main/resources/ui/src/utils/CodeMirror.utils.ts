@@ -18,12 +18,11 @@ import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import { sql } from '@codemirror/lang-sql';
 import { yaml } from '@codemirror/lang-yaml';
-import { tags as t } from '@lezer/highlight';
 import {
   bracketMatching,
   defaultHighlightStyle,
-  HighlightStyle,
   foldGutter,
+  HighlightStyle,
   indentUnit,
   StreamLanguage,
   syntaxHighlighting,
@@ -41,6 +40,7 @@ import {
   lineNumbers,
   placeholder as placeholderExtension,
 } from '@codemirror/view';
+import { tags as t } from '@lezer/highlight';
 import { isUndefined } from 'lodash';
 import { CSMode } from '../enums/codemirror.enum';
 import { CodeMirrorOptions, Mode } from '../interface/codemirror.interface';
