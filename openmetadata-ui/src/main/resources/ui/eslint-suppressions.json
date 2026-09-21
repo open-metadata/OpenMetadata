@@ -149,7 +149,7 @@
   },
   "playwright/e2e/Features/DataQuality/DataQuality.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 5
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts": {
