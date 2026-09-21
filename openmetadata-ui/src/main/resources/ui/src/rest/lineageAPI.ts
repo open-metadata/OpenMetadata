@@ -15,7 +15,6 @@ import { CSVExportResponse } from '../components/Entity/EntityExportModalProvide
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EdgeDetails,
-  EntityLineageResponse,
   LineageData,
 } from '../components/Lineage/Lineage.interface';
 import {
@@ -33,6 +32,7 @@ import {
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
 import { LineageDetails } from '../generated/type/entityLineage';
+import { EntityLineageResponse } from '../interface/lineage.interface';
 import APIClient from './axiosClient';
 
 export const updateLineageEdge = async (edge: AddLineage) => {

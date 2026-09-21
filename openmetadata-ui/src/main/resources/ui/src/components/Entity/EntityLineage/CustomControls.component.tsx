@@ -51,12 +51,12 @@ import {
 } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
-import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
 import { LineageBand } from '../../../generated/api/lineage/lineageScene';
+import { LineagePlatformView } from '../../../hooks/lineage/types';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';

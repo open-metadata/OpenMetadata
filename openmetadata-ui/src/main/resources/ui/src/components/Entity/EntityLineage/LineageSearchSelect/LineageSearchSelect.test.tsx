@@ -18,9 +18,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
 import LineageSearchSelect from './LineageSearchSelect';

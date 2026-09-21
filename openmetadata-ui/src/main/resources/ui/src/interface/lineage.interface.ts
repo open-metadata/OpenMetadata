@@ -11,10 +11,22 @@
  *  limitations under the License.
  */
 
-// Shared by the lineage store, the lineage provider and the lineage UI, so it
-// sits below the component layer. EntityLineage.interface re-exports it.
+// Shared by the lineage store and the lineage UI, so it sits below the
+// component layer. EntityLineage.interface re-exports it.
+import {
+  EdgeDetails,
+  LineageNodeType,
+} from '../components/Lineage/Lineage.interface';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 
 export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
   nodesPerLayer: number;
+}
+
+export interface EntityLineageResponse {
+  entity: LineageNodeType;
+  nodes?: LineageNodeType[];
+  edges?: EdgeDetails[];
+  downstreamEdges?: EdgeDetails[];
+  upstreamEdges?: EdgeDetails[];
 }

@@ -48,10 +48,6 @@ import {
   LINEAGE_EXPORT_SELECTOR,
 } from '../../../constants/Export.constants';
 import { ELEMENT_DELETE_STATE } from '../../../constants/Lineage.constants';
-import {
-  LineagePlatformView,
-  LineageTimeRange,
-} from '../../../context/LineageProvider/LineageProvider.interface';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
@@ -66,11 +62,16 @@ import {
   LineageDetails,
 } from '../../../generated/type/entityLineage';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import {
+  LineagePlatformView,
+  LineageTimeRange,
+} from '../../../hooks/lineage/types';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { useMapBasedNodesEdges } from '../../../hooks/useMapBasedNodesEdges';
+import { EntityLineageResponse } from '../../../interface/lineage.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
@@ -132,7 +133,6 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import {
   EdgeDetails,
-  EntityLineageResponse,
   LineageData,
   LineageNodeType,
   NodeData,

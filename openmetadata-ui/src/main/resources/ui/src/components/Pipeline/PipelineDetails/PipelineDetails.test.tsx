@@ -175,10 +175,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'tasks' })),
 }));
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-
 jest.mock('../../Lineage/Lineage.component', () => {
   return jest
     .fn()

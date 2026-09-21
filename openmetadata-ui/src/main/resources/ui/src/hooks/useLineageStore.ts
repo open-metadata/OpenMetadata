@@ -21,24 +21,20 @@ import type {
 } from 'reactflow';
 import { applyEdgeChanges, applyNodeChanges } from 'reactflow';
 import { create } from 'zustand';
-// Type-only import of the shared Lineage interface (also consumed the same way by
-// LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
-// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
-import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 // Type-only import of the shared Explore quick-filter type; relocating it to a lower layer
 // is out of scope for this task (tracked for a later phase).
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
-import {
-  LineagePlatformView,
-  LineageTimeRange,
-} from '../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
-import type { LineageConfig } from '../interface/lineage.interface';
+import type {
+  EntityLineageResponse,
+  LineageConfig,
+} from '../interface/lineage.interface';
 import type { SourceType } from '../interface/source.interface';
+import { LineagePlatformView, LineageTimeRange } from './lineage/types';
 
 interface LineageState {
   // state properties

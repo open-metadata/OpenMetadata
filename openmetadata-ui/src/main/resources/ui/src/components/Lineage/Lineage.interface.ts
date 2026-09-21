@@ -44,14 +44,6 @@ export interface LineageProps {
   showControls?: boolean;
 }
 
-export interface EntityLineageResponse {
-  entity: LineageNodeType;
-  nodes?: LineageNodeType[];
-  edges?: EdgeDetails[];
-  downstreamEdges?: EdgeDetails[];
-  upstreamEdges?: EdgeDetails[];
-}
-
 export interface EdgeFromToData {
   id: string;
   type: string;

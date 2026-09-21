@@ -24,8 +24,8 @@ import {
   NODE_ITEMS_PAGE_SIZE,
   ZOOM_TRANSITION_DURATION,
 } from '../../../../constants/Lineage.constants';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';

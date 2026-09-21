@@ -13,20 +13,17 @@
 import { act, renderHook } from '@testing-library/react';
 import type { ReactFlowInstance } from 'reactflow';
 import { Edge, Node } from 'reactflow';
-// Type-only import of the shared Lineage interface (also consumed the same way by
-// LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
-// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
-import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 // Type-only import of the shared Explore quick-filter type; relocating it to a lower layer
 // is out of scope for this task (tracked for a later phase).
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
 import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
+import type { EntityLineageResponse } from '../interface/lineage.interface';
 import type { SourceType } from '../interface/source.interface';
+import { LineagePlatformView } from './lineage/types';
 import { useLineageStore } from './useLineageStore';
 
 describe('useLineageStore', () => {

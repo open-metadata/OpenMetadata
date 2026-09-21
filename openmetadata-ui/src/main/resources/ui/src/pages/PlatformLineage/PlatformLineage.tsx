@@ -49,11 +49,11 @@ import {
 } from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { LineagePlatformView } from '../../hooks/lineage/types';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
