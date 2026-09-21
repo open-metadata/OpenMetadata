@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -67,6 +69,7 @@ public class ServiceAttributePolicyIT {
   private static final Column COLUMN = new Column().withName("id").withDataType(ColumnDataType.INT);
   private static final String HIDDEN_TAG = "PII.Sensitive";
   private static final String TAGS_FIELD = "tags";
+  private static final String TIER_TAG = "Tier.Tier1";
 
   /** Only this test toggles the global search settings, so only it takes the shared lock. */
   @Test
@@ -422,6 +425,66 @@ public class ServiceAttributePolicyIT {
     } finally {
       drain(cleanup);
     }
+  }
+
+  /**
+   * Editing an asset's own tags must not look like the inherited ones were taken away.
+   *
+   * <p>`original` carries its ancestors' tags as DERIVED because it comes off the read path, while
+   * `updated` has been through prepareInternal, which strips them. Diffing those as-is recorded the
+   * service's tag as removed from the table -- in the version history and in the ChangeEvent -- on
+   * every tag edit, even though nothing was written and the tag was still there on the next read.
+   */
+  @Test
+  void editingOwnTags_doesNotRecordTheInheritedOnesAsRemoved(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_diff", schema);
+      tagService(admin, service, HIDDEN_TAG);
+
+      Table inherited = admin.tables().get(table.getId().toString(), TAGS_FIELD);
+      assertTrue(
+          tagFqnsOf(inherited).contains(HIDDEN_TAG), "the table has something to inherit first");
+
+      Table edited = addOwnTag(admin, inherited, TIER_TAG);
+
+      assertTrue(
+          tagFqnsOf(edited).contains(TIER_TAG), "the tag the caller actually added is recorded");
+      assertFalse(
+          changeDescriptionMentionsRemoval(edited, HIDDEN_TAG),
+          "the inherited tag was never removed, so the change must not say it was");
+      assertTrue(
+          tagFqnsOf(admin.tables().get(table.getId().toString(), TAGS_FIELD)).contains(HIDDEN_TAG),
+          "and it is still inherited after the edit");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Appends one tag of the asset's own, the way a UI edit does: the caller sends only the label it
+   * is adding and leaves the inherited ones untouched.
+   */
+  private Table addOwnTag(OpenMetadataClient admin, Table table, String tagFqn) throws Exception {
+    String patch =
+        """
+        [{"op":"add","path":"/tags/-","value":{"tagFQN":"%s","source":"Classification","labelType":"Manual","state":"Confirmed"}}]"""
+            .formatted(tagFqn);
+    return admin.tables().patch(table.getId().toString(), MAPPER.readTree(patch));
+  }
+
+  private boolean changeDescriptionMentionsRemoval(Table table, String tagFqn) {
+    ChangeDescription change = table.getChangeDescription();
+    if (change == null) {
+      return false;
+    }
+    return listOrEmpty(change.getFieldsDeleted()).stream()
+        .filter(field -> TAGS_FIELD.equals(field.getName()))
+        .anyMatch(field -> String.valueOf(field.getOldValue()).contains(tagFqn));
   }
 
   private static Set<String> tagFqnsOf(Table table) {

@@ -9935,7 +9935,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      origTags = listOrEmpty(origTags);
+      // `original` comes off the read path, so it carries its ancestors' tags as DERIVED, while
+      // `updated` has been through prepareInternal, whose addDerivedTags strips that label class.
+      // Diffing the two as-is sees an inherited label on one side only and calls it a deletion:
+      // editing a table's tags under a tagged database recorded the database's tag as removed from
+      // the table in the version history and in the ChangeEvent, on every tag edit. Nothing was
+      // written -- applyTags skips DERIVED as well -- so the tag was still there on the next read
+      // and only the record of it was wrong.
+      //
+      // No DERIVED label is ever persisted, so the persisted state is exactly the non-derived
+      // subset and that is what the diff has to compare. Mirrors how owners and domains are lined
+      // up before comparison.
+      origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
