@@ -76,6 +76,69 @@ describe('formatClientContent: markdown special characters', () => {
   });
 });
 
+const NESTED_LIST_DESCRIPTION =
+  '<p><strong>Discontinued UEs:</strong></p>' +
+  '<ol class="om-list-decimal">' +
+  '<li class="om-leading-normal"><p>High Definition Media UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>HD: Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Display Capable</p></li>' +
+  '<li class="om-leading-normal"><p>HD: NO</p></li>' +
+  '<li class="om-leading-normal"><p>HD: Receivable</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>VCR and Analog UEs</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>AnalogCableOnlyWithPay</p></li>' +
+  '<li class="om-leading-normal"><p>PresVCRYes</p></li>' +
+  '<li class="om-leading-normal"><p>PresVCRNo</p></li>' +
+  '</ul></li>' +
+  '<li class="om-leading-normal"><p>Cable UE</p>' +
+  '<ul class="om-list-disc">' +
+  '<li class="om-leading-normal"><p>CableNotADS</p></li>' +
+  '<li class="om-leading-normal"><p>CableAndADS</p></li>' +
+  '</ul></li>' +
+  '</ol>';
+
+// Showdown's `unhashHTMLSpans` gives up after 10 levels of nesting and leaves
+// its `¨C<n>C` span placeholders in the output. Any content that reaches the
+// rendered page carrying one has been round-tripped through the markdown
+// converter when it should not have been.
+const SHOWDOWN_SPAN_PLACEHOLDER = /\u00a8C\d+C/;
+
+describe('isHTMLString: already-rendered HTML', () => {
+  it('should treat a nested ordered/unordered list as HTML', () => {
+    expect(isHTMLString(NESTED_LIST_DESCRIPTION)).toBe(true);
+  });
+
+  it('should treat a nested list as HTML even when its prose looks markdown', () => {
+    expect(
+      isHTMLString(`Legacy notes: **see wiki** ${NESTED_LIST_DESCRIPTION}`)
+    ).toBe(true);
+  });
+
+  it('should not misread markdown characters in attributes as markdown', () => {
+    expect(
+      isHTMLString('<p><a href="https://x.dev/a__b__c">link</a></p>')
+    ).toBe(true);
+  });
+
+  it('should still treat inline HTML mixed with markdown as markdown', () => {
+    expect(isHTMLString('<span>x</span> and **bold** text')).toBe(false);
+  });
+});
+
+describe('formatClientContent: nested lists', () => {
+  it('should not leak markdown-converter span placeholders', () => {
+    const result = formatClientContent(
+      `Legacy notes: **see wiki** ${NESTED_LIST_DESCRIPTION}`
+    );
+
+    expect(result).not.toMatch(SHOWDOWN_SPAN_PLACEHOLDER);
+    expect(result).toContain('AnalogCableOnlyWithPay');
+    expect(result).toContain('CableAndADS');
+  });
+});
+
 describe('isHTMLString: parser failure', () => {
   it('should fall back to treating content as markdown when parsing throws', () => {
     const spy = jest

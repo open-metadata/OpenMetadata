@@ -64,6 +64,12 @@ export const convertMarkdownFormatToHtmlString = (markdown: string) => {
   return updatedMessage;
 };
 
+// Lists and tables are structural markup the markdown converter cannot round
+// trip: Showdown hashes such markup as inline spans and its unhash pass gives
+// up after 10 levels of nesting, leaking `\u00a8C<n>C` placeholders into the
+// rendered output. Content carrying one is always treated as HTML.
+const STRUCTURAL_HTML_SELECTOR = 'ul, ol, table';
+
 export const isHTMLString = (content: string) => {
   const commonHtmlTags =
     /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
@@ -80,6 +86,13 @@ export const isHTMLString = (content: string) => {
       (node) => node.nodeType === Node.ELEMENT_NODE
     );
 
+    if (
+      hasHtmlElements &&
+      parsedDocument.body.querySelector(STRUCTURAL_HTML_SELECTOR)
+    ) {
+      return true;
+    }
+
     const markdownPatterns = [
       /^#{1,6}\s/,
       /^\s*[-*+]\s/,
@@ -90,8 +103,13 @@ export const isHTMLString = (content: string) => {
       /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/,
     ];
 
+    // Match against the rendered text, not the markup: tag names and
+    // attribute values (`__`, `*`, backticks in a URL) are not markdown and
+    // must not push already-rendered HTML down the converter path.
+    const textContent = parsedDocument.body.textContent ?? '';
+
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
-      pattern.test(content)
+      pattern.test(textContent)
     );
 
     return hasHtmlElements && !hasMarkdownSyntax;
