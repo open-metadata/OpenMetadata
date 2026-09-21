@@ -13,7 +13,6 @@
 
 import { DefaultOptionType } from 'antd/lib/select';
 import { Paging } from '../../../generated/type/paging';
-import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 
 export type TagsSelectFormProps = {
@@ -24,13 +23,11 @@ export type TagsSelectFormProps = {
   onChange?: (value: string[]) => void;
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
-  tagType?: TagSource;
-  fetchApi?: (
+  fetchApi: (
     search: string,
     page: number
   ) => Promise<{
     data: SelectOption[];
     paging: Paging;
   }>;
-  multiSelect?: boolean;
 };
