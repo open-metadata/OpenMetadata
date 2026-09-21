@@ -315,6 +315,13 @@ const GlossaryPage = () => {
     }
   }, [glossaryTermError, navigate]);
 
+  useEffect(() => {
+    const status = (glossaryError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [glossaryError, navigate]);
+
   // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
   // store is also written to by the glossary-list code path below, so the two writers
   // share a single sink rather than the component branching on isGlossaryActive twice.
@@ -326,7 +333,7 @@ const GlossaryPage = () => {
 
   useEffect(() => {
     if (glossaryDetails && isGlossaryActive) {
-      setActiveGlossary(glossaryDetails as ModifiedGlossary);
+      setActiveGlossary(glossaryDetails);
     } else if (glossaries.length && isGlossaryActive && !glossaryFqn) {
       setActiveGlossary(glossaries[0]);
       if (glossaries[0].fullyQualifiedName) {
