@@ -28,7 +28,7 @@ export interface SSOConfig {
     enableSelfSignup: boolean;
     clientType?: string;
     secret?: string;
-    oidcConfiguration?: Record<string, any>;
+    oidcConfiguration?: Record<string, unknown>;
   };
   authorizerConfiguration: {
     className: string;

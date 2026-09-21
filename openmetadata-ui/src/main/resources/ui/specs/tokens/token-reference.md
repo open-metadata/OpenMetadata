@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **793**.
+Total project tokens: **834**.
 
 ## Spacing (60)
 
@@ -268,7 +268,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (53)
+## Semantic colors (71)
 
 Prefer these — they adapt to dark mode.
 
@@ -327,6 +327,24 @@ Prefer these — they adapt to dark mode.
 | `--om-color-text-success` | `#079455` |
 | `--om-color-text-tertiary` | `#535862` |
 | `--om-color-text-warning` | `#dc6803` |
+| `--om-color-utility-blue-light-100` | `#e0f2fe` |
+| `--om-color-utility-blue-light-700` | `#026aa2` |
+| `--om-color-utility-error-100` | `#fee4e2` |
+| `--om-color-utility-error-700` | `#b42318` |
+| `--om-color-utility-gray-100` | `#f5f5f5` |
+| `--om-color-utility-gray-700` | `#414651` |
+| `--om-color-utility-green-100` | `#d3f8df` |
+| `--om-color-utility-green-700` | `#087443` |
+| `--om-color-utility-orange-100` | `#ffead5` |
+| `--om-color-utility-orange-700` | `#c4320a` |
+| `--om-color-utility-purple-100` | `#ebe9fe` |
+| `--om-color-utility-purple-700` | `#5925dc` |
+| `--om-color-utility-success-100` | `#dcfae6` |
+| `--om-color-utility-success-700` | `#067647` |
+| `--om-color-utility-warning-100` | `#fef0c7` |
+| `--om-color-utility-warning-700` | `#b54708` |
+| `--om-color-utility-yellow-100` | `#fef7c3` |
+| `--om-color-utility-yellow-700` | `#a15c07` |
 
 ## Absolute colors (3)
 
@@ -336,11 +354,11 @@ Prefer these — they adapt to dark mode.
 | `--om-color-transparent` | `transparent` |
 | `--om-color-white` | `#ffffff` |
 
-## Palette colors (324)
+## Palette colors (347)
 
 Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
-<details><summary>Show all 324</summary>
+<details><summary>Show all 347</summary>
 
 | Token | Value |
 | --- | --- |
@@ -644,6 +662,29 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 | `--om-color-violet-800` | `#5720b7` |
 | `--om-color-violet-900` | `#491c96` |
 | `--om-color-violet-950` | `#2e125e` |
+| `--om-color-visualization-blue-2` | `#3ca2f4` |
+| `--om-color-visualization-blue-600` | `#1677ff` |
+| `--om-color-visualization-chart-blue-1` | `#4689ff` |
+| `--om-color-visualization-desert` | `#b56727` |
+| `--om-color-visualization-dq-failed` | `#cb5a50` |
+| `--om-color-visualization-electric-violet` | `#9747ff` |
+| `--om-color-visualization-gray-1` | `#a1a1aa` |
+| `--om-color-visualization-gray-300` | `#d0d5dd` |
+| `--om-color-visualization-gray-400` | `#98a2b3` |
+| `--om-color-visualization-green-3` | `#48ca9e` |
+| `--om-color-visualization-green-3-translucent` | `#48ca9e30` |
+| `--om-color-visualization-green-4` | `#039855` |
+| `--om-color-visualization-lemon-zest` | `#ffd700` |
+| `--om-color-visualization-my-sin` | `#feb019` |
+| `--om-color-visualization-pink-salmon` | `#ff92ae` |
+| `--om-color-visualization-purple-2` | `#7147e8` |
+| `--om-color-visualization-red-3` | `#f24822` |
+| `--om-color-visualization-red-3-translucent` | `#ff7c501a` |
+| `--om-color-visualization-riptide` | `#76e9c6` |
+| `--om-color-visualization-san-marino` | `#416bb3` |
+| `--om-color-visualization-silver-tree` | `#5cae95` |
+| `--om-color-visualization-test-success` | `#12b76a` |
+| `--om-color-visualization-yellow-2` | `#ffbe0e` |
 | `--om-color-warning-25` | `#fffcf5` |
 | `--om-color-warning-50` | `#fffaeb` |
 | `--om-color-warning-100` | `#fef0c7` |
