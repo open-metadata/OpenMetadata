@@ -19,6 +19,7 @@ import {
   Card,
   Divider,
   Dropdown,
+  Owner,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -72,7 +73,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
@@ -466,7 +466,7 @@ const ContractDetail: React.FC<{
                     {`${t('label.created-by')} : `}
                   </Typography>
 
-                  <OwnerLabel
+                  <Owner
                     owners={[
                       { name: contract.createdBy, type: 'user', id: '' },
                     ]}
@@ -532,11 +532,11 @@ const ContractDetail: React.FC<{
                 {`${t('label.owner-plural')} : `}
               </Typography>
 
-              <OwnerLabel
+              <Owner
                 avatarSize={24}
                 isCompactView={false}
                 maxVisibleOwners={5}
-                owners={contract.owners}
+                owners={contract.owners ?? []}
                 showLabel={false}
               />
             </Box>

@@ -15,6 +15,7 @@ import {
   Button,
   ButtonUtility,
   Dot,
+  Owner,
   Popover,
   PopoverTrigger,
   Tooltip,
@@ -26,7 +27,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
@@ -144,13 +144,11 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
           <User03 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
         </Tooltip>
         {owners && owners.length > 0 ? (
-          <OwnerLabel
+          <Owner
             hasPermission={false}
             isCompactView={false}
-            multiple={{ user: true, team: true }}
             owners={owners}
             showLabel={false}
-            onUpdate={onUpdateOwners}
           />
         ) : (
           <Typography

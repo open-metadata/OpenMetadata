@@ -13,7 +13,10 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
+import {
+  mockStoredProcedureCode,
+  storedProcedureVersionMockProps,
+} from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 
 const mockNavigate = jest.fn();
@@ -39,6 +42,14 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>Description</div>)
+);
+
+jest.mock('../SchemaEditor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(({ value }: { value: string }) => (
+      <div data-testid="schema-editor">{value}</div>
+    ))
 );
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -87,6 +98,16 @@ describe('StoredProcedureVersion tests', () => {
     expect(codeTabLabel).toBeInTheDocument();
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
+  });
+
+  it('Should display the stored procedure code for the historical version', async () => {
+    await act(async () => {
+      render(<StoredProcedureVersion {...storedProcedureVersionMockProps} />);
+    });
+
+    expect(await screen.findByTestId('schema-editor')).toHaveTextContent(
+      mockStoredProcedureCode
+    );
   });
 
   it('Should display Loader if isVersionLoading is true', async () => {

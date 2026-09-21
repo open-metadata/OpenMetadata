@@ -19,6 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
+  Owner,
   PageLayout,
   Skeleton,
   Tabs,
@@ -79,7 +80,6 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -398,10 +398,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
           {owners.length > 0 ? (
             <div className="article-detail-owner-label">
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                multiple={{ user: true, team: true }}
                 owners={owners}
                 showLabel={false}
               />
@@ -450,10 +449,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 </TooltipTrigger>
               </Tooltip>
               <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
-                <OwnerLabel
+                <Owner
                   hasPermission={false}
                   isCompactView={false}
-                  multiple={{ user: true, team: true }}
                   owners={editors}
                   showLabel={false}
                 />

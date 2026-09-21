@@ -1698,7 +1698,11 @@ public class EventSubscriptionResource
     if (event instanceof ChangeEvent changeEvent) {
       return changeEvent.getTimestamp();
     } else if (event instanceof FailedEventResponse failedEvent) {
-      return failedEvent.getChangeEvent().getTimestamp();
+      // A failure recorded by a consumer that makes its own deliveries carries no change event,
+      // so fall back to when the failure itself was recorded.
+      return failedEvent.getChangeEvent() == null
+          ? failedEvent.getTimestamp()
+          : failedEvent.getChangeEvent().getTimestamp();
     }
     throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }
