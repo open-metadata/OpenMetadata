@@ -13,6 +13,8 @@
 
 import {
   Autocomplete,
+  ClassificationTag,
+  GlossaryTag,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
@@ -31,11 +33,11 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import TagChip from '../atoms/TagChip/TagChip';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
@@ -252,15 +254,16 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         }
         renderTag={(item, onRemove) => {
           const tagData = tagDataMap.current.get(String(item.id));
+          const TagComponent =
+            tagType === TagSource.Glossary ? GlossaryTag : ClassificationTag;
 
           return (
-            <TagChip
+            <TagComponent
+              color={tagData?.style?.color}
               icon={tagData?.style?.iconURL}
-              key={item.id}
-              label={String(item.label ?? item.id)}
-              size="small"
-              tagColor={tagData?.style?.color}
-              variant="blueGray"
+              key={String(item.id)}
+              label={getEntityName(tagData) || String(item.label ?? item.id)}
+              tooltip={getEntityName(tagData) || String(item.label ?? item.id)}
               onDelete={onRemove}
             />
           );

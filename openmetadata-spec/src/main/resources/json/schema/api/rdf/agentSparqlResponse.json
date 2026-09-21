@@ -1,0 +1,135 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentSparqlResponse",
+  "description": "Typed SPARQL SELECT result for agent tools, with completeness relative to the submitted query. Results come from the server-configured RDF dataset and default graph, without persona filtering or asset-level authorization.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlResponse",
+  "definitions": {
+    "rdfTerm": {
+      "description": "An RDF term bound to a result variable. A variable that is unbound in a row is absent from that row.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlRdfTerm",
+      "properties": {
+        "type": {
+          "type": "string",
+          "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlRdfTermType",
+          "enum": ["uri", "literal", "bnode"]
+        },
+        "value": {
+          "type": "string"
+        },
+        "datatype": {
+          "description": "Datatype IRI of a typed literal.",
+          "type": "string"
+        },
+        "xml:lang": {
+          "description": "Language tag of a language-tagged literal.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "value"],
+      "additionalProperties": false
+    },
+    "binding": {
+      "description": "One result row: result variable name to bound RDF term.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlBinding",
+      "additionalProperties": {
+        "$ref": "#/definitions/rdfTerm"
+      }
+    },
+    "completenessStatus": {
+      "description": "COMPLETE: every row the submitted query selects is returned. TRUNCATED: the server row limit cut the result. UNKNOWN: completeness could not be established.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlCompletenessStatus",
+      "enum": ["COMPLETE", "TRUNCATED", "UNKNOWN"]
+    },
+    "completenessReason": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlCompletenessReason",
+      "enum": ["SERVER_ROW_LIMIT"]
+    }
+  },
+  "properties": {
+    "head": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlHead",
+      "properties": {
+        "vars": {
+          "description": "Projected result variable names, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["vars"],
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlResults",
+      "properties": {
+        "bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/binding"
+          }
+        }
+      },
+      "required": ["bindings"],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlMetadata",
+      "properties": {
+        "completeness": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlCompleteness",
+          "properties": {
+            "status": {
+              "$ref": "#/definitions/completenessStatus"
+            },
+            "relativeTo": {
+              "description": "Completeness is judged against the submitted query, including its own LIMIT and OFFSET.",
+              "type": "string",
+              "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlCompletenessBasis",
+              "enum": ["SUBMITTED_QUERY"]
+            },
+            "reason": {
+              "$ref": "#/definitions/completenessReason"
+            }
+          },
+          "required": ["status", "relativeTo"],
+          "additionalProperties": false
+        },
+        "effectiveLimits": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlEffectiveLimits",
+          "properties": {
+            "serverRowLimit": {
+              "description": "Rows returned for a query without an explicit top-level LIMIT.",
+              "type": "integer"
+            },
+            "explicitQueryLimit": {
+              "description": "Top-level LIMIT of the submitted query, when present.",
+              "type": "integer"
+            },
+            "outputBytesLimit": {
+              "description": "Maximum serialized response size in bytes.",
+              "type": "integer"
+            }
+          },
+          "required": ["serverRowLimit", "outputBytesLimit"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["completeness", "effectiveLimits"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["head", "results", "metadata"],
+  "additionalProperties": false
+}

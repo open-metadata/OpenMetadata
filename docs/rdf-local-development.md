@@ -244,6 +244,24 @@ Content-Type: application/json
 }
 ```
 
+### Execute Agent SPARQL Query
+```bash
+POST /api/v1/rdf/sparql/agent
+Content-Type: application/json
+
+{
+  "query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
+}
+```
+
+Unlike the admin endpoint above, this is a permissioned read surface for agent tools:
+it requires the `ExecuteSparqlQuery` operation on the `rdf` resource (granted by a policy
+that names it — wildcard `All`/`All` policies do not grant it). Only `SELECT` queries run,
+with no `FROM`, `GRAPH`, or `SERVICE` clauses; inference is disabled; results carry a
+completeness status relative to the submitted query. Queries evaluate over the
+server-configured dataset without persona filtering and without asset-level
+authorization — callers must already be entitled to see the whole projected graph.
+
 ### Get Glossary Term Relationship Graph
 ```bash
 # Get the full glossary term graph

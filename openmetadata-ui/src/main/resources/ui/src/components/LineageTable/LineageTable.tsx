@@ -17,6 +17,7 @@ import {
   ButtonGroupItem,
   Card,
   Dropdown,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -61,7 +62,10 @@ import {
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../utils/EntitySearchUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
@@ -72,13 +76,11 @@ import {
 } from '../../utils/Lineage/LineagePureUtils';
 import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
@@ -710,7 +712,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             record.entityType as EntityType,
             record
           )}>
-          {stringToHTML(
+          {renderHighlightedText(
             highlightSearchText(getEntityName(record), searchValue)
           )}
         </Link>
@@ -764,7 +766,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
+          <Owner isCompactView={false} owners={owners} showLabel={false} />
         ),
       },
       {
@@ -793,7 +795,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}
@@ -820,7 +821,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}
@@ -846,7 +846,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : stringToHTML(highlightSearchText(prunedColumnName, searchValue))}
+            : renderHighlightedText(
+                highlightSearchText(prunedColumnName, searchValue)
+              )}
         </span>
       );
     },
@@ -866,7 +868,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
@@ -891,7 +893,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               record?.fullyQualifiedName ?? '',
               record?.type as EntityType
             )}>
-            {stringToHTML(
+            {renderHighlightedText(
               highlightSearchText(
                 Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue

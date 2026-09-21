@@ -87,7 +87,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+  ClassificationTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
   Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+  GlossaryTag: jest
+    .fn()
+    .mockImplementation(({ label, color, icon, ...props }) => (
+      <span
+        data-color={color}
+        data-icon={icon}
+        data-testid={props['data-testid'] ?? 'tag-chip'}>
+        {label}
+      </span>
+    )),
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -101,17 +121,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 jest.mock('../../../utils/ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
-
-jest.mock('../../../components/common/atoms/TagChip/TagChip', () =>
-  jest.fn().mockImplementation(({ label, tagColor, icon, ...props }) => (
-    <span
-      data-color={tagColor}
-      data-icon={icon}
-      data-testid={props['data-testid'] ?? 'tag-chip'}>
-      {label}
-    </span>
-  ))
-);
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest

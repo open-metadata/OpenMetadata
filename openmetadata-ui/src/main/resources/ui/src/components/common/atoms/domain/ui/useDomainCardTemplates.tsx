@@ -19,18 +19,17 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import { DataProductDescriptionField } from './DataProductDescriptionField';
 import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
   renderDomainTypeCell,
@@ -151,7 +150,9 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.owner-plural')}
                 </Typography>
-                {renderDomainOwnersCell(entity, true)}
+                {renderDomainOwnersCell(entity, {
+                  showDashPlaceholder: true,
+                })}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -162,13 +163,9 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.expert-plural')}
                 </Typography>
-                <OwnerLabel
-                  showDashPlaceholder
-                  isCompactView={false}
-                  maxVisibleOwners={4}
-                  owners={entity.experts}
-                  showLabel={false}
-                />
+                {renderDomainExpertsCell(entity, {
+                  showDashPlaceholder: true,
+                })}
               </Box>
             </Grid.Item>
           </Grid>
@@ -182,7 +179,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.glossary-term-plural')}
                 </Typography>
-                {renderDomainGlossaryTagsCell(entity, NO_DATA_PLACEHOLDER)}
+                {renderDomainGlossaryTagsCell(entity)}
               </Box>
             </Grid.Item>
             <Grid.Item span={12}>
@@ -193,10 +190,7 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.tag-plural')}
                 </Typography>
-                {renderDomainClassificationTagsCell(
-                  entity,
-                  NO_DATA_PLACEHOLDER
-                )}
+                {renderDomainClassificationTagsCell(entity)}
               </Box>
             </Grid.Item>
           </Grid>

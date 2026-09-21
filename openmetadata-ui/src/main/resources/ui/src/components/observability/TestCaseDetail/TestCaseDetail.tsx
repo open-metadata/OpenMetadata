@@ -39,6 +39,7 @@ import {
 } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.utils';
 import { useTestCaseDetailPage } from '../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCaseDetailPage';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -46,7 +47,6 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -316,11 +316,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
           data-testid="entity-header-display-name"
           ellipsis={{
-            tooltip: breakableTooltipText(stringToHTML(displayName)),
+            tooltip: breakableTooltipText(renderHighlightedText(displayName)),
           }}
           size="text-lg"
           weight="bold">
-          {stringToHTML(displayName)}
+          {renderHighlightedText(displayName)}
         </Typography>
       )}
       <Typography
@@ -364,7 +364,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         data-testid="test-case-detail-page"
         header={
           <Box
-            className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+            className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
             data-testid="test-case-header-container"
             direction="col"
             gap={4}>

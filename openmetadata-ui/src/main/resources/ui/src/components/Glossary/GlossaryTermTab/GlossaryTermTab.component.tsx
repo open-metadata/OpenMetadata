@@ -16,9 +16,11 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button as CoreButton,
   Input,
+  Owner,
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
   Button,
   Checkbox,
@@ -51,8 +53,6 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -112,10 +112,8 @@ import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  NoFilteredResultsPlaceholder,
-  NoSearchResultsPlaceholder,
-} from '../../common/EmptyPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -1143,9 +1141,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           return (
-            <OwnerLabel
+            <Owner
               isCompactView={false}
-              owners={reviewers}
+              owners={reviewers ?? []}
               placeHolder={t('label.no-entity', {
                 entity: t('label.reviewer-plural'),
               })}

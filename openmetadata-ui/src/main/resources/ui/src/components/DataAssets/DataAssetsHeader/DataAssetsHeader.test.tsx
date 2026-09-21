@@ -168,10 +168,14 @@ jest.mock(
       .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
   }
 );
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
+  ClassificationTag: jest
     .fn()
-    .mockImplementation(() => <div>OwnerLabel.component</div>),
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
@@ -244,10 +248,6 @@ jest.mock(
       )
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1.component</div>)
-);
-
 jest.mock('../../../rest/storageAPI', () => ({
   getContainerAncestors: jest
     .fn()
@@ -281,7 +281,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
 
-jest.mock('../../Modals/IconColorModal', () =>
+jest.mock('../../Modals/IconColorModal/IconColorModal', () =>
   jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
     <div data-testid="icon-color-modal">
       <button
@@ -306,6 +306,7 @@ jest.mock('../../Modals/IconColorModal', () =>
 );
 
 jest.mock('../../../utils/RouterUtils', () => ({
+  ...jest.requireActual('../../../utils/RouterUtils'),
   getEntityDetailsPath: jest.fn(),
 }));
 
@@ -518,7 +519,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByText('TagsV1.component')).toBeInTheDocument();
+    expect(screen.getByTestId('Tier')).toBeInTheDocument();
   });
 
   it('should not render the Tier data if not  present', () => {
@@ -703,13 +704,16 @@ describe('DataAssetsHeader component', () => {
 
     render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
 
-    const upVoteButton = screen.getByTestId('up-vote-btn');
+    // Re-query on every interaction: Tooltip wraps a disabled child in a span,
+    // so the button is remounted when it flips to disabled and any element
+    // captured beforehand is detached.
+    fireEvent.click(screen.getByTestId('up-vote-btn'));
 
-    fireEvent.click(upVoteButton);
+    await waitFor(() =>
+      expect(screen.getByTestId('up-vote-btn')).toBeDisabled()
+    );
 
-    await waitFor(() => expect(upVoteButton).toBeDisabled());
-
-    fireEvent.click(upVoteButton);
+    fireEvent.click(screen.getByTestId('up-vote-btn'));
 
     expect(onUpdateVote).toHaveBeenCalledTimes(1);
 
@@ -729,13 +733,13 @@ describe('DataAssetsHeader component', () => {
 
     render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
 
-    const followButton = screen.getByTestId('entity-follow-button');
+    fireEvent.click(screen.getByTestId('entity-follow-button'));
 
-    fireEvent.click(followButton);
+    await waitFor(() =>
+      expect(screen.getByTestId('entity-follow-button')).toBeDisabled()
+    );
 
-    await waitFor(() => expect(followButton).toBeDisabled());
-
-    fireEvent.click(followButton);
+    fireEvent.click(screen.getByTestId('entity-follow-button'));
 
     expect(onFollowClick).toHaveBeenCalledTimes(1);
 
