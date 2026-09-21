@@ -95,6 +95,10 @@ public class EventSubscriptionScheduler {
   // and the cluster manager, which each hold one while they run.
   private static final int POOL_MAX_SIZE = SCHEDULER_THREAD_COUNT + 2;
 
+  // deleteJob can lose its race more than once while several nodes reinstall the same subscription,
+  // so bound the retries and let a job store that is genuinely stuck still surface as an error.
+  private static final int ALERT_JOB_DELETE_ATTEMPTS = 3;
+
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
     @Override
@@ -207,10 +211,10 @@ public class EventSubscriptionScheduler {
             .asSubclass(AbstractEventConsumer.class);
     AbstractEventConsumer publisher =
         clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
-    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
-      deleteEventSubscriptionPublisher(eventSubscription);
-    }
     if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
+      if (reinstall) {
+        deleteEventSubscriptionPublisher(eventSubscription);
+      }
       eventSubscription
           .getDestinations()
           .forEach(
@@ -234,7 +238,11 @@ public class EventSubscriptionScheduler {
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
-      alertsScheduler.scheduleJob(jobDetail, trigger);
+      // Write the job and its trigger in a single job-store transaction rather than deleting the
+      // pair and re-adding it. Delete-then-add leaves a window in which the alert is not scheduled
+      // at all, and both halves race any other writer holding the same keys -- every peer node
+      // reaches this same clustered job store from initializeEventSubscriptions() as it starts up.
+      alertsScheduler.scheduleJob(jobDetail, Set.of(trigger), true);
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",
@@ -280,18 +288,45 @@ public class EventSubscriptionScheduler {
 
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
       addSubscriptionPublisher(eventSubscription, true);
+    } else {
+      deleteEventSubscriptionPublisher(eventSubscription);
     }
   }
 
+  /**
+   * Removing a scheduled alert has to be idempotent. The same (job, trigger) pair is reachable from
+   * a request thread on one node and from {@code initializeEventSubscriptions()} on every node that
+   * is starting up, all against one clustered job store. {@link Scheduler#deleteJob} lists a job's
+   * triggers and then unschedules them in separate transactions, so it throws when a trigger it just
+   * listed is already gone -- which is the state being asked for, not a failure. Drop the trigger
+   * first so {@code deleteJob} finds nothing left to unschedule, and accept a lost race once the job
+   * is confirmed gone.
+   */
   public void deleteEventSubscriptionPublisher(EventSubscription deletedEntity)
       throws SchedulerException {
-    alertsScheduler.deleteJob(new JobKey(deletedEntity.getId().toString(), ALERT_JOB_GROUP));
-    alertsScheduler.unscheduleJob(
-        new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
+    String subscriptionId = deletedEntity.getId().toString();
+    alertsScheduler.unscheduleJob(new TriggerKey(subscriptionId, ALERT_TRIGGER_GROUP));
+    deleteAlertJob(new JobKey(subscriptionId, ALERT_JOB_GROUP));
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
+  }
+
+  private void deleteAlertJob(JobKey jobKey) throws SchedulerException {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        alertsScheduler.deleteJob(jobKey);
+        return;
+      } catch (SchedulerException failure) {
+        if (!alertsScheduler.checkExists(jobKey)) {
+          return;
+        }
+        if (attempt == ALERT_JOB_DELETE_ATTEMPTS) {
+          throw failure;
+        }
+        LOG.debug("Retrying delete of alert job {} after losing a race", jobKey, failure);
+      }
+    }
   }
 
   public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {

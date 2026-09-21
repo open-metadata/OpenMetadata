@@ -20,10 +20,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -795,6 +802,79 @@ public class EventSubscriptionResourceIT
     enabled.setEnabled(false);
     EventSubscription disabled = patchEntity(enabled.getId().toString(), enabled);
     assertFalse(disabled.getEnabled());
+  }
+
+  /**
+   * Toggling a subscription rewrites one Quartz (job, trigger) pair, and several writers reach that
+   * pair at once: concurrent requests on one node, and {@code initializeEventSubscriptions()} on
+   * every peer that starts up against the same clustered job store. While the pair was removed and
+   * re-added as two transactions, a toggle could list a trigger another writer had already dropped
+   * and fail the request with "Unable to unschedule trigger [...] while deleting job [...]".
+   *
+   * <p>Two racing toggles may still legitimately collide on the entity's version, so only a
+   * server-side failure counts as a defect here.
+   */
+  @Test
+  void test_concurrentEnableDisableSubscription(TestNamespace ns) throws Exception {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix("concurrent_toggle_sub"))
+            .withDescription("Subscription toggled from several threads at once")
+            .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+            .withResources(List.of("all"))
+            .withEnabled(false)
+            .withDestinations(getWebhookDestination(ns));
+
+    EventSubscription subscription = createEntity(request);
+    String subscriptionId = subscription.getId().toString();
+
+    int writers = 4;
+    int togglesPerWriter = 5;
+    ExecutorService pool = Executors.newFixedThreadPool(writers);
+    CountDownLatch startLine = new CountDownLatch(1);
+    List<Future<?>> toggles = new ArrayList<>();
+    try {
+      for (int writer = 0; writer < writers; writer++) {
+        boolean startEnabled = writer % 2 == 0;
+        toggles.add(
+            pool.submit(
+                () -> {
+                  startLine.await();
+                  for (int i = 0; i < togglesPerWriter; i++) {
+                    EventSubscription current = getEntity(subscriptionId);
+                    current.setEnabled(startEnabled == (i % 2 == 0));
+                    patchEntity(subscriptionId, current);
+                  }
+                  return null;
+                }));
+      }
+      startLine.countDown();
+      for (Future<?> toggle : toggles) {
+        assertNoServerFailure(toggle);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertNotNull(getEntity(subscriptionId), "Subscription must survive concurrent enable/disable");
+    deleteEntity(subscriptionId);
+  }
+
+  private void assertNoServerFailure(Future<?> toggle) throws Exception {
+    try {
+      toggle.get(2, TimeUnit.MINUTES);
+    } catch (ExecutionException e) {
+      StringBuilder chain = new StringBuilder();
+      for (Throwable cause = e.getCause(); cause != null; cause = cause.getCause()) {
+        chain.append(cause).append('\n');
+      }
+      String failure = chain.toString();
+      // Two toggles racing on the same entity can legitimately collide on its version, which comes
+      // back as a client error. A 5xx means the scheduler could not reconcile its own Quartz state.
+      assertFalse(
+          failure.contains("(500)") || failure.contains("unschedule trigger"),
+          "Concurrent enable/disable must not fail on the server: " + failure);
+    }
   }
 
   @Test
