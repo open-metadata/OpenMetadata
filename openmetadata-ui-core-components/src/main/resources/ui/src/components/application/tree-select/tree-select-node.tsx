@@ -29,7 +29,6 @@ export interface TreeSelectTreeItemContentProps<T> {
   onNodeClick: () => void;
 }
 
-// The row a branch shows once it has loaded nothing.
 export const TreeSelectEmptyItemContent = ({
   message,
   parentId,

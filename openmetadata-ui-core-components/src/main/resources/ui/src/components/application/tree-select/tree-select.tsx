@@ -558,8 +558,26 @@ export const TreeSelect = <T = unknown,>({
     }
   };
 
-  // The trigger opens on focus, so a dismiss would otherwise reopen it.
+  // Dismissing hands focus back to the trigger, whose onFocus would reopen it.
+  // Only that restore is suppressed: it lands in the same frame, so the flag is
+  // dropped straight after, leaving a later Tab back to the trigger free to open.
   const skipNextFocusOpen = useRef(false);
+  const skipFocusFrame = useRef<number>();
+
+  const suppressRestoreFocusOpen = useCallback(() => {
+    // Focus already inside the trigger means no restore is coming to suppress.
+    if (triggerRef.current?.contains(document.activeElement)) {
+      return;
+    }
+
+    skipNextFocusOpen.current = true;
+    cancelAnimationFrame(skipFocusFrame.current ?? 0);
+    skipFocusFrame.current = requestAnimationFrame(() => {
+      skipNextFocusOpen.current = false;
+    });
+  }, []);
+
+  useEffect(() => () => cancelAnimationFrame(skipFocusFrame.current ?? 0), []);
 
   const openOnFocus = () => {
     if (skipNextFocusOpen.current) {
@@ -572,13 +590,13 @@ export const TreeSelect = <T = unknown,>({
 
   // Every close but Apply drops the draft, else the trigger shows stale state.
   const dismiss = useCallback(() => {
-    skipNextFocusOpen.current = true;
+    suppressRestoreFocusOpen();
     if (isStaged) {
       setSelection(toArray(value));
     }
     setOpen(false);
     setShowSelectedOnly(false);
-  }, [isStaged, setSelection, value, setOpen]);
+  }, [isStaged, setSelection, value, setOpen, suppressRestoreFocusOpen]);
 
   // Closing through the trigger is a non-Apply close, so it discards the draft.
   const toggleOpen = useCallback(() => {
@@ -926,8 +944,6 @@ export const TreeSelect = <T = unknown,>({
             disabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle'
           )}
           data-testid={dataTestId}
-          // Marks which trigger the open dropdown belongs to, for tests.
-          data-treeselect-open={isOpen ? 'true' : undefined}
           ref={triggerRef}
           onClick={() => {
             openTrigger();
