@@ -42,15 +42,15 @@ import {
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
 import {
-  glossaryFieldTrigger,
-  pickGlossaryTermInField,
-  removeGlossaryTermChip,
-} from '../../../utils/glossaryPicker';
-import {
   customFormatDateTime,
   getCurrentMillis,
 } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  glossaryFieldTrigger,
+  pickGlossaryTermInField,
+  removeGlossaryTermChip,
+} from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
