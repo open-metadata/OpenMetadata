@@ -130,8 +130,57 @@ describe('isHTMLString: already-rendered HTML', () => {
     ).toBe(true);
   });
 
+  it('should treat a fenced HTML table example as markdown', () => {
+    // The fence holds a code sample. `DOMParser` parses the `<table>` inside
+    // it into a real element, so the structural check has to ignore code
+    // regions or the example renders as a table instead of as code.
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a fenced HTML list example as markdown', () => {
+    const markdown = ['```html', '<ul><li>one</li></ul>', '```'].join('\n');
+
+    expect(isHTMLString(markdown)).toBe(false);
+  });
+
+  it('should treat a list inside a code span as markdown', () => {
+    expect(isHTMLString('Use `<ul><li>x</li></ul>` for a list')).toBe(false);
+  });
+
+  it('should still treat a real list beside a code example as HTML', () => {
+    const content = `<ul><li>real</li></ul> and \`<ol><li>sample</li></ol>\``;
+
+    expect(isHTMLString(content)).toBe(true);
+  });
+
   it('should still treat inline HTML mixed with markdown as markdown', () => {
     expect(isHTMLString('<span>x</span> and **bold** text')).toBe(false);
+  });
+});
+
+describe('formatClientContent: HTML code examples', () => {
+  it('should render a fenced HTML table example as code, not as a table', () => {
+    const markdown = [
+      'Example:',
+      '',
+      '```html',
+      '<table><tr><td>Cell</td></tr></table>',
+      '```',
+    ].join('\n');
+
+    const result = formatClientContent(markdown);
+
+    expect(result).toContain('<pre>');
+    expect(result).toContain('&lt;table&gt;');
+    expect(result).not.toContain('<table>');
   });
 });
 
