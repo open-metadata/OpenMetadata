@@ -95,7 +95,7 @@ export const HeatmapCellTooltip: FC<HeatmapCellTooltipProps> = ({ cell }) => {
       </Typography>
       <div
         aria-hidden
-        className="tw:my-2 tw:border-b tw:border-dashed tw:border-gray-300"
+        className="tw:my-2 tw:border-b tw:border-dashed tw:border-secondary"
       />
       <div className="tw:flex tw:flex-col tw:gap-2">
         {rows.map(
