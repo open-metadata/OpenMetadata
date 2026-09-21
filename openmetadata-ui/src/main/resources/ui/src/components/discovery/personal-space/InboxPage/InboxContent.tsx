@@ -38,9 +38,9 @@ export type InboxTabKey = 'activity' | 'tasks';
 const DEFAULT_TAB: InboxTabKey = 'activity';
 
 /**
- * The Inbox body: the Activity / Tasks sub-tab switcher (with live counts) plus
- * the active tab's feed/task list and shared date filter. Reused by the routed
- * Inbox page and the Triage tab of the personal-space modal.
+ * The Inbox body: the Activity / Triage switcher (with live counts) plus the
+ * active surface and the shared date filter. These are the inbox's only tabs —
+ * the page shell above contributes none.
  */
 const InboxContent: React.FC = () => {
   const { t } = useTranslation();
@@ -129,7 +129,7 @@ const InboxContent: React.FC = () => {
             <Tabs.Item
               badge={taskCount || undefined}
               id="tasks"
-              label={t('label.task-plural')}
+              label={t('label.triage')}
             />
           </Tabs.List>
         </Tabs>

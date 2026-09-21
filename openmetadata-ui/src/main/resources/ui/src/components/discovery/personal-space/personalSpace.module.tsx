@@ -35,7 +35,16 @@ const InboxContent = withSuspenseFallback(
 
 const gatedInbox = (
   <PersonalSpaceGate>
-    <InboxPage myDataContent={<MyData />} triageContent={<InboxContent />} />
+    <InboxPage content={<InboxContent />} />
+  </PersonalSpaceGate>
+);
+
+// My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
+// route keeps the surface reachable until it becomes the standalone modal the
+// design calls for.
+const gatedMyData = (
+  <PersonalSpaceGate>
+    <MyData />
   </PersonalSpaceGate>
 );
 
@@ -72,7 +81,7 @@ export const personalSpaceModule: AppModule = {
     },
     {
       path: PERSONAL_SPACE_ROUTES.MY_DATA,
-      element: gatedInbox,
+      element: gatedMyData,
       position: RoutePosition.APP,
     },
   ],

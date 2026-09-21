@@ -189,9 +189,7 @@ describe('InboxContent', () => {
     expect(screen.getByTestId('tab-activity')).toHaveTextContent(
       'label.activity:5'
     );
-    expect(screen.getByTestId('tab-tasks')).toHaveTextContent(
-      'label.task-plural:2'
-    );
+    expect(screen.getByTestId('tab-tasks')).toHaveTextContent('label.triage:2');
   });
 
   it('keeps the selected custom range (with its label) as the live filter range', () => {
