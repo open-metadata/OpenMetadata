@@ -12,6 +12,8 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
+import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
@@ -25,6 +27,7 @@ import { enableAiAppMode } from '../../Utils/appMode';
 // name is fixed at construction, so a retry that reuses this worker would
 // re-run `create` with the same name and get a 409.
 let table!: TableClass;
+let bundleSuite: BundleTestSuiteClass;
 
 const openDetailsPage = async (page: Page) => {
   await enableAiAppMode(page);
@@ -39,7 +42,7 @@ test.describe(
   { tag: ['@Features', '@Observability'] },
   () => {
     test.beforeAll(
-      'Create a table, a test case and one result',
+      'Create a table, a test case in a bundle suite and one result',
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -57,14 +60,93 @@ test.describe(
           }
         );
 
+        bundleSuite = new BundleTestSuiteClass();
+        await bundleSuite.createBundleTestSuite(apiContext);
+        const addResponse = await bundleSuite.addTestCases(apiContext, [
+          testCase.id as string,
+        ]);
+        expect(addResponse.status()).toBe(200);
+
         await afterAction();
       }
     );
 
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await bundleSuite.delete(apiContext);
       await table.delete(apiContext);
       await afterAction();
+    });
+
+    test('lists the test suites the test case belongs to, above the tags', async ({
+      page,
+    }) => {
+      await openDetailsPage(page);
+
+      const testSuites = page.getByTestId('test-suites-container');
+      const tableSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+      );
+      const bundleSuiteLink = testSuites.getByTestId(
+        `test-suite-link-${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+      );
+
+      await test.step('The table suite links to its table and the bundle suite to its page', async () => {
+        await expect(tableSuiteLink).toHaveAccessibleName(
+          `Table ${table.entityResponseData.name}`
+        );
+        await expect(bundleSuiteLink).toHaveAccessibleName(
+          `Bundle Suite ${bundleSuite.bundleTestSuiteResponseData.name}`
+        );
+        await expect(tableSuiteLink).toHaveAttribute(
+          'href',
+          /\/profiler\/data-quality$/
+        );
+        // Matched as a suffix, like the table suite above: the observability
+        // router is overridden downstream to namespace these routes (Collate
+        // in AI app mode serves them under `/observability`), so pinning the
+        // OSS literal asserts a prefix this spec has no business knowing.
+        await expect(bundleSuiteLink).toHaveAttribute(
+          'href',
+          new RegExp(
+            `/test-suites/${escapeRegExp(
+              bundleSuite.bundleTestSuiteResponseData
+                .fullyQualifiedName as string
+            )}$`
+          )
+        );
+      });
+
+      await test.step('Only the name is the link, the rest of the row does not navigate', async () => {
+        const detailsUrl = page.url();
+
+        await testSuites
+          .getByRole('listitem')
+          .filter({
+            has: page.getByTestId(
+              `test-suite-link-${table.testSuiteResponseData.fullyQualifiedName}`
+            ),
+          })
+          .locator('svg')
+          .click();
+
+        await expect(page).toHaveURL(detailsUrl);
+      });
+
+      await test.step('The panel sits above the tags', async () => {
+        const suitesBox = await testSuites.boundingBox();
+        const tagsBox = await page.getByTestId('tags-container').boundingBox();
+
+        expect(suitesBox).not.toBeNull();
+        expect(tagsBox).not.toBeNull();
+        expect(Number(suitesBox?.y)).toBeLessThan(Number(tagsBox?.y));
+      });
+
+      await test.step('The panel collapses like the tags panel', async () => {
+        await testSuites.getByTestId('expand-collapse-icon').click();
+
+        await expect(bundleSuiteLink).toBeHidden();
+      });
     });
 
     test('renders the page frame with a two column result tab', async ({
@@ -107,16 +189,43 @@ test.describe(
       await openDetailsPage(page);
 
       await expect(page.getByTestId('graph-container')).toBeVisible();
-      await expect(page.getByTestId('parameter-container')).toBeVisible();
 
+      // TCD-10a moved the configuration into the rail, so the chart is the
+      // first block in the main column and the card sits to its right.
       const chart = await page.getByTestId('graph-container').boundingBox();
-      const parameters = await page
-        .getByTestId('parameter-container')
+      const configuration = await page
+        .getByTestId('test-case-configuration-card')
         .boundingBox();
 
       expect(chart).not.toBeNull();
-      expect(parameters).not.toBeNull();
-      expect(chart?.y).toBeLessThan(Number(parameters?.y));
+      expect(configuration).not.toBeNull();
+      expect(configuration?.x).toBeGreaterThan(Number(chart?.x));
+    });
+
+    test('renders the configuration card for a table test', async ({
+      page,
+    }) => {
+      await openDetailsPage(page);
+
+      // TableClass seeds a `tableRowCountToBeBetween` test on the table
+      // itself — a table test with minValue 12 / maxValue 34.
+      const card = page.getByTestId('test-case-configuration-card');
+
+      await expect(card).toBeVisible();
+      await expect(page.getByTestId('test-case-rail')).toContainText(
+        'Configuration'
+      );
+      await expect(card.getByTestId('configuration-category')).toHaveText(
+        'Table test'
+      );
+
+      const minRow = card.getByTestId('configuration-parameter-minValue');
+      const maxRow = card.getByTestId('configuration-parameter-maxValue');
+
+      await expect(minRow).toContainText('minValue');
+      await expect(minRow).toContainText('12');
+      await expect(maxRow).toContainText('maxValue');
+      await expect(maxRow).toContainText('34');
     });
 
     test('aligns the page header card with the tab body content', async ({

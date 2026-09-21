@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AllowedSearchFields;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.Field;
@@ -30,6 +34,8 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.HighlightFieldClassifier;
+import org.openmetadata.service.search.IndexMappingProperties;
+import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.util.EntityUtil;
 
 class SearchSettingsHandlerTest {
@@ -563,6 +569,141 @@ class SearchSettingsHandlerTest {
 
     assertNotNull(merged.getDefaultConfiguration());
     assertEquals("default", merged.getDefaultConfiguration().getAssetType());
+  }
+
+  @Test
+  void everyConfiguredAggregationFieldExistsInItsIndexMapping() {
+    // A terms aggregation over an unmapped field returns no buckets without raising an error, so a
+    // typo in the configured aggregation field is a silent misconfiguration — the aggregation is
+    // emitted with `{ "buckets": [] }` forever. This is exactly the `fieldsNames` regression: the
+    // topic and apiEndpoint `fieldNames` aggregations pointed at a field that exists in no mapping.
+    // Resolve each configured field the same way the builder does, then assert it names a real
+    // field in the asset's own index mapping, including `.keyword` multi-fields.
+    Map<String, Map<String, Object>> entityIndexMapping =
+        IndexMappingLoader.getInstance().getEntityIndexMapping();
+
+    // Pre-existing misconfigurations this guard discovered, scoped out as follow-ups separate from
+    // the topic/apiEndpoint `fieldNames` fix because each needs its own product decision (a mapping
+    // change for `queryType`; a retarget/casing decision for `glossaryTerm.status`). Remove an
+    // entry
+    // here once its field is mapped/aggregatable — the stale-allowlist assertion below enforces
+    // that.
+    Set<String> pendingMappingFix = Set.of("query|queryType", "glossaryTerm|status");
+
+    Map<String, String> missingByAssetAggregation = new java.util.LinkedHashMap<>();
+    for (AssetTypeConfiguration assetConfig : defaultSearchSettings.getAssetTypeConfigurations()) {
+      Map<String, Object> mapping = entityIndexMapping.get(assetConfig.getAssetType());
+      if (mapping == null) {
+        // Asset type has no index mapping to validate against; nothing to check here.
+        continue;
+      }
+      Set<String> mappedPaths = collectMappingPaths(mapping);
+      for (Aggregation aggregation : CommonUtil.listOrEmpty(assetConfig.getAggregations())) {
+        if (CommonUtil.nullOrEmpty(aggregation.getField())) {
+          continue;
+        }
+        String resolved =
+            SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(aggregation.getField());
+        if (!mappedPaths.contains(resolved)) {
+          missingByAssetAggregation.put(
+              assetConfig.getAssetType() + "|" + aggregation.getName(),
+              assetConfig.getAssetType()
+                  + " aggregation '"
+                  + aggregation.getName()
+                  + "' references unmapped field '"
+                  + resolved
+                  + "'");
+        }
+      }
+    }
+
+    List<String> unguarded =
+        missingByAssetAggregation.entrySet().stream()
+            .filter(entry -> !pendingMappingFix.contains(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .toList();
+    assertTrue(
+        unguarded.isEmpty(),
+        "Configured aggregation fields must exist in their index mapping, otherwise terms "
+            + "aggregations silently return no buckets: "
+            + unguarded);
+
+    List<String> staleAllowlist =
+        pendingMappingFix.stream()
+            .filter(key -> !missingByAssetAggregation.containsKey(key))
+            .toList();
+    assertTrue(
+        staleAllowlist.isEmpty(),
+        "pendingMappingFix lists aggregation fields that are now mapped; remove them so the guard "
+            + "catches regressions on them too: "
+            + staleAllowlist);
+  }
+
+  @Test
+  void everyGlobalAggregationFieldExistsInAtLeastOneIndexMapping() {
+    // Global aggregations run against every search, so a field mapped in no index at all is dead
+    // configuration that always returns empty buckets everywhere. A field mapped in some indexes
+    // but not others is fine — terms aggregations over a field absent from the targeted index
+    // return no buckets by design.
+    Map<String, Map<String, Object>> entityIndexMapping =
+        IndexMappingLoader.getInstance().getEntityIndexMapping();
+
+    Set<String> allMappedPaths = new HashSet<>();
+    for (Map<String, Object> mapping : entityIndexMapping.values()) {
+      allMappedPaths.addAll(collectMappingPaths(mapping));
+    }
+
+    List<String> missing = new ArrayList<>();
+    for (Aggregation aggregation :
+        CommonUtil.listOrEmpty(defaultSearchSettings.getGlobalSettings().getAggregations())) {
+      if (CommonUtil.nullOrEmpty(aggregation.getField())) {
+        continue;
+      }
+      String resolved =
+          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(aggregation.getField());
+      if (!allMappedPaths.contains(resolved)) {
+        missing.add(resolved);
+      }
+    }
+
+    assertTrue(
+        missing.isEmpty(),
+        "Global aggregation fields must be mapped in at least one index: " + missing);
+  }
+
+  /**
+   * Collects every dotted field path declared by an index mapping, descending both {@code
+   * properties} (object fields) and {@code fields} (multi-fields such as {@code name.keyword}),
+   * since the addressable aggregation paths include both.
+   */
+  private static Set<String> collectMappingPaths(Map<String, Object> mapping) {
+    Set<String> paths = new HashSet<>();
+    collectMappingPaths(IndexMappingProperties.topLevel(JsonUtils.valueToTree(mapping)), "", paths);
+    return paths;
+  }
+
+  private static void collectMappingPaths(JsonNode properties, String prefix, Set<String> paths) {
+    if (properties == null || !properties.isObject()) {
+      return;
+    }
+    Iterator<String> fieldNames = properties.fieldNames();
+    while (fieldNames.hasNext()) {
+      String name = fieldNames.next();
+      JsonNode field = properties.path(name);
+      String path = prefix.isEmpty() ? name : prefix + "." + name;
+      paths.add(path);
+      JsonNode childProperties = field.path("properties");
+      if (!childProperties.isMissingNode()) {
+        collectMappingPaths(childProperties, path, paths);
+      }
+      JsonNode multiFields = field.path("fields");
+      if (!multiFields.isMissingNode() && multiFields.isObject()) {
+        Iterator<String> subFieldNames = multiFields.fieldNames();
+        while (subFieldNames.hasNext()) {
+          paths.add(path + "." + subFieldNames.next());
+        }
+      }
+    }
   }
 
   private SearchSettings createBaseSettings(int maxResultHits) {

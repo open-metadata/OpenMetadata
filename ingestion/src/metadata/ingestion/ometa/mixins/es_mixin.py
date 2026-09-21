@@ -18,12 +18,13 @@ import functools
 import json
 import traceback
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from typing import (
     Annotated,
     Generic,
     TypeVar,
 )
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from pydantic import Field, field_validator
 
@@ -41,6 +42,15 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+
+@dataclass(frozen=True)
+class FqnSearchResult:
+    """Unhydrated FQN candidates and the server's hit count."""
+
+    fqns: tuple[str, ...]
+    total: int
+    total_is_exact: bool
 
 
 class TotalModel(BaseModel):
@@ -110,6 +120,46 @@ class ESMixin(Generic[T]):
     """
 
     client: REST
+
+    def search_fqn_candidates(
+        self,
+        entity_type: type[T],
+        value: str,
+        *,
+        wildcard: bool = False,
+        size: int = 11,
+    ) -> FqnSearchResult:
+        """Search active FQNs without caching or hydration; propagate lookup failures."""
+        if size < 1:
+            raise ValueError("Candidate search size must be positive")
+        if not wildcard:
+            value = value.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+        params = urlencode(
+            {
+                "fieldName": "fullyQualifiedName",
+                "fieldValue": value,
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": size,
+            }
+        )
+        response = self.client.get("/search/fieldQuery?" + params)
+        if not isinstance(response, dict):
+            raise TypeError("Invalid FQN search response")
+        if response.get("timed_out") or response.get("_shards", {}).get("failed", 0):
+            raise ValueError("Incomplete FQN search response")
+        hits = response["hits"]
+        total = hits["total"]
+        if isinstance(total, int):
+            count, exact = total, True
+        else:
+            count, exact = total["value"], total["relation"] == "eq"
+        return FqnSearchResult(
+            fqns=tuple(hit["_source"]["fullyQualifiedName"] for hit in hits["hits"]),
+            total=count,
+            total_is_exact=exact,
+        )
 
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
@@ -191,6 +241,8 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
     ) -> list[T] | None:
         """
         Given a service name and filters, search for entities using Elasticsearch.
@@ -202,6 +254,7 @@ class ESMixin(Generic[T]):
             from_count (int): The starting index of the search results.
             size (int): The maximum number of records to return.
             fields (Optional[str]): Comma-separated list of fields to be returned.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -213,6 +266,7 @@ class ESMixin(Generic[T]):
             from_count=from_count,
             size=size,
             fields=fields,
+            raise_on_error=raise_on_error,
         )
 
     def es_search_from_alias(
@@ -275,6 +329,8 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: str | None = None,
+        *,
+        raise_on_error: bool = False,
     ) -> list[T] | None:
         """
         Search for entities using Elasticsearch.
@@ -286,6 +342,7 @@ class ESMixin(Generic[T]):
             from_count (int, optional): The starting index of the search results. Defaults to 0.
             size (int, optional): The maximum number of search results to return. Defaults to 10.
             fields (Optional[str], optional): Comma-separated list of fields to be returned. Defaults to None.
+            raise_on_error (bool): Propagate search errors instead of returning None.
 
         Returns:
             Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
@@ -302,9 +359,13 @@ class ESMixin(Generic[T]):
             response = self._search_es_entity(entity_type=entity_type, query_string=query_string, fields=fields)
             return response  # noqa: RET504, TRY300
         except KeyError as err:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None

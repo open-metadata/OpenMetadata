@@ -3084,6 +3084,43 @@ describe('parseSamlMetadataXml', () => {
     );
   });
 
+  // The backend parses this certificate as X.509, so the base64 the IdP published has to survive
+  // the round trip byte for byte — only the PEM header and footer may be added. Real IdP metadata
+  // wraps the body across lines and indents it inside the XML, so the joined base64 is what has to
+  // come out: anything that collapsed the newlines to spaces instead of removing them, or that
+  // dropped a segment, would leave a body the backend's CertificateFactory cannot decode.
+  it('should join a line-wrapped certificate into a single base64 body', () => {
+    const wrappedCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="http://www.okta.com/exk123456">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>MIIDpDCCAoygAwIBAgIGAXyz4567
+AAAAAAAAAAAAAAAAAAAAAAAAAAAA
+BBBBBBBBBBBBBBBBBBBBBBBBBBBB</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+
+    const result = parseSamlMetadataXml(wrappedCertMetadata);
+
+    expect(result.idpX509Certificate).toBe(
+      `-----BEGIN CERTIFICATE-----\nMIIDpDCCAoygAwIBAgIGAXyz4567AAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBB\n-----END CERTIFICATE-----`
+    );
+  });
+
+  it('should preserve the certificate body exactly as published by the IdP', () => {
+    const result = parseSamlMetadataXml(OKTA_METADATA);
+
+    expect(result.idpX509Certificate).toBe(
+      `-----BEGIN CERTIFICATE-----\nMIIDpDCCAoygAwIBAgIGAXyz4567\n-----END CERTIFICATE-----`
+    );
+  });
+
   it('should throw when metadata has no certificate', () => {
     const noCertMetadata = `<?xml version="1.0" encoding="UTF-8"?>
 <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://example.com/entity">

@@ -21,12 +21,20 @@ import {
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { EntityClass } from '../support/entity/EntityClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { UserClass } from '../support/user/UserClass';
 import {
   getApiContext,
+  redirectToHomePage,
   toastNotification,
   waitForToastStackToClear,
 } from './common';
-import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
+import {
+  addMultiOwner,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -450,4 +458,101 @@ export const setRemoteRunnerAsDefault = async (
       );
     }
   }
+};
+
+export const assignServiceOwner = async (
+  apiContext: APIRequestContext,
+  service: DatabaseServiceClass,
+  owner: UserClass
+) => {
+  await service.patch(apiContext, [
+    {
+      op: 'add',
+      path: '/owners',
+      value: [{ id: owner.responseData.id, type: 'user' }],
+    },
+  ]);
+};
+
+export const openAgentsTab = async (page: Page, service: EntityClass) => {
+  await redirectToHomePage(page);
+  await service.visitEntityPage(page);
+  await page.getByTestId('data-assets-header').waitFor();
+  await page.click('[role="tab"] [data-testid="agents"]');
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+};
+
+export const openAddAgentForm = async (page: Page, service: EntityClass) => {
+  await openAgentsTab(page, service);
+
+  await page.getByTestId('add-new-ingestion-button').waitFor();
+  await page.click('[data-testid="add-new-ingestion-button"]');
+  await page
+    .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
+    .waitFor();
+  await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
+
+  await waitForIngestionWorkflowForm(page);
+};
+
+export const openEditAgentForm = async (
+  page: Page,
+  service: EntityClass,
+  pipelineFqn: string
+) => {
+  await openAgentsTab(page, service);
+
+  await getAgentCard(page, pipelineFqn).getByTestId('more-actions').click();
+  await page.getByTestId('edit-button').click();
+
+  await waitForIngestionWorkflowForm(page);
+};
+
+/**
+ * Deselects every owner through the picker. Owners are mandatory, so this is
+ * the only empty state a user can actually produce.
+ */
+export const clearAgentOwners = async (page: Page) => {
+  // Owners are always populated when this runs, so the trigger is the edit
+  // variant; the empty state swaps it for `add-owner`.
+  await page.getByTestId('edit-owner').click();
+
+  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+
+  await page
+    .getByTestId('select-owner-tabs')
+    .getByRole('tab', { name: 'Users' })
+    .click();
+
+  const usersPanel = page.locator('[data-testid="owner-select-users-panel"]');
+
+  // The list loads async; the clear button only renders once it has, so waiting
+  // on it covers the load without reaching for a loader locator.
+  const clearAllButton = usersPanel.getByTestId('clear-all-button');
+  await expect(clearAllButton).toBeVisible();
+  await clearAllButton.click();
+
+  await usersPanel.getByTestId('selectable-list-update-btn').click();
+
+  await expect(page.getByTestId('select-owner-tabs')).not.toBeVisible();
+};
+
+export const selectAgentOwner = async (
+  page: Page,
+  service: EntityClass,
+  owner: UserClass
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: [owner.getUserDisplayName()],
+    activatorBtnDataTestId: 'add-owner',
+    resultTestId: 'ingestion-owners',
+    endpoint: service.endpoint,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
 };

@@ -281,3 +281,16 @@ export const switchToAiModeViaProfileToggle = async (
   await page.getByTestId('interface-mode-option-ai').click();
   await waitForAllLoadersToDisappear(page);
 };
+
+/**
+ * Navigate to an app-mode route through the sidebar rather than `page.goto`, so the route being
+ * left stays in the keep-alive cache. Tests that assert how a backgrounded page behaves depend on
+ * that distinction — a reload would unmount it.
+ */
+export const goToAppModeRoute = async (
+  page: Page,
+  path: string
+): Promise<void> => {
+  await page.locator(`a[href="${path}"]`).click();
+  await waitForAllLoadersToDisappear(page);
+};

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.RECONCILE_COLUMN_LINEAGE_SCRIPT;
@@ -51,6 +52,7 @@ import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
@@ -78,6 +80,7 @@ import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
+import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
 
@@ -451,31 +454,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params = convertToJsonDataMap(doc);
-
-      SearchRetryUtil.executeWithRetry(
-          () ->
-              client.update(
-                  u ->
-                      u.index(indexName)
-                          .id(docId)
-                          .refresh(Refresh.True)
-                          .retryOnConflict(3)
-                          .scriptedUpsert(true)
-                          .upsert(params)
-                          .script(
-                              s ->
-                                  s.inline(
-                                      inline ->
-                                          inline
-                                              .lang(
-                                                  l ->
-                                                      l.builtin(
-                                                          os.org.opensearch.client.opensearch._types
-                                                              .BuiltinScriptLanguage.Painless))
-                                              .source(scriptTxt)
-                                              .params(params))),
-                  Map.class));
+      UpdateRequest<Map, Map> request = buildUpdateEntityRequest(indexName, docId, doc, scriptTxt);
+      SearchRetryUtil.executeWithRetry(() -> client.update(request, Map.class));
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
@@ -497,6 +477,27 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
+  }
+
+  UpdateRequest<Map, Map> buildUpdateEntityRequest(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    Map<String, JsonData> params = convertToJsonDataMap(doc);
+    return UpdateRequest.of(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .retryOnConflict(3)
+                .scriptedUpsert(true)
+                .upsert(SearchIndexUtils.toUpsertDocument(doc))
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(l -> l.builtin(BuiltinScriptLanguage.Painless))
+                                    .source(scriptTxt)
+                                    .params(params))));
   }
 
   @Override
@@ -1680,7 +1681,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
 
     if (!fieldsToRemove.isEmpty()) {
-      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+      result.put(FIELDS_TO_REMOVE, JsonData.of(fieldsToRemove));
     }
 
     return result;
