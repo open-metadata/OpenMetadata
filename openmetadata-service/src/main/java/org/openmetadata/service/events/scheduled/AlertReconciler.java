@@ -173,7 +173,7 @@ final class AlertReconciler {
     JobDetail job = scheduler.getJobDetail(jobKey(alert.getId()));
     Trigger trigger = scheduler.getTrigger(triggerKey(alert.getId()));
     String reason = null;
-    if (job == null || !hasAcceptedClass(job, alert)) {
+    if (job == null || !hasAcceptedClass(job)) {
       reason = "missing job";
     } else if (trigger == null || !repeatsEvery(trigger, alert.getPollInterval())) {
       reason = "missing trigger";
@@ -187,13 +187,9 @@ final class AlertReconciler {
     return Optional.ofNullable(reason);
   }
 
-  // The class the alert names, or AlertPublisher, which every release has and which runs the
-  // consumer the row names whatever class the job was stored with.
-  private static boolean hasAcceptedClass(JobDetail job, EventSubscription alert) {
-    String stored = job.getJobClass().getCanonicalName();
-    String named =
-        Optional.ofNullable(alert.getClassName()).orElse(AlertPublisher.class.getCanonicalName());
-    return stored.equals(named) || stored.equals(AlertPublisher.class.getCanonicalName());
+  // Jobs stored before this release carry the class their alert names; they are stored again.
+  private static boolean hasAcceptedClass(JobDetail job) {
+    return AlertPublisher.class.equals(job.getJobClass());
   }
 
   private static boolean repeatsEvery(Trigger trigger, Integer pollIntervalSeconds) {

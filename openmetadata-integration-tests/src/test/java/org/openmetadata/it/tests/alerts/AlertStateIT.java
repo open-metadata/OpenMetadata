@@ -34,6 +34,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
@@ -114,12 +115,20 @@ class AlertStateIT {
 
   // The alert's row is read when a tick opens, and what runs leave behind lives in rows.
   @Test
-  void jobCarriesNoData(TestNamespace ns) throws Exception {
-    EventSubscription alert = create(ns, "no_job_data", true);
+  void everyJobUsesAlertPublisherAndCarriesNoData(TestNamespace ns) throws Exception {
+    EventSubscription plain = create(ns, "no_job_data", true);
+    EventSubscription withItsOwnConsumer =
+        AlertFixtures.tableAlert(
+            ns,
+            "own_consumer_job",
+            LatchedConsumer.class.getName(),
+            List.of(AlertFixtures.external(WEBHOOK, "http://localhost:9/unused")));
 
-    JobDetail job = scheduler().getJobDetail(jobKey(alert));
-
-    assertTrue(job.getJobDataMap().isEmpty());
+    for (EventSubscription alert : List.of(plain, withItsOwnConsumer)) {
+      JobDetail job = scheduler().getJobDetail(jobKey(alert));
+      assertEquals(AlertPublisher.class, job.getJobClass());
+      assertTrue(job.getJobDataMap().isEmpty());
+    }
   }
 
   @Test

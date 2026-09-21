@@ -201,19 +201,14 @@ public class EventSubscriptionScheduler {
           InvocationTargetException,
           InstantiationException,
           IllegalAccessException {
-    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
-    Class<? extends AbstractEventConsumer> clazz =
-        Class.forName(
-                Optional.ofNullable(eventSubscription.getClassName())
-                    .orElse(defaultClass.getCanonicalName()))
-            .asSubclass(AbstractEventConsumer.class);
+    requireConsumerClass(eventSubscription);
     if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
       alertsScheduler.deleteJob(getJobKey(eventSubscription));
       LOG.info("Event Subscription {} is disabled, so it has no job", eventSubscription.getName());
     } else {
       // Rows first: a tick that finds no position row does nothing.
       AlertRecord.start(eventSubscription);
-      JobDetail jobDetail = jobBuilder(clazz, eventSubscription);
+      JobDetail jobDetail = jobBuilder(eventSubscription);
       alertsScheduler.scheduleJob(jobDetail, Set.of(trigger(eventSubscription)), true);
       LOG.info("Event Subscription {} scheduled", eventSubscription.getName());
     }
@@ -285,11 +280,18 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  private JobDetail jobBuilder(
-      Class<? extends AbstractEventConsumer> consumerClass, EventSubscription eventSubscription) {
-    // The job carries no data. The alert's row is read when a tick opens, and everything a run
-    // leaves behind lives in the alert's rows, so there is nothing here that could go stale.
-    return JobBuilder.newJob(consumerClass)
+  // A save naming a consumer this server cannot load fails here, not at the first tick.
+  private static void requireConsumerClass(EventSubscription alert) throws ClassNotFoundException {
+    if (alert.getClassName() != null) {
+      Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class);
+    }
+  }
+
+  // Every job is stored with AlertPublisher, a class every server can load, and carries no data.
+  // The tick runs the consumer the alert's row names, and everything a run leaves behind lives in
+  // the alert's rows, so nothing in a job can go stale or fail to load.
+  private JobDetail jobBuilder(EventSubscription eventSubscription) {
+    return JobBuilder.newJob(AlertPublisher.class)
         .withIdentity(eventSubscription.getId().toString(), ALERT_JOB_GROUP)
         .build();
   }

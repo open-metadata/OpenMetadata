@@ -16,7 +16,10 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
+import org.quartz.JobBuilder;
+import org.quartz.JobKey;
 import org.quartz.Trigger;
 
 /** The repairs the reconciler makes between restarts, and what it must leave alone. */
@@ -49,16 +52,17 @@ class AlertReconcilerIT {
     assertTrue(nextFire.getTime() > System.currentTimeMillis() - 60_000L);
   }
 
+  // A job stored before this release carries the class its alert names.
   @Test
-  void reconcilerKeepsTheClassTheAlertNames(TestNamespace ns) throws Exception {
+  void reconcilerConvertsJobsStoredWithTheNamedClass(TestNamespace ns) throws Exception {
     EventSubscription alert = alert(ns, "named_class", LatchedConsumer.class.getName());
-    AlertFixtures.scheduler().deleteJob(AlertFixtures.jobKey(alert.getId()));
+    JobKey key = AlertFixtures.jobKey(alert.getId());
+    AlertFixtures.scheduler()
+        .addJob(JobBuilder.newJob(LatchedConsumer.class).withIdentity(key).build(), true, true);
 
     EventSubscriptionScheduler.getInstance().reconcileNow();
 
-    assertEquals(
-        LatchedConsumer.class,
-        AlertFixtures.scheduler().getJobDetail(AlertFixtures.jobKey(alert.getId())).getJobClass());
+    assertEquals(AlertPublisher.class, AlertFixtures.scheduler().getJobDetail(key).getJobClass());
   }
 
   // While its own tick runs, a trigger is BLOCKED and its fire time can look arbitrarily old.
