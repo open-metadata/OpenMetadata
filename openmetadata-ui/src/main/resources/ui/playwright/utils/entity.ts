@@ -935,7 +935,9 @@ export const assignTag = async (
   await openClassificationTagPicker(page, tagButton);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
 
   await page.getByTestId('classification-tag-picker-search').fill(tag);
@@ -996,7 +998,9 @@ export const assignTagToChildren = async ({
   await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
 
   await page.getByTestId('classification-tag-picker-search').fill(tag);
@@ -1044,7 +1048,9 @@ export const removeTag = async (
     await openClassificationTagPicker(page, trigger);
 
     const searchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(tag)
+      )}*`
     );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;
@@ -1099,7 +1105,9 @@ export const removeTagsFromChildren = async ({
     await openClassificationTagPicker(page, trigger);
 
     const searchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(tag)
+      )}*`
     );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;

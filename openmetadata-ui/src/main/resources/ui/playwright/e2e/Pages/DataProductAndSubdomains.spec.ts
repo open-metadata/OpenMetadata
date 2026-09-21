@@ -323,7 +323,9 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Search for a tag
       const tagSearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters('Personal'))}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters('Personal')
+        )}*`
       );
       await page
         .getByTestId('classification-tag-picker-search')

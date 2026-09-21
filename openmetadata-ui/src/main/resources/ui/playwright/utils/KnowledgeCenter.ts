@@ -118,7 +118,9 @@ export const updateTags = async (
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
       response.request().method() === 'GET'
   );
   await page.getByTestId('classification-tag-picker-search').fill(data.tag);
@@ -318,7 +320,9 @@ export const updateQuickLink = async (
   const tagsTrigger = modal.getByTestId('tags-container');
   await tagsTrigger.click();
 
-  const searchInput = page.getByTestId('drop-down-menu').getByTestId('search-input');
+  const searchInput = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input');
   await searchInput.waitFor({ state: 'visible' });
   await searchInput.fill(knowledgePageQuickLink.tag);
 

@@ -550,7 +550,9 @@ test('Search tag using classification display name should work', async ({
   await initialQueryResponse;
 
   const tagSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(displayNameToSearch))}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(displayNameToSearch)
+    )}*`
   );
 
   // Enter the display name in the search box
@@ -779,10 +781,15 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     );
 
     // Search for and uncheck the tag to remove
-    const searchRemove = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(escapeESReservedCharacters(removedTagFqn))) &&
-      response.request().method() === 'GET'
+    const searchRemove = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response
+          .url()
+          .includes(
+            encodeURIComponent(escapeESReservedCharacters(removedTagFqn))
+          ) &&
+        response.request().method() === 'GET'
     );
     await page
       .getByTestId('classification-tag-picker-search')
@@ -794,7 +801,11 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     const searchAdd = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(escapeESReservedCharacters(addedTag.data.name)))
+        response
+          .url()
+          .includes(
+            encodeURIComponent(escapeESReservedCharacters(addedTag.data.name))
+          )
     );
     await page
       .getByTestId('classification-tag-picker-search')

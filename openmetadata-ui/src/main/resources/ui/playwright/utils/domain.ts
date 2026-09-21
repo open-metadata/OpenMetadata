@@ -1281,7 +1281,9 @@ export const addTagsAndGlossaryToDomain = async (
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(escapeESReservedCharacters(tagFqn))) &&
+      response
+        .url()
+        .includes(encodeURIComponent(escapeESReservedCharacters(tagFqn))) &&
       response.request().method() === 'GET'
   );
   await page.getByTestId('classification-tag-picker-search').fill(tagFqn);

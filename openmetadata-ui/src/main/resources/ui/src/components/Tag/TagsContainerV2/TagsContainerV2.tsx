@@ -298,8 +298,6 @@ const TagsContainerV2 = ({
     ]
   );
 
-
-
   const handleTagsTask = (hasTags: boolean) => {
     navigate(
       (hasTags ? getUpdateTagsPath : getRequestTagsPath)(

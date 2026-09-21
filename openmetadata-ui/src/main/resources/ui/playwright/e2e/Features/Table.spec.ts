@@ -576,7 +576,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await openClassificationTagPicker(page, addButton.or(editButton));
 
     const addSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(testTag.data.name))}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        escapeESReservedCharacters(testTag.data.name)
+      )}*`
     );
     await page
       .getByTestId('classification-tag-picker-search')

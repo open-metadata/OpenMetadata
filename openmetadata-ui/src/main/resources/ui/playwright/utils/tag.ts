@@ -335,7 +335,9 @@ export const addTagToTableColumn = async (
   await openClassificationTagPicker(page, trigger);
 
   const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tagName)
+    )}*`
   );
   await page.getByTestId('classification-tag-picker-search').fill(tagName);
   await searchTagResponse;

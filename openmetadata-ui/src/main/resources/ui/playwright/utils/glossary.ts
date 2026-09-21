@@ -1460,7 +1460,9 @@ export const assignTagToGlossaryTerm = async (
   await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
   );
   await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;

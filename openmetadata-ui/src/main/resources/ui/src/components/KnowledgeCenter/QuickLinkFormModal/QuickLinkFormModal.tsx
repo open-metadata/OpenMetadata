@@ -38,9 +38,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import {
-  TagLabel,
-} from '../../../generated/type/tagLabel';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -63,8 +61,8 @@ import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import TagSelector from '../../Tag/TagSelector/TagSelector';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
+import TagSelector from '../../Tag/TagSelector/TagSelector';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {

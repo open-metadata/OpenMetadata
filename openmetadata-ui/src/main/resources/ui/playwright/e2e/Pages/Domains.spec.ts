@@ -81,10 +81,10 @@ import {
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
+  escapeESReservedCharacters,
   followEntity,
   getEncodedFqn,
   unFollowEntity,
-  escapeESReservedCharacters,
   validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -3318,11 +3318,19 @@ test.describe('Domain Tree View Functionality', () => {
       ).toBeVisible();
 
       const searchTagResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(escapeESReservedCharacters( testTag.responseData.fullyQualifiedName))) &&
-      response.request().method() === 'GET'
-  );
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response
+            .url()
+            .includes(
+              encodeURIComponent(
+                escapeESReservedCharacters(
+                  testTag.responseData.fullyQualifiedName
+                )
+              )
+            ) &&
+          response.request().method() === 'GET'
+      );
       await page
         .getByTestId('classification-tag-picker-search')
         .fill(testTag.responseData.fullyQualifiedName);

@@ -324,7 +324,9 @@ test.describe('Glossary Remove Operations', () => {
 
       // Search and select tag
       const searchTags = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters(tagName)
+        )}*`
       );
       await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchTags;
@@ -355,7 +357,9 @@ test.describe('Glossary Remove Operations', () => {
       );
 
       const searchRemove = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters(tagName)
+        )}*`
       );
       await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchRemove;
