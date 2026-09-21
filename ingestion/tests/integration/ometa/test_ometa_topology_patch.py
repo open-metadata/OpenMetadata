@@ -68,6 +68,16 @@ PERSONAL_TAG_LABEL = TagLabel(
 )
 
 
+def tag_fqns(entity):
+    """Sorted tag FQNs of a table or a column.
+
+    The server reads tags back with an ORDER BY tagFQN (CollectionDAO.getTagsInternal),
+    under the database collation, so the order the patch sent them in says nothing and
+    indexing into the list compares MySQL against PostgreSQL.
+    """
+    return sorted(tag.tagFQN.root for tag in entity.tags or [])
+
+
 @pytest.fixture(scope="module")
 def topology_users(metadata):
     """Create users for topology patch tests."""
@@ -321,28 +331,29 @@ class TestOMetaTopologyPatchAPI:
         table_entity = metadata.get_by_id(
             entity=Table, entity_id=table_entity_one.id.root, fields=["*"]
         )
-        # Table tests - should NOT override (default behavior)
+        # Table tests - description, displayName and owners are kept, tags are merged
         assert table_entity.owners.root[0].id == topology_users["owner"].root[0].id
         assert table_entity.description.root == "TABLE ONE DESCRIPTION"
         assert table_entity.displayName == "TABLE ONE"
-        assert table_entity.tags[0].tagFQN.root == "PersonalData.Personal"
+        assert tag_fqns(table_entity) == ["PII.Sensitive", "PersonalData.Personal"]
 
         # Column tests - order follows destination [col3, col4, col5, col1, col2]
-        # Restricted fields (description, displayName, tags) preserved from source
+        # description and displayName are preserved from source, tags are merged
         assert table_entity.columns[0].name.root == "column3"
         assert table_entity.columns[0].description.root == "test column3"
         assert table_entity.columns[0].displayName == "COLUMN THREE"
-        assert table_entity.columns[0].tags[0].tagFQN.root == "PII.Sensitive"
-        assert table_entity.columns[0].tags[1].tagFQN.root == "Tier.Tier2"
+        assert tag_fqns(table_entity.columns[0]) == ["PII.Sensitive", "Tier.Tier2"]
         assert table_entity.columns[1].name.root == "column4"
         assert table_entity.columns[1].description.root == "test column4"
         assert table_entity.columns[1].displayName == "COLUMN FOUR"
-        assert table_entity.columns[1].tags[0].tagFQN.root == "PII.Sensitive"
+        assert tag_fqns(table_entity.columns[1]) == ["PII.Sensitive"]
         assert table_entity.columns[2].name.root == "column5"
         assert table_entity.columns[2].description.root == "test column5"
         assert table_entity.columns[2].displayName == "COLUMN FIVE"
-        assert table_entity.columns[2].tags[0].tagFQN.root == "PersonalData.Personal"
-        assert len(table_entity.columns[2].tags) == 1
+        assert tag_fqns(table_entity.columns[2]) == [
+            "PII.Sensitive",
+            "PersonalData.Personal",
+        ]
         assert table_entity.columns[3].name.root == "column1"
         assert table_entity.columns[3].description.root == "test column1"
         assert table_entity.columns[3].displayName is None
@@ -453,7 +464,7 @@ class TestOMetaTopologyPatchAPI:
         )
         assert table_entity.description.root == "TABLE THREE DESCRIPTION OVERRIDEN"
         assert table_entity.displayName == "TABLE THREE OVERRIDEN"
-        assert table_entity.tags[0].tagFQN.root == "PII.Sensitive"
+        assert tag_fqns(table_entity) == ["PII.Sensitive"]
 
         # With override + destination order, columns follow the destination order
         assert table_entity.columns[0].name.root == "column7"
@@ -462,13 +473,12 @@ class TestOMetaTopologyPatchAPI:
         assert table_entity.columns[1].name.root == "column3"
         assert table_entity.columns[1].description.root == "test column3"
         assert table_entity.columns[1].displayName == "COLUMN THREE OVERRIDEN"
-        assert table_entity.columns[1].tags[0].tagFQN.root == "PII.Sensitive"
-        assert table_entity.columns[1].tags[1].tagFQN.root == "Tier.Tier2"
+        assert tag_fqns(table_entity.columns[1]) == ["PII.Sensitive", "Tier.Tier2"]
 
         assert table_entity.columns[2].name.root == "column5"
         assert table_entity.columns[2].description.root == "test column5"
         assert table_entity.columns[2].displayName == "COLUMN FIVE"
-        assert table_entity.columns[2].tags[0].tagFQN.root == "PII.Sensitive"
+        assert tag_fqns(table_entity.columns[2]) == ["PII.Sensitive"]
 
         assert table_entity.columns[3].name.root == "column1"
         assert table_entity.columns[3].description.root == "test column1 overriden"
