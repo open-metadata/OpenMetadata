@@ -18,7 +18,11 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
 import { redirectToHomePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 
 const ARTICLE_PATH_PREFIX = '/context-center/articles/';
@@ -107,20 +111,14 @@ export const updateTags = async (
   const addTagBtn = tagsContainer.getByTestId('add-tag');
   const editTagBtn = tagsContainer.getByTestId('edit-button');
   const isAdd = await addTagBtn.isVisible();
-  if (isAdd) {
-    await addTagBtn.click();
-  } else {
-    await editTagBtn.click();
-  }
+  const trigger = isAdd ? addTagBtn : editTagBtn;
 
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
+  await openClassificationTagPicker(page, trigger);
 
   const searchTagResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
-      response.url().includes(encodeURIComponent(data.tag)) &&
+      response.url().includes(encodeURIComponent(escapeESReservedCharacters(data.tag))) &&
       response.request().method() === 'GET'
   );
   await page.getByTestId('classification-tag-picker-search').fill(data.tag);
@@ -317,19 +315,19 @@ export const updateQuickLink = async (
   await descriptionTextarea.press('ControlOrMeta+a');
   await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  const tagInput = modal.locator(
-    '[data-testid="tags-container"] input[role="combobox"]'
-  );
+  const tagsTrigger = modal.locator('[data-testid^="search-dropdown-"]');
+  await tagsTrigger.click();
 
-  await tagInput.click();
-  await tagInput.fill(knowledgePageQuickLink.tag);
+  const searchInput = modal.getByTestId('search-input');
+  await searchInput.waitFor({ state: 'visible' });
+  await searchInput.fill(knowledgePageQuickLink.tag);
 
-  await expect(
-    page.getByRole('option', { name: knowledgePageQuickLink.tag })
-  ).toBeVisible();
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId(knowledgePageQuickLink.tagFqn)
+    .click();
 
-  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
-  await page.keyboard.press('Escape');
+  await tagsTrigger.click();
 
   await modal.getByRole('button', { name: 'Save' }).click();
 

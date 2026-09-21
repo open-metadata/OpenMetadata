@@ -20,6 +20,8 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addMultiOwner,
   assignTag,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
   removeTag,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
@@ -315,17 +317,14 @@ test.describe('Glossary Remove Operations', () => {
       const tagName = 'Sensitive';
 
       // On glossary term page, tags are in the main content area, not KnowledgePanel
-      // Click add tag button in tags section
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      // Wait for ClassificationTagPicker search
-      await expect(
-        page.getByTestId('classification-tag-picker-search')
-      ).toBeVisible();
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search and select tag
       const searchTags = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
       );
       await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchTags;
@@ -349,19 +348,14 @@ test.describe('Glossary Remove Operations', () => {
         page.getByTestId('tags-container').getByTestId(`tag-${tagFqn}`)
       ).toBeVisible();
 
-      // Remove the tag - click edit button
-      await page
-        .getByTestId('tags-container')
-        .getByTestId('edit-button')
-        .click();
-
-      // Search for the tag to uncheck it
-      await expect(
-        page.getByTestId('classification-tag-picker-search')
-      ).toBeVisible();
+      // Remove the tag
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('edit-button')
+      );
 
       const searchRemove = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+        `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
       );
       await page.getByTestId('classification-tag-picker-search').fill(tagName);
       await searchRemove;

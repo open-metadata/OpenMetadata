@@ -108,6 +108,9 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
       isOpen={isOpen}
       label={label}
       multiple={multiple}
+      noDataMessage={t('label.no-entity-available', {
+        entity: t('label.tag-plural'),
+      })}
       placeholder={
         placeholder ?? t('label.select-field', { field: t('label.tag-plural') })
       }

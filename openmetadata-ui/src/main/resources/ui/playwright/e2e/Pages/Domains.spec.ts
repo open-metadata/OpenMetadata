@@ -84,6 +84,7 @@ import {
   followEntity,
   getEncodedFqn,
   unFollowEntity,
+  escapeESReservedCharacters,
   validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -550,13 +551,6 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       await selectDomain(page, domain.data);
-
-      // const selectSubDomainRes = page.waitForResponse(
-      //   '/api/v1/search/query?q=&index=domain*'
-      // );
-      // await page.getByTestId('subdomains').getByText('Sub Domains').click();
-      // await selectSubDomainRes;
-      // await verifyDomain(page, subDomain.data, domain.data, false);
 
       const subDomainApiRes1 = page.waitForResponse(
         '/api/v1/search/query?q=&index=domain&from=0&size=9&deleted=false*'
@@ -1235,7 +1229,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -1290,7 +1284,7 @@ test.describe('Domains', () => {
         await expect(
           page
             .getByTestId('add-domain-form')
-            .getByTestId('tags-container')
+            .getByTestId('filter-chip')
             .getByText(tag.data.displayName)
         ).toBeVisible();
       });
@@ -3323,11 +3317,17 @@ test.describe('Domain Tree View Functionality', () => {
         page.getByTestId('classification-tag-picker-search')
       ).toBeVisible();
 
+      // const searchTagResponse = page.waitForResponse(
+      //   `/api/v1/search/query?q=*${encodeURIComponent(
+      //     testTag.responseData.fullyQualifiedName
+      //   )}*`
+      // );
       const searchTagResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          testTag.responseData.fullyQualifiedName
-        )}*`
-      );
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(escapeESReservedCharacters( testTag.responseData.fullyQualifiedName))) &&
+      response.request().method() === 'GET'
+  );
       await page
         .getByTestId('classification-tag-picker-search')
         .fill(testTag.responseData.fullyQualifiedName);

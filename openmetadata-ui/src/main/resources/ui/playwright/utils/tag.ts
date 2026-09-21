@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { Domain } from '../support/domain/Domain';
@@ -31,7 +31,11 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
+import {
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from './entity';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',
@@ -324,16 +328,14 @@ export const addTagToTableColumn = async (
     rowName: string;
   }
 ) => {
-  await page.click(
+  const trigger: Locator = page.locator(
     `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
   );
 
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
+  await openClassificationTagPicker(page, trigger);
 
   const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tagName))}*`
   );
   await page.getByTestId('classification-tag-picker-search').fill(tagName);
   await searchTagResponse;

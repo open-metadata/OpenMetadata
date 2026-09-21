@@ -893,11 +893,36 @@ export const updateDescriptionForChildren = async (
   }
 };
 
+// Opens the ClassificationTagPicker popover with retry logic to handle the
+// race condition where the outside-click handler closes the popover before
+// the search input becomes visible (mirrors openGlossaryPicker in glossaryPicker.ts).
+export const openClassificationTagPicker = async (
+  page: Page,
+  trigger: Locator
+) => {
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+
+  const searchInput = page.getByTestId('classification-tag-picker-search');
+
+  const clickAndAwaitOpen = async (clickOptions?: { force?: boolean }) => {
+    await trigger.click(clickOptions);
+    await searchInput.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+
+  try {
+    await clickAndAwaitOpen();
+  } catch {
+    // First click raced with the outside-click handler on slow CI shards.
+    await clickAndAwaitOpen({ force: true });
+  }
+};
+
 export const assignTag = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  endpoint: string,
+  endpoint?: string,
   parentId = 'KnowledgePanel.Tags',
   tagFqn?: string
 ) => {
@@ -907,15 +932,10 @@ export const assignTag = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .first();
 
-  await expect(tagButton).toBeVisible();
-  await tagButton.click();
-
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
+  await openClassificationTagPicker(page, tagButton);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
   );
 
   await page.getByTestId('classification-tag-picker-search').fill(tag);
@@ -929,7 +949,14 @@ export const assignTag = async (
 
   await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = endpoint
+    ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+    : page.waitForResponse(
+        (r) =>
+          r.request().method() === 'PATCH' &&
+          r.url().includes('/api/v1/') &&
+          !r.url().includes('/api/v1/analytics')
+      );
 
   await expect(page.getByTestId('update-btn')).toBeEnabled();
 
@@ -961,18 +988,15 @@ export const assignTagToChildren = async ({
   rowSelector?: string;
   entityEndpoint: string;
 }) => {
-  await page
+  const trigger = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
   );
 
   await page.getByTestId('classification-tag-picker-search').fill(tag);
@@ -1004,7 +1028,7 @@ export const assignTagToChildren = async ({
 export const removeTag = async (
   page: Page,
   tags: string[],
-  endpoint: string,
+  endpoint?: string,
   parentId = 'KnowledgePanel.Tags',
   tagFqns?: string[]
 ) => {
@@ -1012,18 +1036,15 @@ export const removeTag = async (
     const tag = tags[i];
     const fqn = tagFqns?.[i] ?? tag;
 
-    await page
+    const trigger = page
       .getByTestId(parentId)
       .getByTestId('tags-container')
-      .getByTestId('edit-button')
-      .click();
+      .getByTestId('edit-button');
 
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, trigger);
 
     const searchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
     );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;
@@ -1032,7 +1053,14 @@ export const removeTag = async (
 
     await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
-    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    const patchRequest = endpoint
+      ? page.waitForResponse(`/api/v1/${endpoint}/*`)
+      : page.waitForResponse(
+          (r) =>
+            r.request().method() === 'PATCH' &&
+            r.url().includes('/api/v1/') &&
+            !r.url().includes('/api/v1/analytics')
+        );
 
     await expect(page.getByTestId('update-btn')).toBeEnabled();
     await page.getByTestId('update-btn').click();
@@ -1062,19 +1090,16 @@ export const removeTagsFromChildren = async ({
   entityEndpoint: string;
 }) => {
   for (const tag of tags) {
-    await page
+    const trigger = page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
-      .first()
-      .click();
+      .first();
 
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, trigger);
 
     const searchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+      `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
     );
     await page.getByTestId('classification-tag-picker-search').fill(tag);
     await searchResponse;

@@ -27,6 +27,8 @@ import {
 } from '../../utils/common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
+  openClassificationTagPicker,
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -190,17 +192,14 @@ test('Classification Page', async ({ page }) => {
     // Check if the disabled Classification tag is not visible in the table
     await table.visitEntityPage(page);
 
-    await page.click(
+    const disabledTrigger = page.locator(
       '[data-testid="classification-tags-0"] [data-testid="entity-tags"] [data-testid="add-tag"]'
     );
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, disabledTrigger);
 
     const tagResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(
-        tag.responseData.displayName
+        escapeESReservedCharacters(tag.responseData.displayName)
       )}*`
     );
     await page
@@ -432,11 +431,7 @@ test('Classification Page', async ({ page }) => {
       tag
     );
 
-    await page.click('[data-testid="edit-button"]');
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(page, page.getByTestId('edit-button'));
 
     const searchRemove = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent('Personal')}*`
@@ -547,21 +542,17 @@ test('Search tag using classification display name should work', async ({
 
   const initialQueryResponse = page.waitForResponse('**/api/v1/search/query?*');
 
-  await page
+  const displayNameTrigger = page
     .getByTestId('KnowledgePanel.Tags')
     .getByTestId('tags-container')
     .getByTestId('add-tag')
-    .first()
-    .click();
+    .first();
 
+  await openClassificationTagPicker(page, displayNameTrigger);
   await initialQueryResponse;
 
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
-
   const tagSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(displayNameToSearch)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(displayNameToSearch))}*`
   );
 
   // Enter the display name in the search box
@@ -784,17 +775,16 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
     await expect(tagsPanel.getByTestId(`tag-${removedTagFqn}`)).toBeVisible();
 
-    await tagsPanel.getByTestId('edit-button').first().click();
-
-    await expect(
-      page.getByTestId('classification-tag-picker-search')
-    ).toBeVisible();
+    await openClassificationTagPicker(
+      page,
+      tagsPanel.getByTestId('edit-button').first()
+    );
 
     // Search for and uncheck the tag to remove
-    const searchRemove = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(removedTagFqn))
+    const searchRemove = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(escapeESReservedCharacters(removedTagFqn))) &&
+      response.request().method() === 'GET'
     );
     await page
       .getByTestId('classification-tag-picker-search')
@@ -806,7 +796,7 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     const searchAdd = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(encodeURIComponent(addedTag.data.name))
+        response.url().includes(encodeURIComponent(escapeESReservedCharacters(addedTag.data.name)))
     );
     await page
       .getByTestId('classification-tag-picker-search')

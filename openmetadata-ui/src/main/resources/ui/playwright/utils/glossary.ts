@@ -47,7 +47,9 @@ import {
 } from './common';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
   getEntityDisplayName,
+  openClassificationTagPicker,
   waitForAllLoadersToDisappear,
 } from './entity';
 import { waitForAggregation } from './searchAggregation';
@@ -1464,18 +1466,15 @@ export const assignTagToGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add',
   parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
-  await page
+  const trigger = page
     .getByTestId(parentTestId)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .click();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
-  await expect(
-    page.getByTestId('classification-tag-picker-search')
-  ).toBeVisible();
+  await openClassificationTagPicker(page, trigger);
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(escapeESReservedCharacters(tag))}*`
   );
   await page.getByTestId('classification-tag-picker-search').fill(tag);
   await searchTags;
