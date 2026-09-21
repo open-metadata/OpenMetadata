@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { getServiceSearchIndexMappings } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
@@ -27,6 +27,28 @@ import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+// TableV2 renders the first column as a rowheader (not a cell) and other
+// columns as gridcells, so match any of the three by accessible name.
+const serviceCell = (page: Page, name: string) =>
+  page
+    .getByRole('rowheader', { name })
+    .or(page.getByRole('gridcell', { name }))
+    .or(page.getByRole('cell', { name }));
+
+// The Type column filter is a TableV2 column filter: TableV2 wraps the
+// dropdown body in `data-testid="filter-dropdown"` (the `ant-table-filter-dropdown`
+// prefixCls it passes is ignored by ColumnFilter, so that class never renders).
+// The checkbox is matched by its input value (getByLabel is unreliable under CI).
+// Clicking a checkbox calls confirm() → applies the filter and closes the dropdown.
+const toggleServiceTypeFilter = async (page: Page, serviceType: string) => {
+  await page.getByTestId('filter-icon').click();
+  const dropdown = page.getByTestId('filter-dropdown');
+  await expect(dropdown).toBeVisible();
+  await dropdown
+    .locator(`.ant-checkbox-wrapper:has(input[value="${serviceType}"])`)
+    .click();
+};
 
 test.describe('Service Listing', () => {
   const databaseService1 = new DatabaseServiceClass(undefined, {
@@ -96,17 +118,13 @@ test.describe('Service Listing', () => {
   });
 
   test('should render the service listing page', async ({ page }) => {
-    await page.getByTestId('filter-icon').click();
-
     const searchService1Response = page.waitForResponse(
       '/api/v1/search/query?q=*&index=databaseService&*'
     );
-    await page.getByLabel(databaseService1.entity.serviceType).check();
+    await toggleServiceTypeFilter(page, databaseService1.entity.serviceType);
     await searchService1Response;
 
-    await page.getByTestId('filter-icon').click();
-
-    await page.getByLabel(databaseService2.entity.serviceType).check();
+    await toggleServiceTypeFilter(page, databaseService2.entity.serviceType);
     const searchService2Response = page.waitForResponse(
       '/api/v1/search/query?q=*&index=databaseService&*'
     );
@@ -114,18 +132,15 @@ test.describe('Service Listing', () => {
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
     await searchService2Response;
 
-    await page.getByTestId('filter-icon').click();
     const searchService2Response2 = page.waitForResponse(
       '/api/v1/search/query?q=*&index=databaseService&*'
     );
-    await page.getByLabel(databaseService1.entity.serviceType).uncheck();
+    await toggleServiceTypeFilter(page, databaseService1.entity.serviceType);
     await searchService2Response2;
 
+    await expect(serviceCell(page, databaseService2.entity.name)).toBeVisible();
     await expect(
-      page.getByRole('cell', { name: databaseService2.entity.name })
-    ).toBeVisible();
-    await expect(
-      page.getByRole('cell', { name: databaseService1.entity.name })
+      serviceCell(page, databaseService1.entity.name)
     ).not.toBeVisible();
   });
 
@@ -167,9 +182,7 @@ test.describe('Service Listing', () => {
       },
     });
 
-    await expect(
-      page.getByRole('cell', { name: databaseService2.entity.name })
-    ).toBeVisible();
+    await expect(serviceCell(page, databaseService2.entity.name)).toBeVisible();
   });
 
   test('should find service when searching by displayName', async ({
@@ -183,9 +196,7 @@ test.describe('Service Listing', () => {
     await page.getByTestId('searchbar').fill(serviceDisplayName);
     const searchRequest = await searchResponse;
     expect(searchRequest.status()).toBe(200);
-    await expect(
-      page.getByRole('cell', { name: serviceDisplayName }).first()
-    ).toBeVisible();
+    await expect(serviceCell(page, serviceDisplayName).first()).toBeVisible();
   });
 
   test('service listing pages should use the correct search index for search', async ({
@@ -218,9 +229,7 @@ test.describe('Service Listing', () => {
         await page.getByTestId('searchbar').fill(entityName);
         await searchResponse;
 
-        await expect(
-          page.getByRole('cell', { name: entityName })
-        ).toBeVisible();
+        await expect(serviceCell(page, entityName)).toBeVisible();
       });
     }
   });

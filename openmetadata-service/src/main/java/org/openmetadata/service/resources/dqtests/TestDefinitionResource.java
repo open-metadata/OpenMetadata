@@ -61,7 +61,9 @@ import org.openmetadata.service.seeding.SeedDataGate;
             + "that run against data to capture data quality.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "TestDefinitions")
+// Seeded after the data quality dimensions (order 0) the shipped test definitions reference:
+// a test definition is rejected when its dimension does not exist yet.
+@Collection(name = "TestDefinitions", order = 1)
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
   private final TestDefinitionMapper mapper = new TestDefinitionMapper();
@@ -153,7 +155,9 @@ public class TestDefinitionResource
           @QueryParam("testPlatform")
           String testPlatformParam,
       @Parameter(
-              description = "Filter tests definition by supported data type",
+              description =
+                  "Filter test definitions by supported data type. Returns test definitions that either "
+                      + "have an empty supportedDataTypes list (supporting all data types) or include the specified data type.",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
           String supportedDataTypeParam,

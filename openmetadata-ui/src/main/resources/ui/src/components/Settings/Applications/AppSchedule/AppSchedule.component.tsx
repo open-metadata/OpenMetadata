@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import {
+  App,
   AppScheduleClass,
   AppType,
   ScheduleType,
@@ -28,6 +29,46 @@ import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
+
+// The schedule read-out is self-contained; keeping it out of AppSchedule keeps
+// that component's branching down to the action buttons it actually owns.
+const AppScheduleSummary = ({
+  appSchedule,
+  cronString,
+}: {
+  appSchedule?: App['appSchedule'];
+  cronString: string;
+}) => {
+  const { t } = useTranslation();
+
+  if (!appSchedule) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="d-flex items-center gap-2">
+        <Typography.Text className="right-panel-label">
+          {t('label.schedule-type')}
+        </Typography.Text>
+        <Typography.Text className="font-medium" data-testid="schedule-type">
+          {(appSchedule as AppScheduleClass).scheduleTimeline ?? ''}
+        </Typography.Text>
+      </div>
+
+      {!isEmpty(cronString) && (
+        <div className="d-flex items-center gap-2">
+          <Typography.Text className="right-panel-label">
+            {t('label.schedule-interval')}
+          </Typography.Text>
+          <Typography.Text className="font-medium" data-testid="cron-string">
+            {cronString}
+          </Typography.Text>
+        </div>
+      )}
+    </>
+  );
+};
 
 const AppSchedule = ({
   appData,
@@ -199,34 +240,10 @@ const AppSchedule = ({
     <>
       <Row>
         <Col className="flex-col" flex="auto">
-          {appData.appSchedule && (
-            <>
-              <div className="d-flex items-center gap-2">
-                <Typography.Text className="right-panel-label">
-                  {t('label.schedule-type')}
-                </Typography.Text>
-                <Typography.Text
-                  className="font-medium"
-                  data-testid="schedule-type">
-                  {(appData.appSchedule as AppScheduleClass).scheduleTimeline ??
-                    ''}
-                </Typography.Text>
-              </div>
-
-              {!isEmpty(cronString) && (
-                <div className="d-flex items-center gap-2">
-                  <Typography.Text className="right-panel-label">
-                    {t('label.schedule-interval')}
-                  </Typography.Text>
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="cron-string">
-                    {cronString}
-                  </Typography.Text>
-                </div>
-              )}
-            </>
-          )}
+          <AppScheduleSummary
+            appSchedule={appData.appSchedule}
+            cronString={cronString}
+          />
         </Col>
         {!isAppDisabled && (
           <Col className="d-flex items-center justify-end" flex="200px">
