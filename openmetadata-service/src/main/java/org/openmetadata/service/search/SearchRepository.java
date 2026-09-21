@@ -546,13 +546,13 @@ public class SearchRepository {
     try {
       EntityLifecycleEventDispatcher dispatcher = EntityLifecycleEventDispatcher.getInstance();
       SearchIndexHandler searchHandler = new SearchIndexHandler(this);
-      // Drop any stale handler bound to a previous SearchRepository instance. Test suites and
+      // Displace any stale handler bound to a previous SearchRepository instance. Test suites and
       // app bootstrap construct SearchRepository more than once and replace the singleton via
       // Entity.setSearchRepository(...); without this the dispatcher keeps delivering events to
       // the first instance and state maintained on the current instance (e.g. activeStagedIndices
-      // used for reindex write-routing) is never consulted.
-      dispatcher.unregisterHandler(searchHandler.getHandlerName());
-      dispatcher.registerHandler(searchHandler);
+      // used for reindex write-routing) is never consulted. Replace rather than unregister then
+      // register, so no concurrent entity write can slip through an unhandled window.
+      dispatcher.replaceHandler(searchHandler);
       LOG.info("Successfully registered SearchIndexHandler for entity lifecycle events");
     } catch (Exception e) {
       LOG.error("Failed to register SearchIndexHandler", e);
