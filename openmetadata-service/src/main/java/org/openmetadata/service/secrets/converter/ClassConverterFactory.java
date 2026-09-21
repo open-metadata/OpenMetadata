@@ -305,8 +305,6 @@ public final class ClassConverterFactory {
                 Map.entry(PubSubConnection.class, new PubSubConnectionClassConverter()),
                 Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
                 Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
-                Map.entry(
-                    MicrosoftAccessConnection.class, new MicrosoftAccessConnectionClassConverter()),
                 Map.entry(MssqlConnection.class, new MssqlConnectionClassConverter()),
                 Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
                 Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),

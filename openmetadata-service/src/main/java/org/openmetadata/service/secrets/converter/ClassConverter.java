@@ -91,11 +91,19 @@ public abstract class ClassConverter {
                       .getMethod("set" + accessorSuffix, Object.class)
                       .invoke(target, value);
                 } catch (ReflectiveOperationException e) {
-                  throw new ReflectionException(e.getMessage());
+                  throw new ReflectionException(
+                      String.format(
+                          "Failed to set property [%s] on [%s]: %s",
+                          property, target.getClass().getSimpleName(), e.getMessage()),
+                      e);
                 }
               });
     } catch (ReflectiveOperationException e) {
-      throw new ReflectionException(e.getMessage());
+      throw new ReflectionException(
+          String.format(
+              "Failed to convert property [%s] on [%s]: %s",
+              property, target.getClass().getSimpleName(), e.getMessage()),
+          e);
     }
   }
 
