@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
 )
 
-FIRST_TOKEN = re.compile(r"\S+")
+FIRST_WORD = re.compile(r"\w+")
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -66,18 +66,23 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
 
 
 def inject_inline_query_header(statement: str) -> str:
-    """Return the statement with the OpenMetadata header after its first token.
+    """Return the statement with the OpenMetadata header after its first word.
+
+    The anchor is the first run of word characters rather than the first
+    whitespace-delimited token: ``SELECT'a b'`` has no space after the keyword,
+    and splitting on whitespace would land the header inside the string literal
+    and change the value the statement returns.
 
     Statements that already start with a comment are returned unchanged.
     """
     stripped = statement.lstrip()
-    first_token = FIRST_TOKEN.match(stripped)
-    if not first_token or stripped.startswith("/*"):
+    first_word = FIRST_WORD.search(stripped)
+    if not first_word or stripped.startswith("/*"):
         return statement
     leading_whitespace = statement[: len(statement) - len(stripped)]
-    token = first_token.group(0)
+    end = first_word.end()
     header = render_query_header(_pkg_version("openmetadata-ingestion"))
-    return f"{leading_whitespace}{token} {header}{stripped[len(token) :]}"
+    return f"{leading_whitespace}{stripped[:end]} {header}{stripped[end:]}"
 
 
 @inject_query_header_by_conn.register(MssqlConnection)

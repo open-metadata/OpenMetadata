@@ -1,8 +1,8 @@
 #  Copyright 2025 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -40,13 +40,27 @@ OM_MARKER = "OpenMetadata"
 # lives in the statement body, so it survives whether or not the header does
 PROBE_MARKER = "header" + "_probe"
 
-# every shape OM issues: bare, leading-newline (textwrap.dedent), CTE, parameterised
+# every shape OM issues: bare, leading-newline (textwrap.dedent), CTE, parameterised.
+# Each one reads a real table on purpose: a constant-only SELECT compiles without a
+# plan Query Store keeps, so it is never recorded and the assertions below would pass
+# without proving anything.
+PROBE_TABLE = "SalesLT.Customer"
+PROBE_COLUMN = "CustomerID"
 STATEMENTS = [
-    "SELECT 1 AS header_probe_plain",
-    "\nSELECT 2 AS header_probe_dedent",
-    "\n SELECT 3 AS header_probe_dedent_space",
-    "WITH probe AS (SELECT 4 AS c) SELECT c AS header_probe_cte FROM probe",
+    f"SELECT {PROBE_COLUMN} AS header_probe_plain FROM {PROBE_TABLE}",
+    f"\nSELECT {PROBE_COLUMN} AS header_probe_nl FROM {PROBE_TABLE}",
+    f"\n SELECT {PROBE_COLUMN} AS header_probe_nlsp FROM {PROBE_TABLE}",
+    f"WITH probe AS (SELECT {PROBE_COLUMN} AS c FROM {PROBE_TABLE}) SELECT c AS header_probe_cte FROM probe",
 ]
+# every alias above, plus the parameterised probe: each must reach Query Store or the
+# shape is untested
+PROBE_ALIASES = (
+    "header_probe_plain",
+    "header_probe_nl",
+    "header_probe_nlsp",
+    "header_probe_cte",
+    "header_probe_param",
+)
 
 
 @pytest.fixture(scope="module")
@@ -75,7 +89,7 @@ def run_probe_statements(engine):
         # parameterised: SQL Server records these via sp_executesql, which puts the
         # parameter declarations ahead of the statement
         conn.execute(
-            text("SELECT :v AS header_probe_param"),
+            text(f"SELECT :v AS header_probe_param, {PROBE_COLUMN} FROM {PROBE_TABLE}"),
             {"v": 5},
         )
 
@@ -180,5 +194,8 @@ class TestHeaderSurvivesIntoQueryStore:
         probes = [row[0] for row in rows if "query_store_query_text" not in row[0]]
 
         assert probes, "no probe statements were recorded"
+        recorded = " ".join(probes)
+        for alias in PROBE_ALIASES:
+            assert alias in recorded, f"{alias} never reached Query Store, so its shape is untested"
         assert all(OM_MARKER in probe for probe in probes)
         assert not any(probe.lstrip().startswith("/*") for probe in probes)
