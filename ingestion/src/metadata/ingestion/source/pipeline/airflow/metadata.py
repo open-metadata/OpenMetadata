@@ -848,15 +848,18 @@ class AirflowSource(PipelineServiceSource):
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
-            service_name=self.context.get().pipeline_service,
-            pipeline_name=self.context.get().pipeline,
+            service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+            pipeline_name=self.context.get().pipeline,  # pyright: ignore[reportAttributeAccessIssue]
         )
         # Reset before the early return below: the context is shared across sibling
         # DAGs, so leaving the previous DAG's values in place would attribute its
         # tables to this one.
         self._set_observability_context()
 
-        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
+        pipeline_entity = self.metadata.get_by_name(
+            entity=Pipeline,
+            fqn=pipeline_fqn,  # pyright: ignore[reportArgumentType]
+        )
         if not pipeline_entity:
             return
 
