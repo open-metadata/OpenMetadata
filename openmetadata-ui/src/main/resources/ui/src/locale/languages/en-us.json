@@ -4354,7 +4354,6 @@
     "no-schema-message": "No schema has been configured for this table. To start, define a schema",
     "no-searched-terms": "No searched terms",
     "no-selected-dbt": "No source selected for dbt Configuration.",
-    "no-service-attributes-set": "No service attributes set",
     "no-service-connection-details-message": "{{serviceName}} doesn't have connection details filled in. Please add the details before scheduling an ingestion job.",
     "no-service-insights-data": "No service insights data available.",
     "no-stage-mappings-configured": "No stage mappings configured yet.",

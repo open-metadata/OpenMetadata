@@ -108,6 +108,28 @@ describe('ServiceAttributesCard', () => {
     expect(screen.queryByTestId('edit-service-attributes')).toBeNull();
   });
 
+  /**
+   * All three attributes are optional -- absent until set -- so the form must accept a save with
+   * none of them chosen. The design marks Environment with an asterisk, but the schema does not
+   * require it and the API accepts its absence; showing a required marker the save does not
+   * enforce would tell the user something untrue, and enforcing it would make an environment
+   * impossible to clear once set.
+   */
+  it('should save with no environment chosen, since the field is optional', async () => {
+    render(<ServiceAttributesCard hasEditPermission onSave={onSave} />);
+
+    fireEvent.click(screen.getByTestId('edit-service-attributes'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-service-attributes'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith({
+      environment: undefined,
+      region: undefined,
+      deployment: undefined,
+    });
+  });
+
   it('should save trimmed values and drop blanks', async () => {
     render(
       <ServiceAttributesCard
