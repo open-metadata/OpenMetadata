@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -67,6 +68,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for User entity operations.
@@ -81,9 +83,6 @@ import org.openmetadata.sdk.network.RequestOptions;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
-
-  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
-      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
 
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
@@ -464,16 +463,58 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withTeams(List.of(department.getId()));
 
-    Exception exception =
+    OpenMetadataException exception =
         assertThrows(
-            Exception.class,
+            OpenMetadataException.class,
             () ->
                 SdkClients.adminClient()
                     .getHttpClient()
                     .execute(HttpMethod.PUT, "/v1/users", create, User.class));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(400, exception.getStatusCode());
     assertThrows(Exception.class, () -> SdkClients.adminClient().users().getByName(name));
+  }
+
+  @Test
+  void test_putUpdateUserValidatesOnlyNewDepartmentTeam(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team department =
+        client
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("legacyDepartment"))
+                    .withTeamType(CreateTeam.TeamType.DEPARTMENT));
+    String name = ns.prefix("legacyDepartmentUser");
+    User user = createEntity(new CreateUser().withName(name).withEmail(toValidEmail(name)));
+    CreateUser update =
+        new CreateUser()
+            .withName(user.getName())
+            .withEmail(user.getEmail())
+            .withTeams(List.of(department.getId()));
+
+    OpenMetadataException newMembershipException =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class));
+    assertEquals(400, newMembershipException.getStatusCode());
+
+    seedLegacyTeamMembership(department, user);
+    String updatedDescription = "Updated without changing legacy team membership";
+    update.setDescription(updatedDescription);
+    User updated = client.getHttpClient().execute(HttpMethod.PUT, "/v1/users", update, User.class);
+
+    assertEquals(updatedDescription, updated.getDescription());
+    User fetched = client.users().get(user.getId().toString(), "teams");
+    assertTrue(
+        fetched.getTeams().stream().anyMatch(team -> department.getId().equals(team.getId())),
+        "The existing legacy department membership must be retained");
+  }
+
+  private static void seedLegacyTeamMembership(Team team, User user) {
+    Entity.getCollectionDAO()
+        .relationshipDAO()
+        .insert(team.getId(), user.getId(), Entity.TEAM, Entity.USER, Relationship.HAS.ordinal());
   }
 
   @Test

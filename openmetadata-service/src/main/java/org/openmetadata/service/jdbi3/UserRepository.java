@@ -1877,7 +1877,7 @@ public class UserRepository extends EntityRepository<User> {
     private void updateTeams(User original, User updated) {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
       List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-      validateGroupTeams(requestedTeams);
+      validateGroupTeams(findAddedTeams(origTeams, requestedTeams));
 
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
@@ -1899,6 +1899,15 @@ public class UserRepository extends EntityRepository<User> {
                 EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
+    }
+
+    private List<EntityReference> findAddedTeams(
+        List<EntityReference> originalTeams, List<EntityReference> requestedTeams) {
+      final Set<UUID> originalTeamIds =
+          originalTeams.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      return requestedTeams.stream()
+          .filter(team -> !originalTeamIds.contains(team.getId()))
+          .toList();
     }
 
     private void updatePersonas(User original, User updated) {
