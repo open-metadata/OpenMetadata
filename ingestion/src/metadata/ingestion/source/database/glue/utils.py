@@ -26,8 +26,11 @@ logger = ingestion_logger()
 # JSON document rather than as SQL. Athena writes "Presto View" and Trino writes either
 # spelling, so accept both. The colon is the discriminator: with it the comment carries a
 # payload, without it the comment is the bare marker Glue puts in ViewExpandedText.
+# The payload is taken whole, with no \s* trimming either side of it: under DOTALL those would
+# overlap the payload itself, and three quantifiers competing for one run of whitespace makes a
+# header that never closes cost O(n^3). The decoder drops the whitespace anyway.
 PRESTO_VIEW_PATTERN = re.compile(
-    r"^/\*\s*(?:presto|trino)\s+(?:materialized\s+)?view\s*:\s*(?P<payload>.*?)\s*\*/$",
+    r"^/\*\s*(?:presto|trino)\s+(?:materialized\s+)?view\s*:(?P<payload>.*)\*/$",
     re.IGNORECASE | re.DOTALL,
 )
 # Both comment forms come from one fragment so the two readers below cannot drift apart: a

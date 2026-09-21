@@ -932,6 +932,20 @@ class TestGlueViewDefinitionEdges:
         # The trailing "/*" is never closed, so this is not comment-only and gets wrapped.
         assert definition.startswith("CREATE VIEW default.sample_view AS /*")
 
+    def test_an_unterminated_presto_header_does_not_hang_the_payload_match(self):
+        """Trimming the payload with \\s* on both sides put three quantifiers on one run of
+        whitespace, so a header that never closes cost O(n^3): ~0.27s at 800 spaces, and eight
+        minutes at 16k. The trailing "!" is there to survive the strip in _read_definition."""
+        adversarial = "/* Presto View:" + " " * 20000 + "!"
+
+        start = time.perf_counter()
+        definition = get_schema_definition(_view(original=adversarial), "default", "sample_view")
+        elapsed = time.perf_counter() - start
+
+        assert elapsed < 5
+        # Not a payload and not comment-only, so it is wrapped like any other text.
+        assert definition.startswith("CREATE VIEW default.sample_view AS /* Presto View:")
+
     def test_create_viewsomething_is_not_read_as_a_header(self):
         table = _view(original="CREATE VIEWS FROM whatever")
 
