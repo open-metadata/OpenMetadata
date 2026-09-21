@@ -20,7 +20,6 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -28,6 +27,7 @@ import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
 
@@ -52,6 +52,32 @@ const defaultProps = {
   onSearchValueChange: mockOnSearchValueChange,
   searchValue: '',
 };
+
+// Default `useLineageStore` state, merged for both the single-object call
+// (`useLineageStore()`) and the `useShallow` multi-field selector call the
+// component makes. Individual tests override via `mockStoreImplementation`.
+const mockDefaultStoreState = {
+  isDQEnabled: false,
+  setLineageConfig: mockOnLineageConfigUpdate,
+  lineageConfig: {},
+  toggleEditMode: jest.fn(),
+  isEditMode: false,
+  platformView: LineagePlatformView.None,
+  sceneBand: undefined as LineageBand | undefined,
+  nodes: [] as unknown[],
+  selectedQuickFilters: [] as { key: string; value?: unknown[] }[],
+  setSelectedQuickFilters: mockSetSelectedQuickFilters,
+  timeFilter: undefined as { startTime?: number; endTime?: number } | undefined,
+  setTimeFilter: jest.fn(),
+};
+
+const mockStoreImplementation =
+  (overrides: Partial<typeof mockDefaultStoreState> = {}) =>
+  (selector?: (state: typeof mockDefaultStoreState) => unknown) => {
+    const state = { ...mockDefaultStoreState, ...overrides };
+
+    return selector ? selector(state) : state;
+  };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.requireActual('@openmetadata/ui-core-components').Button,
@@ -178,12 +204,9 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
   ))
 );
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn().mockImplementation(() => ({
+jest.mock('../../Lineage/Lineage/LineageHandlersContext', () => ({
+  useLineageHandlers: jest.fn().mockImplementation(() => ({
     onExportClick: mockOnExportClick,
-    selectedQuickFilters: [],
-    setSelectedQuickFilters: mockSetSelectedQuickFilters,
-    nodes: [],
   })),
 }));
 
@@ -208,14 +231,9 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn().mockImplementation(() => ({
-    isDQEnabled: false,
-    setLineageConfig: mockOnLineageConfigUpdate,
-    lineageConfig: {},
-    toggleEditMode: jest.fn(),
-    isEditMode: false,
-    platformView: LineagePlatformView.None,
-  })),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockDefaultStoreState) : mockDefaultStoreState
+  ),
 }));
 
 // Mock window.location
@@ -232,14 +250,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('CustomControls', () => {
   beforeEach(() => {
-    (useLineageStore as unknown as jest.Mock).mockReturnValue({
-      isDQEnabled: false,
-      setLineageConfig: mockOnLineageConfigUpdate,
-      lineageConfig: {},
-      toggleEditMode: jest.fn(),
-      isEditMode: false,
-      platformView: LineagePlatformView.None,
-    });
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation()
+    );
+    (useLineageHandlers as jest.Mock).mockImplementation(() => ({
+      onExportClick: mockOnExportClick,
+    }));
     (useCustomLocation as jest.Mock).mockImplementation(() => ({
       search: '?mode=lineage&depth=3&dir=downstream',
     }));
@@ -535,18 +551,11 @@ describe('CustomControls', () => {
   });
 
   it('shows clear filters button when filters are applied', () => {
-    const mockSetSelectedQuickFilters = jest.fn();
-
-    jest.doMock('../../../context/LineageProvider/LineageProvider', () => ({
-      useLineageProvider: jest.fn().mockImplementation(() => ({
-        onExportClick: mockOnExportClick,
-        onLineageConfigUpdate: mockOnLineageConfigUpdate,
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({
         selectedQuickFilters: [{ key: 'service', value: ['test-service'] }],
-        setSelectedQuickFilters: mockSetSelectedQuickFilters,
-        lineageConfig: mockLineageConfig,
-        nodes: [],
-      })),
-    }));
+      })
+    );
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -582,17 +591,14 @@ describe('CustomControls', () => {
   });
 
   it('should pass nodeIds to ExploreQuickFilters when ids passed through props', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      onExportClick: mockOnExportClick,
-      onLineageConfigUpdate: mockOnLineageConfigUpdate,
-      selectedQuickFilters: [],
-      setSelectedQuickFilters: mockSetSelectedQuickFilters,
-      lineageConfig: mockLineageConfig,
-      nodes: [
-        { id: 'node1', name: 'Node 1' },
-        { id: 'node2', name: 'Node 2' },
-      ],
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({
+        nodes: [
+          { id: 'node1', name: 'Node 1' },
+          { id: 'node2', name: 'Node 2' },
+        ],
+      })
+    );
 
     render(
       <CustomControlsComponent
@@ -624,12 +630,9 @@ describe('CustomControls', () => {
   });
 
   it('should not constrain quick-filter options when provider nodes are unavailable', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      onExportClick: mockOnExportClick,
-      selectedQuickFilters: [],
-      setSelectedQuickFilters: mockSetSelectedQuickFilters,
-      nodes: [],
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ nodes: [] })
+    );
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -644,22 +647,19 @@ describe('CustomControls', () => {
   });
 
   it('should pass entity ids to ExploreQuickFilters from provider when ids not passed through props', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      onExportClick: mockOnExportClick,
-      onLineageConfigUpdate: mockOnLineageConfigUpdate,
-      selectedQuickFilters: [],
-      setSelectedQuickFilters: mockSetSelectedQuickFilters,
-      lineageConfig: mockLineageConfig,
-      nodes: [
-        {
-          data: {
-            node: { id: 'table:node1', name: 'Node 1' },
-            sceneNode: { sourceEntity: { id: 'node1' } },
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({
+        nodes: [
+          {
+            data: {
+              node: { id: 'table:node1', name: 'Node 1' },
+              sceneNode: { sourceEntity: { id: 'node1' } },
+            },
           },
-        },
-        { data: { node: { id: 'node2', name: 'Node 2' } } },
-      ],
-    }));
+          { data: { node: { id: 'node2', name: 'Node 2' } } },
+        ],
+      })
+    );
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: Wrapper,
@@ -689,14 +689,15 @@ describe('CustomControls', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      (useLineageStore as unknown as jest.Mock).mockImplementation(
+        mockStoreImplementation({
+          // A non-empty value keeps the "Clear all" button enabled
+          // (filterApplied === true).
+          selectedQuickFilters: [{ key: 'service', value: ['test-service'] }],
+        })
+      );
+      (useLineageHandlers as jest.Mock).mockImplementation(() => ({
         onExportClick: mockOnExportClick,
-        // A non-empty value keeps the "Clear all" button enabled
-        // (filterApplied === true).
-        selectedQuickFilters: [{ key: 'service', value: ['test-service'] }],
-        setSelectedQuickFilters: mockSetSelectedQuickFilters,
-        lineageConfig: mockLineageConfig,
-        nodes: [],
       }));
     });
 

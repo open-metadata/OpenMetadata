@@ -36,6 +36,7 @@ import {
 import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
@@ -50,7 +51,6 @@ import {
 } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -69,6 +69,7 @@ import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
@@ -127,14 +128,22 @@ const CustomControls: FC<{
   onPageReset,
 }) => {
   const { t } = useTranslation();
+  const { onExportClick } = useLineageHandlers();
   const {
-    setSelectedQuickFilters,
     nodes,
     selectedQuickFilters,
-    onExportClick,
     timeFilter,
+    setSelectedQuickFilters,
     setTimeFilter,
-  } = useLineageProvider();
+  } = useLineageStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      selectedQuickFilters: s.selectedQuickFilters,
+      timeFilter: s.timeFilter,
+      setSelectedQuickFilters: s.setSelectedQuickFilters,
+      setTimeFilter: s.setTimeFilter,
+    }))
+  );
   const {
     lineageConfig,
     toggleEditMode,

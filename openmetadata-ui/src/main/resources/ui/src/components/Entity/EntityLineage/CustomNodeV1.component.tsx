@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import {
@@ -33,6 +32,7 @@ import {
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -199,12 +199,9 @@ const SceneDrillButton = ({
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
-  const {
-    onNodeCollapse,
-    removeNodeHandler,
-    loadChildNodesHandler,
-    dataQualityLineage,
-  } = useLineageProvider();
+  const { onNodeCollapse, removeNodeHandler, loadChildNodesHandler } =
+    useLineageHandlers();
+  const dataQualityLineage = useLineageStore((s) => s.dataQualityLineage);
 
   const {
     isEditMode,

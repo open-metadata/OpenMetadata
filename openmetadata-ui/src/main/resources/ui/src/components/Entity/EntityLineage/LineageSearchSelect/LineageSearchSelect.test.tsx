@@ -18,11 +18,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
 import LineageSearchSelect from './LineageSearchSelect';
 
 const mockedNodes = [
@@ -63,13 +63,14 @@ const mockReactFlowInstance = {
   setCenter: jest.fn(),
 };
 
-const defaultMockProps = {
+// Default `useLineageStore` state, merged for both the single-object call
+// (`useLineageStore()`) and the `useShallow` multi-field selector call the
+// component makes. Individual tests override via `mockStoreImplementation`.
+const mockDefaultStoreValue = {
   nodes: mockedNodes,
-  onNodeClick: mockNodeClick,
-  reactFlowInstance: mockReactFlowInstance,
-};
-
-const defaultStoreValue = {
+  reactFlowInstance: mockReactFlowInstance as
+    | typeof mockReactFlowInstance
+    | undefined,
   activeLayer: [LineageLayer.ColumnLevelLineage],
   platformView: LineagePlatformView.None,
   setPlatformView: jest.fn(),
@@ -80,19 +81,32 @@ const defaultStoreValue = {
   setSelectedColumn: mockColumnClick,
 };
 
-jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn(),
+const mockStoreImplementation =
+  (overrides: Partial<typeof mockDefaultStoreValue> = {}) =>
+  (selector?: (state: typeof mockDefaultStoreValue) => unknown) => {
+    const state = { ...mockDefaultStoreValue, ...overrides };
+
+    return selector ? selector(state) : state;
+  };
+
+jest.mock('../../../Lineage/Lineage/LineageHandlersContext', () => ({
+  useLineageHandlers: jest.fn(),
 }));
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn().mockImplementation(() => defaultStoreValue),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockDefaultStoreValue) : mockDefaultStoreValue
+  ),
 }));
 
 describe('LineageSearchSelect', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useLineageProvider as jest.Mock).mockImplementation(
-      () => defaultMockProps
+    (useLineageHandlers as jest.Mock).mockImplementation(() => ({
+      onNodeClick: mockNodeClick,
+    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation()
     );
   });
 
@@ -154,10 +168,9 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should not render when platform lineage is enabled', () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      ...defaultStoreValue,
-      isPlatformLineage: true,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ isPlatformLineage: true })
+    );
 
     const { container } = render(<LineageSearchSelect />);
 
@@ -165,10 +178,9 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should not render when platform view is not None', () => {
-    (useLineageProvider as jest.Mock).mockImplementation(() => ({
-      ...defaultMockProps,
-      platformView: LineagePlatformView.Service,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ platformView: LineagePlatformView.Service })
+    );
 
     const { container } = render(<LineageSearchSelect />);
 
@@ -176,10 +188,9 @@ describe('LineageSearchSelect', () => {
   });
 
   it('should handle dropdown visibility change', async () => {
-    (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
-      ...defaultStoreValue,
-      isPlatformLineage: false,
-    }));
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ isPlatformLineage: false })
+    );
     const { container } = render(<LineageSearchSelect />);
     await waitFor(() => {
       expect(screen.getByTestId('lineage-search')).toBeInTheDocument();

@@ -28,6 +28,7 @@ import type { Key, Selection } from 'react-aria-components';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
@@ -42,7 +43,6 @@ import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
-import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -92,6 +92,7 @@ import {
   LineageNode,
   LineageNodeType,
 } from '../Lineage/Lineage.interface';
+import { useLineageHandlers } from '../Lineage/Lineage/LineageHandlersContext';
 import {
   SearchedDataProps,
   SourceType,
@@ -114,8 +115,13 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 ) as Record<EImpactLevel, FC<{ className?: string }>>;
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
-  const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
-    useLineageProvider();
+  const { updateEntityData } = useLineageHandlers();
+  const { selectedQuickFilters, setSelectedQuickFilters } = useLineageStore(
+    useShallow((s) => ({
+      selectedQuickFilters: s.selectedQuickFilters,
+      setSelectedQuickFilters: s.setSelectedQuickFilters,
+    }))
+  );
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
