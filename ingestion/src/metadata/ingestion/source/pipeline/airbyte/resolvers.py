@@ -40,6 +40,7 @@ from metadata.utils.logger import ingestion_logger
 
 from .constants import (  # noqa: TID252
     DESTINATION_TYPE_LOOKUP,
+    ES_MATCH_LIMIT,
     MESSAGING_CONNECTOR_TYPES,
     S3_CONNECTOR_TYPES,
     SEARCH_CONNECTOR_TYPES,
@@ -281,13 +282,29 @@ class ApiResolver(EntityResolver):
     def _match_collection(
         self, source: "AirbyteSource", stream: AirbyteStream, api_services: list[str], pipeline_name: str
     ) -> APICollection | None:
-        collections = [
-            collection
-            for collection in source.metadata.es_search_from_fqn(
+        hits = (
+            source.metadata.es_search_from_fqn(
                 entity_type=APICollection,
                 fqn_search_string=f"*.{stream.name}",
+                size=ES_MATCH_LIMIT,
             )
             or []
+        )
+        if len(hits) >= ES_MATCH_LIMIT:
+            # A full page means the search was truncated, so a single survivor after filtering
+            # would only prove the rest did not fit — not that the match is unambiguous.
+            logger.warning(
+                "While extracting lineage: [%s], stream [%s] matched at least %d API collections;"
+                " skipping rather than picking from a truncated search.",
+                pipeline_name,
+                stream.name,
+                ES_MATCH_LIMIT,
+            )
+            return None
+
+        collections = [
+            collection
+            for collection in hits
             if collection.service and model_str(collection.service.name) in api_services
         ]
         if len(collections) != 1:

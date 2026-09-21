@@ -117,3 +117,10 @@ S3_DESTINATION_PATH_KEY = "s3_bucket_path"
 # there is a live connection to confirm its reported type string.
 MESSAGING_CONNECTOR_TYPES = frozenset({"Kafka", "kafka"})
 SEARCH_CONNECTOR_TYPES = frozenset({"Elasticsearch", "ElasticSearch", "elasticsearch"})
+
+# Both ambiguity guards (same-named API collections, same-path containers) decide a match is
+# safe only when exactly one candidate survives filtering. The ometa search helpers default to
+# `size=10`, which would let an 11th same-named entity fall off the page and turn a genuinely
+# ambiguous match into a confident wrong edge. Ask for more than any real catalog holds and
+# treat a full page as proof the answer cannot be trusted.
+ES_MATCH_LIMIT = 100

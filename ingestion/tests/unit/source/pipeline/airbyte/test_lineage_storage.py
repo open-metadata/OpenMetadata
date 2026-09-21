@@ -62,6 +62,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.pipeline.airbyte.constants import ES_MATCH_LIMIT
 from metadata.ingestion.source.pipeline.airbyte.metadata import (
     AirbytePipelineDetails,
     AirbyteSource,
@@ -928,3 +929,61 @@ class TestPerServiceTableResolution:
         self._route(airbyte_source, classes={"a": True, "b": False}, tables={})
 
         assert airbyte_source.resolve_table(self.DETAILS) is None
+
+
+class TestTruncatedSearchGuards:
+    """
+    Both ambiguity guards call an ometa search helper that defaults to `size=10`. A cap smaller
+    than the number of same-named entities turns an ambiguous match into a confident wrong edge,
+    so the search asks for ES_MATCH_LIMIT and treats a full page as undecidable.
+    """
+
+    def _lineage(self, airbyte_source):
+        return list(
+            airbyte_source.yield_pipeline_lineage_details(
+                AirbytePipelineDetails(workspace=AirbyteWorkspace(workspaceId="ws-1"), connection=PUBLIC_API_CONNECTION)
+            )
+        )
+
+    def test_collection_search_asks_for_the_full_limit(self, airbyte_source):
+        airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        airbyte_source.metadata.es_search_from_fqn.return_value = [MOCK_API_COLLECTION]
+
+        self._lineage(airbyte_source)
+
+        sizes = {
+            call.kwargs.get("size")
+            for call in airbyte_source.metadata.es_search_from_fqn.call_args_list
+            if call.kwargs.get("entity_type") is APICollection
+        }
+        assert sizes == {ES_MATCH_LIMIT}
+
+    def test_saturated_collection_search_yields_no_api_edge(self, airbyte_source):
+        """A full page proves only that the rest did not fit, never that the match is unique."""
+        airbyte_source.source_config.lineageInformation = LineageInformation(apiServiceNames=["om28591-pokeapi"])
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+        # Every hit but one belongs to another service, so filtering would leave exactly one.
+        airbyte_source.metadata.es_search_from_fqn.return_value = [MOCK_API_COLLECTION] + [
+            MOCK_OTHER_API_COLLECTION
+        ] * (ES_MATCH_LIMIT - 1)
+
+        edges = [either.right for either in self._lineage(airbyte_source)]
+
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "pipeline"
+        assert edges[0].edge.toEntity.type == "container"
+
+    def test_container_search_asks_for_the_full_limit(self, airbyte_source):
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER]
+
+        self._lineage(airbyte_source)
+
+        sizes = {call.kwargs.get("size") for call in airbyte_source.metadata.es_search_container_by_path.call_args_list}
+        assert sizes == {ES_MATCH_LIMIT}
+
+    def test_saturated_container_search_yields_no_edge(self, airbyte_source):
+        """Same-service duplicates would otherwise pass the cross-service ambiguity check."""
+        airbyte_source.metadata.es_search_container_by_path.return_value = [MOCK_CONTAINER] * ES_MATCH_LIMIT
+
+        assert self._lineage(airbyte_source) == []

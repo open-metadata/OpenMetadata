@@ -62,6 +62,7 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
+from .constants import ES_MATCH_LIMIT  # noqa: TID252
 from .resolvers import API_RESOLVER, DESTINATION, SOURCE, EntityResolver, get_resolver  # noqa: TID252
 from .utils import service_supports_database, table_fqn_candidates  # noqa: TID252
 
@@ -510,11 +511,20 @@ class AirbyteSource(PipelineServiceSource):
         segments = container_path.split("/")
         # Stop at the bucket: segments[:3] is ["s3:", "", "<bucket>"].
         for candidate in ("/".join(segments[:depth]) for depth in range(len(segments), 2, -1)):
-            containers = [
-                container
-                for container in self.metadata.es_search_container_by_path(full_path=candidate) or []
-                if container
-            ]
+            hits = self.metadata.es_search_container_by_path(full_path=candidate, size=ES_MATCH_LIMIT) or []
+            if len(hits) >= ES_MATCH_LIMIT:
+                # Same reasoning as ApiResolver._match_collection: a full page cannot prove the
+                # surviving container is the only one at this path.
+                logger.warning(
+                    "While extracting lineage: [%s], path [%s] matched at least %d containers;"
+                    " skipping rather than picking from a truncated search.",
+                    pipeline_name,
+                    candidate,
+                    ES_MATCH_LIMIT,
+                )
+                return None
+
+            containers = [container for container in hits if container]
             if storage_services:
                 containers = [
                     container
