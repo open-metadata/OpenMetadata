@@ -143,6 +143,24 @@ public class JWTTokenGenerator {
     }
   }
 
+  /**
+   * Compatibility overload for callers that predate {@link #init(AuthenticationConfiguration,
+   * JWTTokenConfiguration)} - openmetadata-collate's {@code SupportAwareAuthenticatorTest} at the
+   * time of writing. It carries no principal-claim configuration, so tokens minted afterwards hold
+   * only the standard identity claims. Remove once no downstream caller is left.
+   */
+  @Deprecated(forRemoval = true)
+  public void init(
+      AuthenticationConfiguration.TokenValidationAlgorithm algorithm,
+      JWTTokenConfiguration jwtTokenConfiguration) {
+    LOG.warn(
+        "JWTTokenGenerator initialized without an AuthenticationConfiguration; "
+            + "minted tokens carry only the standard identity claims");
+    init(
+        new AuthenticationConfiguration().withTokenValidationAlgorithm(algorithm),
+        jwtTokenConfiguration);
+  }
+
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
     return getJwtAuthMechanism(
         user.getName(),

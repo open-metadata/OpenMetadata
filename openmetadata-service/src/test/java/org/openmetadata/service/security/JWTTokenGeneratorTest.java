@@ -175,6 +175,19 @@ class JWTTokenGeneratorTest {
         () -> validateDomainEnforcement(Map.of(), order, claims, PRINCIPAL_DOMAIN, Set.of(), true));
   }
 
+  /** Downstream still calls the algorithm-only overload; it must mint the same standard claims. */
+  @Test
+  @SuppressWarnings("removal")
+  void deprecatedAlgorithmOnlyInitStillMintsProviderShapedClaims() {
+    jwtTokenGenerator.init(
+        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256, jwtTokenConfiguration);
+    Map<String, Claim> claims = mint("mohit", "mohit@getcollate.io").getClaims();
+
+    assertEquals("mohit", claims.get("sub").asString());
+    assertEquals("mohit@getcollate.io", claims.get("preferred_username").asString());
+    assertEquals("mohit", findUserNameFromClaims(Map.of(), DEFAULT_CLAIM_ORDER, claims));
+  }
+
   private DecodedJWT mint(String userName, String email) {
     return decodedJWT(
         jwtTokenGenerator
