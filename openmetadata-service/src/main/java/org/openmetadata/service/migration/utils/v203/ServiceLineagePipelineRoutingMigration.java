@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.migration.utils.v203;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -38,11 +41,12 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * mutually exclusive, but existing rows keep the redundant direct edge until it is removed here.
  *
  * <p>A direct edge is only redundant when <em>every</em> child edge behind it is pipeline
- * annotated; a service pair that also carries plain, un-annotated lineage must keep its direct edge.
- * The old code incremented {@code assetEdges} on the direct edge for every contributing child edge —
- * annotated or not — so the surviving count is {@code assetEdges - annotatedChildEdges}. Where that
- * reaches zero the edge existed solely because of the bug and is deleted; otherwise the refcount is
- * corrected so later deletions retire the edge at the right time.
+ * annotated; a service pair that also carries plain, un-annotated lineage must keep its direct edge
+ * with a refcount covering just those plain edges. Both counts are recomputed from the child edges
+ * themselves rather than derived from the stored {@code assetEdges}, so the repair is a fixed point:
+ * a second run reads the same child rows, arrives at the same target, and changes nothing. Deriving
+ * the target by subtracting from the stored count would instead delete a legitimate direct edge on
+ * the second pass.
  *
  * <p>Operators must reindex afterwards: the lineage graph is served from the search index, which is
  * rebuilt from these rows.
@@ -54,6 +58,12 @@ public class ServiceLineagePipelineRoutingMigration {
 
   private static final int BATCH_SIZE = 500;
   private static final String SERVICE_FIELD = "service";
+
+  /**
+   * Lineage concentrates on far fewer entities than the catalog holds, so a modest cap keeps the
+   * repeated endpoint lookups cheap without letting the scan's memory grow with the table.
+   */
+  private static final int SERVICE_CACHE_SIZE = 10_000;
 
   private static final Set<String> SERVICE_ENTITY_TYPES =
       Set.of(
@@ -70,23 +80,36 @@ public class ServiceLineagePipelineRoutingMigration {
 
   private record ServicePair(UUID fromId, UUID toId) {}
 
+  /** Child edges behind one service pair, split by whether they route through a pipeline. */
+  private static final class ChildEdgeCounts {
+    private int annotated;
+    private int plain;
+  }
+
+  enum Outcome {
+    DELETED,
+    RECOUNTED,
+    UNCHANGED
+  }
+
   public static void removeServiceEdgesBypassingPipeline(CollectionDAO collectionDAO) {
     LOG.info("Starting migration: removing service lineage edges that bypass the pipeline service");
 
-    Map<ServicePair, Integer> annotatedChildEdges = countPipelineAnnotatedChildEdges(collectionDAO);
-    if (annotatedChildEdges.isEmpty()) {
-      LOG.info("No pipeline-annotated lineage found, nothing to repair");
-      return;
-    }
-
+    Map<ServicePair, ChildEdgeCounts> counts = countChildEdgesByServicePair(collectionDAO);
     int deleted = 0;
     int recounted = 0;
-    for (Map.Entry<ServicePair, Integer> entry : annotatedChildEdges.entrySet()) {
+    int failed = 0;
+
+    for (Map.Entry<ServicePair, ChildEdgeCounts> entry : counts.entrySet()) {
+      if (entry.getValue().annotated == 0) {
+        continue;
+      }
       try {
-        Outcome outcome = repairDirectEdge(collectionDAO, entry.getKey(), entry.getValue());
+        Outcome outcome = repairDirectEdge(collectionDAO, entry.getKey(), entry.getValue().plain);
         deleted += outcome == Outcome.DELETED ? 1 : 0;
         recounted += outcome == Outcome.RECOUNTED ? 1 : 0;
       } catch (Exception e) {
+        failed++;
         LOG.warn(
             "Failed to repair service edge {} -> {}: {}",
             entry.getKey().fromId(),
@@ -100,85 +123,111 @@ public class ServiceLineagePipelineRoutingMigration {
             + " Run an Elasticsearch/OpenSearch reindex so the lineage graph reflects these rows.",
         deleted,
         recounted);
+    if (failed > 0) {
+      LOG.warn(
+          "{} service pairs could not be repaired and still carry a redundant direct edge or a stale"
+              + " refcount. This migration is safe to re-run (via openmetadata-ops.sh migrate) once"
+              + " the cause above is resolved.",
+          failed);
+    }
   }
 
   /**
-   * Counts, per service pair, the pipeline-annotated child edges that wrongly contributed to a
-   * direct service edge. Keyed by the <em>data</em> services so it lines up with the direct edge the
-   * old code created, not with the pipeline hops.
+   * Buckets every entity-level lineage edge under the service pair it contributes to. Keyset
+   * pagination keeps the scan linear; an OFFSET walk re-traverses the skipped prefix on every page
+   * and degrades badly on large lineage tables.
    */
-  private static Map<ServicePair, Integer> countPipelineAnnotatedChildEdges(
+  private static Map<ServicePair, ChildEdgeCounts> countChildEdgesByServicePair(
       CollectionDAO collectionDAO) {
-    Map<ServicePair, Integer> counts = new HashMap<>();
-    long offset = 0;
-    List<CollectionDAO.EntityRelationshipObject> batch;
+    Map<ServicePair, ChildEdgeCounts> counts = new HashMap<>();
+    Cache<String, Optional<EntityReference>> serviceCache =
+        Caffeine.newBuilder().maximumSize(SERVICE_CACHE_SIZE).build();
 
-    do {
-      batch =
+    String fromId = "";
+    String toId = "";
+    int relation = -1;
+    String relationType = "";
+
+    while (true) {
+      List<CollectionDAO.EntityRelationshipObject> batch =
           collectionDAO
               .relationshipDAO()
-              .getRecordWithOffset(Relationship.UPSTREAM.ordinal(), offset, BATCH_SIZE);
-      for (CollectionDAO.EntityRelationshipObject record : batch) {
-        ServicePair pair = annotatedServicePair(record);
-        if (pair != null) {
-          counts.merge(pair, 1, Integer::sum);
-        }
+              .getAllRelationshipsAfter(fromId, toId, relation, relationType, BATCH_SIZE);
+      if (batch.isEmpty()) {
+        return counts;
       }
-      offset += BATCH_SIZE;
-    } while (batch.size() == BATCH_SIZE);
-
-    return counts;
+      for (CollectionDAO.EntityRelationshipObject record : batch) {
+        tally(record, serviceCache, counts);
+      }
+      CollectionDAO.EntityRelationshipObject last = batch.getLast();
+      fromId = last.getFromId();
+      toId = last.getToId();
+      relation = last.getRelation();
+      relationType = last.getRelationType() == null ? "" : last.getRelationType();
+    }
   }
 
-  private static ServicePair annotatedServicePair(CollectionDAO.EntityRelationshipObject record) {
-    if (SERVICE_ENTITY_TYPES.contains(record.getFromEntity())
+  private static void tally(
+      CollectionDAO.EntityRelationshipObject record,
+      Cache<String, Optional<EntityReference>> serviceCache,
+      Map<ServicePair, ChildEdgeCounts> counts) {
+    if (record.getRelation() != Relationship.UPSTREAM.ordinal()
+        || SERVICE_ENTITY_TYPES.contains(record.getFromEntity())
         || SERVICE_ENTITY_TYPES.contains(record.getToEntity())) {
-      return null;
-    }
-    String json = record.getJson();
-    if (json == null || !json.contains("\"pipeline\"")) {
-      return null;
+      return;
     }
     try {
-      LineageDetails details = JsonUtils.readValue(json, LineageDetails.class);
-      if (details.getPipeline() == null || details.getPipeline().getId() == null) {
-        return null;
-      }
-      EntityReference fromService = serviceOf(record.getFromEntity(), record.getFromId());
-      EntityReference toService = serviceOf(record.getToEntity(), record.getToId());
+      EntityReference fromService =
+          serviceOf(record.getFromEntity(), record.getFromId(), serviceCache);
+      EntityReference toService = serviceOf(record.getToEntity(), record.getToId(), serviceCache);
       if (fromService == null
           || toService == null
           || fromService.getId().equals(toService.getId())) {
-        return null;
+        return;
       }
-      return new ServicePair(fromService.getId(), toService.getId());
+      ChildEdgeCounts pairCounts =
+          counts.computeIfAbsent(
+              new ServicePair(fromService.getId(), toService.getId()), k -> new ChildEdgeCounts());
+      if (isPipelineAnnotated(record.getJson())) {
+        pairCounts.annotated++;
+      } else {
+        pairCounts.plain++;
+      }
     } catch (Exception e) {
       LOG.warn(
           "Skipping lineage edge {} -> {}: {}",
           record.getFromId(),
           record.getToId(),
           e.getMessage());
-      return null;
     }
   }
 
-  private static EntityReference serviceOf(String entityType, String entityId) {
+  private static boolean isPipelineAnnotated(String json) {
+    if (json == null || !json.contains("\"pipeline\"")) {
+      return false;
+    }
+    LineageDetails details = JsonUtils.readValue(json, LineageDetails.class);
+    return details.getPipeline() != null && details.getPipeline().getId() != null;
+  }
+
+  private static EntityReference serviceOf(
+      String entityType, String entityId, Cache<String, Optional<EntityReference>> serviceCache) {
     if (!Entity.entityHasField(entityType, SERVICE_FIELD)) {
       return null;
     }
-    EntityInterface entity =
-        Entity.getEntity(entityType, UUID.fromString(entityId), SERVICE_FIELD, Include.ALL);
-    return entity.getService();
-  }
-
-  private enum Outcome {
-    DELETED,
-    RECOUNTED,
-    UNCHANGED
+    return serviceCache
+        .get(
+            entityId,
+            id -> {
+              EntityInterface entity =
+                  Entity.getEntity(entityType, UUID.fromString(id), SERVICE_FIELD, Include.ALL);
+              return Optional.ofNullable(entity.getService());
+            })
+        .orElse(null);
   }
 
   private static Outcome repairDirectEdge(
-      CollectionDAO collectionDAO, ServicePair pair, int annotatedCount) {
+      CollectionDAO collectionDAO, ServicePair pair, int plainChildEdges) {
     CollectionDAO.EntityRelationshipObject direct =
         collectionDAO
             .relationshipDAO()
@@ -188,31 +237,32 @@ public class ServiceLineagePipelineRoutingMigration {
     }
 
     LineageDetails details = JsonUtils.readValue(direct.getJson(), LineageDetails.class);
-    int remaining = nullSafeAssetEdges(details) - annotatedCount;
-
-    if (remaining > 0) {
-      details.withAssetEdges(remaining);
+    if (plainChildEdges == 0) {
       collectionDAO
           .relationshipDAO()
-          .insert(
+          .delete(
               pair.fromId(),
-              pair.toId(),
               direct.getFromEntity(),
+              pair.toId(),
               direct.getToEntity(),
-              Relationship.UPSTREAM.ordinal(),
-              JsonUtils.pojoToJson(details));
-      return Outcome.RECOUNTED;
+              Relationship.UPSTREAM.ordinal());
+      return Outcome.DELETED;
+    }
+    if (nullSafeAssetEdges(details) == plainChildEdges) {
+      return Outcome.UNCHANGED;
     }
 
+    details.withAssetEdges(plainChildEdges);
     collectionDAO
         .relationshipDAO()
-        .delete(
+        .insert(
             pair.fromId(),
-            direct.getFromEntity(),
             pair.toId(),
+            direct.getFromEntity(),
             direct.getToEntity(),
-            Relationship.UPSTREAM.ordinal());
-    return Outcome.DELETED;
+            Relationship.UPSTREAM.ordinal(),
+            JsonUtils.pojoToJson(details));
+    return Outcome.RECOUNTED;
   }
 
   /**

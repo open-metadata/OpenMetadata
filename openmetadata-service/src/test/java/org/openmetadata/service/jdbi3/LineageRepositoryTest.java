@@ -701,9 +701,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -781,9 +782,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO)
         .insert(eq(fromServiceId), eq(toServiceId), any(), any(), anyInt(), jsonCaptor.capture());
@@ -868,9 +870,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO, times(2))
         .insert(fromCaptor.capture(), toCaptor.capture(), any(), any(), anyInt(), any());
@@ -941,9 +944,10 @@ class LineageRepositoryTest {
             EntityReference.class,
             EntityReference.class,
             LineageDetails.class,
+            LineageDetails.class,
             boolean.class);
     buildExtendedLineage.setAccessible(true);
-    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, false);
+    buildExtendedLineage.invoke(repo, fromRef, toRef, entityDetails, null, false);
 
     verify(relDAO, times(1)).insert(any(), any(), any(), any(), anyInt(), any());
   }
@@ -1070,6 +1074,100 @@ class LineageRepositoryTest {
             LineageDetails.class);
     cleanUpExtendedLineage.setAccessible(true);
     cleanUpExtendedLineage.invoke(new LineageRepository(), fromRef, toRef, details);
+  }
+
+  /**
+   * Adding a pipeline to an edge that previously had none re-points it from the direct service edge
+   * onto the two hops. The direct edge it used to feed must be released, or the service graph keeps
+   * showing both paths - the very duplication this change removes.
+   */
+  @Test
+  void testAddServiceLineage_PipelineAddedToExistingEdge_ReleasesDirectEdge() throws Exception {
+    UUID fromEntityId = UUID.randomUUID();
+    UUID toEntityId = UUID.randomUUID();
+    UUID fromServiceId = UUID.randomUUID();
+    UUID toServiceId = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    UUID pipelineServiceId = UUID.randomUUID();
+    String entityType = "table";
+
+    EntityReference fromRef = new EntityReference().withId(fromEntityId).withType(entityType);
+    EntityReference toRef = new EntityReference().withId(toEntityId).withType(entityType);
+    EntityReference pipelineRef = new EntityReference().withId(pipelineId).withType("pipeline");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        mockServiceLineageEntities(
+            entityType,
+            fromEntityId,
+            toEntityId,
+            fromServiceId,
+            toServiceId,
+            pipelineId,
+            pipelineServiceId);
+
+    invokeBuildExtendedLineage(
+        fromRef,
+        toRef,
+        new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser"),
+        new LineageDetails().withPipeline(null).withCreatedBy("testUser"),
+        true);
+
+    verify(relDAO).getRecord(fromServiceId, toServiceId, Relationship.UPSTREAM.ordinal());
+  }
+
+  /** An unchanged pipeline is not a reshape, so nothing is released on a plain edge update. */
+  @Test
+  void testAddServiceLineage_UnchangedPipelineOnUpdate_ReleasesNothing() throws Exception {
+    UUID fromEntityId = UUID.randomUUID();
+    UUID toEntityId = UUID.randomUUID();
+    UUID fromServiceId = UUID.randomUUID();
+    UUID toServiceId = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    UUID pipelineServiceId = UUID.randomUUID();
+    String entityType = "table";
+
+    EntityReference fromRef = new EntityReference().withId(fromEntityId).withType(entityType);
+    EntityReference toRef = new EntityReference().withId(toEntityId).withType(entityType);
+    EntityReference pipelineRef = new EntityReference().withId(pipelineId).withType("pipeline");
+
+    CollectionDAO.EntityRelationshipDAO relDAO =
+        mockServiceLineageEntities(
+            entityType,
+            fromEntityId,
+            toEntityId,
+            fromServiceId,
+            toServiceId,
+            pipelineId,
+            pipelineServiceId);
+
+    invokeBuildExtendedLineage(
+        fromRef,
+        toRef,
+        new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser"),
+        new LineageDetails().withPipeline(pipelineRef).withCreatedBy("testUser"),
+        true);
+
+    verify(relDAO, never()).getRecord(fromServiceId, toServiceId, Relationship.UPSTREAM.ordinal());
+  }
+
+  private void invokeBuildExtendedLineage(
+      EntityReference fromRef,
+      EntityReference toRef,
+      LineageDetails details,
+      LineageDetails priorDetails,
+      boolean childRelationExists)
+      throws Exception {
+    Method buildExtendedLineage =
+        LineageRepository.class.getDeclaredMethod(
+            "buildExtendedLineage",
+            EntityReference.class,
+            EntityReference.class,
+            LineageDetails.class,
+            LineageDetails.class,
+            boolean.class);
+    buildExtendedLineage.setAccessible(true);
+    buildExtendedLineage.invoke(
+        new LineageRepository(), fromRef, toRef, details, priorDetails, childRelationExists);
   }
 
   private boolean edgePairExists(

@@ -312,7 +312,7 @@ public class LineageRepository {
     }
 
     // build Extended Lineage
-    buildExtendedLineage(from, to, lineageDetails, relationAlreadyExists);
+    buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
   }
 
   @Transaction
@@ -340,6 +340,7 @@ public class LineageRepository {
       EntityReference from,
       EntityReference to,
       LineageDetails lineageDetails,
+      LineageDetails priorDetails,
       boolean childRelationExists) {
     boolean addService =
         Entity.entityHasField(from.getType(), FIELD_SERVICE)
@@ -356,7 +357,7 @@ public class LineageRepository {
         Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
     EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
-    addServiceLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
+    addServiceLineage(fromEntity, toEntity, lineageDetails, priorDetails, childRelationExists);
     addDomainLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
     addDataProductsLineage(fromEntity, toEntity, lineageDetails, childRelationExists);
   }
@@ -365,6 +366,7 @@ public class LineageRepository {
       EntityInterface fromEntity,
       EntityInterface toEntity,
       LineageDetails entityLineageDetails,
+      LineageDetails priorDetails,
       boolean childRelationExists) {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
@@ -373,18 +375,55 @@ public class LineageRepository {
     EntityReference toService = toEntity.getService();
     EntityReference pipelineService = getPipelineService(entityLineageDetails);
 
+    // An edge that gains, loses, or switches its pipeline feeds a different pair of service edges
+    // than it did before. Release the previous projection first, or the edges it used to feed are
+    // orphaned at assetEdges=1 and the graph shows both paths again.
+    boolean reshaped =
+        childRelationExists
+            && releaseReshapedServiceEdges(fromEntity, toEntity, priorDetails, pipelineService);
+    boolean childAlreadyCounted = childRelationExists && !reshaped;
+
     // A pipeline-annotated edge is projected as fromService -> pipelineService -> toService. Also
     // emitting the direct fromService -> toService edge would draw two parallel paths for one flow
     // of data, so the two shapes are mutually exclusive. A direct edge survives only while some
     // un-annotated child edge still contributes to it, which the assetEdges refcount tracks.
     if (pipelineService != null) {
       insertServiceEdgeIfDistinct(
-          fromService, pipelineService, entityLineageDetails, childRelationExists);
+          fromService, pipelineService, entityLineageDetails, childAlreadyCounted);
       insertServiceEdgeIfDistinct(
-          pipelineService, toService, entityLineageDetails, childRelationExists);
+          pipelineService, toService, entityLineageDetails, childAlreadyCounted);
       return;
     }
-    insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childRelationExists);
+    insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childAlreadyCounted);
+  }
+
+  /** Releases the service edges the prior details fed, when the pipeline changed. */
+  private boolean releaseReshapedServiceEdges(
+      EntityInterface fromEntity,
+      EntityInterface toEntity,
+      LineageDetails priorDetails,
+      EntityReference pipelineService) {
+    if (priorDetails == null) {
+      return false;
+    }
+    EntityReference priorPipelineService = resolvePriorPipelineService(priorDetails);
+    UUID priorServiceId = priorPipelineService == null ? null : priorPipelineService.getId();
+    UUID currentServiceId = pipelineService == null ? null : pipelineService.getId();
+    if (Objects.equals(priorServiceId, currentServiceId)) {
+      return false;
+    }
+    releaseServiceShape(fromEntity.getService(), toEntity.getService(), priorPipelineService);
+    return true;
+  }
+
+  /** The prior pipeline may since have been deleted; then there is nothing left to release. */
+  private EntityReference resolvePriorPipelineService(LineageDetails priorDetails) {
+    try {
+      return getPipelineService(priorDetails);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Prior pipeline is gone, skipping service edge release: {}", e.getMessage());
+      return null;
+    }
   }
 
   private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
@@ -1348,10 +1387,13 @@ public class LineageRepository {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
-    EntityReference fromService = fromEntity.getService();
-    EntityReference toService = toEntity.getService();
-    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+    releaseServiceShape(
+        fromEntity.getService(), toEntity.getService(), getPipelineService(entityLineageDetails));
+  }
 
+  /** Mirror of the insert branches in {@link #addServiceLineage}, for one child edge. */
+  private void releaseServiceShape(
+      EntityReference fromService, EntityReference toService, EntityReference pipelineService) {
     if (pipelineService != null) {
       cleanUpServiceEdgeIfDistinct(fromService, pipelineService);
       cleanUpServiceEdgeIfDistinct(pipelineService, toService);
