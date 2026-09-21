@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.OWNS;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
@@ -157,6 +159,34 @@ public interface TimeSeriesDAOs {
     String POSTGRES_LIST_SORT_KEY =
         "LOWER(COALESCE(NULLIF(json->>'displayName', ''), json->>'name'))";
 
+    /**
+     * Free-text search over everything the Test Library puts on screen: the name and display name
+     * it labels a rule with, the description column, the entity type and the test platforms. A
+     * reviewer searching "column" or "dbt" is naming what they see in the table, so restricting the
+     * match to the name would make the search box read as broken for those terms.
+     *
+     * <p>Every branch is lower-cased against a pre-lowered bind value rather than wrapped in
+     * {@code LOWER(:param)}: the parameter is a plain string, so lowering it in Java keeps the
+     * comparison off the driver. {@code testPlatforms} is matched against the raw JSON array text
+     * (e.g. {@code ["OpenMetadata"]}), which is how the platform filter above already matches it.
+     */
+    String MYSQL_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(CAST(JSON_EXTRACT(json, '$.testPlatforms') AS CHAR)) "
+            + "LIKE :testDefinitionSearchLike) ";
+
+    String POSTGRES_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'description', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'testPlatforms', '')) LIKE :testDefinitionSearchLike) ";
+
     @Override
     default String getTableName() {
       return "test_definition";
@@ -216,80 +246,21 @@ public interface TimeSeriesDAOs {
       return TestDefinition.class;
     }
 
-    @Override
-    default List<String> listBefore(
-        ListFilter filter, int limit, String beforeName, String beforeId) {
+    /**
+     * The listing filters and the free-text search, as a MySQL/Postgres condition pair. Built in one
+     * place because {@link #listBefore}, {@link #listAfter} and {@link #listCount} have to agree
+     * exactly: a page whose rows are selected by one set of predicates and counted by another
+     * reports a total the pager cannot walk to.
+     */
+    record ListConditions(String mysql, String psql) {}
+
+    default ListConditions buildListConditions(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
       String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
-                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
-                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
-        psqlCondition.append(
-            "AND (json->>'supportedDataTypes' IS NULL "
-                + "OR json->>'supportedDataTypes' = '[]' "
-                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
-
-      return listBefore(
-          getTableName(),
-          filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
-          limit,
-          beforeName,
-          beforeId);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
+      String searchQuery = filter.getQueryParam("testDefinitionSearch");
       String condition = filter.getCondition();
 
       StringBuilder mysqlCondition = new StringBuilder();
@@ -339,11 +310,50 @@ public interface TimeSeriesDAOs {
         psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
+      if (!nullOrEmpty(searchQuery)) {
+        // The term travels as a bind value, so only the LIKE metacharacters need escaping — not the
+        // apostrophes that ListFilter.escape also doubles for literal interpolation, which would
+        // make a search for "it's" match nothing. Lower-cased here to pair with the LOWER(...)
+        // columns in the condition instead of asking the engine to lower the pattern per row.
+        String pattern =
+            searchQuery
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
+        filter.queryParams.put("testDefinitionSearchLike", String.format("%%%s%%", pattern));
+        mysqlCondition.append(MYSQL_SEARCH_CONDITION);
+        psqlCondition.append(POSTGRES_SEARCH_CONDITION);
+      }
+
+      return new ListConditions(mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      ListConditions conditions = buildListConditions(filter);
+
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          conditions.mysql(),
+          conditions.psql(),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      ListConditions conditions = buildListConditions(filter);
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
+          conditions.mysql(),
+          conditions.psql(),
           limit,
           afterName,
           afterId);
@@ -351,74 +361,14 @@ public interface TimeSeriesDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listCount(filter);
-      }
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
-                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
-                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
-        psqlCondition.append(
-            "AND (json->>'supportedDataTypes' IS NULL "
-                + "OR json->>'supportedDataTypes' = '[]' "
-                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
+      ListConditions conditions = buildListConditions(filter);
 
       return listCount(
           getTableName(),
           filter.getQueryParams(),
           getNameHashColumn(),
-          mysqlCondition.toString(),
-          psqlCondition.toString());
+          conditions.mysql(),
+          conditions.psql());
     }
 
     @ConnectionAwareSqlQuery(

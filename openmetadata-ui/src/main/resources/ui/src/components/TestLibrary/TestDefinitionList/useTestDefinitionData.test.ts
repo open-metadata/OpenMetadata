@@ -192,6 +192,72 @@ describe('useTestDefinitionData', () => {
       });
     });
 
+    it('should list the page ordered by display name, falling back to the name', async () => {
+      (getListTestDefinitions as jest.Mock).mockResolvedValueOnce({
+        data: [
+          { id: 'id-z', name: 'aaa', displayName: 'Zulu rule' },
+          { id: 'id-m', name: 'mRule' },
+          { id: 'id-a', name: 'zzz', displayName: 'Alpha rule' },
+        ],
+        paging: MOCK_PAGING,
+      });
+
+      const { result } = await renderAndSettle();
+
+      expect(result.current.testDefinitions.map((row) => row.id)).toEqual([
+        'id-a',
+        'id-m',
+        'id-z',
+      ]);
+    });
+
+    it('should ignore a stale response that resolves after a newer search', async () => {
+      const newerRows = [
+        { id: 'id-new', name: 'tableRowCountToEqual' },
+      ] as unknown as TestDefinition[];
+      const stalePaging = {
+        after: 'stale-cursor',
+        before: undefined,
+        total: 9,
+      };
+      let resolveStale: ((value: unknown) => void) | undefined;
+
+      (getListTestDefinitions as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveStale = resolve;
+            })
+        )
+        .mockResolvedValueOnce({ data: newerRows, paging: MOCK_PAGING });
+
+      const { result, rerender } = renderData(
+        makeProps({ urlParams: { q: 'col' } })
+      );
+
+      await waitFor(() => {
+        expect(getListTestDefinitions).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(makeProps({ urlParams: { q: 'rows' } }));
+
+      await waitFor(() => {
+        expect(result.current.testDefinitions).toEqual(newerRows);
+      });
+
+      // The first term's request now lands. It must not put its rows - or its
+      // paging - back on screen over the search that replaced it.
+      expect(resolveStale).toBeDefined();
+
+      await act(async () => {
+        resolveStale?.({ data: MOCK_TEST_DEFINITIONS, paging: stalePaging });
+      });
+
+      expect(result.current.testDefinitions).toEqual(newerRows);
+      expect(mockHandlePagingChange).not.toHaveBeenCalledWith(stalePaging);
+      expect(mockFetchPermissions).toHaveBeenCalledTimes(1);
+    });
+
     it('should surface a list failure through showErrorToast and stop loading', async () => {
       (getListTestDefinitions as jest.Mock).mockRejectedValueOnce(
         new Error('list failed')

@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EntityType,
@@ -25,6 +25,7 @@ import {
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { columnSorter } from '../../../utils/EntitySortUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 export interface UseTestDefinitionDataProps {
@@ -58,9 +59,15 @@ export const useTestDefinitionData = ({
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Sequence number of the newest fetch. Typing in the search box issues one
+  // request per debounced term, and a slow response for an earlier term can
+  // land after a later one - leaving the list showing rows for a search the
+  // user has already moved on from. Only the newest request may write state.
+  const latestRequestRef = useRef(0);
 
   const fetchTestDefinitions = useCallback(
     async (pagingOffset?: Partial<Paging>) => {
+      const requestId = ++latestRequestRef.current;
       setIsLoading(true);
       try {
         const entityTypeFilter = urlFilters.entityType?.[0] as
@@ -82,13 +89,28 @@ export const useTestDefinitionData = ({
           testPlatform: testPlatformFilter,
           q: searchQuery || undefined,
         });
-        setTestDefinitions(data);
+        if (requestId !== latestRequestRef.current) {
+          return;
+        }
+
+        // Rules are listed by the label the table renders, matching the order
+        // the server pages in - so a page read on its own is still in display
+        // name order, whatever collation the server sorted it with.
+        const sortedData = [...data].sort(columnSorter);
+
+        setTestDefinitions(sortedData);
         handlePagingChange(responsePaging);
-        fetchTestDefinitionPermissions(data);
+        fetchTestDefinitionPermissions(sortedData);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestRef.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        // A superseded request leaves the flag alone: the request that replaced
+        // it is still in flight and owns the spinner.
+        if (requestId === latestRequestRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [
