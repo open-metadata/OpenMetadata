@@ -99,6 +99,12 @@ class TestInlineQueryHeader:
             ("--note\nSELECT 1 AS a", "--note\nSELECT "),
             ("/* one */ /* two */ SELECT 1 AS a", "/* one */ /* two */ SELECT "),
             ("/* outer /* inner */ */ SELECT 1 AS a", "/* outer /* inner */ */ SELECT "),
+            # the inner */ closes only the nested comment; anchoring there would leave
+            # the header inside the outer one, which Query Store drops
+            (
+                "/* outer /* inner */ AND condition */ SELECT 1 AS a",
+                "/* outer /* inner */ AND condition */ SELECT ",
+            ),
             ("-- note\n/* block */\nSELECT 1 AS a", "-- note\n/* block */\nSELECT "),
         ],
     )

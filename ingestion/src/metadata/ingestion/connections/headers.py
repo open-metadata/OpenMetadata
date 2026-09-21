@@ -29,9 +29,6 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
 )
 
 FIRST_WORD = re.compile(r"\w+")
-# whitespace and comments ahead of the first token; the block-comment branch only
-# matches a closed comment, so an unterminated one is left for the caller to reject
-LEADING_TRIVIA = re.compile(r"(?:\s+|--[^\n]*|/\*(?:[^*]|\*(?!/))*\*/)*")
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -68,6 +65,38 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
     return statement_with_header, parameters
 
 
+def _executable_start(statement: str) -> int | None:
+    """Index of the first character outside any leading comment.
+
+    Returns None when there is nothing executable to anchor on: a statement that is
+    only whitespace and comments, or one whose block comment is never closed -- a
+    header spliced into an unterminated comment would carry a ``*/`` that closes it.
+    """
+    index, length = 0, len(statement)
+    while index < length:
+        if statement[index].isspace():
+            index += 1
+        elif statement.startswith("--", index):
+            line_end = statement.find("\n", index)
+            index = length if line_end == -1 else line_end + 1
+        elif statement.startswith("/*", index):
+            # T-SQL nests block comments. Scanning to the first */ would leave the
+            # anchor inside the outer comment, e.g. /* a /* b */ AND c */ SELECT ...
+            depth, index = 1, index + 2
+            while index < length and depth:
+                if statement.startswith("/*", index):
+                    depth, index = depth + 1, index + 2
+                elif statement.startswith("*/", index):
+                    depth, index = depth - 1, index + 2
+                else:
+                    index += 1
+            if depth:
+                return None
+        else:
+            return index
+    return None
+
+
 def inject_inline_query_header(statement: str) -> str:
     """Return the statement with the OpenMetadata header after its first word.
 
@@ -76,16 +105,15 @@ def inject_inline_query_header(statement: str) -> str:
 
     * leading comments are skipped rather than treated as the anchor. A statement
       opening with ``-- note`` would otherwise take ``note`` as its first word and
-      bury the header in the comment, which Query Store discards with it. A block
-      comment that is never closed has no safe anchor at all, so it is left alone.
+      bury the header in the comment, which Query Store discards with it. Block
+      comment nesting is tracked, so the anchor clears the outermost one.
     * the anchor is the first run of word characters, not the first
       whitespace-delimited token: ``SELECT'a b'`` has no space after the keyword, so
       splitting on whitespace lands the header inside the string literal and changes
       the value the statement returns.
     """
-    trivia = LEADING_TRIVIA.match(statement)
-    start = trivia.end() if trivia else 0
-    if statement.startswith("/*", start):
+    start = _executable_start(statement)
+    if start is None:
         return statement
     first_word = FIRST_WORD.search(statement, start)
     if not first_word:
