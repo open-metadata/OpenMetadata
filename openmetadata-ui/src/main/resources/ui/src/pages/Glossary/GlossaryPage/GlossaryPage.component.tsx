@@ -256,6 +256,27 @@ const GlossaryPage = () => {
     [glossaries, glossaryFqn]
   );
 
+  const glossaryQueryEnabled = useMemo(
+    () => isGlossaryView && !glossaryFoundInList,
+    [isGlossaryView, glossaryFoundInList]
+  );
+
+  const {
+    data: glossaryFetchedDetails,
+    isFetching: glossaryFetching,
+    error: glossaryError,
+  } = useQuery({
+    queryKey: ['glossary', glossaryFqn],
+    queryFn: () =>
+      getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
+    enabled: Boolean(glossaryQueryEnabled),
+  });
+
+  const glossaryDetails = useMemo(
+    () => glossaryFoundInList ?? glossaryFetchedDetails,
+    [glossaryFoundInList, glossaryFetchedDetails]
+  );
+
   const {
     data: glossaryTermDetails,
     isFetching: glossaryTermFetching,
@@ -304,24 +325,17 @@ const GlossaryPage = () => {
   }, [isTermView, glossaryTermDetails, setActiveGlossary]);
 
   useEffect(() => {
-    if (glossaries.length && isGlossaryActive) {
-      const found = glossaries.find(
-        (glossary) => glossary.fullyQualifiedName === glossaryFqn
-      );
-
-      if (found) {
-        setActiveGlossary(found);
-      } else if (!glossaryFqn) {
-        setActiveGlossary(glossaries[0]);
-        if (glossaries[0].fullyQualifiedName) {
-          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
-            replace: true,
-          });
-        }
+    if (glossaryDetails && isGlossaryActive) {
+      setActiveGlossary(glossaryDetails as ModifiedGlossary);
+    } else if (glossaries.length && isGlossaryActive && !glossaryFqn) {
+      setActiveGlossary(glossaries[0]);
+      if (glossaries[0].fullyQualifiedName) {
+        navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+          replace: true,
+        });
       }
-      // else: FQN provided but not found — isGlossaryNotFound will handle display
     }
-  }, [isGlossaryActive, glossaryFqn, glossaries]);
+  }, [isGlossaryActive, glossaryFqn, glossaries, glossaryDetails]);
 
   const isTermNotFound = useMemo(
     () =>
@@ -331,8 +345,11 @@ const GlossaryPage = () => {
   );
 
   const isGlossaryNotFound = useMemo(
-    () => initialised && !isLoading && isGlossaryView && !glossaryFoundInList,
-    [initialised, isLoading, isGlossaryView, glossaryFoundInList]
+    () =>
+      isGlossaryView &&
+      !glossaryFoundInList &&
+      (glossaryError as AxiosError | undefined)?.response?.status === 404,
+    [isGlossaryView, glossaryFoundInList, glossaryError]
   );
 
   const isRightPanelLoading = useMemo(() => {
@@ -345,6 +362,9 @@ const GlossaryPage = () => {
     if (isTermView) {
       return glossaryTermFetching;
     }
+    if (isGlossaryView && !glossaryFoundInList) {
+      return glossaryFetching;
+    }
 
     return false;
   }, [
@@ -353,6 +373,9 @@ const GlossaryPage = () => {
     glossaries.length,
     isTermView,
     glossaryTermFetching,
+    isGlossaryView,
+    glossaryFoundInList,
+    glossaryFetching,
   ]);
 
   const updateGlossary = useCallback(
@@ -516,7 +539,7 @@ const GlossaryPage = () => {
     []
   );
 
-  if (isLoading && !isGlossaryNotFound && !isTermNotFound) {
+  if (isLoading) {
     return <Loader />;
   }
 
