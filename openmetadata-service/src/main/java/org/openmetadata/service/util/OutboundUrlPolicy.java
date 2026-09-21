@@ -100,7 +100,9 @@ public class OutboundUrlPolicy {
     if (host == null || host.trim().isEmpty()) {
       return "URL must have a valid host";
     }
-    return hostRejection(host.toLowerCase(Locale.ROOT), rejectUnresolvable);
+    // Resolved as written: a resolver may be case-sensitive, and the name judged here has to be the
+    // name the client will dial.
+    return hostRejection(host, rejectUnresolvable);
   }
 
   private String hostRejection(String host, boolean rejectUnresolvable) {

@@ -19,6 +19,7 @@ class OutboundUrlPolicyTest {
   private static final Map<String, String> DNS =
       Map.ofEntries(
           Map.entry("receiver.example.com", "93.184.216.34"),
+          Map.entry("Receiver.Mixed.Case", "93.184.216.34"),
           Map.entry("fd123.okta.com", "93.184.216.34"),
           Map.entry("fcdomain.com", "93.184.216.34"),
           Map.entry("fe80-test.com", "93.184.216.34"),
@@ -141,6 +142,14 @@ class OutboundUrlPolicyTest {
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://172.16.1"));
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://2130706433"));
     assertThrows(BadRequestException.class, () -> policy.checkForSave("http://010.0.0.1"));
+  }
+
+  @Test
+  void hostIsResolvedExactlyAsWritten() {
+    // macOS mDNS is case-sensitive, so lowercasing before the lookup would decide on a name the
+    // client never dials and leave the receiver refused at dispatch.
+    assertDoesNotThrow(
+        () -> policy.checkForConnect(URI.create("https://Receiver.Mixed.Case/hook")));
   }
 
   @Test
