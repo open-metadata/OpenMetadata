@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -249,6 +249,13 @@ const GlossaryPage = () => {
 
   const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
 
+  const isGlossaryView = isGlossaryActive && Boolean(glossaryFqn);
+
+  const glossaryFoundInList = useMemo(
+    () => glossaries.find((g) => g.fullyQualifiedName === glossaryFqn),
+    [glossaries, glossaryFqn]
+  );
+
   const {
     data: glossaryTermDetails,
     isFetching: glossaryTermFetching,
@@ -298,21 +305,40 @@ const GlossaryPage = () => {
 
   useEffect(() => {
     if (glossaries.length && isGlossaryActive) {
-      setActiveGlossary(
-        glossaries.find(
-          (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        ) || glossaries[0]
+      const found = glossaries.find(
+        (glossary) => glossary.fullyQualifiedName === glossaryFqn
       );
 
-      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
-        navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
-          replace: true,
-        });
+      if (found) {
+        setActiveGlossary(found);
+      } else if (!glossaryFqn) {
+        setActiveGlossary(glossaries[0]);
+        if (glossaries[0].fullyQualifiedName) {
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+            replace: true,
+          });
+        }
       }
+      // else: FQN provided but not found — isGlossaryNotFound will handle display
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
+  const isTermNotFound = useMemo(
+    () =>
+      isTermView &&
+      (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
+    [isTermView, glossaryTermError]
+  );
+
+  const isGlossaryNotFound = useMemo(
+    () => initialised && !isLoading && isGlossaryView && !glossaryFoundInList,
+    [initialised, isLoading, isGlossaryView, glossaryFoundInList]
+  );
+
   const isRightPanelLoading = useMemo(() => {
+    if (isGlossaryNotFound || isTermNotFound) {
+      return false;
+    }
     if (!glossaries.length) {
       return true;
     }
@@ -321,14 +347,13 @@ const GlossaryPage = () => {
     }
 
     return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
-
-  const isTermNotFound = useMemo(
-    () =>
-      isTermView &&
-      (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
-    [isTermView, glossaryTermError]
-  );
+  }, [
+    isGlossaryNotFound,
+    isTermNotFound,
+    glossaries.length,
+    isTermView,
+    glossaryTermFetching,
+  ]);
 
   const updateGlossary = useCallback(
     async (updatedData: Glossary) => {
@@ -491,7 +516,7 @@ const GlossaryPage = () => {
     []
   );
 
-  if (isLoading) {
+  if (isLoading && !isGlossaryNotFound && !isTermNotFound) {
     return <Loader />;
   }
 
@@ -556,6 +581,14 @@ const GlossaryPage = () => {
   let glossaryElement;
   if (isRightPanelLoading) {
     glossaryElement = <Loader />;
+  } else if (isGlossaryNotFound) {
+    glossaryElement = (
+      <div className="content-height-with-resizable-panel tw:relative">
+        <NoDataPlaceholder
+          description={getEntityMissingMessage(t('label.glossary'), glossaryFqn)}
+        />
+      </div>
+    );
   } else if (isTermNotFound) {
     glossaryElement = (
       <div className="content-height-with-resizable-panel tw:relative">
