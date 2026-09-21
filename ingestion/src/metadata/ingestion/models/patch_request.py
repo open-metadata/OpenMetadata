@@ -153,9 +153,11 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "extension": True,
 }
 
+FIELD_TAGS = "tags"
+
 RESTRICT_UPDATE_LIST = [
     "description",
-    "tags",
+    FIELD_TAGS,
     "owners",
     "displayName",
     "tableConstraints",
@@ -388,6 +390,13 @@ def build_patch(
         # special handler for tableConstraints
         _table_constraints_handler(source, destination)
 
+        _merge_entity_tags(
+            source=source,
+            destination=destination,
+            restrict_update_fields=restrict_update_fields,
+            override_metadata=bool(override_metadata),
+        )
+
         # Determine which array entity fields are present in allowed_fields
         active_array_fields = set()
         if array_entity_fields:
@@ -581,6 +590,60 @@ def _table_constraints_handler(source: T, destination: T):
     setattr(destination, "tableConstraints", rearranged_constraints)
 
 
+def _tag_key(tag) -> Tuple[str, str]:
+    """Identify a tag the way the server does (EntityUtil.tagLabelMatch)."""
+    return (
+        model_str(getattr(tag, "tagFQN", "")),
+        model_str(getattr(tag, "source", "")),
+    )
+
+
+def _merge_tags(source_tags: Optional[List], dest_tags: Optional[List]) -> List:
+    """Union of the tags already in OpenMetadata and the ones the source now sends.
+
+    Without overrideMetadata tags are additive, which is what the server does for a
+    PUT (EntityRepository.updateTags). Keeping only the stored list would drop every
+    tag added at the source after the first ingestion, and keeping only the incoming
+    list would drop the ones curated in the UI.
+
+    The stored tags come first so the resulting JSONPatch is add-only, and therefore
+    survives the restrict_update_fields filter.
+    """
+    merged = list(source_tags or [])
+    seen = {_tag_key(tag) for tag in merged}
+
+    for tag in dest_tags or []:
+        if _tag_key(tag) not in seen:
+            seen.add(_tag_key(tag))
+            merged.append(tag)
+
+    return merged
+
+
+def _merge_entity_tags(
+    source: T,
+    destination: T,
+    restrict_update_fields: Optional[List],
+    override_metadata: bool,
+) -> None:
+    """Make the entity's own tags additive, as the array fields already are.
+
+    Entity level tags go through the position-based jsonpatch diff, where only the
+    'add' operations survive. A tag the source lists before an existing one would
+    diff as a 'replace' and be dropped, and account_usage.tag_references has no
+    ORDER BY, so that ordering is not stable between runs.
+    """
+    if override_metadata or FIELD_TAGS not in (restrict_update_fields or []):
+        return
+
+    if not hasattr(source, FIELD_TAGS) or not hasattr(destination, FIELD_TAGS):
+        return
+
+    merged = _merge_tags(getattr(source, FIELD_TAGS), getattr(destination, FIELD_TAGS))
+    if merged:
+        setattr(destination, FIELD_TAGS, merged)
+
+
 def _should_update_restricted_field(
     source_value, dest_value, override_metadata: bool
 ) -> bool:
@@ -644,7 +707,9 @@ def _merge_array_attributes(
 
             if k in restrict_set:
                 src_val = getattr(source_attr, k, None)
-                if not _should_update_restricted_field(
+                if k == FIELD_TAGS and not override_metadata:
+                    field_value = _merge_tags(src_val, field_value)
+                elif not _should_update_restricted_field(
                     src_val, field_value, override_metadata
                 ):
                     continue
