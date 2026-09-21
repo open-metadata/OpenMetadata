@@ -177,15 +177,19 @@ public class TestDefinitionResource
           Boolean enabledParam,
       @Parameter(
               description =
-                  "Search test definitions whose name or display name contains this text. "
-                      + "Case-insensitive and combinable with the filters above.",
+                  "Search test definitions whose name, display name, description, entity type or "
+                      + "test platform contains this text. Case-insensitive and combinable with the "
+                      + "filters above.",
               schema = @Schema(type = "string"))
           @QueryParam("q")
           String searchQuery) {
     ListFilter filter = new ListFilter(include);
     TestDefinitionRepository.addEntityTypeFilter(filter, entityType);
     if (!nullOrEmpty(searchQuery)) {
-      filter.addQueryParam("nameFilter", searchQuery);
+      // Not the generic `nameFilter`, which only spans name and display name: the Test Library
+      // search box has to reach the rest of what the listing shows (description, entity type,
+      // platforms), so TestDefinitionDAO builds its own condition from this param.
+      filter.addQueryParam("testDefinitionSearch", searchQuery);
     }
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);

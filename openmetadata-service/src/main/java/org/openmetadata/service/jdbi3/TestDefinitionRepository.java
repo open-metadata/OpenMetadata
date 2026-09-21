@@ -25,6 +25,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
@@ -60,6 +61,21 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
             : entity.getDisplayName();
     return getCursorValue(
         label == null ? "" : label.toLowerCase(Locale.ROOT), String.valueOf(entity.getId()));
+  }
+
+  /**
+   * Cursor names are read back through {@link FullyQualifiedName#unquoteName}, which strips the
+   * enclosing quotes off anything shaped like a quoted FQN segment. A display name that legally
+   * reads {@code "quoted"} would therefore come back one pair of quotes shorter than the sort key
+   * the DAO compares it with, and the cursor would no longer name its boundary row — pagination
+   * skips or repeats rows. Pre-encode the sort key so {@code unquoteName} hands the DAO back
+   * exactly what went in. Overridden at this level rather than in {@link
+   * #getCursorValue(TestDefinition)} so the offset-seeded cursors (the distributed indexers, via
+   * {@link #getCursorAtOffset}) get the same encoding.
+   */
+  @Override
+  protected String getCursorValue(String name, String id) {
+    return super.getCursorValue(FullyQualifiedName.escapeForUnquote(name), id);
   }
 
   @Override
