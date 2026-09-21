@@ -30,6 +30,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
@@ -52,6 +53,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConversationReferenceMigration.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
+        MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
+            mockStatic(DataContractEntityReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
             mockStatic(IngestionPipelineMigrationUtil.class)) {
       migration.runDataMigration();

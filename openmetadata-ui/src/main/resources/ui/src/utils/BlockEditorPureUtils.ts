@@ -104,6 +104,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ghCodeBlocks: true,
   encodeEmails: false,
   ellipsis: false,
+  simplifiedAutoLink: true,
   tables: true,
   strikethrough: true,
   simpleLineBreaks: true,
@@ -146,7 +147,9 @@ export const formatClientContent = (content: string) => {
     const type = tag.getAttribute('data-type');
     const prefix = type === 'mention' ? '@' : '#';
 
-    tag.textContent = `${prefix}${label}`;
+    if (label) {
+      tag.textContent = `${prefix}${label}`;
+    }
   });
 
   return getSanitizeContent(doc.body.innerHTML);

@@ -42,7 +42,7 @@ const OperationDateBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
-  const { grid } = useChartColors();
+  const { axis, grid } = useChartColors();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -82,12 +82,12 @@ const OperationDateBarChart = ({
         <XAxis
           dataKey="name"
           padding={{ left: 16, right: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
         />
         <YAxis
           allowDataOverflow
           padding={{ top: 16, bottom: 16 }}
-          tick={{ fontSize: 12 }}
+          tick={{ fill: axis, fontSize: 12 }}
           // need to show empty string to hide the tick value, to align the chart with other charts
           tickFormatter={() => ''}
           tickLine={false}

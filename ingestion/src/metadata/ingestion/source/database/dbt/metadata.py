@@ -38,15 +38,15 @@ from metadata.generated.schema.entity.data.metric import (
     MetricFilter,
     MetricGranularity,
     MetricMeasure,
-    MetricUnitOfMeasurement,
+    UnitOfMeasurement,
 )
-from metadata.generated.schema.type import basic
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -65,6 +65,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     FullyQualifiedEntityName,
     SqlQuery,
     Timestamp,
@@ -169,6 +170,7 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        self.extracted_data_products = {}
         # Upstream nodes already reported as unresolved, so a dbt project whose source
         # database was never ingested reports each missing upstream once instead of once
         # per referencing model. Bounded by the number of distinct upstream nodes in the
@@ -411,6 +413,52 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
+
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Attach the table to every Data Product listed in
+        meta.openmetadata.dataProducts. Products are resolved through the
+        OpenMetadata API; unknown products are reported as warnings and never
+        created implicitly. Re-running is idempotent because the assets/add
+        endpoint only adds the relationship when it is missing.
+        """
+        table_entity: Table = data_model_link.table_entity
+
+        if not table_entity:
+            return
+
+        table_fqn = model_str(table_entity.fullyQualifiedName)
+        product_names = self.extracted_data_products.get(table_fqn)
+
+        if not product_names:
+            return
+
+        asset_ref = EntityReference(id=table_entity.id, type="table")
+
+        for product_name in product_names:
+            try:
+                data_product = self.metadata.get_by_name(entity=DataProduct, fqn=product_name)
+
+                if not data_product:
+                    logger.warning(
+                        "Data Product '%s' not found in OpenMetadata for table %s; skipping assignment",
+                        product_name,
+                        table_fqn,
+                    )
+                    continue
+
+                self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
+                logger.info("Added table %s to Data Product '%s'", table_fqn, product_name)
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "Failed to assign Data Product '%s' to %s: %s. If this is a domain validation "
+                    "error, ensure the table's domain matches the Data Product's domain.",
+                    product_name,
+                    table_fqn,
+                    exc,
+                )
+                logger.debug(traceback.format_exc())
 
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
@@ -1390,11 +1438,7 @@ class DbtSource(DbtServiceSource):
                 # meta that needs the tag channel.
                 om_meta = raw_meta.get("openmetadata") if isinstance(raw_meta, dict) else None
                 if isinstance(om_meta, dict) and any(om_meta.get(k) for k in ("tier", "glossary", "tags")):
-                    tag_meta = {
-                        "openmetadata": {
-                            k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)
-                        }
-                    }
+                    tag_meta = {"openmetadata": {k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)}}
                     tags = (tags or []) + (self.process_dbt_meta(tag_meta, metric_name) or [])
 
             owners = self.get_dbt_owner(metric_node, None)
@@ -1403,15 +1447,13 @@ class DbtSource(DbtServiceSource):
             custom_unit = None
             if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
                 unit_value = dbt_meta.openmetadata.unit.upper()
-                if unit_value in set(MetricUnitOfMeasurement.__members__):
-                    unit_of_measurement = MetricUnitOfMeasurement(unit_value)
+                if unit_value in set(UnitOfMeasurement.__members__):
+                    unit_of_measurement = UnitOfMeasurement(unit_value)
                 else:
                     custom_unit = dbt_meta.openmetadata.unit
             extension = None
             if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
-                extension = basic.EntityExtension(
-                    root=dict(dbt_meta.openmetadata.customProperties)
-                )
+                extension = EntityExtension(root=dict(dbt_meta.openmetadata.customProperties))
             create_metric = CreateMetricRequest(
                 name=metric_name,
                 displayName=label or metric_name,
@@ -1460,12 +1502,44 @@ class DbtSource(DbtServiceSource):
         return metric_expression, related_metrics
 
     @staticmethod
+    def _metric_aggregation(type_params: Any) -> str | None:
+        """Return the aggregation function name from the dbt 1.12+ inline spec.
+
+        In the measure-less spec the aggregation lives on
+        ``type_params.metric_aggregation_params.agg``. The manifest parser keeps that
+        block as an extra attribute, so it may arrive as a dict or an object. Returns
+        ``None`` for the pre-1.12 spec, where the measure itself carries the aggregation.
+        """
+        params = getattr(type_params, "metric_aggregation_params", None)
+        if params is None:
+            return None
+        agg = params.get("agg") if isinstance(params, dict) else getattr(params, "agg", None)
+        return getattr(agg, "value", agg) if agg else None
+
+    @staticmethod
+    def _is_simple_metric(metric_node: Any) -> bool:
+        """True when the metric is a dbt ``simple`` metric.
+
+        Only simple metrics own a measure, so only they get a synthesised measure from
+        the 1.12 inline fields. Derived/ratio/cumulative/conversion carry their formula in
+        type_params but do not represent a measure.
+        """
+        metric_type = getattr(metric_node, "type", None)
+        dbt_type = getattr(metric_type, "value", str(metric_type)) if metric_type else None
+        return dbt_type == "simple"
+
+    @staticmethod
     def _simple_metric_expression(type_params):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
             expression = MetricExpression(language=Language.SQL, code=measure_name)
+        else:
+            # dbt 1.12+ inline spec: measure ref is absent; use type_params.expr directly
+            expr = getattr(type_params, "expr", None)
+            if expr:
+                expression = MetricExpression(language=Language.SQL, code=expr)
         return expression, None
 
     @staticmethod
@@ -1507,6 +1581,15 @@ class DbtSource(DbtServiceSource):
         expression = None
         measure_ref = getattr(type_params, "measure", None)
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
+        if not measure_name:
+            # dbt 1.12+ inline spec: the measure is gone; a cumulative metric now wraps
+            # another metric referenced on cumulative_type_params.metric.
+            cum_params = getattr(type_params, "cumulative_type_params", None)
+            metric_ref = getattr(cum_params, "metric", None) if cum_params else None
+            if isinstance(metric_ref, dict):
+                measure_name = metric_ref.get("name")
+            else:
+                measure_name = getattr(metric_ref, "name", None) if metric_ref else None
         if measure_name:
             window_str = DbtSource._cumulative_window_str(type_params)
             expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
@@ -1577,6 +1660,25 @@ class DbtSource(DbtServiceSource):
                         aggregation=agg_value,
                         description=getattr(measure, "description", None),
                         expression=getattr(measure, "expr", None),
+                    )
+                )
+        # dbt 1.12+ inline spec: a simple metric no longer references a measure; its
+        # aggregation is defined directly on the metric. When the semantic model yields no
+        # measures, synthesise one from type_params.expr + metric_aggregation_params so the
+        # measure matches the metadata the pre-1.12 spec produced. Restricted to simple
+        # metrics: derived/ratio/etc. also carry type_params.expr (their formula), and that
+        # belongs only in the metric expression, not as a fabricated measure.
+        if not result and self._is_simple_metric(metric_node):
+            type_params = getattr(metric_node, "type_params", None)
+            expr = getattr(type_params, "expr", None) if type_params else None
+            aggregation = self._metric_aggregation(type_params) if type_params else None
+            if expr or aggregation:
+                result.append(
+                    MetricMeasure(
+                        name=getattr(metric_node, "name", ""),
+                        aggregation=aggregation,
+                        description=None,
+                        expression=expr,
                     )
                 )
         return result
@@ -1817,6 +1919,9 @@ class DbtSource(DbtServiceSource):
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.dataProducts:
+                self.extracted_data_products[table_fqn] = dbt_meta_info.openmetadata.dataProducts
 
             if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:

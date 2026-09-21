@@ -129,6 +129,7 @@ export const normalizeFormValuesForPayload = (
     selectedDefinition
   ) as FormValues['params'],
   dimensionColumns: unwrapSelectValues(values.dimensionColumns),
+  dataQualityDimension: unwrapSelectValue(values.dataQualityDimension),
   tags: normalizeTagLabels(values.tags),
   glossaryTerms: normalizeTagLabels(values.glossaryTerms),
 });
@@ -180,6 +181,11 @@ export const transformTestCaseFormData = (
         ? values.topDimensions
         : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
+    // Left out when untouched so the API falls back to the test definition's
+    // dimension, which is what the field is prefilled with anyway.
+    dataQualityDimension: normalizedValues.dataQualityDimension as
+      | string
+      | undefined,
     tags: [
       ...(normalizedValues.tags ?? []),
       ...(normalizedValues.glossaryTerms ?? []),
@@ -278,6 +284,16 @@ const toColumnFormSelectItems = (
   columnNames: string[] | undefined
 ): FormSelectItem[] | undefined =>
   columnNames?.map((columnName) => toColumnFormSelectItem(columnName));
+
+/**
+ * The data quality dimension field is a dropdown over the dimension entities, so its RHF value
+ * is a `FormSelectItem` keyed by the dimension name — the identifier the API expects.
+ */
+export const toDataQualityDimensionItem = (
+  dimension: string | undefined,
+  label?: string
+): FormSelectItem | undefined =>
+  dimension ? { id: dimension, label: label ?? dimension } : undefined;
 
 /**
  * Builds the RHF value for a single Array-typed param from its JSON-array
@@ -452,6 +468,12 @@ export const buildEditDefaults = (
     dimensionColumns: toColumnFormSelectItems(
       testCase.dimensionColumns
     ) as never,
+    // Test cases created before dimensions could be set on them carry none, so
+    // fall back to the dimension of their test definition — the effective one.
+    dataQualityDimension: toDataQualityDimensionItem(
+      testCase.dataQualityDimension?.name ?? definition.dataQualityDimension,
+      testCase.dataQualityDimension?.displayName
+    ),
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',
       label: testCase.testDefinition?.fullyQualifiedName ?? '',
