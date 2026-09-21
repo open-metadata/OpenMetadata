@@ -30,8 +30,8 @@ import org.testcontainers.utility.DockerImageName;
 class FlowableCharsetMigrationMySqlTest {
   private static final String DATABASE = "legacy_openmetadata";
   private static final String PASSWORD = "flowable-test";
-  private static final String DATABASE_COLLATION = "utf8mb4_unicode_ci";
-  private static final String FLOWABLE_COLLATION = "utf8mb4_0900_ai_ci";
+  private static final String TARGET_COLLATION = "utf8mb4_unicode_ci";
+  private static final String DRIFT_COLLATION = "utf8mb4_0900_ai_ci";
 
   @Container
   static final GenericContainer<?> MYSQL =
@@ -45,12 +45,13 @@ class FlowableCharsetMigrationMySqlTest {
   void convertsLegacyFlowableTablesWithoutBreakingForeignKeys() {
     try (Handle handle = openHandle()) {
       createMixedCharsetSchema(handle);
-      handle.execute("ALTER DATABASE CHARACTER SET utf8mb4 COLLATE " + DATABASE_COLLATION);
+      handle.execute("ALTER DATABASE CHARACTER SET utf8mb4 COLLATE " + TARGET_COLLATION);
 
       assertEquals(3, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
 
       assertConvertedSchema(handle);
       assertForeignKeyEnforced(handle);
+      assertFutureFlowableTableCanReferenceExistingTable(handle);
       assertReplayAndRepair(handle);
     }
   }
@@ -73,7 +74,8 @@ class FlowableCharsetMigrationMySqlTest {
             + "DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci");
     handle.execute(
         "CREATE TABLE ACT_HI_PROCINST (ID_ VARCHAR(64) PRIMARY KEY) "
-            + "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+            + "DEFAULT CHARSET=utf8mb4 COLLATE="
+            + DRIFT_COLLATION);
     handle.execute(
         "CREATE TABLE application_table (ID_ VARCHAR(64) PRIMARY KEY) "
             + "DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci");
@@ -82,9 +84,9 @@ class FlowableCharsetMigrationMySqlTest {
   }
 
   private static void assertConvertedSchema(final Handle handle) {
-    assertEquals(List.of(FLOWABLE_COLLATION), flowableTableCollations(handle));
+    assertEquals(List.of(TARGET_COLLATION), flowableTableCollations(handle));
     assertEquals(List.of("utf8mb4"), flowableColumnCharsets(handle));
-    assertEquals(DATABASE_COLLATION, currentDatabaseCollation(handle));
+    assertEquals(TARGET_COLLATION, currentDatabaseCollation(handle));
     assertEquals("utf8mb3_general_ci", applicationTableCollation(handle));
     assertEquals(
         1, handle.createQuery("SELECT @@SESSION.FOREIGN_KEY_CHECKS").mapTo(int.class).one());
@@ -151,13 +153,25 @@ class FlowableCharsetMigrationMySqlTest {
                 "INSERT INTO ACT_GE_BYTEARRAY VALUES ('bytes-invalid', 'missing-deployment')"));
   }
 
+  private static void assertFutureFlowableTableCanReferenceExistingTable(final Handle handle) {
+    handle.execute(
+        "CREATE TABLE ACT_RU_FUTURE (ID_ VARCHAR(64) PRIMARY KEY, DEPLOYMENT_ID_ VARCHAR(64), "
+            + "CONSTRAINT ACT_FK_FUTURE_DEPL FOREIGN KEY (DEPLOYMENT_ID_) "
+            + "REFERENCES ACT_RE_DEPLOYMENT (ID_))");
+    handle.execute("INSERT INTO ACT_RU_FUTURE VALUES ('future-1', 'deployment-1')");
+
+    assertConvertedSchema(handle);
+    assertThrows(
+        UnableToExecuteStatementException.class,
+        () -> handle.execute("INSERT INTO ACT_RU_FUTURE VALUES ('future-invalid', 'missing')"));
+  }
+
   private static void assertReplayAndRepair(final Handle handle) {
     assertEquals(0, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
     handle.execute(
-        "ALTER TABLE ACT_HI_PROCINST CONVERT TO CHARACTER SET utf8mb4 COLLATE "
-            + DATABASE_COLLATION);
+        "ALTER TABLE ACT_HI_PROCINST CONVERT TO CHARACTER SET utf8mb4 COLLATE " + DRIFT_COLLATION);
 
-    assertEquals(3, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
+    assertEquals(4, FlowableCharsetMigration.alignFlowableTableCharsets(handle));
     assertConvertedSchema(handle);
   }
 

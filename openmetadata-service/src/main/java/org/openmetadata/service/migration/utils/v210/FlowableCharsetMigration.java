@@ -21,7 +21,7 @@ import org.jdbi.v3.core.Handle;
 
 @Slf4j
 public final class FlowableCharsetMigration {
-  private static final String FLOWABLE_COLLATION = "utf8mb4_0900_ai_ci";
+  private static final String FLOWABLE_COLLATION = "utf8mb4_unicode_ci";
   private static final String FLOWABLE_TABLES_TO_ALIGN_QUERY =
       """
       SELECT flowable_table.TABLE_NAME

@@ -119,7 +119,7 @@ class FlowableCharsetMigrationTest {
   private static String conversionStatement(final String tableName) {
     return "ALTER TABLE `"
         + tableName
-        + "` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci";
+        + "` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
   }
 
   private static void assertContains(final Path path, final String expected) throws IOException {
