@@ -1259,7 +1259,8 @@
     --color-bg-active: --alpha(theme(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 16%);
+    /* Brand tint (nav-active, brand count chip) = 14% per palette guideline + Collate #6491. */
+    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 14%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
