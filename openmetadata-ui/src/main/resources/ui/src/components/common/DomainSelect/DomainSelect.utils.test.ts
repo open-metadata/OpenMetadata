@@ -15,8 +15,8 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   buildDomainSearchQuery,
-  domainToTreeNode,
   domainsToTreeNodes,
+  domainToTreeNode,
   entityReferencesToTreeNodes,
   treeNodesToEntityReferences,
 } from './DomainSelect.utils';

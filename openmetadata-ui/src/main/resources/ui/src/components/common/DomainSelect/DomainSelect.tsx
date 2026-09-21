@@ -19,20 +19,23 @@ import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { DomainSelectProps } from './DomainSelect.types';
 import {
   buildDomainSearchQuery,
   domainsToTreeNodes,
   entityReferencesToTreeNodes,
   treeNodesToEntityReferences,
 } from './DomainSelect.utils';
-import { DomainSelectProps } from './DomainSelect.types';
 
 const DomainSelect: FC<DomainSelectProps> = ({
   selectedDomain,
@@ -41,6 +44,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
   hasPermission = true,
   isClearable = true,
   restrictedDomains,
+  showAllDomains = false,
   onUpdate,
   triggerVariant = 'input',
   bordered,
@@ -50,6 +54,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
   onOpenChange,
   label,
   placeholder,
+  className,
   onCreate,
   createLabel,
   'data-testid': dataTestId,
@@ -125,11 +130,33 @@ const DomainSelect: FC<DomainSelectProps> = ({
         PAGE_SIZE_LARGE
       );
 
-      return {
-        nodes: withDomainIcon(dropRestricted(domainsToTreeNodes(data ?? []))),
-      };
+      const nodes = withDomainIcon(
+        dropRestricted(domainsToTreeNodes(data ?? []))
+      );
+
+      // Scope-switcher: a single "All Domains" root with every domain nested
+      // beneath it (expanded by default via defaultExpandedKeys). It carries no
+      // `data`, so selecting it maps to an empty selection → onUpdate(undefined)
+      // → scope cleared, while its children set a specific scope.
+      if (showAllDomains && !parentId) {
+        return {
+          nodes: [
+            {
+              id: DEFAULT_DOMAIN_VALUE,
+              value: DEFAULT_DOMAIN_VALUE,
+              label: t('label.all-domain-plural'),
+              isLeaf: false,
+              lazyLoad: false,
+              icon: <DomainIcon height={16} width={16} />,
+              children: nodes,
+            },
+          ],
+        };
+      }
+
+      return { nodes };
     },
-    [dropRestricted, withDomainIcon]
+    [dropRestricted, withDomainIcon, showAllDomains, t]
   );
 
   const value = useMemo(() => {
@@ -177,14 +204,17 @@ const DomainSelect: FC<DomainSelectProps> = ({
       lazyLoad
       searchable
       bordered={bordered}
+      className={className}
       commitMode={resolvedCommitMode}
       createLabel={createLabel}
       data-testid={dataTestId}
+      defaultExpandedKeys={showAllDomains ? [DEFAULT_DOMAIN_VALUE] : undefined}
       disabled={disabled || !hasPermission}
       fetchData={fetchData}
       filterNode={skipClientFilter}
       isOpen={isOpen}
       label={label}
+      maxIndentLevel={showAllDomains ? 3 : undefined}
       multiple={multiple}
       placeholder={
         placeholder ??
@@ -194,6 +224,7 @@ const DomainSelect: FC<DomainSelectProps> = ({
       searchPlaceholder={t('label.search-entity', {
         entity: t('label.domain-plural'),
       })}
+      triggerIcon={DomainIcon}
       triggerVariant={triggerVariant}
       value={value}
       onChange={handleChange}

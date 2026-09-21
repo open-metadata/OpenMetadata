@@ -18,8 +18,8 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import DomainSelect from '../DomainSelect/DomainSelect';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
 /**

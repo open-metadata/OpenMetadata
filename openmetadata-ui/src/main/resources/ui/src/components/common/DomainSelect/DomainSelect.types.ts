@@ -32,6 +32,11 @@ export interface DomainSelectProps {
   /** Domains that must not be offered for selection (filtered from results). */
   restrictedDomains?: EntityReference[];
   /**
+   * Prepend an "All Domains" reset row at the top of the picker (scope-switcher
+   * use). Selecting it clears the selection (`onUpdate(undefined)`).
+   */
+  showAllDomains?: boolean;
+  /**
    * Called with the new selection. In single mode receives one reference (or
    * `undefined` when cleared); in multiple mode receives the full array.
    */
@@ -56,6 +61,8 @@ export interface DomainSelectProps {
   onOpenChange?: (open: boolean) => void;
   label?: string;
   placeholder?: string;
+  /** Class applied to the trigger wrapper (e.g. for nav alignment). */
+  className?: string;
 
   /** Inline "create domain" action; receives the current search term. */
   onCreate?: (searchTerm: string) => void;

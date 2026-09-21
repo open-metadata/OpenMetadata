@@ -31,9 +31,9 @@ import {
 } from '../../../utils/Assets/AssetsUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelect from '../../common/DomainSelect/DomainSelect';
 import DomainTags from '../../common/DomainTags/DomainTags';
-import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import {
   WidgetEditButton,
   WidgetPlusButton,

@@ -58,6 +58,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
@@ -93,7 +94,6 @@ import {
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getEntityBulkEditPath,

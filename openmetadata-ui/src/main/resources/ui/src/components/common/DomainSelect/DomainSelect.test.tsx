@@ -158,6 +158,36 @@ describe('DomainSelect', () => {
     expect(nodes).toHaveLength(0);
   });
 
+  it('should nest domains under a single "All Domains" root when showAllDomains is set', async () => {
+    renderSelect({ showAllDomains: true });
+
+    const { nodes } = await lastProps().fetchData({});
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].value).toBe('All Domains');
+    expect(nodes[0].children?.[0].id).toBe('Finance');
+  });
+
+  it('should not prepend "All Domains" when loading a parent\'s subdomains', async () => {
+    renderSelect({ showAllDomains: true });
+
+    const { nodes } = await lastProps().fetchData({ parentId: 'Finance' });
+
+    expect(nodes[0].value).not.toBe('All Domains');
+  });
+
+  it('should clear the scope (onUpdate undefined) when "All Domains" is picked', () => {
+    const { onUpdate } = renderSelect({ showAllDomains: true });
+
+    lastProps().onChange({
+      id: 'All Domains',
+      value: 'All Domains',
+      label: 'All Domains',
+    });
+
+    expect(onUpdate).toHaveBeenCalledWith(undefined);
+  });
+
   it('should call onUpdate with the array in multiple mode', () => {
     const { onUpdate } = renderSelect({ multiple: true });
 

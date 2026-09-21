@@ -103,10 +103,7 @@ export const searchDomainInDropdownTree = async (
   domain: Domain
 ) => {
   const searchResponse = waitForDomainSearch(page, domain);
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.data.name);
+  await page.getByTestId('domain-dropdown-search').fill(domain.data.name);
   await searchResponse;
 };
 
