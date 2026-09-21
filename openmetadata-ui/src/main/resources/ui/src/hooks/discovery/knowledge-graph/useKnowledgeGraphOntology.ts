@@ -11,22 +11,23 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import {
-  GraphData,
-  GraphNode,
-  KnowledgeGraphFilters,
-  KnowledgeGraphLevel,
-  KnowledgeGraphMode,
-} from '../../interface/knowledgeGraph.interface';
-import { getGlossaryTermsByIds } from '../../rest/glossaryAPI';
+    GraphData,
+    GraphNode,
+    KnowledgeGraphFilters,
+    KnowledgeGraphLevel,
+    KnowledgeGraphMode
+} from '../../../interface/discovery/knowledge-graph.interface';
+import { getGlossaryTermsByIds } from '../../../rest/glossaryAPI';
+import { graphLevelToDepth } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
-  getOntologyScope,
-  graphEntityId,
-} from '../../utils/knowledge-graph/knowledgeGraphOntology.utils';
-import { isConceptNode } from '../../utils/knowledge-graph/knowledgeGraphPresentation.utils';
-import { graphLevelToDepth } from '../../utils/KnowledgeGraph.utils';
+    getOntologyScope,
+    graphEntityId
+} from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
+import { isConceptNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
 
 export const useKnowledgeGraphOntology = (
@@ -76,84 +77,88 @@ export const useKnowledgeGraphOntology = (
 };
 
 const EMPTY_TERMS: GlossaryTerm[] = [];
+const CONCEPT_DETAILS_CHUNK = 100;
+const CONCEPT_DETAILS_FIELDS = 'attributes,effectiveAttributes';
+const CONCEPT_DETAILS_QUERY_KEY = [
+  'knowledge-graph',
+  'concept-details',
+] as const;
 
+const toChunks = (ids: string[]): string[][] => {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += CONCEPT_DETAILS_CHUNK) {
+    chunks.push(ids.slice(index, index + CONCEPT_DETAILS_CHUNK));
+  }
+
+  return chunks;
+};
+
+/**
+ * Fetches glossary-term metadata for every concept currently on the canvas.
+ * Ids are chunked at the backend batch limit (100) and each chunk becomes
+ * one React Query — parallel fetch, and a single-term change only busts the
+ * chunk it belongs to.
+ */
 export const useKnowledgeGraphConceptDetails = (
   nodes: GraphNode[],
   enabled: boolean,
   refresh: number
 ) => {
-  const idsKey = JSON.stringify(
-    enabled
-      ? nodes
-          .filter(isConceptNode)
-          .map((node) => graphEntityId(node.id))
-          .sort()
-      : []
+  const ids = useMemo(
+    () =>
+      enabled
+        ? nodes
+            .filter(isConceptNode)
+            .map((node) => graphEntityId(node.id))
+            .sort()
+        : [],
+    [nodes, enabled]
   );
-  const [state, setState] = useState<{
-    key: string;
-    terms: GlossaryTerm[];
-    loading: boolean;
-    partial: boolean;
-    error: unknown;
-  }>({ key: '', terms: [], loading: false, partial: false, error: null });
+  const chunks = useMemo(() => toChunks(ids), [ids]);
+  const queryClient = useQueryClient();
+
+  // Refresh means "user asked for fresh data" — invalidate the chunk cache
+  // rather than baking `refresh` into the key. Invalidation refetches while
+  // leaving the previous terms on screen (React Query's built-in
+  // keep-previous-data-on-refetch semantics), which useQueries can't provide
+  // on a key change because it treats a new key as a brand-new observer.
+  const previousRefresh = useRef(refresh);
   useEffect(() => {
-    const controller = new AbortController();
-    const ids = JSON.parse(idsKey) as string[];
-    if (!ids.length) {
-      return () => controller.abort();
+    if (previousRefresh.current === refresh) {
+      return;
     }
-    setState((previous) => ({
-      key: idsKey,
-      terms: previous.key === idsKey ? previous.terms : [],
-      loading: true,
+    previousRefresh.current = refresh;
+    void queryClient.invalidateQueries({
+      queryKey: CONCEPT_DETAILS_QUERY_KEY,
+    });
+  }, [refresh, queryClient]);
+
+  const queries = useQueries({
+    queries: chunks.map((chunk) => ({
+      queryKey: [...CONCEPT_DETAILS_QUERY_KEY, chunk],
+      queryFn: async ({ signal }: { signal: AbortSignal }) =>
+        getGlossaryTermsByIds(
+          chunk,
+          { fields: CONCEPT_DETAILS_FIELDS },
+          signal
+        ),
+      enabled,
+    })),
+  });
+
+  if (!enabled || ids.length === 0) {
+    return {
+      terms: EMPTY_TERMS,
+      loading: false,
       partial: false,
       error: null,
-    }));
-    const fetchTerms = async () => {
-      const terms: GlossaryTerm[] = [];
-      for (let offset = 0; offset < ids.length; offset += 100) {
-        const next = await getGlossaryTermsByIds(
-          ids.slice(offset, offset + 100),
-          {
-            fields: 'attributes,effectiveAttributes',
-          },
-          controller.signal
-        );
-        if (controller.signal.aborted) {
-          return;
-        }
-        terms.push(...next);
-      }
-      setState({
-        key: idsKey,
-        terms,
-        loading: false,
-        partial: terms.length !== ids.length,
-        error: null,
-      });
     };
-    void fetchTerms().catch((error: unknown) => {
-      if (!controller.signal.aborted) {
-        setState((previous) => ({
-          key: idsKey,
-          terms: previous.key === idsKey ? previous.terms : [],
-          loading: false,
-          partial: false,
-          error,
-        }));
-      }
-    });
+  }
 
-    return () => controller.abort();
-  }, [idsKey, refresh]);
+  const loading = queries.some((query) => query.isFetching);
+  const error = queries.find((query) => query.error)?.error ?? null;
+  const terms = queries.flatMap((query) => query.data ?? []);
+  const partial = !loading && !error && terms.length !== ids.length;
 
-  return state.key === idsKey
-    ? state
-    : {
-        ...state,
-        terms: EMPTY_TERMS,
-        loading: enabled && idsKey !== '[]',
-        error: null,
-      };
+  return { terms, loading, partial, error };
 };

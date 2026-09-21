@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { getGlossaryTermsByIds } from '../../rest/glossaryAPI';
+import { createElement, PropsWithChildren } from 'react';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { getGlossaryTermsByIds } from '../../../rest/glossaryAPI';
 import { useKnowledgeGraphConceptDetails } from './useKnowledgeGraphOntology';
 
-jest.mock('../../rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsByIds: jest.fn(),
 }));
 const fetchTerms = getGlossaryTermsByIds as jest.MockedFunction<
@@ -26,18 +28,33 @@ const node = (id: string) => ({ id, type: 'glossaryTerm', label: id });
 const term = (id: string) =>
   ({ id, name: id, attributes: [] } as unknown as GlossaryTerm);
 
+const withClient = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+    },
+  });
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children);
+
+  return { client, wrapper };
+};
+
 beforeEach(() => fetchTerms.mockReset());
 
 it('collects metadata in batches and surfaces missing concepts as partial', async () => {
   fetchTerms.mockImplementation(async (ids) =>
     ids.filter((id) => id !== '200').map(term)
   );
-  const { result } = renderHook(() =>
-    useKnowledgeGraphConceptDetails(
-      Array.from({ length: 201 }, (_, index) => node(String(index))),
-      true,
-      0
-    )
+  const { wrapper } = withClient();
+  const { result } = renderHook(
+    () =>
+      useKnowledgeGraphConceptDetails(
+        Array.from({ length: 201 }, (_, index) => node(String(index))),
+        true,
+        0
+      ),
+    { wrapper }
   );
   await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -53,10 +70,11 @@ it('keeps property metadata during refresh and after a failed response', async (
         reject = fail;
       })
   );
+  const { wrapper } = withClient();
   const { result, rerender } = renderHook(
     ({ refresh }) =>
       useKnowledgeGraphConceptDetails([node('customer')], true, refresh),
-    { initialProps: { refresh: 0 } }
+    { initialProps: { refresh: 0 }, wrapper }
   );
   await waitFor(() => expect(result.current.terms).toHaveLength(1));
   rerender({ refresh: 1 });
@@ -65,8 +83,10 @@ it('keeps property metadata during refresh and after a failed response', async (
   expect(result.current.terms[0].id).toBe('customer');
 
   await act(async () => reject(new Error('Unavailable')));
+  await waitFor(() =>
+    expect(result.current.error).toEqual(new Error('Unavailable'))
+  );
 
-  expect(result.current.error).toEqual(new Error('Unavailable'));
   expect(result.current.terms[0].id).toBe('customer');
 });
 
@@ -82,9 +102,10 @@ it('cancels obsolete metadata requests without replacing the selected concept', 
       });
     })
     .mockResolvedValueOnce([term('current')]);
+  const { wrapper } = withClient();
   const { result, rerender } = renderHook(
     ({ id }) => useKnowledgeGraphConceptDetails([node(id)], true, 0),
-    { initialProps: { id: 'old' } }
+    { initialProps: { id: 'old' }, wrapper }
   );
   rerender({ id: 'current' });
   await waitFor(() => expect(result.current.terms[0]?.id).toBe('current'));

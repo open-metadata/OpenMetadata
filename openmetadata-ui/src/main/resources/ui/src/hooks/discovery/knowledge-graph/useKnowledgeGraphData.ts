@@ -11,13 +11,28 @@
  *  limitations under the License.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { getEntityGraphData } from '../../rest/rdfAPI';
-import { EntityGraphParams, GraphData } from '../../rest/rdfAPI.interface';
+import { useQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
+import { getEntityGraphData } from '../../../rest/rdfAPI';
+import { EntityGraphParams, GraphData } from '../../../rest/rdfAPI.interface';
 
-interface GraphResult {
-  entityKey: string;
-  queryKey: string;
+interface FetchedGraph {
+  params: EntityGraphParams;
+  data: GraphData;
+}
+
+const KNOWLEDGE_GRAPH_ASSETS_KEY = ['knowledge-graph', 'assets'] as const;
+
+const hasFilters = (query: EntityGraphParams): boolean =>
+  Boolean(query.entityTypes?.length || query.relationshipTypes?.length);
+
+const toUnfilteredParams = (query: EntityGraphParams): EntityGraphParams => ({
+  entityId: query.entityId,
+  entityType: query.entityType,
+  depth: query.depth,
+});
+
+export interface KnowledgeGraphDataResult {
   data: GraphData | null;
   unfiltered: GraphData | null;
   appliedQuery?: EntityGraphParams;
@@ -25,104 +40,101 @@ interface GraphResult {
   error: unknown;
 }
 
+/**
+ * Fetches an entity's knowledge graph via React Query. The hook always runs
+ * an unfiltered traversal (used for the export scope and the full node set)
+ * and — when the caller supplied filters — a second filtered traversal.
+ * When no filters are set the "filtered" view is served directly from the
+ * unfiltered result, so a filter-free view fires exactly one request.
+ *
+ * Previous rows stay on screen while a new depth or filter is loading —
+ * including across a rejection — so the panel doesn't blank between
+ * updates; switching to a different entity clears them so stale data is
+ * never attributed to the wrong asset.
+ */
 export const useKnowledgeGraphData = (
   query: EntityGraphParams,
   refresh: number
-) => {
-  const entityKey = JSON.stringify([query.entityType, query.entityId]);
-  const queryKey = JSON.stringify(query);
-  const unfilteredKey = JSON.stringify([entityKey, query.depth, refresh]);
-  const unfilteredRef = useRef<{ key: string; data: GraphData } | null>(null);
-  const [result, setResult] = useState<GraphResult>({
-    entityKey,
-    queryKey,
-    data: null,
-    unfiltered: null,
-    loading: true,
-    error: null,
+): KnowledgeGraphDataResult => {
+  const enabled = Boolean(query.entityId);
+  const unfilteredParams = toUnfilteredParams(query);
+  const filtered = hasFilters(query);
+  const filteredParams = filtered ? query : unfilteredParams;
+  const unfilteredKey = [
+    ...KNOWLEDGE_GRAPH_ASSETS_KEY,
+    query.entityType,
+    query.entityId,
+    query.depth,
+    refresh,
+  ];
+  const filteredKey = filtered
+    ? [
+        ...unfilteredKey,
+        query.entityTypes ?? [],
+        query.relationshipTypes ?? [],
+      ]
+    : unfilteredKey;
+
+  const unfilteredQuery = useQuery({
+    queryKey: unfilteredKey,
+    queryFn: async ({ signal }) => {
+      const data = await getEntityGraphData(unfilteredParams, { signal });
+
+      return { params: unfilteredParams, data };
+    },
+    enabled,
   });
+  const filteredQuery = useQuery({
+    queryKey: filteredKey,
+    queryFn: async ({ signal }) => {
+      const data = await getEntityGraphData(filteredParams, { signal });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params: EntityGraphParams = JSON.parse(queryKey);
-    if (!params.entityId) {
-      setResult({
-        entityKey,
-        queryKey,
-        data: null,
-        unfiltered: null,
-        loading: false,
-        error: null,
-      });
+      return { params: filteredParams, data };
+    },
+    enabled: enabled && filtered,
+  });
+  const dataQuery = filtered ? filteredQuery : unfilteredQuery;
 
-      return () => controller.abort();
-    }
-    setResult((previous) => ({
-      ...(previous.entityKey === entityKey
-        ? previous
-        : { data: null, unfiltered: null }),
-      entityKey,
-      queryKey,
-      loading: true,
-      error: null,
-    }));
-    const cached = unfilteredRef.current;
-    if (cached?.key !== unfilteredKey) {
-      unfilteredRef.current = null;
-    }
-    const allNodes =
-      cached?.key === unfilteredKey
-        ? Promise.resolve(cached.data)
-        : getEntityGraphData(
-            {
-              entityId: params.entityId,
-              entityType: params.entityType,
-              depth: params.depth,
-            },
-            { signal: controller.signal }
-          );
-    const hasFilters = Boolean(
-      params.entityTypes?.length || params.relationshipTypes?.length
-    );
-    const filtered = hasFilters
-      ? getEntityGraphData(params, { signal: controller.signal })
-      : allNodes;
-    void Promise.all([allNodes, filtered])
-      .then(([unfiltered, data]) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        // Only the current traversal is retained; filtering never grows a cache.
-        unfilteredRef.current = { key: unfilteredKey, data: unfiltered };
-        setResult({
-          entityKey,
-          queryKey,
-          data,
-          unfiltered,
-          appliedQuery: params,
-          loading: false,
-          error: null,
-        });
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setResult((previous) => ({ ...previous, loading: false, error }));
-        }
-      });
+  // Retain the last successful fetch per query so the panel doesn't blank
+  // during an in-flight update or after a rejection. Reset when the entity
+  // changes so we never show a different entity's rows as stale placeholder.
+  const previousEntity = useRef(query.entityId);
+  const lastData = useRef<FetchedGraph | null>(null);
+  const lastUnfiltered = useRef<FetchedGraph | null>(null);
+  if (previousEntity.current !== query.entityId) {
+    previousEntity.current = query.entityId;
+    lastData.current = null;
+    lastUnfiltered.current = null;
+  }
+  if (dataQuery.data && lastData.current !== dataQuery.data) {
+    lastData.current = dataQuery.data;
+  }
+  if (unfilteredQuery.data && lastUnfiltered.current !== unfilteredQuery.data) {
+    lastUnfiltered.current = unfilteredQuery.data;
+  }
 
-    return () => controller.abort();
-  }, [entityKey, queryKey, unfilteredKey]);
-
-  if (result.entityKey !== entityKey) {
+  if (!enabled) {
     return {
-      ...result,
       data: null,
       unfiltered: null,
-      appliedQuery: undefined,
-      loading: true,
+      loading: false,
       error: null,
     };
   }
 
-  return { ...result, loading: result.loading || result.queryKey !== queryKey };
+  const effectiveData = dataQuery.data ?? lastData.current;
+  const effectiveUnfiltered =
+    unfilteredQuery.data ?? lastUnfiltered.current;
+  const loading =
+    unfilteredQuery.isFetching || (filtered && filteredQuery.isFetching);
+  const error =
+    dataQuery.error ?? (filtered ? unfilteredQuery.error : null) ?? null;
+
+  return {
+    data: effectiveData?.data ?? null,
+    unfiltered: effectiveUnfiltered?.data ?? null,
+    appliedQuery: effectiveData?.params,
+    loading,
+    error,
+  };
 };

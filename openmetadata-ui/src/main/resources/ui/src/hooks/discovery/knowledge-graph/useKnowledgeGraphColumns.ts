@@ -11,68 +11,84 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
-import { Column } from '../../generated/entity/data/table';
-import { Include } from '../../generated/type/include';
-import { getTableColumnsById } from '../../rest/tableAPI';
+import { InfiniteData, useInfiniteQuery } from '@tanstack/react-query';
+import { useRef } from 'react';
+import { Include } from '../../../generated/type/include';
+import { getTableColumnsById } from '../../../rest/tableAPI';
 
+const COLUMN_PAGE_SIZE = 1000;
+
+type ColumnPage = Awaited<ReturnType<typeof getTableColumnsById>>;
+
+/**
+ * Fetches a table's columns as an infinite React Query — each page is one
+ * REST call capped at {@link COLUMN_PAGE_SIZE}. Consumers get an aggregated
+ * `columns` list and a `loadMore` callback that fetches the next page. The
+ * previous rows and total stay on screen across a refresh — including a
+ * refresh that fails — so the details panel doesn't blink; switching to a
+ * different entity clears them.
+ */
 export const useKnowledgeGraphColumns = (
   entityId: string,
   enabled: boolean,
   refresh: number
 ) => {
-  const [limit, setLimit] = useState(1000);
-  const [state, setState] = useState<{
-    id: string;
-    columns: Column[];
-    total: number;
-    loading: boolean;
-    error: unknown;
-  }>({ id: '', columns: [], total: 0, loading: false, error: null });
-  useEffect(() => setLimit(1000), [entityId]);
-  useEffect(() => {
-    if (!enabled || !entityId) {
-      return;
-    }
-    const controller = new AbortController();
-    setState((previous) => ({
-      id: entityId,
-      columns: previous.id === entityId ? previous.columns : [],
-      total: previous.id === entityId ? previous.total : 0,
-      loading: true,
-      error: null,
-    }));
-    const load = async () => {
-      const columns: Column[] = [];
-      let total = 0;
-      for (let offset = 0; offset < limit; offset += 1000) {
-        const result = await getTableColumnsById(
-          entityId,
-          { limit: 1000, offset, fields: 'tags', include: Include.NonDeleted },
-          controller.signal
-        );
-        if (controller.signal.aborted) {
-          return;
-        }
-        columns.push(...result.data);
-        total = result.paging.total;
-        if (columns.length >= total || !result.data.length) {
-          break;
-        }
+  const queryEnabled = enabled && Boolean(entityId);
+  const query = useInfiniteQuery({
+    queryKey: ['knowledge-graph', 'columns', entityId, refresh],
+    queryFn: async ({ signal, pageParam }) =>
+      getTableColumnsById(
+        entityId,
+        {
+          limit: COLUMN_PAGE_SIZE,
+          offset: pageParam,
+          fields: 'tags',
+          include: Include.NonDeleted,
+        },
+        signal
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: ColumnPage, pages: ColumnPage[]) => {
+      const loaded = pages.reduce(
+        (total, page) => total + (page.data?.length ?? 0),
+        0
+      );
+      const knownTotal = lastPage.paging.total;
+      if (loaded >= knownTotal || (lastPage.data?.length ?? 0) === 0) {
+        return undefined;
       }
-      setState({ id: entityId, columns, total, loading: false, error: null });
-    };
-    void load().catch((error: unknown) => {
-      if (!controller.signal.aborted) {
-        setState((previous) => ({ ...previous, loading: false, error }));
-      }
-    });
 
-    return () => controller.abort();
-  }, [entityId, enabled, refresh, limit]);
+      return loaded;
+    },
+    enabled: queryEnabled,
+  });
+
+  // Retain the last successful pages so the panel doesn't blank while a
+  // refresh is in flight — or after that refresh rejects. Reset when the
+  // entity changes so we never show one table's columns under another.
+  const previousEntity = useRef(entityId);
+  const lastData = useRef<InfiniteData<ColumnPage> | null>(null);
+  if (previousEntity.current !== entityId) {
+    previousEntity.current = entityId;
+    lastData.current = null;
+  }
+  if (query.data && lastData.current !== query.data) {
+    lastData.current = query.data;
+  }
+
+  const effective = query.data ?? lastData.current;
+  const columns =
+    effective?.pages.flatMap((page) => page.data ?? []) ?? [];
+  const total =
+    effective?.pages[effective.pages.length - 1]?.paging.total ?? 0;
 
   return {
-    ...(state.id === entityId ? state : { ...state, columns: [], total: 0 }),
-    loadMore: () => setLimit((value) => value + 1000),
+    columns,
+    total,
+    loading: query.isFetching,
+    error: query.error ?? null,
+    loadMore: () => {
+      void query.fetchNextPage();
+    },
   };
 };

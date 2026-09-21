@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { getGlossaryTermsByIds } from '../../rest/glossaryAPI';
-import { getEntityGraphData } from '../../rest/rdfAPI';
-import { GraphData } from '../../rest/rdfAPI.interface';
-import { getTableColumnsById } from '../../rest/tableAPI';
+import { createElement, PropsWithChildren } from 'react';
+import { getGlossaryTermsByIds } from '../../../rest/glossaryAPI';
+import { getEntityGraphData } from '../../../rest/rdfAPI';
+import { GraphData } from '../../../rest/rdfAPI.interface';
+import { getTableColumnsById } from '../../../rest/tableAPI';
 import { useKnowledgeGraphExplorer } from './useKnowledgeGraphExplorer';
 
-jest.mock('../../rest/rdfAPI', () => ({ getEntityGraphData: jest.fn() }));
-jest.mock('../../rest/tableAPI', () => ({ getTableColumnsById: jest.fn() }));
-jest.mock('../../rest/glossaryAPI', () => ({
+jest.mock('../../../rest/rdfAPI', () => ({ getEntityGraphData: jest.fn() }));
+jest.mock('../../../rest/tableAPI', () => ({ getTableColumnsById: jest.fn() }));
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsByIds: jest.fn(),
 }));
 
@@ -124,21 +126,38 @@ const graph: GraphData = {
   ],
 };
 
-const renderExplorer = () =>
-  renderHook(() =>
-    useKnowledgeGraphExplorer({
-      entityId: ROOT,
-      entityType: 'table',
-      selectedLevel: 2,
-      mode: 'knowledge-graph',
-      filters: { entityTypes: [], relationshipTypes: [] },
-      refresh: 0,
-      excludedFamilies: [],
-      coverageMode: 'all',
-      presentation: 'balanced',
-      expanded: [],
-    })
+const withClient = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+    },
+  });
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children);
+
+  return { client, wrapper };
+};
+
+const renderExplorer = () => {
+  const { wrapper } = withClient();
+
+  return renderHook(
+    () =>
+      useKnowledgeGraphExplorer({
+        entityId: ROOT,
+        entityType: 'table',
+        selectedLevel: 2,
+        mode: 'knowledge-graph',
+        filters: { entityTypes: [], relationshipTypes: [] },
+        refresh: 0,
+        excludedFamilies: [],
+        coverageMode: 'all',
+        presentation: 'balanced',
+        expanded: [],
+      }),
+    { wrapper }
   );
+};
 
 describe('useKnowledgeGraphExplorer', () => {
   beforeEach(() => {

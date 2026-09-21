@@ -11,16 +11,30 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { Column } from '../../generated/entity/data/table';
-import { getTableColumnsById } from '../../rest/tableAPI';
+import { createElement, PropsWithChildren } from 'react';
+import { Column } from '../../../generated/entity/data/table';
+import { getTableColumnsById } from '../../../rest/tableAPI';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 
-jest.mock('../../rest/tableAPI', () => ({ getTableColumnsById: jest.fn() }));
+jest.mock('../../../rest/tableAPI', () => ({ getTableColumnsById: jest.fn() }));
 const fetchColumns = getTableColumnsById as jest.MockedFunction<
   typeof getTableColumnsById
 >;
 const column = (name: string) => ({ name, dataType: 'STRING' } as Column);
+
+const withClient = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+    },
+  });
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children);
+
+  return { client, wrapper };
+};
 
 beforeEach(() => fetchColumns.mockReset());
 
@@ -32,9 +46,10 @@ it('keeps a bounded first page and loads the remaining columns on demand', async
     data: columns.slice(params?.offset ?? 0, (params?.offset ?? 0) + 1000),
     paging: { total: columns.length },
   }));
-  const { result } = renderHook(() =>
-    useKnowledgeGraphColumns('table', true, 0)
-  );
+  const { wrapper } = withClient();
+  const { result } = renderHook(() => useKnowledgeGraphColumns('table', true, 0), {
+    wrapper,
+  });
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   expect(result.current.columns).toHaveLength(1000);
@@ -60,9 +75,10 @@ it('ignores a superseded table response and retains the current columns after a 
       });
     })
     .mockResolvedValueOnce({ data: [column('current')], paging: { total: 1 } });
+  const { wrapper } = withClient();
   const { result, rerender } = renderHook(
     ({ id, refresh }) => useKnowledgeGraphColumns(id, true, refresh),
-    { initialProps: { id: 'old', refresh: 0 } }
+    { initialProps: { id: 'old', refresh: 0 }, wrapper }
   );
   rerender({ id: 'current', refresh: 0 });
   await waitFor(() => expect(result.current.columns[0]?.name).toBe('current'));

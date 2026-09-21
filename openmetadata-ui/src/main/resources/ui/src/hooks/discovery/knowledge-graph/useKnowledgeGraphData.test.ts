@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { getEntityGraphData } from '../../rest/rdfAPI';
-import { GraphData } from '../../rest/rdfAPI.interface';
+import { createElement, PropsWithChildren } from 'react';
+import { getEntityGraphData } from '../../../rest/rdfAPI';
+import { GraphData } from '../../../rest/rdfAPI.interface';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
 
-jest.mock('../../rest/rdfAPI', () => ({ getEntityGraphData: jest.fn() }));
+jest.mock('../../../rest/rdfAPI', () => ({ getEntityGraphData: jest.fn() }));
 const fetchGraph = getEntityGraphData as jest.MockedFunction<
   typeof getEntityGraphData
 >;
@@ -28,6 +30,7 @@ const graph: GraphData = {
   ],
   edges: [{ from: 'root', to: 'owner', label: 'Has Owner' }],
 };
+
 const deferred = () => {
   let resolve!: (data: GraphData) => void;
   let reject!: (error: Error) => void;
@@ -39,6 +42,18 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
+const withClient = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false, gcTime: 0 },
+    },
+  });
+  const wrapper = ({ children }: PropsWithChildren) =>
+    createElement(QueryClientProvider, { client }, children);
+
+  return { client, wrapper };
+};
+
 describe('useKnowledgeGraphData', () => {
   beforeEach(() => fetchGraph.mockReset());
 
@@ -47,8 +62,10 @@ describe('useKnowledgeGraphData', () => {
     fetchGraph.mockImplementation(async (params) =>
       params.entityTypes?.length ? filtered : graph
     );
-    const { result } = renderHook(() =>
-      useKnowledgeGraphData({ ...query, entityTypes: ['table'] }, 0)
+    const { wrapper } = withClient();
+    const { result } = renderHook(
+      () => useKnowledgeGraphData({ ...query, entityTypes: ['table'] }, 0),
+      { wrapper }
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -62,16 +79,17 @@ describe('useKnowledgeGraphData', () => {
     fetchGraph
       .mockReturnValueOnce(old.promise)
       .mockReturnValueOnce(latest.promise);
+    const { wrapper } = withClient();
     const { result, rerender } = renderHook(
       ({ depth }) => useKnowledgeGraphData({ ...query, depth }, 0),
-      { initialProps: { depth: 1 } }
+      { initialProps: { depth: 1 }, wrapper }
     );
     rerender({ depth: 2 });
     const extended = { ...graph, truncated: true };
     await act(async () => latest.resolve(extended));
     await act(async () => old.resolve(graph));
+    await waitFor(() => expect(result.current.data).toEqual(extended));
 
-    expect(result.current.data).toEqual(extended);
     expect(result.current.appliedQuery?.depth).toBe(2);
     expect(result.current.loading).toBe(false);
   });
@@ -79,9 +97,10 @@ describe('useKnowledgeGraphData', () => {
   it('retains previous results and export scope after a failed update', async () => {
     const update = deferred();
     fetchGraph.mockResolvedValueOnce(graph).mockReturnValueOnce(update.promise);
+    const { wrapper } = withClient();
     const { result, rerender } = renderHook(
       ({ depth }) => useKnowledgeGraphData({ ...query, depth }, 0),
-      { initialProps: { depth: 1 } }
+      { initialProps: { depth: 1 }, wrapper }
     );
     await waitFor(() => expect(result.current.data).toEqual(graph));
     rerender({ depth: 2 });
@@ -90,8 +109,10 @@ describe('useKnowledgeGraphData', () => {
     expect(result.current.data).toEqual(graph);
 
     await act(async () => update.reject(new Error('Unavailable')));
+    await waitFor(() =>
+      expect(result.current.error).toEqual(new Error('Unavailable'))
+    );
 
-    expect(result.current.error).toEqual(new Error('Unavailable'));
     expect(result.current.data).toEqual(graph);
     expect(result.current.appliedQuery?.depth).toBe(1);
   });
@@ -100,9 +121,10 @@ describe('useKnowledgeGraphData', () => {
     fetchGraph
       .mockResolvedValueOnce(graph)
       .mockReturnValueOnce(deferred().promise);
+    const { wrapper } = withClient();
     const { result, rerender } = renderHook(
       ({ entityId }) => useKnowledgeGraphData({ ...query, entityId }, 0),
-      { initialProps: { entityId: 'root' } }
+      { initialProps: { entityId: 'root' }, wrapper }
     );
     await waitFor(() => expect(result.current.data).toEqual(graph));
     rerender({ entityId: 'different' });
@@ -114,9 +136,10 @@ describe('useKnowledgeGraphData', () => {
 
   it('reuses only the current unfiltered snapshot when filters change', async () => {
     fetchGraph.mockResolvedValue(graph);
+    const { wrapper } = withClient();
     const { result, rerender } = renderHook(
       ({ entityTypes }) => useKnowledgeGraphData({ ...query, entityTypes }, 0),
-      { initialProps: { entityTypes: [] as string[] } }
+      { initialProps: { entityTypes: [] as string[] }, wrapper }
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     rerender({ entityTypes: ['table'] });
@@ -132,9 +155,10 @@ describe('useKnowledgeGraphData', () => {
     fetchGraph
       .mockResolvedValueOnce(graph)
       .mockResolvedValueOnce({ ...graph, truncated: true });
+    const { wrapper } = withClient();
     const { result, rerender } = renderHook(
       ({ refresh }) => useKnowledgeGraphData(query, refresh),
-      { initialProps: { refresh: 0 } }
+      { initialProps: { refresh: 0 }, wrapper }
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     rerender({ refresh: 1 });
@@ -143,9 +167,13 @@ describe('useKnowledgeGraphData', () => {
     expect(result.current.unfiltered?.truncated).toBe(true);
   });
 
-  it('aborts an in-flight transport on unmount', () => {
+  it('aborts an in-flight transport on unmount', async () => {
     fetchGraph.mockReturnValue(deferred().promise);
-    const { unmount } = renderHook(() => useKnowledgeGraphData(query, 0));
+    const { wrapper } = withClient();
+    const { unmount } = renderHook(() => useKnowledgeGraphData(query, 0), {
+      wrapper,
+    });
+    await waitFor(() => expect(fetchGraph).toHaveBeenCalled());
     const signal = fetchGraph.mock.calls[0][1]?.signal;
     unmount();
 
