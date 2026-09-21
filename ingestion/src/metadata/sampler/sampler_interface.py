@@ -81,6 +81,11 @@ class SamplerInterface(ABC):
             **kwargs,
         )
 
+    @classmethod
+    def is_skippable_sampling_error(cls, exc: Exception) -> bool:
+        """Whether sampling can skip this error and continue with the next entity."""
+        return False
+
     @cached_property
     def _resolve_sample_config(self) -> StaticSamplingConfig | None:
         """Get the static sampling config. Use cached_property to cache the

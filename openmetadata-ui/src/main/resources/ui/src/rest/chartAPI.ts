@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { ListParams } from '../interface/API.interface';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 export const getChartById = async (id: string, params?: ListParams) => {
   const url = `/charts/${id}`;

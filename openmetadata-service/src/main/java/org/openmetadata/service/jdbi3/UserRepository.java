@@ -102,6 +102,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.session.SessionService;
@@ -112,6 +113,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -1533,12 +1535,31 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
+    try {
+      Runnable finishCredentialDelete =
+          Boolean.TRUE.equals(entity.getIsBot())
+              ? BotTokenCache.denyToken(entity.getName())
+              : UserTokenCache.denyToken(entity.getName());
+      return () -> {
+        try (parentLifecycle) {
+          finishCredentialDelete.run();
+        }
+      };
+    } catch (RuntimeException | Error failure) {
+      try {
+        parentLifecycle.close();
+      } catch (RuntimeException | Error closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+      throw failure;
+    }
+  }
+
+  @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    // If the User is bot it's token needs to be invalidated
-    if (Boolean.TRUE.equals(entity.getIsBot())) {
-      BotTokenCache.invalidateToken(entity.getName());
-    }
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
     revokeLiveSessions(entity);
     if (hardDelete) {
@@ -1558,6 +1579,21 @@ public class UserRepository extends EntityRepository<User> {
                 LOG.error("Error updating test case incident assignee: ", ex);
               }
             });
+  }
+
+  @Override
+  protected void postRestore(User entity) {
+    super.postRestore(entity);
+    String userName = entity.getName();
+    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
+    PostCommitActionQueue.runOrDefer(
+        () -> {
+          if (isBot) {
+            BotTokenCache.reloadToken(userName);
+          } else {
+            UserTokenCache.reloadToken(userName);
+          }
+        });
   }
 
   /**
@@ -1841,7 +1877,7 @@ public class UserRepository extends EntityRepository<User> {
     private void updateTeams(User original, User updated) {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
       List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-      validateGroupTeams(requestedTeams);
+      validateGroupTeams(findAddedTeams(origTeams, requestedTeams));
 
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
@@ -1863,6 +1899,15 @@ public class UserRepository extends EntityRepository<User> {
                 EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
+    }
+
+    private List<EntityReference> findAddedTeams(
+        List<EntityReference> originalTeams, List<EntityReference> requestedTeams) {
+      final Set<UUID> originalTeamIds =
+          originalTeams.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      return requestedTeams.stream()
+          .filter(team -> !originalTeamIds.contains(team.getId()))
+          .toList();
     }
 
     private void updatePersonas(User original, User updated) {

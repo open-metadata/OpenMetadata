@@ -57,7 +57,7 @@ export async function addTestCaseListFilterByTestType(
   await page.getByTestId('search-dropdown-Test Type').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: label })
+    .getByRole('menuitemradio', { name: label })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await listResponse;
@@ -73,7 +73,7 @@ export async function addTestCaseListFilterByStatus(
   await page.getByTestId('search-dropdown-Status').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: label })
+    .getByRole('menuitemradio', { name: label })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await listResponse;
@@ -170,7 +170,7 @@ export async function addTestCaseListResetFilters(
   await page.getByTestId('search-dropdown-Status').click();
   await page
     .getByTestId('drop-down-menu')
-    .getByRole('menuitem', { name: 'Success' })
+    .getByRole('menuitemradio', { name: 'Success' })
     .click();
   await page.getByTestId('drop-down-menu').getByTestId('update-btn').click();
   await clearStatusResponse;

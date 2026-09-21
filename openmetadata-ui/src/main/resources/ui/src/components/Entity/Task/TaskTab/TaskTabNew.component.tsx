@@ -96,6 +96,8 @@ import {
 } from '../../../../rest/taskFormSchemasAPI';
 import {
   closeTask as closeTaskAPI,
+  deleteTaskComment,
+  editTaskComment,
   patchTask,
   resolveTask as resolveTaskAPI,
   Task,
@@ -129,6 +131,7 @@ import {
   fetchOptions,
   generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
+import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
@@ -149,7 +152,7 @@ import {
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
+import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -1834,18 +1837,50 @@ export const TaskTabNew = ({
 
     return (
       <Col className="p-l-0 p-r-0" data-testid="feed-replies">
-        {sortedComments.map((comment, index, arr) => (
-          <TaskCommentCard
-            closeFeedEditor={closeFeedEditor}
-            comment={comment}
-            isLastReply={index === arr.length - 1}
-            key={comment.id}
-            task={task}
-          />
-        ))}
+        {sortedComments.map((comment, index, arr) => {
+          const { canEdit, canDelete } = resolveCommentPermissions(
+            currentUser,
+            comment
+          );
+
+          return (
+            <CommentCard
+              canDelete={canDelete}
+              canEdit={canEdit}
+              closeFeedEditor={closeFeedEditor}
+              isLastReply={index === arr.length - 1}
+              key={comment.id}
+              reply={comment}
+              onDelete={async () => {
+                try {
+                  await deleteTaskComment(task.id, comment.id);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  // The REST helpers throw without surfacing anything of their
+                  // own. Rethrow after toasting so the card leaves the
+                  // confirmation open for a retry instead of dismissing it as
+                  // though the delete had succeeded.
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+              onEdit={async (message) => {
+                try {
+                  await editTaskComment(task.id, comment.id, message);
+                  await fetchUpdatedThread(task.id, true);
+                } catch (error) {
+                  showErrorToast(error as AxiosError);
+
+                  throw error;
+                }
+              }}
+            />
+          );
+        })}
       </Col>
     );
-  }, [task, closeFeedEditor, isPostsLoading]);
+  }, [task, closeFeedEditor, isPostsLoading, currentUser, fetchUpdatedThread]);
 
   useEffect(() => {
     closeFeedEditor();

@@ -41,6 +41,7 @@ import {
   shouldShowAILearningBanner,
   shouldShowEditParameterButton,
 } from './TestCaseResultTab.utils';
+import TestCaseTestSuitesCard from './TestCaseTestSuitesCard/TestCaseTestSuitesCard';
 import { useTestCaseResultTab } from './useTestCaseResultTab';
 
 function TestCaseSidePanel({
@@ -92,6 +93,9 @@ function TestCaseSidePanel({
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionChange}
           />
+        </div>
+        <div className="tw:w-full">
+          <TestCaseTestSuitesCard testSuites={testCaseData?.testSuites} />
         </div>
         <div className="tw:w-full">
           <TagsContainerV2

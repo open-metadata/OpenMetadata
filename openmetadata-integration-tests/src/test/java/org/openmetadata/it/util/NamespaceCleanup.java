@@ -36,8 +36,13 @@ public final class NamespaceCleanup {
   // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster; small tests fall
   // through on the first poll, so a generous cap costs them nothing. Override with
   // -Djpw.cleanup.cascadeTimeoutMin.
+  //
+  // Default is 2 minutes, not 15: a cascade that fails (rather than runs long) never reaches 404,
+  // so the cap is billed in full to a test that is already doomed to leak. Two runs measured
+  // 2 x 15 idle minutes on one UIIT lane from a single unreachable-Airflow abort. Suites that
+  // really do delete a 100k-table service raise it explicitly.
   private static final Duration CASCADE_TIMEOUT =
-      Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 15));
+      Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 2));
 
   // A normal test's cascade completes in tens of milliseconds, so poll fast at first and back off.
   // The interval must not be fixed: Awaitility derives the poll *delay* — the wait before the very
