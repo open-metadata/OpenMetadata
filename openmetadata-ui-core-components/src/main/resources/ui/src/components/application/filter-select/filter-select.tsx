@@ -209,7 +209,7 @@ const ChipsField = ({
         data-testid={testId}>
         {chips.length === 0 ? (
           <Typography
-            className="not-prose tw:truncate tw:text-placeholder"
+            className="tw:truncate tw:text-placeholder"
             size="text-sm"
             weight="regular">
             {placeholder}
@@ -289,7 +289,7 @@ const OptionRow = ({
           {!hideCounts && option.count !== undefined && (
             <Typography
               className={cx(
-                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
+                'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
                 !showCheckbox && state.isSelected
                   ? 'tw:border-utility-brand-200 tw:text-fg-brand-primary'
                   : 'tw:border-secondary',
@@ -788,7 +788,7 @@ const FilterSelect = ({
 
           {isEmpty && (
             <div className="tw:px-4 tw:py-2 tw:text-center">
-              <Typography className="not-prose tw:text-tertiary" size="text-xs">
+              <Typography className="tw:text-tertiary" size="text-xs">
                 {emptyState ?? t('label.no-data-found')}
               </Typography>
             </div>
@@ -796,7 +796,7 @@ const FilterSelect = ({
 
           {helperText !== undefined && (
             <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
-              <Typography className="not-prose tw:text-tertiary" size="text-xs">
+              <Typography className="tw:text-tertiary" size="text-xs">
                 {helperText}
               </Typography>
             </div>
@@ -839,7 +839,7 @@ const FilterSelect = ({
           {showStatusFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-2 tw:pr-2 tw:pl-5">
               <Typography
-                className="not-prose tw:text-tertiary"
+                className="tw:text-tertiary"
                 data-testid="selected-count"
                 size="text-xs"
                 weight="regular">
