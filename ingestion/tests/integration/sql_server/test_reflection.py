@@ -20,7 +20,11 @@ from unittest.mock import patch
 
 import pytest
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    Constraint,
+    ConstraintType,
+    TableType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -140,6 +144,25 @@ def test_unique_constraints_are_reflected(source):
         "uq_orders_code": ["code"],
         "uq_orders_region_ref": ["region", "ref"],
     }
+
+
+def test_a_composite_unique_constraint_becomes_a_table_constraint(source):
+    """Reflecting the constraint is only half of it: a single-column UNIQUE has to
+    land on the column and a composite one on the table, which is the shape the
+    catalogue stores."""
+    _ingest_database(source, SECOND_DATABASE, SECOND_SCHEMA)
+
+    columns, table_constraints, _ = source.get_columns_and_constraints(
+        schema_name=SECOND_SCHEMA,
+        table_name="orders",
+        db_name=SECOND_DATABASE,
+        inspector=source.inspector,
+    )
+
+    assert {column.name.root: column.constraint for column in columns}["code"] == Constraint.UNIQUE
+    assert [
+        constraint.columns for constraint in table_constraints if constraint.constraintType == ConstraintType.UNIQUE
+    ] == [["region", "ref"]]
 
 
 def test_an_indexed_view_is_typed_as_a_materialized_view(source):

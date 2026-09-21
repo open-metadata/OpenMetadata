@@ -94,9 +94,12 @@ def test_table_and_stored_procedure_descriptions_are_ingested(ingested, metadata
 
 def test_unique_constraints_reach_the_catalogue(ingested, metadata):
     """A single-column UNIQUE lands on the column, a composite one on the table."""
+    # tableConstraints is not a default field: the API returns null for it unless
+    # it is asked for by name (TableRepository.setFields).
     table: Table = metadata.get_by_name(
         Table,
         f"{ingested.fullyQualifiedName.root}.{SECOND_DATABASE}.{SECOND_SCHEMA}.orders",
+        fields=["tableConstraints"],
     )
 
     constraints = {column.name.root: column.constraint for column in table.columns}
