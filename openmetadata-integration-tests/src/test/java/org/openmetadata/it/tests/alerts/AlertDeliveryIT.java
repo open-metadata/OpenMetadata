@@ -33,7 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
 import org.openmetadata.service.events.subscription.matching.ShadowReports;
 
-/** Isolated for the same reason as the golden corpus: it drives a tick over inserted events. */
+/** Isolated for the same reason as the dispatch scenarios: it drives a tick over inserted events. */
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 class AlertDeliveryIT {

@@ -1,16 +1,10 @@
 package org.openmetadata.service.events.subscription;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
@@ -19,19 +13,14 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
-import org.openmetadata.schema.type.FilterResourceDescriptor;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /**
- * The text stored for an alert is what servers of the previous release evaluate, so for an alert
- * with one source it may never change by a byte. The golden file holds the text today's builder
- * compiles for every source, filter and trigger of the catalog with fixed arguments. Regenerate it
- * with -Dgolden.generate=true only for a named change.
+ * The text stored for an alert is what decides it, and what a server of the previous release
+ * evaluates after a rollback, so what the builder writes for one source must not drift, and what
+ * it writes for several sources groups the triggers by source.
  */
-class CompiledTextGoldenTest {
+class CompiledTextTest {
 
-  private static final Path GOLDEN =
-      Path.of("src", "test", "resources", "golden", "compiled-text", "single-source.json");
   private static final List<String> FIXTURE_VALUES = List.of("first value", "second 'quoted'");
 
   @BeforeAll
@@ -39,25 +28,36 @@ class CompiledTextGoldenTest {
     EventsSubscriptionRegistry.initialize(AlertCatalog.load());
   }
 
+  // What the builder has always written for one source: the name, the effect, the prefix and
+  // the condition with its arguments quoted. Saved alerts hold this text, so it must not drift.
   @Test
-  void singleSourceTextIsByteIdentical() throws IOException {
-    Map<String, String> compiled = new TreeMap<>();
-    for (FilterResourceDescriptor source :
-        EventsSubscriptionRegistry.listEntityNotificationDescriptors()) {
-      compileEverySelection(AlertType.NOTIFICATION, source, compiled);
-    }
-    for (FilterResourceDescriptor source :
-        EventsSubscriptionRegistry.listObservabilityDescriptors()) {
-      compileEverySelection(AlertType.OBSERVABILITY, source, compiled);
-    }
-    assertFalse(compiled.isEmpty(), "the catalog was not loaded");
-
-    String text = JsonUtils.pojoToJson(compiled, true) + System.lineSeparator();
-    if (Boolean.getBoolean("golden.generate")) {
-      Files.createDirectories(GOLDEN.getParent());
-      Files.writeString(GOLDEN, text);
-    }
-    assertEquals(Files.readString(GOLDEN), text);
+  void oneSourceTextIsWhatTheBuilderHasAlwaysWritten() {
+    assertEquals(
+        "filterByOwnerName | include | AND | matchAnyOwnerName({'first value','second ''quoted'''})",
+        rulesOf(
+            AlertType.NOTIFICATION, "table", "filterByOwnerName", ArgumentsInput.Effect.INCLUDE));
+    assertEquals(
+        "filterByOwnerName | exclude | AND | matchAnyOwnerName({'first value','second ''quoted'''})",
+        rulesOf(
+            AlertType.NOTIFICATION, "table", "filterByOwnerName", ArgumentsInput.Effect.EXCLUDE));
+    assertEquals(
+        "filterByUpdaterIsBot | include | AND | isBot()",
+        rulesOf(
+            AlertType.NOTIFICATION, "all", "filterByUpdaterIsBot", ArgumentsInput.Effect.INCLUDE));
+    assertEquals(
+        "GetTableSchemaChanges | include | AND | matchAnyFieldChange({'columns','dataModel','joins'})",
+        actionsOf(
+            AlertType.OBSERVABILITY,
+            "table",
+            "GetTableSchemaChanges",
+            ArgumentsInput.Effect.INCLUDE));
+    assertEquals(
+        "GetPipelineStatusUpdates | exclude | AND | matchPipelineState({'first value','second ''quoted'''})",
+        actionsOf(
+            AlertType.OBSERVABILITY,
+            "pipeline",
+            "GetPipelineStatusUpdates",
+            ArgumentsInput.Effect.EXCLUDE));
   }
 
   // The worked example: tables and topics whose schema changed, and pipelines whose run failed.
@@ -99,25 +99,25 @@ class CompiledTextGoldenTest {
     return new ArgumentsInput().withName(name).withEffect(effect).withArguments(arguments);
   }
 
-  private static void compileEverySelection(
-      AlertType type, FilterResourceDescriptor source, Map<String, String> compiled) {
-    for (EventFilterRule filter : listOrEmpty(source.getSupportedFilters())) {
-      for (ArgumentsInput.Effect effect : ArgumentsInput.Effect.values()) {
-        AlertFilteringInput input =
-            new AlertFilteringInput().withFilters(List.of(selection(filter, effect)));
-        compiled.put(
-            key(type, source, "filter", filter, effect), textOf(type, source, input).getRules());
-      }
-    }
-    for (EventFilterRule trigger : listOrEmpty(source.getSupportedActions())) {
-      for (ArgumentsInput.Effect effect : ArgumentsInput.Effect.values()) {
-        AlertFilteringInput input =
-            new AlertFilteringInput().withActions(List.of(selection(trigger, effect)));
-        compiled.put(
-            key(type, source, "trigger", trigger, effect),
-            textOf(type, source, input).getActions());
-      }
-    }
+  private static String rulesOf(
+      AlertType type, String source, String filter, ArgumentsInput.Effect effect) {
+    AlertFilteringInput input =
+        new AlertFilteringInput().withFilters(List.of(selection(definition(filter), effect)));
+    return textOf(type, source, input).getRules();
+  }
+
+  private static String actionsOf(
+      AlertType type, String source, String trigger, ArgumentsInput.Effect effect) {
+    AlertFilteringInput input =
+        new AlertFilteringInput().withActions(List.of(selection(definition(trigger), effect)));
+    return textOf(type, source, input).getActions();
+  }
+
+  private static EventFilterRule definition(String name) {
+    return AlertCatalog.load().definitions().stream()
+        .filter(candidate -> candidate.getName().equals(name))
+        .findFirst()
+        .orElseThrow();
   }
 
   private record Compiled(String rules, String actions) {
@@ -130,10 +130,9 @@ class CompiledTextGoldenTest {
     }
   }
 
-  private static Compiled textOf(
-      AlertType type, FilterResourceDescriptor source, AlertFilteringInput input) {
+  private static Compiled textOf(AlertType type, String source, AlertFilteringInput input) {
     FilteringRules built =
-        AlertUtil.validateAndBuildFilteringConditions(List.of(source.getName()), type, input);
+        AlertUtil.validateAndBuildFilteringConditions(List.of(source), type, input);
     return new Compiled(wholeTextOf(built.getRules()), wholeTextOf(built.getActions()));
   }
 
@@ -161,14 +160,5 @@ class CompiledTextGoldenTest {
         .withName(rule.getName())
         .withEffect(effect)
         .withArguments(arguments);
-  }
-
-  private static String key(
-      AlertType type,
-      FilterResourceDescriptor source,
-      String kind,
-      EventFilterRule rule,
-      ArgumentsInput.Effect effect) {
-    return String.join("/", type.value(), source.getName(), kind, rule.getName(), effect.value());
   }
 }

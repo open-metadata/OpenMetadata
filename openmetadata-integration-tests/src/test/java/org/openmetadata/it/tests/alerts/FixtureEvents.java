@@ -10,11 +10,11 @@ import java.util.List;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
-/** The literal change events of the golden corpus, for any test that needs events to read. */
+/** Literal change events, so a fixture never changes because a generated class gained a default. */
 final class FixtureEvents {
 
   private static final Path TABLE_EVENTS =
-      Path.of("src", "test", "resources", "golden", "dispatch", "fixtures", "table-events.json");
+      Path.of("src", "test", "resources", "alerts", "table-events.json");
 
   private FixtureEvents() {}
 

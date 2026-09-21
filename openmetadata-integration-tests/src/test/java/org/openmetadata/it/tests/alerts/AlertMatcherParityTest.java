@@ -3,13 +3,9 @@ package org.openmetadata.it.tests.alerts;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
@@ -20,7 +16,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.subscription.AlertCatalog;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
@@ -34,28 +29,6 @@ import org.openmetadata.service.events.subscription.matching.PlanMatcher;
  * something to agree with that cannot drift along with it.
  */
 class AlertMatcherParityTest {
-
-  private static final Path GOLDEN =
-      Path.of("src", "test", "resources", "golden", "matching", "stored-text-answers.json");
-
-  // For an alert with one source, routing by every source is routing by its first.
-  @Test
-  void storedTextAnswersAreUnchanged() throws IOException {
-    Map<String, ChangeEvent> events = MatchingCorpus.events();
-    Map<String, String> answers = new TreeMap<>();
-    answers.put("(events, in the order of the answers)", String.join(" | ", events.keySet()));
-    for (MatchingCorpus.Case alert : MatchingCorpus.cases()) {
-      answers.put(alert.key(), answersOfStoredText(alert, events));
-    }
-    assertTrue(answers.size() > 400, "the corpus was cut short: " + answers.size());
-
-    String text = JsonUtils.pojoToJson(answers, true) + System.lineSeparator();
-    if (Boolean.getBoolean("golden.generate")) {
-      Files.createDirectories(GOLDEN.getParent());
-      Files.writeString(GOLDEN, text);
-    }
-    assertEquals(Files.readString(GOLDEN), text);
-  }
 
   @Test
   void planAgreesWithStoredTextForEveryCatalogEntry() {

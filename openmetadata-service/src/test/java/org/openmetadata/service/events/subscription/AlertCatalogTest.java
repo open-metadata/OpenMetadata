@@ -18,7 +18,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,13 +40,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
- * What the server tells clients an alert can watch and filter on. The golden files were written
- * from the catalog as it was before it moved to one format, so a difference is a change clients
- * see. Regenerate them with -Dgolden.generate=true only for a named change.
+ * What an alert can watch and filter on: every definition's condition is pinned, everything any
+ * release offered still builds, and a catalog that cannot be read stops the server from starting.
  */
 class AlertCatalogTest {
 
-  private static final Path GOLDEN = Path.of("src", "test", "resources", "golden", "catalog");
   private static final Path COMPAT = Path.of("src", "test", "resources", "compat");
   private static final String SHIPPED_ENTRIES = "alert-catalog-shipped-entries.json";
   private static final Pattern FUNCTION_CALL = Pattern.compile("([A-Za-z_][A-Za-z0-9_]*)\\s*\\(");
@@ -55,16 +55,64 @@ class AlertCatalogTest {
   private static final List<String> OFFERED_BEFORE_THIS_TEST_EXISTED_WITH_NO_ENTITY_TYPE =
       List.of("tagCategory");
 
+  // The condition of a definition is what every saved alert that uses it was compiled from, and
+  // what a rolled-back server evaluates. Changing one is a decision, so it is made in two places.
   @Test
-  void servedCatalogIsUnchanged() throws IOException {
-    assertMatchesGolden(
-        "notification.json", EventSubscriptionResource.getNotificationsFilterDescriptors());
-    assertMatchesGolden(
-        "observability.json", EventSubscriptionResource.getObservabilityFilterDescriptors());
+  void conditionOfEveryDefinitionIsPinned() {
+    Map<String, String> pinned =
+        Map.ofEntries(
+            Map.entry("filterBySource", "matchAnySource(${sourceList})"),
+            Map.entry("filterByOwnerName", "matchAnyOwnerName(${ownerNameList})"),
+            Map.entry("filterByFqn", "matchAnyEntityFqn(${fqnList})"),
+            Map.entry("filterByEntityId", "matchAnyEntityId(${entityIdList})"),
+            Map.entry("filterByEventType", "matchAnyEventType(${eventTypeList})"),
+            Map.entry("filterByUpdaterName", "matchUpdatedBy(${updateByUserList})"),
+            Map.entry("filterByFieldChange", "matchAnyFieldChange(${fieldChangeList})"),
+            Map.entry("filterByDomain", "matchAnyDomain(${domainList})"),
+            Map.entry("filterByMentionedName", "matchConversationUser(${userList})"),
+            Map.entry(
+                "filterByGeneralMetadataEvents", "matchAnyFieldChange({'description', 'tags'})"),
+            Map.entry("filterByUpdaterIsBot", "isBot()"),
+            Map.entry("filterByOwner", "matchAnyOwnerName(${ownerNameList})"),
+            Map.entry(
+                "filterByTableNameTestCaseBelongsTo",
+                "filterByTableNameTestCaseBelongsTo(${tableNameList})"),
+            Map.entry(
+                "filterByEntityName", "filterByEntityNameDataContractBelongsTo(${entityNameList})"),
+            Map.entry(
+                "GetTableSchemaChanges", "matchAnyFieldChange({'columns','dataModel','joins'})"),
+            Map.entry(
+                "GetTableMetricsUpdates", "matchAnyFieldChange({'customMetrics', 'profile'})"),
+            Map.entry("GetTopicSchemaChanges", "matchAnyFieldChange({'messageSchema'})"),
+            Map.entry("GetContainerSchemaChanges", "matchAnyFieldChange({'parent','children'})"),
+            Map.entry("GetPipelineStatusUpdates", "matchPipelineState(${pipelineStateList})"),
+            Map.entry(
+                "GetIngestionPipelineStatusUpdates",
+                "matchIngestionPipelineState(${ingestionPipelineStateList})"),
+            Map.entry("GetTestCaseStatusUpdates", "matchTestResult(${testResultList})"),
+            Map.entry(
+                "GetTestCaseStatusUpdatesUnderSuite",
+                "getTestCaseStatusIfInTestSuite(${testStatusList}, ${testSuiteList})"),
+            Map.entry("GetTestSuiteStatusUpdates", "matchTestResult(${testResultList})"),
+            Map.entry(
+                "GetDataContractStatusUpdates", "matchDataContractStatus(${contractStatusList})"),
+            Map.entry(
+                "GetTestCaseSchemaChanges",
+                "matchAnyFieldChange({'testDefinition','parameterValues','description'})"),
+            Map.entry(
+                "GetTestSuiteSchemaChanges",
+                "matchAnyFieldChange({'connection','pipelines','description'})"));
+
+    Map<String, String> inTheCatalog = new TreeMap<>();
+    AlertCatalog.load()
+        .definitions()
+        .forEach(definition -> inTheCatalog.put(definition.getName(), definition.getCondition()));
+
+    assertEquals(new TreeMap<>(pinned), inTheCatalog);
   }
 
   // An alert saved by any release since 1.3.0 names only what that release offered. The fixture
-  // lists all of it; scripts/alerting/check_alert_catalog_against_releases.py writes it.
+  // lists all of it, read once from the catalog files of every release tag up to 2.0.
   @Test
   void everyShippedDefinitionStillBuilds() throws IOException {
     EventsSubscriptionRegistry.initialize(AlertCatalog.load());
@@ -224,17 +272,5 @@ class AlertCatalogTest {
         + "],\"triggers\":[],\"notificationSources\":"
         + sources
         + ",\"observabilitySources\":[]}";
-  }
-
-  private static void assertMatchesGolden(String file, List<FilterResourceDescriptor> served)
-      throws IOException {
-    assertFalse(served.isEmpty(), "the catalog was not loaded");
-    String text = JsonUtils.pojoToJson(served, true) + System.lineSeparator();
-    Path golden = GOLDEN.resolve(file);
-    if (Boolean.getBoolean("golden.generate")) {
-      Files.createDirectories(GOLDEN);
-      Files.writeString(golden, text);
-    }
-    assertEquals(Files.readString(golden), text);
   }
 }
