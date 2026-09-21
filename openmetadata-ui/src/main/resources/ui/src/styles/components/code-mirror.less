@@ -133,43 +133,51 @@
 // surface, gutter, line numbers, cursor, selection and active line stay tuned
 // for a light background. Appended last so it wins over the light
 // `.custom-code-mirror-theme`.
+//
+// The hues are literals rather than `--color-*` tokens: those are not defined
+// on the document in every app that mounts these editors, and an undefined
+// var makes the whole custom property invalid, which drops syntax colouring
+// altogether instead of falling back.
 .dark-mode {
   .cm-editor {
-    background: var(--color-bg-surface);
-    color: var(--color-text-primary);
+    background: var(--color-bg-surface, #22262f);
+    color: var(--color-text-primary, #f7f7f7);
 
-    --cm-token-keyword: var(--color-purple-300);
-    --cm-token-def: var(--color-blue-400);
-    --cm-token-property: var(--color-blue-300);
-    --cm-token-number: var(--color-orange-300);
-    --cm-token-string: var(--color-green-300);
-    --cm-token-type: var(--color-success-400);
-    --cm-token-operator: var(--color-text-secondary);
-    --cm-token-comment: var(--color-text-tertiary);
-    --cm-token-error: var(--color-error-400);
+    --cm-token-keyword: #bdb4fe;
+    --cm-token-def: #53b1fd;
+    --cm-token-property: #84caff;
+    --cm-token-number: #feb273;
+    --cm-token-string: #73e2a3;
+    --cm-token-type: #47cd89;
+    --cm-token-operator: var(--color-text-secondary, #cecfd2);
+    --cm-token-comment: var(--color-text-tertiary, #94979c);
+    --cm-token-error: #f97066;
   }
   .custom-code-mirror-theme .cm-editor {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface, #22262f);
   }
   .cm-gutters {
-    background-color: var(--color-bg-canvas);
-    border-right-color: var(--color-border-subtle);
-    color: var(--color-text-tertiary);
+    background-color: var(--color-bg-canvas, #16181d);
+    border-right-color: var(--color-border-subtle, #333741);
+    color: var(--color-text-tertiary, #94979c);
   }
   .cm-cursor,
   .cm-dropCursor {
-    border-left-color: var(--color-text-primary);
+    border-left-color: var(--color-text-primary, #f7f7f7);
   }
-  // Both states: the focused selection is a separate rule in CodeMirror's own
-  // base theme and would otherwise win during active editing.
-  .cm-selectionBackground,
-  .cm-editor.cm-focused .cm-selectionBackground {
-    background: var(--color-bg-secondary_hover);
+  // CodeMirror's focused-selection rule is
+  // `.<generated>.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground`,
+  // which ties on specificity with a shorter selector and wins on order because
+  // its stylesheet is injected at runtime. Match that depth to take the tie.
+  .cm-editor .cm-selectionLayer .cm-selectionBackground,
+  .cm-editor.cm-focused
+    > .cm-scroller
+    > .cm-selectionLayer
+    .cm-selectionBackground {
+    background: #3e4456;
   }
-  .cm-activeLine {
-    background: var(--color-bg-secondary);
-  }
+  .cm-activeLine,
   .cm-activeLineGutter {
-    background: var(--color-bg-secondary);
+    background: var(--color-bg-secondary, #1f242f);
   }
 }
