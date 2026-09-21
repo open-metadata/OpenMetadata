@@ -1244,8 +1244,8 @@
     /* Translucent feedback roles preserve the owning page, canvas, or surface elevation. */
     --color-bg-error-primary: --alpha(theme(--color-error-500) / 16%);
     --color-bg-error-secondary: theme(--color-error-600);
-    --color-bg-error-solid: theme(--color-error-600);
-    --color-bg-error-solid_hover: theme(--color-error-500);
+    --color-bg-error-solid: --alpha(theme(--color-error-600) / 90%);
+    --color-bg-error-solid_hover: --alpha(theme(--color-error-500) / 90%);
     --color-bg-warning-primary: --alpha(theme(--color-warning-500) / 16%);
     --color-bg-warning-secondary: theme(--color-warning-600);
     --color-bg-warning-solid: theme(--color-warning-600);
