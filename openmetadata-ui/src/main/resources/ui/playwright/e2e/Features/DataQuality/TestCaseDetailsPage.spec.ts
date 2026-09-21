@@ -12,6 +12,7 @@
  */
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { escapeRegExp } from 'lodash';
 import { BundleTestSuiteClass } from '../../../support/entity/BundleTestSuiteClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -101,9 +102,18 @@ test.describe(
           'href',
           /\/profiler\/data-quality$/
         );
+        // Matched as a suffix, like the table suite above: the observability
+        // router is overridden downstream to namespace these routes (Collate
+        // in AI app mode serves them under `/observability`), so pinning the
+        // OSS literal asserts a prefix this spec has no business knowing.
         await expect(bundleSuiteLink).toHaveAttribute(
           'href',
-          `/test-suites/${bundleSuite.bundleTestSuiteResponseData.fullyQualifiedName}`
+          new RegExp(
+            `/test-suites/${escapeRegExp(
+              bundleSuite.bundleTestSuiteResponseData
+                .fullyQualifiedName as string
+            )}$`
+          )
         );
       });
 
