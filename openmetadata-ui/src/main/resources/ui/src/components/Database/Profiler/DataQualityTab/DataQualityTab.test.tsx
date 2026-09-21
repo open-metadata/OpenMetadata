@@ -382,10 +382,30 @@ jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
   jest.fn().mockImplementation(() => <span data-testid="date-time-display" />)
 );
 
+// The list API is now the only source of row permissions, so the default props
+// carry the same grants the removed per-row fetch used to return.
+const mockInlinePermissions = (MOCK_TEST_CASE as TestCase[]).reduce(
+  (acc, testCase) => {
+    acc[testCase.id ?? ''] = {
+      resource: 'testCase',
+      permissions: Object.entries(MOCK_PERMISSIONS).map(
+        ([operation, allowed]) => ({
+          operation: operation as Operation,
+          access: allowed ? Access.Allow : Access.Deny,
+        })
+      ),
+    };
+
+    return acc;
+  },
+  {} as Record<string, ResourcePermission>
+);
+
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
+  entityPermissions: mockInlinePermissions,
 };
 const mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
@@ -537,44 +557,28 @@ describe('DataQualityTab test', () => {
     expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
   });
 
-  it('should fall back to per-row permission calls without inline permissions', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} />);
-    });
-
-    expect(await screen.findByTestId('test-case-table')).toBeVisible();
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
-  });
-
-  it('should fall back to per-row permission calls for rows the map omits', async () => {
+  it('should never fetch per-row permissions, whatever the list returned', async () => {
     const testCases = mockProps.testCases as TestCase[];
-    const [covered, ...omitted] = testCases;
-    const entityPermissions = {
+    const [covered] = testCases;
+    const partialMap = {
       [covered.id ?? '']: {
         resource: 'testCase',
         permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
       },
     } as Record<string, ResourcePermission>;
 
-    await act(async () => {
-      render(
+    // No map, an empty map, and a partial map are all answered from the list
+    // response alone -- the permission endpoint is never called again.
+    for (const entityPermissions of [undefined, {}, partialMap]) {
+      const { unmount } = render(
         <DataQualityTab {...mockProps} entityPermissions={entityPermissions} />
       );
-    });
 
-    expect(await screen.findByTestId('test-case-table')).toBeVisible();
-    // A partial map must not render the uncovered rows as unpermissioned — each
-    // one still fetches its own permission.
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(omitted.length);
-  });
+      expect(await screen.findByTestId('test-case-table')).toBeVisible();
+      expect(mockGetEntityPermissionByFqn).not.toHaveBeenCalled();
 
-  it('should fall back to per-row permission calls for an empty inline map', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} entityPermissions={{}} />);
-    });
-
-    expect(await screen.findByTestId('test-case-table')).toBeVisible();
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+      unmount();
+    }
   });
 
   it('Table header should be visible', async () => {

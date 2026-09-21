@@ -25,7 +25,7 @@ import {
 import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, sortBy, toLower } from 'lodash';
+import { isUndefined, sortBy, toLower } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { TEST_CASE_DELETION_MODE } from '../../../../constants/DataQuality.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -167,7 +166,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
@@ -446,38 +444,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setIsStatusLoading(false);
   };
 
-  const fetchTestCasePermissions = async () => {
-    try {
-      setIsPermissionLoading(true);
-      const promises = testCases.map((testCase) => {
-        return getEntityPermissionByFqn(
-          ResourceEntity.TEST_CASE,
-          testCase.fullyQualifiedName ?? ''
-        );
-      });
-      const testCasePermission = await Promise.allSettled(promises);
-      const data = testCasePermission.reduce((acc, status, i) => {
-        if (status.status === 'fulfilled') {
-          return [
-            ...acc,
-            {
-              ...status.value,
-              fullyQualifiedName: testCases[i].fullyQualifiedName,
-            },
-          ];
-        }
-
-        return acc;
-      }, [] as TestCasePermission[]);
-
-      setTestCasePermissions(data);
-    } catch {
-      // do nothing
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
-
   /**
    * Publish the inline permission under the same React Query key the per-entity
    * fetch writes, so every other consumer of this test case (drawer, incident
@@ -501,56 +467,32 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return operationPermissions;
   };
 
-  const fetchPermissionByFqn = async (testCase: TestCase) => {
-    try {
-      return await getEntityPermissionByFqn(
-        ResourceEntity.TEST_CASE,
-        testCase.fullyQualifiedName ?? ''
-      );
-    } catch {
-      return DEFAULT_ENTITY_PERMISSION;
-    }
-  };
-
   /**
-   * A row the list API described inline costs no request; a row it left out
-   * still falls back to its own fetch, so a partial map degrades to the old
-   * behaviour rather than silently rendering the row as unpermissioned.
+   * Row permissions come from the list response only. Deriving them
+   * synchronously is what keeps this correct: there is no request to race, so
+   * a slow page can never overwrite the permissions of the page that replaced
+   * it. `PagePermissionsResolver` emits an entry for every row it returns, so a
+   * miss here means the row carries no id and genuinely has no permissions.
    */
-  const applyInlinePermissions = async () => {
-    setIsPermissionLoading(true);
-    try {
-      const data = await Promise.all(
-        testCases.map(async (testCase) => {
-          const inline = testCase.id
-            ? entityPermissions?.[testCase.id]
-            : undefined;
+  const applyInlinePermissions = () => {
+    const data = testCases.map((testCase) => {
+      const inline = testCase.id ? entityPermissions?.[testCase.id] : undefined;
 
-          return {
-            ...(inline
-              ? cacheInlinePermission(testCase, inline)
-              : await fetchPermissionByFqn(testCase)),
-            fullyQualifiedName: testCase.fullyQualifiedName,
-          };
-        })
-      );
-      setTestCasePermissions(data);
-    } finally {
-      setIsPermissionLoading(false);
-    }
+      return {
+        ...(inline
+          ? cacheInlinePermission(testCase, inline)
+          : DEFAULT_ENTITY_PERMISSION),
+        fullyQualifiedName: testCase.fullyQualifiedName,
+      };
+    });
+    setTestCasePermissions(data);
+    setIsPermissionLoading(false);
   };
 
   useEffect(() => {
     if (testCases.length) {
       collectInlineIncidentStatuses();
-      // When the list API already returned permissions inline, use them instead
-      // of firing one permission call per listed test case. An empty map means
-      // the server said nothing, so it must not count as "already answered".
-      if (!isEmpty(entityPermissions)) {
-        applyInlinePermissions();
-      } else {
-        fetchTestCasePermissions();
-      }
+      applyInlinePermissions();
     } else {
       setIsStatusLoading(false);
     }
