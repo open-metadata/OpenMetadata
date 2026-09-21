@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
@@ -46,6 +47,9 @@ import org.openmetadata.service.migration.utils.v203.ServiceLineagePipelineRouti
  * <p>This class owns its services so the plain edge does not perturb {@link
  * LineagePipelineAnnotatorIT}, which asserts the absence of exactly that direct edge.
  */
+@Isolated(
+    "invokes the v203 repair, which scans and rewrites service edges across the whole"
+        + " entity_relationship table, not just this class's own services")
 @Execution(ExecutionMode.SAME_THREAD)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ServiceLineagePipelineRoutingMigrationIT {
@@ -132,6 +136,60 @@ public class ServiceLineagePipelineRoutingMigrationIT {
         "with only pipeline-annotated lineage left, the direct service edge must go");
 
     addLineage(plainSource, plainTarget, null);
+  }
+
+  /**
+   * Attaching a pipeline to an edge that had none re-points it from the direct service edge onto
+   * the hops. The direct edge it used to feed must be released, or both paths stay on the graph.
+   */
+  @Test
+  void addingAPipelineToAnExistingEdgeReleasesTheDirectServiceEdge() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    UUID sourceId = sourceService.getId();
+    UUID targetId = targetService.getId();
+    UUID pipelineServiceId = pipelineService.getId();
+
+    assertEquals(
+        1,
+        assetEdgesOfDirectEdge(collectionDAO, sourceId, targetId),
+        "the plain pair is the only contributor to the direct edge");
+
+    addLineage(plainSource, plainTarget, pipeline);
+
+    assertNull(
+        directEdge(collectionDAO, sourceId, targetId),
+        "its last plain contributor now routes through the pipeline, so the direct edge must go");
+    assertNotNull(
+        directEdge(collectionDAO, sourceId, pipelineServiceId), "source -> pipeline hop expected");
+    assertNotNull(
+        directEdge(collectionDAO, pipelineServiceId, targetId), "pipeline -> target hop expected");
+
+    addLineage(plainSource, plainTarget, null);
+    assertNotNull(
+        directEdge(collectionDAO, sourceId, targetId),
+        "removing the pipeline again must restore the direct edge");
+  }
+
+  /** Re-saving an edge without changing its pipeline is not a reshape and must not release. */
+  @Test
+  void resavingAnEdgeWithTheSamePipelineKeepsBothProjections() {
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    UUID sourceId = sourceService.getId();
+    UUID targetId = targetService.getId();
+    UUID pipelineServiceId = pipelineService.getId();
+
+    addLineage(annotatedSource, annotatedTarget, pipeline);
+
+    assertNotNull(
+        directEdge(collectionDAO, sourceId, pipelineServiceId),
+        "source -> pipeline hop must survive an unchanged re-save");
+    assertNotNull(
+        directEdge(collectionDAO, pipelineServiceId, targetId),
+        "pipeline -> target hop must survive an unchanged re-save");
+    assertEquals(
+        1,
+        assetEdgesOfDirectEdge(collectionDAO, sourceId, targetId),
+        "the unrelated plain pair's direct edge must be untouched");
   }
 
   private CollectionDAO.EntityRelationshipObject directEdge(

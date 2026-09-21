@@ -406,17 +406,30 @@ public class LineageRepository {
     if (priorDetails == null) {
       return false;
     }
+    if (nullOrEmpty(priorDetails.getPipeline())) {
+      if (pipelineService == null) {
+        return false;
+      }
+      releaseServiceShape(fromEntity.getService(), toEntity.getService(), null);
+      return true;
+    }
+
     EntityReference priorPipelineService = resolvePriorPipelineService(priorDetails);
-    UUID priorServiceId = priorPipelineService == null ? null : priorPipelineService.getId();
-    UUID currentServiceId = pipelineService == null ? null : pipelineService.getId();
-    if (Objects.equals(priorServiceId, currentServiceId)) {
+    if (priorPipelineService == null) {
+      // The prior edge did route through a pipeline, but that pipeline is gone so its hops can no
+      // longer be named. Releasing anything here would fall through to the direct edge, which is
+      // owned by other child edges entirely — leave the stale hops to the service lineage repair.
+      return false;
+    }
+    if (pipelineService != null
+        && Objects.equals(priorPipelineService.getId(), pipelineService.getId())) {
       return false;
     }
     releaseServiceShape(fromEntity.getService(), toEntity.getService(), priorPipelineService);
     return true;
   }
 
-  /** The prior pipeline may since have been deleted; then there is nothing left to release. */
+  /** A pipeline deleted since the edge was written can no longer identify the hops it fed. */
   private EntityReference resolvePriorPipelineService(LineageDetails priorDetails) {
     try {
       return getPipelineService(priorDetails);
