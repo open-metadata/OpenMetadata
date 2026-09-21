@@ -28,12 +28,14 @@
     "pagination-navigation": "ניווט מספור עמודים",
     "previous-page": "עבור לעמוד הקודם",
     "records": "רשומות",
+    "remove-entity": "הסר {{entity}}",
     "remove-filter": "הסר סינון",
     "search": "חיפוש",
     "select-all": "בחר הכל",
     "select-dates": "בחר תאריכים",
     "select-only-one-row": "בחר שורה אחת",
     "show-hidden-breadcrumbs": "הצג פירורי לחם מוסתרים",
-    "today": "היום"
+    "today": "היום",
+    "tree-select": "בחירת עץ"
   }
 }

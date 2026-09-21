@@ -45,11 +45,13 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 public class LineageManualEdgeIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String DATABASE_SCHEMA_SEARCH_INDEX = "database_schema_search_index";
   private OpenMetadataClient client;
   private TestNamespace namespace;
 
   private Table sourceTable;
   private Table targetTable;
+  private DatabaseSchema schema;
 
   @BeforeAll
   void setUp() throws Exception {
@@ -57,7 +59,7 @@ public class LineageManualEdgeIT {
     namespace = new TestNamespace("LineageManualEdgeIT");
 
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
     String schemaFqn = schema.getFullyQualifiedName();
 
     sourceTable = createTable(schemaFqn, "source_table", List.of("id", "name", "value"));
@@ -208,7 +210,90 @@ public class LineageManualEdgeIT {
     assertTrue(foundManualSource, "Edge should have Manual source");
   }
 
+  /**
+   * A lineage target whose search-index builder is not a {@code LineageIndex} — a database schema,
+   * database or glossary term — produces a doc with no {@code upstreamLineage} field at all. The
+   * ADD_UPDATE_LINEAGE script dereferenced that field unguarded, so the very first PUT against such
+   * a target failed with an OpenSearch script_exception.
+   */
+  @Test
+  void manualLineageEdgeToTargetWhoseDocOmitsUpstreamLineage() throws Exception {
+    waitForSchemaInSearchIndex();
+
+    LineageDetails details = new LineageDetails();
+    details.setSource(LineageDetails.Source.MANUAL);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(schema.getEntityReference())
+                    .withLineageDetails(details));
+
+    // Deliberately not routed through addManualLineage(): its ignoreExceptions() retry would
+    // swallow the script_exception this test exists to catch.
+    client.lineage().addLineage(addLineage);
+
+    Awaitility.await("Wait for schema edge in ES")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchSchemaDoc();
+              assertNotNull(source, "Schema doc should be searchable");
+              assertTrue(
+                  hasUpstreamEdgeFrom(source, sourceTable),
+                  "Schema doc should carry the upstream edge from the source table");
+            });
+  }
+
   // --- Helpers ---
+
+  private void waitForSchemaInSearchIndex() {
+    Awaitility.await("Wait for schema in ES: " + schema.getName())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreExceptions()
+        .until(() -> searchSchemaDoc() != null);
+  }
+
+  /**
+   * Pins the schema doc with a term filter on the keyword FQN rather than a free-text query: the
+   * latter explodes into enough boolean clauses to trip OpenSearch's default max_clause_count.
+   */
+  private JsonNode searchSchemaDoc() throws Exception {
+    String filter =
+        "{\"query\":{\"term\":{\"fullyQualifiedName\":\""
+            + schema.getFullyQualifiedName()
+            + "\"}}}";
+    String response =
+        client
+            .search()
+            .query("*")
+            .index(DATABASE_SCHEMA_SEARCH_INDEX)
+            .queryFilter(filter)
+            .size(10)
+            .deleted(false)
+            .execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.path("_source");
+      if (schema.getId().toString().equals(source.path("id").asText(""))) {
+        return source;
+      }
+    }
+    return null;
+  }
+
+  private boolean hasUpstreamEdgeFrom(JsonNode schemaDoc, Table from) {
+    for (JsonNode edge : schemaDoc.path("upstreamLineage")) {
+      if (from.getId().toString().equals(edge.path("fromEntity").path("id").asText(""))) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   private JsonNode getGraphViewLineage(Table entity, int upDepth, int downDepth) throws Exception {
     String resultStr =

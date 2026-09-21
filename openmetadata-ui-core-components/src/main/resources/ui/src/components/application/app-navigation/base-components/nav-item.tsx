@@ -5,7 +5,9 @@ import { Badge } from '@/components/base/badges/badges';
 import { cx, sortCx } from '@/utils/cx';
 
 const styles = sortCx({
-  root: 'tw:group tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-md tw:bg-primary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+  // Resting items are transparent in dark so they don't paint darker boxes on
+  // the raised (bg-secondary) sidebar surface; hover/selected still highlight.
+  root: 'tw:group tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
   rootSelected: 'tw:bg-active tw:hover:bg-secondary_hover',
 });
 

@@ -207,7 +207,7 @@ class DatalakeSource(DatabaseServiceSource):
 
     def get_tables_name_and_type(  # pylint: disable=too-many-branches
         self,
-    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None]]:
+    ) -> Iterable[tuple[str, TableType, SupportedTypes, int | None, str | None]]:
         """
         Handle table and views.
 
@@ -239,27 +239,36 @@ class DatalakeSource(DatabaseServiceSource):
                     continue
                 logger.info(f"Processing table: {table_name}")
                 file_extension = get_file_format_type(key_name=key_name, metadata_entry=metadata_entry)
+                separator = (
+                    next(
+                        (entry.separator for entry in metadata_entry.entries if key_name == entry.dataPath),
+                        None,
+                    )
+                    if metadata_entry
+                    else None
+                )
 
                 if table_name.endswith("/") or not file_extension:
                     logger.debug(f"Object filtered due to unsupported file type: {key_name}")
                     continue
 
-                yield table_name, TableType.Regular, file_extension, file_size
+                yield table_name, TableType.Regular, file_extension, file_size, separator
 
     def yield_table(
         self,
-        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None],
+        table_name_and_type: tuple[str, TableType, SupportedTypes, int | None, str | None],
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
         Uses first chunk only for schema inference to avoid loading entire file.
         """
-        table_name, table_type, table_extension, file_size = table_name_and_type
+        table_name, table_type, table_extension, file_size, separator = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
             table_constraints = None
-            data_frame, raw_data = fetch_dataframe_first_chunk(
+            # The helper's legacy annotation omits the tuple returned when raw data is requested.
+            data_frame, raw_data = fetch_dataframe_first_chunk(  # pyright: ignore[reportGeneralTypeIssues]
                 config_source=self.config_source,
                 client=self.client.client,
                 file_fqn=DatalakeTableSchemaWrapper(
@@ -267,6 +276,7 @@ class DatalakeSource(DatabaseServiceSource):
                     bucket_name=schema_name,
                     file_extension=table_extension,
                     file_size=file_size,
+                    separator=separator,
                 ),
                 fetch_raw_data=True,
                 session=getattr(self.client, "session", None),

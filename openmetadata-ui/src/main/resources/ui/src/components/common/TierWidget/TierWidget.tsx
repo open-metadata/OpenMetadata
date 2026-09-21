@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ClassificationTag } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -27,7 +28,6 @@ import {
 } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
 import TierCard from '../TierCard/TierCard';
 import {
   WidgetEditButton,
