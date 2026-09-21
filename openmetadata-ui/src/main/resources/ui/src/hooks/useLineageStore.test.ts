@@ -17,6 +17,10 @@ import { Edge, Node } from 'reactflow';
 // LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
 import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
+// Type-only import of the shared Explore quick-filter type; relocating it to a lower layer
+// is out of scope for this task (tracked for a later phase).
+// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
+import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -744,5 +748,39 @@ describe('entity + rf slices', () => {
     useLineageStore.getState().setReactFlowInstance(undefined);
 
     expect(useLineageStore.getState().reactFlowInstance).toBeUndefined();
+  });
+});
+
+describe('filters slice', () => {
+  beforeEach(() => useLineageStore.getState().reset());
+
+  it('setSelectedQuickFilters replaces value', () => {
+    const q = [
+      { key: 'k', label: 'l', value: [] },
+    ] as unknown as ExploreQuickFilterField[];
+    useLineageStore.getState().setSelectedQuickFilters(q);
+
+    expect(useLineageStore.getState().selectedQuickFilters).toBe(q);
+  });
+
+  it('setSelectedQuickFilters accepts a functional updater', () => {
+    useLineageStore.getState().setSelectedQuickFilters([]);
+    useLineageStore
+      .getState()
+      .setSelectedQuickFilters((prev) => [
+        ...prev,
+        { key: 'k' } as unknown as ExploreQuickFilterField,
+      ]);
+
+    expect(useLineageStore.getState().selectedQuickFilters).toHaveLength(1);
+  });
+
+  it('setTimeFilter stores the range', () => {
+    useLineageStore.getState().setTimeFilter({ startTime: 1, endTime: 2 });
+
+    expect(useLineageStore.getState().timeFilter).toEqual({
+      startTime: 1,
+      endTime: 2,
+    });
   });
 });

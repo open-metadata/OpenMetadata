@@ -25,8 +25,15 @@ import { create } from 'zustand';
 // LineageProvider.interface.tsx); relocating it to a lower layer is out of scope for this task.
 // eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
 import type { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
+// Type-only import of the shared Explore quick-filter type; relocating it to a lower layer
+// is out of scope for this task (tracked for a later phase).
+// eslint-disable-next-line openmetadata-imports/no-hook-ui-imports
+import type { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import {
+  LineagePlatformView,
+  LineageTimeRange,
+} from '../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
@@ -71,6 +78,8 @@ interface LineageState {
   entityType?: EntityType;
   entityFqn: string;
   reactFlowInstance?: ReactFlowInstance;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  timeFilter: LineageTimeRange;
 
   // Actions
   setIsEditMode: (isEditMode: boolean) => void;
@@ -125,6 +134,12 @@ interface LineageState {
     entityFqn: string;
   }) => void;
   setReactFlowInstance: (instance?: ReactFlowInstance) => void;
+  setSelectedQuickFilters: (
+    next:
+      | ExploreQuickFilterField[]
+      | ((prev: ExploreQuickFilterField[]) => ExploreQuickFilterField[])
+  ) => void;
+  setTimeFilter: (range: LineageTimeRange) => void;
 }
 
 const defaultLineageSettings = {
@@ -164,6 +179,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   entityType: undefined,
   entityFqn: '',
   reactFlowInstance: undefined,
+  selectedQuickFilters: [],
+  timeFilter: {},
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
@@ -356,6 +373,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       entityType: undefined,
       entityFqn: '',
       reactFlowInstance: undefined,
+      selectedQuickFilters: [],
+      timeFilter: {},
     }),
 
   setNodes: (nodes: Node[]) => set({ nodes }),
@@ -426,4 +445,12 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   setReactFlowInstance: (reactFlowInstance?: ReactFlowInstance) =>
     set({ reactFlowInstance }),
+
+  setSelectedQuickFilters: (next) =>
+    set((s) => ({
+      selectedQuickFilters:
+        typeof next === 'function' ? next(s.selectedQuickFilters) : next,
+    })),
+
+  setTimeFilter: (timeFilter: LineageTimeRange) => set({ timeFilter }),
 }));
