@@ -19,7 +19,6 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  clickOutside,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -38,6 +37,7 @@ import {
   selectStyleColor,
   selectStyleIcon,
 } from '../../../utils/glossary';
+import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -219,10 +219,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -301,10 +299,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -392,7 +388,7 @@ test.describe('Glossary Advanced Operations', () => {
       await fillDescriptionBox(page, 'Term with custom color');
 
       // Set custom color (must be one of the palette swatches)
-      const customColor = '#B93815';
+      const customColor = '#1470EF';
       await selectStyleColor(page, customColor);
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -509,7 +505,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
 
       // Set custom color (must be one of the palette swatches)
-      const customColor = '#067647';
+      const customColor = '#05A580';
       await selectStyleColor(page, customColor);
 
       const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -1056,24 +1052,11 @@ test.describe('Glossary Advanced Operations', () => {
       await page.fill('[data-testid="name"]', termName);
       await fillDescriptionBox(page, 'Term with related terms');
 
-      const searchResponse = page.waitForResponse('/api/v1/search/query*');
-
-      await page.getByTestId('related-terms').click();
-
-      // Add related term
-      await page
-        .getByTestId('related-terms')
-        .locator('input')
-        .fill(existingTerm.responseData.displayName);
-
-      await searchResponse;
-
-      // Select the term
-      await page
-        .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
-        .click();
-
-      await clickOutside(page);
+      await pickGlossaryTermInField(page, page.getByTestId('related-terms'), {
+        name: existingTerm.responseData.name,
+        displayName: existingTerm.responseData.displayName,
+        fullyQualifiedName: existingTerm.responseData.fullyQualifiedName,
+      });
 
       const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
       await page.click('[data-testid="save-glossary-term"]');

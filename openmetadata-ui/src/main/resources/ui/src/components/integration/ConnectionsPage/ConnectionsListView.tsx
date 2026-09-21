@@ -14,9 +14,11 @@
 import {
   Button,
   EmptyPlaceholder,
+  Owner,
   PaginationCardWithControls,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import React, {
@@ -41,7 +43,6 @@ import {
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import ConnectionsFilterButton from './ConnectionsFilterButton';
@@ -392,14 +393,20 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
                 />
               )}
             </div>
-            {/* Native `title` rather than a core Tooltip: this renders once per row on every page,
-                and a react-aria Tooltip per row is real overhead for a name that is usually not
-                even truncated. The cards, which are fewer and larger, use the core Tooltip. */}
-            <span
-              className="tw:min-w-0 tw:truncate tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary"
-              title={getEntityName(service)}>
-              {getEntityName(service)}
-            </span>
+            {/* The name truncates hard, so the full value has to be reachable. The
+                Tooltip trigger is a react-aria button that consumes the press, so it
+                navigates the row itself via onTriggerPress to stay clickable. */}
+            <Tooltip
+              title={getEntityName(service)}
+              triggerClassName="tw:min-w-0 tw:text-left"
+              onTriggerPress={() => openService(service)}>
+              <Typography
+                ellipsis
+                className="tw:text-sm tw:leading-5 tw:text-primary"
+                weight="semibold">
+                {getEntityName(service)}
+              </Typography>
+            </Tooltip>
           </div>
         </Table.Cell>
         <Table.Cell>
@@ -421,11 +428,11 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               on the "no owners" dash, making the column look unclickable. `showLabel` is dropped
               because it only applies to the non-compact layout. */}
           <div role="presentation" onClick={stopPropagationIfInteractive}>
-            <OwnerLabel
+            <Owner
               isCompactView
               showDashPlaceholder
               maxVisibleOwners={1}
-              owners={service.owners}
+              owners={service.owners ?? []}
             />
           </div>
         </Table.Cell>

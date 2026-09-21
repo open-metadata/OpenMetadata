@@ -14,6 +14,7 @@
 import {
   Box,
   ButtonUtility,
+  Owner,
   PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
@@ -28,7 +29,7 @@ import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitl
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -225,10 +226,16 @@ const AlertDetailsPage = () => {
         className="tw:mt-1.5 tw:flex-wrap tw:text-secondary"
         gap={3}>
         {ownerLoading ? null : (
-          <OwnerLabel
+          <Owner
             hasPermission={editOwnersPermission}
-            owners={alertDetails?.owners}
-            onUpdate={onOwnerUpdate}
+            owners={alertDetails?.owners ?? []}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(editOwnersPermission)}
+                owner={alertDetails?.owners}
+                onUpdate={onOwnerUpdate}
+              />
+            }
           />
         )}
         {extraInfo}

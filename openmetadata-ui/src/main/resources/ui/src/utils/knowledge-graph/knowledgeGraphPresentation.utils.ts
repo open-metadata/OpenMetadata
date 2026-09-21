@@ -283,6 +283,177 @@ export const getGraphDistances = (data: GraphData, rootId: string) => {
 const compareNodes = (left: GraphNode, right: GraphNode) =>
   left.label.localeCompare(right.label) || left.id.localeCompare(right.id);
 
+/**
+ * A repeat is a predicate used more than once from the same anchor, so two
+ * neighbours already bundle. Bundling a pair costs no vertical space — one
+ * summary card is as tall as the two cards plus the gap it replaces — and it
+ * removes the duplicate edge label the pair would otherwise stack.
+ */
+const GROUP_MIN_MEMBERS = 2;
+
+/**
+ * Bundles name a family of neighbours rather than an exact entity type, so a
+ * table's two owners stay one bundle when one is a user and the other a team.
+ * A type absent here is its own family, which keeps distinct fans — tasks and
+ * queries both reached by `mentionedIn` — as separate bundles.
+ */
+const GROUP_FAMILY_BY_TYPE: Record<string, string> = {
+  user: 'people',
+  team: 'people',
+  glossaryterm: 'concept',
+  concept: 'concept',
+  term: 'concept',
+  tag: 'tag',
+  classification: 'tag',
+  table: 'asset',
+  view: 'asset',
+  dashboard: 'asset',
+  dashboarddatamodel: 'asset',
+  pipeline: 'asset',
+  topic: 'asset',
+  container: 'asset',
+  searchindex: 'asset',
+  mlmodel: 'asset',
+  apiendpoint: 'asset',
+  apicollection: 'asset',
+  storedprocedure: 'asset',
+  metric: 'asset',
+};
+
+const groupFamily = (type: string) => {
+  const key = type.toLowerCase();
+
+  return GROUP_FAMILY_BY_TYPE[key] ?? key;
+};
+
+/** How a bundle names itself when its members are of more than one type. */
+const GROUP_FAMILY_LABEL_KEYS: Record<string, string> = {
+  people: 'label.people',
+  asset: 'label.data-asset-plural',
+  concept: 'label.concept-plural',
+  tag: 'label.tag-plural',
+};
+
+/**
+ * Plurals for every type that can appear as a graph neighbour.
+ * `getPluralizeEntityName` answers with the *singular* for most of them — a
+ * bundle of 26 tasks reading "Task" is unnavigable — so a bundle resolves its
+ * own plural here first and only falls back to that helper for a type this
+ * list has not met. Services share one label because a bundle of them is read
+ * as "the services", not as eleven distinct kinds.
+ */
+const GROUP_TYPE_LABEL_KEYS: Record<string, string> = {
+  // data assets
+  table: 'label.table-plural',
+  column: 'label.column-plural',
+  tablecolumn: 'label.column-plural',
+  dashboard: 'label.dashboard-plural',
+  dashboarddatamodel: 'label.data-model-plural',
+  chart: 'label.chart-plural',
+  pipeline: 'label.pipeline-plural',
+  topic: 'label.topic-plural',
+  container: 'label.container-plural',
+  searchindex: 'label.search-index-plural',
+  mlmodel: 'label.ml-model-plural',
+  apiendpoint: 'label.api-endpoint-plural',
+  apicollection: 'label.api-collection-plural',
+  metric: 'label.metric-plural',
+  storedprocedure: 'label.stored-procedure-plural',
+  spreadsheet: 'label.spreadsheet-plural',
+  worksheet: 'label.worksheet-plural',
+  directory: 'label.directory-plural',
+  file: 'label.file-plural',
+  // structure
+  database: 'label.database-plural',
+  databaseschema: 'label.database-schema-plural',
+  apiservice: 'label.service-plural',
+  dashboardservice: 'label.service-plural',
+  databaseservice: 'label.service-plural',
+  driveservice: 'label.service-plural',
+  messagingservice: 'label.service-plural',
+  metadataservice: 'label.service-plural',
+  mlmodelservice: 'label.service-plural',
+  pipelineservice: 'label.service-plural',
+  searchservice: 'label.service-plural',
+  securityservice: 'label.service-plural',
+  storageservice: 'label.service-plural',
+  // people
+  user: 'label.user-plural',
+  team: 'label.team-plural',
+  role: 'label.role-plural',
+  policy: 'label.policy-plural',
+  persona: 'label.persona-plural',
+  bot: 'label.bot-plural',
+  // governance
+  domain: 'label.domain-plural',
+  dataproduct: 'label.data-product-plural',
+  datacontract: 'label.data-contract-plural',
+  tag: 'label.tag-plural',
+  classification: 'label.classification-plural',
+  certification: 'label.certification-plural',
+  // business meaning
+  glossaryterm: 'label.glossary-term-plural',
+  term: 'label.glossary-term-plural',
+  glossary: 'label.glossary-plural',
+  concept: 'label.concept-plural',
+  property: 'label.property-plural',
+  // quality
+  testcase: 'label.test-case-plural',
+  testsuite: 'label.test-suite-plural',
+  testdefinition: 'label.test-definition-plural',
+  // AI and platform
+  service: 'label.service-plural',
+  app: 'label.app-plural',
+  aiapplication: 'label.application-plural',
+  llmmodel: 'label.model-plural',
+  // activity
+  task: 'label.task-plural',
+  query: 'label.query-plural',
+  page: 'label.article-plural',
+  document: 'label.document-plural',
+  contextmemory: 'label.memory-plural',
+};
+
+/**
+ * The one entity type every member shares, or `undefined` when a bundle mixes
+ * types and therefore cannot be named after any single one of them.
+ */
+export const getSharedMemberType = (members: GraphNode[]) => {
+  const type = members[0]?.type;
+
+  return members.every((member) => member.type === type) ? type : undefined;
+};
+
+/**
+ * Names a bundle's members: the i18n key of the type they share, or of the
+ * family they share when the bundle mixes types. `undefined` means the shared
+ * type has no dedicated plural and the caller should derive one from it.
+ */
+export const getGroupMemberLabelKey = (
+  members: GraphNode[],
+  type: string
+): string | undefined => {
+  const shared = getSharedMemberType(members);
+  if (!shared) {
+    return GROUP_FAMILY_LABEL_KEYS[groupFamily(type)] ?? 'label.entity-plural';
+  }
+
+  return GROUP_TYPE_LABEL_KEYS[shared.toLowerCase()];
+};
+
+/** The type a mixed bundle is drawn as: the one most of its members carry. */
+const dominantMemberType = (members: GraphNode[]) => {
+  const counts = new Map<string, number>();
+  members.forEach((member) =>
+    counts.set(member.type, (counts.get(member.type) ?? 0) + 1)
+  );
+
+  return [...counts].sort(
+    ([leftType, left], [rightType, right]) =>
+      right - left || leftType.localeCompare(rightType)
+  )[0][0];
+};
+
 interface GraphParent {
   edge: KnowledgeGraphEdge;
   anchor: string;
@@ -297,10 +468,18 @@ interface GraphGroup {
   priority: number;
 }
 
+/**
+ * Which bundle claims a neighbour that several could. A person who both owns
+ * and follows the entity belongs on the ownership card — "who is accountable"
+ * is the question the graph is read for, so ownership outranks the social
+ * relations that would otherwise absorb them.
+ */
 const RELATION_GROUP_PRIORITY: Record<string, number> = {
   hasowner: 1,
+  owns: 1,
   hasglossaryterm: 1,
-  hasfollower: 1,
+  hasfollower: 2,
+  follows: 2,
   has: 3,
   contains: 3,
   hastag: 3,
@@ -396,10 +575,18 @@ const getParents = (data: GraphData, levels: Map<string, number>) => {
   );
 };
 
+/**
+ * Around an asset a concept is one neighbour among many and bundles like any
+ * other, so a table tagged with five business terms reads as one summary
+ * instead of five stacked `Has glossary term` labels. Around a concept the
+ * neighbouring concepts *are* the subject matter of the ontology view, so they
+ * stay individually visible there.
+ */
 const canGroupNode = (
   node: GraphNode,
   rootId: string,
-  connections: GraphParent[]
+  connections: GraphParent[],
+  conceptRoot: boolean
 ) => {
   const distinguished = connections.some(
     ({ edge }) =>
@@ -409,7 +596,11 @@ const canGroupNode = (
       )
   );
 
-  return node.id !== rootId && !isConceptNode(node) && !distinguished;
+  return (
+    node.id !== rootId &&
+    !(conceptRoot && isConceptNode(node)) &&
+    !distinguished
+  );
 };
 
 const getGroupCandidates = (
@@ -418,12 +609,13 @@ const getGroupCandidates = (
   rootId: string,
   parents: Map<string, GraphParent[]>,
   visibleParent: Map<string, string>,
-  byId: Map<string, GraphNode>
+  byId: Map<string, GraphNode>,
+  conceptRoot: boolean
 ) => {
   const candidates = new Map<string, GraphGroup>();
   for (const node of nodes) {
     const connections = parents.get(node.id) ?? [];
-    if (!canGroupNode(node, rootId, connections)) {
+    if (!canGroupNode(node, rootId, connections, conceptRoot)) {
       continue;
     }
     for (const parent of connections) {
@@ -433,7 +625,13 @@ const getGroupCandidates = (
       const direction = edge.from === node.id ? 'in' : 'out';
       const key =
         'kg:group:' +
-        JSON.stringify([anchor, relationType, direction, node.type, level]);
+        JSON.stringify([
+          anchor,
+          relationType,
+          direction,
+          groupFamily(node.type),
+          level,
+        ]);
       const group: GraphGroup = candidates.get(key) ?? {
         members: [],
         predicate: edge.label,
@@ -460,6 +658,8 @@ const getGroups = (
   const groups = new Map<string, GraphGroup>();
   const visibleParent = new Map<string, string>();
   const byId = new Map(data.nodes.map((node) => [node.id, node]));
+  const root = byId.get(rootId);
+  const conceptRoot = Boolean(root && isConceptNode(root));
   const parents = getParentCandidates(data, levels);
   const byLevel = new Map<number, GraphNode[]>();
   data.nodes.forEach((node) => {
@@ -475,7 +675,8 @@ const getGroups = (
       rootId,
       parents,
       visibleParent,
-      byId
+      byId,
+      conceptRoot
     );
     // Prefer structural branches, then the largest shared relationship, independently of input order.
     [...candidates]
@@ -489,7 +690,7 @@ const getGroups = (
         const members = group.members.filter(
           (node) => !visibleParent.has(node.id)
         );
-        if (members.length >= 3) {
+        if (members.length >= GROUP_MIN_MEMBERS) {
           groups.set(id, { ...group, members });
           members.forEach((node) => visibleParent.set(node.id, id));
         }
@@ -871,6 +1072,7 @@ export const buildGraphPresentation = (
     group.members.sort(compareNodes);
     group.members.forEach((node) => memberGroup.set(node.id, id));
     const first = group.members[0];
+    const type = dominantMemberType(group.members);
     const isExpanded = expanded.includes(id);
     if (isExpanded) {
       const preview = group.members.slice(0, 6);
@@ -893,8 +1095,8 @@ export const buildGraphPresentation = (
     }
     groupNodes.push({
       id,
-      label: first.type,
-      type: first.type,
+      label: type,
+      type,
       presentation: {
         level: levels.get(first.id) ?? 3,
         members: group.members,

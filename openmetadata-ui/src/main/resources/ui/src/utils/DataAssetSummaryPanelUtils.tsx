@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
+import { ClassificationTag, Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
-import { lazy } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import ClassificationTag from '../components/common/atoms/Tag/ClassificationTag';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
@@ -57,21 +55,14 @@ import {
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { bytesToSize, stringToHTML } from './StringUtils';
+import { bytesToSize } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
-  )
-);
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (
@@ -108,10 +99,10 @@ const getCommonOverview = (
           {
             name: i18n.t('label.owner-plural'),
             value: (
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={owners}
+                owners={owners ?? []}
                 showLabel={false}
               />
             ),
@@ -346,7 +337,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     {
       name: `${i18n.t('label.pipeline')} ${i18n.t('label.url-uppercase')}`,
       dataTestId: 'pipeline-url-label',
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -387,7 +378,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.dashboard')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -566,7 +557,7 @@ const getChartOverview = (chartDetails: Chart) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.chart')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -628,7 +619,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.data-model')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DASHBOARD_DATA_MODEL,
         fullyQualifiedName ?? ''
@@ -769,7 +760,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -810,7 +801,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -859,7 +850,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={owners ?? []} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),

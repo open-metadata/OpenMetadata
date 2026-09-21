@@ -17,7 +17,6 @@ import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
 } from '../../../../mocks/Glossary.mock';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import RelatedTerms from './RelatedTerms';
 
@@ -73,6 +72,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
+    GlossaryTag: ({ label, ...props }: Record<string, unknown>) =>
+      React.createElement('span', props, label),
     Select: Object.assign(
       ({ children, ...props }: Record<string, unknown>) =>
         React.createElement('select', props, children),
@@ -134,6 +135,7 @@ jest.mock('../../../common/IconButtons/EditIconButton', () => ({
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
+  getGlossaryTermsByIds: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
@@ -156,7 +158,6 @@ const renderRelatedTerms = async () => {
 
   await waitFor(() => {
     expect(listRelationshipTypes).toHaveBeenCalled();
-    expect(searchGlossaryTermsPaginated).toHaveBeenCalled();
   });
 
   return view;
