@@ -700,7 +700,7 @@ export const AddTestCaseList = ({
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer tw:bg-primary"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">

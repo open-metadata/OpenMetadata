@@ -3230,13 +3230,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFqn = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-      }
-    }
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
@@ -3404,6 +3397,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   private static final ThreadLocal<Map<CacheInvalidationKey, CacheInvalidationKey>>
       DEFERRED_CACHE_INVALIDATIONS = new ThreadLocal<>();
+
+  /**
+   * Set while a recursive hard delete is cascading through a subtree. Lets a child's {@code
+   * postDelete} tell "the user asked to delete me" from "I am collateral of an ancestor's delete",
+   * which decides whether a failure cleaning up external state may abort the whole tree.
+   */
+  private static final ThreadLocal<Boolean> IN_HARD_DELETE_CASCADE = new ThreadLocal<>();
+
+  /** True when the current thread is inside {@link #bulkHardDeleteSubtreeChunk}'s cascade. */
+  public static boolean isInHardDeleteCascade() {
+    return Boolean.TRUE.equals(IN_HARD_DELETE_CASCADE.get());
+  }
 
   /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
@@ -4985,59 +4990,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     cleanup(entityInterface.getUpdatedBy(), entityInterface);
   }
 
+  /**
+   * Delete every trace of {@code entityInterface} in one transaction, wrapped in deadlock retry.
+   *
+   * <p>Routed through {@link #flushInOneTransaction} rather than a bare {@code inTransaction} for
+   * two reasons. A hard delete rewrites the hottest rows in the schema (entity_relationship,
+   * tag_usage) and loses deadlock races against concurrent writers; with no retry the rollback
+   * surfaced as a raw 500, because {@link org.openmetadata.service.exception
+   * .CatalogGenericExceptionMapper} maps {@code UnableToExecuteStatementException} to 409 only for
+   * an integrity-constraint cause, so SQLState 40001 fell through to the generic handler. And the
+   * deferral scope opened there is what lets the search/RDF/lineage/post-commit side effects issued
+   * by {@link #entitySpecificCleanup} and by the nested cascade deletes be captured rather than run
+   * inline: inline they would hold a pooled DB connection for a network round trip, and a replay
+   * would re-issue them.
+   */
   protected final void cleanup(String deletedBy, T entityInterface) {
-    Entity.getJdbi()
-        .inTransaction(
-            handle -> {
-              // Perform Entity Specific Cleanup
-              entitySpecificCleanup(deletedBy, entityInterface);
-
-              UUID id = entityInterface.getId();
-
-              // Must run before the relationship delete below: the Task 2.0 artifacts
-              // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
-              // which deleteAll() removes, so collecting them afterwards would orphan them.
-              deleteFeedArtifactsAbout(id);
-
-              // Delete all the relationships to other entities
-              daoCollection.relationshipDAO().deleteAll(id, entityType);
-
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-              }
-
-              // Delete all the extensions of entity
-              daoCollection.entityExtensionDAO().deleteAll(id);
-
-              if (shouldCleanupFqnDependents()) {
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-                daoCollection
-                    .tagUsageDAO()
-                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
-              }
-              // Delete all the usage data
-              daoCollection.usageDAO().delete(id);
-
-              // Delete the extension data storing custom properties
-              removeExtension(entityInterface);
-
-              Entity.getConversationRepository()
-                  .deleteByEntity(entityType, List.of(entityInterface.getId()));
-
-              // Drop cached state before the DB row goes away. A concurrent read arriving
-              // between this invalidate and the dao.delete below would still observe the
-              // entity in the DB; the post-commit invalidate below closes that window.
-              invalidate(entityInterface);
-
-              // Finally, delete the entity
-              dao.delete(id);
-
-              return null;
-            });
+    flushInOneTransaction(() -> cleanupFlushBody(deletedBy, entityInterface));
     // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
     // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
     // workflow queries out of the entity transaction's lock-hold time.
@@ -5048,6 +5016,54 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
     markEntityNotFound(entityInterface);
+  }
+
+  private void cleanupFlushBody(String deletedBy, T entityInterface) {
+    // Perform Entity Specific Cleanup
+    entitySpecificCleanup(deletedBy, entityInterface);
+
+    UUID id = entityInterface.getId();
+
+    // Must run before the relationship delete below: the Task 2.0 artifacts
+    // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
+    // which deleteAll() removes, so collecting them afterwards would orphan them.
+    deleteFeedArtifactsAbout(id);
+
+    // Delete all the relationships to other entities
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
+
+    // Delete all the extensions of entity
+    daoCollection.entityExtensionDAO().deleteAll(id);
+
+    // The FQN-prefix deletes run together, after entity_extension, to match the table order in
+    // bulkCleanupReferences(). Both paths delete the same rows for overlapping subtrees — a direct
+    // delete of a child races a cascade delete of its ancestor — so acquiring entity_extension and
+    // field_relationship in opposite orders is an AB-BA deadlock the database cannot avoid for us.
+    // Neither table depends on the other here; only the feed-artifact ordering above is required.
+    if (shouldCleanupFqnDependents()) {
+      daoCollection
+          .fieldRelationshipDAO()
+          .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+      daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+    }
+    // Delete all the usage data
+    daoCollection.usageDAO().delete(id);
+
+    // Delete the extension data storing custom properties
+    removeExtension(entityInterface);
+
+    Entity.getConversationRepository().deleteByEntity(entityType, List.of(entityInterface.getId()));
+
+    // Drop cached state before the DB row goes away. A concurrent read arriving
+    // between this invalidate and the dao.delete below would still observe the
+    // entity in the DB; the post-commit invalidate below closes that window.
+    invalidate(entityInterface);
+
+    // Finally, delete the entity
+    dao.delete(id);
   }
 
   private void markEntityNotFound(T entity) {
@@ -5150,22 +5166,68 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *
    * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
    * — a pooled connection is held for the whole body, so a network round trip there would pin the
-   * connection and starve the pool. Tag RDF is deferred via {@link RdfTagUpdater#beginDeferral()},
-   * the domain/data-product lineage-ES leaf via {@link LineageUtil#beginLineageDeferral()}, and the
-   * Redis-L2 cache invalidation issued by {@code addRelationship}/{@code deleteRelationship}/{@code
-   * invalidateCacheForEntity} via {@link #beginCacheInvalidationDeferral()} — all drained
-   * post-commit on the request thread. Only the cheap local Guava-L1 eviction stays inline. Redis
-   * cache write-through likewise happens post-commit on the request thread (read-your-write safe).
+   * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
+   * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
+   * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
+   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
+   * cheap local Guava-L1 eviction stays inline. Redis cache write-through likewise happens
+   * post-commit on the request thread (read-your-write safe).
+   *
+   * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
+   * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
+   * in favor of the async snapshot writer ({@code RdfUpdater.updateEntity}), so the scope always
+   * drains an empty closure list today. Left in place rather than torn out here — see the PR
+   * description for the follow-up to remove it along with {@code ownsRdf}/{@code rdfCheckpoint}.
    */
   private void runInTransactionWithRetry(Runnable flushBody) {
-    DeadlockRetry.execute(
-        () ->
-            Entity.getJdbi()
-                .inTransaction(
-                    handle -> {
-                      flushBody.run();
-                      return null;
-                    }));
+    boolean ownsRetry = enterRetryableBoundary();
+    try {
+      if (!ownsRetry) {
+        flushBody.run();
+        return;
+      }
+      DeadlockRetry.execute(
+          () ->
+              Entity.getJdbi()
+                  .inTransaction(
+                      handle -> {
+                        flushBody.run();
+                        return null;
+                      }));
+    } finally {
+      exitRetryableBoundary(ownsRetry);
+    }
+  }
+
+  /**
+   * True while a retryable transaction boundary is already open on this thread.
+   *
+   * <p>JDBI joins a nested {@code inTransaction} to the handle already bound to the thread instead
+   * of opening a savepoint, so the inner and outer boundaries are one database transaction. A
+   * deadlock rolls that whole transaction back, which makes a nested {@link DeadlockRetry} actively
+   * harmful: it would replay only the inner body against a transaction the database has already
+   * discarded, committing a fragment of the unit of work while the outer writes stay lost. Only the
+   * outermost boundary retries, and it replays everything. Nesting is reachable — a hard delete runs
+   * {@link #entitySpecificCleanup} inside its own boundary, and those hooks cascade into full entity
+   * deletes of their own (ingestion pipelines for an app, residual test cases for a table).
+   */
+  private static final ThreadLocal<Boolean> RETRYABLE_BOUNDARY_OPEN =
+      ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+  /** {@code true} when this call opened the outermost boundary and therefore owns the retry. */
+  private static boolean enterRetryableBoundary() {
+    if (Boolean.TRUE.equals(RETRYABLE_BOUNDARY_OPEN.get())) {
+      return false;
+    }
+    RETRYABLE_BOUNDARY_OPEN.set(Boolean.TRUE);
+    return true;
+  }
+
+  /** Package-private so a test can reset a boundary stranded by an earlier failure. */
+  static void exitRetryableBoundary(boolean ownsRetry) {
+    if (ownsRetry) {
+      RETRYABLE_BOUNDARY_OPEN.remove();
+    }
   }
 
   protected T createNewEntity(T entity) {
@@ -5239,23 +5301,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final <R> R executeInTransaction(final Supplier<R> work) {
     final DeferralScope scope = new DeferralScope();
     boolean committed = false;
+    final boolean ownsRetry = enterRetryableBoundary();
     try {
       final R result =
-          DeadlockRetry.execute(
-              () ->
-                  daoCollection.inTransaction(
-                      ignored -> {
-                        scope.reopenForAttempt();
-                        return work.get();
-                      }));
+          ownsRetry ? retryingInTransaction(scope, work) : joinOpenTransaction(scope, work);
       committed = true;
       return result;
     } finally {
+      exitRetryableBoundary(ownsRetry);
       scope.finish(committed);
       if (!committed) {
         storedEntityJson.remove();
       }
     }
+  }
+
+  private <R> R retryingInTransaction(final DeferralScope scope, final Supplier<R> work) {
+    return DeadlockRetry.execute(
+        () ->
+            daoCollection.inTransaction(
+                ignored -> {
+                  scope.reopenForAttempt();
+                  return work.get();
+                }));
+  }
+
+  /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */
+  private <R> R joinOpenTransaction(final DeferralScope scope, final Supplier<R> work) {
+    return daoCollection.inTransaction(
+        ignored -> {
+          scope.reopenForAttempt();
+          return work.get();
+        });
   }
 
   /**
@@ -6052,23 +6129,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     Map<String, List<TagLabel>> tagsByTarget = new LinkedHashMap<>();
     collectColumnTags(columns, tagsByTarget);
-    applyTagsBatchWithRdf(tagsByTarget);
+    applyTagsBatch(tagsByTarget);
   }
 
-  protected void applyTagsBatchWithRdf(Map<String, List<TagLabel>> tagsByTarget) {
+  protected void applyTagsBatch(Map<String, List<TagLabel>> tagsByTarget) {
     if (tagsByTarget == null || tagsByTarget.isEmpty()) {
       return;
     }
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(tagsByTarget);
-
-    for (Map.Entry<String, List<TagLabel>> entry : tagsByTarget.entrySet()) {
-      String targetFQN = entry.getKey();
-      for (TagLabel tagLabel : entry.getValue()) {
-        if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
-          org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
-        }
-      }
-    }
   }
 
   protected void collectColumnTags(List<Column> columns, Map<String, List<TagLabel>> tagsByTarget) {
@@ -6088,7 +6156,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void applyTags(T entity) {
     if (supportsTags) {
-      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName(), entityType, entity.getId());
+      applyTagsAdd(entity.getTags(), entity.getFullyQualifiedName());
     }
   }
 
@@ -6097,15 +6165,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
-    applyTags(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
-   */
-  @Transaction
-  public final void applyTags(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
@@ -6120,10 +6179,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getReason(),
                 tagLabel.getAppliedBy(),
                 tagLabel.getMetadata());
-
-        // Update RDF store
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
       }
     }
   }
@@ -6133,15 +6188,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsAdd(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsAdd(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Apply multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsAdd(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -6153,12 +6199,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFQN);
-
-      // Update RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.applyTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -6167,15 +6207,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final void applyTagsDelete(List<TagLabel> tagLabels, String targetFQN) {
-    applyTagsDelete(tagLabels, targetFQN, null, null);
-  }
-
-  /**
-   * Delete multiple tags in batch to improve performance
-   */
-  @Transaction
-  public final void applyTagsDelete(
-      List<TagLabel> tagLabels, String targetFQN, String targetType, UUID targetId) {
     if (nullOrEmpty(tagLabels)) {
       return;
     }
@@ -6187,12 +6218,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     if (!nonDerivedTags.isEmpty()) {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFQN);
-
-      // Remove from RDF store for each tag
-      for (TagLabel tagLabel : nonDerivedTags) {
-        org.openmetadata.service.rdf.RdfTagUpdater.removeTag(
-            tagLabel, targetFQN, targetType, targetId);
-      }
     }
   }
 
@@ -7031,6 +7056,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
+    // Restored rather than cleared: this method recurses through dispatchToContainedChildren, so
+    // an inner frame must not un-flag the outer cascade on its way out.
+    boolean outerCascade = isInHardDeleteCascade();
+    IN_HARD_DELETE_CASCADE.set(Boolean.TRUE);
     try {
       // Populate relation fields up front so the same subclass hooks the legacy
       // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
@@ -7077,6 +7106,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     } finally {
+      if (outerCascade) {
+        IN_HARD_DELETE_CASCADE.set(Boolean.TRUE);
+      } else {
+        IN_HARD_DELETE_CASCADE.remove();
+      }
       exitHardDeleteCascade.run();
     }
   }
@@ -7128,18 +7162,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void bulkDeleteReferencesAndRows(List<T> entities) {
-    var jdbi = Entity.getJdbi();
-    if (jdbi == null) {
+    if (Entity.getJdbi() == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
       cancelWorkflowInstances(entityIds(entities));
       return;
     }
-    jdbi.inTransaction(
-        handle -> {
+    // Same boundary as cleanup(): deadlock retry plus a deferral scope, since the cascade rewrites
+    // the same hot relationship rows and the per-entity hooks it runs defer search writes.
+    flushInOneTransaction(
+        () -> {
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
-          return null;
         });
     // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
     cancelWorkflowInstances(entityIds(entities));
@@ -7176,6 +7210,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entityIds.add(entity.getId());
       entityIdStrings.add(entity.getId().toString());
     }
+    // The table order here is shared with cleanup() — entity_relationship, entity_extension, then
+    // the FQN-prefix deletes — because the two paths delete the same rows whenever a direct delete
+    // races a cascade over an overlapping subtree. Reorder one and you reintroduce an AB-BA
+    // deadlock between them; change both together.
+    //
     // Must run before batchDeleteRelationships: the Task 2.0 artifacts are found via the
     // entity --MENTIONED_IN--> artifact edge, which the relationship delete below removes.
     try (var ignored = phase("bulkHardDeleteFeedArtifacts")) {
@@ -9115,8 +9154,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       versionChanged = snapshot.versionChanged;
       entityStored = snapshot.entityStored;
       majorVersionChange = snapshot.majorVersionChange;
-      // The flush body repopulates deferredReactOperations (tag-RDF closures) via
-      // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
+      // The flush body repopulates deferredReactOperations via deferReactOperation; clear them
+      // so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
       indexBaselinePass = true;
@@ -9720,10 +9759,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Apply differential updates - only modify what changed
       if (!deletedTags.isEmpty()) {
-        applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
+        applyTagsDeleteInFlush(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
@@ -9753,7 +9792,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<TagLabel> deletedTags = new ArrayList<>();
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
-      applyTagsReplaceInFlushAndDeferRdf(origTags, updatedTags, fqn);
+      applyTagsAddInFlush(updatedTags, fqn);
     }
 
     private List<TagLabel> getNonDerivedTags(List<TagLabel> tags) {
@@ -9765,51 +9804,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .toList();
     }
 
-    protected final void applyTagsAddInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsAddInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().applyTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFqn);
-            }
-          });
     }
 
-    protected final void applyTagsDeleteInFlushAndDeferRdf(
-        List<TagLabel> tagLabels, String targetFqn) {
+    protected final void applyTagsDeleteInFlush(List<TagLabel> tagLabels, String targetFqn) {
       List<TagLabel> nonDerivedTags = getNonDerivedTags(tagLabels);
       if (nonDerivedTags.isEmpty()) {
         return;
       }
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
-      List<TagLabel> tagsForRdf = List.copyOf(nonDerivedTags);
-      deferReactOperation(
-          () -> {
-            for (TagLabel tagLabel : tagsForRdf) {
-              org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-            }
-          });
-    }
-
-    private void applyTagsReplaceInFlushAndDeferRdf(
-        List<TagLabel> originalTags, List<TagLabel> updatedTags, String targetFqn) {
-      List<TagLabel> originalNonDerived = getNonDerivedTags(originalTags);
-      if (!originalNonDerived.isEmpty()) {
-        List<TagLabel> tagsToRemove = List.copyOf(originalNonDerived);
-        deferReactOperation(
-            () -> {
-              for (TagLabel tagLabel : tagsToRemove) {
-                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-              }
-            });
-      }
-      applyTagsAddInFlushAndDeferRdf(updatedTags, targetFqn);
     }
 
     private void updateExtension(boolean consolidatingChanges) {
@@ -11007,7 +11015,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add tags related to newly added columns
       for (Column added : addedColumns) {
-        applyTagsAddInFlushAndDeferRdf(
+        applyTagsAddInFlush(
             listOrEmpty(added.getTags()).stream()
                 .map(tag -> tag.withAppliedBy(updatingUser.getName()))
                 .toList(),

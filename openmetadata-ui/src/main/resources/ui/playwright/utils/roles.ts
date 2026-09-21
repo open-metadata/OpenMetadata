@@ -33,9 +33,13 @@ export const getElementWithPagination = async (
   page: Page,
   locator: Locator,
   click = true,
-  maxPages = 50
+  maxPages = 50,
+  // Scopes prev/next button lookups to a specific container, avoiding strict-mode
+  // violations when multiple paginated components are mounted on the same page.
+  paginationContainer?: Locator
 ) => {
-  const previousBtn = page.locator('[data-testid="previous"]');
+  const scope = paginationContainer ?? page;
+  const previousBtn = scope.locator('[data-testid="previous"]');
   if (await previousBtn.isVisible()) {
     while (await previousBtn.isEnabled()) {
       await previousBtn.click();
@@ -44,19 +48,28 @@ export const getElementWithPagination = async (
   }
 
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
-    // Check if element is visible on current page
-    if (await locator.isVisible()) {
+    // Use waitFor with a short timeout so transient render delays after
+    // a page-turn don't cause isVisible() to return false prematurely.
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 2_000 });
       if (click) {
         await locator.click();
       }
 
       return;
+    } catch {
+      // Element not visible on this page — paginate forward.
     }
 
-    const nextBtn = page.locator('[data-testid="next"]');
-    await nextBtn.waitFor({ state: 'visible' });
+    const nextBtn = scope.locator('[data-testid="next"]');
+    if (!(await nextBtn.isVisible())) {
+      break;
+    }
 
     await nextBtn.click();
     await waitForAllLoadersToDisappear(page);
   }
+  throw new Error(
+    `Element was not found after searching ${maxPages} page(s) of pagination.`
+  );
 };

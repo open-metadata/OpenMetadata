@@ -20,8 +20,8 @@ import {
   KnowledgeGraphMode,
   KnowledgeGraphPresentation,
   MappingCoverage,
-} from '../../components/KnowledgeGraph/KnowledgeGraph.interface';
-import { RelationCategory } from '../../components/KnowledgeGraph/KnowledgeGraph.relations';
+} from '../../interface/knowledgeGraph.interface';
+import { RelationCategory } from '../../interface/knowledgeGraphRelations.interface';
 import { addDeclaredOntologyProperties } from '../../utils/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
