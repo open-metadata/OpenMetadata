@@ -28,12 +28,14 @@
     "pagination-navigation": "पृष्ठांकन नेव्हिगेशन",
     "previous-page": "मागील पृष्ठावर जा",
     "records": "रेकॉर्ड",
+    "remove-entity": "{{entity}} काढा",
     "remove-filter": "फिल्टर काढा",
     "search": "शोधा",
     "select-all": "सर्व निवडा",
     "select-dates": "तारखा निवडा",
     "select-only-one-row": "एक पंक्ती निवडा",
     "show-hidden-breadcrumbs": "लपवलेले ब्रेडक्रम्स दाखवा",
-    "today": "आज"
+    "today": "आज",
+    "tree-select": "झाड निवडा"
   }
 }

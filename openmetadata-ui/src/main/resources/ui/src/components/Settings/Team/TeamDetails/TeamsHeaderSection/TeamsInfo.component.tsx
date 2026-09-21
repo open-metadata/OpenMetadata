@@ -35,7 +35,6 @@ import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
-import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
@@ -61,7 +60,6 @@ const TeamsInfo = ({
   isTeamDeleted,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
-  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -413,8 +411,7 @@ const TeamsInfo = ({
       <Owner
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
-        owners={toOwnersWithHref(owners ?? [])}
-        renderOwnerContent={renderOwnerContent}
+        owners={owners ?? []}
         selectorContent={
           <UserTeamSelectableList
             hasPermission={Boolean(hasEditOwnerPermission)}

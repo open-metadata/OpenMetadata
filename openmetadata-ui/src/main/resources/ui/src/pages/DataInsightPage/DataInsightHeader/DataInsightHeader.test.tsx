@@ -40,8 +40,9 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
-  jest.fn(() => <div>SearchDropdown</div>)
+jest.mock(
+  '../../../components/common/FilterSelectDropdown/FilterSelectDropdown',
+  () => jest.fn(() => <div>SearchDropdown</div>)
 );
 
 jest.mock('../../../utils/DataInsightPureUtils', () => ({

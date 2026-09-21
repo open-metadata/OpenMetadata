@@ -14,8 +14,11 @@ import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { forwardRef, ReactNode } from 'react';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import {
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainNameCell,
   renderDomainOwnersCell,
@@ -24,11 +27,20 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
-  Owner: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
-    <div
-      data-show-dash={String(showDashPlaceholder)}
-      data-testid="owner-label"
-    />
+  Owner: ({
+    showDashPlaceholder,
+    owners,
+  }: {
+    showDashPlaceholder?: boolean;
+    owners?: { name?: string }[];
+  }) => (
+    <div data-show-dash={String(showDashPlaceholder)} data-testid="owner-label">
+      {owners?.map((owner) => (
+        <a data-testid="owner-link" href="/users/x" key={owner.name}>
+          {owner.name}
+        </a>
+      ))}
+    </div>
   ),
   toOwnerRef: (ref: unknown) => ref,
   toOwnerRefs: (refs: unknown[] = []) => refs,
@@ -75,8 +87,13 @@ jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
     <div
       data-size-cap={sizeCap}
       data-tags-length={tags?.length}
-      data-testid="tags-viewer"
-    />
+      data-testid="tags-viewer">
+      {tags?.length ? (
+        <a data-testid="tag-link" href="/tags/x">
+          tag
+        </a>
+      ) : null}
+    </div>
   ),
 }));
 
@@ -141,9 +158,9 @@ describe('renderDomainOwnersCell', () => {
       <>
         {renderDomainOwnersCell(
           { owners: [] },
-          () => [],
-          (_owner, chip) => chip,
-          { showDashPlaceholder: true }
+          {
+            showDashPlaceholder: true,
+          }
         )}
       </>
     );
@@ -155,19 +172,78 @@ describe('renderDomainOwnersCell', () => {
   });
 
   it('defaults showDashPlaceholder to undefined when no options are passed', () => {
-    render(
-      <>
-        {renderDomainOwnersCell(
-          { owners: [] },
-          () => [],
-          (_owner, chip) => chip
-        )}
-      </>
-    );
+    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
       'undefined'
+    );
+  });
+});
+
+describe('nested control clicks inside a clickable row', () => {
+  const renderInRow = (cell: ReactNode) => {
+    const rowClick = jest.fn();
+
+    render(
+      <div role="presentation" onClick={rowClick}>
+        {cell}
+      </div>
+    );
+
+    return rowClick;
+  };
+
+  it('keeps an owner link click with the owner', () => {
+    const rowClick = renderInRow(
+      renderDomainOwnersCell({ owners: [{ name: 'alice' } as EntityReference] })
+    );
+    fireEvent.click(screen.getByTestId('owner-link'));
+
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps a tag link click with the tag', () => {
+    const rowClick = renderInRow(
+      renderDomainClassificationTagsCell({
+        tags: [{ source: TagSource.Classification } as TagLabel],
+      })
+    );
+    fireEvent.click(screen.getByTestId('tag-link'));
+
+    expect(rowClick).not.toHaveBeenCalled();
+  });
+
+  it('lets a click on the cell itself reach the row', () => {
+    const rowClick = renderInRow(
+      renderDomainOwnersCell(
+        { owners: [] },
+        {
+          showDashPlaceholder: true,
+        }
+      )
+    );
+    fireEvent.click(screen.getByTestId('owner-label'));
+
+    expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('renderDomainExpertsCell', () => {
+  it('renders the experts as owners', () => {
+    render(
+      <>
+        {renderDomainExpertsCell(
+          { experts: [{ name: 'bob' } as EntityReference] },
+          { showDashPlaceholder: true }
+        )}
+      </>
+    );
+
+    expect(screen.getByTestId('owner-link')).toHaveTextContent('bob');
+    expect(screen.getByTestId('owner-label')).toHaveAttribute(
+      'data-show-dash',
+      'true'
     );
   });
 });

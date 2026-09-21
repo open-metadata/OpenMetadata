@@ -14,10 +14,11 @@
 import type { EdgeData, ElementDatum, IElementEvent, NodeData } from '@antv/g6';
 import { ExtensionCategory, Graph, register } from '@antv/g6';
 import { ReactNode as AntVReactNode } from '@antv/g6-extension-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import CustomNode from '../../components/KnowledgeGraph/GraphElements/CustomNode';
-import { ZOOM_RANGE } from '../../components/KnowledgeGraph/KnowledgeGraph.constants';
+import { ComponentType, useCallback, useEffect, useRef, useState } from 'react';
+import { ZOOM_RANGE } from '../../constants/KnowledgeGraph.constants';
+import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
 import {
+  CustomNodeProps,
   EdgeTooltipState,
   GraphData,
   GraphLevelRing,
@@ -26,9 +27,8 @@ import {
   KnowledgeGraphLabelMode,
   KnowledgeGraphLayout,
   KnowledgeGraphMode,
-} from '../../components/KnowledgeGraph/KnowledgeGraph.interface';
-import { RelationCategory } from '../../components/KnowledgeGraph/KnowledgeGraph.relations';
-import { useTheme } from '../../context/UntitledUIThemeProvider/theme-provider';
+} from '../../interface/knowledgeGraph.interface';
+import { RelationCategory } from '../../interface/knowledgeGraphRelations.interface';
 import {
   applyGraphLayout,
   buildEdgeBaseStyle,
@@ -269,6 +269,8 @@ interface CanvasOptions {
   viewportKey: string;
   onSelectionChange: (selection: GraphSelection) => void;
   onExpandGroup?: (id: string) => void;
+  /** Renders one graph node. Injected so this hook stays below the component layer. */
+  NodeComponent: ComponentType<CustomNodeProps>;
 }
 
 const getWorldRings = (
@@ -308,6 +310,12 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
   const [error, setError] = useState<unknown>(null);
   const [rings, setRings] = useState<GraphLevelRing[]>([]);
   const [zoom, setZoom] = useState(1);
+  // Viewport position of the world origin. With `zoom` this pins the whole
+  // affine transform, which is the only way to observe *panning* from outside:
+  // node and ring geometry both move when the graph re-lays out, so neither can
+  // tell a pan apart from a relayout. The origin is a fixed point in graph
+  // space, so where it lands on screen is a function of pan and zoom alone.
+  const [viewportOrigin, setViewportOrigin] = useState('0,0');
   const worldRings = useRef<GraphLevelRing[]>([]);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const drawn = useRef(false);
@@ -327,6 +335,8 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     }
     const zoom = graph.getZoom();
     setZoom(zoom);
+    const [originX, originY] = graph.getViewportByCanvas([0, 0]);
+    setViewportOrigin(`${Math.round(originX)},${Math.round(originY)}`);
     setRings(
       worldRings.current.map((ring) => {
         const [x, y] = graph.getViewportByCanvas([ring.x, ring.y]);
@@ -378,9 +388,11 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     }
   }, []);
 
-  const renderNode = useCallback(
-    (data: NodeData) => (
-      <CustomNode
+  const renderNode = useCallback((data: NodeData) => {
+    const { NodeComponent } = latest.current;
+
+    return (
+      <NodeComponent
         nodeData={data}
         nodeRenderKey={getNodeRenderKey(data)}
         onBlur={() => {
@@ -411,9 +423,8 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
           }
         }}
       />
-    ),
-    []
-  );
+    );
+  }, []);
 
   const applyAppearance = useCallback((graph: Graph) => {
     const current = latest.current;
@@ -909,5 +920,6 @@ export const useKnowledgeGraphCanvas = (options: CanvasOptions) => {
     selectNode,
     fit,
     zoom,
+    viewportOrigin,
   };
 };
