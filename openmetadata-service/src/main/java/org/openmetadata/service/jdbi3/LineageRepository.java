@@ -371,29 +371,20 @@ public class LineageRepository {
     }
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-    if (!fromService.getId().equals(toService.getId())) {
-      LineageDetails serviceLineageDetails =
-          getOrCreateLineageDetails(
-                  fromService.getId(), toService.getId(), entityLineageDetails, childRelationExists)
-              .withPipeline(null);
-      insertLineage(fromService, toService, serviceLineageDetails);
-    }
-    addPipelineServiceEdges(fromService, toService, entityLineageDetails, childRelationExists);
-  }
-
-  private void addPipelineServiceEdges(
-      EntityReference fromService,
-      EntityReference toService,
-      LineageDetails entityLineageDetails,
-      boolean childRelationExists) {
     EntityReference pipelineService = getPipelineService(entityLineageDetails);
-    if (pipelineService == null) {
+
+    // A pipeline-annotated edge is projected as fromService -> pipelineService -> toService. Also
+    // emitting the direct fromService -> toService edge would draw two parallel paths for one flow
+    // of data, so the two shapes are mutually exclusive. A direct edge survives only while some
+    // un-annotated child edge still contributes to it, which the assetEdges refcount tracks.
+    if (pipelineService != null) {
+      insertServiceEdgeIfDistinct(
+          fromService, pipelineService, entityLineageDetails, childRelationExists);
+      insertServiceEdgeIfDistinct(
+          pipelineService, toService, entityLineageDetails, childRelationExists);
       return;
     }
-    insertServiceEdgeIfDistinct(
-        fromService, pipelineService, entityLineageDetails, childRelationExists);
-    insertServiceEdgeIfDistinct(
-        pipelineService, toService, entityLineageDetails, childRelationExists);
+    insertServiceEdgeIfDistinct(fromService, toService, entityLineageDetails, childRelationExists);
   }
 
   private EntityReference getPipelineService(LineageDetails entityLineageDetails) {
@@ -1345,45 +1336,40 @@ public class LineageRepository {
         Entity.getEntity(from.getType(), from.getId(), fields, Include.ALL);
     EntityInterface toEntity = Entity.getEntity(to.getType(), to.getId(), fields, Include.ALL);
 
-    cleanUpLineage(fromEntity, toEntity, FIELD_SERVICE, EntityInterface::getService);
-    cleanUpPipelineServiceEdges(fromEntity, toEntity, lineageDetails);
+    cleanUpServiceLineage(fromEntity, toEntity, lineageDetails);
     cleanupListLineage(fromEntity, toEntity, FIELD_DOMAINS, EntityInterface::getDomains);
     cleanUpLineageForDataProducts(
         fromEntity, toEntity, FIELD_DATA_PRODUCTS, EntityInterface::getDataProducts);
   }
 
-  private void cleanUpPipelineServiceEdges(
+  /** Mirrors {@link #addServiceLineage}: releases exactly the edges that edge's insert created. */
+  private void cleanUpServiceLineage(
       EntityInterface fromEntity, EntityInterface toEntity, LineageDetails entityLineageDetails) {
     if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
-    EntityReference pipelineService = getPipelineService(entityLineageDetails);
-    if (pipelineService == null) {
-      return;
-    }
     EntityReference fromService = fromEntity.getService();
     EntityReference toService = toEntity.getService();
-    processExtendedLineageCleanup(fromService, pipelineService);
-    processExtendedLineageCleanup(pipelineService, toService);
+    EntityReference pipelineService = getPipelineService(entityLineageDetails);
+
+    if (pipelineService != null) {
+      cleanUpServiceEdgeIfDistinct(fromService, pipelineService);
+      cleanUpServiceEdgeIfDistinct(pipelineService, toService);
+      return;
+    }
+    cleanUpServiceEdgeIfDistinct(fromService, toService);
+  }
+
+  private void cleanUpServiceEdgeIfDistinct(
+      EntityReference fromService, EntityReference toService) {
+    if (fromService.getId().equals(toService.getId())) {
+      return;
+    }
+    processExtendedLineageCleanup(fromService, toService);
   }
 
   private boolean hasField(EntityReference entity, String field) {
     return Entity.entityHasField(entity.getType(), field);
-  }
-
-  private void cleanUpLineage(
-      EntityInterface fromEntity,
-      EntityInterface toEntity,
-      String field,
-      Function<EntityInterface, EntityReference> getter) {
-    boolean hasField =
-        hasField(fromEntity.getEntityReference(), field)
-            && hasField(toEntity.getEntityReference(), field);
-    if (!hasField) return;
-
-    EntityReference fromRef = getter.apply(fromEntity);
-    EntityReference toRef = getter.apply(toEntity);
-    processExtendedLineageCleanup(fromRef, toRef);
   }
 
   private void cleanupListLineage(
