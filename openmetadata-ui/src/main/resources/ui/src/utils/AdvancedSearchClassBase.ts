@@ -50,6 +50,7 @@ import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { parseBucketsData } from './SearchPureUtils';
 
@@ -935,14 +936,14 @@ class AdvancedSearchClassBase {
         label: t('label.glossary-term-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        fieldSettings: {
+        fieldSettings: withGlossaryTermField({
           asyncFetch: this.autocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
             sourceFields: 'fullyQualifiedName',
           }),
           useAsyncSearch: true,
-        },
+        }),
       },
 
       [EntityFields.CERTIFICATION]: {

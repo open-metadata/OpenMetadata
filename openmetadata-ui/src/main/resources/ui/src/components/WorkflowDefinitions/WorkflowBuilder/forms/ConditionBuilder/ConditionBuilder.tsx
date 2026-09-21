@@ -40,6 +40,12 @@ import type {
   ConditionRow,
   ConditionType,
 } from './ConditionBuilder.interface';
+import { WorkflowTriggerFields } from '../../../../../generated/type/workflowTriggerFields';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import {
   buildConditionBuilderPayload,
   generateRowId,
@@ -55,6 +61,13 @@ interface ConditionBuilderValueControlProps {
   readonly values: string[];
   onChange: (values: string[]) => void;
 }
+
+// These condition fields hold glossary-term FQNs, so they get the tree picker
+// rather than the flat option list the other fields share.
+const GLOSSARY_TERM_CONDITION_FIELDS: string[] = [
+  WorkflowTriggerFields.Glossary,
+  WorkflowTriggerFields.RelatedTerms,
+];
 
 const resolveMultiSelectItems = (
   hasFetchOptions: boolean,
@@ -173,6 +186,18 @@ function ConditionBuilderValueControl(
           onChange={(checked) => onChange([checked ? 'true' : 'false'])}
         />
       </div>
+    );
+  }
+
+  if (GLOSSARY_TERM_CONDITION_FIELDS.includes(fieldDef?.value ?? '')) {
+    return (
+      <GlossaryTermPicker
+        data-testid={dataTestId}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={fqnsToGlossaryTags(values)}
+        onChange={(terms) => onChange(glossaryTagsToFqns(terms))}
+      />
     );
   }
 

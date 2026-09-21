@@ -33,6 +33,15 @@ export const toTagLabel = ({
   ...tag
 }: GlossaryPickerValue): TagLabel => tag;
 
+// Filters and conditions store bare FQNs; the picker speaks TagLabel.
+export const fqnsToGlossaryTags = (fqns: string[]): TagLabel[] =>
+  fqns
+    .filter(Boolean)
+    .map((tagFQN) => ({ tagFQN, source: TagSource.Glossary } as TagLabel));
+
+export const glossaryTagsToFqns = (tags: TagLabel[]): string[] =>
+  tags.map((tag) => tag.tagFQN);
+
 // The payload a glossary root carries so a parent picker can resolve its entity.
 export const glossaryRootValue = (glossary: Glossary): GlossaryPickerValue =>
   ({

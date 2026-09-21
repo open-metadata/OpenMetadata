@@ -13,6 +13,11 @@
 import { ChevronDown } from '@untitledui/icons';
 import classNames from 'classnames';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { DqFilterDescriptor } from '../../../DataQuality/DataQualityDashboard/useDataQualityDashboardFilters';
 import {
   chipCountBadgeClassName,
@@ -30,6 +35,17 @@ const DqFilterChip = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
+  if (filter.type === 'glossaryTerm') {
+    return (
+      <GlossaryTermPicker
+        data-testid={`search-dropdown-${filter.key}`}
+        label={filter.label}
+        value={fqnsToGlossaryTags(filter.selectedFqns)}
+        onChange={(terms) => filter.onChange(glossaryTagsToFqns(terms))}
+      />
+    );
+  }
+
   if (filter.type === 'owner') {
     return (
       <UserTeamSelectableList

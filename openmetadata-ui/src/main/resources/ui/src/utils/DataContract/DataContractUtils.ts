@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { withGlossaryTermField } from '../queryBuilderWidgets/glossaryTermQueryField';
 import { RuleObject } from 'antd/lib/form';
 import { dump } from 'js-yaml';
 import { isEmpty, omit } from 'lodash';
@@ -256,14 +257,14 @@ export const getSematicRuleFields = () => {
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_TAG_OPERATORS,
-        fieldSettings: {
+        fieldSettings: withGlossaryTermField({
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
           }),
           useAsyncSearch: true,
-        },
+        }),
       },
     },
   };

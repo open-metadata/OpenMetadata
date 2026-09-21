@@ -46,6 +46,15 @@ const findSearch = (filters: DqFilterDescriptor[], searchKey: string) => {
   return descriptor;
 };
 
+const findGlossaryTerm = (filters: DqFilterDescriptor[]) => {
+  const descriptor = filters.find((filter) => filter.type === 'glossaryTerm');
+  if (descriptor?.type !== 'glossaryTerm') {
+    throw new Error('No glossary-term filter');
+  }
+
+  return descriptor;
+};
+
 const findOwner = (filters: DqFilterDescriptor[]) => {
   const descriptor = filters.find((filter) => filter.type === 'owner');
   if (descriptor?.type !== 'owner') {
@@ -164,9 +173,7 @@ describe('useDataQualityDashboardFilters', () => {
       ]);
     });
     act(() => {
-      findSearch(result.current.filters, 'glossaryTerms').searchProps.onChange([
-        option('Glossary.Term'),
-      ]);
+      findGlossaryTerm(result.current.filters).onChange(['Glossary.Term']);
     });
 
     expect(result.current.chartFilter.glossaryTerms).toEqual(['Glossary.Term']);

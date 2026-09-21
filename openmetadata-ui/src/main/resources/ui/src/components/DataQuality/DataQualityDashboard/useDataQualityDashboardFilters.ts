@@ -87,6 +87,15 @@ export type DqFilterDescriptor =
       /** The `searchKey` the OSS SearchDropdown expects (also used as test id). */
       searchKey: string;
       searchProps: DqSearchFilterProps;
+    }
+  | {
+      /** Glossary terms come from the shared tree picker, not a flat facet list. */
+      key: DqSearchFilterKey;
+      type: 'glossaryTerm';
+      label: string;
+      searchKey: string;
+      selectedFqns: string[];
+      onChange: (fqns: string[]) => void;
     };
 
 export interface UseDataQualityDashboardFiltersProps {
@@ -840,10 +849,14 @@ export const useDataQualityDashboardFilters = ({
     if (showGlossaryTermsFilter) {
       descriptors.push({
         key: 'glossaryTerm',
-        type: 'search',
+        type: 'glossaryTerm',
         label: t('label.glossary-term'),
         searchKey: 'glossaryTerms',
-        searchProps: glossaryTerms,
+        selectedFqns: selectedGlossaryTermFilter.map((term) => term.key),
+        onChange: (fqns) =>
+          handleGlossaryTermChange(
+            fqns.map((fqn) => ({ key: fqn, label: fqn }))
+          ),
       });
     }
     if (showDataProductsFilter) {

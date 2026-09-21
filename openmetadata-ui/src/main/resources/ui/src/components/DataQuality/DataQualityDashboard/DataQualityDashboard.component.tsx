@@ -26,6 +26,11 @@ import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureU
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import './data-quality-dashboard.style.less';
+import {
+  fqnsToGlossaryTags,
+  glossaryTagsToFqns,
+} from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
+import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import DqDashboardSectionContent, {
   DQ_DASHBOARD_SECTIONS,
@@ -128,6 +133,20 @@ const DataQualityDashboard = ({
                     </UserTeamSelectableList>
                   </TooltipTrigger>
                 </Tooltip>
+              );
+            }
+
+            if (filter.type === 'glossaryTerm') {
+              return (
+                <GlossaryTermPicker
+                  data-testid={`search-dropdown-${filter.label}`}
+                  key={filter.key}
+                  label={filter.label}
+                  value={fqnsToGlossaryTags(filter.selectedFqns)}
+                  onChange={(terms) =>
+                    filter.onChange(glossaryTagsToFqns(terms))
+                  }
+                />
               );
             }
 
