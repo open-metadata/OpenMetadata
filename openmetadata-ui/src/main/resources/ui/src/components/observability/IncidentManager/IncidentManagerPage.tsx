@@ -27,6 +27,7 @@ import FilterBar from '../common/FilterChip/FilterBar';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
 
 /**
@@ -109,30 +110,33 @@ const IncidentManagerPage = () => {
         <IncidentManagerPageWidgets />
       </div>
       {hasViewPermission ? (
-        <Box
-          className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
-          direction="col">
-          <Box className="tw:border-b tw:border-secondary tw:p-4">
-            <FilterBar
-              filters={filterDescriptors}
-              hasActiveFilters={hasActiveFilters}
-              variant="input"
-              onClearAll={clearAllFilters}
+        <Box className="tw:gap-4" direction="col">
+          <IncidentGroupsView />
+          <Box
+            className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
+            direction="col">
+            <Box className="tw:border-b tw:border-secondary tw:p-4">
+              <FilterBar
+                filters={filterDescriptors}
+                hasActiveFilters={hasActiveFilters}
+                variant="input"
+                onClearAll={clearAllFilters}
+              />
+            </Box>
+            <IncidentManagerTable
+              breadcrumbData={incidentBreadcrumb}
+              handleAssigneeUpdate={handleAssigneeUpdate}
+              handleSeveritySubmit={handleSeveritySubmit}
+              handleStatusSubmit={handleStatusSubmit}
+              isIncidentPage={isIncidentPage}
+              isPermissionLoading={isPermissionLoading}
+              pagingData={pagingData}
+              showPagination={showPagination}
+              tableDetails={tableDetails}
+              testCaseListData={testCaseListData}
+              testCasePermissions={testCasePermissions}
             />
           </Box>
-          <IncidentManagerTable
-            breadcrumbData={incidentBreadcrumb}
-            handleAssigneeUpdate={handleAssigneeUpdate}
-            handleSeveritySubmit={handleSeveritySubmit}
-            handleStatusSubmit={handleStatusSubmit}
-            isIncidentPage={isIncidentPage}
-            isPermissionLoading={isPermissionLoading}
-            pagingData={pagingData}
-            showPagination={showPagination}
-            tableDetails={tableDetails}
-            testCaseListData={testCaseListData}
-            testCasePermissions={testCasePermissions}
-          />
         </Box>
       ) : (
         <ErrorPlaceHolder
