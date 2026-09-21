@@ -76,8 +76,10 @@ for p in "${providers[@]}"; do
 
   if [ ! -f "$status_file" ]; then
     # Outcome artifact missing — leg was cancelled or the runner never
-    # completed the "Record leg outcome" step. Report as unknown rather
-    # than silently dropping the row.
+    # completed the "Record leg outcome" step. Treat as failure so the
+    # overall verdict never posts PASSED while a leg is unaccounted for;
+    # mirrors the completed-but-no-report branch below.
+    any_failed=true
     # shellcheck disable=SC2059
     printf "$fmt" "$p" 'UNKNOWN' '-' '-' '-' '-' '-' >> "$OUT_DIR/table.txt"
     continue
@@ -125,6 +127,10 @@ for p in "${providers[@]}"; do
       fi
       ;;
     *)
+      # Unrecognized status value — someone added a new branch to
+      # `Record leg outcome` without extending the parser. Same policy
+      # as missing-artifact: fail loud rather than silently PASSED.
+      any_failed=true
       # shellcheck disable=SC2059
       printf "$fmt" "$p" 'UNKNOWN' '-' '-' '-' '-' '-' >> "$OUT_DIR/table.txt"
       ;;
