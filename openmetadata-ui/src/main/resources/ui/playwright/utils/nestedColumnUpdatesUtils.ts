@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DataType as FileDataType } from '../../src/generated/entity/data/file';
 import { DataType as SearchIndexDataType } from '../../src/generated/entity/data/searchIndex';
 import { DataType as TableDataType } from '../../src/generated/entity/data/table';
@@ -39,11 +39,29 @@ type NestedChildrenNode = {
 
 type NestedChildrenResponse = {
   fullyQualifiedName: string;
-  columns: NestedChildrenNode[];
-  fields: NestedChildrenNode[];
-  requestSchema: { schemaFields: NestedChildrenNode[] };
-  messageSchema: { schemaFields: NestedChildrenNode[] };
-  dataModel: { columns: NestedChildrenNode[] };
+  columns?: NestedChildrenNode[];
+  fields?: NestedChildrenNode[];
+  requestSchema?: { schemaFields?: NestedChildrenNode[] };
+  messageSchema?: { schemaFields?: NestedChildrenNode[] };
+  dataModel?: { columns?: NestedChildrenNode[] };
+};
+
+/**
+ * Each branch below knows which key its entity carries, but the generated types
+ * mark them all optional. Resolve through here so a fixture that stops creating
+ * the nested children fails naming the missing key, not with a TypeError three
+ * property accesses later.
+ */
+const requireNodes = (
+  nodes: NestedChildrenNode[] | undefined,
+  key: string,
+  type: string
+): NestedChildrenNode[] => {
+  if (!nodes?.length) {
+    throw new Error(`Expected ${key} on the ${type} response fixture`);
+  }
+
+  return nodes;
 };
 
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
@@ -53,7 +71,11 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
   switch (type) {
     case 'API Endpoint': {
-      const field0 = entityData.requestSchema.schemaFields[0];
+      const field0 = requireNodes(
+        entityData.requestSchema?.schemaFields,
+        'requestSchema.schemaFields',
+        type
+      )[0];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -69,7 +91,11 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Topic': {
-      const field0 = entityData.messageSchema.schemaFields[0];
+      const field0 = requireNodes(
+        entityData.messageSchema?.schemaFields,
+        'messageSchema.schemaFields',
+        type
+      )[0];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -80,7 +106,11 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Container': {
-      const field0 = entityData.dataModel.columns[3];
+      const field0 = requireNodes(
+        entityData.dataModel?.columns,
+        'dataModel.columns',
+        type
+      )[3];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -94,7 +124,7 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Data Model': {
-      const field0 = entityData.columns[1];
+      const field0 = requireNodes(entityData.columns, 'columns', type)[1];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -109,7 +139,7 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
     }
     case 'File':
     case 'Worksheet': {
-      const field0 = entityData.columns[1];
+      const field0 = requireNodes(entityData.columns, 'columns', type)[1];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -123,7 +153,7 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Search Index': {
-      const field0 = entityData.fields[3];
+      const field0 = requireNodes(entityData.fields, 'fields', type)[3];
       const field1 = field0.children[0];
       const field2 = field1.children[0];
       return {
@@ -137,7 +167,7 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Table': {
-      const field0 = entityData.columns[2];
+      const field0 = requireNodes(entityData.columns, 'columns', type)[2];
       const field1 = field0.children[1];
       const field2 = field1.children[0];
       return {
@@ -1023,9 +1053,11 @@ export const createWorksheetEntity = async (apiContext: APIRequestContext) => {
     entity,
     service,
     deleteService: () =>
-      worksheetClass
-        .delete(apiContext)
-        .then(() => ({} as unknown as APIResponse)),
+      apiContext.delete(
+        `/api/v1/services/driveServices/name/${encodeURIComponent(
+          service.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      ),
     visitPage: async (page: Page) => {
       await worksheetClass.visitEntityPage(page);
     },
@@ -1094,7 +1126,11 @@ export const createFileEntity = async (apiContext: APIRequestContext) => {
     entity,
     service,
     deleteService: () =>
-      fileClass.delete(apiContext).then(() => ({} as unknown as APIResponse)),
+      apiContext.delete(
+        `/api/v1/services/driveServices/name/${encodeURIComponent(
+          service.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      ),
     visitPage: async (page: Page) => {
       await fileClass.visitEntityPage(page);
       await page.getByTestId('schema').click();
