@@ -1519,13 +1519,10 @@ public class SearchRepository {
   }
 
   /**
-   * A change to the table's own tags forces a full column reindex rather than the inherited-field
-   * script update. The table's glossary terms are projected onto its columns on read (see {@code
-   * Entity.populateEntityFieldTags}), so rebuilding the column docs from the entity picks the change
-   * up in both directions, and a column's own labels survive because the projection merges behind
-   * them. The script path only writes the inherited-field map and never touches {@code tags}, which
-   * is why a term removed from a table used to linger on its column docs — and keep the columns
-   * showing up under the glossary term's assets.
+   * Only changes to the column tree require deleting and rebuilding column documents. Changes to a
+   * table's own tags are handled by the descriptor-driven child propagation after this sync, which
+   * applies the tag delta to {@code tableColumn} documents with an update-by-query while preserving
+   * manually applied column labels.
    */
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
@@ -1533,10 +1530,7 @@ public class SearchRepository {
     }
 
     return changedFieldNames(changeDescription)
-        .anyMatch(
-            fieldName ->
-                fieldName.startsWith(Entity.FIELD_COLUMNS)
-                    || fieldName.startsWith(Entity.FIELD_TAGS));
+        .anyMatch(fieldName -> fieldName.startsWith(Entity.FIELD_COLUMNS));
   }
 
   private Stream<String> changedFieldNames(ChangeDescription changeDescription) {

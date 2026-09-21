@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -41,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1100,6 +1103,66 @@ class SearchRepositoryBehaviorTest {
     assertTrue(
         ((List<TagLabel>) params.get("tagDeleted"))
             .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.PROPAGATED));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagOnlyChangeUsesTargetedColumnUpdateInsteadOfFullReindex() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    Table table = mock(Table.class);
+    UUID tableId = UUID.randomUUID();
+    EntityReference tableRef =
+        new EntityReference().withId(tableId).withType(Entity.TABLE).withName("orders");
+    when(table.getEntityReference()).thenReturn(tableRef);
+    when(table.getId()).thenReturn(tableId);
+    when(table.getName()).thenReturn("orders");
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tag)))),
+            List.of(),
+            List.of());
+
+    invokePrivateMethod(
+        repo,
+        "syncTableColumns",
+        new Class<?>[] {Table.class, ChangeDescription.class},
+        table,
+        tagChange);
+    repo.propagateInheritedFieldsToChildren(
+        Entity.TABLE, tableId.toString(), tagChange, TABLE_MAPPING, table);
+
+    verify(searchClient, never()).deleteEntityByFields(anyList(), anyList());
+    verify(searchClient, never()).createEntities(anyString(), anyList());
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            tagUpdateCaptor.capture());
+    assertTrue(tagUpdateCaptor.getValue().getKey().contains("ctx._source.tags"));
+    List<TagLabel> propagatedTags =
+        (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
+    assertEquals(1, propagatedTags.size());
+    assertEquals(TagLabel.LabelType.PROPAGATED, propagatedTags.getFirst().getLabelType());
   }
 
   @Test
