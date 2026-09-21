@@ -159,6 +159,22 @@ class JWTTokenGeneratorTest {
         findEmailFromClaims(mapping, DEFAULT_CLAIM_ORDER, claims, "openmetadata.org"));
   }
 
+  /** An order that reads {@code sub} first only works with an IdP whose {@code sub} is the login. */
+  @Test
+  void firstConfiguredClaimCarriesPrincipalEvenWhenItIsTheSubject() {
+    List<String> order = List.of("sub", "email");
+    initGenerator(order, List.of());
+    Map<String, Claim> claims = mint("mohit", "mohit@getcollate.io").getClaims();
+
+    assertEquals("mohit@getcollate.io", claims.get("sub").asString());
+    assertEquals("mohit", claims.get("username").asString());
+    assertEquals("mohit", findUserNameFromClaims(Map.of(), order, claims));
+    assertEquals(
+        "mohit@getcollate.io", findEmailFromClaims(Map.of(), order, claims, "openmetadata.org"));
+    assertDoesNotThrow(
+        () -> validateDomainEnforcement(Map.of(), order, claims, PRINCIPAL_DOMAIN, Set.of(), true));
+  }
+
   private DecodedJWT mint(String userName, String email) {
     return decodedJWT(
         jwtTokenGenerator

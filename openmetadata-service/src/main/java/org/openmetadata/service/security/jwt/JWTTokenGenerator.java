@@ -294,7 +294,8 @@ public class JWTTokenGenerator {
    * <p>{@code preferred_username} carries the email because that is what identity providers put
    * there (Okta login, Azure UPN); a bare name there resolved to an empty domain under enforcement
    * and to a synthesized {@code name@principalDomain} email that contradicted the user's real one
-   * (#29142). {@code sub} and {@code username} stay the bare name: they are the stable subject.
+   * (#29142). {@code sub} and {@code username} stay the bare name - the stable subject - unless the
+   * deployment's claim order reads one of them first, see {@link #putConfiguredPrincipalClaims}.
    */
   private Map<String, String> identityClaims(String userName, String email) {
     String principal = nullOrEmpty(email) ? userName : email;
@@ -313,8 +314,9 @@ public class JWTTokenGenerator {
    * A deployment may resolve principals from claims we do not otherwise mint ({@code upn}, {@code
    * mail}, ...). With a mapping, the username claim gets the bare name and the email claim the
    * email - the email wins if both map to one claim, which is how the provider's token looks too.
-   * With an order, the first claim gets the email so the first-match lookup lands on a value that
-   * has a domain instead of falling through to a bare-name claim.
+   * With an order, the first claim gets the email - even {@code sub} or {@code username}: a
+   * deployment that resolves principals from that claim first has an identity provider whose value
+   * there is the email-shaped login, and the first-match lookup must land on a value with a domain.
    */
   private void putConfiguredPrincipalClaims(
       Map<String, String> claims, String userName, String principal) {
@@ -328,7 +330,7 @@ public class JWTTokenGenerator {
         claims.put(emailClaim, principal);
       }
     } else if (!principalClaims.isEmpty()) {
-      claims.putIfAbsent(principalClaims.getFirst(), principal);
+      claims.put(principalClaims.getFirst(), principal);
     }
   }
 
