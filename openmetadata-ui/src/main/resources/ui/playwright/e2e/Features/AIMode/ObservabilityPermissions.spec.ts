@@ -52,10 +52,27 @@ const test = base.extend<{ viewOnlyPage: Page }>({
     const context = await browser.newContext({ storageState: undefined });
     const page = await context.newPage();
     try {
+      // `SubPanel` filters a gated item on
+      // `Boolean(permissions?.[resource]?.[operation])`, which is equally false
+      // when access is denied and while `permissions` is still the empty
+      // initial value. Settling the boot-time fetch here means the absence
+      // assertions below cannot pass merely because permissions had not landed
+      // yet — a permission-loading regression fails the suite instead.
+      //
+      // Hoisted above `login()`, which is the navigation that boots the app and
+      // issues the fetch; a listener registered afterwards would miss it.
+      const permissionsResolved = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname.endsWith('/api/v1/permissions') &&
+          response.ok()
+      );
+
       // Log in BEFORE seeding AI mode — enableAiAppMode installs an init
       // script on every navigation, and the signin page rendered in AI mode
       // doesn't expose the email input the login helper looks for.
       await viewOnlyUser.login(page);
+      await permissionsResolved;
+
       await use(page);
     } finally {
       await context.close();

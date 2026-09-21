@@ -438,9 +438,18 @@ test.describe('AI mode Observability', () => {
       await addButton.click();
       await waitForAllLoadersToDisappear(page);
 
+      // Assert the dialog itself, not the 'Add Alert' text: that label is on
+      // the trigger too, so it is already on screen before the click and a
+      // broken open handler would leave this test green.
+      const dialog = page.getByRole('dialog');
+
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('alert-name-input')).toBeVisible();
+      await expect(dialog.getByTestId('source-select')).toBeVisible();
+
+      // The modal opens in place — the alerts route stays mounted under the
+      // AI shell rather than navigating to the classic add-alert page.
       await expect(page).toHaveURL(/\/observability\/alerts$/);
-      // eslint-disable-next-line om-playwright/no-positional-locator -- 'Add Alert' labels both the page button and its modal trigger; either proves the alerts page rendered
-      await expect(page.getByText('Add Alert').first()).toBeVisible();
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
     });
   });
