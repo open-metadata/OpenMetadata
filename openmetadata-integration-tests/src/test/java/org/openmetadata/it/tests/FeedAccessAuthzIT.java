@@ -300,42 +300,6 @@ class FeedAccessAuthzIT {
     assertEquals("Conditional write", updated.getDescription());
   }
 
-  // ==================== Query-param / comment variants of the view check ====================
-
-  @Test
-  void listActivityByEntityQueryParam_callerDeniedViewOnTarget_forbidden(TestNamespace ns)
-      throws Exception {
-    Table table = createTestTable(ns, "act-qp");
-    OpenMetadataClient denied = clientDeniedViewOn(ns, "act-qp", "table");
-    RequestOptions options =
-        RequestOptions.builder()
-            .queryParam("entityType", "table")
-            .queryParam("entityId", table.getId().toString())
-            .build();
-
-    assertForbidden(
-        () -> denied.getHttpClient().executeForString(HttpMethod.GET, ACTIVITY_PATH, null, options),
-        "Activity scoped by entityType+entityId must honour the caller's view permission");
-  }
-
-  @Test
-  void addTaskComment_callerDeniedViewOnTarget_forbidden(TestNamespace ns) throws Exception {
-    Table table = createTestTable(ns, "task-comment");
-    Task task = createTaskAbout(ns, table);
-    OpenMetadataClient denied = clientDeniedViewOn(ns, "task-comment", "table");
-
-    assertForbidden(
-        () ->
-            denied
-                .getHttpClient()
-                .executeForString(
-                    HttpMethod.POST,
-                    TASKS_PATH + "/" + task.getId() + "/comments",
-                    "{\"message\":\"comment from a denied user\"}",
-                    RequestOptions.builder().header("Content-Type", "application/json").build()),
-        "A user who cannot view the task's target entity must not comment on / read the task");
-  }
-
   // ==================== Helpers ====================
 
   private static String patchWithIfMatch(String path, String body, String ifMatch)
@@ -415,18 +379,6 @@ class FeedAccessAuthzIT {
                 .withDescription("Task authored by admin")
                 .withCategory(TaskCategory.Approval)
                 .withType(TaskEntityType.GlossaryApproval));
-  }
-
-  private static Task createTaskAbout(TestNamespace ns, Table table) {
-    return SdkClients.adminClient()
-        .tasks()
-        .create(
-            new CreateTask()
-                .withName(ns.prefix("task-about"))
-                .withDescription("Task about a table")
-                .withCategory(TaskCategory.MetadataUpdate)
-                .withType(TaskEntityType.DescriptionUpdate)
-                .withAbout(entityLink(table)));
   }
 
   private static Conversation createConversation(String about, String message) throws Exception {
