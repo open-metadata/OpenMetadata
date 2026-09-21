@@ -91,8 +91,29 @@ class TestInlineQueryHeader:
         assert "'a b'" in injected, "header split the string literal"
         assert HEADER_START in injected
 
-    def test_statement_already_commented_is_left_alone(self):
-        statement = "/* dbt */ SELECT 1 AS a"
+    @pytest.mark.parametrize(
+        ("statement", "expected_prefix"),
+        [
+            ("/* dbt */ SELECT 1 AS a", "/* dbt */ SELECT "),
+            ("-- note\nSELECT 1 AS a", "-- note\nSELECT "),
+            ("--note\nSELECT 1 AS a", "--note\nSELECT "),
+            ("/* one */ /* two */ SELECT 1 AS a", "/* one */ /* two */ SELECT "),
+            ("/* outer /* inner */ */ SELECT 1 AS a", "/* outer /* inner */ */ SELECT "),
+            ("-- note\n/* block */\nSELECT 1 AS a", "-- note\n/* block */\nSELECT "),
+        ],
+    )
+    def test_leading_comments_are_skipped_not_used_as_the_anchor(self, statement, expected_prefix):
+        """A header buried in the user's own comment is dropped along with it."""
+        injected = inject_inline_query_header(statement)
+
+        assert injected.startswith(expected_prefix + HEADER_START[:2])
+        assert HEADER_START in injected[len(expected_prefix) :], "header landed inside the leading comment"
+
+    def test_comment_only_statement_is_left_alone(self):
+        assert inject_inline_query_header("-- nothing to run") == "-- nothing to run"
+
+    def test_unterminated_block_comment_is_left_alone(self):
+        statement = "/* never closed SELECT 1 AS a"
 
         assert inject_inline_query_header(statement) == statement
 

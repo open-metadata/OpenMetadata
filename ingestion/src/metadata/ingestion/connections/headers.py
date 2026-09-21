@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
 )
 
 FIRST_WORD = re.compile(r"\w+")
+# whitespace and comments ahead of the first token; the block-comment branch only
+# matches a closed comment, so an unterminated one is left for the caller to reject
+LEADING_TRIVIA = re.compile(r"(?:\s+|--[^\n]*|/\*(?:[^*]|\*(?!/))*\*/)*")
 
 
 def render_query_header(ometa_version: str) -> str:
@@ -68,21 +71,28 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
 def inject_inline_query_header(statement: str) -> str:
     """Return the statement with the OpenMetadata header after its first word.
 
-    The anchor is the first run of word characters rather than the first
-    whitespace-delimited token: ``SELECT'a b'`` has no space after the keyword,
-    and splitting on whitespace would land the header inside the string literal
-    and change the value the statement returns.
+    Query Store drops whatever precedes the statement's first token, so the header
+    only survives inside the statement itself. Two things decide where that is:
 
-    Statements that already start with a comment are returned unchanged.
+    * leading comments are skipped rather than treated as the anchor. A statement
+      opening with ``-- note`` would otherwise take ``note`` as its first word and
+      bury the header in the comment, which Query Store discards with it. A block
+      comment that is never closed has no safe anchor at all, so it is left alone.
+    * the anchor is the first run of word characters, not the first
+      whitespace-delimited token: ``SELECT'a b'`` has no space after the keyword, so
+      splitting on whitespace lands the header inside the string literal and changes
+      the value the statement returns.
     """
-    stripped = statement.lstrip()
-    first_word = FIRST_WORD.search(stripped)
-    if not first_word or stripped.startswith("/*"):
+    trivia = LEADING_TRIVIA.match(statement)
+    start = trivia.end() if trivia else 0
+    if statement.startswith("/*", start):
         return statement
-    leading_whitespace = statement[: len(statement) - len(stripped)]
+    first_word = FIRST_WORD.search(statement, start)
+    if not first_word:
+        return statement
     end = first_word.end()
     header = render_query_header(_pkg_version("openmetadata-ingestion"))
-    return f"{leading_whitespace}{stripped[:end]} {header}{stripped[end:]}"
+    return f"{statement[:end]} {header}{statement[end:]}"
 
 
 @inject_query_header_by_conn.register(MssqlConnection)
