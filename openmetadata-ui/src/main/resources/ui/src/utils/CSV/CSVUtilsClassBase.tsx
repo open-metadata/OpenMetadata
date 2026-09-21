@@ -2241,18 +2241,10 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
     column,
   }: RenderEditCellProps<Record<string, unknown>, unknown>) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    // Opens with the cell, the way the grid's other editors do.
-    const [isOpen, setIsOpen] = useState(true);
     const [popoverEl, setPopoverEl] = useState<HTMLElement | null>(null);
 
     // The popover is portaled and mounts a frame late, so poll until it is there.
     useEffect(() => {
-      if (!isOpen) {
-        setPopoverEl(null);
-
-        return;
-      }
-
       let frame = 0;
       const findPopover = () => {
         const el = document.querySelector<HTMLElement>(
@@ -2267,7 +2259,7 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
       findPopover();
 
       return () => cancelAnimationFrame(frame);
-    }, [isOpen]);
+    }, []);
 
     useMultiContainerFocusTrap({
       containers: [containerRef.current, popoverEl],
@@ -2299,14 +2291,16 @@ const getCsvGlossaryTermsEditor: CSVEditorFactory = ({
           <InlineEdit
             onCancel={() => onClose(false)}
             onSave={() => onClose(true)}>
+            {/* Pinned open: in a cell the picker is the editor, so a stray
+                dismissal would leave an editor with no way back — its own
+                `skipNextFocusOpen` then swallows the next focus. */}
             <GlossaryTermPicker
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
+              isOpen
               data-testid={CSV_GLOSSARY_PICKER_TESTID}
-              isOpen={isOpen}
               value={terms}
               onChange={handleChange}
-              onOpenChange={setIsOpen}
             />
           </InlineEdit>
         </div>
