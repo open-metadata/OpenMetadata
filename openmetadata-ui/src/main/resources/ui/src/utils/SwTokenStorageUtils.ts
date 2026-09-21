@@ -207,6 +207,54 @@ export const setOidcToken = async (token: string): Promise<void> => {
   }
 };
 
+// Strict variant that surfaces storage failures instead of swallowing them.
+// Used by AuthCoordinator's leader-path `publish` hook, where a silently
+// failed write would otherwise let the leader broadcast `done` with a
+// payload no sibling tab can trust across a reload — followers accept it
+// in-memory, but the next cold-load reads stale storage and re-triggers
+// refresh (or bounces to sign-in if the refresh path also happens to be
+// unhealthy at that point). Propagating the error lets the CrossTabLock's
+// `try/catch` in `runExclusive` broadcast `failed` instead, so followers
+// retry through the lock rather than trusting an unpersisted token.
+// Other callers (OidcAuthenticator.renewIdToken, Auth0Authenticator.
+// renewIdToken) still use the fail-silent `setOidcToken` — they own their
+// own recovery paths and don't participate in the leader/follower broadcast.
+//
+// Deliberately bypasses `setAppState` — that helper has an outer catch-all
+// and an in-memory fallback (`inMemoryState`) that would let this function
+// resolve on any storage failure, defeating the whole point. "Strict" means:
+// if a sibling tab reloading right now would read stale storage, throw.
+export const setOidcTokenStrict = async (token: string): Promise<void> => {
+  const state = await getAppState();
+  state[OIDC_TOKEN_KEY] = token;
+  const stateStr = JSON.stringify(state);
+
+  if (isServiceWorkerAvailable() && !swStorageBroken) {
+    try {
+      await swTokenStorage.setItem(APP_STATE_KEY, stateStr);
+    } catch (error) {
+      // Mark broken so other callers stop paying the controller-wait
+      // timeout, then re-throw — the in-memory fallback doesn't survive
+      // reload, so a strict caller can't treat this as a success.
+      markSwStorageBroken(error);
+
+      throw error;
+    }
+
+    return;
+  }
+
+  if (swStorageBroken) {
+    throw new Error(
+      'Token storage service worker is unreachable — token cannot be persisted for cross-tab reload'
+    );
+  }
+
+  // Browsers without SW/IndexedDB fall back to localStorage; a quota /
+  // security-mode throw here is a real persistence failure — propagate it.
+  localStorage.setItem(APP_STATE_KEY, stateStr);
+};
+
 export const getRefreshToken = async (): Promise<string> => {
   try {
     const state = await getAppState();

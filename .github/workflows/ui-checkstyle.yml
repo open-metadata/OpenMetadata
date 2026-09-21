@@ -117,6 +117,10 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      bundle_build_result: ${{ steps.bundle_build.outcome }}
+      bundle_build_changed_files: ${{ steps.bundle_build.outputs.changed_files }}
+      bundle_budget_result: ${{ steps.bundle_budget.outcome }}
+      bundle_budget_changed_files: ${{ steps.bundle_budget.outputs.changed_files }}
       eslint_has_findings: ${{ steps.lint_src.outputs.has_findings }}
       eslint_summary: ${{ steps.lint_src.outputs.summary }}
       eslint_details: ${{ steps.lint_src.outputs.details }}
@@ -504,6 +508,75 @@ jobs:
             exit 1
           fi
 
+      # `yarn build` no longer asserts the budget, so this is the only thing
+      # enforcing it — the filter has to cover everything that can move the
+      # entry bundle, not just app source. The last two breaches arrived
+      # through a dependency bump (#33482, moment 2.31.0 growing vendor-antd)
+      # and a core-components change, neither of which touches `src/**` here.
+      - name: Get changed bundle inputs
+        id: changed-bundle-inputs
+        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        with:
+          # Nothing ignored here, unlike the lint filter: generated types and
+          # the connection schemas under src/jsons are emitted into the build,
+          # so they are bundle inputs even though they are not worth linting.
+          files: |
+            openmetadata-ui/src/main/resources/ui/src/**
+            openmetadata-ui/src/main/resources/ui/package.json
+            openmetadata-ui/src/main/resources/ui/yarn.lock
+            openmetadata-ui/src/main/resources/ui/vite.config.ts
+            openmetadata-ui/src/main/resources/ui/index.html
+            openmetadata-ui/src/main/resources/ui/scripts/check-bundle-chunks.mjs
+            openmetadata-ui-core-components/src/main/resources/ui/src/**
+            openmetadata-ui-core-components/src/main/resources/ui/package.json
+            openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+            openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts
+
+      # The budget used to be chained onto `yarn build`, so a breach failed
+      # every workflow that builds the UI — visual regression, the RDF e2e
+      # suite, the maven builds — each reporting it under its own build step's
+      # name rather than anything mentioning bundles. It runs here instead.
+      #
+      # Build and measurement are separate steps on purpose: the point of this
+      # change is that a check says what actually went wrong, so a compile
+      # error must not report as a budget breach. `vite build` is ~14s since
+      # #32384 moved to Rolldown, so owning the build here is cheap.
+      - name: UI Build (for the bundle budget)
+        id: bundle_build
+        if: steps.changed-bundle-inputs.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if ! yarn build > /tmp/bundle-build.out 2>&1; then
+            tail -40 /tmp/bundle-build.out
+            # `|| true`, as the steps above do: `head` closing the pipe early
+            # (SIGPIPE) or `grep` matching nothing would otherwise abort the
+            # step here under `set -e`, before the output and exit below are
+            # written — leaving the comment naming this check and listing
+            # nothing, which is the opposite of the point.
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-build.out | grep -iE 'error' | head -10 | sed 's/^/  /') || true
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Bundle Budget (entry chunk size)
+        id: bundle_budget
+        if: steps.bundle_build.outcome == 'success'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          if ! yarn bundle:check > /tmp/bundle-check.out 2>&1; then
+            cat /tmp/bundle-check.out
+            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/bundle-check.out | grep -E 'Bundle budget' | head -5 | sed 's/^/  /') || true
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$OUT" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          cat /tmp/bundle-check.out
+
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
         if: steps.changed-ui-files.outputs.any_changed == 'true'
@@ -591,6 +664,18 @@ jobs:
                 reason:  'Hardcoded Tailwind values found. Use a design-system utility (run `yarn tw-audit:report` for the token each value maps to).',
                 result:  '${{ needs.checkstyle.outputs.tw_audit_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.tw_audit_changed_files) }} || '',
+              },
+              {
+                name:    'UI Build',
+                reason:  'The UI failed to compile, so the bundle could not be measured.',
+                result:  '${{ needs.checkstyle.outputs.bundle_build_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.bundle_build_changed_files) }} || '',
+              },
+              {
+                name:    'Bundle Budget',
+                reason:  'The entry chunk grew past its budget. Something landed on the entry graph that should be lazy — check the diff for a new top-level import.',
+                result:  '${{ needs.checkstyle.outputs.bundle_budget_result }}',
+                files:   ${{ toJSON(needs.checkstyle.outputs.bundle_budget_changed_files) }} || '',
               },
               {
                 name:    'Antd + Less Deprecation Guard',
@@ -713,7 +798,9 @@ jobs:
              [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
+             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.bundle_build_result }}" = 'failure' ] || \
+             [ "${{ needs.checkstyle.outputs.bundle_budget_result }}" = 'failure' ]; then
             echo "One or more checks failed."
             exit 1
           fi

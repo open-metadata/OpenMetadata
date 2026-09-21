@@ -33,7 +33,6 @@ export const SearchInputIcon = (props: HTMLAttributes<HTMLOrSVGElement>) => (
 
 export const TriggerCountBadge = ({ count }: { count: number }) => (
   <Typography
-    inline
     className="tw:ml-1.5 tw:inline-flex tw:h-[18px] tw:min-w-[18px] tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-utility-brand-50 tw:px-[5px] tw:tabular-nums tw:text-utility-brand-700"
     data-testid="filter-count-badge"
     size="text-xs"
