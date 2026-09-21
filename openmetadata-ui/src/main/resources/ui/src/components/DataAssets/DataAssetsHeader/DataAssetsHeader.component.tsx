@@ -108,7 +108,7 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import IconColorModal from '../../Modals/IconColorModal';
+import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import './data-asset-header.less';

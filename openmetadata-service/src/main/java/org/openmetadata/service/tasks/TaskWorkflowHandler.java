@@ -56,6 +56,7 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
@@ -725,6 +726,7 @@ public class TaskWorkflowHandler {
         if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
           repository.applyTags(tagsToAdd, targetFqn);
         }
+        RdfUpdater.updateEntity(entity);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
@@ -989,6 +991,7 @@ public class TaskWorkflowHandler {
 
       String targetFqn = entity.getFullyQualifiedName();
       repository.applyTags(List.of(newTier), targetFqn);
+      RdfUpdater.updateEntity(entity);
       LOG.info(
           "[TaskWorkflowHandler] Applied TierUpdate for entity '{}': tier={}",
           entity.getName(),
@@ -1141,6 +1144,7 @@ public class TaskWorkflowHandler {
             applyEntityLevelTags(entity, repository, user, tags);
           } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
             repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
+            RdfUpdater.updateEntity(entity);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",

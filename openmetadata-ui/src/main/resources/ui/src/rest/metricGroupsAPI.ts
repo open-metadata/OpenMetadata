@@ -23,7 +23,7 @@ import type {
   ListParamsWithOffset,
 } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './axiosAPIClient';
+import APIClient from './axiosClient';
 
 export const getMetricGroups = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<MetricGroup[]>>(

@@ -283,7 +283,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
 
-jest.mock('../../Modals/IconColorModal', () =>
+jest.mock('../../Modals/IconColorModal/IconColorModal', () =>
   jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
     <div data-testid="icon-color-modal">
       <button
@@ -725,13 +725,16 @@ describe('DataAssetsHeader component', () => {
 
     render(<DataAssetsHeader {...mockProps} onUpdateVote={onUpdateVote} />);
 
-    const upVoteButton = screen.getByTestId('up-vote-btn');
+    // Re-query on every interaction: Tooltip wraps a disabled child in a span,
+    // so the button is remounted when it flips to disabled and any element
+    // captured beforehand is detached.
+    fireEvent.click(screen.getByTestId('up-vote-btn'));
 
-    fireEvent.click(upVoteButton);
+    await waitFor(() =>
+      expect(screen.getByTestId('up-vote-btn')).toBeDisabled()
+    );
 
-    await waitFor(() => expect(upVoteButton).toBeDisabled());
-
-    fireEvent.click(upVoteButton);
+    fireEvent.click(screen.getByTestId('up-vote-btn'));
 
     expect(onUpdateVote).toHaveBeenCalledTimes(1);
 
@@ -751,13 +754,13 @@ describe('DataAssetsHeader component', () => {
 
     render(<DataAssetsHeader {...mockProps} onFollowClick={onFollowClick} />);
 
-    const followButton = screen.getByTestId('entity-follow-button');
+    fireEvent.click(screen.getByTestId('entity-follow-button'));
 
-    fireEvent.click(followButton);
+    await waitFor(() =>
+      expect(screen.getByTestId('entity-follow-button')).toBeDisabled()
+    );
 
-    await waitFor(() => expect(followButton).toBeDisabled());
-
-    fireEvent.click(followButton);
+    fireEvent.click(screen.getByTestId('entity-follow-button'));
 
     expect(onFollowClick).toHaveBeenCalledTimes(1);
 

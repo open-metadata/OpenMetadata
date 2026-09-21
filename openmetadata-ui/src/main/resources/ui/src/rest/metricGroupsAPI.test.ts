@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Operation } from 'fast-json-patch';
-import APIClient from './axiosAPIClient';
+import APIClient from './axiosClient';
 import {
   addMetricsToGroup,
   createMetricGroup,
@@ -23,7 +23,7 @@ import {
   removeMetricsFromGroup,
 } from './metricGroupsAPI';
 
-jest.mock('./axiosAPIClient', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
   patch: jest.fn(),

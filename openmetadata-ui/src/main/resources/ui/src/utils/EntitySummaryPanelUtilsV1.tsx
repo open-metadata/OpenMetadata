@@ -23,7 +23,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
-import { FieldCard } from '../components/common/FieldCard';
+import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';

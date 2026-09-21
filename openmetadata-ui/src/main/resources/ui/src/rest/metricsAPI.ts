@@ -30,7 +30,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 /**
  * `parent` selects a slice of the hierarchy: omit it for every metric, pass the literal string

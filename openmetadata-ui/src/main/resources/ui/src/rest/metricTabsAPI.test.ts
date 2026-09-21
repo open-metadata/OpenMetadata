@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { EntityType } from '../enums/entity.enum';
-import APIClient from './axiosAPIClient';
+import APIClient from './axiosClient';
 import {
   getMetricTabAssetDetails,
   getMetricTabAssetFields,
   getMetricTabLineage,
 } from './metricTabsAPI';
 
-jest.mock('./axiosAPIClient', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   put: jest.fn(),
 }));

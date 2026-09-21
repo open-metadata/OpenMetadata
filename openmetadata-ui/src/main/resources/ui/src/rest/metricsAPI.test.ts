@@ -12,7 +12,7 @@
  */
 import { Direction } from '../generated/api/data/metricObservability';
 import type { EntityReference } from '../generated/entity/type';
-import APIClient from './axiosAPIClient';
+import APIClient from './axiosClient';
 import {
   addAssetsToMetric,
   getMetricAssets,
@@ -22,7 +22,7 @@ import {
   removeAssetsFromMetric,
 } from './metricsAPI';
 
-jest.mock('./axiosAPIClient', () => ({
+jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   put: jest.fn(),
 }));

@@ -22,7 +22,7 @@ import { EntityReference } from '../generated/entity/type';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './axiosAPIClient';
+import APIClient from './axiosClient';
 
 const ASSET_COLLECTIONS: Partial<Record<EntityType, string>> = {
   [EntityType.API_COLLECTION]: 'apiCollections',
