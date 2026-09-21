@@ -30,6 +30,7 @@ from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
@@ -42,10 +43,12 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.semantic_metric_lineage import (
     column_lineage,
+    metric_lineage_request,
     view_lineage_request,
 )
 from metadata.ingestion.source.database.unitycatalog.metric_views import (
     MetricViewDefinition,
+    build_metric_name,
     extract_column_refs,
     is_table_reference,
     parse_metric_view,
@@ -74,15 +77,20 @@ ViewDefinitionRow = tuple[str, str, str]
 # many metric views accumulate every relation they touch.
 TABLE_CACHE_MAX_SIZE = 100
 
+# One entry per measure rather than per relation, so a catalog of metric views fills
+# this faster than the table cache; a Metric is small, but still cap it.
+METRIC_CACHE_MAX_SIZE = 500
+
 
 class UnitycatalogMetricViewLineage:
     """Builds lineage from Unity Catalog metric views to the relations they read.
 
-    Composed by :class:`UnitycatalogLineageSource` rather than mixed into it. The three
+    Composed by :class:`UnitycatalogLineageSource` rather than mixed into it. The four
     things it cannot do for itself -- run a query on the SQL warehouse, resolve a Table
-    by FQN, and list the service's catalogs -- arrive as callables, so the source keeps
-    its I/O and this class stays exercisable on its own. Everything between them, the
-    filtering and the parsing and the edge building, lives here and is tested here.
+    by FQN, resolve a Metric by name, and list the service's catalogs -- arrive as
+    callables, so the source keeps its I/O and this class stays exercisable on its own.
+    Everything between them, the filtering and the parsing and the edge building, lives
+    here and is tested here.
     """
 
     def __init__(
@@ -92,6 +100,7 @@ class UnitycatalogMetricViewLineage:
         status: Status,
         run_query: Callable[[str], list[tuple]],
         resolve_table_by_fqn: Callable[[str], Table | None],
+        resolve_metric_by_name: Callable[[str], Metric | None],
         list_databases: Callable[[], Iterable[Database]],
     ):
         self.service_name = service_name
@@ -99,8 +108,10 @@ class UnitycatalogMetricViewLineage:
         self.status = status
         self.run_query = run_query
         self.resolve_table_by_fqn = resolve_table_by_fqn
+        self.resolve_metric_by_name = resolve_metric_by_name
         self.list_databases = list_databases
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
+        self._metric_cache: LRUCache = LRUCache(maxsize=METRIC_CACHE_MAX_SIZE)
 
     # ------------------------------------------------------------------ entry point
 
@@ -269,6 +280,34 @@ class UnitycatalogMetricViewLineage:
 
         for source_entity, pairs in pairs_by_source.values():
             yield view_lineage_request(source_entity, view_entity, column_lineage(source_entity, view_entity, pairs))
+
+        yield from self._build_metric_edges(database, schema, view, view_entity, definition)
+
+    def _build_metric_edges(
+        self, database: str, schema: str, view: str, view_entity: Table, definition: MetricViewDefinition
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """One ``metric view -> Metric`` edge per measure the metadata pass wrote.
+
+        Without these the graph stops at the view: a Metric would hang off the catalog
+        with an ``assets`` back-reference but no lineage, so "what feeds Total Revenue"
+        has no answer even though every edge behind it exists. Chaining them onto the
+        view rather than onto the source relations keeps the view as the single hop
+        the column-level lineage already explains.
+
+        A measure whose Metric does not resolve is skipped in silence: the metadata
+        workflow may simply not have run yet, and that is not a lineage fault.
+        """
+        for measure in definition.measures:
+            if not measure.name:
+                continue
+            metric = self._resolve_metric(build_metric_name(self.service_name, database, schema, view, measure.name))
+            if metric is not None:
+                yield metric_lineage_request(view_entity, metric)
+
+    def _resolve_metric(self, metric_name: str) -> Metric | None:
+        if metric_name not in self._metric_cache:
+            self._metric_cache[metric_name] = self.resolve_metric_by_name(metric_name)
+        return self._metric_cache[metric_name]
 
     def _column_pairs(
         self,

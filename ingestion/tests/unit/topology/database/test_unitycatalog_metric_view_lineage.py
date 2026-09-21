@@ -25,6 +25,7 @@ from metadata.ingestion.source.database.unitycatalog.metric_view_lineage import 
     UnitycatalogMetricViewLineage,
 )
 from metadata.ingestion.source.database.unitycatalog.metric_views import (
+    build_metric_name,
     extract_column_refs,
     is_table_reference,
     resolve_alias,
@@ -78,6 +79,16 @@ VIEW_TABLE = _table(CATALOG, SCHEMA, VIEW, ["Order Date", "Customer Nation", "To
 ALL_TABLES = (ORDERS_TABLE, CUSTOMER_TABLE, VIEW_TABLE)
 
 
+def _metric(measure: str):
+    """The Metric the metadata workflow writes for one measure of the view."""
+    name = build_metric_name(SERVICE, CATALOG, SCHEMA, VIEW, measure)
+    return SimpleNamespace(id=uuid.uuid5(uuid.NAMESPACE_DNS, name), name=name, displayName=measure)
+
+
+# Every measure ORDERS_YAML declares, as the metadata pass would have left them.
+ALL_METRICS = {metric.name: metric for metric in (_metric("Total Revenue"), _metric("Order Count"))}
+
+
 class FakeStatus:
     def __init__(self):
         self.warnings = []
@@ -98,14 +109,15 @@ class FakeSourceConfig:
         self.processViewLineage = True
 
 
-def _extractor(rows, tables=ALL_TABLES, source_config=None, status=None, metric_views=(), describe=None):
+def _extractor(rows, tables=ALL_TABLES, source_config=None, status=None, metric_views=(), describe=None, metrics=None):
     """An extractor over canned Unity Catalog catalog metadata.
 
     ``rows`` is the ``information_schema.views`` result, ``metric_views`` the
     ``information_schema.tables`` rows carrying ``TABLE_TYPE = 'METRIC_VIEW'``, and
     ``describe`` the YAML each one yields from ``DESCRIBE ... AS JSON``. They are kept
     apart because Databricks keeps them apart: a metric view can be listed by the
-    second pair and be entirely absent from the first.
+    second pair and be entirely absent from the first. ``metrics`` is what the metadata
+    workflow already wrote, keyed by the hashed Metric name.
     """
     by_fqn = {table.fullyQualifiedName.root: table for table in tables}
     describe = describe or {}
@@ -126,6 +138,7 @@ def _extractor(rows, tables=ALL_TABLES, source_config=None, status=None, metric_
         status=status or FakeStatus(),
         run_query=run_query,
         resolve_table_by_fqn=by_fqn.get,
+        resolve_metric_by_name=(ALL_METRICS if metrics is None else metrics).get,
         list_databases=_databases(CATALOG),
     )
     extractor.queries = queries
@@ -139,6 +152,16 @@ def _databases(*names: str):
 
 def _edges(extractor):
     return [either.right for either in extractor.iter_lineage()]
+
+
+def _source_edges(extractor):
+    """Only the ``source relation -> metric view`` edges."""
+    return [request for request in _edges(extractor) if request.edge.toEntity.type == "table"]
+
+
+def _metric_edges(extractor):
+    """Only the ``metric view -> Metric`` edges."""
+    return [request for request in _edges(extractor) if request.edge.toEntity.type == "metric"]
 
 
 # ----------------------------------------------------------- reference parsing
@@ -231,7 +254,7 @@ def test_a_metric_view_missing_from_information_schema_views_is_still_found():
         describe={(SCHEMA, VIEW): ORDERS_YAML},
     )
 
-    edges = _edges(extractor)
+    edges = _source_edges(extractor)
 
     assert {edge.edge.fromEntity.id.root for edge in edges} == {ORDERS_TABLE.id.root, CUSTOMER_TABLE.id.root}
     assert [query for query in extractor.queries if query.startswith("DESCRIBE")] == [
@@ -248,7 +271,7 @@ def test_a_metric_view_the_views_scan_already_returned_is_not_described_twice():
         describe={(SCHEMA, VIEW): ORDERS_YAML},
     )
 
-    edges = _edges(extractor)
+    edges = _source_edges(extractor)
 
     assert {edge.edge.fromEntity.id.root for edge in edges} == {ORDERS_TABLE.id.root, CUSTOMER_TABLE.id.root}
     assert not [query for query in extractor.queries if query.startswith("DESCRIBE")]
@@ -284,6 +307,7 @@ def test_a_catalog_whose_views_cannot_be_listed_does_not_stop_the_run():
         status=FakeStatus(),
         run_query=exploding_query,
         resolve_table_by_fqn=lambda _: None,
+        resolve_metric_by_name=ALL_METRICS.get,
         list_databases=_databases(CATALOG, "other"),
     )
 
@@ -296,7 +320,7 @@ def test_a_catalog_whose_views_cannot_be_listed_does_not_stop_the_run():
 def test_table_and_column_lineage_from_every_source_relation():
     extractor = _extractor([(SCHEMA, VIEW, ORDERS_YAML)])
 
-    edges = _edges(extractor)
+    edges = _source_edges(extractor)
     by_source = {request.edge.fromEntity.id.root: request for request in edges}
 
     assert set(by_source) == {ORDERS_TABLE.id.root, CUSTOMER_TABLE.id.root}
@@ -335,7 +359,7 @@ def test_an_unresolvable_source_warns_and_keeps_the_other_edges():
     status = FakeStatus()
     extractor = _extractor([(SCHEMA, VIEW, ORDERS_YAML)], tables=(VIEW_TABLE, CUSTOMER_TABLE), status=status)
 
-    edges = _edges(extractor)
+    edges = _source_edges(extractor)
 
     assert [request.edge.fromEntity.id.root for request in edges] == [CUSTOMER_TABLE.id.root]
     assert any("samples.tpch.orders" in reason for _, reason in status.warnings)
@@ -359,7 +383,7 @@ def test_unreadable_metric_view_yaml_warns_without_stopping_the_others():
         status=status,
     )
 
-    edges = _edges(extractor)
+    edges = _source_edges(extractor)
 
     assert {request.edge.fromEntity.id.root for request in edges} == {
         ORDERS_TABLE.id.root,
@@ -400,6 +424,7 @@ def test_a_source_table_is_resolved_once_per_catalog():
         status=FakeStatus(),
         run_query=lambda _: [(SCHEMA, VIEW, ORDERS_YAML), (SCHEMA, VIEW, ORDERS_YAML)],
         resolve_table_by_fqn=resolve,
+        resolve_metric_by_name=ALL_METRICS.get,
         list_databases=_databases(CATALOG),
     )
     list(extractor.iter_lineage())
@@ -421,6 +446,7 @@ def _composed(process_view_lineage=True, databases=(CATALOG,), rows=((SCHEMA, VI
         status=FakeStatus(),
         run_query=lambda _: list(rows),
         resolve_table_by_fqn=by_fqn.get,
+        resolve_metric_by_name=ALL_METRICS.get,
         list_databases=_databases(*databases),
     )
 
@@ -432,7 +458,7 @@ def test_the_pass_is_gated_on_process_view_lineage():
 
 
 def test_the_pass_emits_edges_for_the_services_catalogs():
-    edges = [either.right for either in _composed().iter_lineage()]
+    edges = _source_edges(_composed())
 
     assert {request.edge.fromEntity.id.root for request in edges} == {
         ORDERS_TABLE.id.root,
@@ -465,6 +491,7 @@ def test_a_failing_catalog_listing_costs_only_the_metric_views():
         status=status,
         run_query=lambda _: [],
         resolve_table_by_fqn=lambda _: None,
+        resolve_metric_by_name=ALL_METRICS.get,
         list_databases=_explode,
     )
 
@@ -473,3 +500,56 @@ def test_a_failing_catalog_listing_costs_only_the_metric_views():
 
 def _explode():
     raise RuntimeError("OpenMetadata is unreachable")
+
+
+# ------------------------------------------------------- metric view -> Metric
+
+
+def test_every_measure_gets_an_edge_from_its_metric_view():
+    """Without these the graph stops at the view and "what feeds Total Revenue" has no
+    answer, even though every edge behind the view is already there."""
+    edges = _metric_edges(_extractor([(SCHEMA, VIEW, ORDERS_YAML)]))
+
+    assert [request.edge.fromEntity.id.root for request in edges] == [VIEW_TABLE.id.root] * 2
+    assert {request.edge.toEntity.id.root for request in edges} == {metric.id for metric in ALL_METRICS.values()}
+    assert {request.edge.toEntity.type for request in edges} == {"metric"}
+
+
+def test_a_measure_whose_metric_is_absent_is_skipped_quietly():
+    """The metadata workflow may not have run yet. That is not a lineage fault, and it
+    must not cost the measures whose metrics do exist."""
+    status = FakeStatus()
+    only_revenue = {name: m for name, m in ALL_METRICS.items() if m.displayName == "Total Revenue"}
+    extractor = _extractor([(SCHEMA, VIEW, ORDERS_YAML)], status=status, metrics=only_revenue)
+
+    edges = _metric_edges(extractor)
+
+    assert [request.edge.toEntity.id.root for request in edges] == [next(iter(only_revenue.values())).id]
+    assert status.warnings == []
+
+
+def test_metric_edges_do_not_displace_the_source_edges():
+    """Both kinds come out of the same pass; adding one must not cost the other."""
+    extractor = _extractor([(SCHEMA, VIEW, ORDERS_YAML)])
+
+    all_edges = _edges(extractor)
+
+    assert len(all_edges) == len(_source_edges(_extractor([(SCHEMA, VIEW, ORDERS_YAML)]))) + len(
+        _metric_edges(_extractor([(SCHEMA, VIEW, ORDERS_YAML)]))
+    )
+
+
+def test_a_metric_is_resolved_once_even_when_two_views_share_a_measure_name():
+    """The resolver is a network call; the cache is what keeps it off the hot path."""
+    looked_up = []
+
+    def resolve(name):
+        looked_up.append(name)
+        return ALL_METRICS.get(name)
+
+    extractor = _extractor([(SCHEMA, VIEW, ORDERS_YAML)])
+    extractor.resolve_metric_by_name = resolve
+    _edges(extractor)
+    _edges(extractor)
+
+    assert len(looked_up) == len(set(looked_up)) == 2

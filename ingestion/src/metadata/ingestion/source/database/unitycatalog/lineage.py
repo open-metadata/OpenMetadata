@@ -24,6 +24,7 @@ from sqlalchemy import text
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -119,6 +120,7 @@ class UnitycatalogLineageSource(Source):
             status=self.status,
             run_query=self._run_sql,
             resolve_table_by_fqn=self._get_table_by_fqn,
+            resolve_metric_by_name=self._get_metric_by_name,
             list_databases=self._list_databases,
         )
         with close_on_failure(self._connection):
@@ -135,6 +137,16 @@ class UnitycatalogLineageSource(Source):
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.debug("Failed to resolve Table [%s]: %s", table_fqn, exc)
+            return None
+
+    def _get_metric_by_name(self, metric_name: str) -> Metric | None:
+        """A Metric is looked up by name because a Metric's FQN *is* its name -- it has
+        no service prefix to build one from."""
+        try:
+            return self.metadata.get_by_name(entity=Metric, fqn=metric_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.debug("Failed to resolve Metric [%s]: %s", metric_name, exc)
             return None
 
     def _list_databases(self) -> Iterable[Database]:

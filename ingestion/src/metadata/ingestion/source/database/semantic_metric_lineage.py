@@ -23,6 +23,7 @@ and the whole point of a semantic layer is that ``Total Revenue`` is not called
 """
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import (
@@ -89,6 +90,24 @@ def view_lineage_request(
                     source=LineageSource.ViewLineage,
                     columnsLineage=columns or None,
                 ),
+            )
+        )
+    )
+
+
+def metric_lineage_request(from_entity: Table, metric: Metric) -> Either[AddLineageRequest]:
+    """One ``semantic view -> Metric`` edge.
+
+    No column lineage: the measure's own expression is already on the Metric, and the
+    view column it is computed into is the same name, so a column pair here would
+    restate the edge rather than refine it.
+    """
+    return Either(  # pyright: ignore[reportCallIssue]
+        right=AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=table_reference(from_entity),
+                toEntity=EntityReference(id=metric.id, type="metric"),  # pyright: ignore[reportCallIssue]
+                lineageDetails=LineageDetails(source=LineageSource.ViewLineage),  # pyright: ignore[reportCallIssue]
             )
         )
     )
