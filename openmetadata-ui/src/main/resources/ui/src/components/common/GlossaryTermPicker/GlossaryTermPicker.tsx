@@ -127,12 +127,14 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         value.map((tag) => [tag.tagFQN, tag])
       );
 
-      const selected = nodes
-        .map((node) => applied.get(node.value) ?? node.data)
-        .filter(
-          (tag): tag is GlossaryPickerValue =>
-            Boolean(tag) && (selectGlossaries || !tag?.isGlossaryRoot)
-        );
+      const selected = nodes.reduce<GlossaryPickerValue[]>((acc, node) => {
+        const tag = applied.get(node.value) ?? node.data;
+        if (tag && (selectGlossaries || !tag.isGlossaryRoot)) {
+          acc.push(tag);
+        }
+
+        return acc;
+      }, []);
 
       onChange?.(selected.map(toTagLabel), selected);
     },
