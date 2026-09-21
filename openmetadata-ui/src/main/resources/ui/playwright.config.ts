@@ -13,6 +13,7 @@
 import {
   defineConfig,
   devices,
+  type PlaywrightTestConfig,
   type ReporterDescription,
 } from '@playwright/test';
 import dotenv from 'dotenv';
@@ -173,7 +174,15 @@ const performanceReporter: ReporterDescription[] = isPlannedShard
     ]
   : [];
 
+type TraceMode = NonNullable<PlaywrightTestConfig['use']>['trace'];
+
+const traceMode = (process.env.PW_TRACE ?? 'on-first-retry') as TraceMode;
+
 const reporters: ReporterDescription[] = [
+  // Must stay first: it enriches the shared TestResult in place, so every
+  // reporter after it serialises the located failure rather than a bare
+  // "Test timeout of 60000ms exceeded".
+  ['./playwright/reporters/TimeoutDiagnosticsReporter.ts'],
   ['list'],
   ...htmlReporter,
   [
@@ -227,8 +236,14 @@ export default defineConfig({
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
 
-    /* Collect trace and video on every failure (not just retries) for debugging */
-    trace: 'on-first-retry',
+    /* `on-first-retry` records the *retry*, which is the attempt that passed —
+     * so the attempt that actually failed is the one with no trace, and the
+     * network log that would name the failing request never exists. That is why
+     * a whole class of flakes (options detaching mid-click, requests that never
+     * fire) has stayed undiagnosed. Keep it as the default because tracing all
+     * ~4500 tests costs real wall-clock, and set PW_TRACE=retain-on-failure on a
+     * targeted rerun when you need the failing attempt's trace. */
+    trace: traceMode,
     screenshot: 'only-on-failure',
 
     /* Add navigation timeout to prevent infinite hangs on networkidle waits.

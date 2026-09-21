@@ -336,12 +336,19 @@ const serveStaticAsset = async (route: Route) => {
  * test that navigates away or ends while one is in flight would otherwise fail
  * on a request nothing asserts on. Anything else still propagates — a cache
  * that is broken for a real reason must not be silent.
+ *
+ * The target going away has two wordings, not one. `route.fetch()` hands back an
+ * APIResponse owned by the context, and reading it after the context is gone
+ * throws `apiResponse.body: Response has been disposed` rather than anything
+ * matching "has been closed" — so a page that closed while its boot config was
+ * still being read failed the test through this handler. That is the same
+ * routine mid-flight loss the paragraph above describes; match both.
  */
 const ignoreClosedTarget = async (serve: () => Promise<void>) => {
   try {
     await serve();
   } catch (error) {
-    if (!/has been closed/.test(String(error))) {
+    if (!/has been (closed|disposed)/.test(String(error))) {
       throw error;
     }
   }
