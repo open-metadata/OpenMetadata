@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -25,6 +26,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 class OntologySparqlQueryServiceTest {
@@ -43,6 +45,30 @@ class OntologySparqlQueryServiceTest {
     assertEquals("application/sparql-results+json", result.mediaType());
     assertTrue(result.body().contains("urn:subject"));
     assertTrue(model.isClosed());
+  }
+
+  @Test
+  void serializesRdf12TripleTermsAndDirectionalLanguageLiterals() {
+    final SparqlQuery request =
+        request(
+                """
+                VERSION "1.2"
+                SELECT (TRIPLE(<https://example.com/subject>,
+                               <https://example.com/predicate>,
+                               "قطة"@ar--rtl) AS ?statement)
+                WHERE {}
+                """)
+            .withFormat(SparqlQuery.Format.JSON);
+
+    final OntologySparqlQueryService.QueryResult result =
+        service(ModelFactory.createDefaultModel()).query(GLOSSARY_ID, request);
+    final JsonNode statement =
+        JsonUtils.readTree(result.body()).at("/results/bindings/0/statement");
+
+    assertEquals("triple", statement.path("type").asText());
+    assertEquals("https://example.com/subject", statement.at("/value/subject/value").asText());
+    assertEquals("ar", statement.at("/value/object/xml:lang").asText());
+    assertEquals("rtl", statement.at("/value/object/its:dir").asText());
   }
 
   @Test

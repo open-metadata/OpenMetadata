@@ -52,6 +52,28 @@ class RdfBlankNodeCanonicalizerTest {
     assertEquals(64, canonicalizer.checksum(canonical).length());
   }
 
+  @Test
+  void canonicalizesBlankNodesNestedInsideRdf12TripleTerms() {
+    String first =
+        """
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        <https://example.org/assertion> rdf:reifies
+          <<( _:first <https://example.org/predicate> <https://example.org/object> )>> .
+        """;
+    String relabeled =
+        """
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+        <https://example.org/assertion> rdf:reifies
+          <<( _:different <https://example.org/predicate> <https://example.org/object> )>> .
+        """;
+
+    String firstCanonical = canonicalize(first);
+    String relabeledCanonical = canonicalize(relabeled);
+
+    assertEquals(firstCanonical, relabeledCanonical);
+    assertTrue(firstCanonical.contains("urn:openmetadata:annex:"));
+  }
+
   private String canonicalize(final String turtle) {
     final Model model = ModelFactory.createDefaultModel();
     try {

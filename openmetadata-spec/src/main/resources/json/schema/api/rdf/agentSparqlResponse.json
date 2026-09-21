@@ -2,22 +2,36 @@
   "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlResponse.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AgentSparqlResponse",
-  "description": "Typed SPARQL SELECT result for agent tools, with completeness relative to the submitted query. Results come from the server-configured RDF dataset and default graph, without persona filtering or asset-level authorization.",
+  "description": "Typed SPARQL 1.2 SELECT result for agent tools, with completeness relative to the submitted query. Results come from the server-configured RDF dataset and default graph, without persona filtering or asset-level authorization.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlResponse",
   "definitions": {
+    "rdfDirection": {
+      "description": "Base direction of an RDF 1.2 directional language-tagged literal.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlRdfDirection",
+      "enum": ["ltr", "rtl"]
+    },
     "rdfTerm": {
-      "description": "An RDF term bound to a result variable. A variable that is unbound in a row is absent from that row.",
+      "description": "An RDF term bound to a result variable using the SPARQL 1.2 Query Results JSON representation. A variable that is unbound in a row is absent from that row.",
       "type": "object",
       "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlRdfTerm",
       "properties": {
         "type": {
           "type": "string",
           "javaType": "org.openmetadata.schema.api.rdf.AgentSparqlRdfTermType",
-          "enum": ["uri", "literal", "bnode"]
+          "enum": ["uri", "literal", "bnode", "triple"]
         },
         "value": {
-          "type": "string"
+          "description": "Lexical string for an IRI, literal, or blank node; recursive subject-predicate-object value for a triple term.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "agentSparqlTripleTerm.json"
+            }
+          ]
         },
         "datatype": {
           "description": "Datatype IRI of a typed literal.",
@@ -26,6 +40,10 @@
         "xml:lang": {
           "description": "Language tag of a language-tagged literal.",
           "type": "string"
+        },
+        "its:dir": {
+          "description": "Base direction of an RDF 1.2 directional language-tagged literal.",
+          "$ref": "#/definitions/rdfDirection"
         }
       },
       "required": ["type", "value"],

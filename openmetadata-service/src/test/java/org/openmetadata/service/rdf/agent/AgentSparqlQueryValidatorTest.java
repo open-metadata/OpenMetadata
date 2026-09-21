@@ -41,7 +41,8 @@ class AgentSparqlQueryValidatorTest {
         "SELECT ?s WHERE { ?s ?p ?o OPTIONAL { ?o ?q ?r } MINUS { ?s ?x ?y } }",
         "SELECT ?s WHERE { ?s <urn:p>+ ?o } VALUES ?s { <urn:a> }",
         "SELECT ?s WHERE { ?s ?p \"GRAPH SERVICE FROM\" } # FROM NAMED <urn:g>",
-        "SELECT ?s (\"SERVICE\" AS ?label) WHERE { ?s ?p ?o BIND(\"GRAPH\" AS ?kind) }"
+        "SELECT ?s (\"SERVICE\" AS ?label) WHERE { ?s ?p ?o BIND(\"GRAPH\" AS ?kind) }",
+        "VERSION \"1.2\" SELECT (TRIPLE(<urn:s>, <urn:p>, \"cat\"@en--ltr) AS ?statement) WHERE {}"
       })
   void acceptsSelectShapes(String sparql) {
     AgentSparqlQueryPlan plan = validator.validate(sparql);

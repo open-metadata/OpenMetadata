@@ -11,6 +11,34 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 - JSON-LD serialization of entities
 - Semantic search and graph exploration
 
+## Standards Compatibility
+
+The RDF stack uses Apache Jena and Fuseki 6.2.0 and supports the RDF 1.2 features used by
+OpenMetadata APIs:
+
+- RDF 1.2 triple terms, including `rdf:reifies` statements and nested blank nodes
+- directional language-tagged literals such as `"قطة"@ar--rtl`
+- SPARQL 1.2 `VERSION "1.2"`, triple-term expressions, and recursive triple bindings in SPARQL
+  Query Results JSON
+- SHACL validation of RDF 1.2 graphs using the bundled OpenMetadata shapes
+
+RDF 1.2 graphs containing triple terms can be read and written as Turtle, RDF/XML, or N-Triples.
+SPARQL JSON results represent a triple binding as `type: "triple"` with recursive `subject`,
+`predicate`, and `object` terms; directional literals include `its:dir`. JSON-LD output remains
+JSON-LD 1.1 and cannot represent RDF 1.2 triple terms, so request Turtle, RDF/XML, or N-Triples for
+graphs that contain them.
+
+For example, both the administrator and agent query paths accept this read query (the agent path
+retains its existing SELECT-only and graph-access restrictions):
+
+```sparql
+VERSION "1.2"
+SELECT (TRIPLE(<https://example.com/subject>,
+               <https://example.com/predicate>,
+               "قطة"@ar--rtl) AS ?statement)
+WHERE {}
+```
+
 ## Architecture
 
 ```
