@@ -34,7 +34,7 @@ type EntityTypes = InstanceType<
 type NestedChildrenNode = {
   name: string;
   fullyQualifiedName?: string;
-  children: NestedChildrenNode[];
+  children?: NestedChildrenNode[];
 };
 
 type NestedChildrenResponse = {
@@ -46,24 +46,6 @@ type NestedChildrenResponse = {
   dataModel?: { columns?: NestedChildrenNode[] };
 };
 
-/**
- * Each branch below knows which key its entity carries, but the generated types
- * mark them all optional. Resolve through here so a fixture that stops creating
- * the nested children fails naming the missing key, not with a TypeError three
- * property accesses later.
- */
-const requireNodes = (
-  nodes: NestedChildrenNode[] | undefined,
-  key: string,
-  type: string
-): NestedChildrenNode[] => {
-  if (!nodes?.length) {
-    throw new Error(`Expected ${key} on the ${type} response fixture`);
-  }
-
-  return nodes;
-};
-
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
   const entityData =
     data.entityResponseData as unknown as NestedChildrenResponse;
@@ -71,13 +53,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
 
   switch (type) {
     case 'API Endpoint': {
-      const field0 = requireNodes(
-        entityData.requestSchema?.schemaFields,
-        'requestSchema.schemaFields',
-        type
-      )[0];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.requestSchema?.schemaFields ?? [])[0];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key:
           field0.fullyQualifiedName ?? `${fqn}.requestSchema.${field0.name}`,
@@ -91,13 +69,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Topic': {
-      const field0 = requireNodes(
-        entityData.messageSchema?.schemaFields,
-        'messageSchema.schemaFields',
-        type
-      )[0];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.messageSchema?.schemaFields ?? [])[0];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? field0.name,
         level1Key: field1.fullyQualifiedName ?? field1.name,
@@ -106,13 +80,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Container': {
-      const field0 = requireNodes(
-        entityData.dataModel?.columns,
-        'dataModel.columns',
-        type
-      )[3];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.dataModel?.columns ?? [])[3];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -124,9 +94,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Data Model': {
-      const field0 = requireNodes(entityData.columns, 'columns', type)[1];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[1];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -139,9 +109,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
     }
     case 'File':
     case 'Worksheet': {
-      const field0 = requireNodes(entityData.columns, 'columns', type)[1];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[1];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -153,9 +123,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Search Index': {
-      const field0 = requireNodes(entityData.fields, 'fields', type)[3];
-      const field1 = field0.children[0];
-      const field2 = field1.children[0];
+      const field0 = (entityData.fields ?? [])[3];
+      const field1 = (field0.children ?? [])[0];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -167,9 +137,9 @@ export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
       };
     }
     case 'Table': {
-      const field0 = requireNodes(entityData.columns, 'columns', type)[2];
-      const field1 = field0.children[1];
-      const field2 = field1.children[0];
+      const field0 = (entityData.columns ?? [])[2];
+      const field1 = (field0.children ?? [])[1];
+      const field2 = (field1.children ?? [])[0];
       return {
         level0Key: field0.fullyQualifiedName ?? `${fqn}.${field0.name}`,
         level1Key:
@@ -512,7 +482,7 @@ export const createTopicEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () =>
+    deleteService: (): Promise<unknown> =>
       apiContext.delete(
         `/api/v1/services/messagingServices/name/${encodeURIComponent(
           service.fullyQualifiedName
@@ -1052,12 +1022,7 @@ export const createWorksheetEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () =>
-      apiContext.delete(
-        `/api/v1/services/driveServices/name/${encodeURIComponent(
-          service.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      ),
+    deleteService: () => worksheetClass.delete(apiContext),
     visitPage: async (page: Page) => {
       await worksheetClass.visitEntityPage(page);
     },
@@ -1125,12 +1090,7 @@ export const createFileEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () =>
-      apiContext.delete(
-        `/api/v1/services/driveServices/name/${encodeURIComponent(
-          service.fullyQualifiedName
-        )}?recursive=true&hardDelete=true`
-      ),
+    deleteService: () => fileClass.delete(apiContext),
     visitPage: async (page: Page) => {
       await fileClass.visitEntityPage(page);
       await page.getByTestId('schema').click();
