@@ -12,7 +12,6 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import LineageControlButtons from './LineageControlButtons';
 
@@ -37,7 +36,17 @@ const mockLineageProviderValues = {
   isEditMode: false,
   expandAllColumns: false,
   toggleColumnView: mockToggleColumnView,
-  reactFlowInstance: mockReactFlowInstance,
+};
+
+const mockLineageState = {
+  selectedColumn: null,
+  setSelectedColumn: jest.fn(),
+  setTracedColumns: jest.fn(),
+  isEditMode: false,
+  tracedColumns: new Set<string>(),
+  reactFlowInstance: mockReactFlowInstance as
+    | typeof mockReactFlowInstance
+    | undefined,
   redraw: mockRedraw,
 };
 
@@ -54,18 +63,13 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
 jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     ...mockLineageProviderValues,
-    reactFlowInstance: mockReactFlowInstance,
   })),
 }));
 
 jest.mock('../../../../hooks/useLineageStore', () => ({
-  useLineageStore: jest.fn(() => ({
-    selectedColumn: null,
-    setSelectedColumn: jest.fn(),
-    setTracedColumns: jest.fn(),
-    isEditMode: false,
-    tracedColumns: new Set(),
-  })),
+  useLineageStore: jest.fn((selector) =>
+    selector ? selector(mockLineageState) : mockLineageState
+  ),
 }));
 
 const mockOnToggleMiniMap = jest.fn();
@@ -75,6 +79,10 @@ const mockProps = {
 };
 
 describe('LineageControlButtons', () => {
+  beforeEach(() => {
+    mockLineageState.reactFlowInstance = mockReactFlowInstance;
+  });
+
   describe('Rendering', () => {
     it('should render all control buttons', () => {
       render(
@@ -177,10 +185,7 @@ describe('LineageControlButtons', () => {
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValueOnce({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
+      mockLineageState.reactFlowInstance = undefined;
 
       render(
         <MemoryRouter>
@@ -296,10 +301,7 @@ describe('LineageControlButtons', () => {
     });
 
     it('should handle missing reactFlowInstance gracefully', () => {
-      (useLineageProvider as jest.Mock).mockReturnValue({
-        ...mockLineageProviderValues,
-        reactFlowInstance: undefined,
-      });
+      mockLineageState.reactFlowInstance = undefined;
 
       render(
         <MemoryRouter>

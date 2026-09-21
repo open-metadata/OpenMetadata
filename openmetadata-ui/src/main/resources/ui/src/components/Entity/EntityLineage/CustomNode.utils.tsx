@@ -16,13 +16,13 @@ import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
 import { ColumnTestSummaryDefinition } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EntityChildrenItem } from './NodeChildren/NodeChildren.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -224,7 +224,6 @@ const ColumnContentInner = ({
   onColumnHover,
   onColumnSelect,
 }: ColumnContentProps) => {
-  const { onColumnMouseEnter } = useLineageProvider();
   const {
     selectedColumn,
     setSelectedColumn,
@@ -252,7 +251,7 @@ const ColumnContentInner = ({
     }
     onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [fullyQualifiedName, onColumnHover, onColumnMouseEnter, selectedColumn]);
+  }, [fullyQualifiedName, onColumnHover, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {

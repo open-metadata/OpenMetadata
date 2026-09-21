@@ -15,6 +15,7 @@ import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   ColumnContent,
   getCollapseHandle,
@@ -44,32 +45,32 @@ jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
 }));
 
 const mockSetSelectedColumn = jest.fn();
-const mockOnColumnMouseEnter = jest.fn();
-const mockOnColumnMouseLeave = jest.fn();
+const mockSetTracedColumns = jest.fn();
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn(() => ({
-    onColumnMouseEnter: mockOnColumnMouseEnter,
-    onColumnMouseLeave: mockOnColumnMouseLeave,
-    selectedColumn: '',
-  })),
-}));
+const mockLineageState = {
+  setSelectedColumn: mockSetSelectedColumn,
+  selectedColumn: '',
+  setTracedColumns: mockSetTracedColumns,
+  isEditMode: false,
+  tracedColumns: new Set<string>(),
+  sceneBand: undefined,
+  columnEdges: [],
+};
 
 jest.mock('../../../hooks/useLineageStore', () => {
   return {
-    useLineageStore: jest.fn(() => ({
-      setSelectedColumn: mockSetSelectedColumn,
-      selectedColumn: '',
-      setTracedColumns: jest.fn(),
-      isEditMode: false,
-      tracedColumns: new Set(),
-    })),
+    useLineageStore: jest.fn((selector) =>
+      selector ? selector(mockLineageState) : mockLineageState
+    ),
   };
 });
 
 describe('Custom Node Utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (
+      useLineageStore as unknown as { getState: () => typeof mockLineageState }
+    ).getState = () => mockLineageState;
   });
 
   it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {

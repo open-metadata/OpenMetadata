@@ -32,8 +32,8 @@ import { ReactComponent as RearrangeNodesIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.svg';
 import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { centerNodePosition } from '../../../../utils/EntityLineageLayoutUtils';
 
 const LineageControlButtons: FC<{
@@ -54,8 +54,8 @@ const LineageControlButtons: FC<{
   onRefocusSelected,
 }) => {
   const { t } = useTranslation();
-  const { reactFlowInstance: providerReactFlowInstance, redraw } =
-    useLineageProvider();
+  const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
+  const redraw = useLineageStore((s) => s.redraw);
   const reactFlowInstance =
     controlledReactFlowInstance ?? providerReactFlowInstance;
   const navigate = useNavigate();
