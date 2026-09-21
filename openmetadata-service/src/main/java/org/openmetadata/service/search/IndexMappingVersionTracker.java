@@ -8,13 +8,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMapping;
@@ -253,7 +256,10 @@ public class IndexMappingVersionTracker {
     JsonNode result = null;
     try {
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
-      String[] languages = {"en", "jp", "ko", "ru", "zh"};
+      List<String> languages =
+          Arrays.stream(IndexMappingLanguage.values())
+              .map(language -> language.value().toLowerCase(Locale.ROOT))
+              .toList();
       for (String lang : languages) {
         String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
         try (var stream = getClass().getResourceAsStream(mappingPath)) {

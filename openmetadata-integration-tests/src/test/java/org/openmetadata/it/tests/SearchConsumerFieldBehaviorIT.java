@@ -43,9 +43,10 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  * <p>This is the search-side coverage the suite lacked for non-English languages — without running
  * the whole integration-test suite once per language. The container is built with the
  * language-analysis plugins ({@link SearchTestImages}), so every language indexes with its
- * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, zh uses {@code
- * ik_max_word}/{@code ik_smart} via analysis-ik). Creating the real mappings here therefore also
- * catches analyzer drift — e.g. fields referencing analyzers the mapping never defined.
+ * <em>real</em> analyzers (jp uses {@code kuromoji_tokenizer} via analysis-kuromoji, ko uses {@code
+ * nori_tokenizer} via analysis-nori, zh uses {@code ik_max_word}/{@code ik_smart} via analysis-ik).
+ * Creating the real mappings here therefore also catches analyzer drift — e.g. fields referencing
+ * analyzers the mapping never defined.
  *
  * <p>It would have caught the {@code jp/topic} mapping dropping top-level {@code domains} (the
  * domain-filter assertion returns zero hits for {@code jp}) and the jp analyzer references that made
@@ -113,15 +114,16 @@ class SearchConsumerFieldBehaviorIT {
   // fields are language-neutral and never exercise the text analyzers; this is the only check that
   // the per-language analyzers actually work — the reason the per-language mappings exist at all.
   // jp/zh require kuromoji/IK to segment CJK (the plain standard analyzer splits it into single
-  // characters, never the 2-char tokens 東京 / 销售); ru requires the Russian stemmer (продажи ->
-  // продаж); en is the latin baseline.
+  // characters, never the 2-char tokens 東京 / 销售); ko requires nori to strip the subject particle
+  // (매출이 -> 매출, the standard analyzer keeps it as one token); ru requires the Russian stemmer
+  // (продажи -> продаж); en is the latin baseline.
   private static final Map<String, String[]> LANGUAGE_SAMPLE_TEXT =
       Map.of(
           "en", new String[] {"Monthly revenue report", "revenue"},
           "ru", new String[] {"Ежемесячные продажи", "продаж"},
           "jp", new String[] {"東京タワーの売上", "東京"},
           "zh", new String[] {"北京大学的销售报表", "销售"},
-          "ko", new String[] {"월간 매출 보고서", "매출"});
+          "ko", new String[] {"월간 매출이 증가했다", "매출"});
 
   @Container
   static OpensearchContainer<?> opensearch =

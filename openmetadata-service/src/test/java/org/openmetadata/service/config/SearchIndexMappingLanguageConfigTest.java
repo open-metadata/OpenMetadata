@@ -25,6 +25,7 @@ import io.dropwizard.jackson.Jackson;
 import jakarta.validation.Validation;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -105,7 +106,7 @@ class SearchIndexMappingLanguageConfigTest {
   private static String readResource(String path) throws IOException {
     try (InputStream stream = classpathResource(path)) {
       assertNotNull(stream, path);
-      return new String(stream.readAllBytes());
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
     }
   }
 

@@ -10,10 +10,11 @@ import org.testcontainers.utility.DockerImageName;
  * ik_smart}) for Chinese.
  *
  * <p>Only {@code SearchConsumerFieldBehaviorIT} uses this image — it is the one suite that creates
- * {@code jp}/{@code ko}/{@code zh} indexes whose text fields reference those analyzers, which is what lets it
- * catch per-language mapping/analyzer drift (the jp mappings referencing undefined analyzers went
- * unnoticed because CI only ever ran English on a vanilla image). The rest of the IT suite is pinned
- * to the English mappings, so it stays on the vanilla base image with no plugin-download dependency.
+ * {@code jp}/{@code ko}/{@code zh} indexes whose text fields reference those analyzers, which is
+ * what lets it catch per-language mapping/analyzer drift (the jp mappings referencing undefined
+ * analyzers went unnoticed because CI only ever ran English on a vanilla image). The rest of the IT
+ * suite is pinned to the English mappings, so it stays on the vanilla base image with no
+ * plugin-download dependency.
  *
  * <p>{@code analysis-ik} is third-party and ships only as a version-matched release URL; the URL is
  * derived from the base image tag so it always matches the OpenSearch version being tested. Because
