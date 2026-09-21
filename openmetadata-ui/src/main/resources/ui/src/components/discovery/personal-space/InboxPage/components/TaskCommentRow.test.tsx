@@ -33,6 +33,11 @@ jest.mock('utils/ToastUtils', () => ({
   showErrorToast: mockShowErrorToast,
 }));
 
+jest.mock('utils/TaskCommentUtils', () => ({
+  resolveCommentPermissions: jest.requireActual('utils/TaskCommentUtils')
+    .resolveCommentPermissions,
+}));
+
 jest.mock('utils/FeedUtilsPure', () => ({
   MarkdownToHTMLConverter: { makeHtml: (m: string) => m },
   getFrontEndFormat: (m: string) => m,
@@ -110,6 +115,25 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+  // Real <button> so the suite exercises the affordance the app ships: present
+  // regardless of hover, named from its tooltip, keyboard-operable.
+  ButtonUtility: ({
+    'data-testid': testId,
+    tooltip,
+    onClick,
+  }: {
+    'data-testid'?: string;
+    tooltip?: string;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={tooltip}
+      data-testid={testId}
+      type="button"
+      onClick={onClick}>
+      {tooltip}
+    </button>
+  ),
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
@@ -150,15 +174,21 @@ const renderRow = (comment: TaskComment = COMMENT) =>
     <TaskCommentRow comment={comment} taskId="task-1" onChanged={onChanged} />
   );
 
-const hover = () =>
-  fireEvent.mouseEnter(screen.getByTestId('task-comment-card'));
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockCurrentUser = { name: 'bob' };
 });
 
 describe('TaskCommentRow', () => {
+  // Unmounting the actions until hover would put them out of reach of the
+  // keyboard; they stay mounted and are revealed with opacity instead.
+  it('keeps the actions mounted without hovering', () => {
+    renderRow();
+
+    expect(screen.getByTestId('task-comment-actions')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-task-comment')).toBeInTheDocument();
+  });
+
   it('renders the author, timestamp and message', () => {
     renderRow();
 
@@ -185,7 +215,6 @@ describe('TaskCommentRow', () => {
   it('lets the author edit their comment', async () => {
     mockEditComment.mockResolvedValue({});
     renderRow();
-    hover();
 
     fireEvent.click(screen.getByTestId('edit-task-comment'));
     await act(async () => {
@@ -198,7 +227,6 @@ describe('TaskCommentRow', () => {
 
   it('cancels an edit without saving', () => {
     renderRow();
-    hover();
 
     fireEvent.click(screen.getByTestId('edit-task-comment'));
     fireEvent.click(screen.getByTestId('cancel-edit-task-comment'));
@@ -210,7 +238,6 @@ describe('TaskCommentRow', () => {
   it('surfaces a failed edit instead of closing the editor', async () => {
     mockEditComment.mockRejectedValue(new Error('nope'));
     renderRow();
-    hover();
 
     fireEvent.click(screen.getByTestId('edit-task-comment'));
     await act(async () => {
@@ -224,7 +251,6 @@ describe('TaskCommentRow', () => {
   it('deletes the comment only after the confirmation', async () => {
     mockDeleteComment.mockResolvedValue({});
     renderRow();
-    hover();
 
     fireEvent.click(screen.getByTestId('delete-task-comment'));
 
@@ -241,7 +267,6 @@ describe('TaskCommentRow', () => {
   it('offers an admin delete, but not edit, on a comment they did not write', () => {
     mockCurrentUser = { name: 'admin', isAdmin: true };
     renderRow();
-    hover();
 
     expect(screen.getByTestId('delete-task-comment')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-task-comment')).not.toBeInTheDocument();
@@ -250,7 +275,6 @@ describe('TaskCommentRow', () => {
   it('offers nothing to a non-author, non-admin viewer', () => {
     mockCurrentUser = { name: 'carol' };
     renderRow();
-    hover();
 
     expect(
       screen.queryByTestId('task-comment-actions')
@@ -261,7 +285,6 @@ describe('TaskCommentRow', () => {
   it('offers nothing when neither the viewer nor the author is named', () => {
     mockCurrentUser = {};
     renderRow({ ...COMMENT, author: {} } as unknown as TaskComment);
-    hover();
 
     expect(
       screen.queryByTestId('task-comment-actions')

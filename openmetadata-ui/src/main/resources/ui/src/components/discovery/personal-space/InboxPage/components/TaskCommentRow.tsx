@@ -15,9 +15,13 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01, Trash01 } from '@untitledui/icons';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +39,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../../utils/FeedUtilsPure';
+import { resolveCommentPermissions } from '../../../../../utils/TaskCommentUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { formatInboxDateTime } from '../inbox.utils';
 
@@ -45,25 +50,6 @@ export interface TaskCommentRowProps {
   onChanged: () => void;
 }
 
-interface CommentPermissions {
-  canDelete: boolean;
-  canEdit: boolean;
-  canModify: boolean;
-}
-
-/** The comment's author may edit or delete it; an admin may also delete it. */
-export const resolveCommentPermissions = (
-  currentUser: { name?: string; isAdmin?: boolean } | undefined,
-  comment: TaskComment
-): CommentPermissions => {
-  const isAuthor =
-    Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
-  const canEdit = isAuthor;
-  const canDelete = isAuthor || Boolean(currentUser?.isAdmin);
-
-  return { canEdit, canDelete, canModify: canEdit || canDelete };
-};
-
 interface TaskCommentActionsProps {
   canDelete: boolean;
   canEdit: boolean;
@@ -71,34 +57,49 @@ interface TaskCommentActionsProps {
   onEditRequest: () => void;
 }
 
-/** Hover-only edit/delete affordances for a comment row. */
+/**
+ * Edit/delete affordances for a comment row.
+ *
+ * Real buttons, kept mounted and revealed with opacity: unmounting them until
+ * hover puts them out of reach of the keyboard.
+ */
 const TaskCommentActions = ({
   canDelete,
   canEdit,
   onDeleteRequest,
   onEditRequest,
-}: TaskCommentActionsProps) => (
-  <Box align="center" data-testid="task-comment-actions" gap={1}>
-    {canEdit && (
-      <Edit01
-        className="tw:cursor-pointer tw:text-secondary"
-        data-testid="edit-task-comment"
-        height={16}
-        width={16}
-        onClick={onEditRequest}
-      />
-    )}
-    {canDelete && (
-      <Trash01
-        className="tw:cursor-pointer tw:text-error-primary"
-        data-testid="delete-task-comment"
-        height={16}
-        width={16}
-        onClick={onDeleteRequest}
-      />
-    )}
-  </Box>
-);
+}: TaskCommentActionsProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      aria-label={t('label.action-plural')}
+      className="tw:flex tw:items-center tw:gap-1 tw:opacity-0 tw:motion-safe:transition-opacity tw:group-hover:opacity-100 tw:focus-within:opacity-100"
+      data-testid="task-comment-actions"
+      role="group">
+      {canEdit && (
+        <ButtonUtility
+          color="tertiary"
+          data-testid="edit-task-comment"
+          icon={EditIcon}
+          size="xs"
+          tooltip={t('label.edit')}
+          onClick={onEditRequest}
+        />
+      )}
+      {canDelete && (
+        <ButtonUtility
+          color="tertiary"
+          data-testid="delete-task-comment"
+          icon={DeleteIcon}
+          size="xs"
+          tooltip={t('label.delete')}
+          onClick={onDeleteRequest}
+        />
+      )}
+    </div>
+  );
+};
 
 interface TaskCommentBodyProps {
   comment: TaskComment;
@@ -172,7 +173,6 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
   const isOwnComment =
     Boolean(currentUser?.name) && comment.author?.name === currentUser?.name;
 
-  const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -208,12 +208,10 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
 
   return (
     <Box
-      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3"
+      className="tw:group tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-4 tw:py-3"
       data-testid="task-comment-card"
       direction="col"
-      gap={2}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
+      gap={2}>
       <Box align="center" className="tw:justify-between" gap={2}>
         <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography size="text-sm" weight="semibold">
@@ -224,7 +222,7 @@ const TaskCommentRow: React.FC<TaskCommentRowProps> = ({
           </Typography>
         </Box>
         <Box align="center" className="tw:shrink-0" gap={2}>
-          {isHovered && !isEditing && canModifyComment && (
+          {!isEditing && canModifyComment && (
             <TaskCommentActions
               canDelete={canDelete}
               canEdit={canEdit}

@@ -13,7 +13,7 @@
 
 // Only the HTTP client is stubbed, so the real form-schema utils, schema
 // registry and generated enums drive these assertions.
-jest.mock('../../../../rest/index', () => ({
+jest.mock('../../../../rest/axiosClient', () => ({
   __esModule: true,
   default: {
     get: jest.fn(),

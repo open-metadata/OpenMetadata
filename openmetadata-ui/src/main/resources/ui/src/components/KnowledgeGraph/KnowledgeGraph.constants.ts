@@ -41,7 +41,7 @@ export const FIT_MIN_ZOOM = 0.55;
 /** Fitting never magnifies a small graph past this, so two cards do not become a poster. */
 export const FIT_MAX_ZOOM = 1.1;
 /** What the wheel and the zoom buttons can reach; wider than the fit band so detail stays available. */
-export const ZOOM_RANGE: [number, number] = [0.3, 1.6];
+export { ZOOM_RANGE } from '../../constants/KnowledgeGraph.constants';
 export const ZOOM_IN_FACTOR = 1.15;
 export const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 export const ZOOM_DURATION_MS = 300;
