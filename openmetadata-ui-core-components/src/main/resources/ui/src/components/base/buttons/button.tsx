@@ -115,16 +115,22 @@ export const styles = sortCx({
     },
     'link-color': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover',
+        // Dark keeps light frozen (brand-secondary) but flips to the blue link
+        // tone (blue-300) per the dark-mode palette guideline — links are blue,
+        // not the gray brand-secondary text step.
+        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover',
+        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
       ].join(' '),
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
