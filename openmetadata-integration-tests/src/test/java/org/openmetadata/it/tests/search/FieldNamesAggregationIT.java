@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.apache.hc.core5.http.HttpHost;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -41,20 +44,26 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
  *       no buckets, reproducing the original bug mechanism (terms agg over an unmapped field).
  * </ul>
  */
+@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FieldNamesAggregationIT {
 
-  private static final String OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
-
-  /** Started by hand so an unbuildable plugin image aborts this suite -- see SearchTestImages. */
-  static OpensearchContainer<?> opensearch;
+  @Container
+  static OpensearchContainer<?> opensearch =
+      new OpensearchContainer<>(
+              SearchTestImages.openSearchWithAnalysisPlugins("opensearchproject/opensearch:3.4.0"))
+          .withStartupTimeout(Duration.ofMinutes(5))
+          .withEnv("discovery.type", "single-node")
+          .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
+          .withEnv("DISABLE_SECURITY_PLUGIN", "true")
+          .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
+          .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
 
   private OpenSearchClient openSearchClient;
   private ObjectMapper mapper;
 
   @BeforeAll
   void setUp() throws Exception {
-    opensearch = SearchTestImages.startWithAnalysisPlugins(OPENSEARCH_IMAGE);
     HttpHost httpHost = new HttpHost("http", opensearch.getHost(), opensearch.getMappedPort(9200));
     ApacheHttpClient5Transport transport =
         ApacheHttpClient5TransportBuilder.builder(httpHost)
@@ -77,12 +86,7 @@ class FieldNamesAggregationIT {
 
   @AfterAll
   void tearDown() throws Exception {
-    if (openSearchClient != null) {
-      openSearchClient._transport().close();
-    }
-    if (opensearch != null) {
-      opensearch.stop();
-    }
+    openSearchClient._transport().close();
   }
 
   @Test

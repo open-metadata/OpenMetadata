@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -235,8 +236,35 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (isServiceResource()) {
       return entity.getEntityReference();
     }
-    return entity.getService();
+    EntityReference service = entity.getService();
+    if (service == null) {
+      warnServiceNotPopulated();
+    }
+    return service;
   }
+
+  /**
+   * {@code EntityInterface.getService()} defaults to null, so an entity type whose repository does
+   * not populate it answers "no service" here. Every {@code matchAnyService*} condition then
+   * returns false, and for a Deny rule false means the rule does not apply -- the assets stay
+   * visible with no exception and nothing in the log. The premise that roughly thirty
+   * service-backed repositories all populate the field is a convention with nothing asserting it,
+   * so a type that does not, or one added later that forgets, silently opts itself out of a
+   * feature whose whole purpose is access control.
+   *
+   * <p>Logged once per entity type so a missing field is greppable without putting a line on every
+   * authorization check. Bounded by the number of registered entity types.
+   */
+  private void warnServiceNotPopulated() {
+    if (SERVICE_FIELD_WARNED.add(entityRepository.getEntityType())) {
+      LOG.warn(
+          "Entity type {} does not populate 'service', so matchAnyServiceTag/Type/Name/Environment "
+              + "cannot match it and any Deny rule using them will not hide its assets",
+          entityRepository.getEntityType());
+    }
+  }
+
+  private static final Set<String> SERVICE_FIELD_WARNED = ConcurrentHashMap.newKeySet();
 
   /**
    * Tags of the service that ingested this resource.

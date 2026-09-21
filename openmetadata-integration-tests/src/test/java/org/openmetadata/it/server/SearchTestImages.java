@@ -1,9 +1,5 @@
 package org.openmetadata.it.server;
 
-import java.time.Duration;
-import lombok.extern.slf4j.Slf4j;
-import org.opensearch.testcontainers.OpensearchContainer;
-import org.opentest4j.TestAbortedException;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.DockerImageName;
 
@@ -30,7 +26,6 @@ import org.testcontainers.utility.DockerImageName;
  * {@code timeout} killed maven (exit 124) and a third-party CDN took out the entire suite rather
  * than this one test.
  */
-@Slf4j
 public final class SearchTestImages {
 
   private static final String OPENSEARCH_BASE_REFERENCE = "opensearchproject/opensearch";
@@ -55,48 +50,6 @@ public final class SearchTestImages {
           + " --retry 3 --retry-delay 5 --retry-all-errors";
 
   private SearchTestImages() {}
-
-  /**
-   * Builds the analysis-plugin image and starts a single-node OpenSearch on it.
-   *
-   * <p>Every suite that needs the language analyzers goes through here rather than resolving the
-   * image in a {@code @Container} field initializer. A throw from a field initializer surfaces as
-   * {@link ExceptionInInitializerError} before any assumption can run, so an unreachable CDN fails
-   * the suite; resolving it inside {@code @BeforeAll} lets that same failure abort instead.
-   *
-   * <p>Only the image build aborts. Starting the container, and everything after it, still fails
-   * loudly -- those are the outcomes the suites exist to report. Callers own {@code stop()}.
-   */
-  public static OpensearchContainer<?> startWithAnalysisPlugins(String baseImage) {
-    DockerImageName image;
-    try {
-      image = openSearchWithAnalysisPlugins(baseImage);
-    } catch (RuntimeException e) {
-      // An aborted @BeforeAll reports as "Tests run: 0" with no reason recorded in the surefire
-      // report, so this marker is the only durable record that the suite stopped running.
-      log.error(
-          "SKIPPED-ANALYSIS-PLUGIN-IMAGE: language-analyzer coverage did not run because the "
-              + "OpenSearch analysis-plugin image could not be built",
-          e);
-      throw new TestAbortedException(
-          "Skipping: the OpenSearch analysis-plugin image could not be built. analysis-ik is "
-              + "fetched from release.infinilabs.com, which is outside this repository's control. "
-              + "Cause: "
-              + e.getMessage(),
-          e);
-    }
-    OpensearchContainer<?> container =
-        new OpensearchContainer<>(image)
-            .withStartupTimeout(Duration.ofMinutes(5))
-            .withEnv("discovery.type", "single-node")
-            .withEnv("OPENSEARCH_INITIAL_ADMIN_PASSWORD", "Test@12345")
-            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m");
-    container.start();
-
-    return container;
-  }
 
   /**
    * Returns a {@link DockerImageName} for {@code baseImage} with the analysis plugins installed. The

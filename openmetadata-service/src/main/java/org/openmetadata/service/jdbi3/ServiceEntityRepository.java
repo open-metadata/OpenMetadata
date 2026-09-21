@@ -38,6 +38,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -232,7 +234,7 @@ public abstract class ServiceEntityRepository<
   @Override
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
-    ServiceAttributeResolver.invalidate();
+    invalidateServiceAttributes(service);
     // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
     // so a Deny rule meant to hide that service's assets would quietly grant access instead.
     // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
@@ -262,16 +264,37 @@ public abstract class ServiceEntityRepository<
    * matching until the snapshot TTL expires.
    */
 
+  /**
+   * Drops the service-attribute snapshot on this pod and tells the others to do the same.
+   *
+   * <p>{@code ServiceAttributeResolver.invalidate()} only reaches this JVM. Without the broadcast,
+   * a peer keeps resolving {@code matchAnyServiceTag} and friends from the snapshot it already
+   * holds -- and keeps returning the same {@code generation()}, so the caches keyed on it do not
+   * turn over -- so a service tagged to hide its assets stays visible there for up to the
+   * resolver's refresh interval. {@code postUpdate} and {@code postDelete} do not go through the
+   * {@code invalidateCacheForEntity} fan-out, which is why the publish is explicit here; the
+   * subscriber on each pod runs the registered invalidator. No-op when caching is not configured,
+   * leaving the refresh interval as the bound, exactly as before.
+   */
+  private void invalidateServiceAttributes(T service) {
+    ServiceAttributeResolver.invalidate();
+    CacheInvalidationPubSub pubsub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubsub != null) {
+      pubsub.publish(
+          entityType, service.getId(), service.getFullyQualifiedName(), "serviceAttributes");
+    }
+  }
+
   @Override
   protected void postCreate(T service) {
     super.postCreate(service);
-    ServiceAttributeResolver.invalidate();
+    invalidateServiceAttributes(service);
   }
 
   @Override
   protected void postUpdate(T original, T updated) {
     super.postUpdate(original, updated);
-    ServiceAttributeResolver.invalidate();
+    invalidateServiceAttributes(updated);
     if (!original.getName().equals(updated.getName())) {
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
@@ -286,7 +309,7 @@ public abstract class ServiceEntityRepository<
   @Override
   protected void postUpdate(T updated) {
     super.postUpdate(updated);
-    ServiceAttributeResolver.invalidate();
+    invalidateServiceAttributes(updated);
   }
 
   @Override

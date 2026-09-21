@@ -156,6 +156,15 @@ public final class PolicyConditionUpdater {
   /**
    * Page through every non-deleted policy (no fixed cap) and rewrite each one whose conditions
    * reference the renamed/deleted entity.
+   *
+   * <p>The paging read is a plain {@code listAfter} with {@link Fields#EMPTY_FIELDS} and takes no
+   * locks. {@link #conditionsWouldChange} is an in-memory check on the already-loaded policy and
+   * gates {@link #rewriteSinglePolicy}, which holds the only locking read
+   * ({@code findJsonByIdForUpdate}). So a rename locks the policies that actually name the renamed
+   * entity -- usually none or one -- not a row per policy in the catalog. Those locks are held
+   * until the enclosing entity transaction commits, because the callers run inside it, so two
+   * writers racing on the <em>same</em> policy still serialise. That is the bound worth knowing
+   * before widening these hooks.
    */
   private static boolean rewriteMatchingPolicies(
       EntityRepository<Policy> policyRepo, UnaryOperator<String> conditionRewriter) {

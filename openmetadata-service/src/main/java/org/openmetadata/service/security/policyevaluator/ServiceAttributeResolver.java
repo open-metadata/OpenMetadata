@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.Invalidatable;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 
@@ -186,6 +187,27 @@ public final class ServiceAttributeResolver {
    */
   public static void invalidate() {
     snapshotCache = buildCache();
+  }
+
+  /**
+   * Drops the snapshot when any replica writes a service.
+   *
+   * <p>{@link #invalidate()} replaces a static field in one JVM, so on its own it only reaches the
+   * pod that served the write. Every other replica keeps answering from the snapshot it already
+   * built, and keeps returning the same {@link #generation()}, so the caches keyed on it do not
+   * turn over either -- an admin tags a service to hide it and its assets stay in search results on
+   * every other pod until {@code refreshAfterWrite} elapses. Registering here puts this on the same
+   * footing as {@code SubjectCache}, which is policy-evaluation state with the same requirement.
+   *
+   * <p>Scoped to service entity types: nothing else changes what this snapshot holds, and a
+   * catalog-wide write rate would otherwise rebuild it constantly.
+   */
+  public static Invalidatable invalidator() {
+    return (type, id, fqn) -> {
+      if (Entity.getServiceEntityTypes().contains(type)) {
+        invalidate();
+      }
+    };
   }
 
   private static Set<String> lookup(Map<String, Set<String>> index, Collection<String> keys) {
