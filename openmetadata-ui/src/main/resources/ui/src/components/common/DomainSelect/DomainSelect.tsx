@@ -15,6 +15,7 @@ import {
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
+import { Domain as DomainIcon } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -76,6 +77,20 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [restrictedFqns]
   );
 
+  // The pure mappers cannot build JSX, so the domain glyph is attached here
+  // (recursively, so search-nested subdomains get it too).
+  const withDomainIcon = useCallback(
+    (
+      nodes: TreeSelectNode<EntityReference>[]
+    ): TreeSelectNode<EntityReference>[] =>
+      nodes.map((node) => ({
+        ...node,
+        icon: <DomainIcon height={16} width={16} />,
+        children: node.children ? withDomainIcon(node.children) : node.children,
+      })),
+    []
+  );
+
   const fetchData = useCallback(
     async ({
       searchTerm,
@@ -94,7 +109,11 @@ const DomainSelect: FC<DomainSelectProps> = ({
           signal
         )) as unknown as Domain[];
 
-        return { nodes: dropRestricted(domainsToTreeNodes(results ?? [])) };
+        return {
+          nodes: withDomainIcon(
+            dropRestricted(domainsToTreeNodes(results ?? []))
+          ),
+        };
       }
 
       const { data } = await getDomainChildrenPaginated(
@@ -102,9 +121,11 @@ const DomainSelect: FC<DomainSelectProps> = ({
         PAGE_SIZE_LARGE
       );
 
-      return { nodes: dropRestricted(domainsToTreeNodes(data ?? [])) };
+      return {
+        nodes: withDomainIcon(dropRestricted(domainsToTreeNodes(data ?? []))),
+      };
     },
-    [dropRestricted]
+    [dropRestricted, withDomainIcon]
   );
 
   const value = useMemo(() => {

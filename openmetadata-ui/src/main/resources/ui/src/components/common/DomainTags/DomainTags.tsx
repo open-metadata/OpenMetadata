@@ -61,7 +61,9 @@ const DomainTags: FC<DomainTagsProps> = ({
             closeButtonTestId={`remove-domain-${domain.fullyQualifiedName}`}
             data-testid={`domain-tag-${domain.fullyQualifiedName}`}
             href={
-              onRemove ? undefined : getDomainPath(domain.fullyQualifiedName)
+              onRemove || !domain.fullyQualifiedName
+                ? undefined
+                : getDomainPath(domain.fullyQualifiedName)
             }
             inherited={showInheritedIcon && domain.inherited}
             inheritedLabel={inheritedLabel}

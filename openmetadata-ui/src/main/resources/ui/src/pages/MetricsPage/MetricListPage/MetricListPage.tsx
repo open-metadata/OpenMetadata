@@ -48,7 +48,6 @@ import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
-  Fragment,
   Key,
   ReactNode,
   useCallback,
@@ -83,11 +82,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  EntityReference,
-  EntityStatus,
-  Metric,
-} from '../../../generated/entity/data/metric';
+import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -98,6 +93,7 @@ import {
 } from '../../../rest/metricsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import DomainTags from '../../../components/common/DomainTags/DomainTags';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getEntityBulkEditPath,
@@ -107,10 +103,7 @@ import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUt
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import {
-  getDomainPath,
-  getEntityDetailsPath,
-} from '../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -191,26 +184,6 @@ const computeIsMetricListEmpty = (
   const hasNoFilters = !searchText && !statusFilter;
 
   return isNotFetchingOrPending && metricsCount === 0 && hasNoFilters;
-};
-
-const renderDomainBadge = (domain: EntityReference): ReactNode => {
-  const badge = (
-    <Badge
-      className="metric-list-glossary-pill"
-      color="blue"
-      size="sm"
-      type="color">
-      {domain.displayName ?? domain.name ?? domain.fullyQualifiedName}
-    </Badge>
-  );
-
-  return domain.fullyQualifiedName ? (
-    <Link key={domain.id} to={getDomainPath(domain.fullyQualifiedName)}>
-      {badge}
-    </Link>
-  ) : (
-    <Fragment key={domain.id}>{badge}</Fragment>
-  );
 };
 
 const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
@@ -677,7 +650,11 @@ const MetricListPage = () => {
         render: (domains: Metric['domains']) =>
           withNestedLinkGuard(
             <Box className="metric-list-glossary">
-              {domains?.length ? domains.map(renderDomainBadge) : emptyDash}
+              {domains?.length ? (
+                <DomainTags domains={domains} maxVisible={2} />
+              ) : (
+                emptyDash
+              )}
             </Box>
           ),
       },

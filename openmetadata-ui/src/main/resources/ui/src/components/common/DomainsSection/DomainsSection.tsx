@@ -23,11 +23,10 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { getDomainIcon } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
+import DomainTags from '../DomainTags/DomainTags';
 import Loader from '../Loader/Loader';
 import './DomainsSection.less';
 
@@ -55,7 +54,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
-  const [showAllDomains, setShowAllDomains] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const { entityRules } = useEntityRules(entityType);
 
@@ -186,51 +184,10 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   const domainsDisplay = useMemo(
     () => (
       <div className="domains-display">
-        <div className="domains-list">
-          {(showAllDomains
-            ? activeDomains
-            : activeDomains.slice(0, maxVisibleDomains)
-          ).map((domain) => {
-            const domainWithStyle = domain as EntityReference & {
-              style?: { color?: string; iconURL?: string };
-            };
-
-            return (
-              <div
-                className="domain-item"
-                key={
-                  domainWithStyle.id ||
-                  domainWithStyle.fullyQualifiedName ||
-                  domainWithStyle.name ||
-                  JSON.stringify(domainWithStyle)
-                }>
-                <div className="domain-card-bar">
-                  <div className="domain-card-content">
-                    <div className="domain-card-icon">
-                      {getDomainIcon(domainWithStyle?.style?.iconURL)}
-                    </div>
-                    <span className="domain-name">{getEntityName(domain)}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {activeDomains.length > maxVisibleDomains && (
-            <button
-              className="show-more-domains-button"
-              type="button"
-              onClick={() => setShowAllDomains(!showAllDomains)}>
-              {showAllDomains
-                ? t('label.less')
-                : `+${activeDomains.length - maxVisibleDomains} ${t(
-                    'label.more-lowercase'
-                  )}`}
-            </button>
-          )}
-        </div>
+        <DomainTags domains={activeDomains} maxVisible={maxVisibleDomains} />
       </div>
     ),
-    [showAllDomains, activeDomains, maxVisibleDomains, t]
+    [activeDomains, maxVisibleDomains]
   );
 
   const selectableList = useMemo(() => {

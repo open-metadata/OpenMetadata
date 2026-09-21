@@ -290,6 +290,40 @@ jest.mock('../../../components/Tag/TagsViewer/TagsViewer', () => ({
   ),
 }));
 
+jest.mock('../../../components/common/DomainTags/DomainTags', () => {
+  const { getDomainPath } = require('../../../utils/RouterUtils');
+
+  return {
+    __esModule: true,
+    default: ({
+      domains,
+    }: {
+      domains?: Array<{
+        fullyQualifiedName?: string;
+        displayName?: string;
+        name?: string;
+      }>;
+    }) => (
+      <div data-testid="domain-tags">
+        {(domains ?? []).map((domain) => {
+          const label =
+            domain.displayName ?? domain.name ?? domain.fullyQualifiedName;
+
+          return domain.fullyQualifiedName ? (
+            <a
+              href={getDomainPath(domain.fullyQualifiedName)}
+              key={domain.fullyQualifiedName}>
+              {label}
+            </a>
+          ) : (
+            <span key={label}>{label}</span>
+          );
+        })}
+      </div>
+    ),
+  };
+});
+
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => (
