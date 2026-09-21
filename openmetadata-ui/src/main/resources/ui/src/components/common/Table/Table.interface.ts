@@ -39,6 +39,16 @@ export type {
 
 export interface TableComponentProps<T> extends TableProps<T> {
   containerClassName?: string; // Applied to the table container
+  /**
+   * Applied to the div `ui-core-components`' `Table` wraps its own `<table>`
+   * element in (the div that actually owns `scroll.x`/`scroll.y`'s overflow).
+   * Use this — not `containerClassName`, which only reaches TableV2's outer
+   * wrapper — to stretch that inner scroll region to fill its panel (e.g.
+   * `tw:!flex-1 tw:!min-h-0 tw:!max-h-none` to lift the `scroll.y`
+   * max-height and let flex sizing take over) so a short result set doesn't
+   * leave the table's own horizontal scrollbar floating mid-panel.
+   */
+  scrollContainerClassName?: string;
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
   extraTableFilters?: React.ReactNode;

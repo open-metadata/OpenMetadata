@@ -1917,7 +1917,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Table
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
-          containerClassName="glossary-terms-table drop-over-background tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1"
+          containerClassName="glossary-terms-table drop-over-background tw:flex tw:flex-col tw:!border-0 tw:!rounded-none tw:min-h-0 tw:flex-1"
           data-testid="glossary-terms-table"
           dataSource={filteredGlossaryTerms}
           defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
@@ -1928,7 +1928,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           pagination={false}
           rowClassName={getRowClassName}
           rowKey="fullyQualifiedName"
+          // Stretches the scroll region TableV2 hands to `ui-core-components`'
+          // Table to fill the panel instead of shrinking to the row content's
+          // height (`scroll.y`'s max-height only caps it, it doesn't stretch
+          // it) — otherwise, with a short result set, the table's own
+          // horizontal scrollbar floats mid-panel with empty space below it
+          // while `containerClassName`'s own flex column above grows a
+          // second, redundant scrollbar flush at the panel's bottom edge.
           scroll={GLOSSARY_TABLE_SCROLL}
+          scrollContainerClassName="tw:!flex-1 tw:!min-h-0 tw:!max-h-none"
           size="small"
           staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
         />
