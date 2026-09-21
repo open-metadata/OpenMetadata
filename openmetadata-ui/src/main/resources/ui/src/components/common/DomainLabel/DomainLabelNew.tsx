@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from 'antd';
+import { Divider, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -125,22 +125,15 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
           {selectableList}
         </div>
       </div>
       <div className="user-profile-card-body d-flex justify-start gap-2">
         <div className="user-page-icon d-flex-center">
-          <Divider
-            style={{
-              height: '100%',
-              width: '1px',
-              background: '#D9D9D9',
-            }}
-            type="vertical"
-          />
+          <Divider className="tw:h-full" orientation="vertical" />
         </div>
         {label}
       </div>

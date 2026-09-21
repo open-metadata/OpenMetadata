@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -122,7 +122,7 @@ export const DomainLabel = ({
     }
 
     return (
-      <Typography.Text
+      <Typography
         className={classNames(
           'domain-link-text',
           { 'font-medium text-sm': !showDomainHeading },
@@ -130,7 +130,7 @@ export const DomainLabel = ({
         )}
         data-testid="no-domain-text">
         {defaultDomainText}
-      </Typography.Text>
+      </Typography>
     );
   }, [
     activeDomain,
@@ -163,15 +163,15 @@ export const DomainLabel = ({
             className="d-flex text-sm  font-medium items-center m-b-xs"
             data-testid="header-domain-container">
             {!headerLayout ? (
-              <Typography.Text className="right-panel-label m-r-xss">
+              <Typography className="right-panel-label m-r-xss">
                 {t('label.domain-plural')}
-              </Typography.Text>
+              </Typography>
             ) : (
-              <Typography.Text className="domain-link right-panel-label m-r-xss">
+              <Typography className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
-              </Typography.Text>
+              </Typography>
             )}
             {selectableList}
           </div>
@@ -189,9 +189,9 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography.Text className="domain-link right-panel-label m-r-xss">
+            <Typography className="domain-link right-panel-label m-r-xss">
               {t('label.domain-plural')}
-            </Typography.Text>
+            </Typography>
             {selectableList}
           </div>
         )}
