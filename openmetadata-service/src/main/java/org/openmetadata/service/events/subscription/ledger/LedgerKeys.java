@@ -9,18 +9,16 @@ public final class LedgerKeys {
   public static final String GAP_WAIT = "eventSubscription.gap";
   public static final String HEALTH = "eventSubscription.health";
   public static final String IN_PROGRESS = "eventSubscription.inProgress";
-  public static final String SHADOW_REPORT = "eventSubscription.shadowReport";
 
   static final String POSITION_SCHEMA = "eventSubscriptionOffset";
   static final String COUNTERS_SCHEMA = "alertMetrics";
   static final String GAP_WAIT_SCHEMA = "alertGapWait";
   static final String HEALTH_SCHEMA = "alertHealth";
   static final String IN_PROGRESS_SCHEMA = "alertEventInProgress";
-  public static final String SHADOW_REPORT_SCHEMA = "alertShadowReport";
 
   private LedgerKeys() {}
 
   public static List<String> all() {
-    return List.of(POSITION, COUNTERS, GAP_WAIT, HEALTH, IN_PROGRESS, SHADOW_REPORT);
+    return List.of(POSITION, COUNTERS, GAP_WAIT, HEALTH, IN_PROGRESS);
   }
 }

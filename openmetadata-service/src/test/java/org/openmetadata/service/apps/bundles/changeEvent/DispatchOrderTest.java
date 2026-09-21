@@ -38,7 +38,6 @@ import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
-import org.openmetadata.service.events.subscription.matching.AlertMatching;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -183,7 +182,7 @@ class DispatchOrderTest {
       entity.when(Entity::getCollectionDAO).thenReturn(dao);
       rows.when(() -> AlertRows.readOrNull(alert.getId())).thenReturn(alert);
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(AlertMatching.class), any(), any()))
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenAnswer(invocation -> invocation.getArgument(1));
       for (int position = 0; position < channels.size(); position++) {
         Destination<ChangeEvent> channel = channels.get(position);

@@ -37,15 +37,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertTelemetry;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.ChannelResolution;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
-import org.openmetadata.service.events.subscription.matching.AlertMatching;
-import org.openmetadata.service.events.subscription.matching.ShadowReports;
 import org.openmetadata.service.events.subscription.targets.TargetResolver;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.EventContent;
@@ -74,7 +70,6 @@ public abstract class AbstractEventConsumer
   // Offsets of the events the last poll returned, in the same order.
   private List<Long> polledOffsets = List.of();
   private TickStopSignal stopSignal;
-  private AlertMatching matching;
   private boolean stoppedEarly;
 
   protected EventSubscription eventSubscription;
@@ -181,7 +176,7 @@ public abstract class AbstractEventConsumer
       return;
     }
     Map<ChangeEvent, Set<UUID>> filteredEvents =
-        getFilteredEvents(matchingOfThisTick(), events, this::deadLetterEvent);
+        getFilteredEvents(eventSubscription, events, ledger.watermark(), this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -414,7 +409,6 @@ public abstract class AbstractEventConsumer
     this.healthOfThisTick = new TickHealth();
     this.stopSignal = TickStopSignal.startingNow(AlertingSettings.current());
     this.stoppedEarly = false;
-    this.matching = null;
     TickMemory.begin(stopSignal);
     try {
       doInit(context);
@@ -479,7 +473,6 @@ public abstract class AbstractEventConsumer
     ledger.readUpTo(skipped > 0 ? polledOffsets.get(skipped - 1) : ledger.position(), 0L);
     int processed = 0;
     while (processed < events.size() && !mustStopBefore(processed)) {
-      matchingOfThisTick().nextEventIsAt(polledOffsets.get(processed + skipped));
       publishIsolated(events.get(processed));
       ledger.readUpTo(polledOffsets.get(processed + skipped), 0L);
       processed++;
@@ -536,7 +529,6 @@ public abstract class AbstractEventConsumer
       reportDestinationStatus();
       commit(context);
       ledger.clearOpeningNote();
-      writeShadowReport();
       runAgainAtOnceIfStoppedForTime(context);
     } finally {
       closeDestinations();
@@ -559,26 +551,6 @@ public abstract class AbstractEventConsumer
             e);
       }
     }
-  }
-
-  // What comparing the two matching engines showed is kept with the alert, and like everything
-  // else of an alert, not for one that was deleted while the tick ran.
-  private void writeShadowReport() {
-    boolean stillThere = AlertRows.readOrNull(eventSubscription.getId()) != null;
-    if (matching != null && stillThere) {
-      ShadowReports.add(eventSubscription.getId(), matching.tally());
-    }
-  }
-
-  // Built when the tick first needs it: the plan, and the mode that is in force for this tick.
-  private AlertMatching matchingOfThisTick() {
-    if (matching == null) {
-      matching =
-          AlertMatching.forTick(
-              eventSubscription,
-              AlertUtil.alertingWatermark(eventSubscription, ledger.watermark()));
-    }
-    return matching;
   }
 
   // A consumer that sends by itself leaves its outcome on the destination it sent through. What

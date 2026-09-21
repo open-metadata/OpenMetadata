@@ -31,7 +31,6 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
-import org.openmetadata.service.events.subscription.matching.ShadowReports;
 
 /** Isolated for the same reason as the dispatch scenarios: it drives a tick over inserted events. */
 @Isolated
@@ -67,7 +66,7 @@ class AlertDeliveryIT {
       EventSubscription alert = createWorkedExample(ns, receiver.url("/webhook"));
       QuietAlert.settle(alert);
       int deliveredBefore = counters(alert).getSuccessEvents();
-      Map<String, ChangeEvent> events = MatchingCorpus.events();
+      Map<String, ChangeEvent> events = SampleEvents.events();
       List<String> sent =
           List.of(
               "table created",
@@ -87,7 +86,6 @@ class AlertDeliveryIT {
               .toList();
       assertEquals(List.of("pipeline", "table", "topic"), received);
       assertEquals(3, counters(alert).getSuccessEvents() - deliveredBefore, "counters that agree");
-      assertEquals(0L, ShadowReports.of(alert.getId()).getDisagreements());
     }
   }
 
@@ -105,7 +103,7 @@ class AlertDeliveryIT {
       QuietAlert.settle(alert);
 
       FixtureEvents.insert(
-          List.of(JsonUtils.pojoToJson(MatchingCorpus.events().get("table created"))));
+          List.of(JsonUtils.pojoToJson(SampleEvents.events().get("table created"))));
       DirectTick.run(alert);
 
       List<String> routes =

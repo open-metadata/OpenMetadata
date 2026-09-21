@@ -16,7 +16,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
-class AlertMatcherParityTest {
+class AlertsRuleEvaluatorPurityTest {
 
   @Test
   void eventBytesUnchangedAfterMatching() {

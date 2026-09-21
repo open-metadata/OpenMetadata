@@ -57,8 +57,8 @@ public final class SeveralSources {
 
   /**
    * The definition as the condition text today's evaluation reads, which is also what a server
-   * of the previous release reads: the triggers become one rule that holds the same grouping by
-   * source the plan uses, built only from a function that release has.
+   * of the previous release reads: the triggers become one rule that groups them by source, built
+   * only from a function that release has.
    */
   public static FilteringRules compile(
       List<String> sources, List<FilterResourceDescriptor> catalog, AlertFilteringInput input) {

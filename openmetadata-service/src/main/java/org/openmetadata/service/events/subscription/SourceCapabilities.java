@@ -17,8 +17,8 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 
 /**
- * What a selection of sources supports, derived where the save and the matching plan derive it, so
- * the form cannot offer something the save would reject. A source that would break a rule is
+ * What a selection of sources supports, derived where the save derives it, so the form cannot
+ * offer something the save would reject. A source that would break a rule is
  * listed with the reason, to be shown disabled rather than fail on save.
  */
 public final class SourceCapabilities {

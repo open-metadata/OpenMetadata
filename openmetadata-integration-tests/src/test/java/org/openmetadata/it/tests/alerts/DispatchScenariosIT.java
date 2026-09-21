@@ -27,7 +27,6 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.entity.events.AlertMatcherMode;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
@@ -39,7 +38,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertingSettings;
-import org.openmetadata.service.events.subscription.matching.ShadowReports;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -71,25 +69,6 @@ class DispatchScenariosIT {
       DirectTick.run(alert);
 
       assertEveryChannelDelivered(receiver, alert, before);
-    }
-  }
-
-  // The plan decides what is delivered here, and what is delivered must not change.
-  @Test
-  void planDecidingDeliversTheSame(TestNamespace ns) throws Exception {
-    try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert = createAlert(ns, "dispatch_plan_decides", everyChannel(receiver));
-      QuietAlert.settle(alert);
-      AlertMetrics before = counters(alert);
-      AlertingSettings.use(AlertingSettings.current().withMatcherMode(AlertMatcherMode.PLAN));
-
-      FixtureEvents.insert(FixtureEvents.tableEvents());
-      DirectTick.run(alert);
-
-      assertEveryChannelDelivered(receiver, alert, before);
-      assertEquals(0L, ShadowReports.of(alert.getId()).getDisagreements());
-    } finally {
-      AlertingSettings.use(new AlertingSettings(Duration.ofSeconds(60), false));
     }
   }
 

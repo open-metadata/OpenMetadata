@@ -58,8 +58,6 @@ import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.matching.AlertMatching;
-import org.openmetadata.service.events.subscription.matching.ConditionEvaluator;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
@@ -107,13 +105,23 @@ public final class AlertUtil {
 
   public static boolean evaluateAlertConditions(
       ChangeEvent changeEvent, List<EventFilterRule> alertFilterRules) {
-    return evaluateAlertConditions(new ConditionEvaluator(changeEvent), alertFilterRules);
-  }
-
-  /** With an evaluator another engine also asks, so both judge the same event in the same state. */
-  public static boolean evaluateAlertConditions(
-      ConditionEvaluator evaluator, List<EventFilterRule> alertFilterRules) {
-    return alertFilterRules.isEmpty() || evaluator.isTrue(buildCompleteCondition(alertFilterRules));
+    if (!alertFilterRules.isEmpty()) {
+      boolean result;
+      String completeCondition = buildCompleteCondition(alertFilterRules);
+      AlertsRuleEvaluator ruleEvaluator = new AlertsRuleEvaluator(changeEvent);
+      Expression expression =
+          COMPILED_CONDITIONS.get(completeCondition, condition -> parseExpression(condition));
+      SimpleEvaluationContext context =
+          SimpleEvaluationContext.forReadOnlyDataBinding()
+              .withInstanceMethods()
+              .withRootObject(ruleEvaluator)
+              .build();
+      result = Boolean.TRUE.equals(expression.getValue(context, Boolean.class));
+      LOG.debug("Alert evaluated as Result : {}", result);
+      return result;
+    } else {
+      return true;
+    }
   }
 
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
@@ -274,38 +282,17 @@ public final class AlertUtil {
       Long startingTimestamp,
       BiConsumer<ChangeEvent, Exception> onEvaluationError) {
     Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
-    return getFilteredEvents(
-        AlertMatching.forDiagnostics(eventSubscription, watermark), events, onEvaluationError);
-  }
-
-  /** With the matching a tick built when it opened, so its plan is built once for the tick. */
-  public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
-      AlertMatching matching,
-      Map<ChangeEvent, Set<UUID>> events,
-      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
+    FilteringRules filteringRules = eventSubscription.getFilteringRules();
     return events.entrySet().stream()
-        .filter(entry -> belongs(matching, entry.getKey(), onEvaluationError))
+        .filter(
+            entry ->
+                isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError))
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
                 Map.Entry::getValue,
                 (first, second) -> first,
                 LinkedHashMap::new));
-  }
-
-  // Each event is judged alone: a condition that throws costs that one event, never its batch.
-  public static boolean belongs(
-      AlertMatching matching,
-      ChangeEvent event,
-      BiConsumer<ChangeEvent, Exception> onEvaluationError) {
-    boolean belongs;
-    try {
-      belongs = matching.matches(event);
-    } catch (Exception e) {
-      reportEvaluationError(onEvaluationError, event, e);
-      belongs = false;
-    }
-    return belongs;
   }
 
   /**
@@ -366,15 +353,9 @@ public final class AlertUtil {
   public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules, Long startingTimestamp) {
     return !isStalePipelineExecution(event, startingTimestamp)
-        && storedTextMatches(event, filteringRules, new ConditionEvaluator(event));
-  }
-
-  /** What the stored condition text answers, which is also what the previous release answers. */
-  public static boolean storedTextMatches(
-      ChangeEvent event, FilteringRules filteringRules, ConditionEvaluator evaluator) {
-    return shouldTriggerAlert(event, filteringRules)
-        && evaluateAlertConditions(evaluator, filteringRules.getRules())
-        && evaluateAlertConditions(evaluator, filteringRules.getActions());
+        && shouldTriggerAlert(event, filteringRules)
+        && evaluateAlertConditions(event, filteringRules.getRules())
+        && evaluateAlertConditions(event, filteringRules.getActions());
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {

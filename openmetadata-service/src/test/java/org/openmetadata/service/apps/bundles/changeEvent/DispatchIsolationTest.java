@@ -42,7 +42,6 @@ import org.openmetadata.service.apps.bundles.changeEvent.generic.GenericPublishe
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertRows;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.events.subscription.matching.AlertMatching;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
@@ -98,7 +97,7 @@ class DispatchIsolationTest {
     try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
         MockedConstruction<RecipientResolver> ignored = mockConstruction(RecipientResolver.class)) {
       alertUtil
-          .when(() -> AlertUtil.getFilteredEvents(any(AlertMatching.class), any(), any()))
+          .when(() -> AlertUtil.getFilteredEvents(any(), any(), any(), any()))
           .thenReturn(events);
       consumer.publishEvents(events);
     }

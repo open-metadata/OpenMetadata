@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -57,7 +58,6 @@ import org.openmetadata.service.events.subscription.AlertingSettings;
 import org.openmetadata.service.events.subscription.channels.Channels;
 import org.openmetadata.service.events.subscription.ledger.AlertLedger;
 import org.openmetadata.service.events.subscription.ledger.AlertRecord;
-import org.openmetadata.service.events.subscription.matching.AlertMatching;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
@@ -426,22 +426,17 @@ public class EventSubscriptionScheduler {
         .withSuccessfulEventsCount(successfulEventsCount);
   }
 
-  // Pending counts and the notifications that go out must agree, so a page view is decided by
-  // whichever engine decides delivery for this alert.
-  private AlertMatching decidingAsATickWould(EventSubscription subscription) {
-    Long startingTimestamp =
-        getEventSubscriptionOffset(subscription.getId())
-            .map(EventSubscriptionOffset::getStartingTimestamp)
-            .orElse(null);
-    return AlertMatching.forDiagnostics(
-        subscription, AlertUtil.alertingWatermark(subscription, startingTimestamp));
-  }
-
   public long getRelevantUnprocessedEvents(UUID subscriptionId) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     // Previously, getEventSubscription was called for each event in the stream
     EventSubscription subscription = getEventSubscription(subscriptionId);
-    AlertMatching deciding = decidingAsATickWould(subscription);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -449,7 +444,10 @@ public class EventSubscriptionScheduler {
             .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
 
     return UnprocessedEvents.countMatching(
-        offset, event -> AlertUtil.belongs(deciding, event, AlertUtil.LOG_EVALUATION_ERROR));
+        offset,
+        event ->
+            AlertUtil.isChangeEventAllowed(
+                event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR));
   }
 
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
@@ -528,7 +526,13 @@ public class EventSubscriptionScheduler {
       UUID subscriptionId, int limit, int paginationOffset) {
     // Fetch subscription ONCE before the loop to avoid N+1 query problem
     EventSubscription subscription = getEventSubscription(subscriptionId);
-    AlertMatching deciding = decidingAsATickWould(subscription);
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Long startingTimestamp =
+        AlertUtil.alertingWatermark(
+            subscription,
+            getEventSubscriptionOffset(subscriptionId)
+                .map(EventSubscriptionOffset::getStartingTimestamp)
+                .orElse(null));
 
     long offset =
         getEventSubscriptionOffset(subscriptionId)
@@ -540,7 +544,10 @@ public class EventSubscriptionScheduler {
             .changeEventDAO()
             .listUnprocessedEvents(offset, limit, paginationOffset);
     return UnprocessedEvents.matching(
-        page, event -> AlertUtil.belongs(deciding, event, AlertUtil.LOG_EVALUATION_ERROR));
+        page,
+        event ->
+            AlertUtil.isChangeEventAllowed(
+                event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR));
   }
 
   public List<ChangeEvent> getAllUnprocessedEvents(
