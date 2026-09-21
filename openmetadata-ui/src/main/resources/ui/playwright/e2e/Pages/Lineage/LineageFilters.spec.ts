@@ -133,6 +133,12 @@ test.describe('Lineage Filters', () => {
   const [depth1Entity, ...depth2ndEntities] = entities;
 
   test.beforeAll(async ({ browser }) => {
+    // Explicit hook budget: 15 sequential entity creations (each also creating
+    // its own service), then 15 lineage edges, then the index polling — well
+    // past the 60s default. Do NOT use test.slow() here; an explicit number
+    // keeps a failing attempt from grinding, per ExplorePageRightPanel.
+    test.setTimeout(240_000);
+
     const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       browser
     );
