@@ -27,6 +27,7 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { useRovingFocus } from '../../../hooks/useRovingFocus';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { isNearScrollBottom } from '../../../utils/ScrollUtils';
 import Loader from '../Loader/Loader';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import '../UserSelectableList/user-select-dropdown.less';
@@ -174,7 +175,7 @@ export const SelectableList = ({
     async (e) => {
       if (
         // If user reachs to end of container fetch more options
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop === height &&
+        isNearScrollBottom(e.currentTarget) &&
         // If there are other options available which can be determine form the cursor value
         pagingInfo.after &&
         // If we have all the options already we don't need to fetch more
