@@ -32,6 +32,7 @@ const meta = {
   component: Modal,
   parameters: {
     layout: 'centered',
+    theme: 'both',
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof Modal>;

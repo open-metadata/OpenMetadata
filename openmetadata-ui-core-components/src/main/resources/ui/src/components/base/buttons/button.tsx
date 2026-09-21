@@ -127,7 +127,10 @@ export const styles = sortCx({
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
