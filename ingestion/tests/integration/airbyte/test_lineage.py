@@ -12,12 +12,14 @@
 """
 Integration tests for Airbyte lineage against a real OpenMetadata server.
 
-The unit suite asserts the connector's direction rules against mocks; this proves them
-against the API that actually enforces them:
+The unit suite asserts the connector's behaviour against mocks; this proves it against the
+API that actually stores the edges:
 
-1. ``apiCollection`` is accepted as an *upstream* lineage node and rejected as a downstream
-   target. That rule is why an API destination is anchored on the pipeline, and until now it
-   lived only in a code comment.
+1. ``apiCollection`` is accepted in *both* directions. An earlier revision of this connector
+   resolved API entities on the source side only, because a downstream ``apiCollection`` edge
+   returned HTTP 500 -- server bug #33448 (the ADD_UPDATE_LINEAGE script dereferenced
+   ``upstreamLineage`` on target docs whose index does not seed it), fixed in 1465ab330af.
+   Asserting both directions here keeps that fix from silently regressing for this connector.
 2. The ``apiCollection -> pipeline -> container`` graph the connector emits persists and
    reads back.
 
@@ -239,32 +241,28 @@ def airbyte_source(metadata, pipeline_entity):
     return source
 
 
-def test_api_collection_is_rejected_as_a_downstream_target(metadata, container_entity, api_collection_entity):
-    """
-    The rule the connector is built around: OpenMetadata accepts apiCollection upstream only.
-    If this ever starts succeeding, ApiResolver's single-endpoint fan-out can be dropped.
-    """
-    rejected = metadata.add_lineage(
-        AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=container_entity.id, type="container"),
-                toEntity=EntityReference(id=api_collection_entity.id, type="apiCollection"),
-                lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
-            )
+def _edge(from_entity, from_type, to_entity, to_type):
+    return AddLineageRequest(
+        edge=EntitiesEdge(
+            fromEntity=EntityReference(id=from_entity.id, type=from_type),
+            toEntity=EntityReference(id=to_entity.id, type=to_type),
+            lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
         )
     )
-    assert "error" in rejected
 
-    accepted = metadata.add_lineage(
-        AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=api_collection_entity.id, type="apiCollection"),
-                toEntity=EntityReference(id=container_entity.id, type="container"),
-                lineageDetails=LineageDetails(source=LineageSource.PipelineLineage),
-            )
-        )
-    )
-    assert "error" not in accepted
+
+def test_api_collection_is_accepted_in_both_directions(metadata, container_entity, api_collection_entity):
+    """
+    Guards server fix #33448. Before it, an apiCollection as the *target* of an edge failed with
+    `[es/update_by_query] failed: [script_exception] runtime error` because its search index does
+    not seed `upstreamLineage`; the connector worked around it by resolving API entities on the
+    source side only. A regression here would silently strip API-destination lineage again.
+    """
+    downstream = metadata.add_lineage(_edge(container_entity, "container", api_collection_entity, "apiCollection"))
+    assert "error" not in downstream, downstream.get("error")
+
+    upstream = metadata.add_lineage(_edge(api_collection_entity, "apiCollection", container_entity, "container"))
+    assert "error" not in upstream, upstream.get("error")
 
 
 def test_connector_emits_an_api_to_container_edge_that_persists(

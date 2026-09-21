@@ -55,15 +55,15 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
     AirbyteWorkspace,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
-from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.fqn import FQNBuildingException
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
 from .resolvers import API_RESOLVER, DESTINATION, SOURCE, EntityResolver, get_resolver  # noqa: TID252
-from .utils import service_supports_database  # noqa: TID252
+from .utils import service_supports_database, table_fqn_candidates  # noqa: TID252
 
 logger = ingestion_logger()
 
@@ -284,20 +284,26 @@ class AirbyteSource(PipelineServiceSource):
             )
 
     @cached_property
-    def db_service_supports_database(self) -> bool | None:
+    def db_service_classes(self) -> dict[str, bool | None]:
         """
-        Whether the configured database services model a real database level.
+        Service class per configured database service, resolved once.
 
-        The answer is fixed for a run (``dbServiceNames`` is static config), so it is resolved
-        once. Services that disagree — or none configured at all — stay undecided so the caller
-        tries both FQN shapes instead of guessing.
+        ``dbServiceNames`` is static config, so the map is bounded by it and never grows with
+        the number of streams. The value is per service on purpose: a list mixing a
+        multi-database service with a single-database one has no single right answer, and
+        collapsing it would send every stream through one shape.
         """
-        answers = {service_supports_database(self.metadata, name) for name in self.get_db_service_names()}
-        return answers.pop() if len(answers) == 1 else None
+        return {name: service_supports_database(self.metadata, name) for name in self.get_db_service_names()}
 
-    def _get_table_fqn(self, table_details: TableDetails) -> str | None:
+    def resolve_table(self, table_details: TableDetails) -> Table | None:
         """
-        Get the FQN of the table
+        Find the Table a stream maps to: each configured service in turn, and within a service
+        each FQN shape that service's class allows.
+
+        The loop is per service because ``fqn.build`` returns a *constructed* FQN whenever
+        service, database and schema are all present, even when Elasticsearch matched nothing.
+        Accepting the first service's answer would therefore hide a table that lives in the
+        second, so the entity is fetched and verified before a service is accepted.
         """
         # Without a database or a schema the search degrades to `*.*.*.<table>`, which
         # `fqn.build` resolves to an arbitrary same-named table in an unrelated service.
@@ -310,20 +316,39 @@ class AirbyteSource(PipelineServiceSource):
             )
             return None
 
-        try:
-            if self.get_db_service_names():
-                return self._get_table_fqn_from_om(table_details)
+        service_names = self.get_db_service_names()
+        if not service_names:
+            # No list configured: search across services, undecided on the service class.
+            return self._lookup_table_in_service("*", table_details, None)
 
-            return fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name="*",
-                database_name=table_details.database,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
+        for service_name in service_names:
+            entity = self._lookup_table_in_service(
+                service_name, table_details, self.db_service_classes.get(service_name)
             )
-        except FQNNotFoundException:
-            return None
+            if entity:
+                return entity
+        return None
+
+    def _lookup_table_in_service(
+        self, service_name: str, table_details: TableDetails, supports_database: bool | None
+    ) -> Table | None:
+        """Resolve a table in one service, trying each FQN shape that service's class allows."""
+        for candidate in table_fqn_candidates(table_details, supports_database):
+            try:
+                table_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=service_name,
+                    database_name=candidate.database,
+                    schema_name=candidate.schema,
+                    table_name=candidate.name,
+                )
+            except FQNBuildingException:
+                continue
+            entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn) if table_fqn else None
+            if entity:
+                return entity
+        return None
 
     # pylint: disable=too-many-locals
     def yield_pipeline_lineage_details(
@@ -419,7 +444,7 @@ class AirbyteSource(PipelineServiceSource):
 
             # Anchor the genuinely-unsupported side (an API without apiServiceNames, /dev/null, an
             # unknown connector) on the pipeline so the resolved side is still recorded. The pipeline
-            # is a valid lineage node either way, and apiCollection cannot be a downstream target.
+            # is a valid lineage node in either direction.
             if from_reference is None:
                 from_reference = pipeline_reference
                 lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
@@ -461,10 +486,10 @@ class AirbyteSource(PipelineServiceSource):
         A connector type in the registry (table / container / topic / searchIndex) is
         *supported*: a None reference means the entity is simply not ingested yet, and the
         caller drops the edge rather than anchoring it on the pipeline. An unknown type has
-        no OpenMetadata counterpart, so only an opt-in API service may claim it (source-side
-        ``apiCollection`` / destination-side single ``apiEndpoint``); when even that fails the
-        type is genuinely unsupported (``supported=False``) and the caller anchors it on the
-        pipeline. This keeps unmapped relational connectors from being mistaken for APIs.
+        no OpenMetadata counterpart, so only an opt-in API service may claim it (an
+        ``apiCollection``, either direction); when even that fails the type is genuinely
+        unsupported (``supported=False``) and the caller anchors it on the pipeline. This keeps
+        unmapped relational connectors from being mistaken for APIs.
         """
         if resolver is not None:
             return resolver.resolve(self, stream, connection, direction, pipeline_name), True

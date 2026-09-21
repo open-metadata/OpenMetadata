@@ -209,19 +209,19 @@ MOCK_SOURCE_TABLE_FQN = "mock_source_service.mock_source_db.mock_source_schema.m
 MOCK_DESTINATION_TABLE_FQN = "mock_destination_service.mock_destination_db.mock_destination_schema.mock_table_name"
 
 
-# Configure mock for _get_table_fqn to return FQNs for source and destination tables
-def mock_get_table_fqn(self, table_details):  # pylint: disable=unused-argument
+# Stand in for the per-service catalog lookup, keyed on whichever level the connector reported.
+def mock_resolve_table(self, table_details):  # pylint: disable=unused-argument
     if table_details.name != "mock_table_name":
         return None
 
-    if table_details.schema == "mock_source_schema":
-        return MOCK_SOURCE_TABLE_FQN
-    if table_details.schema == "mock_destination_schema":
-        return MOCK_DESTINATION_TABLE_FQN
-    if table_details.schema == "mock_source_db":
-        return MOCK_SOURCE_TABLE_FQN
-    if table_details.schema == "mock_destination_db":
-        return MOCK_DESTINATION_TABLE_FQN
+    source_levels = {"mock_source_schema", "mock_source_db"}
+    destination_levels = {"mock_destination_schema", "mock_destination_db"}
+    reported = {table_details.schema, table_details.database}
+
+    if reported & source_levels:
+        return MOCK_POSTGRES_SOURCE_TABLE
+    if reported & destination_levels:
+        return MOCK_POSTGRES_DESTINATION_TABLE
 
     return None
 
@@ -354,7 +354,7 @@ class AirbyteUnitTest(TestCase):
         self.client.list_jobs.return_value = []
         assert list(self.airbyte.yield_pipeline_status(EXPECTED_AIRBYTE_DETAILS)) == []
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details(self):
         """Test the Airbyte lineage generation functionality."""
         # Mock the client methods needed for lineage with supported source and destination types
@@ -415,7 +415,7 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_public_api(self):
         """Lineage must also work with the public-API response shape.
 
@@ -472,7 +472,7 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_public_api_configurations_streams(self):
         """End-to-end: a public-API connection carries streams under `configurations.streams`
         (no `syncCatalog`). `resolved_streams` must surface them so the lineage loop runs and
@@ -511,7 +511,7 @@ class AirbyteUnitTest(TestCase):
         assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
         assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
-    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
+    @patch.object(AirbyteSource, "resolve_table", mock_resolve_table)
     def test_yield_pipeline_lineage_details_snowflake_destination(self):
         """Snowflake destination lineage (issue #26993).
 

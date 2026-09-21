@@ -13,17 +13,17 @@
 Centralized entity resolution for Airbyte lineage.
 
 Each Airbyte source/destination connector type maps to one OpenMetadata entity kind
-(table, container, topic, searchIndex, apiCollection/apiEndpoint). A single registry
+(table, container, topic, searchIndex, apiCollection). A single registry
 (``CONNECTOR_RESOLVERS``) maps a connector type to the resolver that knows how to turn a
 stream into an ``EntityReference``. Adding a new connector type is a registry entry;
 adding a new entity kind is one ``EntityResolver`` subclass — no new branches in
 ``metadata.py``.
 
-Direction rules baked into the resolvers:
-- ``apiCollection`` resolves as an *upstream* node only (OpenMetadata rejects it as a
-  downstream lineage target). For an API *destination* the resolver falls back to the
-  collection's single ``apiEndpoint`` (safe fan-out: only when exactly one endpoint
-  exists, so no ambiguous edges are invented).
+``apiCollection`` resolves the same way on both sides of a connection. An earlier revision
+routed API *destinations* to the collection's single ``apiEndpoint`` because a downstream
+``apiCollection`` edge returned HTTP 500; that was server bug #33448 (the ADD_UPDATE_LINEAGE
+script dereferenced ``upstreamLineage`` on target docs whose index does not seed it), fixed
+in 1465ab330af, not a rule about apiCollection.
 """
 
 from abc import ABC, abstractmethod
@@ -31,9 +31,7 @@ from collections.abc import Iterable
 from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.data.apiCollection import APICollection
-from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.utils import model_str
@@ -57,7 +55,6 @@ from .utils import (  # noqa: TID252
     get_destination_table_details,
     get_source_container_path,
     get_source_table_details,
-    table_fqn_candidates,
 )
 
 if TYPE_CHECKING:
@@ -111,13 +108,9 @@ class TableResolver(EntityResolver):
         if not details:
             return None
 
-        for candidate in table_fqn_candidates(details, source.db_service_supports_database):
-            table_fqn = source._get_table_fqn(candidate)
-            if not table_fqn:
-                continue
-            entity = source.metadata.get_by_name(entity=Table, fqn=table_fqn)
-            if entity:
-                return EntityReference(id=entity.id, type="table")
+        entity = source.resolve_table(details)
+        if entity:
+            return EntityReference(id=entity.id, type="table")
 
         logger.warning(
             "Airbyte lineage [%s]: table [%s].[%s].[%s] (type %s) not found in OpenMetadata",
@@ -246,11 +239,11 @@ class SearchIndexResolver(_ServiceScopedResolver):
 
 class ApiResolver(EntityResolver):
     """
-    APIs → ``apiCollection`` (upstream) or ``apiEndpoint`` (downstream).
+    APIs → OpenMetadata ``apiCollection``, in either direction.
 
-    Opt-in via ``apiServiceNames`` and only on an unambiguous match. A stream name maps to
-    a collection, so an API *destination* uses the collection's single endpoint (safe
-    fan-out) because OpenMetadata rejects apiCollection as a downstream target.
+    Opt-in via ``apiServiceNames`` and only on an unambiguous match: an Airbyte API connector
+    exposes no endpoint URL, so the stream name is the sole join key and a name that matches
+    more than one collection is skipped rather than guessed.
     """
 
     om_type = "apiCollection"
@@ -277,15 +270,13 @@ class ApiResolver(EntityResolver):
         if collection is None:
             return None
 
-        if direction == SOURCE:
-            logger.debug(
-                "Resolved Airbyte stream [%s] to API collection [%s]",
-                stream.name,
-                model_str(collection.fullyQualifiedName),
-            )
-            return EntityReference(id=collection.id, type="apiCollection")
-
-        return self._single_endpoint_reference(source, collection, stream, pipeline_name)
+        logger.debug(
+            "Resolved Airbyte %s stream [%s] to API collection [%s]",
+            direction,
+            stream.name,
+            model_str(collection.fullyQualifiedName),
+        )
+        return EntityReference(id=collection.id, type="apiCollection")
 
     def _match_collection(
         self, source: "AirbyteSource", stream: AirbyteStream, api_services: list[str], pipeline_name: str
@@ -309,36 +300,6 @@ class ApiResolver(EntityResolver):
             )
             return None
         return collections[0]
-
-    def _single_endpoint_reference(
-        self, source: "AirbyteSource", collection: APICollection, stream: AirbyteStream, pipeline_name: str
-    ) -> EntityReference | None:
-        collection_fqn = model_str(collection.fullyQualifiedName)
-        endpoints = [
-            endpoint
-            for endpoint in source.metadata.es_search_from_fqn(
-                entity_type=APIEndpoint,
-                fqn_search_string=f"{collection_fqn}.*",
-            )
-            or []
-            if model_str(endpoint.fullyQualifiedName).startswith(f"{collection_fqn}.")
-        ]
-        if len(endpoints) != 1:
-            logger.warning(
-                "While extracting lineage: [%s], API destination stream [%s] maps to collection [%s]"
-                " with %d endpoints; skipping (apiCollection cannot be a downstream target and safe"
-                " fan-out needs exactly one endpoint).",
-                pipeline_name,
-                stream.name,
-                collection_fqn,
-                len(endpoints),
-            )
-            return None
-
-        logger.debug(
-            "Resolved Airbyte stream [%s] to API endpoint [%s]", stream.name, model_str(endpoints[0].fullyQualifiedName)
-        )
-        return EntityReference(id=endpoints[0].id, type="apiEndpoint")
 
 
 _TABLE_RESOLVER = TableResolver()
