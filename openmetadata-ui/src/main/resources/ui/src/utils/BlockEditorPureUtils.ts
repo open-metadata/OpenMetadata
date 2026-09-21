@@ -119,11 +119,6 @@ export const isHTMLString = (content: string) => {
     const parser = new DOMParser();
     const parsedDocument = parser.parseFromString(content, 'text/html');
 
-    const outsideCodeRegions = parser.parseFromString(
-      stripMarkdownCodeRegions(content),
-      'text/html'
-    );
-
     // Bare text between the markup is what makes a document markdown prose.
     // Serialized editor output has none, and its indentation is pretty
     // printing rather than a code block — so only prose is read with code
@@ -137,8 +132,11 @@ export const isHTMLString = (content: string) => {
         node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim())
     );
 
+    // Everything below reads this one view of the document. Deciding what
+    // counts as an element from one view and what counts as a list from
+    // another lets pretty-printed markup lose its own lists.
     const renderedMarkup = hasProseAroundMarkup
-      ? outsideCodeRegions
+      ? parser.parseFromString(stripMarkdownCodeRegions(content), 'text/html')
       : parsedDocument;
 
     const hasHtmlElements = Array.from(renderedMarkup.body.childNodes).some(
@@ -147,7 +145,7 @@ export const isHTMLString = (content: string) => {
 
     if (
       hasHtmlElements &&
-      outsideCodeRegions.body.querySelector(STRUCTURAL_HTML_SELECTOR)
+      renderedMarkup.body.querySelector(STRUCTURAL_HTML_SELECTOR)
     ) {
       return true;
     }

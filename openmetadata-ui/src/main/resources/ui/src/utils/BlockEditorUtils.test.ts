@@ -337,6 +337,38 @@ please contact the support team <test@test.com>.
     expect(isHTMLString(markdown)).toBe(false);
   });
 
+  it('should keep pretty-printed HTML as HTML when an item looks markdown', () => {
+    // The plain pretty-printed case survives even a code-stripped structural
+    // query, because its text holds nothing a markdown pattern matches. This
+    // one does not: lose the indented `<ul>` and it falls through to the
+    // pattern check, `**one**` matches, and a real list goes back to the
+    // converter.
+    const html = [
+      '<div>',
+      '',
+      '    <ul>',
+      '      <li>**one**</li>',
+      '    </ul>',
+      '',
+      '</div>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
+  it('should keep pretty-printed HTML as HTML when an item holds a backtick', () => {
+    const html = [
+      '<p><strong>Discontinued UEs:</strong></p>',
+      '',
+      '    <ol>',
+      '      <li>use `x` here</li>',
+      '      <li>VCR</li>',
+      '    </ol>',
+    ].join('\n');
+
+    expect(isHTMLString(html)).toBe(true);
+  });
+
   it('should return true for pretty-printed HTML, not read it as indented code', () => {
     // Indentation in serialized editor output is pretty printing. Reading it
     // as a code block would strip the document's own markup.
