@@ -264,7 +264,55 @@ class FeedAccessAuthzIT {
                 .executeForString(HttpMethod.GET, ACTIVITY_PATH + "/about", null, options));
   }
 
+  // ==================== Conditional writes still honoured ====================
+
+  /**
+   * Task PATCH authorizes through the AuthRequest overload so it can use TaskResourceContext. That
+   * overload must still forward the request's If-Match header, or a client holding a stale ETag
+   * silently overwrites a concurrent update instead of getting a 412.
+   */
+  @Test
+  void patchTask_staleIfMatch_preconditionFailed(TestNamespace ns) {
+    Task task = createTask(ns);
+
+    ApiException failure =
+        assertThrows(
+            ApiException.class,
+            () ->
+                patchWithIfMatch(
+                    TASKS_PATH + "/" + task.getId(),
+                    replace("/description", "Stale write"),
+                    "W/\"0.9\""));
+
+    assertEquals(412, failure.getStatusCode(), "A stale If-Match must fail the precondition");
+  }
+
+  @Test
+  void patchTask_currentIfMatch_succeeds(TestNamespace ns) throws Exception {
+    Task task = createTask(ns);
+
+    patchWithIfMatch(
+        TASKS_PATH + "/" + task.getId(),
+        replace("/description", "Conditional write"),
+        "W/\"" + task.getVersion() + "\"");
+
+    Task updated = SdkClients.adminClient().tasks().get(task.getId().toString());
+    assertEquals("Conditional write", updated.getDescription());
+  }
+
   // ==================== Helpers ====================
+
+  private static String patchWithIfMatch(String path, String body, String ifMatch)
+      throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .header("Content-Type", "application/json-patch+json")
+            .header("If-Match", ifMatch)
+            .build();
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, path, body, options);
+  }
 
   private static void assertBadRequest(ThrowingCall call) {
     assertThrows(InvalidRequestException.class, call::run, "Malformed entityLink must be a 400");
