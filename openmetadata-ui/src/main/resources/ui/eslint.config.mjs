@@ -567,9 +567,6 @@ export default [
       // TypeScript/base rule overrides for Playwright files
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-duplicate-enum-values': 'off',
-      // Cleared to zero in playwright/ too (real Playwright types, structural
-      // response types, as-unknown-as casts), so it inherits the repo-wide
-      // `error` instead of being downgraded here.
       '@typescript-eslint/no-unused-expressions': 'warn',
       'prefer-const': 'off',
 
