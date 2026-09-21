@@ -703,10 +703,9 @@ export const fillGlossaryTermDetails = async (
   const picker = page.getByTestId('csv-glossary-terms-picker');
   await expect(picker).toBeVisible();
 
-  // The editor mounts it open, but the grid's focus handling can close it again.
-  if ((await picker.getAttribute('data-treeselect-open')) !== 'true') {
-    await picker.click();
-  }
+  // Clicking only ever opens this trigger, so it settles whichever state the
+  // grid left the freshly mounted editor in without reading it first.
+  await picker.click();
   await expectGlossaryPickerOpen(picker);
 
   await searchGlossaryPicker(page, glossary.name, picker);
