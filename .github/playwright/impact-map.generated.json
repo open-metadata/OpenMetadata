@@ -9204,14 +9204,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/TagSuggestion/TagSuggestion.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/TagsSection/TagsSection.tsx"
       ],
       "specs": [
