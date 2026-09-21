@@ -225,6 +225,41 @@ describe('TableV2 — sticky header opt-in', () => {
 });
 
 /**
+ * TableV2-only: the outer wrapper used to mirror the inner table container's
+ * `overflow-x: auto` whenever `scroll.x` was set. Neither ancestor's content
+ * ever outgrows the other — the core table div is the only one whose child
+ * (the `<table>`) is actually wider than its box — so the outer scrollbar had
+ * nothing of its own to show and only duplicated the inner one, stacking a
+ * second horizontal scrollbar under the Glossary Terms table (`scroll.x` +
+ * `scroll.y` together, as `GLOSSARY_TABLE_SCROLL` sets them).
+ */
+describe('TableV2 — one horizontal scrollbar, not two', () => {
+  it('gives the table exactly one overflow-x ancestor with scroll.x and scroll.y set', () => {
+    renderMinimal({ scroll: { x: 'max-content', y: 200 } });
+
+    const table = document.querySelector('table') as HTMLElement;
+    let ancestor = table.parentElement;
+    let overflowXAncestors = 0;
+    while (ancestor) {
+      // Two ways an ancestor can own the horizontal scroller, and the bug
+      // used one of each: the core table container carries the Tailwind
+      // `overflow-x-auto` class, while the outer wrapper set `overflowX`
+      // inline. Counting only the class would pass against the bug.
+      const scrollsX =
+        ancestor.className.includes('overflow-x-auto') ||
+        ancestor.style.overflowX === 'auto' ||
+        ancestor.style.overflowX === 'scroll';
+      if (scrollsX) {
+        overflowXAncestors += 1;
+      }
+      ancestor = ancestor.parentElement;
+    }
+
+    expect(overflowXAncestors).toBe(1);
+  });
+});
+
+/**
  * TableV2-only: AntD has no cell wrapper at all, so there is nothing to compare
  * against. The wrapper exists to place the tree expander beside the value; when
  * there is no expander it must not lay anything out, or content a cell renders

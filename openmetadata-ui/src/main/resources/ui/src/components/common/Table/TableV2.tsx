@@ -1043,16 +1043,6 @@ const TableV2 = <T extends object>(
    */
   const sizeByContent = scroll?.x === 'max-content';
 
-  const scrollStyle = useMemo((): React.CSSProperties => {
-    if (!scroll) {
-      return {};
-    }
-
-    return {
-      ...(scroll.x ? { overflowX: 'auto' } : {}),
-    };
-  }, [scroll?.x]);
-
   /**
    * Derived, not state: seeding this from an effect left the first render with
    * zero columns, and React Aria registers the column collection on that render
@@ -1760,8 +1750,7 @@ const TableV2 = <T extends object>(
         // the viewport happens to be rather than over the rows it is masking.
         className="tw:relative tw:flex tw:flex-col tw:w-full"
         data-testid={dataTestId}
-        ref={scrollWrapRef}
-        style={scrollStyle}>
+        ref={scrollWrapRef}>
         {rest.title && (
           // AntD's table-level title slot: a band above the table, handed the
           // rows currently on screen. Call sites hang bulk actions off it.
