@@ -215,19 +215,10 @@ export const Typography = (props: TypographyProps) => {
     quoteVariant === 'default' &&
     UNWRAPPED_ELEMENTS.has(Component);
 
-  // When a color is passed (via `color` prop or a tw:text-* in `className`),
-  // add `not-prose` so the .prose unlayered CSS rule doesn't override it.
-  const hasColorOverride =
-    !!colorClass || (!!className && /tw:text-/.test(className));
-
   const element = (
     <Component
       {...otherProps}
-      className={
-        canUnwrap
-          ? cx('prose', hasColorOverride && 'not-prose', innerClassName)
-          : innerClassName
-      }
+      className={canUnwrap ? cx('prose', innerClassName) : innerClassName}
       style={style}>
       {children}
     </Component>
