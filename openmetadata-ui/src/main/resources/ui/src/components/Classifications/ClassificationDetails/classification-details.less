@@ -47,35 +47,5 @@
     > [data-testid='description-container'] {
       flex: 0 0 auto;
     }
-
-    .table-container {
-      position: relative;
-      z-index: var(--om-z-0);
-      // TableV2 (ui-core-components) has no `.ant-col`/`.ant-table-wrapper` —
-      // this container needs to be a flex column itself so the rules below,
-      // which stretch TableV2's own scroll chain, have somewhere to grow into.
-      display: flex;
-      flex: 1 1 auto;
-      min-height: 0;
-      flex-direction: column;
-      flex-wrap: nowrap;
-
-      // TableV2's outer scroll wrapper (the call site's own `data-testid`
-      // lands here) and the div immediately wrapping the table element both
-      // need to flex-grow, and the inner one needs its `scroll.y` max-height
-      // lifted — otherwise both shrink to the row content's height and the
-      // horizontal scrollbar floats mid-panel with empty space below it,
-      // instead of sitting at the panel's actual bottom edge.
-      [data-testid='table'] {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-
-      [data-testid='table'] div:has(> table[role='grid']) {
-        flex: 1 1 auto;
-        min-height: 0;
-        max-height: none !important;
-      }
-    }
   }
 }

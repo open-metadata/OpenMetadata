@@ -692,6 +692,11 @@ const ClassificationDetails = forwardRef(
       ) : (
         <Table
           columns={tableColumn}
+          // `tw:relative tw:z-0` replaces the old `.table-container` rule in
+          // classification-details.less; `tw:flex tw:flex-col tw:min-h-0
+          // tw:flex-1` makes this outer wrapper a flex column that fills the
+          // card body instead of shrinking to the row content's height.
+          containerClassName="tw:relative tw:z-0 tw:flex tw:flex-col tw:min-h-0 tw:flex-1"
           customPaginationProps={{
             currentPage,
             isLoading,
@@ -710,6 +715,13 @@ const ClassificationDetails = forwardRef(
             x: 'max-content',
             y: 'calc(100vh - 380px - var(--ant-navbar-height))',
           }}
+          // Stretches the scroll region `ui-core-components`' Table owns to
+          // fill the panel instead of shrinking to the row content's height
+          // (`scroll.y`'s max-height only caps it, it doesn't stretch it) —
+          // otherwise, with few tags, the table's own horizontal scrollbar
+          // floats mid-panel with empty space below it instead of sitting
+          // flush at the panel's bottom edge.
+          scrollContainerClassName="tw:!flex-1 tw:!min-h-0 tw:!max-h-none"
           size="small"
         />
       );
