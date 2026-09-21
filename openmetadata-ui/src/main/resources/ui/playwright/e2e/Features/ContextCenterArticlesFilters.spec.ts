@@ -121,14 +121,13 @@ test.describe(
       await classification.create(apiContext);
       await topicTag.create(apiContext);
 
-      const tagFqns = [
-        topicTag.responseData.fullyQualifiedName,
-        'Tier.Tier1',
-      ];
+      const tagFqns = [topicTag.responseData.fullyQualifiedName, 'Tier.Tier1'];
 
       for (let i = 0; i < DOMAIN_A_ARTICLE_COUNT; i++) {
         const fqn = await createArticle(apiContext, {
-          displayName: `PW Filter Alpha ${String.fromCharCode(65 + i)} ${uuid()}`,
+          displayName: `PW Filter Alpha ${String.fromCharCode(
+            65 + i
+          )} ${uuid()}`,
           domainFqn: domainA.responseData.fullyQualifiedName,
           tagFqns,
           ownerId: adminId,
@@ -139,7 +138,9 @@ test.describe(
 
       for (let i = 0; i < DOMAIN_B_ARTICLE_COUNT; i++) {
         const fqn = await createArticle(apiContext, {
-          displayName: `PW Filter Beta ${String.fromCharCode(65 + i)} ${uuid()}`,
+          displayName: `PW Filter Beta ${String.fromCharCode(
+            65 + i
+          )} ${uuid()}`,
           domainFqn: domainB.responseData.fullyQualifiedName,
           tagFqns: [topicTag.responseData.fullyQualifiedName],
           ownerId: adminId,
@@ -162,12 +163,16 @@ test.describe(
 
       for (const fqn of createdArticleFqns) {
         const res = await apiContext.get(
-          `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
+          `/api/v1/contextCenter/pages/name/${encodeURIComponent(
+            fqn
+          )}?fields=id`
         );
         if (res.ok()) {
           const { id } = await res.json();
           await apiContext
-            .delete(`/api/v1/contextCenter/pages/${id}?hardDelete=true&recursive=true`)
+            .delete(
+              `/api/v1/contextCenter/pages/${id}?hardDelete=true&recursive=true`
+            )
             .catch(() => undefined);
         }
       }
@@ -212,9 +217,7 @@ test.describe(
 
         expect(body.hits.total.value).toBe(DOMAIN_A_ARTICLE_COUNT);
         await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('clear-articles-filters')
-        ).toBeVisible();
+        await expect(page.getByTestId('clear-articles-filters')).toBeVisible();
       });
 
       await test.step('Clear resets to the unfiltered listing', async () => {
@@ -226,9 +229,7 @@ test.describe(
         await listResponse;
 
         await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('clear-articles-filters')
-        ).toHaveCount(0);
+        await expect(page.getByTestId('clear-articles-filters')).toHaveCount(0);
       });
     });
 
