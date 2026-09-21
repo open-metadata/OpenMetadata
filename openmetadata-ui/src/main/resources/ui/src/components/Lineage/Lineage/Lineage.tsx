@@ -527,9 +527,9 @@ export const Lineage = ({
     addNodes,
     updateEdge,
   } = useMapBasedNodesEdges([], []);
-  const [, setLoading] = useState(true);
-  const [, setInit] = useState(false);
-  const [, setStatus] = useState<LoadingState>('initial');
+  const [loading, setLoading] = useState(true);
+  const [init, setInit] = useState(false);
+  const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [selectedQuickFilters] = useState<ExploreQuickFilterField[]>([]);
   const [entityType, setEntityType] = useState<EntityType | undefined>(
@@ -1194,6 +1194,15 @@ export const Lineage = ({
         setEntity(entity);
         setEntityFqn(entity?.fullyQualifiedName ?? '');
         setEntityType(entityType);
+      });
+
+      // The local -> store mirror effect only re-runs on the next render;
+      // push the update synchronously here too so store-only consumers
+      // (LineageOverlays) never read a stale entity context in between.
+      useLineageStore.getState().setEntityContext({
+        entity,
+        entityType,
+        entityFqn: entity?.fullyQualifiedName ?? '',
       });
 
       // This runs after React states are committed
@@ -2150,6 +2159,31 @@ export const Lineage = ({
   useEffect(() => {
     return reset;
   }, []);
+
+  // Mirror the still-local graph state (`useMapBasedNodesEdges`) to the store
+  // so store-only consumers (LineageOverlays, Phase-D-migrated components)
+  // read the same nodes/edges `<Lineage />` is rendering instead of defaults.
+  useEffect(() => {
+    const store = useLineageStore.getState();
+    store.setNodes(nodes);
+    store.setEdges(edges);
+    store.setColumnEdges(columnEdges);
+  }, [nodes, edges, columnEdges]);
+
+  // Mirror the still-local fetch-lifecycle state to the store for the same
+  // reason.
+  useEffect(() => {
+    useLineageStore.setState({ entityLineage, loading, status, init });
+  }, [entityLineage, loading, status, init]);
+
+  // Mirror the still-local entity context to the store. This covers both the
+  // prop-driven mount path (also handled above) and imperative updates from
+  // `updateEntityData`, which mutates local state without a new prop.
+  useEffect(() => {
+    useLineageStore
+      .getState()
+      .setEntityContext({ entity, entityType, entityFqn });
+  }, [entity, entityType, entityFqn]);
 
   const handlers = useMemo<LineageHandlersValue>(
     () => ({

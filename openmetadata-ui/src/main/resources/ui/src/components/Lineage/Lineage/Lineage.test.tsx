@@ -103,4 +103,14 @@ describe('Lineage', () => {
     expect(useLineageStore.getState().entityFqn).toBe('svc.db.s.t');
     expect(screen.getByTestId('entity-lineage-sidebar')).toBeInTheDocument();
   });
+
+  it('mirrors entityFqn to the store on mount with default props', () => {
+    render(
+      <MemoryRouter>
+        <Lineage entityFqn="x" isPlatformLineage={false} />
+      </MemoryRouter>
+    );
+
+    expect(useLineageStore.getState().entityFqn).toBe('x');
+  });
 });
